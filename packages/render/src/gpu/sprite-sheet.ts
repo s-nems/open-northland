@@ -19,6 +19,13 @@ import type {
  * back into the deterministic sim.
  */
 
+/** The player-colour LUT the paletted settler meshes read team colours through; the full contract
+ *  lives on {@link SpriteSheet.palette}. */
+export interface PlayerColourLut {
+  readonly source: TextureSource;
+  readonly colours: number;
+}
+
 /** One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame
  *  geometry (the original composes a human from layered body + head bob sets, not one sprite). */
 export interface SpriteLayer {
@@ -141,5 +148,5 @@ export interface SpriteSheet {
    * decoded, or the baked-palette characters) it falls back to a plain tinted-atlas {@link import('pixi.js').Sprite}.
    * One indexed atlas + one LUT serve all `colours` players.
    */
-  readonly palette?: { readonly source: TextureSource; readonly colours: number };
+  readonly palette?: PlayerColourLut;
 }

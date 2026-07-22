@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type Container, Graphics, Sprite } from 'pixi.js';
-import { FOG_GHOST_TINT, type FogGhost } from '../../data/fog/index.js';
+import type { Container } from 'pixi.js';
+import type { FogGhost } from '../../data/fog/index.js';
 import {
   type Camera,
   cameraScreenX,
@@ -9,20 +9,17 @@ import {
   type Viewport,
 } from '../../data/projection/index.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
-import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
-import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
-import { BoundsUnion, createLayerDrawBox, layerDrawBox } from './layer-box.js';
+import { LayerBinder } from './bind-layers.js';
 import { trackMotion } from './motion.js';
 import { anchorOf, boundsOf, pixelHit } from './pick.js';
-import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
-import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
+import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { animationClock, easeReveal, revealedItem, walkPose } from './presentation.js';
 import { reconcileSprites } from './reconcile.js';
-import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
+import { resolveLayers } from './resolve-layers.js';
 
 /**
  * The retained per-entity sprite pool: one display object per drawable entity, keyed by its monotonic,
@@ -58,7 +55,7 @@ export interface PoolFrame {
   readonly viewport: Viewport;
   /** The sim tick the snapshot belongs to — the animation clock for looping gaits. */
   readonly tick: number;
-  /** The camera transform (needed to self-place screen-space {@link PalettedSprite} meshes). */
+  /** The camera transform (needed to self-place the screen-space paletted settler meshes). */
   readonly camera: Camera;
   /** Canvas size in pixels (the paletted mesh maps screen px → clip space itself). */
   readonly screenW: number;
@@ -87,21 +84,6 @@ export interface PoolFrame {
   readonly portraitRef?: number;
 }
 
-/** The faint tints an assign-mode candidate building draws with — a light green when the settler can be
- *  assigned there, a light red when not. Pale (near-white) so it reads as a wash over the building art
- *  rather than repainting it. */
-const HIGHLIGHT_OK_TINT = 0x88ff88;
-const HIGHLIGHT_NO_TINT = 0xff8888;
-
-/** The tint a drawn entity takes this frame: the fog-ghost grey when ghosted, else the assign-mode
- *  green/red when it is a highlighted candidate building, else none (white). */
-function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number, boolean>): number {
-  if (ghost) return FOG_GHOST_TINT;
-  const ok = highlight?.get(ref);
-  if (ok === undefined) return 0xffffff;
-  return ok ? HIGHLIGHT_OK_TINT : HIGHLIGHT_NO_TINT;
-}
-
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
   /** The pooled entities currently attached to {@link spriteLayer} (drawn this frame). The detach and
@@ -117,11 +99,7 @@ export class SpritePool {
   /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
    *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
   private readonly portrait: PortraitSubject;
-  /** Scratch accumulator for the drawn layers' box union, reset per entity so the bounds pass allocates
-   *  nothing. Never read outside the {@link bindLayers} call that fills it. */
-  private readonly layerBounds = new BoundsUnion();
-  /** Scratch for the layer geometry of the sprite being bound — refilled per layer, never retained. */
-  private readonly drawBox = createLayerDrawBox();
+  private readonly binder: LayerBinder;
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -131,12 +109,13 @@ export class SpritePool {
    */
   constructor(
     private readonly spriteLayer: Container,
-    private readonly textures: TextureCache,
+    textures: TextureCache,
     private readonly sheet: SpriteSheet | undefined,
     /** Owner slot → team-colour slot for every built scene (a map roster's colour choice); absent = identity. */
     private readonly playerColourOf?: (player: number) => number,
   ) {
     this.portrait = new PortraitSubject(spriteLayer);
+    this.binder = new LayerBinder(textures, sheet);
   }
 
   /**
@@ -174,7 +153,7 @@ export class SpritePool {
       if (item.kind === 'tile') continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
-        pe = createPooled(item.kind, this.isPaletted(item.kind));
+        pe = this.binder.create(item.kind);
         this.pool.set(item.ref, pe);
       }
       // An entity absent from last frame's draw list still holds the motion track from whenever it was
@@ -265,9 +244,9 @@ export class SpritePool {
    * Re-place every currently-drawn paletted settler's meshes for an alternate camera + target size. The
    * details-panel portrait renders the world re-aimed at one unit; plain sprites + terrain ride the re-aimed
    * `worldLayer` transform, but the team-colour meshes self-place in screen space, so they must be re-placed
-   * for the inset camera before that render and restored to the main camera after. Mirrors {@link bindLayers}'
-   * placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright into a bottom-up
-   * render texture (true for the inset, false to restore the on-screen render).
+   * for the inset camera before that render and restored to the main camera after. Mirrors the
+   * {@link LayerBinder}'s placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright
+   * into a bottom-up render texture (true for the inset, false to restore the on-screen render).
    */
   placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
     const camScale = camera.scale ?? 1;
@@ -275,8 +254,7 @@ export class SpritePool {
       if (!pe.paletted) continue;
       const originX = cameraScreenX(camera, pe.motion.drawX);
       const originY = cameraScreenY(camera, pe.motion.drawY);
-      for (const s of pe.sprites) {
-        const spr = s as PalettedSprite;
+      for (const spr of pe.sprites) {
         if (!spr.visible) continue;
         spr.place(originX, originY, camScale * spr.artScale, resWidth, resHeight);
         spr.flipY = flipY;
@@ -325,8 +303,8 @@ export class SpritePool {
     this.attached.clear();
   }
 
-  /** Update one pooled entity for this frame: place it at its interpolated feet anchor, then bind its
-   *  atlas layers ({@link bindLayers}) or fall back to placeholder geometry ({@link showPlaceholder}). */
+  /** Update one pooled entity for this frame: place it at its interpolated feet anchor, resolve its
+   *  atlas layers, then hand the binding (or the placeholder fallback) to the {@link LayerBinder}. */
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
     // Fixed-timestep interpolation over the lifted feet: the sim advances in 12 Hz ticks, so drawing raw
     // snapshot anchors steps a walking bob ~4 px every fifth frame. Track the last two tick anchors of the
@@ -334,7 +312,7 @@ export class SpritePool {
     // walk, so it lerps as smoothly as the motion) and draw at `prev + (curr − prev)·alpha`, the frame's
     // fractional progress into the current tick, so motion is continuous at any display rate, half a tick
     // behind the sim (~42 ms). See {@link trackMotion} for the pure half. `item.lift` is 0 on a flat map.
-    // Bounds/paletted origin below use the drawn anchor too, so the picker's hit box tracks the graphic.
+    // The binder's bounds/paletted origin use the drawn anchor too, so the hit box tracks the graphic.
     trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
     if (item.facing !== undefined) pe.lastFacing = item.facing;
@@ -349,179 +327,6 @@ export class SpritePool {
       // walker's legs slow with the ground actually covered instead of jogging in place.
       Math.floor(pe.motion.gaitPhase),
     );
-    if (layers === null) {
-      this.showPlaceholder(pe, item, frame);
-      return;
-    }
-    if (pe.placeholder !== undefined) pe.placeholder.visible = false;
-    this.bindLayers(pe, item, layers, frame);
-  }
-
-  /** Show (lazily building) the placeholder marker — the unbound / no-sheet fallback — and stamp the
-   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A projectile
-   *  always draws this path (no decoded arrow bob exists): its arrow flies at body height and rotates
-   *  to the item's flight heading each frame. */
-  private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    for (const s of pe.sprites) s.visible = false;
-    if (pe.placeholder === undefined) {
-      pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
-      if (pe.kind === 'projectile') pe.placeholder.position.y = -PROJECTILE_FLIGHT_HEIGHT;
-      pe.container.addChild(pe.placeholder);
-    }
-    pe.placeholder.visible = true;
-    // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see bindLayers); a
-    // highlighted candidate building's placeholder takes the same green/red assign-mode tint.
-    pe.placeholder.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
-    // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
-    // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
-    if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
-    if (item.ghost === true) return;
-    const box = placeholderBounds(pe.kind);
-    const drawX = pe.motion.drawX;
-    const drawY = pe.motion.drawY;
-    this.stampBounds(pe, drawX + box.minX, drawY + box.minY, drawX + box.maxX, drawY + box.maxY);
-  }
-
-  /**
-   * Bind the entity's resolved atlas layers onto its pooled sprites (growing the sprite list only when a
-   * frame needs more layers than any before), and stamp the union of the drawn rects as the entity's
-   * world-space bounds. A paletted settler binds {@link PalettedSprite} meshes (screen-space,
-   * self-placed); every other entity binds plain cached sub-textures.
-   */
-  private bindLayers(pe: PooledEntity, item: DrawItem, layers: ResolvedLayer[], frame: PoolFrame): void {
-    const drawX = pe.motion.drawX;
-    const drawY = pe.motion.drawY;
-    // A paletted settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
-    // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it self-places in screen
-    // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
-    // entity's drawn (lerped) anchor. Unused on the plain-sprite path.
-    const camScale = frame.camera.scale ?? 1;
-    const originX = cameraScreenX(frame.camera, drawX);
-    const originY = cameraScreenY(frame.camera, drawY);
-    const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
-    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds, in
-    // world-screen space (item.x + feet-local offsets) for a mesh or a plain sprite alike, so the
-    // picker/selection ring reads one consistent box regardless of how the layer was drawn.
-    const bounds = this.layerBounds;
-    bounds.reset();
-    // The eased reveal the active stages were selected from (see {@link easeReveal}), so the per-pixel
-    // reveal below cannot disagree with them.
-    const displayReveal = pe.reveal;
-    for (let i = 0; i < layers.length; i++) {
-      const layer = layers[i];
-      if (layer === undefined) continue;
-      // Restamped per frame beside the sprite itself: the pixel hit test must skip a cast-shadow layer
-      // (clicking darkened ground beside a caster is not clicking the caster).
-      pe.shadowFlags[i] = layer.shadow === true;
-      // A reveal layer with time data draws per-pixel: each pixel appears in place once the eased
-      // progress, mapped into the stage's own [fromPct,toPct] window, reaches its baked TimeMask
-      // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` — no time data or
-      // no bake (headless, unreadable atlas pixels) — draws the bottom-up crop below instead. Buildings
-      // never take the paletted path.
-      const revealTexture =
-        layer.reveal !== undefined &&
-        displayReveal !== undefined &&
-        layer.times !== undefined &&
-        layer.revealWindow !== undefined
-          ? this.textures.revealed(
-              layer.source,
-              layer.frame,
-              layer.times,
-              buildTimeThreshold(displayReveal, layer.revealWindow[0], layer.revealWindow[1]),
-              this.frameId,
-            )
-          : null;
-      // Feet-local placement + the crop-reveal geometry (see {@link layerDrawBox}).
-      const box = this.drawBox;
-      layerDrawBox(box, layer, displayReveal, revealTexture !== null);
-      const { ox, drawnOy, hiddenTop } = box;
-      if (pe.paletted && this.sheet?.palette !== undefined) {
-        const lut = this.sheet.palette;
-        let spr = pe.sprites[i] as PalettedSprite | undefined; // pe.paletted ⇒ every layer is a PalettedSprite
-        if (spr === undefined) {
-          spr = new PalettedSprite(lut.source, lut.colours);
-          pe.sprites[i] = spr;
-          pe.container.addChild(spr);
-        }
-        // The mesh samples the indexed atlas by UV, so it needs the sheet size; the frame's own draw offset
-        // is baked into its quad, and place() maps native pixels → screen at the camera zoom (× the layer
-        // art scale) about the feet anchor. `player` selects the LUT row (the team colour).
-        spr.setFrame(
-          layer.source,
-          layer.frame,
-          layer.atlasW ?? layer.frame.width,
-          layer.atlasH ?? layer.frame.height,
-        );
-        spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
-        spr.artScale = layer.scale; // retained so {@link placePalettedFor} can re-place for the portrait inset
-        spr.player = playerRow;
-        spr.visible = true;
-      } else {
-        let spr = pe.sprites[i] as Sprite | undefined;
-        if (spr === undefined) {
-          spr = new Sprite();
-          pe.sprites[i] = spr;
-          pe.container.addChild(spr);
-        }
-        if (revealTexture === null && hiddenTop >= layer.frame.height) {
-          // Nothing revealed yet (a foundation at 0%): draw nothing this frame — but still stamp
-          // bounds below, so the flat site stays clickable over its plot.
-          spr.visible = false;
-        } else {
-          spr.texture =
-            revealTexture ??
-            (hiddenTop > 0
-              ? this.textures.cropped(layer.source, layer.frame, hiddenTop)
-              : this.textures.get(layer.source, layer.frame));
-          spr.position.set(ox, drawnOy);
-          spr.scale.set(layer.scale);
-          // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
-          // across the live↔ghost transition always carries the right tint (tint is a cheap batch
-          // attribute — ghosts are never paletted, statics don't take the mesh path).
-          spr.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
-          spr.visible = true;
-        }
-      }
-      // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
-      // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
-      if (layer.boundsExempt === true) continue;
-      bounds.add(ox, box.oy, ox + box.width, box.oy + box.height);
-    }
-    // Hide any leftover sprites from a frame that needed more layers than this one, and drop their
-    // stale shadow flags with them (pixelHit skips hidden sprites, but the flag array must not
-    // outlive the layers it described).
-    pe.shadowFlags.length = layers.length;
-    for (let i = layers.length; i < pe.sprites.length; i++) {
-      const s = pe.sprites[i];
-      if (s !== undefined) s.visible = false;
-    }
-    // A fog ghost stamps no bounds: it must not be pickable — the ref may be a dead entity, and
-    // click-selecting a live one through the fog would leak its current state into the details panel.
-    if (!bounds.isEmpty() && item.ghost !== true) {
-      this.stampBounds(
-        pe,
-        drawX + bounds.minX,
-        drawY + bounds.minY,
-        drawX + bounds.maxX,
-        drawY + bounds.maxY,
-      );
-    }
-  }
-
-  /** Whether an entity of `kind` draws team-coloured {@link PalettedSprite} meshes: a settler, with both the
-   *  player-colour LUT ({@link SpriteSheet.palette}) and the indexed {@link SpriteSheet.characters} loaded
-   *  (real graphics + the pipeline's colour stage). Fixed for the pool's life — the sheet never changes — so
-   *  a pooled entity's sprite class is decided once at creation. */
-  private isPaletted(kind: SpriteKind): boolean {
-    return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
-  }
-
-  /** Restamp a pooled entity's bounds in place for this frame — no allocation in the per-frame pass. */
-  private stampBounds(pe: PooledEntity, minX: number, minY: number, maxX: number, maxY: number): void {
-    pe.bounds.minX = minX;
-    pe.bounds.minY = minY;
-    pe.bounds.maxX = maxX;
-    pe.bounds.maxY = maxY;
-    pe.boundsFrame = this.frameId;
+    this.binder.bind(pe, item, layers, frame, this.frameId);
   }
 }
