@@ -5,8 +5,6 @@ import {
   Engagement,
   FamilyDuty,
   Fleeing,
-  MoveGoal,
-  PathRequest,
   PlayerOrder,
   Position,
   Settler,
@@ -17,7 +15,6 @@ import { type Fixed, fx, ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { startAtomic } from '../../agents/actions.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../agents/drives-needs.js';
 import type { System, SystemContext } from '../../context.js';
 import {
@@ -27,7 +24,7 @@ import {
   atomicEventChannelDelta,
 } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, atomicAnimationByName } from '../../readviews/index.js';
-import { canonicalById, clearNavState, isTravelling } from '../../spatial.js';
+import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
 
 /**
  * The gossip DRIVE half — {@link gossipSystem} advances every standing {@link Chat} pair one tick (see
@@ -175,17 +172,13 @@ function roundRefillUnits(ctx: SystemContext, s: SettlerIdentity, atomicId: numb
  * self-gates on a threshold the bar can't reach with needs off.
  */
 export const gossipSystem: System = (world, ctx) => {
-  for (const e of canonicalById(world.query(Chat))) {
-    const c = world.tryGet(e, Chat);
-    if (c === undefined) continue; // cancelled earlier this pass from the partner's side
-    const mirrored = world.isAlive(c.partner) ? world.tryGet(c.partner, Chat) : undefined;
-    if (mirrored === undefined || mirrored.partner !== e) {
-      endChat(world, ctx.tick, e);
-      continue;
-    }
-    if (!c.seeker) continue; // the pair is driven once, from its seeker
-    drivePair(world, ctx, ctx.terrain, e, c.partner);
-  }
+  driveMirroredPairs(
+    world,
+    Chat,
+    (_e, _partner, c) => c.seeker, // driven once, from its seeker (the half whose company need started it)
+    (e) => endChat(world, ctx.tick, e),
+    (a, b) => drivePair(world, ctx, ctx.terrain, a, b),
+  );
 };
 
 function drivePair(
@@ -247,17 +240,13 @@ function drivePair(
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
   if (nodesAdjacent(na, nb)) {
-    // Standing together: run one talk/listen round on a shared clock (the longer of the two bound clips,
-    // the wedding-kiss precedent) — each atomic targets the partner, so the render faces them at each other.
-    clearNavState(world, a);
-    clearNavState(world, b);
+    // Standing together: run one talk/listen round on a shared clock, the longer of the two bound clips.
     const talker = ca.speaks ? a : b;
     const listener = ca.speaks ? b : a;
     const st = talker === a ? sa : sb;
     const sl = talker === a ? sb : sa;
     const duration = Math.max(chatDuration(ctx, st, TALK_ATOMIC_ID), chatDuration(ctx, sl, LISTEN_ATOMIC_ID));
-    startAtomic(world, talker, TALK_ATOMIC_ID, { kind: 'idle' }, duration, listener);
-    startAtomic(world, listener, LISTEN_ATOMIC_ID, { kind: 'idle' }, duration, talker);
+    startPairedAtomics(world, talker, TALK_ATOMIC_ID, listener, LISTEN_ATOMIC_ID, duration);
     // Frame 0 plays now (the AtomicSystem's first step already advances `elapsed` to 1 before the next
     // gossip pass), so the talk clip's authored frame-0 voice cue must fire here or never.
     applyChatFrame(world, ctx, a, sa);
@@ -266,17 +255,7 @@ function drivePair(
     cb.talking = true;
     return;
   }
-  // Apart: the seeker walks, the sought half halts and waits (it was grabbed mid-errand). A failed route
-  // means the partner is unreachable — the chat is off.
-  if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
-    clearNavState(world, a);
-    clearNavState(world, b);
-    endChat(world, ctx.tick, a);
-    return;
-  }
-  if (terrain === undefined) return; // mapless fixture: no walking — the pair talks only if adjacent
-  if (isTravelling(world, b)) clearNavState(world, b);
-  if (!isTravelling(world, a)) {
-    world.add(a, MoveGoal, { cell: terrain.nodeAtClamped(nb.hx, nb.hy) });
-  }
+  // Apart: the seeker (`a`) walks, the sought half halts and waits (it was grabbed mid-errand); an
+  // unreachable partner ends the chat.
+  approachPartner(world, terrain, a, b, nb, () => endChat(world, ctx.tick, a));
 }

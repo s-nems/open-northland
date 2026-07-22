@@ -1,21 +1,11 @@
-import {
-  CurrentAtomic,
-  Marriage,
-  MoveGoal,
-  PathRequest,
-  Position,
-  Residence,
-  Settler,
-  Wedding,
-} from '../../components/index.js';
+import { CurrentAtomic, Marriage, Position, Residence, Settler, Wedding } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { startAtomic } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { canonicalById, clearNavState, isTravelling } from '../spatial.js';
+import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
 
 /**
  * The wedding half of the FamilySystem: drive each {@link Wedding} pair — the seeker walks to its
@@ -63,17 +53,13 @@ function cancelWedding(world: World, e: Entity): void {
 
 /** Drive every wedding one tick. Pairs are processed once, from the lower entity id (canonical). */
 export function driveWeddings(world: World, ctx: SystemContext, terrain: TerrainGraph | undefined): void {
-  for (const e of canonicalById(world.query(Wedding))) {
-    const w = world.tryGet(e, Wedding);
-    if (w === undefined) continue; // cancelled earlier this pass from the partner's side
-    const mirrored = world.isAlive(w.partner) ? world.tryGet(w.partner, Wedding) : undefined;
-    if (mirrored === undefined || mirrored.partner !== e) {
-      cancelWedding(world, e);
-      continue;
-    }
-    if (e > w.partner) continue; // the pair is driven once, from its lower id
-    drivePair(world, ctx, terrain, e, w.partner);
-  }
+  driveMirroredPairs(
+    world,
+    Wedding,
+    (e, partner) => e < partner, // the pair is driven once, from its lower id (canonical)
+    (e) => cancelWedding(world, e),
+    (a, b) => drivePair(world, ctx, terrain, a, b),
+  );
 }
 
 function drivePair(
@@ -110,33 +96,18 @@ function drivePair(
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
   if (nodesAdjacent(na, nb)) {
-    // Standing together: both play the paired kiss (one clock — the longer of the two bound clips — so
-    // they finish together; an unbound job falls back to the short default, the woman's binding carries
-    // the real 50-tick length).
-    clearNavState(world, a);
-    clearNavState(world, b);
+    // Both play the paired kiss on one clock, the longer of the two bound clips (an unbound job falls back
+    // to the short default; the woman's binding carries the real 50-tick length).
     const duration = Math.max(
       atomicDuration(ctx.content, world.get(a, Settler), KISS_ATOMIC_ID),
       atomicDuration(ctx.content, world.get(b, Settler), KISSED_ATOMIC_ID),
     );
-    startAtomic(world, a, KISS_ATOMIC_ID, { kind: 'idle' }, duration, b);
-    startAtomic(world, b, KISSED_ATOMIC_ID, { kind: 'idle' }, duration, a);
+    startPairedAtomics(world, a, KISS_ATOMIC_ID, b, KISSED_ATOMIC_ID, duration);
     wa.kissing = true;
     wb.kissing = true;
     return;
   }
-  // Apart: the lower id (`a`) always does the walking — regardless of who issued `marry` — and the
-  // higher id stands and waits (a canonical, symmetric convention: one walker, one waiter). A failed
-  // route means the partner is unreachable — cancel.
-  if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
-    clearNavState(world, a);
-    clearNavState(world, b);
-    cancelWedding(world, a);
-    return;
-  }
-  if (terrain === undefined) return; // mapless fixture: no walking — the pair kisses only if adjacent
-  if (isTravelling(world, b)) clearNavState(world, b); // the awaited half halts and waits
-  if (!isTravelling(world, a)) {
-    world.add(a, MoveGoal, { cell: terrain.nodeAtClamped(nb.hx, nb.hy) });
-  }
+  // Apart: the lower id (`a`) always walks and the higher stands and waits, regardless of who issued
+  // `marry` (a canonical, symmetric convention).
+  approachPartner(world, terrain, a, b, nb, () => cancelWedding(world, a));
 }
