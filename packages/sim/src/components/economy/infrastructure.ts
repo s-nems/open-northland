@@ -100,16 +100,24 @@ export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstru
  *
  * `savedStock` is the building's pre-upgrade inventory, stashed so the emptied {@link Stockpile} can
  * serve as the site's fresh construction hold (the original gives an upgrading building a separate
- * build store) and merged back into the stockpile when the upgrade completes. Workers'
+ * build store) and merged back into the stockpile when the upgrade completes. Bill goods the building
+ * already held are NOT stashed: they seed the hold (counting toward the upgrade, so a settlement whose
+ * only matching goods sit inside the upgrading building cannot stall), and `seeded` records those
+ * amounts so a cancel returns them to the inventory instead of losing them with the hold. Workers'
  * {@link import('../settler.js').JobAssignment}s and residents' {@link import('../family.js').Residence}s
  * are deliberately NOT cleared — occupants walk out for the build and return to the finished tier.
  *
  * source-basis: the become-a-site-again flow, the separate build store, the difference-only cost, and
  * kept occupants are observed original behavior; the builder-driven pace is the same named
- * approximation as from-scratch construction. Determinism: the stash is written/merged only in the
+ * approximation as from-scratch construction. Own goods counting toward the upgrade is a named
+ * approximation (the original's handling of pre-owned bill goods is unobserved; freezing them can
+ * deadlock the economy). Determinism: the stash is written/merged only in the
  * CommandSystem/ConstructionSystem and hashes like any component Map (canonical sorted entries).
  */
-export const Upgrading = defineComponent<{ savedStock: Map<number, number> }>('Upgrading');
+export const Upgrading = defineComponent<{
+  savedStock: Map<number, number>;
+  seeded: Map<number, number>;
+}>('Upgrading');
 
 /**
  * A **placed vehicle hull** — the "boats as mobile stores" entity the historical plan phase-4 Sea/Northland
