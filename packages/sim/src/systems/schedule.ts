@@ -8,6 +8,7 @@ import type { System } from './context.js';
 import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { cropGrowthSystem } from './economy/farming.js';
+import { fieldReclaimSystem } from './economy/field-reclaim.js';
 import { jobSystem } from './economy/jobs/index.js';
 import { productionSystem } from './economy/production.js';
 import { familySystem } from './family/index.js';
@@ -50,6 +51,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'atomic', system: atomicSystem },
   { name: 'production', system: productionSystem },
   { name: 'cropGrowth', system: cropGrowthSystem },
+  { name: 'fieldReclaim', system: fieldReclaimSystem },
   { name: 'berryGrowth', system: berryGrowthSystem },
   { name: 'construction', system: constructionSystem },
   // Vision rebuilds after movement and before combat, so a fresh fog mode is honoured this tick.
