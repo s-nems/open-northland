@@ -184,7 +184,7 @@ export class LayerBinder {
       layer.atlasH ?? layer.frame.height,
     );
     spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
-    spr.artScale = layer.scale; // retained so `placePalettedFor` can re-place for the portrait inset
+    spr.artScale = layer.scale; // retained so the portrait pass can re-place the mesh (SpritePool)
     spr.player = playerRow;
     spr.visible = true;
   }

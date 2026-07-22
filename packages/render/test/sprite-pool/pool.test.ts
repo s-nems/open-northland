@@ -204,7 +204,20 @@ describe('SpritePool — motion track across a gap in the draw list', () => {
 });
 
 describe('SpritePool — details-panel portrait subject visibility', () => {
-  it('force-draws an off-screen subject but hides it on the main map; show/hide toggles it', () => {
+  // Any camera framings do: the assertions below are about visibility pairing, not placement.
+  const INSET = { camera: CAMERA, width: 64, height: 64 };
+  const MAIN = { camera: CAMERA, width: 800, height: 600 };
+
+  /** The force-hidden portrait subject — the only invisible child on the layer after a reconcile. */
+  function hiddenSubject(layer: Container): Container {
+    const hidden = layer.children.filter((c) => !c.visible);
+    expect(hidden).toHaveLength(1);
+    const subject = hidden[0];
+    if (subject === undefined) throw new Error('no force-hidden subject on the layer');
+    return subject;
+  }
+
+  it('force-draws an off-screen subject hidden on the main map; the pass reveals it only for its render', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const onScreen = building(1, 0, 0);
@@ -212,16 +225,12 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
 
     pool.reconcile({ ...poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST), portraitRef: 2 });
 
-    const subjectContainer = pool.portraitSubjectContainer();
-    expect(subjectContainer).not.toBeNull();
-    expect(layer.children.includes(subjectContainer as never)).toBe(true); // force-drawn (attached)…
-    expect((subjectContainer as { visible: boolean }).visible).toBe(false); // …but hidden on the main map
-    expect(pool.portraitSubjectIsIndoor()).toBe(false); // off-screen, still animates
-
-    pool.showPortraitSubject();
-    expect((subjectContainer as { visible: boolean }).visible).toBe(true); // revealed for the cutout render
-    pool.hidePortraitSubject();
-    expect((subjectContainer as { visible: boolean }).visible).toBe(false); // hidden again for the main stage
+    const subjectContainer = hiddenSubject(layer); // force-drawn (attached) but hidden on the main map
+    pool.portraitPass(INSET, MAIN, (soloKeep) => {
+      expect(soloKeep).toBeNull(); // off-screen, not indoor — it renders with the world around it
+      expect(subjectContainer.visible).toBe(true); // revealed for the cutout render
+    });
+    expect(subjectContainer.visible).toBe(false); // hidden again for the main stage
   });
 
   it('un-hides the subject when the portrait closes (next reconcile restores its visibility)', () => {
@@ -231,17 +240,16 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
     const subject = settler(2, 0, 20);
 
     pool.reconcile({ ...poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST), portraitRef: 2 });
-    const subjectContainer = pool.portraitSubjectContainer() as { visible: boolean };
-    expect(subjectContainer.visible).toBe(false);
+    const subjectContainer = hiddenSubject(layer);
 
     // Portrait closes: no portraitRef. The off-screen subject is culled again, but its forced-hidden
     // visibility is restored at the top of reconcile so it never stays invisible when it scrolls back.
     pool.reconcile(poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST));
     expect(subjectContainer.visible).toBe(true);
-    expect(pool.portraitSubjectContainer()).toBeNull();
+    expect(layer.children.every((c) => c.visible)).toBe(true); // no force-hidden subject remains
   });
 
-  it('an indoor subject reports indoor and solos: siblings hide during the render, then restore', () => {
+  it('solos an indoor subject: siblings hide during its render only, then restore exactly', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const workplace = building(10, 0, 0);
@@ -249,16 +257,31 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
     const subject = settler(1, 0, 0, { Resting: { at: 10 } }); // waiting inside its workplace
 
     pool.reconcile({ ...poolFrame(snapshotOf([workplace, other, subject]), FRAMES_ALL), portraitRef: 1 });
+    const subjectContainer = hiddenSubject(layer);
 
-    expect(pool.portraitSubjectIsIndoor()).toBe(true);
-    const subjectContainer = pool.portraitSubjectContainer();
-    expect(subjectContainer).not.toBeNull();
+    const before = layer.children.map((c) => c.visible);
+    pool.portraitPass(INSET, MAIN, (soloKeep) => {
+      expect(soloKeep).toBe(layer); // indoor — keep the sprite layer, blank the rest of the world
+      for (const c of layer.children) expect(c.visible).toBe(c === subjectContainer); // only the subject draws
+    });
+    expect(layer.children.map((c) => c.visible)).toEqual(before); // every sibling restored exactly
+  });
 
-    pool.showPortraitSubject();
-    const beforeSolo = layer.children.map((c) => c.visible);
-    pool.beginPortraitSolo();
-    for (const c of layer.children) expect(c.visible).toBe(c === subjectContainer); // only the subject draws
-    pool.endPortraitSolo();
-    expect(layer.children.map((c) => c.visible)).toEqual(beforeSolo); // every sibling restored exactly
+  it('restores the borrow when the render throws — no unit stays hidden, no sibling stays blanked', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const workplace = building(10, 0, 0);
+    const other = settler(2, 0, 0);
+    const subject = settler(1, 0, 0, { Resting: { at: 10 } });
+
+    pool.reconcile({ ...poolFrame(snapshotOf([workplace, other, subject]), FRAMES_ALL), portraitRef: 1 });
+    const before = layer.children.map((c) => c.visible);
+
+    expect(() =>
+      pool.portraitPass(INSET, MAIN, () => {
+        throw new Error('render died');
+      }),
+    ).toThrow('render died');
+    expect(layer.children.map((c) => c.visible)).toEqual(before);
   });
 });
