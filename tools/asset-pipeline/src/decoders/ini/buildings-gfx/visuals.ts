@@ -1,7 +1,8 @@
 /**
  * `[GfxHouse]` visual bindings: construction-stage layers, animated state overlays, the building
- * `(bmd, palette)` graphics binding, and the building-type → house-bob join. All share the body+palette
- * preamble ({@link readGfxHouseGraphicsRecord}) and the multi-house record split.
+ * `(bmd, palette)` graphics binding, and the building-type → house-bob join. All walk the multi-house
+ * record split; all but the graphics binding (which reuses the bindings kernel) share the body+palette
+ * preamble ({@link readGfxHouseGraphicsRecord}).
  */
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@open-northland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
@@ -13,7 +14,7 @@ import {
   type RuleSection,
   type SourceRef,
 } from '../grammar.js';
-import { forEachGfxHouseRecord } from './shared.js';
+import { forEachGfxHouseRecord, splitGfxHouseRecords } from './shared.js';
 
 /**
  * Extracts the `[GfxHouse]` construction-stage layers (`GfxBobConstructionLayer <sizeIdx>
@@ -165,9 +166,11 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Named
   const bindings: NamedBmdPaletteBinding[] = [];
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
-    const editName = getStr(sec, 'EditName');
-    for (const binding of readBmdPaletteBindings(sec, 'GfxBobLibs', 'GfxPalette', true)) {
-      bindings.push({ ...binding, editName });
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const editName = getStr(rec, 'EditName');
+      for (const binding of readBmdPaletteBindings(rec, 'GfxBobLibs', 'GfxPalette', true)) {
+        bindings.push({ ...binding, editName });
+      }
     }
   }
   return bindings;

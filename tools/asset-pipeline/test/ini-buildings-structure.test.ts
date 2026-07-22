@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractBuildingFootprints,
   extractConstructionCosts,
+  extractHouseHitpoints,
   extractUpgradeTargets,
   parseIniSections,
 } from '../src/decoders/ini.js';
@@ -36,6 +37,24 @@ LogicType 0 2
 LogicType 1 3
 LogicConstructionGoods 0 5 5 2 24 24
 LogicConstructionGoods 1 5 5 2 24 24 26 26
+`;
+
+// The real egypt/saracen lumping: two houses under ONE bracket, the second introduced only by an
+// annotated `[GfxHouse] - <name>` line (not a valid `[...]` header, so the parser folds it into the
+// section as a junk prop) plus a fresh EditName. Each sub-house's cost/HP lines reuse sizeIdx 0, so
+// an unsplit read would join both to a last-wins LogicType table.
+const GFXHOUSE_LUMPED_INI = `[GfxHouse]
+EditName "egypt tower"
+LogicTribeType 7
+LogicType 0 50
+LogicConstructionGoods 0 3 3
+logichitpoints 0 60000
+[GfxHouse] - Farma
+EditName "egypt farm"
+LogicTribeType 7
+LogicType 0 51
+LogicConstructionGoods 0 5
+logichitpoints 0 25000
 `;
 
 describe('extractConstructionCosts', () => {
@@ -87,8 +106,37 @@ LogicConstructionGoods 1 3
     expect(costs.get(21)).toEqual([{ goodType: 3, amount: 1 }]);
   });
 
+  it('splits a lumped [GfxHouse] bracket so each sub-house cost joins its own typeId', () => {
+    const costs = extractConstructionCosts(parseIniSections(GFXHOUSE_LUMPED_INI));
+    // The tower's cost must not land on the farm's typeId (the pre-split last-wins mis-join).
+    expect(costs.get(50)).toEqual([{ goodType: 3, amount: 2 }]);
+    expect(costs.get(51)).toEqual([{ goodType: 5, amount: 1 }]);
+  });
+
   it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
+  });
+});
+
+describe('extractHouseHitpoints', () => {
+  it('joins per-level logichitpoints onto typeId, splitting lumped multi-house brackets', () => {
+    const hp = extractHouseHitpoints(parseIniSections(GFXHOUSE_LUMPED_INI));
+    expect(hp.get(50)).toBe(60000);
+    expect(hp.get(51)).toBe(25000);
+  });
+
+  it('rejects a malformed or non-positive HP line so it never wins the typeId', () => {
+    const hp = extractHouseHitpoints(
+      parseIniSections(`[GfxHouse]
+EditName "broken"
+LogicTribeType 1
+LogicType 0 60
+LogicType 1 61
+logichitpoints 0 0
+logichitpoints 1 x
+`),
+    );
+    expect(hp.size).toBe(0);
   });
 });
 

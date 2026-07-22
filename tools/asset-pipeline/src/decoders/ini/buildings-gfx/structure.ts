@@ -9,14 +9,14 @@ import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './
 
 /**
  * Shared skeleton for the per-typeId `[GfxHouse]` overlays that collapse to a single flat value: walk
- * every `[GfxHouse]` section, pair each `key` line to its level's `typeId` via the record's
- * `LogicType <sizeIdx> <typeId>` table ({@link logicTypeByLevel}), and keep the deterministic winner per
- * typeId ({@link existingGfxHouseWins}: lowest tribeType, then lowest sizeIdx). `readValue` turns a
- * matched line's raw `values` into the stored payload, or returns `undefined` to reject the line (a
- * malformed or out-of-range value the winner must not adopt — an invalid line never mutates the map).
- * The construction-cost and hitpoint overlays are the two callers; the richer footprint overlay
- * ({@link extractBuildingFootprints}) keeps its own walk because it splits multi-record sections and
- * joins several key families per record.
+ * every house record ({@link splitGfxHouseRecords}), pair each `key` line to its level's `typeId` via
+ * the record's own `LogicType <sizeIdx> <typeId>` table ({@link logicTypeByLevel}), and keep the
+ * deterministic winner per typeId ({@link existingGfxHouseWins}: lowest tribeType, then lowest
+ * sizeIdx). `readValue` turns a matched line's raw `values` into the stored payload, or returns
+ * `undefined` to reject the line (a malformed or out-of-range value the winner must not adopt — an
+ * invalid line never mutates the map). The construction-cost and hitpoint overlays are the two
+ * callers; the richer footprint overlay ({@link extractBuildingFootprints}) keeps its own walk
+ * because it joins several key families per record.
  */
 function collectGfxHouseWinner<T>(
   sections: readonly RuleSection[],
@@ -26,17 +26,19 @@ function collectGfxHouseWinner<T>(
   const winner = new Map<number, { tribeType: number; sizeIdx: number; value: T }>();
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
-    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-    const typeByLevel = logicTypeByLevel(sec);
-    for (const p of findProps(sec, key)) {
-      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-      if (Number.isNaN(sizeIdx)) continue;
-      const typeId = typeByLevel.get(sizeIdx);
-      if (typeId === undefined) continue;
-      if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-      const value = readValue(p.values);
-      if (value === undefined) continue;
-      winner.set(typeId, { tribeType, sizeIdx, value });
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+      const typeByLevel = logicTypeByLevel(rec);
+      for (const p of findProps(rec, key)) {
+        const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+        if (Number.isNaN(sizeIdx)) continue;
+        const typeId = typeByLevel.get(sizeIdx);
+        if (typeId === undefined) continue;
+        if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
+        const value = readValue(p.values);
+        if (value === undefined) continue;
+        winner.set(typeId, { tribeType, sizeIdx, value });
+      }
     }
   }
   return new Map([...winner].map(([typeId, { value }]) => [typeId, value]));

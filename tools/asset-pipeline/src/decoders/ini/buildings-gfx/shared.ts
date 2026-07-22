@@ -39,12 +39,8 @@ export function logicTypeByLevel(sec: RuleSection): Map<number, number> {
  * `GfxBobId` across the whole block (dropping/mis-joining 63 of the 234 building types). Walking the
  * props in file order and starting a new record at each `EditName` recovers each house with its own
  * `GfxBobLibs`/`GfxPalette`/`LogicTribeType`/`LogicType`/`GfxBobId` block. Props before the first
- * `EditName` (none in the real file) are ignored; a single-house section yields one record.
- *
- * {@link import('./structure.js').extractConstructionCosts} and
- * {@link import('./visuals.js').extractBuildingGraphics} read the same sections with the same
- * pre-existing lumping bug (so saracen/egypt costs + atlases are likewise incomplete) — a flagged
- * follow-up (source basis); this helper exists to be reused when that lands.
+ * `EditName` (none in the real file) are ignored; a single-house section yields one record. Every
+ * `[GfxHouse]` extractor walks these records, never the raw section.
  */
 export function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
   const records: RuleSection[] = [];
