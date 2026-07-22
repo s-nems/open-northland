@@ -17,6 +17,22 @@ const EOCD_SEARCH_SPAN = EOCD_MIN_SIZE + 0xffff;
 /** Fixed parts of the two per-entry headers; the name/extra/comment fields follow each. */
 const CENTRAL_HEADER_SIZE = 46;
 const LOCAL_HEADER_SIZE = 30;
+
+// Field offsets in bytes from each record's start (APPNOTE sec. 4.3.16 / 4.3.12 / 4.3.7).
+const EOCD_ENTRY_COUNT = 10;
+const EOCD_CD_SIZE = 12;
+const EOCD_CD_OFFSET = 16;
+const EOCD_COMMENT_LENGTH = 20;
+const CENTRAL_FLAGS = 8;
+const CENTRAL_METHOD = 10;
+const CENTRAL_COMPRESSED_SIZE = 20;
+const CENTRAL_UNCOMPRESSED_SIZE = 24;
+const CENTRAL_NAME_LENGTH = 28;
+const CENTRAL_EXTRA_LENGTH = 30;
+const CENTRAL_COMMENT_LENGTH = 32;
+const CENTRAL_LOCAL_HEADER_OFFSET = 42;
+const LOCAL_NAME_LENGTH = 26;
+const LOCAL_EXTRA_LENGTH = 28;
 /** General-purpose flag bit 11: the entry name is UTF-8 (otherwise CP437; decoded as latin1 —
  * byte-preserving and unambiguous for path handling). */
 const UTF8_NAME_FLAG = 1 << 11;
@@ -48,15 +64,18 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   for (let i = span - EOCD_MIN_SIZE; i >= 0; i--) {
     // A real EOCD's comment length must reach exactly the end of the file — this rejects a stray
     // signature embedded in the comment (or in trailing garbage) that a plain scan would take.
-    if (tail.readUInt32LE(i) === EOCD_SIGNATURE && i + EOCD_MIN_SIZE + tail.readUInt16LE(i + 20) === span) {
+    if (
+      tail.readUInt32LE(i) === EOCD_SIGNATURE &&
+      i + EOCD_MIN_SIZE + tail.readUInt16LE(i + EOCD_COMMENT_LENGTH) === span
+    ) {
       eocd = i;
       break;
     }
   }
   if (eocd === -1) throw new Error('zip: no end-of-central-directory record (not a zip file?)');
-  const count = tail.readUInt16LE(eocd + 10);
-  const cdSize = tail.readUInt32LE(eocd + 12);
-  const cdOffset = tail.readUInt32LE(eocd + 16);
+  const count = tail.readUInt16LE(eocd + EOCD_ENTRY_COUNT);
+  const cdSize = tail.readUInt32LE(eocd + EOCD_CD_SIZE);
+  const cdOffset = tail.readUInt32LE(eocd + EOCD_CD_OFFSET);
   if (count === 0xffff || cdOffset === 0xffffffff) throw new Error('zip: ZIP64 archives are not supported');
   // Sizes/offsets are attacker-readable u32 fields; anything past the file itself is a lie and
   // would otherwise drive a multi-GB Buffer.alloc before the first read fails.
@@ -69,14 +88,14 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
     if (at + CENTRAL_HEADER_SIZE > cd.length || cd.readUInt32LE(at) !== CENTRAL_SIGNATURE) {
       throw new Error(`zip: corrupt central directory at entry ${i}`);
     }
-    const flags = cd.readUInt16LE(at + 8);
-    const method = cd.readUInt16LE(at + 10);
-    const compressedSize = cd.readUInt32LE(at + 20);
-    const size = cd.readUInt32LE(at + 24);
-    const nameLength = cd.readUInt16LE(at + 28);
-    const extraLength = cd.readUInt16LE(at + 30);
-    const commentLength = cd.readUInt16LE(at + 32);
-    const localHeaderOffset = cd.readUInt32LE(at + 42);
+    const flags = cd.readUInt16LE(at + CENTRAL_FLAGS);
+    const method = cd.readUInt16LE(at + CENTRAL_METHOD);
+    const compressedSize = cd.readUInt32LE(at + CENTRAL_COMPRESSED_SIZE);
+    const size = cd.readUInt32LE(at + CENTRAL_UNCOMPRESSED_SIZE);
+    const nameLength = cd.readUInt16LE(at + CENTRAL_NAME_LENGTH);
+    const extraLength = cd.readUInt16LE(at + CENTRAL_EXTRA_LENGTH);
+    const commentLength = cd.readUInt16LE(at + CENTRAL_COMMENT_LENGTH);
+    const localHeaderOffset = cd.readUInt32LE(at + CENTRAL_LOCAL_HEADER_OFFSET);
     const name = cd
       .subarray(at + CENTRAL_HEADER_SIZE, at + CENTRAL_HEADER_SIZE + nameLength)
       .toString((flags & UTF8_NAME_FLAG) !== 0 ? 'utf8' : 'latin1');
@@ -101,8 +120,8 @@ export async function readZipEntryData(
   if (local.readUInt32LE(0) !== LOCAL_SIGNATURE) {
     throw new Error(`zip: corrupt local header for ${entry.name}`);
   }
-  const nameLength = local.readUInt16LE(26);
-  const extraLength = local.readUInt16LE(28);
+  const nameLength = local.readUInt16LE(LOCAL_NAME_LENGTH);
+  const extraLength = local.readUInt16LE(LOCAL_EXTRA_LENGTH);
   const dataOffset = entry.localHeaderOffset + LOCAL_HEADER_SIZE + nameLength + extraLength;
   if (dataOffset + entry.compressedSize > fileSize) {
     throw new Error(`zip: entry ${entry.name} lies outside the file`);
