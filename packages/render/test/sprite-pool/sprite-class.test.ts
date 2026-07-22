@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
-import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
+import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
