@@ -17,6 +17,10 @@ interface IrBuilding {
   readonly produces?: readonly number[];
   readonly recipes?: ReadonlyArray<{ readonly inputs: ReadonlyArray<{ readonly goodType: number }> }>;
 }
+interface Ir {
+  readonly goods: readonly IrGood[];
+  readonly buildings: readonly IrBuilding[];
+}
 
 /**
  * The DECODED-DATA premise behind the dish→edible conversion (`readviews/food.ts`). The sim's mapping is
@@ -28,9 +32,11 @@ interface IrBuilding {
  * while the real headquarters had no bread slot at all and the bakery deadlocked in game.
  */
 describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
-  const ir = rawIrUnderTest() as { goods: IrGood[]; buildings: IrBuilding[] };
+  // Read inside the tests, never at collection: the describe body runs even when `runIf` skips the
+  // suite, and an eager read would ENOENT on a checkout without generated content.
+  const irUnderTest = (): Ir => rawIrUnderTest() as Ir;
   const typeOf = (id: string): number => {
-    const good = ir.goods.find((g) => g.id === id);
+    const good = irUnderTest().goods.find((g) => g.id === id);
     if (good === undefined) throw new Error(`good '${id}' missing from the decoded content`);
     return good.typeId;
   };
@@ -45,6 +51,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
   });
 
   it('no recipe takes a dish as an input', () => {
+    const ir = irUnderTest();
     // The conversion on pickup is unconditional, so a house that CONSUMED a dish would have its
     // craftsman fetch bread and arrive holding food_simple — a fetch that can never be delivered.
     // `goodtypes.ini` does name meat as sausage's production input, so this is not hypothetical; it is
@@ -61,6 +68,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
   });
 
   it('a dish is stocked ONLY by the house that produces it', () => {
+    const ir = irUnderTest();
     for (const dish of EDIBLE_FORM_BY_DISH.keys()) {
       const goodType = typeOf(dish);
       // A slot for the dish is legitimate only in its own kitchen; a second holder anywhere would mean
@@ -75,6 +83,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
   });
 
   it('the edible forms are stocked by the larders and produced by nobody', () => {
+    const ir = irUnderTest();
     for (const edible of new Set(EDIBLE_FORM_BY_DISH.values())) {
       const goodType = typeOf(edible);
       for (const larder of LARDERS) {
