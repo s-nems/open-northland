@@ -5,6 +5,7 @@ import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
+import { clientToCanvas } from '../geometry.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
@@ -273,10 +274,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   };
 
   // --- Input --------------------------------------------------------------------------------------
-  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = opts.screenScale(canvas);
-    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-  };
+  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+    clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
