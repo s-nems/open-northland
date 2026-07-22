@@ -1,20 +1,13 @@
-import { indexById } from '@open-northland/data';
-import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity } from '@open-northland/sim';
 import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
-import { clampTile, nodeBounds, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../picking.js';
+import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions } from './action-ring/index.js';
-import {
-  assignableJobForBuilding,
-  computeAssignHighlight,
-  computeHouseHighlight,
-  houseAssignableAt,
-} from './highlights/index.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
+import { createPickModeController } from './pick-mode.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
 
@@ -49,19 +42,6 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
 /** Shared empty id set (no per-call allocation when nothing is selected). */
 const EMPTY_IDS: ReadonlySet<number> = new Set();
 
-/**
- * The armed click-to-pick mode, or null when none is. The three are mutually exclusive by construction —
- * arming one replaces whatever was armed:
- *  - `workplace` ("przydziel miejsce pracy") — candidate buildings wash green/red and the next left-click
- *    on a green one binds the settler to its matching slot.
- *  - `home` ("przypisz dom") — the residential twin: homes wash green/red and a green one takes the family.
- *  - `signpost` ("Erect Signpost") — the next left-click on the world orders the first scout to erect there.
- * A click on a red building / terrain, a right-click, Esc, or a selection change cancels any of them.
- */
-type PickMode =
-  | { readonly kind: 'workplace' | 'home'; readonly settler: number }
-  | { readonly kind: 'signpost'; readonly scouts: readonly number[] };
-
 /** Equal membership of two id sets — tells whether a re-selection actually changed the selection. */
 const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean => {
   if (a.size !== b.size) return false;
@@ -75,15 +55,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // Bumped on every actual selection change — the memo key for the projections that read `selected`,
   // which the snapshot identity alone cannot invalidate (a click re-selects within the same tick).
   let selectionVersion = 0;
-  const buildingsByType = indexById(opts.content.buildings);
-  // The one armed pick mode (see PickMode) — arming replaces, so the modes can never overlap.
-  let pickMode: PickMode | null = null;
-  const arm = (mode: PickMode): void => {
-    pickMode = mode;
-  };
-  const cancelPick = (): void => {
-    pickMode = null;
-  };
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
   // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
   let selectFromPanel: (id: number) => void = () => {};
@@ -104,8 +75,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
     onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
-    onAssignWorkplace: (id) => arm({ kind: 'workplace', settler: id }),
-    onAssignHome: (id) => arm({ kind: 'home', settler: id }),
+    onAssignWorkplace: (id) => pickMode.armWorkplace(id),
+    onAssignHome: (id) => pickMode.armHome(id),
     // Remove-from-home needs no target — it acts on the settler's current home, so it enqueues directly
     // (no pick mode, unlike assign-home).
     onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
@@ -127,9 +98,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
     },
-    onErectSignpost: (ids) => arm({ kind: 'signpost', scouts: ids }),
+    onErectSignpost: (ids) => pickMode.armSignpost(ids),
     onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
-    onAssignHouse: (id) => arm({ kind: 'home', settler: id }),
+    onAssignHouse: (id) => pickMode.armHome(id),
     onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
   });
 
@@ -153,6 +124,18 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 
+  // The armed click-to-pick modes (workplace / home / signpost): the panel/action buttons arm one, a
+  // world click resolves it, and a selection change or Esc cancels it. See pick-mode.ts.
+  const pickMode = createPickModeController({
+    snapshot: opts.snapshot,
+    targets: unitTargets,
+    content: opts.content,
+    mapSize: opts.mapSize,
+    ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
+    toWorld,
+    enqueue: opts.enqueue,
+  });
+
   const changed = (): void => {
     panel.render(opts.snapshot(), selected); // the info card is always-on — render reflects the new selection
   };
@@ -163,7 +146,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     for (const id of ids) selected.add(id);
     if (!sameSelection(before, selected)) {
       selectionVersion++;
-      cancelPick(); // a new selection backs out of any armed pick mode
+      pickMode.cancel(); // a new selection backs out of any armed pick mode
     }
     changed();
     // A changed selection closes the action ring: picking a different unit (or clearing to empty) backs out
@@ -190,57 +173,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     openActions: (atClient) => actions.open(atClient),
   });
 
-  /** Resolve a world click while in "przydziel miejsce pracy" mode: bind the settler to the building under
-   *  the cursor when it offers an open slot (a green building), else cancel. Any resolving click exits the
-   *  mode (the chosen UX: assign-and-leave; a red building / terrain click just leaves). */
-  const resolveAssign = (e: MouseEvent, settlerId: number): void => {
-    cancelPick();
-    const w = toWorld(e.clientX, e.clientY);
-    const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit — cancel
-    const snapshot = opts.snapshot();
-    // The button places the settler's CURRENT trade only (it never re-trades): bind exactly the building's
-    // matching slot, or cancel when the building doesn't offer it (a red building).
-    const job = assignableJobForBuilding(snapshot, building, settlerId, buildingsByType);
-    if (job === null) return; // red — cancel
-    opts.enqueue({
-      kind: 'assignWorker',
-      entity: settlerId as Entity,
-      building: building as Entity,
-      jobPriority: [job],
-    });
-  };
-
-  /** Resolve a world click in "przypisz dom" mode: assign the family to the home under the cursor when
-   *  it fits (a green home), else cancel. Any resolving click exits the mode (assign-and-leave). */
-  const resolveHouseAssign = (e: MouseEvent, settlerId: number): void => {
-    cancelPick();
-    const w = toWorld(e.clientX, e.clientY);
-    const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit — cancel
-    if (!houseAssignableAt(opts.snapshot(), building, settlerId, buildingsByType)) return; // red — cancel
-    opts.enqueue({ kind: 'assignHouse', entity: settlerId as Entity, house: building as Entity });
-  };
-
-  /** The green/red building wash for the render layer — the workplace-assign or home-assign candidates,
-   *  else null. Recomputed per frame from the live snapshot (an O(entity count) pass) so a slot/house
-   *  filling elsewhere re-colours immediately; only runs while a pick mode is armed, a transient gesture. */
-  const assignHighlight = (): readonly BuildingHighlightItem[] | null => {
-    if (pickMode === null) return null;
-    switch (pickMode.kind) {
-      case 'workplace':
-        return computeAssignHighlight(opts.snapshot(), pickMode.settler, buildingsByType);
-      case 'home':
-        return computeHouseHighlight(opts.snapshot(), pickMode.settler, buildingsByType);
-      case 'signpost':
-        return null; // the erect mode washes the ground (placement overlay), not the buildings
-      default: {
-        const unreachable: never = pickMode;
-        return unreachable;
-      }
-    }
-  };
-
   const onMouseDown = (e: MouseEvent): void => {
     // The HUD claims its own clicks before any world picking — a press over the tool panel / an open window /
     // a placement-in-progress / an open action-ring button never starts a selection or issues an order. The
@@ -253,39 +185,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
     // An armed pick mode consumes the press outright — a world click resolves it (left) or cancels it
     // (any other button), and never falls through to selection / an order.
-    if (pickMode !== null) {
-      const mode = pickMode;
-      switch (mode.kind) {
-        case 'workplace':
-          if (e.button === 0) resolveAssign(e, mode.settler);
-          else cancelPick();
-          return;
-        case 'home':
-          if (e.button === 0) resolveHouseAssign(e, mode.settler);
-          else cancelPick();
-          return;
-        // A left click orders the scout to erect on the clicked node. Legality is the sim command's gate
-        // (an illegal spot is a logged no-op), so a bad click simply leaves the scout unmoved.
-        // Named deviation (observed original, tutorial_001 briefing): the original erects with RIGHT-click
-        // on ground that is "lit up"; we place with LEFT-click and dim blocked ground instead — the same
-        // convention as our build placement, so the two placement modes read identically.
-        case 'signpost': {
-          const scout = mode.scouts[0];
-          cancelPick();
-          if (e.button === 0 && scout !== undefined) {
-            const { width, height } = nodeBounds(opts.mapSize);
-            const w = toWorld(e.clientX, e.clientY);
-            const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
-            opts.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
-          }
-          return;
-        }
-        default: {
-          const unreachable: never = mode; // exhaustive: a new PickMode kind fails to compile here
-          throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
-        }
-      }
-    }
+    if (pickMode.handleMouseDown(e)) return;
     if (e.button === 2) {
       // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
       // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
@@ -349,8 +249,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       e.preventDefault(); // Space would otherwise scroll the page
       actions.toggle(); // the info card is always-on; Space only toggles the action ring
     } else if (e.code === 'Escape') {
-      if (pickMode !== null)
-        cancelPick(); // Esc first backs out of a pick mode, keeping the selection
+      if (pickMode.isArmed())
+        pickMode.cancel(); // Esc first backs out of a pick mode, keeping the selection
       else setSelection([], false);
     }
   };
@@ -365,8 +265,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectedIds: () => selected,
     portrait: () => panel.portrait(),
     flaggedFlagIds,
-    assignHighlight,
-    signpostPlacementActive: () => pickMode?.kind === 'signpost',
+    assignHighlight: pickMode.highlight,
+    signpostPlacementActive: pickMode.signpostActive,
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
     // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over
