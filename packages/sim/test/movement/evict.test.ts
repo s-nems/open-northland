@@ -7,6 +7,7 @@ import {
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
   GroundDrop,
+  HerdMember,
   MoveGoal,
   Position,
   Settler,
@@ -19,11 +20,13 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import {
   canPlaceWorkFlag,
   constructionSystem,
   createBerryBush,
   dynamicBlockOverlay,
+  evictSettlerFromBlockedSpawn,
   evictWorkFlagsFromFootprint,
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -52,6 +55,8 @@ import {
  */
 
 const PLAYER = 0;
+const BEAR = 10; // testContent animal tribe — a herd of 3 that searchForLeaders
+const COW = 13; // testContent animal tribe — fully passive prey (no combat drive moves it)
 const ANCHOR = { x: 5, y: 5 };
 const BODY = [
   { x: 5, y: 5 },
@@ -71,6 +76,15 @@ function settlerAtNode(sim: Simulation, x: number, y: number, owner?: number): E
     experience: new Map(),
   });
   stampOwner(sim.world, e, owner);
+  return e;
+}
+
+/** A herd animal at a node — a `Settler` of an animal tribe with a self-led `HerdMember` and no Owner,
+ *  the component shape `spawnAnimalHerd` builds. A passive tribe, so no combat drive ever moves it. */
+function animalAtNode(sim: Simulation, x: number, y: number): Entity {
+  const e = settlerAtNode(sim, x, y);
+  sim.world.get(e, Settler).tribe = COW;
+  sim.world.add(e, HerdMember, { leader: e });
   return e;
 }
 
@@ -127,16 +141,63 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(nodeOf(sim, atDoor)).toEqual({ x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy });
   });
 
-  it('leaves unowned fixtures and mid-transit walkers alone', () => {
+  it('evicts a neutral settler and a herd animal — ownership never exempts a standing unit', () => {
     const sim = mappedSim();
-    const unowned = settlerAtNode(sim, 5, 5); // no Owner — the spacing drives' byte-identical stance
-    const walker = settlerAtNode(sim, 6, 5, PLAYER);
-    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(10, 5) }); // passing through — its route plays out
+    const unowned = settlerAtNode(sim, 5, 5); // no Owner — a scenario fixture
+    const cow = animalAtNode(sim, 6, 5); // an animal is a Settler without an Owner
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
-    expect(nodeOf(sim, unowned)).toEqual({ x: 5, y: 5 });
+    for (const e of [unowned, cow]) {
+      expect(onBody(sim, e)).toBe(false); // off every wall cell…
+      expect(standable(sim, e)).toBe(true); // …onto ground it can stand on and leave
+    }
+    expect(nodeOf(sim, unowned)).not.toEqual(nodeOf(sim, cow)); // fanned onto distinct cells
+  });
+
+  it('leaves a mid-transit walker alone — its own route plays out', () => {
+    const sim = mappedSim();
+    const walker = settlerAtNode(sim, 6, 5, PLAYER);
+    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(10, 5) }); // passing through
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
     // The walker was not teleported by the eviction — it is still travelling its own route.
     expect(sim.world.has(walker, MoveGoal) || onBody(sim, walker)).toBe(true);
+  });
+
+  it('never lands an evictee on a cell a neutral bystander occupies', () => {
+    // Derived, not hardcoded (the flag suite's pattern): learn where a lone evictee lands, then re-run
+    // with a neutral unit already standing there — the class the spacing drive would never de-stack.
+    const lone = mappedSim();
+    const solo = settlerAtNode(lone, 5, 5, PLAYER);
+    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.step();
+    const contested = nodeOf(lone, solo);
+
+    const sim = mappedSim();
+    const evictee = settlerAtNode(sim, 5, 5, PLAYER);
+    const bystander = animalAtNode(sim, contested.x, contested.y);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, bystander)).toEqual(contested); // the sitting unit never moves…
+    expect(nodeOf(sim, evictee)).not.toEqual(contested); // …and the evictee goes around it
+    expect(onBody(sim, evictee)).toBe(false);
+  });
+
+  it('never lands an evictee under a walker passing over the landing cell', () => {
+    const lone = mappedSim();
+    const solo = settlerAtNode(lone, 5, 5, PLAYER);
+    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.step();
+    const contested = nodeOf(lone, solo);
+
+    const sim = mappedSim();
+    const evictee = settlerAtNode(sim, 5, 5, PLAYER);
+    const walker = settlerAtNode(sim, contested.x, contested.y, PLAYER);
+    sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(12, 12) }); // mid-transit on the cell
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, evictee)).not.toEqual(contested); // occupancy counts travellers too
+    expect(onBody(sim, evictee)).toBe(false);
   });
 
   it('a construction finish evicts a stray that wandered onto the plot mid-build', () => {
@@ -165,6 +226,44 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(onBody(sim, walled)).toBe(false);
     // The point of the push: the settler stands somewhere it can actually walk out of.
     expect(standable(sim, walled)).toBe(true);
+  });
+
+  it('an animal herd spawned onto a standing body is pushed off it, member by member', () => {
+    const sim = mappedSim();
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    // Birth point ON the walls: the leader lands on (5,5) and the first scatter offset on (6,5) — both
+    // body cells — while the second lands on the door (4,5), a legal stand that must NOT be pushed.
+    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: ANCHOR.x, y: ANCHOR.y });
+    sim.step();
+    const herd = [...sim.world.query(Settler, HerdMember)].sort((a, b) => a - b);
+    expect(herd).toHaveLength(3); // the BEAR fixture's maximumGroupSize
+    for (const e of herd) {
+      expect(onBody(sim, e)).toBe(false);
+      expect(standable(sim, e)).toBe(true);
+    }
+    // The door member kept its authored cell (ids are monotonic, so herd[2] is the second offset).
+    const doorMember = herd[2];
+    if (doorMember === undefined) throw new Error('expected three herd members');
+    expect(nodeOf(sim, doorMember)).toEqual({ x: 4, y: 5 });
+    // The two pushed members fanned onto distinct cells — the herd's shared claim set at work.
+    const keys = herd.map((e) => `${nodeOf(sim, e).x},${nodeOf(sim, e).y}`);
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it('a batch claim set fans same-cell spawns onto distinct nodes, first taker keeping the cell', () => {
+    // Called directly with one shared claim set, the way `spawnAnimalHerd` threads it: the second unit
+    // spawning on the very cell the first one holds is pushed beside it — the correlated same-command
+    // stack nothing would ever clear (animals have no de-stacking drive).
+    const sim = mappedSim();
+    const first = animalAtNode(sim, 7, 7);
+    const second = animalAtNode(sim, 7, 7);
+    const claimed = new Set<NodeId>();
+    evictSettlerFromBlockedSpawn(sim.world, ctxOf(sim), first, claimed);
+    evictSettlerFromBlockedSpawn(sim.world, ctxOf(sim), second, claimed);
+    expect(nodeOf(sim, first)).toEqual({ x: 7, y: 7 }); // the first taker keeps the cell…
+    expect(nodeOf(sim, second)).not.toEqual({ x: 7, y: 7 }); // …and the later one is fanned beside it
+    expect(standable(sim, second)).toBe(true);
   });
 
   it('frees a fully enclosed spawn — the only case that is genuinely stuck', () => {

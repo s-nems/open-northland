@@ -1,4 +1,4 @@
-import { Owner, Position, Settler } from '../../components/index.js';
+import { Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
@@ -29,10 +29,13 @@ export const FOOTPRINT_EVICT_SEARCH_CAP = 192;
  * could not even walk out.
  *
  * Only standing units move: a walker mid-transit passes through freely (transit is never blocked) and
- * its own route plays out. Owner-gated like the spacing drives (`deStackIdle`), so unowned scenario
- * fixtures stay byte-identical. Determinism: evictees are visited in canonical ascending-id order, the
- * ring search expands the graph's canonical neighbour order, and each claimed target is excluded from
- * later searches — no store-order pick anywhere.
+ * its own route plays out. No Owner gate — a neutral fixture or a wild animal (animals are Settlers too)
+ * walled in is broken whoever owns it, the spawn push's stance (that the original displaces neutral units
+ * and animals too is unobserved — a named approximation); only the per-tick spacing drives (`deStackIdle`,
+ * `loiterCell`) stay owner-gated. Landings avoid EVERY unit's node, travellers included — an unowned or
+ * animal co-occupant would never de-stack. Determinism: evictees are visited in canonical ascending-id
+ * order, the ring search expands the graph's canonical neighbour order, and each claimed target is
+ * excluded from later searches — no store-order pick anywhere.
  *
  * Settlers only. The work-flag twin is `evictWorkFlagsFromFootprint` (systems/economy/flags.ts, which owns
  * the flag lifecycle): it evicts a wider set (the family body, not these walk-blocked cells) and reaches
@@ -44,17 +47,17 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return; // nothing impassable
 
-  // One unsorted pass: every non-travelling owned settler (for the occupancy check) and, of those, the
-  // ones standing on the body (the evictees) plus the ones beside it (nook candidates). The sort is
-  // deferred to the evictees alone — the common case (a finish with nobody on or beside the plot)
-  // early-outs here before any sort, NodeBuckets, or overlay build, so a tick of many simultaneous
-  // finishes doesn't pay a full settler sort per building.
-  const standing: Entity[] = [];
+  // One unsorted pass: every unit enters the occupancy set (travellers too — a landing must not stack
+  // on anyone), and the non-travelling ones split into evictees (standing on the body) and nook
+  // candidates (standing beside it). The sort is deferred to the evictees alone — the common case (a
+  // finish with nobody on or beside the plot) early-outs here before any sort, NodeBuckets, or overlay
+  // build, so a tick of many simultaneous finishes doesn't pay a full settler sort per building.
+  const units: Entity[] = [];
   const evicteesUnsorted: Entity[] = [];
   const nookCandidates: Entity[] = [];
-  for (const e of world.query(Settler, Position, Owner)) {
+  for (const e of world.query(Settler, Position)) {
+    units.push(e);
     if (isTravelling(world, e)) continue;
-    standing.push(e);
     const at = settlerNode(world, terrain, e);
     if (body.has(at)) evicteesUnsorted.push(e);
     else if (terrain.neighbours(at).some((n) => body.has(n))) nookCandidates.push(e);
@@ -77,8 +80,8 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   const evictees = canonicalById(evicteesUnsorted);
 
   // Occupancy is read only for `.at(x,y).length` (is a cell already stood on?), a membership count
-  // independent of input order — so the unsorted `standing` list is fine here (unlike NodeBuckets.nearest).
-  const occupancy = new NodeBuckets(world, standing);
+  // independent of input order — so the unsorted `units` list is fine here (unlike NodeBuckets.nearest).
+  const occupancy = new NodeBuckets(world, units);
   const claimed = new Set<NodeId>();
   for (const e of evictees) {
     const free = nearestFreeCellOutside(
@@ -116,15 +119,23 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
  * An instant Position move like the twin, and it crosses blocked cells but never unwalkable terrain — yet
  * unlike the twin it crosses OTHER buildings' bodies too ({@link nearestUnblockedNode} traverses every
  * block; `nearestFreeCellOutside` crosses only the evicting one), so in a dense village a settler can
- * land past a neighbouring house, though never across water. Two further divergences: no Owner gate (a
- * settler inside a wall is broken whoever owns it), and no occupancy check — an owned stack is
- * `deStackIdle`'s job, but that drive is Owner-gated too, so an unowned push can leave a stack nothing
- * clears (the gap docs/tickets/sim/evict-animals-and-unowned-from-footprints.md already tracks).
+ * land past a neighbouring house, though never across water. One further divergence: no occupancy check —
+ * per-spawn occupancy would cost O(all settlers) for each of a map load's thousands of spawns, so a push
+ * may land on an occupied cell. An owned stack is `deStackIdle`'s job; a rare unowned/animal stack stays —
+ * accepted as cosmetic (the sim has no position-uniqueness invariant). The exception is one command's own
+ * batch: a herd threads `claimed` — every call records its unit's final node there and never ends a later
+ * unit on a recorded one — so a command's correlated units fan out instead of stacking (animals have no
+ * de-stacking drive at all).
  *
  * Approximated: the original authors these humans too, but whether it leaves them standing on a body is
  * unobserved — this applies the displacement rule it does show when a building lands on someone.
  */
-export function evictSettlerFromBlockedSpawn(world: World, ctx: SystemContext, settler: Entity): void {
+export function evictSettlerFromBlockedSpawn(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  claimed?: Set<NodeId>,
+): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to stand on
   const p = world.tryGet(settler, Position);
@@ -135,9 +146,14 @@ export function evictSettlerFromBlockedSpawn(world: World, ctx: SystemContext, s
   if (!terrain.inBounds(n.hx, n.hy)) return;
   const from = terrain.nodeAt(n.hx, n.hy);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  if (terrain.isWalkable(from) && !blocked.has(from)) return; // standable — the common case, no push
-  const free = nearestUnblockedNode(terrain, from, blocked);
+  const taken = claimed?.has(from) ?? false;
+  if (terrain.isWalkable(from) && !blocked.has(from) && !taken) {
+    claimed?.add(from); // standable and untaken — the common case, no push
+    return;
+  }
+  const free = nearestUnblockedNode(terrain, from, blocked, claimed);
   if (free === null) return; // boxed in — nowhere free to stand; the settler stays put
+  claimed?.add(free);
   const c = terrain.coordsOf(free);
   const centre = positionOfNode(c.x, c.y);
   p.x = centre.x;
