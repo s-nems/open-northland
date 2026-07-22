@@ -31,3 +31,8 @@ export function writeConfig(file: string, config: DesktopConfig): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
 }
+
+/** Persist `patch` into the config, preserving every other remembered field. */
+export function patchConfig(file: string, patch: Partial<DesktopConfig>): void {
+  writeConfig(file, { ...readConfig(file), ...patch });
+}

@@ -1,7 +1,7 @@
 import { dirname } from 'node:path';
 import { CULTURESNATION_HOME_URL, probeGameFolder } from '@open-northland/asset-pipeline';
 import { type BrowserWindow, dialog, ipcMain } from 'electron';
-import { readConfig, writeConfig } from './config.js';
+import { patchConfig } from './config.js';
 import { detectGameFolders } from './detect.js';
 import { createEventThrottle } from './event-throttle.js';
 import {
@@ -90,7 +90,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
     });
     // Remembered only after start() accepted the run — a double-start throw must not clobber it.
-    writeConfig(paths.configFile, { ...readConfig(paths.configFile), gamePath });
+    patchConfig(paths.configFile, { gamePath });
   });
   handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());
 
@@ -129,7 +129,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     if (root === undefined) {
       throw new Error(formatMessage(messages().errors.noDataCnmd, { url: CULTURESNATION_HOME_URL }));
     }
-    writeConfig(paths.configFile, { ...readConfig(paths.configFile), modPath: root });
+    patchConfig(paths.configFile, { modPath: root });
     return root;
   });
 
@@ -144,7 +144,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   handleFromAppFrame(IPC_CHANNELS.setLocale, (locale: unknown) => {
     assertLocale(locale);
     setActiveLocale(locale);
-    writeConfig(paths.configFile, { ...readConfig(paths.configFile), locale });
+    patchConfig(paths.configFile, { locale });
     // The native menu is already built; rebuild it so its labels follow the renderer's new language.
     buildAppMenu(win, paths.dataRoot.path);
   });
