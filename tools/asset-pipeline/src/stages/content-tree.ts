@@ -4,12 +4,15 @@ import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/at
 import type { Bmd } from '../decoders/bmd/index.js';
 import { encodePng } from '../decoders/png.js';
 
+/** The canonical casing of the output's `Data/` tree: the exact spelling the content routes serve. */
+export const DATA_DIR = 'Data';
+
 /** The `content/` subtree served at the app's `/bobs/` route (bob atlases + the player/GUI/font colour LUTs). */
-export const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
+export const BOBS_DIR = join(DATA_DIR, 'engine2d', 'bin', 'bobs');
 
 /** The `content/` subtree served at the app's `/textures/` route (ground pages + transition overlays),
  *  in the game tree's real casing — writes must land here or the vite route never serves them. */
-export const TEXTURES_DIR = join('Data', 'engine2d', 'bin', 'textures');
+export const TEXTURES_DIR = join(DATA_DIR, 'engine2d', 'bin', 'textures');
 
 /**
  * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,

@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeLib } from '../src/decoders/lib.js';
@@ -6,10 +6,12 @@ import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
 import { makeTempDir } from './support/game-tree.js';
 
 describe('libMemberRelPath', () => {
-  it('rewrites backslash member paths to a native relative path', () => {
+  it('rewrites backslash member paths to a native, Data/-canonical relative path', () => {
     expect(libMemberRelPath('data\\engine2d\\bin\\bobs\\ls_bridge.bmd')).toBe(
-      join('data', 'engine2d', 'bin', 'bobs', 'ls_bridge.bmd'),
+      join('Data', 'engine2d', 'bin', 'bobs', 'ls_bridge.bmd'),
     );
+    expect(libMemberRelPath('DATA\\gui\\cursor.pcx')).toBe(join('Data', 'gui', 'cursor.pcx'));
+    expect(libMemberRelPath('other\\file.bin')).toBe(join('other', 'file.bin'));
     expect(libMemberRelPath('logo.pcx')).toBe('logo.pcx');
   });
 
@@ -36,7 +38,7 @@ describe('unpackLibTree', () => {
     await rm(join(game, '..'), { recursive: true, force: true });
   });
 
-  it('extracts every member of every .lib under the game tree, mirroring its internal path', async () => {
+  it('extracts every member of every .lib under the game tree into the canonical Data/ tree', async () => {
     const lib = encodeLib({
       files: [
         { name: 'data\\logic\\goodtypes.cif', data: Uint8Array.from([1, 2, 3, 4]) },
@@ -49,11 +51,41 @@ describe('unpackLibTree', () => {
 
     const done = await unpackLibTree({ game, mod: undefined }, out);
 
-    expect(done.map((e) => e.member).sort()).toEqual([join('data', 'logic', 'goodtypes.cif'), 'logo.pcx']);
+    expect(done.map((e) => e.member).sort()).toEqual([join('Data', 'logic', 'goodtypes.cif'), 'logo.pcx']);
     expect(done.every((e) => e.archive === join('DataX', 'Libs', 'data0001.lib'))).toBe(true);
     // The bytes that survived the round-trip must equal what we packed.
-    expect(Array.from(await readFile(join(out, 'data', 'logic', 'goodtypes.cif')))).toEqual([1, 2, 3, 4]);
+    expect(Array.from(await readFile(join(out, 'Data', 'logic', 'goodtypes.cif')))).toEqual([1, 2, 3, 4]);
     expect(Array.from(await readFile(join(out, 'logo.pcx')))).toEqual([9, 8, 7]);
+  });
+
+  it('stores the canonical Data/ casing the content routes serve, not the archive spelling', async () => {
+    const lib = encodeLib({
+      files: [{ name: 'data\\engine2d\\bin\\sounds\\gui\\click.wav', data: Uint8Array.from([1]) }],
+    });
+    await writeFile(join(game, 'a.lib'), lib);
+
+    await unpackLibTree({ game, mod: undefined }, out);
+
+    // readdir reports stored names even on a case-insensitive filesystem, so this pins the exact
+    // casing the `/sounds/` route resolves on a case-sensitive one.
+    let dir = out;
+    for (const segment of ['Data', 'engine2d', 'bin', 'sounds', 'gui']) {
+      expect(await readdir(dir)).toContain(segment);
+      dir = join(dir, segment);
+    }
+    expect(await readdir(dir)).toEqual(['click.wav']);
+  });
+
+  it('rejects same-archive members that differ only in path case', async () => {
+    const lib = encodeLib({
+      files: [
+        { name: 'data\\gui\\Cursor.pcx', data: Uint8Array.from([1]) },
+        { name: 'data\\GUI\\cursor.pcx', data: Uint8Array.from([2]) },
+      ],
+    });
+    await writeFile(join(game, 'a.lib'), lib);
+
+    await expect(unpackLibTree({ game, mod: undefined }, out)).rejects.toThrow(/colliding members/);
   });
 
   it('skips a member with an unsafe (escaping) name instead of writing outside out', async () => {

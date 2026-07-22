@@ -37,8 +37,9 @@ export type OutTreeIndex = ReadonlyMap<string, string>;
 /**
  * Builds a case-insensitive index of the unpacked tree: `normalizeAssetPath(rel)` -> the real on-disk
  * relative path (native separators). The binding extractors lower-case + forward-slash their `.bmd`/
- * `.pcx` references, but the unpacked `.lib` members keep the archive's original (mixed) case, so a
- * direct `join(out, ref)` would miss on a case-sensitive filesystem. This map bridges the two: look a
+ * `.pcx` references, but the unpacked `.lib` members keep their archive spelling under the
+ * `Data/`-canonicalized root, so a direct `join(out, ref)` would miss on a case-sensitive
+ * filesystem. This map bridges the two: look a
  * normalized reference up to get the real path under `outDir`. Keys via the same `normalizeAssetPath` the
  * extractors use (forward slashes, lower-case), so the two sides can never drift.
  *

@@ -4,9 +4,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   collectSourceFiles,
   collectSourceFilesNamed,
+  findPathCaseInsensitive,
+  pickCaseFoldedEntry,
   resolveSourceFile,
   rootsInOrder,
   type SourceRoots,
+  unionCaseFoldedRoots,
 } from '../src/roots.js';
 import { makeTempDir, type TempDir } from './support/game-tree.js';
 
@@ -42,6 +45,56 @@ describe('source roots', () => {
     });
   });
 
+  describe('pickCaseFoldedEntry', () => {
+    it('prefers the exact spelling, else the single case-folded match', () => {
+      expect(pickCaseFoldedEntry(['Text', 'other'], 'Text', 'd')).toBe('Text');
+      expect(pickCaseFoldedEntry(['Text', 'other'], 'text', 'd')).toBe('Text');
+      expect(pickCaseFoldedEntry(['Text'], 'missing', 'd')).toBeUndefined();
+    });
+
+    it('picks the exact ask among case twins, and throws when no exact spelling disambiguates', () => {
+      // Twins can only coexist on a case-sensitive filesystem; the pure matcher pins the rule everywhere.
+      expect(pickCaseFoldedEntry(['TEXT', 'Text'], 'Text', 'd')).toBe('Text');
+      expect(() => pickCaseFoldedEntry(['TEXT', 'Text'], 'text', 'd')).toThrow(/case-colliding entries/);
+    });
+  });
+
+  /**
+   * Portability guard for the segment-wise resolution (the shipped trees mix `Text/`/`TEXT/`/`Pol/`/
+   * `Strings.ini` casing freely; a case-sensitive Linux CI must still find them). These build a REAL
+   * temp tree and resolve against it; the twin tie-break is pinned by the pure matcher above.
+   */
+  describe('findPathCaseInsensitive', () => {
+    it('resolves an exactly-cased path', async () => {
+      await write(game, join('text', 'strings.ini'), 'x');
+      expect(await findPathCaseInsensitive(game, ['text', 'strings.ini'])).toBe(
+        join(game, 'text', 'strings.ini'),
+      );
+    });
+
+    it('matches each segment case-insensitively and returns the real on-disk casing', async () => {
+      await write(game, join('Text', 'Strings.ini'), 'x');
+      expect(await findPathCaseInsensitive(game, ['text', 'strings.ini'])).toBe(
+        join(game, 'Text', 'Strings.ini'),
+      );
+    });
+
+    it('resolves a multi-segment nested path', async () => {
+      await mkdir(join(game, 'MISSION', 'POL'), { recursive: true });
+      expect(await findPathCaseInsensitive(game, ['mission', 'pol'])).toBe(join(game, 'MISSION', 'POL'));
+    });
+
+    it('is undefined when a segment or the base directory is absent', async () => {
+      await mkdir(join(game, 'text'), { recursive: true });
+      expect(await findPathCaseInsensitive(game, ['text', 'missing.ini'])).toBeUndefined();
+      expect(await findPathCaseInsensitive(join(game, 'nope'), ['anything'])).toBeUndefined();
+    });
+
+    it('returns the directory itself for an empty segment list', async () => {
+      expect(await findPathCaseInsensitive(game, [])).toBe(game);
+    });
+  });
+
   describe('resolveSourceFile', () => {
     it('prefers the overlay copy and falls back to the base game', async () => {
       const rel = join('Data', 'logic', 'goodtypes.ini');
@@ -49,12 +102,18 @@ describe('source roots', () => {
       await write(mod, rel, 'overlay');
       const roots: SourceRoots = { game, mod };
       expect(await resolveSourceFile(roots, rel)).toBe(join(mod, rel));
-      expect(await resolveSourceFile(roots, join('Data', 'logic', 'goodtypes.ini'))).toBe(join(mod, rel));
       await write(game, join('Data', 'base-only.ini'), 'base');
       expect(await resolveSourceFile(roots, join('Data', 'base-only.ini'))).toBe(
         join(game, 'Data', 'base-only.ini'),
       );
       expect(await resolveSourceFile(roots, join('Data', 'absent.ini'))).toBeUndefined();
+    });
+
+    it('resolves every path segment case-insensitively to the real on-disk casing', async () => {
+      await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
+      expect(await resolveSourceFile({ game, mod: undefined }, join('data', 'LOGIC', 'GoodTypes.INI'))).toBe(
+        join(game, 'Data', 'logic', 'goodtypes.ini'),
+      );
     });
   });
 
@@ -113,6 +172,32 @@ describe('source roots', () => {
       await write(mod, join('DataX', 'Libs', 't.dat'), 'placeholder');
       const found = await collectSourceFiles({ game, mod }, (rel) => rel.endsWith('.lib'));
       expect(found.map((f) => f.rel)).toEqual([join('DataX', 'Libs', 'data0001.LIB')]);
+    });
+  });
+
+  describe('unionCaseFoldedRoots', () => {
+    const file = (root: string, rel: string): { rel: string; path: string } => ({
+      rel,
+      path: join(root, rel),
+    });
+
+    it('keys on the case-folded path: an earlier root wins, spelling differences included', () => {
+      const union = unionCaseFoldedRoots([
+        { root: '/m', files: [file('/m', join('data', 'a.pcx'))] },
+        { root: '/g', files: [file('/g', join('Data', 'A.PCX')), file('/g', join('Data', 'b.pcx'))] },
+      ]);
+      expect(union).toEqual([
+        { rel: join('Data', 'b.pcx'), path: join('/g', 'Data', 'b.pcx') },
+        { rel: join('data', 'a.pcx'), path: join('/m', 'data', 'a.pcx') },
+      ]);
+    });
+
+    it('throws on two same-root paths that differ only in case (no over-install merges them)', () => {
+      expect(() =>
+        unionCaseFoldedRoots([
+          { root: '/g', files: [file('/g', join('Data', 'x.pcx')), file('/g', join('data', 'X.PCX'))] },
+        ]),
+      ).toThrow(/case-colliding sources .* under \/g/);
     });
   });
 });

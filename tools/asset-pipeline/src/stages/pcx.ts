@@ -4,7 +4,7 @@ import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
-import { collectSourceFiles, type SourceRoots } from '../roots.js';
+import { archiveRoots, collectSourceFiles, type SourceRoots } from '../roots.js';
 import { TEXTURES_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
 
@@ -59,7 +59,7 @@ export async function composeMaskedTransitionPages(
     try {
       return await readSourceFile(roots, rel);
     } catch {
-      return await readSourceFile({ game: outDir, mod: undefined }, rel);
+      return await readSourceFile(archiveRoots(outDir), rel);
     }
   };
   for (const pair of pairs) {

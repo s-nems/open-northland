@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import type { MapScript } from '@open-northland/data';
 import { decodeIni, extractMapScript, parseIniSections, type RuleSection } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
-import { findPathCaseInsensitiveInDirs } from './case-path.js';
+import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 
 /**
  * The plaintext script files an unpacked map folder ships: `player.inc` usually carries
@@ -44,7 +44,7 @@ export async function resolveMapScript(
     const read: string[] = [];
     for (const inc of SCRIPT_INC_FILES) {
       const path = await findPathCaseInsensitiveInDirs(mapDirs, [inc]);
-      if (path === null) continue;
+      if (path === undefined) continue;
       try {
         sections.push(...parseIniSections(decodeIni(await readFile(path))));
         read.push(inc);

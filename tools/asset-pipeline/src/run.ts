@@ -3,7 +3,7 @@ import type { Args } from './args.js';
 import { errorMessage } from './errors.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
-import { resolveModRoot, type SourceRoots } from './roots.js';
+import { archiveRoots, resolveModRoot, type SourceRoots } from './roots.js';
 import {
   convertBmdTree,
   convertShadowBmdTree,
@@ -52,7 +52,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   progress?.stage?.('pictures');
   const loosePictures = await convertPcxTree(roots, args.out, progress?.item);
   const embeddedPictures = await convertPcxTree(
-    { game: args.out, mod: undefined },
+    archiveRoots(args.out),
     args.out,
     progress?.item === undefined ? undefined : (done) => progress.item?.(loosePictures.length + done),
   );
