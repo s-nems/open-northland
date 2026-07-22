@@ -46,7 +46,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
       jobs: merge.content.jobs.map((j) => ({ typeId: j.typeId, id: j.id, name: j.id })),
       tribes: merge.content.tribes.map((t) => ({ typeId: t.typeId, id: t.id })),
     };
-    const sim = runAuthoredSlice(7, 1, map, entities, rows, undefined, undefined, merge.content);
+    const sim = runAuthoredSlice(7, 1, map, entities, rows, { content: merge.content });
     expect(sim).not.toBeNull();
     if (sim === null) return;
 

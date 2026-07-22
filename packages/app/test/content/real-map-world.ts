@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../src/content/collision.js';
-import { buildingFootprints } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import {
   mapResourceObjectNames,
@@ -55,16 +54,11 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   const map = JSON.parse(readFileSync(realMapPath(options.mapId), 'utf8'));
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
   const simMap = buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
-  const sim = runAuthoredSlice(
-    SLICE_SEED,
-    PLACEMENT_DRAIN_TICKS,
-    simMap,
-    map.entities,
-    ir,
-    buildingFootprints(ir),
-    undefined,
-    merge.content,
-  );
+  // Only `content` matters here: the real-content override replaces the sandbox build whole, so a
+  // footprint overlay would be ignored (see resolveWorldContent).
+  const sim = runAuthoredSlice(SLICE_SEED, PLACEMENT_DRAIN_TICKS, simMap, map.entities, ir, {
+    content: merge.content,
+  });
   if (sim === null) throw new Error(`${options.mapId} resolved no authored placements`);
   if (options.fog !== undefined) sim.enqueue({ kind: 'setFogMode', mode: options.fog });
   for (const seat of options.aiSeats) sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });

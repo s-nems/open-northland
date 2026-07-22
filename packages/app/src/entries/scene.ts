@@ -77,14 +77,11 @@ export async function renderSceneMode(
   // Real extracted building footprints (like the `?map=` entry); empty on a bare checkout.
   const footprints = buildingFootprints(await loadIr());
   await boot.begin('world');
-  const sim = createSceneSim(
-    scene,
-    {
-      goodNames,
-      ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
-    },
-    realContent?.content,
-  );
+  const sim = createSceneSim(scene, {
+    goodNames,
+    ...(footprints.size > 0 ? { footprints } : {}),
+    ...(realContent !== null ? { content: realContent.content } : {}),
+  });
   setDiagGameSession({
     entry: 'scene',
     worldId: sceneId,

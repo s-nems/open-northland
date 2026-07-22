@@ -1,4 +1,4 @@
-import type { BuildingFootprint, ContentSet, TerrainMapFile } from '@open-northland/data';
+import type { TerrainMapFile } from '@open-northland/data';
 import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
@@ -19,9 +19,9 @@ import {
   gatherMasteryExperienceFor,
   JOB_CARRIER,
   JOB_COLLECTOR,
-  type SandboxContentExtras,
-  sandboxContent,
+  resolveWorldContent,
   sandboxWalkableTypeIds,
+  type WorldContentOptions,
   weaponEquipmentFor,
 } from '../game/sandbox/index.js';
 import {
@@ -186,27 +186,11 @@ function firstPlaceableCell(
   return null;
 }
 
-/**
- * The content a slice sim runs on: the caller's real-content override when present, otherwise the
- * clean-room sandbox catalog for `map`, with the live building footprints and localized good names
- * overlaid (plus any authored extra catalog rows). Real content already ships footprints and names, so
- * an override ignores the overlay entirely. This is the one place that resolution rule lives.
- */
-function sliceContent(
-  map: TerrainMap | undefined,
-  footprints: ReadonlyMap<number, BuildingFootprint> | undefined,
-  goodNames: ReadonlyMap<string, string> | undefined,
-  contentOverride?: ContentSet,
-  extras?: SandboxContentExtras,
-): ContentSet {
-  return (
-    contentOverride ??
-    sandboxContent(map, {
-      ...extras,
-      ...(footprints ? { buildingFootprints: footprints } : {}),
-      ...(goodNames ? { goodNames } : {}),
-    })
-  );
+/** The slice builders' optional inputs: the shared content resolution plus the demo entities' owner. */
+export interface SliceOptions extends WorldContentOptions {
+  /** Tags the slice's buildings + settlers to a player so they're selectable/orderable in the
+   *  interactive live entry. Omitted (the shot/default path) leaves them neutral; hash untouched. */
+  readonly owner?: number;
 }
 
 /**
@@ -226,10 +210,7 @@ export function runSlice(
   seed: number,
   ticks: number,
   map?: TerrainMap,
-  owner?: number,
-  footprints?: ReadonlyMap<number, BuildingFootprint>,
-  goodNames?: ReadonlyMap<string, string>,
-  contentOverride?: ContentSet,
+  options: SliceOptions = {},
 ): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
@@ -238,7 +219,7 @@ export function runSlice(
   // fixtures force-place, so nothing behavioral changes).
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
-  const content = sliceContent(usable ? map : undefined, footprints, goodNames, contentOverride);
+  const content = resolveWorldContent(usable ? map : undefined, options);
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
@@ -251,9 +232,7 @@ export function runSlice(
     return c;
   };
 
-  // `owner` (optional) tags the slice's buildings + settlers to a player so they're selectable/orderable
-  // in the interactive live entry. Omitted (the shot/default path) leaves them neutral — hash untouched.
-  const own = owner !== undefined ? { owner } : {};
+  const own = options.owner !== undefined ? { owner: options.owner } : {};
 
   // Building cells: on a real map, prefer anchors where the footprint actually fits (clear ground, off
   // the water/forest — the probe applies the same rule the player's clicks go through), stepping one
@@ -306,14 +285,8 @@ export function runSlice(
  * Deterministic: seed-fixed, no RNG, no placements. Uses the same global sandbox content + live
  * `footprints` a `runSlice` map path would, so a later interactive build behaves identically.
  */
-export function runBareMap(
-  seed: number,
-  map: TerrainMap,
-  footprints?: ReadonlyMap<number, BuildingFootprint>,
-  goodNames?: ReadonlyMap<string, string>,
-  contentOverride?: ContentSet,
-): Simulation {
-  const content = sliceContent(map, footprints, goodNames, contentOverride);
+export function runBareMap(seed: number, map: TerrainMap, options: WorldContentOptions = {}): Simulation {
+  const content = resolveWorldContent(map, options);
   const sim = new Simulation({ seed, content, map });
   enableSignpostNavigation(sim);
   return sim;
@@ -336,9 +309,7 @@ export function runAuthoredSlice(
   map: TerrainMap,
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
-  footprints?: ReadonlyMap<number, BuildingFootprint>,
-  goodNames?: ReadonlyMap<string, string>,
-  contentOverride?: ContentSet,
+  options: WorldContentOptions = {},
 ): Simulation | null {
   const { placements, skipped, droppedGoods, droppedPicks } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
@@ -363,8 +334,8 @@ export function runAuthoredSlice(
   const usedTribes = [...new Set(placements.map((p) => p.tribe))].sort((a, b) => a - b);
   // The authored-id fold fleshes out the smaller sandbox catalog so authored maps keep a full build menu
   // and profession rules; it is moot under a real-content override, which already carries every id (see
-  // sliceContent).
-  const content = sliceContent(map, footprints, goodNames, contentOverride, {
+  // resolveWorldContent).
+  const content = resolveWorldContent(map, options, {
     jobs: usedJobs.filter((typeId) => typeId !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
     buildings: usedBuildings.map((typeId) => {
       const def = buildingDefById.get(typeId);

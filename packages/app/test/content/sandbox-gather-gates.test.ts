@@ -27,7 +27,7 @@ function remaining(sim: ReturnType<typeof createSceneSim>, good: number): number
 describe.runIf(hasRealIr())('sandbox scene on real content — gathering XP gates', () => {
   it('the iron and gold camps are actually mined (veteran collectors pass needforgood)', async () => {
     const { merge } = await loadContentUnderTest();
-    const sim = createSceneSim(sandboxScene, undefined, merge.content);
+    const sim = createSceneSim(sandboxScene, { content: merge.content });
     const iron = remaining(sim, GOOD_IRON);
     const gold = remaining(sim, GOOD_GOLD);
     sim.run(3600); // 5 min of game time at 1× — several dig cycles per camp
