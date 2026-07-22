@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AtomicId, Provenance, TypeId } from '../record.js';
+import { Provenance, TypeId } from '../record.js';
 
 export const LandscapeType = z.strictObject({
   typeId: TypeId,
@@ -126,40 +126,3 @@ export const LandscapeGfx = z.strictObject({
   source: Provenance.optional(),
 });
 export type LandscapeGfx = z.infer<typeof LandscapeGfx>;
-
-/**
- * One stage of a resolved {@link GatheringPipeline}: a {@link LandscapeType} id plus the
- * {@link LandscapeGfx} records that place it. Empty when no gfx record carries that logic type (a
- * pure-logic landscape stage with no placeable object).
- */
-export const GatheringStage = z.strictObject({
-  /** The stage's {@link LandscapeType.typeId} (`landscapeToHarvest`/`Pickup`/`Store`). */
-  landscapeType: TypeId,
-  /** {@link LandscapeGfx.index} values whose `logicType` == {@link landscapeType} (the placeable gfx for this stage). */
-  gfxIndices: z.array(z.number().int().nonnegative()).default([]),
-});
-export type GatheringStage = z.infer<typeof GatheringStage>;
-
-/**
- * The resolved gathering pipeline for one raw good — the good→landscape→gfx join materialized once at
- * build time from {@link GoodType.gathering} + the {@link LandscapeType} + {@link LandscapeGfx} tables.
- * One record per map-gathered good; produced/in-house goods have none. A stage is absent when the
- * source good omits that lane (honey has no {@link harvest}).
- */
-export const GatheringPipeline = z.strictObject({
-  /** The good this pipeline yields (`{@link GoodType.typeId}`). */
-  goodType: TypeId,
-  /** The good's slug, for legibility (`"wood"`, `"stone"`). */
-  goodId: z.string(),
-  /** `atomicForHarvesting` — the atomic action a settler runs to work the {@link harvest} stage. */
-  harvestAtomic: AtomicId.optional(),
-  /** `isBioLandscapeFlag` — the pipeline is living/growing (trees, herb) vs mined (stone, ore). */
-  bioLandscape: z.boolean().default(false),
-  /** Stage 1 — the source object a settler harvests (a `tree`/`rock`/`mine`). Absent for honey. */
-  harvest: GatheringStage.optional(),
-  /** Stage 2 — the pick-up intermediate (a `trunk`/`ore`). */
-  pickup: GatheringStage.optional(),
-  /** Stage 3 — the finished good resting on the ground (`wood`/`stone`) until stocked. */
-  store: GatheringStage.optional(),
-});
-export type GatheringPipeline = z.infer<typeof GatheringPipeline>;

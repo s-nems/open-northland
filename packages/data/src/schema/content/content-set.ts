@@ -11,13 +11,9 @@ import { GfxAnimAtomic } from '../graphics/atomic-anims.js';
 import { BobSequenceSet } from '../graphics/bob-sequences.js';
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '../graphics/building-bobs.js';
 import { GfxWalkAtomic } from '../graphics/walk-anims.js';
-import { GatheringPipeline, LandscapeGfx, LandscapeType } from '../landscape/objects.js';
-import {
-  GfxPattern,
-  GfxPatternTransition,
-  TerrainPattern,
-  TrianglePatternType,
-} from '../landscape/terrain.js';
+import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
+import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
+import { GfxPattern, GfxPatternTransition, TrianglePatternType } from '../landscape/terrain.js';
 import { MapInfo } from '../maps/info.js';
 
 /** Top-level manifest written to content/ir.json. */
