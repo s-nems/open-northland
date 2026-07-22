@@ -1,7 +1,7 @@
 import type { Fixed } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 
-interface MoverSnapshot {
+export interface MoverSnapshot {
   x: Fixed;
   y: Fixed;
   hx: Fixed;

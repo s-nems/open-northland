@@ -1,6 +1,6 @@
 import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
-import type { Entity } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { worldDistance } from '../../../nav/metric.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
@@ -17,7 +17,7 @@ import {
   OBSTRUCTED_REROUTE_TICKS,
   updateObstruction,
 } from './separation/obstruction.js';
-import { separationScratch } from './separation/scratch.js';
+import { type MoverSnapshot, separationScratch } from './separation/scratch.js';
 
 export { OBSTRUCTED_MAX_REROUTES, OBSTRUCTED_PROGRESS_FLOOR, OBSTRUCTED_REROUTE_TICKS };
 
@@ -177,97 +177,18 @@ export const separationSystem: System = (world, ctx) => {
     // brake floor, it cannot jam town flow, only un-merge the sprites.
     const ghost = isFirm && isGhostMover(e);
 
-    // Soft half — direction-aware: overlapping same-lane traffic (heading dot ≥ {@link CONVOY_ALIGNMENT_MIN})
-    // resolves as a convoy — the follower alone brakes along its own heading and falls in line behind the
-    // leader, with no lateral component and no counter-shove on the leader — while crossing/head-on traffic
-    // keeps the radial split (half the overlap each). Both read only the tick's pre-separation snapshot, so
-    // the split is order-independent. The total is then capped.
-    const startW = separationWorldPoint(start.x, start.y);
-    let pushX = ZERO;
-    let pushY = ZERO;
-    for (const n of nearMovers) {
-      const other = before.get(n);
-      if (other === undefined) continue;
-      const dist = worldDistance(start.x, start.y, other.x, other.y);
-      if (dist >= UNIT_SEPARATION_RADIUS) continue;
-      const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
-      const otherW = separationWorldPoint(other.x, other.y);
-      // (0,0) is the "no established heading" sentinel — such a pair can't be classified as a
-      // convoy and falls through to the radial split.
-      if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {
-        const alignment = fx.add(fx.mul(start.hx, other.hx), fx.mul(start.hy, other.hy));
-        if (alignment >= CONVOY_ALIGNMENT_MIN) {
-          const ahead = fx.add(
-            fx.mul(fx.sub(otherW.x, startW.x), start.hx),
-            fx.mul(fx.sub(otherW.y, startW.y), start.hy),
-          );
-          // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named pick that
-          // seeds the fore/aft order the geometric test then keeps stable. With headings up to 60° apart both
-          // sides can transiently read "follower" and brake — harmless (each keeps net progress under the cap,
-          // and braking diverges them). Known feel gap: a same-lane follower on a faster gait (a fleeing run
-          // behind a walk) out-closes the capped brake and passes through its leader — a brief merge.
-          if (ahead > ZERO || (ahead === ZERO && e > n)) {
-            pushX = fx.sub(pushX, fx.mul(start.hx, half));
-            pushY = fx.sub(pushY, fx.mul(start.hy, half));
-            continue; // braked in line — no radial component on a convoy follower
-          }
-          // This side reads itself as the leader. It skips the counter-shove only if the other side will
-          // brake (the mirrored follower test — same snapshot inputs both iterations read, so e's prediction
-          // equals n's own decision exactly). With headings apart and the offset near-perpendicular to both,
-          // each side can read "leader"; such a pair would get no resolution and ride merged, so it falls
-          // through to the radial split instead.
-          const otherAhead = fx.add(
-            fx.mul(fx.sub(startW.x, otherW.x), other.hx),
-            fx.mul(fx.sub(startW.y, otherW.y), other.hy),
-          );
-          if (otherAhead > ZERO || (otherAhead === ZERO && n > e)) continue;
-        }
-      }
-      if (dist === ZERO) {
-        // Exactly stacked crossing traffic: split along E/W by id order — a named pick, not
-        // iteration luck.
-        pushX = fx.add(pushX, e < n ? fx.sub(ZERO, half) : half);
-      } else {
-        pushX = fx.add(pushX, fx.mulDiv(fx.sub(startW.x, otherW.x), half, dist));
-        pushY = fx.add(pushY, fx.mulDiv(fx.sub(startW.y, otherW.y), half, dist));
-      }
-    }
-    if (pushX !== ZERO || pushY !== ZERO) {
-      const mag = fx.isqrt(fx.add(fx.mul(pushX, pushX), fx.mul(pushY, pushY)));
-      if (mag > SEPARATION_PUSH_CAP) {
-        pushX = fx.mulDiv(pushX, SEPARATION_PUSH_CAP, mag);
-        pushY = fx.mulDiv(pushY, SEPARATION_PUSH_CAP, mag);
-      }
-    }
+    const push = resolveMoverPush(e, start, nearMovers, before);
 
     const p = world.get(e, Position);
     let cand = { x: p.x, y: p.y };
-    if (pushX !== ZERO || pushY !== ZERO) {
+    if (push.x !== ZERO || push.y !== ZERO) {
       const candW = separationWorldPoint(p.x, p.y);
-      cand = separationGridPoint({ x: fx.add(candW.x, pushX), y: fx.add(candW.y, pushY) });
+      cand = separationGridPoint({ x: fx.add(candW.x, push.x), y: fx.add(candW.y, push.y) });
     }
 
-    // Hard half — firm movers outside their own calm zone only (nearPosts is empty otherwise/for civilians):
-    // place the mover back on each overlapped post's radius, in the bucket-scan order (see the system doc —
-    // deterministic; each resolve rewrites `cand`, so the last overlapped post in that order wins a conflict).
-    for (const s of ghost ? [] : nearPosts) {
-      const sp = world.get(s, Position);
-      const dist = worldDistance(cand.x, cand.y, sp.x, sp.y);
-      if (dist >= UNIT_SEPARATION_RADIUS) continue;
-      const postW = separationWorldPoint(sp.x, sp.y);
-      const candW = separationWorldPoint(cand.x, cand.y);
-      let outX: Fixed;
-      let outY: Fixed;
-      if (dist === ZERO) {
-        // Exactly on the post: eject east/west by id order (a named pick).
-        outX = e < s ? fx.sub(ZERO, UNIT_SEPARATION_RADIUS) : UNIT_SEPARATION_RADIUS;
-        outY = ZERO;
-      } else {
-        outX = fx.mulDiv(fx.sub(candW.x, postW.x), UNIT_SEPARATION_RADIUS, dist);
-        outY = fx.mulDiv(fx.sub(candW.y, postW.y), UNIT_SEPARATION_RADIUS, dist);
-      }
-      cand = separationGridPoint({ x: fx.add(postW.x, outX), y: fx.add(postW.y, outY) });
-    }
+    // Firm movers outside their own calm zone eject off the posts they overlap; a civilian or a ghost
+    // (nearPosts empty / skipped) keeps the soft candidate.
+    if (!ghost) cand = resolveAgainstPosts(e, cand, nearPosts, world);
 
     // Landing safety: never displace onto unwalkable/blocked ground — drop the offending axis, then
     // the whole displacement (the walker's own path point is always a legal stand).
@@ -285,3 +206,107 @@ export const separationSystem: System = (world, ctx) => {
     updateObstruction(world, e, isFirm, ghost, nearPosts, nearMovers, firmMovers);
   }
 };
+
+/**
+ * The soft tier of {@link separationSystem}: this mover's capped mover-vs-mover push for the tick,
+ * read from the pre-separation snapshot (`before`) alone so the pairwise split is order-independent. See
+ * the system doc for the convoy-vs-radial rule; the total is capped at {@link SEPARATION_PUSH_CAP}.
+ */
+function resolveMoverPush(
+  e: Entity,
+  start: MoverSnapshot,
+  nearMovers: readonly Entity[],
+  before: ReadonlyMap<Entity, MoverSnapshot>,
+): { x: Fixed; y: Fixed } {
+  const startW = separationWorldPoint(start.x, start.y);
+  let pushX = ZERO;
+  let pushY = ZERO;
+  for (const n of nearMovers) {
+    const other = before.get(n);
+    if (other === undefined) continue;
+    const dist = worldDistance(start.x, start.y, other.x, other.y);
+    if (dist >= UNIT_SEPARATION_RADIUS) continue;
+    const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
+    const otherW = separationWorldPoint(other.x, other.y);
+    // (0,0) is the "no established heading" sentinel — such a pair can't be classified as a
+    // convoy and falls through to the radial split.
+    if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {
+      const alignment = fx.add(fx.mul(start.hx, other.hx), fx.mul(start.hy, other.hy));
+      if (alignment >= CONVOY_ALIGNMENT_MIN) {
+        const ahead = fx.add(
+          fx.mul(fx.sub(otherW.x, startW.x), start.hx),
+          fx.mul(fx.sub(otherW.y, startW.y), start.hy),
+        );
+        // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named pick that
+        // seeds the fore/aft order the geometric test then keeps stable. With headings up to 60° apart both
+        // sides can transiently read "follower" and brake — harmless (each keeps net progress under the cap,
+        // and braking diverges them). Known feel gap: a same-lane follower on a faster gait (a fleeing run
+        // behind a walk) out-closes the capped brake and passes through its leader — a brief merge.
+        if (ahead > ZERO || (ahead === ZERO && e > n)) {
+          pushX = fx.sub(pushX, fx.mul(start.hx, half));
+          pushY = fx.sub(pushY, fx.mul(start.hy, half));
+          continue; // braked in line — no radial component on a convoy follower
+        }
+        // This side reads itself as the leader. It skips the counter-shove only if the other side will
+        // brake (the mirrored follower test — same snapshot inputs both iterations read, so e's prediction
+        // equals n's own decision exactly). With headings apart and the offset near-perpendicular to both,
+        // each side can read "leader"; such a pair would get no resolution and ride merged, so it falls
+        // through to the radial split instead.
+        const otherAhead = fx.add(
+          fx.mul(fx.sub(startW.x, otherW.x), other.hx),
+          fx.mul(fx.sub(startW.y, otherW.y), other.hy),
+        );
+        if (otherAhead > ZERO || (otherAhead === ZERO && n > e)) continue;
+      }
+    }
+    if (dist === ZERO) {
+      // Exactly stacked crossing traffic: split along E/W by id order — a named pick, not
+      // iteration luck.
+      pushX = fx.add(pushX, e < n ? fx.sub(ZERO, half) : half);
+    } else {
+      pushX = fx.add(pushX, fx.mulDiv(fx.sub(startW.x, otherW.x), half, dist));
+      pushY = fx.add(pushY, fx.mulDiv(fx.sub(startW.y, otherW.y), half, dist));
+    }
+  }
+  if (pushX !== ZERO || pushY !== ZERO) {
+    const mag = fx.isqrt(fx.add(fx.mul(pushX, pushX), fx.mul(pushY, pushY)));
+    if (mag > SEPARATION_PUSH_CAP) {
+      pushX = fx.mulDiv(pushX, SEPARATION_PUSH_CAP, mag);
+      pushY = fx.mulDiv(pushY, SEPARATION_PUSH_CAP, mag);
+    }
+  }
+  return { x: pushX, y: pushY };
+}
+
+/**
+ * The firm tier: place `cand` back onto the radius of each post it overlaps, in the bucket-scan order
+ * the caller passes {@link nearPosts} in (deterministic; each resolve rewrites the point, so the last
+ * overlapped post in that order wins a conflict). Returns the resolved point.
+ */
+function resolveAgainstPosts(
+  e: Entity,
+  cand: { x: Fixed; y: Fixed },
+  nearPosts: readonly Entity[],
+  world: World,
+): { x: Fixed; y: Fixed } {
+  let out = cand;
+  for (const s of nearPosts) {
+    const sp = world.get(s, Position);
+    const dist = worldDistance(out.x, out.y, sp.x, sp.y);
+    if (dist >= UNIT_SEPARATION_RADIUS) continue;
+    const postW = separationWorldPoint(sp.x, sp.y);
+    const candW = separationWorldPoint(out.x, out.y);
+    let outX: Fixed;
+    let outY: Fixed;
+    if (dist === ZERO) {
+      // Exactly on the post: eject east/west by id order (a named pick).
+      outX = e < s ? fx.sub(ZERO, UNIT_SEPARATION_RADIUS) : UNIT_SEPARATION_RADIUS;
+      outY = ZERO;
+    } else {
+      outX = fx.mulDiv(fx.sub(candW.x, postW.x), UNIT_SEPARATION_RADIUS, dist);
+      outY = fx.mulDiv(fx.sub(candW.y, postW.y), UNIT_SEPARATION_RADIUS, dist);
+    }
+    out = separationGridPoint({ x: fx.add(postW.x, outX), y: fx.add(postW.y, outY) });
+  }
+  return out;
+}
