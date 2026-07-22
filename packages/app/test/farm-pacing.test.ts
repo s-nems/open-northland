@@ -114,7 +114,12 @@ function measure(farmers: number): Measured {
   };
 }
 
-describe('farm pacing against the original', () => {
+/** Whichever test runs first pays for all four memoized 14 400-tick runs, ~2 s on a quiet machine.
+ *  A loaded full suite stretches that past vitest's 5 s default (13.4 s observed). The budget is a
+ *  hang-guard sized ~30x the quiet run, not a benchmark. */
+const PACING_RUN_TIMEOUT_MS = 60_000;
+
+describe('farm pacing against the original', { timeout: PACING_RUN_TIMEOUT_MS }, () => {
   const CREWS = [1, 2, 3, 4];
   // Memoized on first use, never at collection time: each crew is a 14 400-tick simulation, so running
   // them in the describe body would put every one behind an unnamed collection error rather than the
