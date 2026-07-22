@@ -87,16 +87,30 @@ function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: 
   return true;
 }
 
-/**
- * The cross-lane invariants a valid decoded map must hold — each an `ok` predicate plus the message
- * and path pushed when it fails. Kept as a named table (not inline `.check` closures) so each rule
- * reads independently.
- */
-const INVARIANTS: ReadonlyArray<{
+/** One cross-lane rule: an `ok` predicate plus the message and path pushed when it fails. */
+interface TerrainMapInvariant {
   readonly ok: (m: TerrainMapValue) => boolean;
   readonly message: (m: TerrainMapValue) => string;
   readonly path: readonly (string | number)[];
-}> = [
+}
+
+/** An optional per-cell lane, when present, carries exactly one value per cell. */
+function cellLaneLength(field: 'elevation' | 'brightness' | 'shore'): TerrainMapInvariant {
+  return {
+    ok: (m) => {
+      const lane = m[field];
+      return lane === undefined || lane.length === cellCount(m);
+    },
+    message: (m) => `terrain map ${field} length ${m[field]?.length} != width*height (${cellCount(m)})`,
+    path: [field],
+  };
+}
+
+/**
+ * The cross-lane invariants a valid decoded map must hold, in the order their issues are pushed. Kept
+ * as a named table (not inline `.check` closures) so each rule reads independently.
+ */
+const INVARIANTS: readonly TerrainMapInvariant[] = [
   {
     ok: (m) => m.typeIds.length === cellCount(m),
     message: (m) =>
@@ -155,21 +169,9 @@ const INVARIANTS: ReadonlyArray<{
     message: () => 'terrain map objects.levels must carry one entry per placement triple',
     path: ['objects', 'levels'],
   },
-  {
-    ok: (m) => m.elevation === undefined || m.elevation.length === cellCount(m),
-    message: (m) => `terrain map elevation length ${m.elevation?.length} != width*height (${cellCount(m)})`,
-    path: ['elevation'],
-  },
-  {
-    ok: (m) => m.brightness === undefined || m.brightness.length === cellCount(m),
-    message: (m) => `terrain map brightness length ${m.brightness?.length} != width*height (${cellCount(m)})`,
-    path: ['brightness'],
-  },
-  {
-    ok: (m) => m.shore === undefined || m.shore.length === cellCount(m),
-    message: (m) => `terrain map shore length ${m.shore?.length} != width*height (${cellCount(m)})`,
-    path: ['shore'],
-  },
+  cellLaneLength('elevation'),
+  cellLaneLength('brightness'),
+  cellLaneLength('shore'),
 ];
 
 export const TerrainMapFile = TerrainMapFields.check((ctx) => {
