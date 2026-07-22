@@ -22,6 +22,7 @@ export { facingTowardTile, readFacing } from './facing.js';
 export { readProjectileOrigin, readProjectileTarget } from './projectile-readers.js';
 export {
   assignStaticFields,
+  copyStaticFields,
   depositVisualLevel,
   readBerryBushGfxIndex,
   readBerryBushLevel,
@@ -29,6 +30,8 @@ export {
   readHpFraction,
   readProducing,
   readResourceLevelCount,
+  readUpgradePct,
+  type StaticDrawFields,
 } from './static-readers.js';
 export { readStockpile } from './stockpile-readers.js';
 export {
