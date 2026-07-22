@@ -62,8 +62,8 @@ export function pixelHit(
     if (mask === null) return undefined; // pixels unreadable → the box hit stands
     sampledEveryLayer = true;
     // World → this layer's frame-local texels: the container sits at the drawn anchor, the sprite at
-    // its authored offset, scaled about the anchor (mirrors bindLayers' placement math, which only
-    // ever sets a positive uniform scale). A non-positive scale would mean mirroring/degeneracy this
+    // its authored offset, scaled about the anchor (mirrors the layer binder's placement math, which
+    // only ever sets a positive uniform scale). A non-positive scale would mean mirroring/degeneracy this
     // inverse can't map — fail soft to the box verdict rather than sample the wrong texels.
     const scale = spr.scale.x;
     if (!(scale > 0)) return undefined;

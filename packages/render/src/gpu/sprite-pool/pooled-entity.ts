@@ -1,6 +1,7 @@
 import { Container, type Graphics, type Sprite } from 'pixi.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
+import type { PlayerColourLut } from '../sprite-sheet.js';
 import type { MotionTrack } from './motion.js';
 
 /**
@@ -34,22 +35,17 @@ interface MutableBounds {
 
 /**
  * One entity's persistent display objects, kept across frames and reused: a {@link Container} at the
- * entity's feet anchor holding its atlas layer {@link Sprite}s (body + head overlays, or a single
- * kind/family sprite) and a lazily-built placeholder {@link Graphics}. Per frame only the container
- * position, the sprites' textures/offsets, and their visibility change — nothing is re-allocated.
+ * entity's feet anchor holding its atlas layer sprites (body + head overlays, or a single kind/family
+ * sprite) and a lazily-built placeholder {@link Graphics}. Per frame only the container position, the
+ * sprites' textures/offsets, and their visibility change — nothing is re-allocated.
  */
-export interface PooledEntity {
+interface PooledEntityBase {
   readonly container: Container;
   readonly kind: SpriteKind;
-  /** This entity's atlas layers. A paletted settler (team colours on) draws {@link PalettedSprite} meshes;
-   *  every other entity draws plain {@link Sprite}s. Homogeneous per entity — set by {@link PooledEntity.paletted}. */
-  readonly sprites: (Sprite | PalettedSprite)[];
-  /** Per-{@link sprites}-index: whether that layer is a cast shadow this frame — restamped by
-   *  `bindLayers`, read by the pixel hit test (a shadow must not make its caster clickable). */
+  /** Per-{@link PooledEntity.sprites}-index: whether that layer is a cast shadow this frame — restamped
+   *  by the {@link import('./bind-layers.js').LayerBinder}, read by the pixel hit test (a shadow must not
+   *  make its caster clickable). */
   readonly shadowFlags: boolean[];
-  /** Whether this entity draws team-coloured {@link PalettedSprite} meshes (a settler, with a LUT + indexed
-   *  characters loaded). Fixed at creation — the sprite class can't change, so the pool decides once. */
-  readonly paletted: boolean;
   placeholder?: Graphics;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. The reconcile detaches entities whose
@@ -66,7 +62,8 @@ export interface PooledEntity {
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
    *  sim's `built` each frame ({@link import('./presentation.js').easeReveal}). `undefined` until the
    *  entity first draws a reveal layer, and reset to `undefined` once it finishes. Always present (not
-   *  optional) so the pooled entity keeps a stable, monomorphic shape. */
+   *  optional) so an entity's shape never transitions when a reveal first appears; the pool holds
+   *  exactly the union's two shapes, one per variant. */
   reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
@@ -74,14 +71,30 @@ export interface PooledEntity {
   readonly motion: MotionTrack;
 }
 
-/** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update). */
-export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity {
-  return {
+/** A settler drawing team-coloured {@link PalettedSprite} meshes. Carries the LUT its meshes are built
+ *  from, so holding a paletted entity proves the palette loaded. Decided once at creation (the sheet
+ *  never changes), which is what keeps `sprites` homogeneous. */
+export interface PalettedPooledEntity extends PooledEntityBase {
+  readonly paletted: true;
+  readonly sprites: PalettedSprite[];
+  readonly palette: PlayerColourLut;
+}
+
+/** Every other entity: its atlas layers are plain cached-sub-texture {@link Sprite}s. */
+export interface PlainPooledEntity extends PooledEntityBase {
+  readonly paletted: false;
+  readonly sprites: Sprite[];
+}
+
+export type PooledEntity = PalettedPooledEntity | PlainPooledEntity;
+
+/** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update).
+ *  A `palette` makes it a paletted (team-coloured mesh) entity bound through that LUT. */
+export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefined): PooledEntity {
+  const base = {
     container: new Container(),
     kind,
-    sprites: [],
     shadowFlags: [],
-    paletted,
     attached: false,
     lastSeen: -1,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
@@ -89,4 +102,7 @@ export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity 
     reveal: undefined,
     motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks: 0 },
   };
+  return palette === undefined
+    ? { ...base, paletted: false, sprites: [] }
+    : { ...base, paletted: true, sprites: [], palette };
 }

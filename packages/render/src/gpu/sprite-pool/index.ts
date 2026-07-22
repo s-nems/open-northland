@@ -1,7 +1,8 @@
 /**
  * The retained per-entity sprite pool feature. The Pixi mutation lives in
- * {@link import('./sprite-pool.js')}; the pure, GPU-free halves are split out so they stay
- * unit-testable: {@link import('./motion.js')} (inter-tick interpolation),
+ * {@link import('./sprite-pool.js')} (membership, attach/detach, reap) and
+ * {@link import('./bind-layers.js')} (per-entity layer binding); the pure, GPU-free halves are split
+ * out so they stay unit-testable: {@link import('./motion.js')} (inter-tick interpolation),
  * {@link import('./reconcile.js')} (liveness bookkeeping),
  * {@link import('./resolve-layers.js')} (which atlas layers an entity draws),
  * {@link import('./layer-box.js')} (where a resolved layer draws and the box its layers union into),
