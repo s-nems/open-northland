@@ -227,12 +227,10 @@ export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
 }
 
 /**
- * Shared packing core: decode + expand every bob (via `expand`, which colours or index-encodes it),
- * shelf-pack the non-empty frames, and emit the sheet + manifest. `expand` is called only for frames
- * with pixels, so it always receives a real frame.
- * `'build-time'` decodes the pair's second byte as a threshold (every written pixel stays opaque in the
- * colour plane — including the byte-0 pixels an alpha decode would hole) and emits a second sheet at the
- * identical placement: one shelf pack, two planes.
+ * `expand` colours or index-encodes a frame and is called only for frames with pixels, so it always
+ * receives a real one. A `'build-time'` pack decodes each pair's second byte as a progress threshold,
+ * not coverage: every written pixel stays opaque in the colour plane (including the byte-0 pixels an
+ * alpha decode would hole) and its threshold bakes into a second same-placement plane.
  */
 function packBobAtlasWith(
   bmd: Bmd,
@@ -241,8 +239,17 @@ function packBobAtlasWith(
   alpha: AtlasAlphaMode,
 ): BobAtlas {
   const buildTime = alpha === 'build-time';
+  const prepared = prepareFrames(bmd, expand, buildTime);
+  const layout = shelfPack(prepared, maxWidth);
+  return emitAtlas(prepared, layout, buildTime);
+}
 
-  // 1. Decode + expand every bob; record which produced pixels.
+/** Decode + colour/index-encode every bob into a dense record, dropping only the gaps `bmd.bobs` omits. */
+function prepareFrames(
+  bmd: Bmd,
+  expand: (frame: BobFrame) => RgbaImage,
+  buildTime: boolean,
+): PreparedFrame[] {
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
@@ -270,9 +277,22 @@ function packBobAtlasWith(
       opaque,
     });
   }
+  return prepared;
+}
 
-  // 2. Shelf-pack the non-empty frames left→right into rows wrapping at `maxWidth`. The frame order is
-  //    bob-id order (already), which keeps the layout deterministic and the manifest easy to diff.
+/** Where each frame lands and the sheet size that holds them (min 1×1 so an empty pack is a valid PNG). */
+interface PackedLayout {
+  /** Placement per non-empty frame, keyed by its index in the `prepared` array (not its bob id). */
+  readonly placements: ReadonlyMap<number, { readonly x: number; readonly y: number }>;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Shelf-packs the non-empty frames left→right into rows wrapping at `maxWidth`. Frame order is bob-id
+ * order (already), which keeps the layout deterministic and the manifest easy to diff.
+ */
+function shelfPack(prepared: readonly PreparedFrame[], maxWidth: number): PackedLayout {
   const placements = new Map<number, { x: number; y: number }>();
   let cursorX = ATLAS_GUTTER;
   let cursorY = ATLAS_GUTTER;
@@ -293,10 +313,12 @@ function packBobAtlasWith(
     if (p.height > rowHeight) rowHeight = p.height;
   }
   const atlasHeight = rowHeight === 0 ? cursorY : cursorY + rowHeight + ATLAS_GUTTER;
+  return { placements, width: Math.max(1, atlasWidth), height: Math.max(1, atlasHeight) };
+}
 
-  // 3. Allocate the sheet (min 1×1 so it's a valid PNG when nothing has pixels) and blit each frame.
-  const width = Math.max(1, atlasWidth);
-  const height = Math.max(1, atlasHeight);
+/** Allocates the sheet(s), blits each placed frame, and builds the manifest the packer returns. */
+function emitAtlas(prepared: readonly PreparedFrame[], layout: PackedLayout, buildTime: boolean): BobAtlas {
+  const { placements, width, height } = layout;
   const image: RgbaImage = { width, height, rgba: new Uint8Array(width * height * 4) };
   const timeImage: RgbaImage | undefined = buildTime
     ? { width, height, rgba: new Uint8Array(width * height * 4) }
@@ -319,7 +341,6 @@ function packBobAtlasWith(
         opaque: p.opaque,
       });
     } else {
-      // Empty / zero-size bob: no atlas space, but still addressable by id.
       frames.push({
         bobId: p.bobId,
         type: p.type,
