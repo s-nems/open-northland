@@ -2,17 +2,16 @@
 
 **Area:** pipeline · **Priority:** P2
 **Needs user:** compare a known-different loose/archive asset in the running original.
-**Blocked by:** [shared source-path resolution](source-path-resolution.md)
 
 Loose files and `.lib` members collide in the owned installation, but the original engine's precedence
 has not been pinned by an allowed source. The pipeline currently lets archive data win in two places:
 
-- **PCX** (`tools/asset-pipeline/src/run.ts:46-57`): the loose walk converts
+- **PCX** (`tools/asset-pipeline/src/run.ts:52-58`): the loose walk converts
   `Data/.../text_000.pcx` → `.png` first, then the lib-embedded walk converts the extracted copy to
-  the case-folded **same output path** second — on case-insensitive filesystems (macOS/Windows
-  default) the base-lib version overwrites the patched loose version. The comment claiming "the two
-  walks are disjoint sources" is false for these collisions.
-- **BMD** (`tools/asset-pipeline/src/stages/bmd/convert.ts:107-130`): `indexOutTree` reads `.bmd`
+  the **same canonical output path** second (extraction canonicalizes members into the `Data/` tree),
+  so the base-lib version overwrites the patched loose version on every filesystem. The comment
+  claiming "the two walks are disjoint sources" is false for these collisions.
+- **BMD** (`tools/asset-pipeline/src/stages/bmd/convert.ts:108-131`): `indexOutTree` reads `.bmd`
   only from the unpacked lib out-tree, so loose `.bmd` never enter the atlas stage at all.
 
 Measured on the owned game copy: 66 `.pcx` exist both loose and inside `data0001.lib` with

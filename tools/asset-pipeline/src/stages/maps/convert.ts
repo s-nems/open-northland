@@ -11,8 +11,13 @@ import {
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
-import { collectSourceFilesNamed, rootsInOrder, type SourceRoots } from '../../roots.js';
-import { findPathCaseInsensitive, findPathCaseInsensitiveInDirs } from './case-path.js';
+import {
+  collectSourceFilesNamed,
+  findPathCaseInsensitive,
+  findPathCaseInsensitiveInDirs,
+  rootsInOrder,
+  type SourceRoots,
+} from '../../roots.js';
 import { mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
@@ -95,7 +100,7 @@ export async function convertMapDatTree(
       // Case-insensitively, like every sibling read here: the map folders mix casing freely, which a
       // case-sensitive filesystem would otherwise turn into a silently missing entity layer.
       const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
-      if (cifPath === null) continue;
+      if (cifPath === undefined) continue;
       try {
         const cifBytes = await readFile(cifPath);
         cifSections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
@@ -115,7 +120,7 @@ export async function convertMapDatTree(
     // (golden rule #4); undecodable/malformed is logged and skipped like the cif path.
     if (terrain.entities === undefined) {
       const incPath = await findPathCaseInsensitiveInDirs(mapDirs, ['staticobjects.inc']);
-      if (incPath !== null) {
+      if (incPath !== undefined) {
         try {
           const entities = extractStaticObjects(parseIniSections(decodeIni(await readFile(incPath))));
           if (entities !== undefined) terrain = { ...terrain, entities };
@@ -158,7 +163,7 @@ export async function convertMapDatTree(
     }
     let minimap = false;
     const minimapPath = await findPathCaseInsensitiveInDirs(mapDirs, ['minimap', 'minimap.pcx']);
-    if (minimapPath !== null) {
+    if (minimapPath !== undefined) {
       try {
         await writeFile(pngPath, minimapToPng(await readFile(minimapPath)));
         minimap = true;

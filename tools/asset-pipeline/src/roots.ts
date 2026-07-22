@@ -1,4 +1,4 @@
-import { access, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
@@ -27,43 +27,138 @@ export function rootsInOrder(roots: SourceRoots): readonly string[] {
   return roots.mod === undefined || roots.mod === roots.game ? [roots.game] : [roots.mod, roots.game];
 }
 
-/** Resolves `rel` overlay-first: the first root where the exact path exists, or undefined in neither. */
-export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
-  for (const root of rootsInOrder(roots)) {
-    const path = join(root, rel);
+/**
+ * The unpacked-archive tree addressed as a one-root `SourceRoots`: the archive layer for stages that
+ * re-read extracted `.lib` members from `out`. Which layer should win a loose/archive collision is
+ * unobserved in the original; each call site keeps its current order.
+ */
+export function archiveRoots(outDir: string): SourceRoots {
+  return { game: outDir, mod: undefined };
+}
+
+/**
+ * Picks the directory entry that case-folds to `segment`: the exact spelling when present, else the
+ * single folded match. Two folded matches with no exact one are a same-layer case collision this
+ * policy refuses to order (only a case-sensitive filesystem can host such twins). Undefined when
+ * nothing matches.
+ */
+export function pickCaseFoldedEntry(
+  entries: readonly string[],
+  segment: string,
+  where: string,
+): string | undefined {
+  const folded = segment.toLowerCase();
+  const matches = entries.filter((e) => e.toLowerCase() === folded);
+  if (matches.includes(segment)) return segment;
+  const [first, second] = matches;
+  if (second !== undefined) {
+    throw new Error(
+      `case-colliding entries "${[...matches].sort().join('", "')}" for ${segment} in ${where}`,
+    );
+  }
+  return first;
+}
+
+/**
+ * Resolves `segments` under `dir`, matching each path segment case-insensitively
+ * ({@link pickCaseFoldedEntry}), and returns the real-cased on-disk path, or undefined when any
+ * segment is absent. The shipped trees mix casing freely (`Text/`, `TEXT/`, `Pol/`, `Strings.ini`
+ * all ship), which a case-insensitive macOS/Windows filesystem hides but a case-sensitive Linux one
+ * does not; resolving via directory listings keeps every stage portable.
+ */
+export async function findPathCaseInsensitive(
+  dir: string,
+  segments: readonly string[],
+): Promise<string | undefined> {
+  let current = dir;
+  for (const segment of segments) {
+    let entries: string[];
     try {
-      await access(path);
-      return path;
+      entries = await readdir(current);
     } catch {
-      // not in this root — fall through to the next
+      return undefined; // `current` missing or not a directory - the path does not resolve
     }
+    const match = pickCaseFoldedEntry(entries, segment, current);
+    if (match === undefined) return undefined;
+    current = join(current, match);
+  }
+  return current;
+}
+
+/** {@link findPathCaseInsensitive} over candidate directories in priority order - the first that resolves wins. */
+export async function findPathCaseInsensitiveInDirs(
+  dirs: readonly string[],
+  segments: readonly string[],
+): Promise<string | undefined> {
+  for (const dir of dirs) {
+    const path = await findPathCaseInsensitive(dir, segments);
+    if (path !== undefined) return path;
   }
   return undefined;
 }
 
 /**
+ * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively
+ * ({@link findPathCaseInsensitive}), or undefined in neither. The pipeline's one source-path rule;
+ * every loose-file read resolves through this.
+ */
+export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
+  return findPathCaseInsensitiveInDirs(rootsInOrder(roots), rel.split(sep));
+}
+
+/** One root's walked files, before the cross-root union. */
+interface RootFiles {
+  readonly root: string;
+  readonly files: readonly { readonly rel: string; readonly path: string }[];
+}
+
+/**
+ * Merges per-root listings into one union keyed by the case-folded relative path, an earlier root
+ * winning a collision even when the trees spell the path with different case (an over-install on the
+ * original's case-insensitive targets would have merged such paths into one file). Two same-root
+ * paths that fold equal have no such merged identity and throw instead of silently ordering. Sorted
+ * by `rel` so a re-run is reproducible regardless of directory-entry order.
+ */
+export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[] {
+  const byKey = new Map<string, SourceFile>();
+  for (const { root, files } of perRoot) {
+    const own = new Map<string, string>();
+    for (const { rel, path } of files) {
+      const key = rel.toLowerCase();
+      const twin = own.get(key);
+      if (twin !== undefined) {
+        throw new Error(
+          `case-colliding sources "${twin}" and "${rel}" under ${root} - two on-disk spellings ` +
+            'of one source path; remove or rename one and re-run',
+        );
+      }
+      own.set(key, rel);
+      if (!byKey.has(key)) byKey.set(key, { rel, path });
+    }
+  }
+  return [...byKey.values()].sort((a, b) => (a.rel < b.rel ? -1 : 1));
+}
+
+/**
  * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
- * as a union keyed by the case-folded relative path — the overlay's copy wins a collision even when
- * the two trees spell the path with different case (the shipped trees mix case freely and the
- * default target filesystems are case-insensitive, so an over-install would have merged such paths
- * into one file) — sorted by `rel` so a re-run is reproducible regardless of directory-entry order.
- * A missing `game` root propagates (an environmental error); the mod root's existence is the
- * caller's contract ({@link SourceRoots}).
+ * as an overlay-first case-folded union ({@link unionCaseFoldedRoots}). A missing `game` root
+ * propagates (an environmental error); the mod root's existence is the caller's contract
+ * ({@link SourceRoots}).
  */
 export async function collectSourceFiles(
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
-  const byRel = new Map<string, SourceFile>();
+  const perRoot: RootFiles[] = [];
   for (const root of rootsInOrder(roots)) {
+    const files: { rel: string; path: string }[] = [];
     for await (const file of walkFiles(root)) {
       const rel = relative(root, file);
-      const key = rel.toLowerCase();
-      if (!match(key) || byRel.has(key)) continue;
-      byRel.set(key, { rel, path: file });
+      if (match(rel.toLowerCase())) files.push({ rel, path: file });
     }
+    perRoot.push({ root, files });
   }
-  return [...byRel.values()].sort((a, b) => (a.rel < b.rel ? -1 : 1));
+  return unionCaseFoldedRoots(perRoot);
 }
 
 /**

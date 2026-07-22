@@ -7,7 +7,7 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
-import { findPathCaseInsensitiveInDirs } from './case-path.js';
+import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 
 /**
  * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to one
@@ -73,7 +73,7 @@ async function resolveMapNameStringIds(
   for (const file of ['misc.inc', 'map.ini']) {
     if (nameStringId !== undefined && descriptionStringId !== undefined) break;
     const path = await findPathCaseInsensitiveInDirs(mapDirs, [file]);
-    if (path === null) continue;
+    if (path === undefined) continue;
     try {
       consider(parseIniSections(decodeIni(await readFile(path))));
     } catch (err) {
@@ -92,7 +92,7 @@ async function resolveMapNameStringIds(
  * trying each {@link MAP_TEXT_LANGS} language in order. Per language the readable `strings.ini` is
  * preferred (golden rule #4; {@link decodeIni} already yields CP1250 text) over the encrypted
  * `strings.cif` twin ({@link decodeCifStringTable}) — e.g. the tutorial maps ship `.cif`-only. Paths
- * resolve case-insensitively ({@link findPathCaseInsensitive}); a missing file is normal absence, an
+ * resolve case-insensitively ({@link findPathCaseInsensitiveInDirs}); a missing file is normal absence, an
  * unreadable one warns and falls through, and an empty table falls through to the next form/language.
  * Returns undefined when no language yields strings — the caller then emits no meta sidecar (the menu
  * card degrades).
@@ -104,7 +104,7 @@ export async function loadMapStringTable(
   for (const lang of MAP_TEXT_LANGS) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
       const path = await findPathCaseInsensitiveInDirs(mapDirs, ['text', lang, form]);
-      if (path === null) continue;
+      if (path === undefined) continue;
       let table: Record<number, string>;
       try {
         const bytes = await readFile(path);
