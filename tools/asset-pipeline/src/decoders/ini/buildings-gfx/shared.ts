@@ -117,3 +117,23 @@ export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRe
     typeByLevel: logicTypeByLevel(rec),
   };
 }
+
+/**
+ * Visits each well-formed `[GfxHouse]` graphics record, skipping the malformed: it
+ * {@link splitGfxHouseRecords splits} every lumped bracket and drops records whose
+ * {@link readGfxHouseGraphicsRecord preamble} fails to resolve. `rec` is the raw section for reading
+ * per-level property lines; `record` is the resolved preamble.
+ */
+export function forEachGfxHouseRecord(
+  sections: readonly RuleSection[],
+  visit: (rec: RuleSection, record: GfxHouseGraphicsRecord) => void,
+): void {
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const record = readGfxHouseGraphicsRecord(rec);
+      if (record === undefined) continue;
+      visit(rec, record);
+    }
+  }
+}
