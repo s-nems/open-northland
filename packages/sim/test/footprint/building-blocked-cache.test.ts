@@ -121,6 +121,9 @@ function twoTierHome() {
   // The live stockpile is the site's build hold, holding the target tier's delivered bill.
   sim.world.add(home, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
   sim.world.add(home, UnderConstruction, { labor: ONE }); // hammering complete — only materials gate
-  sim.world.add(home, Upgrading, { savedStock: new Map<number, number>() });
+  sim.world.add(home, Upgrading, {
+    savedStock: new Map<number, number>(),
+    seeded: new Map<number, number>(),
+  });
   return { sim, home, growth: terrainOf(sim).nodeAt(6, 5) };
 }

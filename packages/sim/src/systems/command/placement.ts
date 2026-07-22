@@ -6,6 +6,7 @@ import {
   Settler,
   Stockpile,
   stampOwner,
+  stockpileEntries,
   UnderConstruction,
   Upgrading,
   Vehicle,
@@ -144,8 +145,10 @@ export function placeBuilding(
  * Begin upgrading a built building into its type's `upgradeTarget` level — the `upgradeBuilding`
  * command's effect. The building re-opens as a construction site: its inventory is stashed into the
  * {@link Upgrading} marker and the emptied {@link Stockpile} becomes the site's separate build hold,
- * `built` drops to 0 (suspending production/housing — the same gates a from-scratch site sits behind),
- * an {@link UnderConstruction} marker starts the builder-work clock, and settlers standing on the
+ * seeded with the bill goods the building already holds (recorded in `Upgrading.seeded` — the why
+ * lives on {@link Upgrading}). `built` drops to 0 (suspending production/housing — the same gates a
+ * from-scratch site sits behind), an {@link UnderConstruction} marker starts the builder-work clock,
+ * and settlers standing on the
  * footprint are pushed out. Deliberately NOT cleared: {@link JobAssignment}s and residences — the
  * occupants leave the building but keep their bindings and return when the upgrade completes
  * (source basis: observed original behavior). An in-flight {@link Production} cycle is also left to
@@ -176,9 +179,23 @@ export function upgradeBuilding(
 
   const stock = world.tryGet(command.building, Stockpile);
   if (stock === undefined) return; // no build hold — the site could never advance (see the doc)
-  world.add(command.building, Upgrading, { savedStock: stock.amounts });
-  stock.amounts = new Map<number, number>();
-  world.touchComponent(Stockpile); // an in-place empty — log it so the porter dormancy gate re-scans
+  // Seed the hold with bill goods already in the inventory, stash the rest (see the doc).
+  const hold = new Map<number, number>();
+  const seeded = new Map<number, number>();
+  for (const line of target.construction) {
+    const take = Math.min(stock.amounts.get(line.goodType) ?? 0, line.amount);
+    if (take <= 0) continue;
+    // Accumulate rather than overwrite so a (schema-legal) duplicated bill line degrades like
+    // consumeGoods does instead of destroying the earlier take.
+    hold.set(line.goodType, (hold.get(line.goodType) ?? 0) + take);
+    seeded.set(line.goodType, (seeded.get(line.goodType) ?? 0) + take);
+    const rest = (stock.amounts.get(line.goodType) ?? 0) - take;
+    if (rest > 0) stock.amounts.set(line.goodType, rest);
+    else stock.amounts.delete(line.goodType);
+  }
+  world.add(command.building, Upgrading, { savedStock: stock.amounts, seeded });
+  stock.amounts = hold;
+  world.touchComponent(Stockpile); // an in-place swap — log it so the porter dormancy gate re-scans
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
   // The plot is a building site again — settlers standing on it step out (bindings kept, see above).
@@ -187,10 +204,12 @@ export function upgradeBuilding(
 
 /**
  * Abort an in-flight upgrade — the `cancelUpgrade` command's effect, {@link upgradeBuilding}'s inverse
- * short of the materials: the stashed inventory returns to the {@link Stockpile} (whatever the site
- * hold had accumulated is LOST — the price of changing one's mind, user decision 2026-07-18), `built`
- * returns to ONE (only a built building can start an upgrade), and both site markers come off. The
- * type, level, Health, and every binding never changed mid-upgrade, so nothing else needs restoring.
+ * short of the materials: the stashed inventory returns to the {@link Stockpile}, plus the building's
+ * own bill goods that seeded the hold (`Upgrading.seeded` - they were inventory, not a delivery);
+ * whatever ELSE the site hold had accumulated is LOST — the price of changing one's mind, user
+ * decision 2026-07-18. `built` returns to ONE (only a built building can start an upgrade), and both
+ * site markers come off. The type, level, Health, and every binding never changed mid-upgrade, so
+ * nothing else needs restoring.
  *
  * Skip conditions (recoverable bad input, still logged): a dead / non-building target, or one not
  * upgrading — a from-scratch construction site has no previous level to fall back to.
@@ -201,6 +220,12 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
   if (building === undefined || upgrading === undefined) return;
   const stock = world.tryGet(command.building, Stockpile);
   if (stock !== undefined) {
+    // Return the seeded own-inventory goods still in the hold to the stash before it comes back
+    // (min with the hold defends the invariant; nothing withdraws from a site mid-upgrade).
+    for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.seeded })) {
+      const back = Math.min(stock.amounts.get(goodType) ?? 0, amount);
+      if (back > 0) upgrading.savedStock.set(goodType, (upgrading.savedStock.get(goodType) ?? 0) + back);
+    }
     // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole
     // is safe. An in-place swap — log it so the porter dormancy gate re-scans.
     stock.amounts = upgrading.savedStock;

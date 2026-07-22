@@ -42,7 +42,7 @@ import {
 function startUpgrade(sim: Simulation, b: Entity): void {
   sim.world.get(b, Building).built = fx.fromInt(0);
   sim.world.add(b, UnderConstruction, { labor: fx.fromInt(0) });
-  sim.world.add(b, Upgrading, { savedStock: new Map() });
+  sim.world.add(b, Upgrading, { savedStock: new Map(), seeded: new Map() });
 }
 
 describe('an upgrading workplace — its crew stands down', () => {
