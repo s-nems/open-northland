@@ -4,7 +4,7 @@ import { type DecodedCursor, decodeCursor } from '../../decoders/cur.js';
 import { encodePng } from '../../decoders/png.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import { readSourceFile } from '../game-file.js';
+import { readSourceFile } from '../source-files.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 
 /** The three mouse cursors under `DataX/Mouse/`, in a stable order. */

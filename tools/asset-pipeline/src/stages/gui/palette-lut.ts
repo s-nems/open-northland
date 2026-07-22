@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { SourceRoots } from '../../roots.js';
-import { buildPaletteLut, type PaletteLutResult } from '../game-file.js';
+import { buildPaletteLut, type PaletteLutResult } from '../palette-lut.js';
 
 /** The dir holding the 2×2 palette carriers the engine colours HUD elements with. */
 const GUI_PALETTES_DIR = join('Data', 'gui', 'palettes');

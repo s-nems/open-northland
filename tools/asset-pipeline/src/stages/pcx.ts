@@ -5,7 +5,8 @@ import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
 import { collectSourceFiles, type SourceRoots } from '../roots.js';
-import { readSourceFile, TEXTURES_DIR } from './game-file.js';
+import { TEXTURES_DIR } from './content-tree.js';
+import { readSourceFile } from './source-files.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
 export interface MaskedTexturePair {

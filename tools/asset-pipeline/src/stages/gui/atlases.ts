@@ -2,7 +2,8 @@ import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import { BOBS_DIR, emitIndexedAndPreviewAtlas, readSourceFile } from '../game-file.js';
+import { BOBS_DIR, emitIndexedAndPreviewAtlas } from '../content-tree.js';
+import { readSourceFile } from '../source-files.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
 interface GuiAtlasSource {

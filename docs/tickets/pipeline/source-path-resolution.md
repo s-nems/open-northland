@@ -3,7 +3,7 @@
 **Area:** pipeline + content-resolver · **Priority:** P1
 
 The pipeline currently resolves source paths with four different case rules: exact paths in
-`roots.ts`, leaf-only case folding in `stages/game-file.ts`, segment-wise folding for maps, and a
+`roots.ts`, leaf-only case folding in `stages/source-files.ts`, segment-wise folding for maps, and a
 case-folded union walk in `collectSourceFiles`. The same `goodtypes.ini` and `landscapes.cif` inputs can
 therefore resolve differently depending on the stage. There is also a current release failure:
 `data0001.lib` stores lowercase `data/...` member names, while the content server reads exact-case
