@@ -7,15 +7,15 @@ import {
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { uiStringLookup } from '../../content/gui-gfx.js';
-import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
-import { type ButtonHit, mapLayout, ROW_H, stockSlotRects } from './layout/index.js';
+import { hitButton, hitCraftChoice, hitGatherChoice, hitStockTab, tooltipTextAt } from './hit-test.js';
+import { type ButtonHit, mapLayout, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
-import { ALL_STOCK_TAB, detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
+import { ALL_STOCK_TAB } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
@@ -285,41 +285,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 
-  const buttons = (): readonly ButtonHit[] => {
-    switch (view.kind) {
-      case 'building':
-        return view.layout.buttons;
-      case 'settler':
-        return [view.layout.assignButton, view.layout.homeButton, view.layout.unassignButton];
-      case 'signpost':
-        return [view.layout.button];
-      case 'empty':
-      case 'compact':
-        return [];
-    }
-  };
-
-  const hitButton = (x: number, y: number): ButtonHit | null =>
-    buttons().find((b) => contains(b.rect, x, y)) ?? null;
-
-  /** The stock category tab under a canvas point, or null — only building layouts carry a tab strip. */
-  const hitStockTab = (x: number, y: number): number | null => {
-    if (view.kind !== 'building') return null;
-    const i = view.layout.stockTabHits.findIndex((r) => contains(r, x, y));
-    return i >= 0 ? i : null;
-  };
-
-  const hitGatherChoice = (x: number, y: number): number | null | undefined => {
-    if (view.kind !== 'settler') return undefined;
-    return view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
-  };
-
-  /** The craft product toggle under a canvas point, or undefined (settler layouts only). */
-  const hitCraftChoice = (x: number, y: number): number | undefined => {
-    if (view.kind !== 'settler') return undefined;
-    return view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
-  };
-
   /**
    * The next selection after a craft-choice click. A plain click REPLACES the selection with just the
    * clicked product (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set
@@ -363,19 +328,19 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       return true;
     }
     if (view.kind === 'settler') {
-      const gatherGood = hitGatherChoice(x, y);
+      const gatherGood = hitGatherChoice(view, x, y);
       if (gatherGood !== undefined) {
         opts.onSetGatherGood(view.model.entityId, gatherGood);
         return true;
       }
-      const craftGood = hitCraftChoice(x, y);
+      const craftGood = hitCraftChoice(view, x, y);
       if (craftGood !== undefined) {
         opts.onSetCraftGoods(view.model.entityId, nextCraftGoods(view.model, craftGood, toggleModifier));
         return true;
       }
     }
     if (view.kind === 'building') {
-      const tab = hitStockTab(x, y);
+      const tab = hitStockTab(view, x, y);
       if (tab !== null) {
         if (tab !== activeStockTab) {
           activeStockTab = tab;
@@ -384,7 +349,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         return true;
       }
     }
-    const hit = hitButton(x, y);
+    const hit = hitButton(view, x, y);
     if (hit === null || !hit.enabled) return true;
     if (view.kind === 'building') {
       const entityId = view.model.entityId;
@@ -402,84 +367,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return true;
   };
 
-  /** The good name under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
-   *  Probes the same slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
-   *  drawn goods (a compact store lists all rows; a tabbed one the active tab's — the same split the draw
-   *  applies), so a hovered slot names exactly the drawn good. */
-  const hitStockGood = (x: number, y: number): string | null => {
-    if (view.kind !== 'building') return null;
-    const { layout, model } = view;
-    if (layout.stock === null) return null;
-    const slot = stockSlotRects(layout.stock.body, scale, layout.stockRows).findIndex((r) =>
-      contains(r, x, y),
-    );
-    if (slot < 0) return null;
-    const rows = visibleStockRows(model.stock, layout.stockCompact, activeStockTab).slice(
-      0,
-      layout.stockRows * 2,
-    );
-    return rows[slot]?.label ?? null;
-  };
-
-  /** The hovered Ogólne stat bar's value ("300/1000" health points, "75%" need satisfaction), or null.
-   *  Probes the whole label+gauge row (layout.bars, same order as model.bars) — more forgiving than the
-   *  gauge alone, and the label row is unambiguous. */
-  const hitBarValue = (x: number, y: number): string | null => {
-    if (view.kind !== 'settler') return null;
-    const i = view.layout.bars.findIndex((r) => contains(r, x, y));
-    return i < 0 ? null : (view.model.bars[i]?.hover ?? null);
-  };
-
-  /** The Praca control buttons' tooltips (assign-workplace / assign-home / remove-from-home) when the
-   *  cursor is over one (settler layouts only) — the "co robi ten guzik" hint the user asked for. */
-  const assignButtonHint = (x: number, y: number): string | null => {
-    if (view.kind !== 'settler') return null;
-    const { assignButton, homeButton, unassignButton } = view.layout;
-    if (contains(assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
-    if (contains(homeButton.rect, x, y)) return messages().hud.assignHomeHint;
-    if (contains(unassignButton.rect, x, y)) return messages().hud.unassignHomeHint;
-    return null;
-  };
-
-  /** The hovered choice round button's good name ("Wszystko" for the gather-all choice), or null —
-   *  the icon buttons carry no drawn label, so the tooltip is what names them (gather or craft; the
-   *  two blocks never coexist). A craft button also spells out the click semantics (plain = pick one,
-   *  Ctrl/Cmd = toggle) — there is no other affordance for the modifier. */
-  const gatherChoiceHint = (x: number, y: number): string | null => {
-    if (view.kind !== 'settler') return null;
-    const gather = view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
-    if (gather !== undefined) return gather;
-    const craft = view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
-    return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
-  };
-
-  /** The Upgrade button's cost card when the cursor is over it ("Upgrade requires:" then one
-   *  "- Drewno ×5" line per required good), or null — what the user asked to see before committing to
-   *  the upgrade. Only building layouts carry the button, and only an upgradable building has a cost. */
-  const upgradeButtonHint = (x: number, y: number): string | null => {
-    if (view.kind !== 'building') return null;
-    const hit = view.layout.buttons.find((b) => contains(b.rect, x, y));
-    if (hit?.action !== 'upgrade' || view.model.upgradeCost.length === 0) return null;
-    const lines = view.model.upgradeCost.map((c) => `- ${c.label} ×${c.amount}`).join('\n');
-    return `${messages().hud.upgradeCostHint}\n${lines}`;
-  };
-
-  /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),
-   *  or null. */
-  const productionRowHint = (x: number, y: number): string | null => {
-    if (view.kind !== 'building' || view.model.production?.kind !== 'recipe') return null;
-    const i = view.layout.productionRowRects.findIndex((r) => contains(r, x, y));
-    const row = i < 0 ? undefined : view.model.production.rows[i];
-    if (row === undefined || row.inputs.length === 0) return null;
-    return `${row.label}:\n${row.inputs}`;
-  };
-
-  /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
-   *  row's good name or a category tab's name for a building (the tab glyphs are cryptic unread art,
-   *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
-   *  layout-kind-exclusive, so at most one can hit. Called on mousemove and after each panel rebuild
-   *  (so a held cursor's value tracks the live model at the rebuild cadence, not per frame); a cursor
-   *  outside the panel bails before any row probing. */
+  /** Recompute + show/hide the value/name tooltip for the cursor at a client point. A cursor outside the
+   *  panel hides it before any probing; inside, {@link tooltipTextAt} names what it hovers. Called on
+   *  mousemove and after each panel rebuild, so a held cursor's value tracks the live model at the
+   *  rebuild cadence, not per frame. */
   const updateTooltip = (clientX: number, clientY: number): void => {
     if (opts.tooltip === undefined) return;
     const { x, y } = toCanvas(clientX, clientY);
@@ -487,17 +378,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.tooltip.hide();
       return;
     }
-    const rowName = hitStockGood(x, y);
-    const tab = rowName === null ? hitStockTab(x, y) : null;
-    const tabLabel = tab !== null ? (detailsStockTabLabels()[tab] ?? null) : null;
-    const text =
-      rowName ??
-      tabLabel ??
-      hitBarValue(x, y) ??
-      gatherChoiceHint(x, y) ??
-      productionRowHint(x, y) ??
-      upgradeButtonHint(x, y) ??
-      assignButtonHint(x, y);
+    const text = tooltipTextAt(view, x, y, scale, activeStockTab);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };
@@ -506,11 +387,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     lastPointer = { clientX: e.clientX, clientY: e.clientY };
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    const next = hitButton(x, y)?.action ?? null;
+    const next = hitButton(view, x, y)?.action ?? null;
     // One hover slot serves both choice blocks — they never coexist, and `null` (the gather-all
     // button) must not fall through to the craft probe, so this is an explicit undefined-check.
-    const gather = hitGatherChoice(x, y);
-    const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(x, y);
+    const gather = hitGatherChoice(view, x, y);
+    const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(view, x, y);
     if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
     hoverAction = next;
     hoveredGatherGood = nextGatherGood;
