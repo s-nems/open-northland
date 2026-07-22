@@ -34,6 +34,7 @@ export * from './progression/index.js';
 export * from './readviews/index.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
+export * from './sorted-id.js';
 export * from './spatial.js';
 export * from './stores/index.js';
 export * from './vision/index.js';

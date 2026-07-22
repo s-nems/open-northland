@@ -1,5 +1,5 @@
 import type { Component, Entity, World } from '../ecs/world.js';
-import { insertSortedById, removeSortedById } from './spatial.js';
+import { insertSortedById, removeSortedById } from './sorted-id.js';
 import { createSpatialMemo } from './spatial-memo.js';
 
 /**

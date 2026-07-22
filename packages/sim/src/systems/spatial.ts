@@ -3,9 +3,10 @@ import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
 import { forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
+import { insertSortedById, removeSortedById } from './sorted-id.js';
 
 // The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
-// the node/distance helpers. A leaf module (only footprint/geometry.ts below it) so every per-system file
+// the node/distance helpers. A leaf module (footprint/geometry.ts and sorted-id.ts below it) so every per-system file
 // imports these without creating cycles; the store/economy read-model lives in ./stores.ts, the same split.
 
 /**
@@ -25,39 +26,6 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 
 /** The empty bucket returned for an unoccupied node — shared + frozen so a miss allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
-
-/**
- * The first index of ascending `arr` whose id (per `idOf`) is ≥ `id` (binary search) — the shared seam of
- * the incremental indexes' sorted inserts and removals. Ids are monotonic, so an insert here is usually an
- * append; the search only matters when an old id re-enters a bucket.
- */
-export function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    const item = arr[mid];
-    if (item !== undefined && idOf(item) < id) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
-/** Splice `item` into ascending-id `arr` at its {@link lowerBound} slot — the incremental indexes'
- *  shared sorted-insert step. */
-export function insertSortedById<T>(arr: T[], item: T, idOf: (item: T) => number): void {
-  arr.splice(lowerBound(arr, idOf(item), idOf), 0, item);
-}
-
-/** Remove the item with `id` from ascending-id `arr`; returns whether it was present, so the caller
- *  can drop an emptied container — the incremental indexes' shared sorted-removal step. */
-export function removeSortedById<T>(arr: T[], id: number, idOf: (item: T) => number): boolean {
-  const i = lowerBound(arr, id, idOf);
-  const held = arr[i];
-  if (held === undefined || idOf(held) !== id) return false;
-  arr.splice(i, 1);
-  return true;
-}
 
 // nodeKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
 // re-exported here so consumers keep a single spatial import site.
