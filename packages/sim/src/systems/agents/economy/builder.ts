@@ -11,7 +11,13 @@ import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup 
 import { claimWorkCell } from '../destack.js';
 import type { PlannerContext } from '../planner-context.js';
 import type { PlannerSpacing } from '../planner-spacing.js';
-import { interactionCell, nearestConstructionSite, nearestStoreHolding } from '../targets/index.js';
+import {
+  interactionCell,
+  nearestConstructionSite,
+  nearestStoreHolding,
+  unreachableSiteStand,
+} from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
 
 /**
  * 2b. BUILD — a builder raises a construction site of its tribe, faithful to the original's "settlers search
@@ -67,9 +73,20 @@ export function planBuilder(plan: PlannerContext, spacing: PlannerSpacing, leads
       settler.tribe,
       settler.owner,
       plan.limit ?? undefined,
+      // Vetoed at the perimeter stand it would walk ({@link unreachableSiteStand}).
+      unreachableSiteStand(
+        world,
+        ctx,
+        terrain,
+        targets.yard.blocked,
+        here,
+        unreachableGoalVeto(world, ctx, e),
+      ),
     );
   if (site === null) {
-    world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
+    // Nothing under construction — or every site is memo-vetoed for the moment — the crew disbands
+    // (and re-forms when a site returns or the memo expires).
+    world.remove(e, SiteAssignment);
     return false; // fall through to hauling
   }
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== (pinned !== null)) {
@@ -124,6 +141,7 @@ export function planBuilder(plan: PlannerContext, spacing: PlannerSpacing, leads
 function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
+  const avoid = unreachableGoalVeto(world, ctx, e);
   for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
     const src = nearestStoreHolding(
       targets.stockpileCells,
@@ -133,6 +151,7 @@ function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
       here,
       need.goodType,
       plan.limit ?? undefined,
+      avoid,
     );
     if (src == null) continue; // no store holds this material — try the next bill line
     const batch = Math.min(need.amount, CARRY_CAPACITY);

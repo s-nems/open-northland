@@ -147,25 +147,34 @@ export class InteractionCellIndex {
    * sweep: every gate-passing cell provably lies inside `gate.bounds`, so the ring sweep stops at the box's
    * reach, and a sweep that covered that whole reach PROVES no bucketed candidate passes, eliding the full
    * linear fallback.
+   *
+   * `avoid` rejects cells the seeker should not walk to — its failed-goal memo, a cross-component
+   * bank — exactly like a gate rejection, in both paths, so a re-plan moves on to the next candidate
+   * instead of re-choosing the goal it just failed on. The seeker's own stand (`here`) is exempt:
+   * standing there needs no walk. Unlike `gate` it never bounds the sweep.
    */
   nearest<P>(
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
+    avoid?: (cell: NodeId) => boolean,
   ): NearestByCell<P> | null {
+    const veto = avoid === undefined ? undefined : (cell: NodeId): boolean => cell !== here && avoid(cell);
     // A sparse index skips the ring for the exact linear reference scan ({@link RING_MIN_BUCKETS}):
     // a ring MISS costs the whole O(maxRadius²) diamond however few buckets exist, and confined
     // searches miss constantly.
-    if (this.bucketCount <= RING_MIN_BUCKETS) return this.linearNearest(this.candidates, here, accept, gate);
-    const ring = this.ringNearest(here, accept, gate);
+    if (this.bucketCount <= RING_MIN_BUCKETS) {
+      return this.linearNearest(this.candidates, here, accept, gate, veto);
+    }
+    const ring = this.ringNearest(here, accept, gate, veto);
     if (ring.best !== null) {
-      return combine(ring.best, this.linearNearest(this.dynamic, here, accept, gate));
+      return combine(ring.best, this.linearNearest(this.dynamic, here, accept, gate, veto));
     }
     // An exhaustive sweep (the rings covered every bucket that could pass) proves the bucketed side empty
     // — only the seeker-dependent tail remains. Otherwise the ring cap stopped short: fall back to the
     // exact full linear scan (identical winner).
-    if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, gate);
-    return this.linearNearest(this.candidates, here, accept, gate);
+    if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, gate, veto);
+    return this.linearNearest(this.candidates, here, accept, gate, veto);
   }
 
   /** The nearest bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first non-empty
@@ -178,6 +187,7 @@ export class InteractionCellIndex {
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
+    veto?: (cell: NodeId) => boolean,
   ): { best: NearestByCell<P> | null; exhaustive: boolean } {
     if (this.maxX < this.minX) return { best: null, exhaustive: true }; // no bucketed candidates at all
     const { x: hx, y: hy } = this.terrain.coordsOf(here);
@@ -192,7 +202,7 @@ export class InteractionCellIndex {
     for (let d = 0; d <= maxRadius; d++) {
       let best: NearestByCell<P> | null = null;
       forEachRingOffset(d, (dx, dy) => {
-        best = this.pickInRing(hx + dx, hy + dy, d, accept, gate, best);
+        best = this.pickInRing(hx + dx, hy + dy, d, accept, gate, veto, best);
       });
       if (best !== null) return { best, exhaustive };
     }
@@ -208,12 +218,14 @@ export class InteractionCellIndex {
     distance: number,
     accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
+    veto: ((cell: NodeId) => boolean) | undefined,
     best: NearestByCell<P> | null,
   ): NearestByCell<P> | null {
     const bucket = this.byX.get(x)?.get(y);
     if (bucket === undefined) return best;
     if (best !== null && bucket.cell >= best.cell) return best; // can't beat a lower cell at the same distance
     if (gate !== undefined && !gate.allowsNode(bucket.cell)) return best; // the whole cell is out of bounds
+    if (veto?.(bucket.cell) === true) return best; // a goal this seeker cannot reach
     for (const e of bucket.entities) {
       const hit = accept(e);
       if (hit !== null) return { entity: e, cell: bucket.cell, distance, payload: hit.payload };
@@ -229,12 +241,15 @@ export class InteractionCellIndex {
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
+    veto?: (cell: NodeId) => boolean,
   ): NearestByCell<P> | null {
     return nearestByCell(this.terrain, list, here, (e) => {
       const hit = accept(e);
       if (hit === null) return null;
       const cell = this.staticCell.get(e) ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
-      return gate === undefined || gate.allowsNode(cell) ? { cell, payload: hit.payload } : null;
+      if (gate !== undefined && !gate.allowsNode(cell)) return null;
+      if (veto?.(cell) === true) return null;
+      return { cell, payload: hit.payload };
     });
   }
 }

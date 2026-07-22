@@ -54,12 +54,15 @@ export function nearestStoreFor(
   excludeProducers = false,
   /** The hauler's signpost confinement — an out-of-area store is not a sink it knows the way to. */
   gate?: SpatialGate,
+  /** The hauler's failed-goal veto ({@link unreachableGoalVeto}). */
+  avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   return (
     index.nearest(
       here,
       (e) => (canStoreGood(world, ctx, e, goodType, excludeProducers) ? QUALIFIES : null),
       gate,
+      avoid,
     )?.entity ?? null
   );
 }
@@ -190,6 +193,8 @@ export function nearestStoreHolding(
   here: NodeId,
   goodType: number,
   gate?: SpatialGate,
+  /** The fetcher's failed-goal veto ({@link unreachableGoalVeto}). */
+  avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
   // accept just excludes sites, stores that don't hold the good, and buried piles. `gate` is the
@@ -206,6 +211,7 @@ export function nearestStoreHolding(
           ? QUALIFIES
           : null,
       gate,
+      avoid,
     )?.entity ?? null
   );
 }

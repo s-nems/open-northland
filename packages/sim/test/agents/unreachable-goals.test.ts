@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   CurrentAtomic,
   MoveGoal,
+  PathFollow,
   PathRequest,
   Resource,
+  SiteAssignment,
   Stranded,
   UnreachableGoals,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import type { NodeId, Simulation } from '../../src/index.js';
+import { type NodeId, Simulation } from '../../src/index.js';
 import {
   isUnreachableGoal,
   noteUnreachableGoal,
@@ -18,7 +20,9 @@ import {
 } from '../../src/systems/agents/unreachable-goals.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
+import { builderAt, constructionContent, HOUSE, siteAt } from '../economy/construction-system/support.js';
 import { ctxOf } from '../fixtures/context.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * The failed-goal memo: a settler whose route fails must not re-choose the same target on its next
@@ -128,5 +132,27 @@ describe('the gatherer re-plan after a failed route', () => {
     // a transient blockage (a colleague in the only doorway) must not retire the node forever.
     stepUntil(s, UNREACHABLE_GOAL_MEMO_TICKS + 400, () => harvestedResource(s, e) !== null);
     expect(harvestedResource(s, e)).not.toBeNull();
+  });
+});
+
+describe('the builder re-plan after a failed stand route', () => {
+  it('raises the second site instead of re-picking the one whose stand it could not reach', () => {
+    // Sites are bucketed by their finished door, but site routes walk PERIMETER stands — the veto must
+    // probe the stand (unreachableSiteStand), or a failed site route retires a cell no pick compares.
+    const s = new Simulation({ seed: 1, content: constructionContent(), map: grassNodeMap(24, 4) });
+    const near = siteAt(s, HOUSE, 2, 0);
+    const far = siteAt(s, HOUSE, 8, 0);
+    const builder = builderAt(s, 0, 0);
+
+    // With nothing to fetch, the builder heads for the nearer site's stand to wait there; fail exactly
+    // that route (a really-failed walk leaves a failed request and no path to follow).
+    stepUntil(s, 20, () => s.world.has(builder, MoveGoal));
+    expect(s.world.get(builder, SiteAssignment).site).toBe(near);
+    const doomed = s.world.get(builder, MoveGoal).cell;
+    s.world.remove(builder, PathFollow);
+    s.world.add(builder, PathRequest, { start: doomed, goal: doomed, failed: true });
+
+    // Park, shed, memo: the re-pick probes the stand it would walk and moves the crew to the far site.
+    stepUntil(s, 400, () => s.world.tryGet(builder, SiteAssignment)?.site === far);
   });
 });

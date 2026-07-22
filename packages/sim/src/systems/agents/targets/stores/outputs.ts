@@ -49,6 +49,8 @@ export function nearestWorkplaceOutput(
   here: NodeId,
   /** The carrier's signpost confinement — an out-of-area workplace is not one it fetches from. */
   gate?: SpatialGate,
+  /** The carrier's failed-goal veto ({@link unreachableGoalVeto}). */
+  avoid?: (cell: NodeId) => boolean,
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
   // qualify, and the good that qualified the winner is the good it hauls.
@@ -56,6 +58,7 @@ export function nearestWorkplaceOutput(
     here,
     (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
     gate,
+    avoid,
   );
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }

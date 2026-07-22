@@ -9,9 +9,14 @@ import type { SystemContext } from '../context.js';
  * (`releaseStaleIntent`), read by the target scans so a re-plan skips what it just failed to reach.
  *
  * Keyed by cell alone and therefore drive-agnostic: routing failed to reach that node, which is true
- * whoever wanted to go there, so a failed delivery also retires the node for the harvest pick. Only the
- * resource scans read it today (`targets/resources.ts`); the eat/store/site picks still re-choose their
- * own failed goal — `docs/tickets/sim/failed-goal-memo-across-drives.md`.
+ * whoever wanted to go there, so a failed delivery also retires the node for the harvest pick. The
+ * searched target picks and the rest/sleep stand picks veto remembered cells, each keyed at the cell
+ * the route actually walks (a construction site at its perimeter stand, not its bucketed door). A
+ * settler's BOUND work targets (its own workplace/flag/storage/crew site, its home as the family
+ * delivery sink — the sleep walk still vetoes a failed home door) are exempt, mirroring the signpost
+ * gate: a settler always knows the way home, and vetoing the one legal sink would strand its load.
+ * The loiter/de-stack stands and the flag yard (its own failed-route resume, `YardDeliveryRoute`)
+ * stay outside it.
  */
 
 /**
@@ -91,4 +96,17 @@ export function unreachableGoals(
 /** Whether `cell` is one of the goals this settler's routes just failed on. */
 export function isUnreachableGoal(memo: readonly UnreachableGoal[] | null, cell: NodeId): boolean {
   return memo?.some((entry) => entry.cell === cell) === true;
+}
+
+/** The memo as the cell veto the index scans take (`InteractionCellIndex.nearest`'s `avoid`), or
+ *  undefined when this settler remembers no failures — so the common all-routes-succeeded settler
+ *  adds no per-candidate work to its scans. */
+export function unreachableGoalVeto(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+): ((cell: NodeId) => boolean) | undefined {
+  const memo = unreachableGoals(world, ctx, e);
+  if (memo === null) return undefined;
+  return (cell) => isUnreachableGoal(memo, cell);
 }

@@ -29,6 +29,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { atOrWalk, startDrop } from '../agents/actions.js';
 import { anyNeedPressing } from '../agents/drives-needs.js';
 import { interactionCell } from '../agents/targets/index.js';
+import { unreachableGoalVeto } from '../agents/unreachable-goals.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn/index.js';
 import type { SystemContext } from '../context.js';
 import { BABY_FEMALE, BABY_MALE, CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
@@ -264,7 +265,7 @@ function driveOrder(
   // Signpost confinement: she only sees sources inside her local circle + reachable guidepost network
   // (null when navigation is off/unlimited — the pre-signpost behaviour, byte-identical).
   const limit = terrain !== undefined ? navigationLimitFor(world, terrain, woman) : null;
-  const source = externalFood.nearest(hereNode, limit);
+  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, woman));
   if (source === null) return; // no reachable food outside homes — she waits (the order stands)
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }

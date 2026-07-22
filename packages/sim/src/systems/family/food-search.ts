@@ -3,7 +3,8 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-metric.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { interactionCell } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
@@ -44,11 +45,14 @@ export class ExternalFoodIndex {
    * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the
    * seeker's signpost confinement ({@link SpatialGate}, null when unlimited): a source whose own node
    * lies outside the allowed area is invisible to her — the family searches obey the same "local
-   * circle plus the reachable guidepost network" rule every economy search does.
+   * circle plus the reachable guidepost network" rule every economy search does. `avoid` is her
+   * failed-goal veto ({@link unreachableGoalVeto}), probed at the source's interaction cell — the node
+   * `fetchFrom` actually walks — so a re-plan reaches the second source instead of the doomed one.
    */
   nearest(
     from: { hx: number; hy: number },
     gate: SpatialGate | null,
+    avoid?: (cell: NodeId) => boolean,
   ): { store: Entity; goodType: number } | null {
     if (this.candidates === undefined || this.buckets === undefined) {
       this.candidates = canonicalById(this.world.query(Stockpile, Position)).filter(
@@ -57,7 +61,7 @@ export class ExternalFoodIndex {
       this.buckets = new NodeBuckets(this.world, this.candidates);
     }
     if (this.candidates.length === 0) return null;
-    const accept = (e: Entity): boolean => this.inArea(e, gate);
+    const accept = (e: Entity): boolean => this.inArea(e, gate) && !this.standRetired(e, from, avoid);
     const hit = this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
     const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;
@@ -65,6 +69,19 @@ export class ExternalFoodIndex {
     // Unreachable while the candidacy invariant above holds (stock mutates only on atomic completion);
     // a null here would mean a mid-pass mutation drained the winner — fail the query, don't guess.
     return goodType === null ? null : { store, goodType };
+  }
+
+  /** Whether the seeker's `avoid` veto retires this source's interaction cell (its own stand exempt).
+   *  With no terrain there is no walk (fetchFrom lifts in place), so nothing is ever retired. */
+  private standRetired(
+    e: Entity,
+    from: { hx: number; hy: number },
+    avoid: ((cell: NodeId) => boolean) | undefined,
+  ): boolean {
+    if (avoid === undefined || this.terrain === undefined) return false;
+    const here = this.terrain.nodeAtClamped(from.hx, from.hy);
+    const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
+    return cell !== here && avoid(cell);
   }
 
   /** Whether the store's own node lies inside the seeker's allowed area (no gate/terrain = everywhere). */

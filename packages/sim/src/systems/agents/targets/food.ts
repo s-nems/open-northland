@@ -1,4 +1,11 @@
-import { BerryBush, Building, Residence, Stockpile, stockpileEntries } from '../../../components/index.js';
+import {
+  BerryBush,
+  Building,
+  Residence,
+  Stockpile,
+  stockpileEntries,
+  type UnreachableGoal,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SpatialGate } from '../../../nav/node-metric.js';
@@ -9,6 +16,7 @@ import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { isFood } from '../../readviews/index.js';
 import { manhattan } from '../../spatial.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
 import { closer } from './nearest.js';
@@ -22,17 +30,31 @@ import { interactionCell } from './workplaces.js';
  * goodType) order via {@link stockpileEntries} — never raw Map insertion order — so the choice never
  * depends on store insertion history. A producing workplace counts too (a settler eats the food it
  * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
+ *
+ * Reachability: a store in another static component (the far bank of a river — the same `componentOf`
+ * gate the bush sibling applies) or on the eater's failed-goal `memo` is skipped, so a hungry settler
+ * walks to the second, reachable larder instead of looping park→re-pick→fail beside the first.
  */
 function nearestFoodStore(
   index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   here: NodeId,
   eater: Entity,
+  memo: readonly UnreachableGoal[] | null,
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
   const home = world.tryGet(eater, Residence)?.home ?? null;
-  const winner = index.nearest(here, (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e, home)), gate);
+  const component = terrain.componentOf(here);
+  const avoid = (cell: NodeId): boolean =>
+    terrain.componentOf(cell) !== component || isUnreachableGoal(memo, cell);
+  const winner = index.nearest(
+    here,
+    (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e, home)),
+    gate,
+    avoid,
+  );
   return winner === null
     ? null
     : { store: winner.entity, goodType: winner.payload, dist: winner.distance, cell: winner.cell };
@@ -99,6 +121,7 @@ function nearestRipeBush(
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
+  memo: readonly UnreachableGoal[] | null,
   gate?: SpatialGate,
 ): { bush: Entity; dist: number; cell: NodeId } | null {
   const { x: hx, y: hy } = terrain.coordsOf(here);
@@ -108,6 +131,7 @@ function nearestRipeBush(
     if (bush === undefined || bush.stage !== 'ripe') return null; // bare/blooming — nothing to forage
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
+    if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this eater's route just failed on
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (flat radius)
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return { cell, payload: null };
@@ -145,8 +169,10 @@ export function nearestFood(
   eater: Entity,
   gate?: SpatialGate,
 ): FoodTarget | null {
-  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here, eater, gate);
-  const bush = nearestRipeBush(world, ctx, terrain, here, gate);
+  // The eater's failed-goal memo, resolved once and shared by both halves.
+  const memo = unreachableGoals(world, ctx, eater);
+  const store = nearestFoodStore(targets.stockpileCells, world, ctx, terrain, here, eater, memo, gate);
+  const bush = nearestRipeBush(world, ctx, terrain, here, memo, gate);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
     return { kind: 'bush', bush: bush.bush };
   }

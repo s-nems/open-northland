@@ -18,6 +18,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
+import { noteUnreachableGoal } from '../../src/systems/agents/unreachable-goals.js';
 import {
   BABY_FEMALE,
   EAT_HUNGER_RESTORE,
@@ -29,6 +30,7 @@ import {
   mayMarry,
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -529,6 +531,26 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The ground pile holds 3 food and the larder caps at 5 — she hauls everything reachable home.
     runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 3, 2000, 'hoarding');
     expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this — the hoard rung did
+  });
+
+  it('a hoarding wife whose route to the nearest pile failed hauls from the second pile instead', () => {
+    const { sim, woman, home } = familySim(23);
+    sim.enqueue({ kind: 'dropGood', good: FOOD, x: 17, y: 2, amount: 2 }); // a second, farther pile
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    // Retire the near pile's cell as her failed goal BEFORE her first plan, the state a shed dead
+    // route leaves behind (an intermediate step would let her lift from it first).
+    const near = [...sim.world.query(Stockpile, Position)].find(
+      (e) => !sim.world.has(e, Building) && fx.toFloat(sim.world.get(e, Position).x) < 10,
+    );
+    if (near === undefined || sim.terrain === undefined) throw new Error('setup: near pile missing');
+    const p = sim.world.get(near, Position);
+    const n = nodeOfPosition(p.x, p.y);
+    noteUnreachableGoal(sim.world, ctxOf(sim), woman(), sim.terrain.nodeAtClamped(n.hx, n.hy));
+
+    // Her first haul lands from the far pile while the near one stays untouched — the memo read in
+    // the family food search, not just the economy picks (the fetch walks the pile's own cell).
+    runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 1, 2000, 'far haul');
+    expect(sim.world.get(near, Stockpile).amounts.get(FOOD)).toBe(3);
   });
 
   it('is deterministic — two same-seed full-loop runs reach the same final state hash', () => {

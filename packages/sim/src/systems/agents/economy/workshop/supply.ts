@@ -92,6 +92,8 @@ export function nearestMissingInputSource(
   recipe: Recipe,
   restockToCapacity = false,
   gate?: SpatialGate,
+  /** The worker's failed-goal veto ({@link unreachableGoalVeto}). */
+  avoid?: (cell: NodeId) => boolean,
 ): MissingInputSource | null {
   const stock = world.get(workplace, Stockpile).amounts;
   const walls = buildingBlockedCells(world, ctx, terrain);
@@ -120,6 +122,7 @@ export function nearestMissingInputSource(
         return null;
       },
       gate,
+      avoid,
     );
     if (winner === null) continue;
     return winner.payload === 'draw'
