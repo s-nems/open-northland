@@ -13,8 +13,11 @@ import { createModPanel } from './mod-panel.js';
 /** Pause after the last keystroke before probing the typed path — one probe per pause, not per key. */
 const PROBE_DEBOUNCE_MS = 300;
 
-/** What the current probe found, so the note can be re-worded on a language switch. */
-type ProbeState = 'idle' | 'no-archives' | 'valid';
+/** What the current probe found, kept so the note can be re-worded on a language switch. */
+type Probe =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'no-archives' }
+  | { readonly kind: 'valid'; readonly path: string; readonly hasMod: boolean };
 
 export interface PickPanelView {
   /** Adopt the shell's startup state: the installed content's status and any mod already available. */
@@ -43,11 +46,9 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   const installButton = el<HTMLButtonElement>('install');
   const playNowButton = el<HTMLButtonElement>('play-now');
 
-  let validPath: string | undefined;
-  let candidateHasMod = false;
+  let probe: Probe = { kind: 'idle' };
   /** A mod root outside the game folder (downloaded into the data root, or hand-picked). */
   let externalModRoot: string | undefined;
-  let probeState: ProbeState = 'idle';
   /** Remembered so a language switch can re-derive the phase without re-fetching the shell state. */
   let contentStatus: DesktopState['contentStatus'] = 'missing';
 
@@ -59,7 +60,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   /** The active locale's probe note for the current find. */
   function renderProbe(): void {
     const t = messages().setup;
-    switch (probeState) {
+    switch (probe.kind) {
       case 'idle':
         probeNote.textContent = '';
         return;
@@ -67,23 +68,26 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
         probeNote.textContent = t.probe.noArchives;
         return;
       case 'valid':
-        probeNote.textContent = candidateHasMod
+        probeNote.textContent = probe.hasMod
           ? t.probe.withMod
           : externalModRoot !== undefined
             ? formatMessage(t.probe.externalMod, { path: externalModRoot })
             : t.probe.noMod;
         return;
+      default: {
+        const exhaustive: never = probe;
+        throw new Error(`unhandled probe state ${JSON.stringify(exhaustive)}`);
+      }
     }
   }
 
   /** Re-word the probe note + install/mod-panel visibility for the current game/mod availability. */
   function refreshPick(): void {
-    if (validPath === undefined) {
+    if (probe.kind !== 'valid') {
       installButton.disabled = true;
       modPanel.setVisible(false);
     } else {
-      probeState = 'valid';
-      const modReady = candidateHasMod || externalModRoot !== undefined;
+      const modReady = probe.hasMod || externalModRoot !== undefined;
       modPanel.setVisible(!modReady);
       installButton.disabled = !modReady;
     }
@@ -93,13 +97,9 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   /** `fillInput` is off when the probe echoes what the user is typing — never fight the caret. */
   function applyCandidate(candidate: GameFolderCandidate, fillInput = true): void {
     if (fillInput) pathInput.value = candidate.path;
-    if (candidate.probe.hasArchives) {
-      validPath = candidate.path;
-      candidateHasMod = candidate.probe.hasMod;
-    } else {
-      validPath = undefined;
-      probeState = 'no-archives';
-    }
+    probe = candidate.probe.hasArchives
+      ? { kind: 'valid', path: candidate.path, hasMod: candidate.probe.hasMod }
+      : { kind: 'no-archives' };
     refreshPick();
   }
 
@@ -109,8 +109,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     const generation = ++probeGeneration;
     const typed = pathInput.value.trim();
     if (typed === '') {
-      validPath = undefined;
-      probeState = 'idle';
+      probe = { kind: 'idle' };
       refreshPick();
       return;
     }
@@ -160,7 +159,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
       probeTimer = window.setTimeout(() => void probeTyped(), PROBE_DEBOUNCE_MS);
     });
     installButton.addEventListener('click', () => {
-      if (validPath !== undefined) onInstall(validPath);
+      if (probe.kind === 'valid') onInstall(probe.path);
     });
     playNowButton.addEventListener('click', () => onPlay());
   }
