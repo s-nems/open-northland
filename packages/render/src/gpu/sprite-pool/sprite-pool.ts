@@ -84,6 +84,14 @@ export interface PoolFrame {
   readonly portraitRef?: number;
 }
 
+/** One camera framing of a {@link SpritePool.portraitPass} render: the camera plus the render target's
+ *  logical px size (the paletted meshes map screen px → clip space themselves). */
+export interface PortraitView {
+  readonly camera: Camera;
+  readonly width: number;
+  readonly height: number;
+}
+
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
   /** The pooled entities currently attached to {@link spriteLayer} (drawn this frame). The detach and
@@ -181,7 +189,7 @@ export class SpritePool {
       }
       pe.lastSeen = this.frameId;
       // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map. It stays
-      // reconciled/attached (so `anchorOf` + `placePalettedFor` still serve the portrait) — the portrait's
+      // reconciled/attached (so `anchorOf` + the portrait pass still serve it) — the portrait's
       // second render reveals it, then hides it again before the main stage render.
       if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
     }
@@ -241,14 +249,30 @@ export class SpritePool {
   }
 
   /**
-   * Re-place every currently-drawn paletted settler's meshes for an alternate camera + target size. The
-   * details-panel portrait renders the world re-aimed at one unit; plain sprites + terrain ride the re-aimed
-   * `worldLayer` transform, but the team-colour meshes self-place in screen space, so they must be re-placed
-   * for the inset camera before that render and restored to the main camera after. Mirrors the
-   * {@link LayerBinder}'s placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright
-   * into a bottom-up render texture (true for the inset, false to restore the on-screen render).
+   * Scope the details-panel portrait's second render — the pool's half of the inset borrow. Re-places
+   * the screen-space team-colour meshes for the inset camera (plain sprites + terrain ride the re-aimed
+   * `worldLayer` transform; the paletted meshes self-place, so they can't), reveals the force-hidden
+   * subject, solos an indoor one, runs `render`, then restores all of it even if the render throws — so
+   * a failed cutout can't leave a real unit hidden on the main map, its siblings blanked, or the meshes
+   * placed for the wrong camera. `render` receives the sprite layer to keep visible while blanking the
+   * rest of the world for an indoor solo, or null when the subject renders with the world around it.
    */
-  placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
+  portraitPass(inset: PortraitView, main: PortraitView, render: (soloKeep: Container | null) => void): void {
+    this.placePaletted(inset.camera, inset.width, inset.height);
+    this.portrait.show();
+    const soloKeep = this.portrait.beginSoloIfIndoor();
+    try {
+      render(soloKeep);
+    } finally {
+      this.portrait.endSolo();
+      this.portrait.hide();
+      this.placePaletted(main.camera, main.width, main.height);
+    }
+  }
+
+  /** Re-place every currently-drawn paletted settler's meshes for a camera + target size (in logical px).
+   *  Mirrors the {@link LayerBinder}'s placement exactly (same drawn anchor + art scale). */
+  private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
     const camScale = camera.scale ?? 1;
     for (const pe of this.attached) {
       if (!pe.paletted) continue;
@@ -257,39 +281,8 @@ export class SpritePool {
       for (const spr of pe.sprites) {
         if (!spr.visible) continue;
         spr.place(originX, originY, camScale * spr.artScale, resWidth, resHeight);
-        spr.flipY = flipY;
       }
     }
-  }
-
-  /** See {@link PortraitSubject.show}. */
-  showPortraitSubject(): void {
-    this.portrait.show();
-  }
-
-  /** See {@link PortraitSubject.hide}. */
-  hidePortraitSubject(): void {
-    this.portrait.hide();
-  }
-
-  /** See {@link PortraitSubject.container}. */
-  portraitSubjectContainer(): Container | null {
-    return this.portrait.container();
-  }
-
-  /** See {@link PortraitSubject.isIndoor}. */
-  portraitSubjectIsIndoor(): boolean {
-    return this.portrait.isIndoor();
-  }
-
-  /** See {@link PortraitSubject.beginSolo}. */
-  beginPortraitSolo(): void {
-    this.portrait.beginSolo();
-  }
-
-  /** See {@link PortraitSubject.endSolo}. */
-  endPortraitSolo(): void {
-    this.portrait.endSolo();
   }
 
   /**

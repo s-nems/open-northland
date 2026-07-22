@@ -19,4 +19,4 @@ export { type PlaceholderBounds, placeholderBounds } from './placeholder.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
 export { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
-export { type PoolFrame, SCREEN_PAINT_EPS, SpritePool } from './sprite-pool.js';
+export { type PoolFrame, type PortraitView, SCREEN_PAINT_EPS, SpritePool } from './sprite-pool.js';

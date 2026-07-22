@@ -5,8 +5,9 @@ import type { PooledEntity } from './pooled-entity.js';
 /**
  * The sprite pool's half of the details-panel portrait protocol — the bookkeeping that exists solely for
  * {@link import('../overlays/portrait-inset.js').PortraitInsetLayer}'s second, re-aimed render of the
- * world: which pooled entity is force-hidden on the main map this frame, whether it is indoors, and the
- * solo pass that blanks its sprite-layer siblings for that render.
+ * world: which pooled entity is force-hidden on the main map this frame, and the solo pass that blanks
+ * an indoor subject's sprite-layer siblings for that render. `SpritePool.portraitPass` scopes the
+ * show/solo borrows so their restores cannot be skipped.
  */
 
 export class PortraitSubject {
@@ -19,11 +20,11 @@ export class PortraitSubject {
    *  the building. */
   private indoor = false;
   /** Sprite-layer children hidden during an indoor portrait's solo render, with their prior visibility so
-   *  {@link endSolo} restores exactly what {@link beginSolo} changed. Retained across frames — this is the
-   *  per-frame path. */
+   *  {@link endSolo} restores exactly what {@link beginSoloIfIndoor} changed. Retained across frames —
+   *  this is the per-frame path. */
   private readonly solo: StashedVisibility[] = [];
 
-  /** @param spriteLayer the pool's shared, depth-sorted entity layer — the children {@link beginSolo} blanks. */
+  /** @param spriteLayer the pool's shared, depth-sorted entity layer — the children the solo pass blanks. */
   constructor(private readonly spriteLayer: Container) {}
 
   /** Drop last frame's force-hidden subject (un-hiding it) before the pool re-decides this frame's — the
@@ -44,10 +45,9 @@ export class PortraitSubject {
     this.indoor = indoor;
   }
 
-  /** Reveal the portrait subject that is force-hidden on the main map (if any), so the portrait's second
-   *  render of the world can draw its cutout. Paired with {@link hide}, which the caller runs right after
-   *  that render so the subject stays hidden on the main stage. No-op when the subject is drawn normally
-   *  or no portrait is open. */
+  /** Reveal the force-hidden portrait subject (if any) so the portrait's second render of the world can
+   *  draw its cutout; {@link hide} re-hides it for the main stage. No-op when the subject is drawn
+   *  normally or no portrait is open. */
   show(): void {
     if (this.hidden !== null) this.hidden.container.visible = true;
   }
@@ -57,31 +57,18 @@ export class PortraitSubject {
     if (this.hidden !== null) this.hidden.container.visible = false;
   }
 
-  /** The pooled container of the force-hidden portrait subject (if any) — the portrait reads it to keep
-   *  its parent sprite layer visible while blanking the rest of the world for an indoor solo render. */
-  container(): Container | null {
-    return this.hidden?.container ?? null;
-  }
-
-  /** Whether the force-hidden portrait subject is inside a building, so its cutout should drop the world
-   *  backdrop (a frozen settler standing on its own, not on top of the building). */
-  isIndoor(): boolean {
-    return this.indoor;
-  }
-
-  /** Hide every sprite-layer child except the portrait subject, so its second render draws the subject
-   *  alone (no other units, no map objects behind it). {@link endSolo} restores them. Paired only with an
-   *  indoor portrait render; the world's other layers (terrain, fog…) are blanked by the caller. */
-  beginSolo(): void {
+  /** Begin an indoor subject's solo render: hide its sprite-layer siblings and return the sprite layer —
+   *  the one world layer the portrait keeps visible while blanking the rest (terrain, fog…), so the
+   *  subject draws alone over the panel's backdrop. Null when the subject renders with the world around
+   *  it (not indoor, or no force-hidden subject). {@link endSolo} restores the siblings. */
+  beginSoloIfIndoor(): Container | null {
     const subject = this.hidden?.container;
-    if (subject === undefined) {
-      this.solo.length = 0; // start clean, so a skipped endSolo can't corrupt the restore
-      return;
-    }
+    if (!this.indoor || subject === undefined) return null;
     stashHidden(this.spriteLayer.children, subject, this.solo);
+    return this.spriteLayer;
   }
 
-  /** Restore the sprite-layer children {@link beginSolo} hid for the indoor portrait render. */
+  /** Restore the sprite-layer children {@link beginSoloIfIndoor} hid; a no-op when it declined. */
   endSolo(): void {
     restoreStash(this.solo);
     this.solo.length = 0;
