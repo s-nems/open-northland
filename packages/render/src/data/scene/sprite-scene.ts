@@ -22,6 +22,7 @@ import {
   readSpriteState,
   readStockpile,
   readStoreExchangeRef,
+  readUpgradePct,
 } from './snapshot-readers/index.js';
 
 /**
@@ -210,6 +211,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // draws its house bob by) and, while under construction, its progress percent (the stage binding
       // picks the visible layers: grey foundation → stages → body).
       assignStaticFields(item, 'building', components);
+      // An upgrading building keeps its old-tier body while the next tier reveals over it. Live-only, like
+      // `working` below: a fog ghost shows the frozen old tier, not a partial upgrade.
+      const upgradePct = readUpgradePct(components);
+      if (upgradePct !== undefined) item.upgradePct = upgradePct;
       // Mid production cycle: the switch a type's animated state overlay flips on (the mill's rotor).
       // Live-only, since a fog ghost never animates.
       if (readProducing(components)) item.working = true;

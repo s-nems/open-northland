@@ -199,24 +199,40 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
   return readNumField(components, 'BerryBush', 'gfxIndex');
 }
 
-/** The static per-kind draw fields a building / resource / stump carries — the subset shared by
- *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog/index.js').FogGhost}. */
+/** The static per-kind draw fields a building / resource / stump carries: the exact subset shared by
+ *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog/index.js').FogGhost}. Each kind's
+ *  live-only extras (a building's `working`/`upgradePct`/`hpFrac`, a resource's `levels`) are added by the
+ *  scene builder outside this set, so a fog ghost carries none of them. */
 export interface StaticDrawFields {
   typeId?: number;
   builtPct?: number;
-  upgradePct?: number;
   goodType?: number;
   level?: number;
   gfxIndex?: number;
 }
 
+const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'gfxIndex'] as const;
+// The one list {@link copyStaticFields} walks, so a field added to StaticDrawFields can't be dropped by a
+// hand copy: a key missing from the tuple above makes _UncopiedKey non-never and fails to compile here.
+type _UncopiedKey = Exclude<keyof StaticDrawFields, (typeof STATIC_DRAW_KEYS)[number]>;
+const _allKeysListed: [_UncopiedKey] extends [never] ? true : _UncopiedKey = true;
+void _allKeysListed;
+
+/** Copy the present {@link StaticDrawFields} of `source` onto `target` in place, leaving absent facts
+ *  absent (exactOptionalPropertyTypes) so a fog ghost re-emits exactly the fields it captured. */
+export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFields): void {
+  for (const key of STATIC_DRAW_KEYS) {
+    const value = source[key];
+    if (value !== undefined) target[key] = value;
+  }
+}
+
 /**
- * Assign the static per-kind draw fields read off a building / resource / stump entity onto `target`, in
- * place (no intermediate object, so the per-frame scene build allocates nothing) and omitting absent facts.
- * The single place the "which components a static reads for its draw" decision lives, so the live scene
- * build and the fog-ghost capture can't drift on it. Excludes two fields each caller owns: a building's
- * `working` (live-only — a ghost never animates) and a resource's `levels` denominator (the live build adds
- * it alongside `level`; ghosts do not carry it today).
+ * Assign the shared {@link StaticDrawFields} read off a building / resource / stump entity onto `target`,
+ * in place (no intermediate object, so the per-frame scene build allocates nothing) and omitting absent
+ * facts. The single place the "which components a static reads for its draw" decision lives, so the live
+ * scene build and the fog-ghost capture can't drift on it. Each kind's live-only extras stay with their
+ * caller (see {@link StaticDrawFields}).
  */
 export function assignStaticFields(
   target: StaticDrawFields,
@@ -229,8 +245,6 @@ export function assignStaticFields(
       if (typeId !== undefined) target.typeId = typeId;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
-      const upgradePct = readUpgradePct(components);
-      if (upgradePct !== undefined) target.upgradePct = upgradePct;
       return;
     }
     case 'resource': {

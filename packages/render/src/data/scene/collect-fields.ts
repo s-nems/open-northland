@@ -4,6 +4,7 @@ import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { type DrawKind, type MutableDrawItem, paintOrderBias } from './draw-item.js';
 import { projectileArc } from './projectile-arc.js';
 import {
+  copyStaticFields,
   readAtomicElapsed,
   readCarrying,
   readEngaged,
@@ -129,7 +130,7 @@ export function pushGhostItems(
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    // Statics are always `idle`; the per-kind fields were frozen at capture.
+    // Statics are always `idle`; the shared StaticDrawFields were frozen at capture.
     const item: MutableDrawItem = {
       kind: g.kind,
       ref: g.ref,
@@ -139,11 +140,7 @@ export function pushGhostItems(
       state: 'idle',
       ghost: true,
     };
-    if (g.typeId !== undefined) item.typeId = g.typeId;
-    if (g.builtPct !== undefined) item.builtPct = g.builtPct;
-    if (g.goodType !== undefined) item.goodType = g.goodType;
-    if (g.level !== undefined) item.level = g.level;
-    if (g.gfxIndex !== undefined) item.gfxIndex = g.gfxIndex;
+    copyStaticFields(item, g);
     if (lift !== 0) item.lift = lift;
     items.push(item);
   }

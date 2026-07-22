@@ -1,7 +1,12 @@
 import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../projection/index.js';
 import type { DrawKind } from '../scene/draw-item.js';
-import { assignStaticFields, classify, readPosition } from '../scene/snapshot-readers/index.js';
+import {
+  assignStaticFields,
+  classify,
+  readPosition,
+  type StaticDrawFields,
+} from '../scene/snapshot-readers/index.js';
 import { fogCellOfTile } from './mask.js';
 
 /**
@@ -30,19 +35,14 @@ import { fogCellOfTile } from './mask.js';
 /** The DrawItem kinds that ghost — statics whose last-seen state stays meaningful under fog. */
 type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump'>;
 
-/** One remembered static: the entity's identity + the per-kind reads its draw needs, frozen at the
- *  last visible sighting. Tile coords are floats (fixed → tile, render-only). */
-export interface FogGhost {
+/** One remembered static: the entity's identity plus the shared {@link StaticDrawFields} its draw needs,
+ *  frozen at the last visible sighting. Tile coords are floats (fixed → tile, render-only). */
+export type FogGhost = Readonly<StaticDrawFields> & {
   readonly ref: number;
   readonly kind: FogGhostKind;
   readonly tileX: number;
   readonly tileY: number;
-  readonly typeId?: number;
-  readonly builtPct?: number;
-  readonly goodType?: number;
-  readonly level?: number;
-  readonly gfxIndex?: number;
-}
+};
 
 /** Whether a classified snapshot entity is a ghosting static. */
 function isGhostKind(kind: DrawKind | null): kind is FogGhostKind {
@@ -60,9 +60,8 @@ function capture(
   const ghost: {
     -readonly [K in keyof FogGhost]: FogGhost[K];
   } = { ref: id, kind, tileX: pos.x / ONE, tileY: pos.y / ONE };
-  // The common static fields (typeId/builtPct/goodType/level/gfxIndex) — shared with the live scene build
-  // so the ghost and its live twin can't drift. A ghost is always idle and carries no `levels`, so no
-  // `working`/`levels` here (see assignStaticFields).
+  // Fill the shared StaticDrawFields the same way the live scene build does; a ghost carries none of the
+  // live-only extras (see assignStaticFields).
   assignStaticFields(ghost, kind, components);
   return ghost;
 }
