@@ -125,5 +125,6 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
       b.step();
     }
     expect(a.hashState()).toBe(b.hashState());
-  });
+    // Past the 5 s default: two full {@link FARM_TICKS} runs stepped in lockstep.
+  }, 60_000);
 });
