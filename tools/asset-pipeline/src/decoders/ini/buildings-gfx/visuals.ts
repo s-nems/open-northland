@@ -13,7 +13,7 @@ import {
   type RuleSection,
   type SourceRef,
 } from '../grammar.js';
-import { readGfxHouseGraphicsRecord, splitGfxHouseRecords } from './shared.js';
+import { forEachGfxHouseRecord } from './shared.js';
 
 /**
  * Extracts the `[GfxHouse]` construction-stage layers (`GfxBobConstructionLayer <sizeIdx>
@@ -29,56 +29,51 @@ export function extractConstructionLayers(
   src: SourceRef,
 ): BuildingConstructionLayer[] {
   const layers: BuildingConstructionLayer[] = [];
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const record = readGfxHouseGraphicsRecord(rec);
-      if (record === undefined) continue;
-      const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
-      // File order per level — the stacking order at draw time (the finished body is listed so the
-      // active-layer stack keeps it on top at high progress).
-      const stackByLevel = new Map<number, number>();
-      for (const p of findProps(rec, 'GfxBobConstructionLayer')) {
-        const [level, upgrade, bobId, shadowBobId, fromPct, toPct] = p.values.map((v) =>
-          Number.parseInt(v, 10),
+  forEachGfxHouseRecord(sections, (rec, record) => {
+    const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+    // File order per level — the stacking order at draw time (the finished body is listed so the
+    // active-layer stack keeps it on top at high progress).
+    const stackByLevel = new Map<number, number>();
+    for (const p of findProps(rec, 'GfxBobConstructionLayer')) {
+      const [level, upgrade, bobId, shadowBobId, fromPct, toPct] = p.values.map((v) =>
+        Number.parseInt(v, 10),
+      );
+      if (
+        level === undefined ||
+        upgrade === undefined ||
+        bobId === undefined ||
+        shadowBobId === undefined ||
+        fromPct === undefined ||
+        toPct === undefined ||
+        [level, upgrade, bobId, shadowBobId, fromPct, toPct].some((n) => Number.isNaN(n))
+      ) {
+        continue;
+      }
+      const typeId = typeByLevel.get(level);
+      if (typeId === undefined) continue;
+      const stackIdx = stackByLevel.get(level) ?? 0;
+      stackByLevel.set(level, stackIdx + 1);
+      for (const paletteName of palettes) {
+        layers.push(
+          BuildingConstructionLayer.parse({
+            tribeId,
+            typeId,
+            level,
+            upgrade: upgrade !== 0,
+            stackIdx,
+            bmd: normalizedBmd,
+            paletteName: normalizePaletteName(paletteName),
+            bobId,
+            shadowBobId: shadowBobId >= 0 ? shadowBobId : undefined,
+            fromPct: Math.max(0, Math.min(100, fromPct)),
+            toPct: Math.max(0, Math.min(100, toPct)),
+            editName,
+            source: makeSource(src, 'GfxHouse'),
+          }),
         );
-        if (
-          level === undefined ||
-          upgrade === undefined ||
-          bobId === undefined ||
-          shadowBobId === undefined ||
-          fromPct === undefined ||
-          toPct === undefined ||
-          [level, upgrade, bobId, shadowBobId, fromPct, toPct].some((n) => Number.isNaN(n))
-        ) {
-          continue;
-        }
-        const typeId = typeByLevel.get(level);
-        if (typeId === undefined) continue;
-        const stackIdx = stackByLevel.get(level) ?? 0;
-        stackByLevel.set(level, stackIdx + 1);
-        for (const paletteName of palettes) {
-          layers.push(
-            BuildingConstructionLayer.parse({
-              tribeId,
-              typeId,
-              level,
-              upgrade: upgrade !== 0,
-              stackIdx,
-              bmd: normalizedBmd,
-              paletteName: normalizePaletteName(paletteName),
-              bobId,
-              shadowBobId: shadowBobId >= 0 ? shadowBobId : undefined,
-              fromPct: Math.max(0, Math.min(100, fromPct)),
-              toPct: Math.max(0, Math.min(100, toPct)),
-              editName,
-              source: makeSource(src, 'GfxHouse'),
-            }),
-          );
-        }
       }
     }
-  }
+  });
   return layers;
 }
 
@@ -99,51 +94,46 @@ const OVERLAY_HEADER_FIELDS = 6;
  */
 export function extractBuildingOverlays(sections: readonly RuleSection[], src: SourceRef): BuildingOverlay[] {
   const overlays: BuildingOverlay[] = [];
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const record = readGfxHouseGraphicsRecord(rec);
-      if (record === undefined) continue;
-      const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
-      for (const p of findProps(rec, 'GfxOverlay')) {
-        const ints = p.values.map((v) => Number.parseInt(v, 10));
-        const [level, overlayType, state, x, y, step] = ints;
-        if (
-          level === undefined ||
-          overlayType !== ANIMATED_OVERLAY_TYPE ||
-          state === undefined ||
-          x === undefined ||
-          y === undefined ||
-          step === undefined ||
-          ints.slice(0, OVERLAY_HEADER_FIELDS).some((n) => Number.isNaN(n))
-        ) {
-          continue;
-        }
-        const frames = ints.slice(OVERLAY_HEADER_FIELDS);
-        if (frames.length === 0 || frames.some((n) => Number.isNaN(n) || n < 0)) continue;
-        const typeId = typeByLevel.get(level);
-        if (typeId === undefined) continue;
-        for (const paletteName of palettes) {
-          overlays.push(
-            BuildingOverlay.parse({
-              tribeId,
-              typeId,
-              level,
-              state,
-              x,
-              y,
-              step,
-              frames,
-              bmd: normalizedBmd,
-              paletteName: normalizePaletteName(paletteName),
-              editName,
-              source: makeSource(src, 'GfxHouse'),
-            }),
-          );
-        }
+  forEachGfxHouseRecord(sections, (rec, record) => {
+    const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+    for (const p of findProps(rec, 'GfxOverlay')) {
+      const ints = p.values.map((v) => Number.parseInt(v, 10));
+      const [level, overlayType, state, x, y, step] = ints;
+      if (
+        level === undefined ||
+        overlayType !== ANIMATED_OVERLAY_TYPE ||
+        state === undefined ||
+        x === undefined ||
+        y === undefined ||
+        step === undefined ||
+        ints.slice(0, OVERLAY_HEADER_FIELDS).some((n) => Number.isNaN(n))
+      ) {
+        continue;
+      }
+      const frames = ints.slice(OVERLAY_HEADER_FIELDS);
+      if (frames.length === 0 || frames.some((n) => Number.isNaN(n) || n < 0)) continue;
+      const typeId = typeByLevel.get(level);
+      if (typeId === undefined) continue;
+      for (const paletteName of palettes) {
+        overlays.push(
+          BuildingOverlay.parse({
+            tribeId,
+            typeId,
+            level,
+            state,
+            x,
+            y,
+            step,
+            frames,
+            bmd: normalizedBmd,
+            paletteName: normalizePaletteName(paletteName),
+            editName,
+            source: makeSource(src, 'GfxHouse'),
+          }),
+        );
       }
     }
-  }
+  });
   return overlays;
 }
 
@@ -220,45 +210,40 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
   // Drop only byte-identical rows (a literally-duplicated source record); genuine level/variant rows
   // (differing level, bobId, or editName) are all kept — the join is multi-valued by design.
   const seen = new Set<string>();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const record = readGfxHouseGraphicsRecord(rec);
-      if (record === undefined) continue;
-      const { tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
-      // Pair the two per-level tables by their leading level index. A typeId may recur at several
-      // levels; each level keeps its own bob.
-      const bobByLevel = new Map<number, number>();
-      for (const p of findProps(rec, 'GfxBobId')) {
-        const level = Number.parseInt(p.values[0] ?? '', 10);
-        const bobId = Number.parseInt(p.values[1] ?? '', 10);
-        if (Number.isNaN(level) || Number.isNaN(bobId)) continue;
-        bobByLevel.set(level, bobId);
-      }
-      for (const [level, typeId] of typeByLevel) {
-        const bobId = bobByLevel.get(level);
-        if (bobId === undefined) continue;
-        for (const paletteName of palettes) {
-          const pal = normalizePaletteName(paletteName);
-          const key = `${tribeId}|${typeId}|${level}|${normalizedBmd}|${pal}|${bobId}|${editName ?? ''}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          bobs.push(
-            BuildingBob.parse({
-              tribeId,
-              typeId,
-              level,
-              bmd: normalizedBmd,
-              shadowBmd: normalizedShadowBmd,
-              paletteName: pal,
-              bobId,
-              editName,
-              source: makeSource(src, 'GfxHouse'),
-            }),
-          );
-        }
+  forEachGfxHouseRecord(sections, (rec, record) => {
+    const { tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
+    // Pair the two per-level tables by their leading level index. A typeId may recur at several
+    // levels; each level keeps its own bob.
+    const bobByLevel = new Map<number, number>();
+    for (const p of findProps(rec, 'GfxBobId')) {
+      const level = Number.parseInt(p.values[0] ?? '', 10);
+      const bobId = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(level) || Number.isNaN(bobId)) continue;
+      bobByLevel.set(level, bobId);
+    }
+    for (const [level, typeId] of typeByLevel) {
+      const bobId = bobByLevel.get(level);
+      if (bobId === undefined) continue;
+      for (const paletteName of palettes) {
+        const pal = normalizePaletteName(paletteName);
+        const key = `${tribeId}|${typeId}|${level}|${normalizedBmd}|${pal}|${bobId}|${editName ?? ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        bobs.push(
+          BuildingBob.parse({
+            tribeId,
+            typeId,
+            level,
+            bmd: normalizedBmd,
+            shadowBmd: normalizedShadowBmd,
+            paletteName: pal,
+            bobId,
+            editName,
+            source: makeSource(src, 'GfxHouse'),
+          }),
+        );
       }
     }
-  }
+  });
   return bobs;
 }
