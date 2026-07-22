@@ -359,4 +359,40 @@ describe('extractBuildingGraphics', () => {
     );
     expect(extractBuildingGraphics(noBob)).toEqual([]);
   });
+
+  it('splits a lumped [GfxHouse] bracket so every sub-house binds its own (bmd, palette)', () => {
+    // The real saracen/egypt lumping: the second house is introduced by an annotated
+    // `[GfxHouse] - <name>` line (not a valid `[...]` header) plus a fresh EditName. Its distinct
+    // bmd+palette must emit; an unsplit read binds only the bracket's first pair.
+    const lumped = parseIniSections(
+      [
+        '[GfxHouse]',
+        'EditName "saracen residence 06"',
+        'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_saracen.bmd"',
+        'GfxPalette "caves"',
+        '[GfxHouse] - Dom 1',
+        'EditName "saracen tent 01"',
+        'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_beduines.bmd"',
+        'GfxPalette "rock03"',
+      ].join('\n'),
+    );
+    expect(extractBuildingGraphics(lumped)).toEqual([
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_houses_saracen.bmd',
+        shadowBmd: undefined,
+        paletteName: 'caves',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'saracen residence 06',
+      },
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_houses_beduines.bmd',
+        shadowBmd: undefined,
+        paletteName: 'rock03',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'saracen tent 01',
+      },
+    ]);
+  });
 });
