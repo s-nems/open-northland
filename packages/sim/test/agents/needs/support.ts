@@ -1,6 +1,6 @@
 import { Position, Resource } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, type Fixed, fx, type Simulation } from '../../../src/index.js';
+import { cellAnchorNode, type Fixed, fx, type NodeId, type Simulation } from '../../../src/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
@@ -27,7 +27,7 @@ export interface NeedLevels {
 }
 
 /** The terrain node at a visual cell anchor, when the simulation has a map. */
-export function cellOf(sim: Simulation, x: number, y: number): number | undefined {
+export function cellOf(sim: Simulation, x: number, y: number): NodeId | undefined {
   const node = cellAnchorNode(x, y);
   return sim.terrain?.nodeAt(node.hx, node.hy);
 }

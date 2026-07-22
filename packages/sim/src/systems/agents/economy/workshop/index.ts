@@ -8,6 +8,7 @@ import { loiterCell } from '../../destack.js';
 import type { PlannerContext } from '../../planner-context.js';
 import type { PlannerSpacing } from '../../planner-spacing.js';
 import { interactionCell } from '../../targets/index.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from '../routing.js';
 import {
   type MissingInputSource,
@@ -67,6 +68,7 @@ export function planProducer(
     recipe,
     false,
     plan.limit ?? undefined,
+    unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
     routeToInputSource(plan, source, false);
@@ -105,6 +107,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     recipe,
     restockToCapacity,
     plan.limit ?? undefined,
+    unreachableGoalVeto(world, ctx, plan.entity),
   );
   if (source !== null) {
     routeToInputSource(plan, source, true);

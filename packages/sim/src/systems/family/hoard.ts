@@ -3,6 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { startDrop } from '../agents/actions.js';
+import { unreachableGoalVeto } from '../agents/unreachable-goals.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { isFood } from '../readviews/index.js';
@@ -61,7 +62,7 @@ export function planWomanHoard(
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
-  const source = externalFood.nearest(hereNode, limit);
+  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, e));
   if (source === null) return false; // nothing to hoard — fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;

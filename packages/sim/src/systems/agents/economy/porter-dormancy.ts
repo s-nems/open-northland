@@ -13,6 +13,7 @@ import {
   SupplyRun,
   signpostNavigationEnabled,
   UnderConstruction,
+  UnreachableGoals,
   WorkFlag,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -24,6 +25,7 @@ import { GossipCandidates } from '../../social/index.js';
 import { collectInboundSupply } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { collectTargets } from '../targets/index.js';
+import { unreachableGoals } from '../unreachable-goals.js';
 import { porterPickupTarget } from './haul-targets.js';
 
 /**
@@ -54,8 +56,9 @@ interface PorterDormancy {
   readonly entries: Map<Entity, DormantEntry>;
   /** The latest planner deps, refreshed on every mark, read only by the coherence verifier. `ctx` is
    *  rebuilt each tick, so the stored one may be stale by the time the verifier runs — safe only
-   *  because the pickup-scan path consults `ctx`'s stable content/terrain reads and never `ctx.tick`
-   *  or the RNG (a future such read would silently verify a different question). */
+   *  because the verifier skips memo-holding porters (their scans read `ctx.tick` for the memo's
+   *  expiry) and the remaining pickup-scan path consults `ctx`'s stable content/terrain reads, never
+   *  `ctx.tick` or the RNG (a future such read would silently verify a different question). */
   ctx: SystemContext;
   terrain: TerrainGraph;
 }
@@ -121,6 +124,11 @@ export function porterDormant(plan: PlannerContext): boolean {
 
 /** Record a failed porter scan so the identical re-scan is skipped until an input changes. */
 export function markPorterDormant(plan: PlannerContext): void {
+  // No entry while the porter remembers failed goals: the memo expires by tick with no tracked write,
+  // so a null scan under a live memo is not provably null after expiry — the porter re-scans (bounded
+  // by active failures) until the memo empties, then dorms as usual. A stored no-memo entry stays
+  // sound through later memo episodes, since the veto only removes candidates (null stays null).
+  if (unreachableGoals(plan.world, plan.ctx, plan.entity) !== null) return;
   let record = dormancyByWorld.get(plan.world);
   if (record === undefined) {
     record = { entries: new Map(), ctx: plan.ctx, terrain: plan.terrain };
@@ -157,6 +165,11 @@ function verifyDormancy(world: World): string[] {
       record.entries.delete(entity);
       continue;
     }
+    // A porter that currently remembers failed goals is skipped, not verified: its scan reads the
+    // memo's tick expiry, which the stored stale ctx cannot evaluate. Sound to skip — entries are
+    // banked only memo-free (the markPorterDormant guard), and a memo acquired since only removes
+    // candidates, so the banked null claim still holds.
+    if (world.has(entity, UnreachableGoals)) continue;
     const hereNode = nodeOfPosition(p.x, p.y);
     if (shared === null) {
       shared = { targets: collectTargets(world, ctx, terrain), inbound: collectInboundSupply(world) };

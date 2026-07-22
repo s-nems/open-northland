@@ -29,7 +29,9 @@ import {
   type InteractionCellIndex,
   nearestStoreFor,
   QUALIFIES,
+  unreachableSiteStand,
 } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
@@ -51,14 +53,19 @@ import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy
  *     hauler.
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
-  const { world, ctx, here, entity: settler, jobType, tribe, owner, targets, inbound } = plan;
+  const { world, ctx, terrain, here, entity: settler, jobType, tribe, owner, targets, inbound } = plan;
   const stores = targets.stockpileCells;
   const sites = targets.constructionSiteCells;
   // The carrier's signpost confinement gates every SEARCHED sink (cases 3/4/5) — an out-of-area store is
   // not one it knows the way to; a load with no in-area sink falls to planDelivery's no-sink branches
   // (drop at feet / rest at the workplace). The BOUND targets (cases 1–3b: the own workshop, flag, or
-  // storage binding) stay ungated — a settler always knows the way home.
+  // storage binding) stay ungated — a settler always knows the way home. The failed-goal veto follows
+  // the same searched-vs-bound split (see unreachable-goals.ts).
   const gate = plan.limit ?? undefined;
+  const avoid = unreachableGoalVeto(world, ctx, settler);
+  // The site sink is vetoed at its perimeter stand — the cell a site delivery actually walks, resolved
+  // with the same overlay planDelivery uses, so the veto key equals the failed route's goal.
+  const avoidSite = unreachableSiteStand(world, ctx, terrain, targets.yard.blocked, here, avoid);
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
@@ -90,7 +97,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate);
+    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate, avoid);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -110,7 +117,18 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType, inbound, gate);
+  const site = nearestConstructionSiteNeeding(
+    sites,
+    world,
+    ctx,
+    here,
+    tribe,
+    owner,
+    goodType,
+    inbound,
+    gate,
+    avoidSite,
+  );
   if (site !== null) return site;
   // 4b. A carrier bound to an input-less UTILITY (the well, the hive) hauling that utility's own output
   //     feeds a nearby recipe CONSUMER of the good — the bakery's water, the brewery's honey — before
@@ -118,11 +136,11 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //     only the surplus later (user rule 2026-07-19). Falls through to the storage default when no
   //     consumer has room. Gated to the utility carrier: an ordinary hauler keeps the plain store default.
   if (home !== undefined && producesGoodWithoutInputs(world, ctx, home, goodType)) {
-    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate);
+    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate, avoid);
     if (consumer !== null) return consumer;
   }
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
-  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate);
+  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, avoid);
 }
 
 /**
@@ -139,6 +157,7 @@ function nearestRecipeConsumer(
   here: NodeId,
   goodType: number,
   gate?: SpatialGate,
+  avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   return (
     index.nearest(
@@ -150,6 +169,7 @@ function nearestRecipeConsumer(
         return hasRoom(world, ctx, e, goodType) ? QUALIFIES : null;
       },
       gate,
+      avoid,
     )?.entity ?? null
   );
 }
@@ -206,11 +226,15 @@ function nearestConstructionSiteNeeding(
   goodType: number,
   inbound: InboundSupplyTally,
   gate?: SpatialGate,
+  avoidSite?: (site: Entity) => boolean,
 ): Entity | null {
   return (
     index.nearest(
       here,
-      (e) => (constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) ? QUALIFIES : null),
+      (e) =>
+        constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) && avoidSite?.(e) !== true
+          ? QUALIFIES
+          : null,
       gate,
     )?.entity ?? null
   );

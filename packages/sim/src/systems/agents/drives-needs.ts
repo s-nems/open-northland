@@ -18,6 +18,7 @@ import type { PlannerSpacing } from './planner-spacing.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
+import { unreachableGoalVeto } from './unreachable-goals.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
@@ -176,7 +177,14 @@ export function planNeeds(
   }
 
   if (settler.piety >= PIETY_PRAY_THRESHOLD) {
-    const temple = nearestTemple(targets.buildingCells, world, ctx, here, gate);
+    const temple = nearestTemple(
+      targets.buildingCells,
+      world,
+      ctx,
+      here,
+      gate,
+      unreachableGoalVeto(world, ctx, e),
+    );
     if (temple !== null) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>
         startAtomic(

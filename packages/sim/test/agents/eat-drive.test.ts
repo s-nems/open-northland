@@ -5,13 +5,16 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  PathFollow,
+  PathRequest,
   Position,
   Resource,
   Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { type Fixed, fx, halfCellMapFromCells, type NodeId, ONE, Simulation } from '../../src/index.js';
+import { noteUnreachableGoal } from '../../src/systems/agents/unreachable-goals.js';
 import {
   aiSystem,
   atomicSystem,
@@ -219,6 +222,85 @@ describe('eat drive — closing the rise→eat→relief loop through the real sc
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('eat drive — unreachable larders (the componentOf gate + the failed-goal memo)', () => {
+  // The fixture landscape table: grass walks, water does not (`fixtures/content/economy.ts`).
+  const GRASS_GROUND = 0;
+  const WATER_GROUND = 1;
+
+  /** The terrain node at cell (x, y), for stamping route state — throws when the sim has no map. */
+  function nodeAtCell(sim: Simulation, x: number, y: number): NodeId {
+    const node = cellOf(sim, x, y);
+    if (node === undefined) throw new Error('simulation has no terrain');
+    return node;
+  }
+
+  /** The store the settler's running eat atomic consumes from, or null while it is not eating. */
+  function eatingFrom(sim: Simulation, settler: Entity): Entity | null {
+    const atomic = sim.world.tryGet(settler, CurrentAtomic);
+    return atomic?.effect.kind === 'eat' ? atomic.effect.from : null;
+  }
+
+  /** Drive the sim until `done`, or fail loudly — a silent timeout would read as a passing assertion. */
+  function stepUntil(sim: Simulation, limit: number, done: () => boolean): void {
+    for (let i = 0; i < limit && !done(); i++) sim.step();
+    if (!done()) throw new Error(`condition not reached within ${limit} ticks`);
+  }
+
+  it('never targets a food store across uncrossable water — the componentOf gate its bush sibling has', () => {
+    // An 8-cell strip with a full-height water column at x=2: cells 0–1 are the far bank.
+    const typeIds = new Array<number>(8).fill(GRASS_GROUND);
+    typeIds[2] = WATER_GROUND;
+    const map = halfCellMapFromCells({ width: 8, height: 1, typeIds });
+    const sim = new Simulation({ seed: 1, content: testContent(), map });
+    const settler = settlerAt(sim, 3, 0, HUNGRY);
+    storeAt(sim, 1, 0, 5); // nearer, but on the far bank — unreachable for good
+    storeAt(sim, 6, 0, 5); // farther, on the settler's own bank
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Straight to the reachable larder: the cross-water one never wins the pick, so the settler
+    // never parks on a doomed route while its hunger keeps climbing.
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 6, 0));
+  });
+
+  it('after a failed walk to the nearest larder, eats from the second store instead of starving beside it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(9, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+    const near = storeAt(sim, 2, 0, 5);
+    const far = storeAt(sim, 6, 0, 5);
+
+    // Let the eat drive make its own nearest-first pick, then fail exactly that route — the state
+    // routing leaves behind when the larder's door turns out to be walled off by standing bodies:
+    // a failed request and no path to follow (an already-resolved walk would carry the settler to
+    // the door, where eating in place is right).
+    stepUntil(sim, 20, () => sim.world.has(settler, MoveGoal));
+    const doomed = sim.world.get(settler, MoveGoal).cell;
+    expect(doomed).toBe(cellOf(sim, 2, 0)); // sanity: the nearer larder won the first pick
+    sim.world.remove(settler, PathFollow);
+    sim.world.add(settler, PathRequest, { start: doomed, goal: doomed, failed: true });
+
+    // Park, shed, re-plan: the memo retires the failed door, so the re-pick reaches the second store.
+    stepUntil(sim, 600, () => eatingFrom(sim, settler) !== null);
+    expect(eatingFrom(sim, settler)).toBe(far);
+    expect(sim.world.get(near, Stockpile).amounts.get(FOOD)).toBe(5); // the doomed larder untouched
+  });
+
+  it('skips a memo-vetoed larder on the ring path too (a town-sized store index)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(80, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+    storeAt(sim, 2, 0, 5); // nearest, but its door is on the settler's failed-goal memo
+    storeAt(sim, 10, 0, 5); // the reachable second larder
+    // 66 more (empty) stores push the interaction-cell index past RING_MIN_BUCKETS, so the pick runs
+    // the ring sweep — the veto must hold there exactly as on the small-world linear scan.
+    for (let x = 12; x < 78; x++) storeAt(sim, x, 0);
+    noteUnreachableGoal(sim.world, ctxOf(sim), settler, nodeAtCell(sim, 2, 0));
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 10, 0));
   });
 });
 

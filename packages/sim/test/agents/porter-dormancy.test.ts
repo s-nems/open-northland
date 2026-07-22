@@ -8,7 +8,11 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
+import {
+  noteUnreachableGoal,
+  UNREACHABLE_GOAL_MEMO_TICKS,
+} from '../../src/systems/agents/unreachable-goals.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -65,6 +69,14 @@ function idlePasses(sim: Simulation, n = 3): void {
   for (let i = 0; i < n; i++) aiSystem(sim.world, ctxOf(sim));
 }
 
+/** The terrain node at cell (x, y)'s anchor — throws when the sim has no map. */
+function anchorCell(sim: Simulation, x: number, y: number): NodeId {
+  const n = cellAnchorNode(x, y);
+  const node = sim.terrain?.nodeAt(n.hx, n.hy);
+  if (node === undefined) throw new Error('simulation has no terrain');
+  return node;
+}
+
 describe('porter dormancy', () => {
   it('a dormant porter still reacts when a new ground pile appears', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
@@ -98,6 +110,23 @@ describe('porter dormancy', () => {
     // wakes the porter.
     sim.world.touchComponent(Stockpile);
     aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(porter, MoveGoal)).toBe(true);
+  });
+
+  it('a porter whose memo vetoed the only pile is not left dormant past the memo expiry', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const hq = hqAt(sim, 5, 0);
+    const porter = porterAt(sim, 0, 0, hq);
+    groundPileAt(sim, 3, 0, 2);
+    // The pile's cell is a goal this porter's route just failed on — the scan finds nothing, and no
+    // other tracked input will change before the memo runs out.
+    noteUnreachableGoal(sim.world, ctxOf(sim), porter, anchorCell(sim, 3, 0));
+    idlePasses(sim);
+    expect(sim.world.has(porter, MoveGoal)).toBe(false); // vetoed — nothing to fetch for now
+
+    // Expiry is a pure tick read (no component write bumps the scan version), so the gate must not
+    // have banked this scan: past the memo window the porter re-scans and fetches the pile.
+    aiSystem(sim.world, { ...ctxOf(sim), tick: UNREACHABLE_GOAL_MEMO_TICKS });
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 

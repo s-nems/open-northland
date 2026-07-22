@@ -3,6 +3,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { nearestWorkplaceOutput } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { isPorterBoundToStore, porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
 import { deliverableGoodProbe } from './routing.js';
@@ -68,6 +69,7 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
         ctx,
         here,
         plan.limit ?? undefined,
+        unreachableGoalVeto(world, ctx, e),
       )
     : null;
   if (haul === null) return false;

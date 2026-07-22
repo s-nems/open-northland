@@ -19,9 +19,13 @@ export function nearestTemple(
   ctx: SystemContext,
   here: NodeId,
   gate?: SpatialGate,
+  /** The settler's failed-goal veto ({@link unreachableGoalVeto}). */
+  avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   // buildingCells holds only Building + Position candidates, so only the temple filter remains.
-  return index.nearest(here, (e) => (isTemple(world, ctx, e) ? QUALIFIES : null), gate)?.entity ?? null;
+  return (
+    index.nearest(here, (e) => (isTemple(world, ctx, e) ? QUALIFIES : null), gate, avoid)?.entity ?? null
+  );
 }
 
 /**
@@ -39,6 +43,8 @@ export function nearestConstructionSite(
   tribe: number,
   owner: number | undefined,
   gate?: SpatialGate,
+  /** The builder's failed-goal veto at the site's perimeter stand ({@link unreachableSiteStand}). */
+  avoidSite?: (site: Entity) => boolean,
 ): Entity | null {
   // The index holds only UnderConstruction + Building + Position sites, so just the side filters remain.
   // `gate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt.
@@ -46,7 +52,9 @@ export function nearestConstructionSite(
     index.nearest(
       here,
       (e) =>
-        world.get(e, Building).tribe === tribe && ownersCompatible(owner, ownerOf(world, e))
+        world.get(e, Building).tribe === tribe &&
+        ownersCompatible(owner, ownerOf(world, e)) &&
+        avoidSite?.(e) !== true
           ? QUALIFIES
           : null,
       gate,
