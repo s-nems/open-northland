@@ -62,16 +62,7 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers — the setproducedg
       return good.typeId;
     };
 
-    const sim = runAuthoredSlice(
-      7,
-      1,
-      grassMap(MAP_CELLS),
-      entities,
-      rows,
-      undefined,
-      undefined,
-      merge.content,
-    );
+    const sim = runAuthoredSlice(7, 1, grassMap(MAP_CELLS), entities, rows, { content: merge.content });
     expect(sim).not.toBeNull();
     if (sim === null) return;
 

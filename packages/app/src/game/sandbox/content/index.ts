@@ -12,9 +12,9 @@ import { buildSandboxAtomicAnimations } from './catalog/atomic-animations.js';
 import { buildSandboxGoods } from './catalog/goods.js';
 import { buildSandboxJobs } from './catalog/jobs.js';
 import { buildSandboxTribes } from './catalog/tribes.js';
-import type { SandboxContentExtras } from './types.js';
+import type { SandboxContentExtras, WorldContentOptions } from './types.js';
 
-export type { SandboxContentExtras } from './types.js';
+export type { SandboxContentExtras, WorldContentOptions } from './types.js';
 
 /** The complete validated hand-authored content set shared by scenes and the playable vertical slice. */
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
@@ -33,6 +33,27 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     tribes: [...tribes.values()],
     atomicAnimations: buildSandboxAtomicAnimations(),
   });
+}
+
+/**
+ * The content a world runs on: the real-content override when present, otherwise the sandbox catalog
+ * for `map` with the options' footprint/name overlays (plus any extra catalog rows). Real content
+ * already ships footprints and names, so an override ignores the overlays entirely. This is the one
+ * place that resolution rule lives.
+ */
+export function resolveWorldContent(
+  map: TerrainTypeIds | undefined,
+  options: WorldContentOptions,
+  extras?: SandboxContentExtras,
+): ContentSet {
+  return (
+    options.content ??
+    sandboxContent(map, {
+      ...extras,
+      ...(options.footprints !== undefined ? { buildingFootprints: options.footprints } : {}),
+      ...(options.goodNames !== undefined ? { goodNames: options.goodNames } : {}),
+    })
+  );
 }
 
 /** The good identity view consumed by settler graphics bindings. */

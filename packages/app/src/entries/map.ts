@@ -177,6 +177,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       : loaded !== null
         ? halfCellMapFromCells(loaded)
         : null;
+  const contentOptions = {
+    footprints,
+    goodNames,
+    ...(realContent !== null ? { content: realContent.content } : {}),
+  };
   // A map that carries authored entities places those; a real decoded map without them gets a bare sim
   // (no demo cluster — {@link runBareMap}); only the synthetic-strip fallback (no map loaded) keeps the
   // HQ/joinery/gatherer/carrier demo world (via {@link runSlice}, shared with the deterministic shot PNG).
@@ -186,25 +191,16 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
   const authoredSim =
     loaded?.entities !== undefined && ir !== null && simMap !== null
-      ? runAuthoredSlice(
-          SLICE_SEED,
-          1,
-          simMap,
-          loaded.entities,
-          ir,
-          footprints,
-          goodNames,
-          realContent?.content,
-        )
+      ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, contentOptions)
       : null;
   const sim =
     authoredSim ??
     (simMap !== null
-      ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
+      ? runBareMap(SLICE_SEED, simMap, contentOptions)
       : // Roster-less fallback (no decodable map): the synthetic slice is OWNED by the session seat,
         // so ?player= changes initial sim state here — deterministic per URL, and the menu never
         // emits ?player without a rostered map. Real maps take ownership from map data instead.
-        runSlice(SLICE_SEED, 1, undefined, localPlayer, footprints, goodNames, realContent?.content));
+        runSlice(SLICE_SEED, 1, undefined, { ...contentOptions, owner: localPlayer }));
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,

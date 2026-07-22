@@ -1,4 +1,15 @@
-import type { BuildingFootprint } from '@open-northland/data';
+import type { BuildingFootprint, ContentSet } from '@open-northland/data';
+
+/** The optional content inputs a world builder resolves its `ContentSet` from; see `resolveWorldContent`. */
+export interface WorldContentOptions {
+  /** Extracted building footprints overlaid on the sandbox catalog (sim-affecting: collision,
+   *  placement legality, walk-to-door). */
+  readonly footprints?: ReadonlyMap<number, BuildingFootprint>;
+  /** Localized good display names overlaid on the sandbox catalog. */
+  readonly goodNames?: ReadonlyMap<string, string>;
+  /** Real decoded content; when present it replaces the sandbox build entirely. */
+  readonly content?: ContentSet;
+}
 
 /** Optional real-content overlays and extra catalog rows accepted by the sandbox assembler. */
 export interface SandboxContentExtras {

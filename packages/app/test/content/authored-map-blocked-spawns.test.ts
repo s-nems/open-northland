@@ -77,16 +77,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house
       tribes: merge.content.tribes.map((t) => ({ typeId: t.typeId, id: t.id })),
     };
 
-    const sim = runAuthoredSlice(
-      7,
-      1,
-      grassMap(MAP_CELLS),
-      entities,
-      rows,
-      undefined,
-      undefined,
-      merge.content,
-    );
+    const sim = runAuthoredSlice(7, 1, grassMap(MAP_CELLS), entities, rows, { content: merge.content });
     expect(sim).not.toBeNull();
     if (sim === null) return;
 
