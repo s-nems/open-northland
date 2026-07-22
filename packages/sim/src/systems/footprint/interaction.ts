@@ -169,17 +169,43 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
 }
 
 /**
- * The cell a collector should stand on to work a resource. A walkable deposit whose work area
- * includes its own anchor node is worked standing ON the deposit — the OBSERVED original clay
- * digger squarely on its pit. Today that anchor-listing comes from the sandbox's invented work
+ * Every cell {@link resourceWorkCell} could pick as this resource's work stance, over ALL possible
+ * `from` positions — its pools with the nearest-pick left to the caller. A walkable deposit whose
+ * work area includes its own anchor node is worked standing ON the deposit — the OBSERVED original
+ * clay digger squarely on its pit. Today that anchor-listing comes from the sandbox's invented work
  * areas (`game/sandbox/content/`), NOT the real clay records: those list the anchor only in
  * their partial states, and the sim collapses `workAreas` to the FULL state
  * (`fullStateBlockAreaCells`), whose rows exclude `(0,0)` — so if real records ever feed this,
  * the digger silently reverts to an adjacent stance unless that collapse is revisited. A blocking
  * node's anchor never survives the walkable filter, so trees/stones/ore keep the adjacent stance;
  * a resource whose only legal work cell is its anchor (a one-tile mushroom fixture) remains
- * workable through the same anchor-first rule.
+ * workable through the same anchor-first rule. Never empty (the last fallback is the bare anchor);
+ * the field-reclaim sweep tests the whole pool, so no pick is invisible to it.
  */
+export function resourceStanceCells(
+  world: World,
+  terrain: TerrainGraph,
+  resource: Entity,
+): readonly NodeId[] {
+  const p = world.get(resource, Position);
+  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
+  const anchor = terrain.nodeAtClamped(ax, ay);
+  const footprint = world.tryGet(resource, ResourceFootprint);
+  if (footprint === undefined) return [anchor];
+
+  const blocked = resourceBlockedCells(world, terrain);
+  const work = translatedCells(terrain, footprint.work, ax, ay).filter(
+    (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
+  );
+  if (work.includes(anchor)) return [anchor]; // stand ON a walkable deposit that lists its own anchor
+  if (work.length > 0) return work;
+  const fallback = terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell));
+  return fallback.length > 0 ? fallback : [anchor];
+}
+
+/** The cell a collector should stand on to work a resource: the {@link resourceStanceCells} pool
+ *  member nearest `from` (node-id tie-break; the pool is never empty, so the anchor fallback is
+ *  unreachable in practice). */
 export function resourceWorkCell(
   world: World,
   terrain: TerrainGraph,
@@ -189,17 +215,7 @@ export function resourceWorkCell(
   const p = world.get(resource, Position);
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.nodeAtClamped(ax, ay);
-  const footprint = world.tryGet(resource, ResourceFootprint);
-  if (footprint === undefined) return anchor;
-
-  const blocked = resourceBlockedCells(world, terrain);
-  const work = translatedCells(terrain, footprint.work, ax, ay).filter(
-    (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
-  );
-  if (work.includes(anchor)) return anchor; // stand ON a walkable deposit that lists its own anchor
-  const picked = nearestCell(terrain, work, from);
-  if (picked !== null) return picked;
-  return nearestFreeNeighbour(terrain, anchor, blocked, from) ?? anchor;
+  return nearestCell(terrain, resourceStanceCells(world, terrain, resource), from) ?? anchor;
 }
 
 /**

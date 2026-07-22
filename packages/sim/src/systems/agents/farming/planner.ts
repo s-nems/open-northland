@@ -133,8 +133,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // is a goal `findPath` always rejects. Without this the nearest-first pick re-chooses that same doomed
   // field every replan and the farmer never advances past it. The static component check catches the far
   // bank of a river; walls are a DYNAMIC overlay and never split a component, so a field ringed by
-  // buildings is caught by the overlay layer instead — see docs/tickets/sim/stranded-field-slots.md for the
-  // slot such a field still holds.
+  // buildings is caught by the overlay or failed-route memo instead; the FieldReclaimSystem
+  // (../../economy/field-reclaim.ts) reclaims the plot slot a field that stays sealed would otherwise hold.
   const gates: WorkCellGates = {
     terrain,
     blocked: dynamicBlockOverlay(world, ctx, terrain),

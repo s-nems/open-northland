@@ -66,6 +66,18 @@ export const FarmTask = defineComponent<{
 }>('FarmTask');
 
 /**
+ * A {@link Crop} field cut off from its farm — no work stance is both unblocked and routable from the
+ * farm's door. Stamped and cleared by the FieldReclaimSystem (systems/economy/field-reclaim.ts, which
+ * owns the rule and its pacing); the field is destroyed once the state holds for a sustained span,
+ * returning its `maxFields` slot to the plot. Absent on every reachable field, so goldens without
+ * stranded fields hash unchanged.
+ */
+export const StrandedField = defineComponent<{
+  /** Tick the sweep first observed the field cut off; cleared the moment a route exists again. */
+  since: number;
+}>('StrandedField');
+
+/**
  * A settler WAITING INSIDE its workplace — stamped by a drive whose settler is at its building with
  * nothing to do this tick (the farmer between field chores), and removed the moment it replans
  * (ai.ts, beside the FarmTask release), so it exists exactly while the settler idles at the door.
