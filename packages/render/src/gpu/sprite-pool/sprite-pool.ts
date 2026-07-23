@@ -23,10 +23,11 @@ import { resolveLayers } from './resolve-layers.js';
 
 /**
  * The retained per-entity sprite pool: one display object per drawable entity, keyed by its monotonic,
- * never-reused entity id and reused across frames — the steady state mints nothing. Each frame the pool
- * is reconciled to the culled, depth-sorted draw list: an entity that scrolled off-screen stays pooled
- * (it may scroll back), one that left the snapshot (died) is destroyed. Per-frame heap allocation is
- * O(visible), bounded by the screen and never the map (the render contract).
+ * never-reused entity id and reused across frames — the steady state mints no display objects. Each
+ * frame the pool is reconciled to the culled, depth-sorted draw list: an entity that scrolled
+ * off-screen stays pooled (it may scroll back), one that left the snapshot (died) is destroyed.
+ * Per-frame heap allocation is small plain data (draw items, resolved layers) at O(visible), bounded
+ * by the screen and never the map (the render contract).
  */
 
 /**
@@ -100,7 +101,9 @@ export class SpritePool {
    *  each entity's `attached` flag: added on attach, removed on detach. */
   private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
-  private drawn = 0;
+  /** The last {@link reconcile}'s culled, depth-sorted draw list — retained so read-only per-frame
+   *  consumers (the ground-pile hover targets) reuse it instead of building the scene a second time. */
+  private lastItems: readonly DrawItem[] = [];
   /** This frame's drawn (culled) damaged finished buildings — {@link DrawItem.hpFrac} carriers, rebuilt
    *  each {@link reconcile} for the damage-smoke overlay ({@link damagedBuildings}). */
   private readonly damaged: { ref: number; hpFrac: number }[] = [];
@@ -193,7 +196,7 @@ export class SpritePool {
       // second render reveals it, then hides it again before the main stage render.
       if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
     }
-    this.drawn = scene.items.length;
+    this.lastItems = scene.items;
 
     // Detach entities not drawn this frame (culled or gone); iterating `attached` instead of the whole
     // pool keeps this scan bounded by the screen. Deleting the current entry mid-iteration is well-defined
@@ -227,7 +230,13 @@ export class SpritePool {
 
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
-    return { drawn: this.drawn, pooled: this.pool.size };
+    return { drawn: this.lastItems.length, pooled: this.pool.size };
+  }
+
+  /** The last {@link reconcile}'s culled, depth-sorted draw list — valid until the next reconcile.
+   *  Read-only reuse for consumers that would otherwise rebuild the same scene from the snapshot. */
+  drawnItems(): readonly DrawItem[] {
+    return this.lastItems;
   }
 
   /** The entity's world-space sprite box as drawn this frame — the picker's hit box + the selection

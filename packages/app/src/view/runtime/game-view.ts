@@ -321,12 +321,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // (distinct from the details panel's Magazyn stock-row tooltip above) and yields the pointer to build
   // placement and the HUD.
   const pileTooltip = createGroundPileTooltip({
-    app,
     renderer,
     camera: () => cameraCtl.camera(),
     clientToScreen,
-    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    fogVisible: fogGates.visibleTile,
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     pointer: pointerAt,
     suppressed: (clientX, clientY) =>

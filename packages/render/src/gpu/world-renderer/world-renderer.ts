@@ -2,7 +2,7 @@ import type { FogView, SimEvent } from '@open-northland/sim';
 import { type Application, Container, type TextureSource } from 'pixi.js';
 import { type FogGhost, FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
-import type { SceneTerrain } from '../../data/scene/index.js';
+import type { DrawItem, SceneTerrain } from '../../data/scene/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
@@ -445,6 +445,15 @@ export class WorldRenderer {
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
     return this.pool.stats();
+  }
+
+  /**
+   * The last {@link update}'s culled, depth-sorted entity draw list (valid until the next update) —
+   * the read seam for per-frame consumers like the ground-pile hover targets, which would otherwise
+   * rebuild the identical scene from the snapshot a second time each frame.
+   */
+  drawnItems(): readonly DrawItem[] {
+    return this.pool.drawnItems();
   }
 
   /**

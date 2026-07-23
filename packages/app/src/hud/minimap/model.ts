@@ -156,6 +156,39 @@ export interface TerrainCells {
 }
 
 /**
+ * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
+ * the buffer edges — the per-tick unit/building dot write. Writing pixels into one retained buffer
+ * (re-uploaded in place) replaces a per-tick Graphics rebuild: hundreds of dot rects re-tessellated at
+ * 12 Hz were a measured steady allocation churn site, a raster write allocates nothing.
+ */
+export function stampDot(
+  rgba: Uint8Array,
+  pxW: number,
+  pxH: number,
+  cx: number,
+  cy: number,
+  half: number,
+  colour: number,
+): void {
+  const x0 = Math.max(0, Math.round(cx - half));
+  const y0 = Math.max(0, Math.round(cy - half));
+  const x1 = Math.min(pxW, Math.round(cx + half));
+  const y1 = Math.min(pxH, Math.round(cy + half));
+  const r = (colour >> 16) & 0xff;
+  const g = (colour >> 8) & 0xff;
+  const b = colour & 0xff;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const o = (y * pxW + x) * 4;
+      rgba[o] = r;
+      rgba[o + 1] = g;
+      rgba[o + 2] = b;
+      rgba[o + 3] = 0xff;
+    }
+  }
+}
+
+/**
  * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) — built once
  * per map (terrain is static) and uploaded as the minimap's ground texture. Each pixel samples the cell
  * diamond containing its world point: candidate centres on the two nearest rows (odd rows staggered half
