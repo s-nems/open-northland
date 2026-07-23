@@ -107,8 +107,8 @@ export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, wa
 }
 
 /**
- * Reap a loose ground pile once a pickup has emptied it, so a long game doesn't accrete a dead heap per felled
- * tree or delivered load. A loose pile is any positioned {@link Stockpile} that is not a persistent store — a
+ * Reap a loose ground pile once a pickup or an eaten bite has emptied it, so a long game doesn't accrete a
+ * dead heap per felled tree or delivered load. A loose pile is any positioned {@link Stockpile} that is not a persistent store — a
  * {@link Building} warehouse and a {@link Vehicle} hull both keep their empty stock and are left alone. This
  * covers a felled/dropped {@link GroundDrop} trunk and a bare gatherer-yard / player-dropped heap (which
  * carries no marker): an emptied yard tile vanishes instead of lingering as a zero heap that would mis-render

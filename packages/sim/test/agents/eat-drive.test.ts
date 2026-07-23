@@ -183,6 +183,49 @@ describe('eat atomic — consuming food + relieving hunger (AtomicSystem)', () =
     expect(sim.world.has(settler, Carrying)).toBe(false); // last carried unit eaten
     expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
   });
+
+  it('reaps a loose ground heap eaten down to zero (no dead pile entity lingers)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+    // A bare Stockpile+Position, the gatherer-yard / player-dropped heap shape, holding the last food unit.
+    const heap = sim.world.create();
+    sim.world.add(heap, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(heap, Stockpile, { amounts: new Map([[FOOD, 1]]) });
+    sim.world.add(settler, CurrentAtomic, {
+      atomicId: EAT_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 1,
+      effect: { kind: 'eat', goodType: FOOD, from: heap },
+      targetEntity: heap,
+      targetTile: null,
+    });
+
+    atomicSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.isAlive(heap)).toBe(false); // emptied heap vanished, no zero-stock artifact
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
+  });
+
+  it('keeps a building store alive after its last food unit is eaten (only loose piles reap)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+    const store = storeAt(sim, 0, 0, 1); // a headquarters larder down to its last unit
+    sim.world.add(settler, CurrentAtomic, {
+      atomicId: EAT_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 1,
+      effect: { kind: 'eat', goodType: FOOD, from: store },
+      targetEntity: store,
+      targetTile: null,
+    });
+
+    atomicSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.isAlive(store)).toBe(true); // the warehouse persists empty
+    expect(sim.world.get(store, Stockpile).amounts.get(FOOD) ?? 0).toBe(0);
+  });
 });
 
 describe('eat drive — closing the rise→eat→relief loop through the real schedule', () => {
