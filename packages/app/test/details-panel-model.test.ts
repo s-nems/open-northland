@@ -546,4 +546,44 @@ describe('selection details panel model', () => {
         .every((sl) => sl.goodId === undefined && sl.usePct === null),
     ).toBe(true);
   });
+
+  it('lists every trained specialization with repeats and bonus percent, most-trained first', () => {
+    // Two content tracks: a good-specific one (labels by the good) and a general one (labels by the job);
+    // the third row is a fight bucket (sword, no content track — raw points ARE its repeats).
+    const ctx = {
+      ...sandboxCtx(),
+      jobExperience: [
+        { typeId: 3, id: 'collector_wood', jobType: JOB_COLLECTOR, goodType: GOOD_WOOD, experienceFactor: 10 },
+        { typeId: 9, id: 'collector_general', jobType: JOB_COLLECTOR, experienceFactor: 100 },
+      ],
+    };
+    const snapshot = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: {
+            tribe: 1,
+            jobType: JOB_COLLECTOR,
+            experience: [
+              [3, 50], // 50 raw points at rate 10 → 5 wood gathered
+              [9, 100], // 100 raw points at rate 100 → 1 repeat
+              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4],
+            ],
+          },
+        },
+      },
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    // Repeats descending; the curve percents pin the shared bonus formula (5→52%, 4→46%, 1→17%).
+    expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct }))).toEqual([
+      { repeats: 5, bonusPct: 52 },
+      { repeats: 4, bonusPct: 46 },
+      { repeats: 1, bonusPct: 17 },
+    ]);
+    expect(model.experience[1]?.label).toBe('Miecz'); // the sword fight bucket's weapon-class label
+    // The tracked rows label by good / owning job, never the numeric fallback.
+    expect(model.experience[0]?.label).not.toMatch(/Specjalizacja/);
+    expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/);
+  });
 });

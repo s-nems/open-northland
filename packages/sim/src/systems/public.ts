@@ -27,6 +27,8 @@ export {
   TICKS_PER_AGE_YEAR,
 } from './lifecycle/ageclass.js';
 export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
+export { experienceBonus, experienceRepeats } from './progression/bonus.js';
+export { FIGHT_EXPERIENCE_TYPE } from './progression/experience.js';
 // The need-atomic clip resolution (the civilist fallback + the at-home twin's name), exported so the
 // real-content suite can pin both joins against the served IR rather than a fixture.
 export {

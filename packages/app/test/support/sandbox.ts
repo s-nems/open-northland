@@ -4,10 +4,15 @@ import type { UnitPanelModelContext } from '../../src/hud/details-panel/index.js
 import { createSceneSim } from '../../src/scenes/index.js';
 import { sandboxScene } from '../../src/scenes/sandbox/index.js';
 
-/** The details-panel model context `{ buildings, goods, jobs }` a sim's content provides — the content half
- *  every `buildUnitPanelModel` assertion runs against. */
+/** The details-panel model context a sim's content provides — the content half every
+ *  `buildUnitPanelModel` assertion runs against. */
 export function ctxOf(sim: Simulation): UnitPanelModelContext {
-  return { buildings: sim.content.buildings, goods: sim.content.goods, jobs: sim.content.jobs };
+  return {
+    buildings: sim.content.buildings,
+    goods: sim.content.goods,
+    jobs: sim.content.jobs,
+    jobExperience: sim.content.jobExperience,
+  };
 }
 
 /** {@link ctxOf} for a fresh `sandbox` scene sim. A fresh sim per call keeps each test isolated (each sim

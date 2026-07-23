@@ -34,7 +34,7 @@ import {
 } from './context.js';
 import {
   equipmentRows,
-  highestExperience,
+  experienceRows,
   type SettlerPanelModel,
   satisfactionBars,
   settlerStatus,
@@ -234,7 +234,7 @@ export function buildUnitPanelModel(
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),
       work: settlerWork(ctx, snapshot, comps),
-      experience: highestExperience(comps),
+      experience: experienceRows(ctx, comps),
       equipmentRows: equipmentRows(ctx, comps),
     };
   }

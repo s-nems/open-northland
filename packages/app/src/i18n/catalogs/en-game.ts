@@ -24,8 +24,15 @@ export const enGame = {
     recipeNoInputs: 'no materials',
     stockAllTab: 'All',
     workFlag: 'Work flag',
-    highestExperience: 'Highest experience',
     specialization: 'Specialization {id}',
+    weaponXp: {
+      fist: 'Fists',
+      spear: 'Spear',
+      sword: 'Sword',
+      axe: 'Axe',
+      bow: 'Bow',
+      catapult: 'Catapult',
+    },
     noWorkplace: 'No workplace',
     assignWorkplace: 'Assign a workplace',
     assignWorkplaceHint:

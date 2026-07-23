@@ -145,6 +145,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     buildings: opts.buildings,
     goods: opts.goods,
     jobs: opts.jobs,
+    jobExperience: opts.jobExperience,
   };
 
   let selectedIds: ReadonlySet<number> = new Set();

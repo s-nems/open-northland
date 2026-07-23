@@ -13,6 +13,7 @@ import { currentLocale, messages, professionLabel } from '../../../i18n/index.js
 export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
 export type JobDef = ContentSet['jobs'][number];
+export type JobExperienceDef = ContentSet['jobExperience'][number];
 
 export interface UnitPanelModelContext {
   readonly buildings: readonly BuildingDef[];
@@ -20,6 +21,9 @@ export interface UnitPanelModelContext {
   /** The content jobs — the worker-row labels resolve a bound settler's job name from here (a building's
    *  worker vs carrier slots), so the panel names them even when they're not in the profession catalog. */
   readonly jobs: readonly JobDef[];
+  /** The content experience tracks — the Doświadczenie rows resolve a specialization's label (its good
+   *  or owning job) and its per-repeat accrual rate from here. */
+  readonly jobExperience: readonly JobExperienceDef[];
 }
 
 export interface Comp {

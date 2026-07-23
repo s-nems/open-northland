@@ -182,7 +182,8 @@ function drawWorkSection(
   chrome.glyphHouse(layout.unassignIcon, model.canUnassignHome);
 }
 
-/** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */
+/** Doświadczenie: one row per trained specialization — its label, the experience count (completed
+ *  works), and the bonus percent the curve grants — or a lone "żadne" for an untrained settler. */
 function drawExperienceSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -193,18 +194,19 @@ function drawExperienceSection(
   chrome.window(layout.experience.frame);
   const hud = messages().hud;
   chrome.headline(layout.experience.title, ui('humanwindow', HUMANWINDOW.experience, hud.experience));
-  const r = layout.expRow;
-  chrome.textAt(
-    ui('humanwindow', HUMANWINDOW.highestExp, hud.highestExperience),
-    r.x,
-    r.y + ROW_TEXT_PAD * s,
-    'white',
-  );
-  const value =
-    model.experience === null
-      ? ui('humanwindow', HUMANWINDOW.none, hud.nothing)
-      : `${model.experience.label} (${model.experience.points})`;
-  chrome.textRight(value, r.x + r.w, r.y + ROW_TEXT_PAD * s, 'white');
+  if (model.experience.length === 0) {
+    const r = layout.expRows[0];
+    if (r !== undefined) {
+      chrome.textAt(ui('humanwindow', HUMANWINDOW.none, hud.nothing), r.x, r.y + ROW_TEXT_PAD * s, 'dimmed');
+    }
+    return;
+  }
+  layout.expRows.forEach((r, i) => {
+    const row = model.experience[i];
+    if (row === undefined) return;
+    chrome.textAt(row.label, r.x, r.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textRight(`${row.repeats} (+${row.bonusPct}%)`, r.x + r.w, r.y + ROW_TEXT_PAD * s, 'white');
+  });
 }
 
 /**
