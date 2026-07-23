@@ -32,15 +32,13 @@ export const plGame = {
       'Kliknij, a następnie wskaż budynek: zielone mają wolne miejsce dla tego osadnika, czerwone nie. LPM przydziela, PPM lub Esc anuluje.',
     assignHomeHint:
       'Kliknij, a następnie wskaż dom: zielone mają wolne miejsce dla tej rodziny, czerwone nie. LPM przydziela całą rodzinę, PPM lub Esc anuluje.',
-    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
-    unassignHome: 'Remove from home',
+    unassignHome: 'Usuń z domu',
     unassignHomeHint:
-      "Moves this settler's whole family out of its home, freeing the family slot. You can assign them a new home anytime.",
+      'Wyprowadza całą rodzinę tego osadnika z domu i zwalnia miejsce dla rodziny. Nowy dom można przydzielić w każdej chwili.',
     defenseStopped: 'Obrona zatrzymana',
-    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
-    upgrade: 'Upgrade',
-    upgradeCostHint: 'Upgrade requires:',
-    cancelUpgrade: 'Cancel upgrade',
+    upgrade: 'Rozbuduj',
+    upgradeCostHint: 'Rozbudowa wymaga:',
+    cancelUpgrade: 'Anuluj rozbudowę',
     demolish: 'Zniszcz',
     signpost: 'Drogowskaz',
     demolishSignpost: 'Wyburz ten drogowskaz',
