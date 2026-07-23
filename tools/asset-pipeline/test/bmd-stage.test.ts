@@ -172,6 +172,24 @@ describe('convertBmdTree', () => {
     expect(bear).not.toEqual(wolf);
   });
 
+  it('converts a repeated (bmd, palette) binding once, the base/mod legs overlap by design', async () => {
+    await layDownAssets();
+    const { palettes } = sampleBinding();
+    // Same (bmd, palette) from two source legs; only the cross-refs differ.
+    const bindings: BmdPaletteBinding[] = [
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 2 },
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 2, jobId: 3 },
+    ];
+
+    const done = await convertBmdTree(
+      { bindings, palettes, buildTimeBmds: new Set() },
+      out,
+      await indexOutTree(out),
+    );
+
+    expect(done.map((c) => c.png)).toEqual([join('Data', 'Bobs', 'Body.bear01.png')]);
+  });
+
   it('skips a binding whose palette editname is not in the index, with a warning', async () => {
     await layDownAssets();
     const { bindings } = sampleBinding();
