@@ -5,6 +5,9 @@ import {
   EXPERIENCE_MASTERY_REPEATS,
   experienceBonus,
   experienceRepeats,
+  SCOUT_EXPERIENCE_TYPE,
+  SCOUT_VISION_BONUS_MAX_NODES,
+  scoutVisionBonusNodes,
 } from '../../../src/systems/index.js';
 
 describe('experienceBonus — the repeats → bonus curve', () => {
@@ -32,6 +35,16 @@ describe('experienceBonus — the repeats → bonus curve', () => {
 
   it('truncates fractional repeats (integer domain)', () => {
     expect(experienceBonus(5.9)).toBe(experienceBonus(5));
+  });
+});
+
+describe('scoutVisionBonusNodes — signpost craft widens the scout eye a little', () => {
+  const withPosts = (posts: number) => new Map([[SCOUT_EXPERIENCE_TYPE, posts]]);
+
+  it('scales the curve to whole extra nodes, capped well below a 2x eye', () => {
+    expect(scoutVisionBonusNodes(new Map())).toBe(0);
+    expect(scoutVisionBonusNodes(withPosts(10))).toBe(4); // ~69% of the 6-node cap, truncated
+    expect(scoutVisionBonusNodes(withPosts(100))).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
   });
 });
 

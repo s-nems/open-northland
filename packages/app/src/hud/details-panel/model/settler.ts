@@ -241,7 +241,9 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
           : jobDisplayName(ctx, track.jobType)
         : weaponKey !== undefined
           ? messages().hud.weaponXp[weaponKey]
-          : formatMessage(messages().hud.specialization, { id: spec });
+          : spec === systems.SCOUT_EXPERIENCE_TYPE
+            ? jobDisplayName(ctx, systems.SCOUT_JOB)
+            : formatMessage(messages().hud.specialization, { id: spec });
     const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat — nothing to show yet
     const bonusPct = Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);

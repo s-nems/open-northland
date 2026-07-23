@@ -7,7 +7,7 @@ import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../lifecycle/needs.js';
-import { grantCarryExperience, grantWorkExperience } from '../progression/index.js';
+import { grantCarryExperience, grantScoutExperience, grantWorkExperience } from '../progression/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
@@ -268,7 +268,9 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       const terrain = ctx.terrain;
       const player = ownerOf(world, settler);
       if (terrain !== undefined && player !== undefined) {
-        erectSignpost(world, ctx, terrain, terrain.nodeAt(effect.x, effect.y), player);
+        const post = erectSignpost(world, ctx, terrain, terrain.nodeAt(effect.x, effect.y), player);
+        // A post that actually stood trains the scout's signpost craft; a whiff trains nothing.
+        if (post !== null) grantScoutExperience(world, settler);
       }
       return;
     }

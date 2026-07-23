@@ -4,6 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
+import { SCOUT_JOB } from '../readviews/stances.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -126,6 +127,22 @@ export function grantCarryExperience(world: World, ctx: SystemContext, settler: 
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return; // no `carrier general` track in content, nothing to accrue
   accrueExperience(s, track.typeId, track.experienceFactor);
+}
+
+/**
+ * The scout's signpost-craft bucket — our extension: the original gives the scout NO experience track
+ * at all, but here every erected signpost trains it (design rule, user-specified). Rate 1 per post, so
+ * raw XP is the repeat count, like the fight buckets. The id sits outside the original's experience-type
+ * space (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_MAXIMUM` is 78), so no extracted track can collide.
+ */
+export const SCOUT_EXPERIENCE_TYPE = 100;
+
+/** Grant a scout one signpost-craft XP for a guidepost it actually erected (the caller checks the post
+ *  stood — a whiffed swing trains nothing). Only the scout trade trains it. */
+export function grantScoutExperience(world: World, settler: Entity): void {
+  const s = world.tryGet(settler, Settler);
+  if (s === undefined || s.jobType !== SCOUT_JOB) return;
+  accrueExperience(s, SCOUT_EXPERIENCE_TYPE, 1);
 }
 
 /**

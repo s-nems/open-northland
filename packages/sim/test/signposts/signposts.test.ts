@@ -13,7 +13,12 @@ import {
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { BUILD_GUIDE_ATOMIC_ID, canPlaceSignpost, signpostNetwork } from '../../src/systems/index.js';
+import {
+  BUILD_GUIDE_ATOMIC_ID,
+  canPlaceSignpost,
+  SCOUT_EXPERIENCE_TYPE,
+  signpostNetwork,
+} from '../../src/systems/index.js';
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -82,6 +87,8 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     expect(sim.world.get(post, Owner).player).toBe(P0);
     expect(sim.world.get(post, Signpost).navRadius).toBe(SIGNPOST_NAV_RADIUS_NODES);
     expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false); // the order retired with the swing
+    // The erected post trained the scout's signpost craft (1 XP per standing post).
+    expect(sim.world.get(scout, Settler).experience.get(SCOUT_EXPERIENCE_TYPE)).toBe(1);
   });
 
   it('a scout walks to a distant goal first, then erects there', () => {

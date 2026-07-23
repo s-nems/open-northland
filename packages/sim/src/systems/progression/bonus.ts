@@ -3,7 +3,7 @@ import { Settler } from '../../components/index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { generalTrackFor } from './experience.js';
+import { generalTrackFor, SCOUT_EXPERIENCE_TYPE } from './experience.js';
 
 /**
  * ProgressionSystem (bonus-curve half): how much better an experienced settler is at its specialization.
@@ -65,4 +65,16 @@ export function operatorProductionBonus(world: World, ctx: SystemContext, operat
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return ZERO;
   return experienceBonus(experienceRepeats(s.experience.get(track.typeId) ?? 0, track));
+}
+
+/** Extra vision nodes a mastered scout sees — deliberately small next to the other trades' 2x
+ *  (design rule, user-specified: a seasoned scout sees a bit farther, never twice as far). */
+export const SCOUT_VISION_BONUS_MAX_NODES = 6;
+
+/** The extra vision nodes a scout's signpost experience grants: the curve read on its
+ *  {@link SCOUT_EXPERIENCE_TYPE} bucket (raw XP = erected posts), scaled to
+ *  {@link SCOUT_VISION_BONUS_MAX_NODES} and truncated to whole nodes. */
+export function scoutVisionBonusNodes(experience: ReadonlyMap<number, number>): number {
+  const posts = experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0;
+  return fx.toInt(fx.mul(experienceBonus(posts), fx.fromInt(SCOUT_VISION_BONUS_MAX_NODES)));
 }
