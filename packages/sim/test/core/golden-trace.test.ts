@@ -192,8 +192,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // needs, retuned drains, piety only from forging) AND per-product production (cycles carry their
     // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
     // per-animation lengths) AND the hash's coverage of string state (an `AtomicEffect`'s `kind`,
-    // `ChildOrder.child`), whose mixing also length-frames component names and object keys.
-    expect(run.hash).toBe('337c7ab3');
+    // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
+    // carry XP (a carrier's landed delivery accrues its transport-trade track on `Settler.experience`).
+    expect(run.hash).toBe('002822e3');
   });
 
   it('matches the golden atomic-action trace', () => {

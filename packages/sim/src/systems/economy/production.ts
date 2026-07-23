@@ -1,6 +1,7 @@
 import { Building, Position, Production, Settler, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
+import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
@@ -86,6 +87,7 @@ export const productionSystem: System = (world, ctx) => {
     const recipes = recipesByProductOf(world, ctx, e);
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
     chargeMilitaryPietyCost(world, ctx, done, staffing);
+    grantProductionExperience(world, ctx, done.length, staffing);
     if (prod.cycles.length === 0) world.remove(e, Production);
   }
 

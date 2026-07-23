@@ -211,7 +211,9 @@ export const societyContent = {
   ],
   // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
   // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the
-  // ProgressionSystem prefers the wood track when chopping wood and the general one otherwise.
+  // ProgressionSystem prefers the wood track when chopping wood and the general one otherwise. The
+  // carpenter (job 2) has both shapes too so the production grant can prove it bypasses the
+  // good-specific track; the carriers (jobs 36 and 24) carry the transport-trade general track.
   jobExperience: [
     {
       typeId: 1,
@@ -222,5 +224,16 @@ export const societyContent = {
       experienceFactor: 10,
     },
     { typeId: 2, id: 'woodcutter_general', name: 'woodcutter general', jobType: 1, experienceFactor: 1 },
+    { typeId: 3, id: 'carpenter_general', name: 'carpenter general', jobType: 2, experienceFactor: 100 },
+    {
+      typeId: 4,
+      id: 'carpenter_plank',
+      name: 'carpenter plank',
+      jobType: 2,
+      goodType: 2,
+      experienceFactor: 7,
+    },
+    { typeId: 5, id: 'carrier_general', name: 'carrier general', jobType: 36, experienceFactor: 50 },
+    { typeId: 6, id: 'carrier_24_general', name: 'carrier general', jobType: 24, experienceFactor: 50 },
   ],
 };

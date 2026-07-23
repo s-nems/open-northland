@@ -4,6 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
+import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
  * ProgressionSystem (XP-accrual half) — a settler gets better at the specialization it works.
@@ -76,6 +77,52 @@ export function grantWorkExperience(
  *  work- and fight-XP grants (and the single seam a future accrual cap/curve would land in). */
 function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
   s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
+}
+
+/** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
+ *  {@link trackFor} it never resolves a good-specific track. */
+function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {
+  return ctx.content.jobExperience.find((t) => t.jobType === jobType && t.goodType === undefined);
+}
+
+/**
+ * Grant production XP for a workplace's completed batches: one batch trains one present operator
+ * (canonical order, never more than on station, cf. the military-piety charge in piety.ts) on its
+ * job-GENERAL track. The good-specific production tracks are deliberately bypassed (a trade trains its
+ * profession, whatever it crafted) and carrier operators are excluded (a carrier-run utility like the
+ * well trains only on deliveries); both design rules, user-specified. Per-completed-batch is the
+ * deterministic reading of the original's undecoded accrual trigger (approximation).
+ */
+export function grantProductionExperience(
+  world: World,
+  ctx: SystemContext,
+  batches: number,
+  operators: WorkplaceOperators,
+): void {
+  if (operators.kind === 'unstaffed') return;
+  for (const op of operators.operators.slice(0, batches)) {
+    const s = world.tryGet(op, Settler);
+    if (s === undefined || s.jobType === null) continue; // operator gone or jobless, trains nothing
+    if (isCarrierJob(ctx, s.jobType)) continue; // transport trains on deliveries, never on batches
+    const track = generalTrackFor(ctx, s.jobType);
+    if (track === undefined) continue; // profession with no general track, nothing to accrue
+    accrueExperience(s, track.typeId, track.experienceFactor);
+  }
+}
+
+/**
+ * Grant a settler carry XP for one delivery that landed in a store, accruing the `carrier general`
+ * track's `experienceFactor`. Carriers only ({@link isCarrierJob}): everyone hauls sometimes, but only
+ * the transport trade trains on it, and a blocked deposit or flag drop trains nothing (design rule,
+ * user-specified). Per-landed-delivery is the deterministic reading of the original's undecoded
+ * accrual trigger (approximation).
+ */
+export function grantCarryExperience(world: World, ctx: SystemContext, settler: Entity): void {
+  const s = world.tryGet(settler, Settler);
+  if (s === undefined || s.jobType === null || !isCarrierJob(ctx, s.jobType)) return;
+  const track = generalTrackFor(ctx, s.jobType);
+  if (track === undefined) return; // no `carrier general` track in content, nothing to accrue
+  accrueExperience(s, track.typeId, track.experienceFactor);
 }
 
 /**
