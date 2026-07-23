@@ -265,11 +265,10 @@ function drawEquipmentSection(
           h: slotRect.h + iconOverflow * 2,
         });
       }
-      if (slot?.usePct != null) {
-        // The gauge shows what's LEFT (the sim tracks use), so a fresh item reads full and green.
+      if (slot?.conditionPct != null) {
         chrome.bar(
           { x: slotRect.x, y: slotRect.y + slotRect.h, w: slotRect.w, h: Math.round(WEAR_BAR_H * s) },
-          100 - slot.usePct,
+          slot.conditionPct,
           'gauge',
         );
       }

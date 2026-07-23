@@ -162,11 +162,17 @@ export interface ByJobTable<T> {
   readonly youngByJob?: Readonly<Record<number, T>>;
   /**
    * A warrior's look by its equipped weapon good — the drawn weapon follows the equipment weapon slot,
-   * not the job. Wins over the job pick when the settler carries a mapped weapon good; an empty or
-   * unmapped slot falls through to {@link byJob} (so a bare warrior draws its job body, a civilian its
-   * civilian body).
+   * not the job. Wins over the job pick when the settler carries a mapped weapon good; an unmapped one
+   * falls through to {@link byJob}.
    */
   readonly byWeaponGood?: Readonly<Record<number, T>>;
+  /**
+   * A weapon-job's bare-hands look, keyed by `jobType` - picked when the settler's `Equipment` weapon
+   * slot is explicitly EMPTY (`weaponGood` null): a disarmed swordsman must not keep drawing its job
+   * body's sword. Only weapon-carrying jobs are keyed; a civilian (absent here) keeps its job body. A
+   * settler with no `Equipment` at all (`weaponGood` undefined) never reaches this table.
+   */
+  readonly unarmedByJob?: Readonly<Record<number, T>>;
   /** The total fallback — the generic look every unmapped job resolves to. */
   readonly default: T;
 }

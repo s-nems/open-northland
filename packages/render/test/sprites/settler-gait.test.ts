@@ -226,4 +226,18 @@ describe('pickByJob — the per-job character pick', () => {
     // A child never keys the weapon table even if a good is (spuriously) present.
     expect(pickByJob(armed, 3, true, 41)).toBe('civilian');
   });
+
+  it('an explicitly EMPTY weapon slot (null) strips a weapon-job to its bare-hands look', () => {
+    const armed: ByJobTable<string> = {
+      byJob: { 34: 'warrior-sword', 5: 'woman' },
+      unarmedByJob: { 34: 'warrior' },
+      default: 'civilian',
+    };
+    // A disarmed swordsman (Equipment present, weapon slot empty) must not keep drawing the sword body.
+    expect(pickByJob(armed, 34, false, null)).toBe('warrior');
+    // No Equipment at all (undefined) keeps the legacy job body, weapon and all.
+    expect(pickByJob(armed, 34, false)).toBe('warrior-sword');
+    // A civilian with an empty weapon slot (boots-only Equipment) keeps its own body - it is not keyed.
+    expect(pickByJob(armed, 5, false, null)).toBe('woman');
+  });
 });

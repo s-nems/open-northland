@@ -24,6 +24,8 @@ export {
   CHARACTER_SPECS,
   type CharacterSpec,
   type CharacterSpecId,
+  UNARMED_WARRIOR_SPEC,
+  WARRIOR_JOBS,
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';

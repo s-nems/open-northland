@@ -511,7 +511,7 @@ describe('selection details panel model', () => {
     ).toEqual([{ goodType: GOOD_WHEAT, amount: 3, capacity: 25 }]);
   });
 
-  it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
+  it('shows a settler equipment section with labeled rows, worn goods, condition percentages and empty slots', () => {
     const { snapshot, ctx } = equipmentWorld();
     const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>
       num((e.components.Equipment as { boots?: { goodType?: unknown } } | undefined)?.boots?.goodType);
@@ -538,16 +538,16 @@ describe('selection details panel model', () => {
     expect(civModel.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
     expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]).toMatchObject({
       goodId: 'shoes',
-      usePct: 70,
+      conditionPct: 30,
       occupied: true,
     });
     expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]?.label).toBeDefined();
-    // The misc row holds the four consumable slots: a worn mead carries a use percent, a permanent amulet
+    // The misc row holds the four consumable slots: a worn mead carries a condition percent, a permanent amulet
     // does not, and one slot stays empty.
     const misc = rowOf(civModel, HUMANWINDOW.misc)?.slots ?? [];
     expect(misc).toHaveLength(4);
-    expect(misc.some((sl) => sl.goodId === 'mead' && sl.usePct === 50)).toBe(true);
-    expect(misc.some((sl) => sl.goodId === 'amulet_strength' && sl.usePct === null)).toBe(true);
+    expect(misc.some((sl) => sl.goodId === 'mead' && sl.conditionPct === 50)).toBe(true);
+    expect(misc.some((sl) => sl.goodId === 'amulet_strength' && sl.conditionPct === null)).toBe(true);
     expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
     expect(misc.filter((sl) => !sl.occupied)).toHaveLength(1);
 
@@ -584,7 +584,7 @@ describe('selection details panel model', () => {
     expect(
       model.equipmentRows
         .flatMap((r) => r.slots)
-        .every((sl) => sl.goodId === undefined && sl.usePct === null && !sl.occupied),
+        .every((sl) => sl.goodId === undefined && sl.conditionPct === null && !sl.occupied),
     ).toBe(true);
   });
 

@@ -53,7 +53,7 @@ const EQUIP_BTN_INSET = 4;
 const EQUIP_ACTION_GAP = 2;
 
 /** One labeled equipment row's geometry: its label column + the slot sockets to its right (possibly
- *  spanning several lines - see `slotsPerLine` in {@link layoutSettler}). A wearing slot's use percent
+ *  spanning several lines - see `slotsPerLine` in {@link layoutSettler}). A wearing slot's condition percent
  *  draws as a thin gauge under its socket (derived from the socket rect) and in the socket tooltip. */
 export interface EquipRowRect {
   readonly label: Rect;

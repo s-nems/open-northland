@@ -29,10 +29,12 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The equip errand: `equipGood` sends a settler to fetch a wearable good from the nearest reachable
- * store/pile, wear it, stow a swap-out, and walk back to where it was ordered; `unequipGood` takes a
- * worn good off in place and stows it (a store when one can take it, the ground otherwise). Fixture:
- * good 8 = shoes (boots, wears), 9 = sword (weapon), 10 = fur_boots (boots); building 22 = armoury
- * (the only store with gear slots); tribe 1 = viking, job 1 = woodcutter.
+ * store/pile, wear it, stow a swap-out, and walk back to where it was ordered; `unequipGood` walks to
+ * the stow store STILL WEARING the good and takes it off there (in place only when destroying it or
+ * dropping it on the ground). A part-used unit is destroyed instead of stowed - fungible store stock
+ * would regenerate it to fresh. Fixture: good 8 = shoes (boots, wears), 9 = sword (weapon),
+ * 10 = fur_boots (boots); building 22 = armoury (the only store with gear slots); tribe 1 = viking,
+ * job 1 = woodcutter.
  */
 
 const SHOES = 8;
@@ -86,9 +88,20 @@ function armouryAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapon', number>>): void {
-  const slot = (goodType: number | undefined): EquipmentSlot | null =>
-    goodType === undefined ? null : { goodType, degreeOfUse: fx.fromInt(0) };
+/** A worn good: a bare number is a fresh item, `{goodType, usedPct}` one part-way through its life. */
+type WornSpec = number | { goodType: number; usedPct: number };
+
+const FULL_LIFE_PCT = 100;
+
+function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapon', WornSpec>>): void {
+  const slot = (spec: WornSpec | undefined): EquipmentSlot | null => {
+    if (spec === undefined) return null;
+    if (typeof spec === 'number') return { goodType: spec, degreeOfUse: fx.fromInt(0) };
+    return {
+      goodType: spec.goodType,
+      degreeOfUse: fx.div(fx.fromInt(spec.usedPct), fx.fromInt(FULL_LIFE_PCT)),
+    };
+  };
   sim.world.add(e, Equipment, {
     boots: slot(slots.boots),
     tool: null,
@@ -149,6 +162,26 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.has(settler, Carrying)).toBe(false);
   });
 
+  it('swap: a part-used replaced good is destroyed instead of stowed', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    wear(sim, settler, { boots: { goodType: SHOES, usedPct: 50 } });
+    pileAt(sim, 12, 2, FUR_BOOTS, 1);
+    const armoury = armouryAt(sim, 6, 4);
+
+    sim.enqueue(equip(settler, FUR_BOOTS));
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(FUR_BOOTS);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    // The half-worn shoes vanished at the swap: no store or heap anywhere holds them.
+    expect(sim.world.get(armoury, Stockpile).amounts.get(SHOES) ?? 0).toBe(0);
+    const heaps = [...sim.world.query(Stockpile)].filter(
+      (e) => (sim.world.get(e, Stockpile).amounts.get(SHOES) ?? 0) > 0,
+    );
+    expect(heaps).toHaveLength(0);
+  });
+
   it('gives up and walks home when nothing reachable holds the good', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
@@ -161,21 +194,48 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
   });
 });
 
-describe('unequipGood - take off in place, stow, walk back', () => {
-  it('stows the taken-off good into a store that can take it', () => {
+describe('unequipGood - take off at the stow store, walk back', () => {
+  it('walks to the store still wearing the good and takes it off there', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
     wear(sim, settler, { weapon: SWORD });
     const armoury = armouryAt(sim, 10, 2);
 
     sim.enqueue({ kind: 'unequipGood', entity: settler, group: 'weapon', slot: 0 });
-    sim.run(ERRAND_TICKS);
+    sim.run(10); // mid-walk to the armoury: the sword must still be ON the body, not in the hands
+    expect(sim.world.has(settler, EquipOrder)).toBe(true);
+    expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(SWORD);
+    expect(sim.world.has(settler, Carrying)).toBe(false);
 
+    sim.run(ERRAND_TICKS);
     expect(sim.world.get(settler, Equipment).weapon).toBeNull();
     expect(sim.world.get(armoury, Stockpile).amounts.get(SWORD)).toBe(1);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
     const back = sim.world.get(settler, Position);
     expect(nodeOfPosition(back.x, back.y)).toEqual(nodeOfPosition(fx.fromInt(2), fx.fromInt(2)));
+  });
+
+  it('destroys a part-used good where the settler stands instead of stowing it', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    wear(sim, settler, { boots: { goodType: SHOES, usedPct: 50 } });
+    const armoury = armouryAt(sim, 10, 2);
+
+    sim.enqueue({ kind: 'unequipGood', entity: settler, group: 'boots', slot: 0 });
+    sim.run(100);
+
+    expect(sim.world.get(settler, Equipment).boots).toBeNull();
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    expect(sim.world.has(settler, Carrying)).toBe(false);
+    // Destroyed, not stowed or dropped: no store or heap anywhere gained the shoes.
+    expect(sim.world.get(armoury, Stockpile).amounts.get(SHOES) ?? 0).toBe(0);
+    const heaps = [...sim.world.query(Stockpile)].filter(
+      (e) => (sim.world.get(e, Stockpile).amounts.get(SHOES) ?? 0) > 0,
+    );
+    expect(heaps).toHaveLength(0);
+    // Never walked off: the destroy happens on the spot, so the settler is still at the issue node.
+    const at = sim.world.get(settler, Position);
+    expect(nodeOfPosition(at.x, at.y)).toEqual(nodeOfPosition(fx.fromInt(2), fx.fromInt(2)));
   });
 
   it('sets the good on the ground when no store can take it', () => {

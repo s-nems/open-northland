@@ -10,13 +10,16 @@ import {
 } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { SystemContext } from '../../context.js';
 import { addCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
+import { pileupIntoStore } from './transfer.js';
 
 // The equip errand's two goods effects: wear a unit lifted out of a store (`equip`), and take a worn
-// unit off onto the back (`unequip`). Both conserve goods - a worn unit came out of a store or goes
-// onto the back, never out of thin air (the fresh `degreeOfUse` is the one named approximation, see
-// the `equip` effect doc).
+// unit off (`unequip`). A unit never appears out of thin air; the one place one DISAPPEARS is the
+// part-used take-off/swap-out (see isUsed) - stores hold fungible stock amounts, so stowing a used
+// unit would round-trip it back to fresh, and destroying it closes that regeneration (user rule
+// 2026-07-23). The fresh `degreeOfUse` on wear is the same approximation's other side.
 
 /** The good worn in one addressed equipment slot, or null when the slot is empty / out of range. */
 export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: number): EquipmentSlot | null {
@@ -59,12 +62,18 @@ function advanceOrder(world: World, settler: Entity, stage: 'stow' | 'return'): 
   if (order !== undefined) order.stage = stage;
 }
 
+/** Whether a worn unit has any use on it - the destroy-instead-of-stow trigger (see the module note). */
+export function isUsed(slot: EquipmentSlot): boolean {
+  return slot.degreeOfUse > fx.fromInt(0);
+}
+
 /**
  * Resolve one completed `equip`: move one unit of `goodType` out of `from`'s {@link Stockpile}
- * straight into the settler's equipment slot; a swapped-out good lands on the back (the errand's stow
- * step deposits it). A source gone or emptied since the planner chose it whiffs - nothing is worn and
- * the errand re-searches. The settler reached here empty-handed (the equip rung drops a foreign load
- * first), so {@link addCarry} never merges a foreign good.
+ * straight into the settler's equipment slot; a still-fresh swapped-out good lands on the back (the
+ * errand's stow step deposits it), a part-used one is destroyed (the module note's regeneration rule).
+ * A source gone or emptied since the planner chose it whiffs - nothing is worn and the errand
+ * re-searches. The settler reached here empty-handed (the equip rung drops a foreign load first), so
+ * {@link addCarry} never merges a foreign good.
  */
 export function equipFromStore(
   world: World,
@@ -83,19 +92,37 @@ export function equipFromStore(
   const eq = ensureEquipment(world, settler);
   const previous = equipSlotValue(eq, group, slot);
   writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
-  if (previous !== null) addCarry(world, settler, previous.goodType, 1);
-  advanceOrder(world, settler, previous !== null ? 'stow' : 'return');
+  const stows = previous !== null && !isUsed(previous);
+  if (stows) addCarry(world, settler, previous.goodType, 1);
+  advanceOrder(world, settler, stows ? 'stow' : 'return');
 }
 
 /**
- * Resolve one completed `unequip`: move the good in the addressed slot onto the settler's back (the
- * errand's stow step deposits it). An already-empty slot whiffs - the errand walks home with nothing.
+ * Resolve one completed `unequip`: take the good in the addressed slot off. A part-used unit is
+ * destroyed where the settler stands (the module note's regeneration rule); a fresh one deposits into
+ * `sink` (capacity-capped - overflow lands on the back for the stow leg), or onto the back when the
+ * planner found no store (`sink` null; the stow leg drops it on the ground). An already-empty slot
+ * whiffs - the errand walks home with nothing.
  */
-export function unequipToCarry(world: World, settler: Entity, group: EquipCategory, slot: number): void {
+export function unequipWornGood(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  group: EquipCategory,
+  slot: number,
+  sink: Entity | null,
+): void {
   const eq = world.tryGet(settler, Equipment);
   const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
   if (eq === undefined || previous === null) return; // nothing worn there - the errand just returns
   writeEquipSlot(eq, group, slot, null);
+  if (isUsed(previous)) {
+    advanceOrder(world, settler, 'return'); // destroyed on the spot - nothing to stow
+    return;
+  }
   addCarry(world, settler, previous.goodType, 1);
+  if (sink !== null) pileupIntoStore(world, ctx, settler, sink);
+  // Stow finishes the errand: emptied hands fall through to return, a leftover (sink gone/full or
+  // null) re-plans the deposit.
   advanceOrder(world, settler, 'stow');
 }

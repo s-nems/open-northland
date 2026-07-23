@@ -119,21 +119,28 @@ export function resolveSettlerBobId(
 /**
  * Pick from a {@link ByJobTable} for a draw item's `jobType`, `young` flag and equipped `weaponGood`.
  * An adult carrying a mapped weapon good takes {@link ByJobTable.byWeaponGood} first — the drawn weapon
- * follows the equipment slot, not the job. Otherwise: young → {@link ByJobTable.youngByJob}, adult →
- * {@link ByJobTable.byJob}, any miss → {@link ByJobTable.default}.
+ * follows the equipment slot, not the job - and an adult whose weapon slot is explicitly empty
+ * (`weaponGood` null) takes its job's bare-hands look ({@link ByJobTable.unarmedByJob}). Otherwise:
+ * young → {@link ByJobTable.youngByJob}, adult → {@link ByJobTable.byJob}, any miss →
+ * {@link ByJobTable.default}.
  */
 export function pickByJob<T>(
   table: ByJobTable<T>,
   jobType: number | undefined,
   young: boolean,
-  weaponGood?: number,
+  weaponGood?: number | null,
 ): T {
   // The equipped weapon decides an adult warrior's look; children never carry a weapon slot.
-  if (!young && weaponGood !== undefined) {
+  if (!young && weaponGood != null) {
     const armed = table.byWeaponGood?.[weaponGood];
     if (armed !== undefined) return armed;
   }
   if (jobType === undefined) return table.default;
+  // An explicitly empty weapon slot disarms the drawn body - a weapon-job falls to its bare-hands look.
+  if (!young && weaponGood === null) {
+    const bare = table.unarmedByJob?.[jobType];
+    if (bare !== undefined) return bare;
+  }
   const hit = young ? table.youngByJob?.[jobType] : table.byJob[jobType];
   return hit ?? table.default;
 }

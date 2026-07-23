@@ -54,7 +54,7 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
       if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
       for (const row of rows) {
         const def = opts.goods.find((g) => g.typeId === row.goodType);
-        const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} ×${row.available}`;
+        const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
         w.addRow(label, () => {
           opts.enqueue({
             kind: 'equipGood',

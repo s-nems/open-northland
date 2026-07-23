@@ -33,7 +33,7 @@ import {
   pickupFromStore,
   pileupIntoStore,
   swingWorkUnits,
-  unequipToCarry,
+  unequipWornGood,
 } from './effects-goods/index.js';
 
 /**
@@ -317,8 +317,9 @@ function applyEffect(
       equipFromStore(world, settler, effect.from, effect.goodType, effect.group, effect.slot);
       return;
     case 'unequip':
-      // The take-off errand's in-place first step: the worn good moves onto the back for the stow leg.
-      unequipToCarry(world, settler, effect.group, effect.slot);
+      // The take-off gesture, run at the stow store (or in place when destroying/ground-dropping): a
+      // fresh unit deposits into the sink, a part-used one is destroyed. See unequipWornGood.
+      unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
