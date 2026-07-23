@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../../../src/components/index.js';
+import { CurrentAtomic, Settler } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
-import { atomicSystem, FIGHT_EXPERIENCE_TYPE, WEAPON_MAIN_TYPE } from '../../../../src/systems/index.js';
+import {
+  atomicSystem,
+  combatSystem,
+  FIGHT_EXPERIENCE_TYPE,
+  FIGHT_MASTERY_HITS,
+  WEAPON_MAIN_TYPE,
+} from '../../../../src/systems/index.js';
 import {
   combatCadenceContent,
   ctxOf,
   fighterAt,
   grass,
+  IRON_SPEAR_DAMAGE,
   OTHER,
   SOLDIER_SPEAR,
   SOLDIER_UNARMED,
@@ -54,5 +61,26 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     startSwing(sim, attacker, { target, damage: 400, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SABER }, 2);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(attacker, Settler).experience.size).toBe(0);
+  });
+});
+
+describe('combatSystem — fight experience raises the issued swing damage', () => {
+  const swingDamageOf = (spearHits: number): number => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    if (spearHits > 0) {
+      sim.world.get(attacker, Settler).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
+    }
+    fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy — the drive swings this tick
+    combatSystem(sim.world, ctxOf(sim));
+    const atomic = sim.world.get(attacker, CurrentAtomic);
+    if (atomic.effect.kind !== 'attack') throw new Error('expected an attack swing');
+    return atomic.effect.damage;
+  };
+
+  it('a novice swings the weapon column raw; combat mastery adds half again', () => {
+    const base = IRON_SPEAR_DAMAGE['0'];
+    expect(swingDamageOf(0)).toBe(base);
+    expect(swingDamageOf(FIGHT_MASTERY_HITS)).toBe(base + base / 2); // +50% at the combat cap
   });
 });

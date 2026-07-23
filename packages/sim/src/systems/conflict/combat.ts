@@ -15,6 +15,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
+import { withFightDamageBonus } from '../progression/index.js';
 import {
   HUNTER_JOB,
   isAggressiveAnimal,
@@ -301,7 +302,12 @@ function engageCombatant(
     // its hash. It only matters in the idle tick between swings (mid-swing, `CurrentAtomic` already gates
     // the unit off the economy), where it keeps an owned unit engaged instead of re-tasked.
     if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
-    const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target));
+    // Fight experience with this weapon class raises the swing's damage (up to +50% at combat mastery).
+    const damage = withFightDamageBonus(
+      weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target)),
+      attacker.experience,
+      weapon.weapon.mainType,
+    );
     startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
     return;
   }

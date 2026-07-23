@@ -190,7 +190,7 @@ const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = n
  * track (saber, or a `mainType` outside {@link WEAPON_MAIN_TYPE}). A pure lookup over the constant
  * {@link FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE} map.
  */
-function fightExperienceTypeFor(weaponMainType: number): number | undefined {
+export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
   return FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE.get(weaponMainType);
 }
 

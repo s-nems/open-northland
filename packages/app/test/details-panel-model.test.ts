@@ -573,7 +573,7 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered
               [9, 100], // 100 raw points at rate 100 → 1 repeat
-              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4],
+              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits — under 5 hits/repeat, so +0% damage
             ],
           },
         },
@@ -581,10 +581,11 @@ describe('selection details panel model', () => {
     ]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // Repeats descending; the curve percents pin the shared bonus formula (5→52%, 4→46%, 1→17%).
+    // Repeats descending; the curve percents pin the shared bonus formula (5→52%, 1→17%) and the fight
+    // bucket's own damage scale (4 hits sit under its 5-hits-per-repeat step, so it buys +0% yet).
     expect(model.experience.map((r) => ({ repeats: r.repeats, bonusPct: r.bonusPct }))).toEqual([
       { repeats: 5, bonusPct: 52 },
-      { repeats: 4, bonusPct: 46 },
+      { repeats: 4, bonusPct: 0 },
       { repeats: 1, bonusPct: 17 },
     ]);
     expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
