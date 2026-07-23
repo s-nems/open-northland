@@ -13,9 +13,14 @@ export { ctxOf };
  */
 
 export const WOODCUTTER = 1;
+export const CARPENTER = 2;
+export const MINER = 5; // fixture job with no experience tracks at all
+export const CARRIER = 36; // the fixture carrier (id slug 'carrier') the transport-trade gate keys on
 export const WOOD = 1;
 export const WOOD_TRACK = 1; // fixture jobExperience typeId for "woodcutter wood"
 export const GENERAL_TRACK = 2; // fixture jobExperience typeId for "woodcutter general"
+export const CARPENTER_GENERAL_TRACK = 3; // fixture jobExperience typeId for "carpenter general"
+export const CARRIER_TRACK = 5; // fixture jobExperience typeId for "carrier general" (job 36)
 
 export function makeSettler(sim: Simulation, jobType: number | null): Entity {
   return settlerAt(sim, { jobType, tribe: 1 });

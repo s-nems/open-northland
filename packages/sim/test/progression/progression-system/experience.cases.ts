@@ -3,7 +3,7 @@ import { Carrying, CurrentAtomic, Resource, Settler } from '../../../src/compone
 import { fx, Simulation } from '../../../src/index.js';
 import { atomicSystem, grantWorkExperience, trackFor } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf, GENERAL_TRACK, makeSettler, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
+import { ctxOf, GENERAL_TRACK, MINER, makeSettler, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
 describe('trackFor — (job, good) specialization lookup', () => {
   it('prefers the good-specific track over the general one for the same job', () => {
@@ -21,7 +21,7 @@ describe('trackFor — (job, good) specialization lookup', () => {
 
   it('returns undefined when the job has no track at all', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    expect(trackFor(ctxOf(sim), 2 /* carpenter: no tracks in fixture */, WOOD)).toBeUndefined();
+    expect(trackFor(ctxOf(sim), MINER /* no tracks in fixture */, WOOD)).toBeUndefined();
   });
 });
 
@@ -60,7 +60,7 @@ describe('grantWorkExperience — accrual on a completed work atomic', () => {
 
   it('is a no-op when the job/good pairing has no track', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = makeSettler(sim, 2 /* carpenter: no tracks */);
+    const e = makeSettler(sim, MINER /* no tracks */);
     grantWorkExperience(sim.world, ctxOf(sim), e, WOOD);
     expect(sim.world.get(e, Settler).experience.size).toBe(0);
   });

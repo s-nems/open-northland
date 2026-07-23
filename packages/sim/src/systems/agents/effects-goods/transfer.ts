@@ -68,23 +68,27 @@ export function pickupFromStore(
  * flag moves nothing already dropped. Any other store takes the load into its own {@link Stockpile}, capped
  * at the building type's per-good capacity, overflow staying on the settler's back (goods conserved). No-op
  * if the settler carries nothing or the (non-flag) store has no stockpile.
+ *
+ * Returns the units actually taken into a store's stockpile, the executor's signal that a delivery
+ * landed: 0 on a no-op, a blocked deposit, or a flag drop (a ground heap is not a delivery).
  */
-export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): void {
+export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): number {
   if (world.has(store, DeliveryFlag)) {
     dropCarryAtOwnTile(world, settler);
-    return;
+    return 0;
   }
   const load = world.tryGet(settler, Carrying);
-  if (load === undefined || load.amount <= 0) return;
+  if (load === undefined || load.amount <= 0) return 0;
   const stock = world.tryGet(store, Stockpile);
-  if (stock === undefined) return;
+  if (stock === undefined) return 0;
 
   const have = stock.amounts.get(load.goodType) ?? 0;
   const capacity = stockCapacity(world, ctx, store, load.goodType);
   const space = Math.max(0, capacity - have);
   const moved = Math.min(load.amount, space);
-  if (moved <= 0) return; // store full for this good — keep carrying
+  if (moved <= 0) return 0; // store full for this good — keep carrying
 
   setStockAmount(world, stock.amounts, load.goodType, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
+  return moved;
 }

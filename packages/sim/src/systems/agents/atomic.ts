@@ -7,7 +7,7 @@ import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../lifecycle/needs.js';
-import { grantWorkExperience } from '../progression/index.js';
+import { grantCarryExperience, grantWorkExperience } from '../progression/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
@@ -195,7 +195,10 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       drawUtilityGood(world, settler, effect.goodType);
       return;
     case 'pileup':
-      pileupIntoStore(world, ctx, settler, effect.store);
+      // Only a delivery that actually landed trains the transport trade (see grantCarryExperience).
+      if (pileupIntoStore(world, ctx, settler, effect.store) > 0) {
+        grantCarryExperience(world, ctx, settler);
+      }
       return;
     case 'eat':
       // Eating consumes one unit of food (from a store the eater stands on, or its own carried load)
