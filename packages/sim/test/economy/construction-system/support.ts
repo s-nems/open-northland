@@ -64,7 +64,7 @@ export function constructionContent(): ContentSet {
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
-      { typeId: HEADQUARTERS, id: 'headquarters', kind: 'headquarters' }, // construction defaults to []
+      { typeId: HEADQUARTERS, id: 'headquarters', kind: 'storage' }, // construction defaults to []
       {
         typeId: HOUSE,
         id: 'home_small',

@@ -31,7 +31,7 @@ function stocksContent(): ContentSet {
       { typeId: STONE, id: 'stone' },
     ],
     jobs: [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'warehouse', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'warehouse', kind: 'storage' }],
   });
 }
 

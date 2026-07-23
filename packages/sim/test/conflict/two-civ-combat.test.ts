@@ -51,7 +51,7 @@ function twoCivContent(): ContentSet {
       { typeId: 1, id: 'soldier' },
     ],
     buildings: [
-      { typeId: 1, id: 'headquarters', kind: 'headquarters' },
+      { typeId: 1, id: 'headquarters', kind: 'storage' },
       { typeId: 4, id: 'home', kind: 'home' }, // the building the viking tech edge unlocks
     ],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],

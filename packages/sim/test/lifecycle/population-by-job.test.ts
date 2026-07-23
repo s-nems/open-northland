@@ -33,7 +33,7 @@ function jobsContent(): ContentSet {
       { typeId: FARMER, id: 'farmer' },
       { typeId: CARPENTER, id: 'carpenter' },
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
   });
 }
 

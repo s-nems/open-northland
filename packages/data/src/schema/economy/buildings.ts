@@ -53,11 +53,11 @@ export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
   /**
-   * Coarse building class — one of {@link BUILDING_KIND}. Stays `z.string()` rather than an enum
-   * because the extractor emits a `maintype_<n>` fallback for an unrecognized `logicmaintype`, so an
-   * unknown class degrades one record instead of failing the whole set.
+   * Coarse building class: one of {@link BUILDING_KIND}, or the extractor's `maintype_<...>`
+   * fallback for an unrecognized `logicmaintype` (an unknown class degrades one record instead of
+   * failing the whole set).
    */
-  kind: z.string(),
+  kind: z.union([z.enum(BUILDING_KIND), z.templateLiteral(['maintype_', z.string()])]),
   /** Population capacity tier from `logichomesize` — present only on `home` buildings (else 0). */
   homeSize: z.number().int().nonnegative().default(0),
   workers: z.array(WorkerSlot).default([]),

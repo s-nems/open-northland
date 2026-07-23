@@ -28,7 +28,7 @@ function dropContent(): ContentSet {
       { typeId: WOOD, id: 'wood' },
       { typeId: STONE, id: 'stone' },
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     jobs: [{ typeId: 0, id: 'idle' }],
     tribes: [{ typeId: 1, id: 'viking' }],
   });

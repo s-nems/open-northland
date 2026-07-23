@@ -73,7 +73,7 @@ function graphContent(): ContentSet {
       // bakery2: a SECOND bread producer, to prove producedBy lists every producer, sorted.
       { typeId: 13, id: 'bakery2', kind: 'workplace', produces: [BREAD] },
       // warehouse: a non-producing building — must contribute no producer edge.
-      { typeId: 14, id: 'warehouse', kind: 'headquarters' },
+      { typeId: 14, id: 'warehouse', kind: 'storage' },
     ],
   });
 }

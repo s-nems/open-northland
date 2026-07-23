@@ -27,7 +27,7 @@ function housingContent(): ContentSet {
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [
       // The headquarters — a storage kind, NOT a residence: contributes 0 to housing capacity.
-      { typeId: 1, id: 'headquarters', kind: 'headquarters' },
+      { typeId: 1, id: 'headquarters', kind: 'storage' },
       // home level 00 (logichomesize 1 → capacity 2 here) and a bigger one (homeSize 4).
       { typeId: 2, id: 'home_small', kind: 'home', homeSize: 2 },
       { typeId: 3, id: 'home_large', kind: 'home', homeSize: 4 },

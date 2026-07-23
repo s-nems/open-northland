@@ -32,7 +32,7 @@ function animationContent(): ContentSet {
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     atomicAnimations: [
       // A harvest swing: must play to completion (uninterruptible) and pins a facing direction.
       { id: 'viking_chop', name: 'viking_chop', length: 3, interruptible: false, startDirection: 2 },

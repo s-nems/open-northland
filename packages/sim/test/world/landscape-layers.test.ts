@@ -34,7 +34,7 @@ function landscapeContent(): ContentSet {
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     landscape: [
       // wall_gate_open (typeId 84) declared first — a water-layer type. Proves the sort, not declaration order.
       { typeId: 84, id: 'wall_gate_open', allowedOnLand: true, allowedOnWater: true, maxValency: 100 },
@@ -74,7 +74,7 @@ describe('waterLayerLandscape', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       landscape: [{ typeId: 30, id: 'grass', allowedOnLand: true }],
     });
     expect(waterLayerLandscape(content)).toEqual([]);

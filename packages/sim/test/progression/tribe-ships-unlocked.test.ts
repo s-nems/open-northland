@@ -40,7 +40,7 @@ function shipContent(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: 10, id: 'shipwright' },
@@ -81,7 +81,7 @@ describe('tribeShipsUnlocked', () => {
         manifest: TEST_MANIFEST,
         goods: [{ typeId: 0, id: 'none' }],
         jobs: [{ typeId: 0, id: 'idle' }],
-        buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+        buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       }),
     });
     expect(tribeShipsUnlocked(sim.world, ctxOf(sim), TRIBE)).toEqual([]);
@@ -123,7 +123,7 @@ describe('tribeShipsUnlocked', () => {
         manifest: TEST_MANIFEST,
         goods: [{ typeId: 0, id: 'none' }],
         jobs: [{ typeId: 0, id: 'idle' }],
-        buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+        buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
         vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0 }],
       }),
     });

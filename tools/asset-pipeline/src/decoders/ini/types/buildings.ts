@@ -30,7 +30,7 @@ const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {
 };
 
 /** Unknown `logicmaintype` ids fall back to a stable `maintype_<n>` so a new value never crashes a batch. */
-function houseKind(mainType: number | undefined): string {
+function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
 }

@@ -74,7 +74,7 @@ export function content(): ContentSet {
       { typeId: WOODCUTTER, id: 'woodcutter', allowedAtomics: [WOOD_ATOMIC] },
       { typeId: CLAY_DIGGER, id: 'clay_digger', allowedAtomics: [CLAY_ATOMIC] },
     ],
-    buildings: [{ typeId: TEST_HUT, id: 'test_hut', kind: 'house', footprint: HUT_FOOTPRINT }],
+    buildings: [{ typeId: TEST_HUT, id: 'test_hut', kind: 'storage', footprint: HUT_FOOTPRINT }],
     landscape: [
       { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
       { typeId: WATER, id: 'water', walkable: false, buildable: false },

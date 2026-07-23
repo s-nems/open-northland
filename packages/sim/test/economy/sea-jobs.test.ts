@@ -35,7 +35,7 @@ function jobContent(): ContentSet {
       { typeId: 18, id: 'farmer' }, // an unrelated land job
       { typeId: 0, id: 'idle' },
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
   });
 }
 
@@ -71,7 +71,7 @@ describe('seaJobs', () => {
         { typeId: 0, id: 'idle' },
         { typeId: 22, id: 'fisher' },
       ],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     });
     expect(seaJobs(content)).toEqual([]);
   });

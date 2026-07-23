@@ -49,7 +49,7 @@ function content(): ContentSet {
       { typeId: IDLE, id: 'idle' },
       { typeId: ARCHER, id: 'archer' },
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [
       {
