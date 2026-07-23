@@ -186,7 +186,8 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(36);
+  // One value past the last explicit case (37), so the default arm (setJob) stays reachable.
+  const roll = rng.int(39);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -476,7 +477,7 @@ function nextCommand(rng: Rng): Command {
       // built buildings / non-building / dead ids (skipped). Exercises the cancelUpgrade accept + skip
       // paths against the upgradeBuilding rolls above.
       return { kind: 'cancelUpgrade', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 33:
+    case 36:
       // An equip order at a random id: valid, mismatched-category, unknown and non-equippable goods
       // against slot addresses on and past both ends of the valid band - live settlers (an errand walks
       // out mid-stream), children, jobless, unowned/dead targets. Must hash and replay whether it
@@ -488,7 +489,7 @@ function nextCommand(rng: Rng): Command {
         slot: rng.int(6) - 1,
         goodType: pick(rng, EQUIP_ORDER_GOODS),
       };
-    case 34:
+    case 37:
       // The take-off twin: mostly empty-slot skips, an occasional live take-off against the spawn
       // rolls' worn boots/mead (the stow/return legs then run mid-stream).
       return {

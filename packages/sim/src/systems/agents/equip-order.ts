@@ -6,7 +6,7 @@ import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from './actions.js';
-import { equipSlotValue } from './effects-goods/index.js';
+import { equipSlotValue, isUsed } from './effects-goods/index.js';
 import type { TargetCandidates } from './targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from './targets/index.js';
 import { unreachableGoalVeto } from './unreachable-goals.js';
@@ -18,12 +18,15 @@ import { unreachableGoalVeto } from './unreachable-goals.js';
  *
  *  - `acquire`: free the hands first (a leftover job load is set down where the settler stands, the
  *    `moveUnit` idiom), then fetch - walk to the nearest reachable store/pile holding the wanted good
- *    and run the `equip` atomic there (the unit lands straight on the body, a swap-out on the back).
- *    A take-off order (`goodType` null) runs the `unequip` atomic in place instead. Nothing to fetch
- *    anywhere reachable → skip to `return` (the errand gives up, faithful to "no source, no order").
- *  - `stow`: a carried good (the swap-out / the taken-off unit) goes into the nearest store that can
- *    take it; when none can, it is set down on the ground where the settler stands (user-specified
- *    fallback). Partial deposits re-plan until the hands are free.
+ *    and run the `equip` atomic there (the unit lands straight on the body, a fresh swap-out on the
+ *    back, a used one destroyed - the effects' regeneration rule). Nothing to fetch anywhere reachable
+ *    → skip to `return` (the errand gives up, faithful to "no source, no order"). A take-off order
+ *    (`goodType` null) runs the `unequip` atomic AT the store the unit will land in, so the item stays
+ *    visibly worn for the walk (user rule 2026-07-23); only a part-used unit (destroyed on the spot)
+ *    or a unit no store can take (dropped by the stow leg) comes off in place.
+ *  - `stow`: a carried good (the swap-out / a taken-off unit no store could take) goes into the
+ *    nearest store that can take it; when none can, it is set down on the ground where the settler
+ *    stands (user-specified fallback). Partial deposits re-plan until the hands are free.
  *  - `return`: walk back to the node the order was issued on; arriving (or the way back proving
  *    unreachable) ends the errand and hands the settler to the economy the same tick.
  *
@@ -51,15 +54,26 @@ export function planEquipOrder(
     const worn = world.tryGet(e, Equipment);
     if (order.goodType === null) {
       // Take-off: the slot may have emptied since the order (a swap raced it) - then just walk home.
-      if (worn === undefined || equipSlotValue(worn, order.group, order.slot) === null) {
+      const takenOff = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+      if (takenOff === null) {
         order.stage = 'return';
         return planReturn(world, e, order.returnTo, here, avoid);
       }
       if (world.has(e, Carrying)) {
-        startDrop(world, ctx, e); // free the hands first - the taken-off good needs the back
+        startDrop(world, ctx, e); // free the hands first - the taken-off good may need the back
         return true;
       }
-      startUnequip(world, ctx, e, settler, order.group, order.slot);
+      // sink null = take off in place: a part-used unit destroys, an unstowable one gets ground-dropped.
+      const sink = isUsed(takenOff)
+        ? null
+        : nearestStoreFor(targets.stockpileCells, world, ctx, here, takenOff.goodType, false, gate, avoid);
+      if (sink === null) {
+        startUnequip(world, ctx, e, settler, order.group, order.slot, null);
+        return true;
+      }
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, sink, here), () =>
+        startUnequip(world, ctx, e, settler, order.group, order.slot, sink),
+      );
       return true;
     }
     // Already wearing the wanted good (a re-issued order): nothing to fetch.
@@ -135,8 +149,8 @@ function planReturn(
   return true;
 }
 
-/** The in-place take-off atomic: the generic goods-handling gesture with the `unequip` effect (a
- *  self-directed action, so no target entity). */
+/** The take-off atomic: the generic goods-handling gesture with the `unequip` effect - aimed at the
+ *  stow store when the unit deposits there, self-directed (`sink` null) for a destroy/ground-drop. */
 function startUnequip(
   world: World,
   ctx: SystemContext,
@@ -144,13 +158,14 @@ function startUnequip(
   settler: SettlerIdentity,
   group: EquipCategory,
   slot: number,
+  sink: Entity | null,
 ): void {
   startAtomic(
     world,
     e,
     PICKUP_ATOMIC_ID,
-    { kind: 'unequip', group, slot },
+    { kind: 'unequip', group, slot, sink },
     atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
-    null,
+    sink,
   );
 }

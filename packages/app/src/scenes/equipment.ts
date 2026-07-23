@@ -14,7 +14,7 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * Three settlers exercising every Ekwipunek slot state: a civilian with worn boots/tool/consumables
- * (mixed use percentages, a permanent amulet, one empty misc slot), a soldier adding the Broń/Zbroja
+ * (mixed condition levels, a permanent amulet, one empty misc slot), a soldier adding the Broń/Zbroja
  * rows, and a bare settler with no Equipment component. Ground piles of spare gear (swords, bows,
  * shoes, tools, armour, consumables) lie by the HQ so the per-slot order buttons have something for
  * their pick menus and the equip/swap/take-off errands can be exercised by hand.
@@ -22,12 +22,13 @@ import type { SceneDefinition } from './types.js';
 
 const { Equipment, Settler } = components;
 
-/** The worn "degree of use" percentages the panel must show (see the details-panel model tests). */
+/** The worn "degree of use" inputs - the panel shows the remaining condition, `100 -` these (see the
+ *  details-panel model tests). */
 const BOOTS_USE_PCT = 70;
 const TOOL_USE_PCT = 40;
 const MEAD_USE_PCT = 50;
 const FOOD_POTION_USE_PCT = 25;
-/** Fully spent - the wear gauge under its socket draws empty and the tooltip reads "(100%)". */
+/** Fully spent - the condition gauge under its socket draws empty and the tooltip reads "(0%)". */
 const STAMINA_POTION_USE_PCT = 100;
 
 /** A good slug's typeId in the RUNNING content - the sandbox fallback carries the equippables at +100

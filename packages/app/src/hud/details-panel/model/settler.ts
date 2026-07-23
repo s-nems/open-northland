@@ -62,7 +62,7 @@ export function stanceLabel(mode: number | undefined): string {
  *  address an equip/swap/take-off order names (`misc` rows address their slot by index). */
 export type EquipGroup = 'boots' | 'tool' | 'weapon' | 'armor' | 'misc';
 
-/** One equipment slot's contents. Empty (`occupied` false, `usePct` null) for an unworn slot. */
+/** One equipment slot's contents. Empty (`occupied` false, `conditionPct` null) for an unworn slot. */
 export interface EquipSlotModel {
   /** Whether the slot holds a good - true even when the good's def failed to resolve (no icon/label),
    *  so the action buttons still read the slot as worn. */
@@ -71,9 +71,10 @@ export interface EquipSlotModel {
   readonly goodId?: string;
   /** The worn good's display name (the action buttons' tooltip line) - undefined when empty. */
   readonly label?: string;
-  /** The "degree of use" percent for an occupied wearing item (potion/shoes/tool); null when the slot
-   *  is empty or holds a permanent good (weapon/armour/amulet). */
-  readonly usePct: number | null;
+  /** How much of an occupied wearing item is LEFT, as a percent (a fresh item reads 100 and drains
+   *  with use - the inverse of the sim's rising `degreeOfUse`; user rule 2026-07-23). Null when the
+   *  slot is empty or holds a permanent good (weapon/armour/amulet). */
+  readonly conditionPct: number | null;
 }
 
 /**
@@ -139,17 +140,17 @@ interface RawEquipment {
 }
 
 /** One equipment slot → its panel model. Empty when unworn/unresolved; an occupied wearing good
- *  (potion/shoes/tool) carries its "degree of use" percent, a permanent good (weapon/armour/amulet,
- *  `equip.wears` false) none. */
+ *  (potion/shoes/tool) carries its remaining-condition percent, a permanent good (weapon/armour/
+ *  amulet, `equip.wears` false) none. */
 function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotModel {
-  if (slot == null) return { occupied: false, usePct: null };
+  if (slot == null) return { occupied: false, conditionPct: null };
   const goodType = num(slot.goodType);
-  if (goodType === undefined) return { occupied: false, usePct: null };
+  if (goodType === undefined) return { occupied: false, conditionPct: null };
   const def = goodDef(ctx, goodType);
   const wears = def?.equip?.wears ?? false;
   return {
     occupied: true,
-    usePct: wears ? pct(num(slot.degreeOfUse)) : null,
+    conditionPct: wears ? 100 - pct(num(slot.degreeOfUse)) : null,
     ...(def?.id !== undefined ? { goodId: def.id } : {}),
     label: goodLabel(ctx, goodType),
   };

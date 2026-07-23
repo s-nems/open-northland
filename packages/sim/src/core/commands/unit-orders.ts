@@ -215,9 +215,10 @@ export type UnitOrderCommand =
   | {
       /**
        * Order one owned settler to take the good in equipment slot (`group`, `slot`) off - the equip
-       * window's cross button, stamping the take-off flavour of the same errand (remove in place →
-       * stow → return). Recoverable bad input (skipped, still logged): the `equipGood` issuer guards,
-       * or an already-empty slot. See `unequipGood`.
+       * window's cross button, stamping the take-off flavour of the same errand (walk to the stow
+       * store still wearing it → take off there → return; a part-used unit is instead destroyed in
+       * place - see the `unequip` effect). Recoverable bad input (skipped, still logged): the
+       * `equipGood` issuer guards, or an already-empty slot. See `unequipGood`.
        */
       readonly kind: 'unequipGood';
       readonly entity: Entity;

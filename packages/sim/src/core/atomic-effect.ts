@@ -124,10 +124,10 @@ export type AtomicEffect =
   | { readonly kind: 'drop' }
   /** The settler lifts one unit of `goodType` out of the store/pile `from` STRAIGHT into its equipment
    *  slot (`group`, `slot`) - the equip errand's acquire step, a `pickup` whose unit lands on the body
-   *  instead of the back. A swapped-out good moves onto the back (the errand stows it next). Goods are
-   *  conserved: the source loses exactly the worn unit; a source gone/emptied mid-swing whiffs (the
-   *  planner re-searches). The worn unit is fresh (`degreeOfUse` 0) - stored goods are fungible stock
-   *  amounts, so per-unit wear does not survive a store round-trip (named approximation). */
+   *  (fresh) instead of the back. A fresh swapped-out good moves onto the back for stowing; a part-used
+   *  one is destroyed (the no-regeneration rule - `effects-goods/equip.ts` owns it). Otherwise goods are
+   *  conserved: the source loses exactly the worn unit, and a source gone/emptied mid-swing whiffs (the
+   *  planner re-searches). */
   | {
       readonly kind: 'equip';
       readonly from: Entity;
@@ -135,7 +135,15 @@ export type AtomicEffect =
       readonly group: EquipCategory;
       readonly slot: number;
     }
-  /** The settler takes the good in equipment slot (`group`, `slot`) off onto its back - the take-off
-   *  errand's in-place first step (the errand stows the unit next). An already-empty slot whiffs. */
-  | { readonly kind: 'unequip'; readonly group: EquipCategory; readonly slot: number }
+  /** The settler takes the good in equipment slot (`group`, `slot`) off - run AT the stow store (`sink`),
+   *  so the item stays visibly worn for the walk there. A fresh unit deposits straight into `sink`
+   *  (overflow onto the back for the stow leg); a part-used one is destroyed (the no-regeneration rule -
+   *  `effects-goods/equip.ts` owns it) in place with `sink` null, as when no store can take the unit
+   *  (the stow leg drops it on the ground). An already-empty slot whiffs. */
+  | {
+      readonly kind: 'unequip';
+      readonly group: EquipCategory;
+      readonly slot: number;
+      readonly sink: Entity | null;
+    }
   | { readonly kind: 'idle' };

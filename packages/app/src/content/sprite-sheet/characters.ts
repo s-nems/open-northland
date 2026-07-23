@@ -35,6 +35,8 @@ import {
   type GoodRef,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
+  UNARMED_WARRIOR_SPEC,
+  WARRIOR_JOBS,
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../settler-gfx/index.js';
@@ -230,5 +232,13 @@ export async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) byWeaponGood[good.typeId] = char;
   }
-  return { byJob, youngByJob, byWeaponGood, default: fallback };
+  // The disarmed look: a weapon-job whose Equipment.weapon slot is empty draws the bare-hands warrior
+  // body instead of its job body's weapon - the inventory axis wins over the job whenever the
+  // component exists (named approximation until the combat wiring lands; a settler with no Equipment
+  // keeps the legacy armed job look). Keyed by the re-armable jobs only (WARRIOR_JOBS), so an axe
+  // soldier - no axe good exists to re-arm with - never loses its drawn axe this way.
+  const unarmedByJob: Record<number, SettlerCharacter> = {};
+  const bareWarrior = bySpec.get(UNARMED_WARRIOR_SPEC);
+  if (bareWarrior !== undefined) for (const job of WARRIOR_JOBS) unarmedByJob[job] = bareWarrior;
+  return { byJob, youngByJob, byWeaponGood, unarmedByJob, default: fallback };
 }

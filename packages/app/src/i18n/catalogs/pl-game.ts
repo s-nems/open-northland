@@ -57,6 +57,7 @@ export const plGame = {
     equipSlotHint: 'Rozkaż osadnikowi założyć przedmiot.',
     swapSlotHint: 'Rozkaż osadnikowi wymienić ten przedmiot na inny.',
     unequipSlotHint: 'Rozkaż osadnikowi zdjąć ten przedmiot.',
+    usedItemDiscardHint: 'Używany przedmiot przepada, nie wraca do magazynu.',
     equipPickEmpty: 'Brak dostępnych przedmiotów w pobliżu.',
     defenseStopped: 'Obrona zatrzymana',
     upgrade: 'Rozbuduj',

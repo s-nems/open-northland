@@ -73,7 +73,8 @@ export function assignSettlerFields(
   // The tribe rides on every settler; the animal species table keys its body look by it.
   const tribe = readSettlerTribe(components);
   if (tribe !== undefined) item.tribe = tribe;
-  // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
+  // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType;
+  // null (an Equipment with an empty weapon slot) drives the bare-hands warrior body instead.
   const weaponGood = readEquipmentWeaponGood(components);
   if (weaponGood !== undefined) item.weaponGood = weaponGood;
   const player = readOwnerPlayer(components);

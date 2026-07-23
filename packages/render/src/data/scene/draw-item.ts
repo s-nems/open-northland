@@ -152,9 +152,12 @@ export interface DrawItem {
   /**
    * For a settler: the `typeId` of the good in its `Equipment.weapon` slot. A per-character binding
    * maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood}) so the drawn
-   * weapon follows the slot rather than the job. Omitted when unarmed (falls back to the {@link jobType} look).
+   * weapon follows the slot rather than the job. `null` when the settler carries an `Equipment`
+   * component whose weapon slot is EMPTY - a warrior job then draws its bare-hands body
+   * ({@link import('../sprites/index.js').ByJobTable.unarmedByJob}). Omitted when the settler has no
+   * `Equipment` at all (the {@link jobType} look stands, weapon and all - the pre-equip legacy read).
    */
-  readonly weaponGood?: number;
+  readonly weaponGood?: number | null;
   /**
    * For a settler/signpost: the team-colour slot — the `PalettedSprite` reads its clothing-band
    * indices through this row of the `256×N` colour LUT (and a signpost picks its per-colour baked

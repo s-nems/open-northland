@@ -57,6 +57,7 @@ export const enGame = {
     equipSlotHint: 'Order this settler to put on an item.',
     swapSlotHint: 'Order this settler to swap this item for another.',
     unequipSlotHint: 'Order this settler to take this item off.',
+    usedItemDiscardHint: 'A used item is discarded, not stored.',
     equipPickEmpty: 'No items available nearby.',
     defenseStopped: 'Defence stopped',
     upgrade: 'Upgrade',

@@ -19,6 +19,7 @@ import {
 } from '../../catalog/atomics.js';
 import { JOB_BABY_FEMALE, JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../../catalog/jobs.js';
 import { CIVILIST_JOB_HEADS, SCOUT_JOB_HEADS } from '../../catalog/roster.js';
+import { WEAPON_GOOD_SLUG_BY_JOB } from '../../game/sandbox/ids/weapons.js';
 import {
   CHOP_PHASE_START,
   CHOP_SEQ,
@@ -420,6 +421,15 @@ export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, Character
   sword_shord: 'warrior-sword',
   sword_long: 'warrior-broadsword', // the two-hander
 };
+
+/** The empty-hand warrior body - what a weapon-job draws once its `Equipment.weapon` slot empties. */
+export const UNARMED_WARRIOR_SPEC: CharacterSpecId = 'warrior';
+
+/** The jobs a disarming take-off must visually strip to {@link UNARMED_WARRIOR_SPEC}: exactly the jobs
+ *  the spawn seam can arm with an equipment weapon good ({@link WEAPON_GOOD_SLUG_BY_JOB}). A job that
+ *  can never re-arm keeps its body - the axe soldiers (no axe good exists; see the slug map's note)
+ *  must not lose their drawn axe to a boots/consumable equip creating the `Equipment` component. */
+export const WARRIOR_JOBS: readonly number[] = Object.keys(WEAPON_GOOD_SLUG_BY_JOB).map(Number);
 
 /**
  * Age-class `jobType` (1..4, a settler that carries `Age`) → character spec id — the baby/child bodies

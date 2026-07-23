@@ -1,6 +1,6 @@
 import { messages } from '../../i18n/index.js';
 import { contains } from '../geometry.js';
-import { type ButtonHit, type EquipActionHit, stockSlotRects } from './layout/index.js';
+import { type ButtonHit, type EquipActionHit, type EquipSlotRef, stockSlotRects } from './layout/index.js';
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
@@ -125,8 +125,9 @@ const gatherChoiceHint = (view: PanelView, x: number, y: number): string | null 
   return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
 };
 
-/** The worn good under a hovered equipment socket ("Miód (50%)"), or null - an iconless potion/amulet
- *  draws the generic pile, so the socket tooltip is what identifies the item. Empty sockets name nothing. */
+/** The worn good under a hovered equipment socket ("Miód (50%)" - the percent is what's LEFT), or
+ *  null - an iconless potion/amulet draws the generic pile, so the socket tooltip is what identifies
+ *  the item. Empty sockets name nothing. */
 const equipSocketHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   for (let i = 0; i < view.layout.equipRows.length; i++) {
@@ -135,20 +136,34 @@ const equipSocketHint = (view: PanelView, x: number, y: number): string | null =
     if (j < 0) continue;
     const slot = view.model.equipmentRows[i]?.slots[j];
     if (slot?.label === undefined) return null;
-    return slot.usePct !== null ? `${slot.label} (${slot.usePct}%)` : slot.label;
+    return slot.conditionPct !== null ? `${slot.label} (${slot.conditionPct}%)` : slot.label;
   }
   return null;
 };
 
-/** The equip action buttons' tooltips - the glyph faces carry no label, and a swap/take-off button
- *  names the worn good on its second line. */
+/** Condition percent of an untouched item - below this the swap/take-off discard warning shows. */
+const FULL_CONDITION_PCT = 100;
+
+/** Whether the addressed slot holds a part-used wearing item - the discard-warning trigger. */
+const holdsUsedItem = (view: PanelView, ref: EquipSlotRef): boolean => {
+  if (view.kind !== 'settler') return false;
+  const slot = view.model.equipmentRows.find((row) => row.group === ref.group)?.slots[ref.slot];
+  return slot?.conditionPct != null && slot.conditionPct < FULL_CONDITION_PCT;
+};
+
+/** The equip action buttons' tooltips - the glyph faces carry no label; a swap/take-off button names
+ *  the worn good on its second line and warns when the order would discard a part-used item (the sim's
+ *  no-regeneration rule destroys it silently, so the warning is the player's only notice). */
 const equipActionHint = (view: PanelView, x: number, y: number): string | null => {
   const hit = hitEquipAction(view, x, y);
   if (hit === undefined) return null;
   const hud = messages().hud;
-  const hint =
-    hit.kind === 'equip' ? hud.equipSlotHint : hit.kind === 'swap' ? hud.swapSlotHint : hud.unequipSlotHint;
-  return hit.label !== undefined ? `${hint}\n${hit.label}` : hint;
+  const lines = [
+    hit.kind === 'equip' ? hud.equipSlotHint : hit.kind === 'swap' ? hud.swapSlotHint : hud.unequipSlotHint,
+  ];
+  if (hit.label !== undefined) lines.push(hit.label);
+  if (hit.kind !== 'equip' && holdsUsedItem(view, hit.ref)) lines.push(hud.usedItemDiscardHint);
+  return lines.join('\n');
 };
 
 /** The Upgrade button's cost card ("Upgrade requires:" then one "- Drewno ×5" line per required good),

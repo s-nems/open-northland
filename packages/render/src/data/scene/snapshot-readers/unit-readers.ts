@@ -114,13 +114,17 @@ export function readSettlerTribe(components: Readonly<Record<string, unknown>>):
 
 /**
  * The `typeId` of the good in a settler's `Equipment.weapon` slot ({@link import('../draw-item.js').DrawItem.weaponGood}),
- * so the drawn warrior weapon follows the equipment slot. `undefined` when the settler has no `Equipment`
- * component or its weapon slot is empty/malformed (the binding then falls back to the `jobType` look).
+ * so the drawn warrior weapon follows the equipment slot. Tri-state: `undefined` when the settler has no
+ * `Equipment` component at all (the `jobType` look stands), `null` when it has one whose weapon slot is
+ * empty/malformed (a warrior job then draws bare-handed), else the worn weapon's good id.
  */
-export function readEquipmentWeaponGood(components: Readonly<Record<string, unknown>>): number | undefined {
+export function readEquipmentWeaponGood(
+  components: Readonly<Record<string, unknown>>,
+): number | null | undefined {
   const eq = components.Equipment as { weapon?: { goodType?: unknown } | null } | undefined;
-  const goodType = eq?.weapon?.goodType;
-  return typeof goodType === 'number' ? goodType : undefined;
+  if (eq === undefined) return undefined;
+  const goodType = eq.weapon?.goodType;
+  return typeof goodType === 'number' ? goodType : null;
 }
 
 /**
