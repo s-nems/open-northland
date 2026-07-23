@@ -76,7 +76,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
 
   it('starves a pinned child (Age carrier in a child stage) — it self-feeds, so it bites like an adult', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // A child runs the planner's eat drive (ai.ts); with no food anywhere its hunger pins and the
+    // A child runs the planner's eat drive (the drive ladder); with no food anywhere its hunger pins and the
     // starvation bite applies — only the baby stage keeps the cared-for exemption.
     const e = starvingSettler(sim, 300);
     sim.world.get(e, Settler).jobType = CHILD_MALE;

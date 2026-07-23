@@ -13,10 +13,10 @@
  *
  * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the
  * needs-drives (the original's "a baby is cared for, it doesn't self-feed"), while a CHILD runs the needs
- * ladder (the original binds child eat/sleep animations — see `ai.ts`). The planner keys on the `Age`
- * component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a synthetic fixture's adult
- * job id can equal a real age-class id, but only a born-young settler carries `Age`. `isNonWorkingAge` stays
- * the structural id→stage predicate the JobSystem uses.
+ * ladder (the original binds child eat/sleep animations — see `agents/drive-ladder.ts`). The planner
+ * keys on the `Age` component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a
+ * synthetic fixture's adult job id can equal a real age-class id, but only a born-young settler
+ * carries `Age`. `isNonWorkingAge` stays the structural id→stage predicate the JobSystem uses.
  *
  * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation);
  * the growth cadence — both stage boundaries and the total — is observed on the running original

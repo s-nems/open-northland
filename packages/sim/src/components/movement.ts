@@ -86,8 +86,8 @@ export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed
 /**
  * A stranded walker's retry pacing: its route FAILED ({@link PathRequest} `failed`) and no drive with its
  * own failure protocol owns it, so the AI planner parks the dead nav state until tick `retryAt`, then sheds
- * it and re-plans (the stranded-recovery block in `systems/agents/ai.ts`). Without it a failed request
- * reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
+ * it and re-plans (the stranded-recovery block in `systems/agents/replan.ts`). Without it a failed
+ * request reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
  * (`clearNavState`), so an authoritative cancel — a player order, a job change — restarts the walk at once.
  */
 export const Stranded = defineComponent<{ retryAt: number }>('Stranded');

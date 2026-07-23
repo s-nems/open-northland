@@ -68,7 +68,7 @@ function boundFarmTarget(
 }
 
 /**
- * 2. FARMER — the field-cultivation loop for a settler bound to a farm, in priority order (each step targets
+ * FARMER — the field-cultivation loop for a settler bound to a farm, in priority order (each step targets
  * the nearest candidate, Manhattan + ascending-cell-id tie-break over the canonical lists):
  *
  *  a. **Reap** a ripe field of this farm (the scythe swing — the good's harvest atomic; the cut wheat drops as
@@ -245,7 +245,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   }
 
   // e. Nothing to tend this tick — walk home and wait inside the farm (re-stamped every idle tick, so the
-  // marker holds without flicker; the replan sweep in ai.ts clears it the moment work appears).
+  // marker holds without flicker; the replan sweep (replan.ts) clears it the moment work appears).
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () =>
     world.add(e, Resting, { at: farm }),
   );
