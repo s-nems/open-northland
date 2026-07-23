@@ -10,7 +10,7 @@ import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { operatorProductionBonus } from '../../progression/index.js';
-import { stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
+import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
  * The experience-bonus half of a completed batch: each done cycle credits its operator's current bonus
@@ -51,11 +51,22 @@ function creditBonus(world: World, building: Entity, goodType: number, extra: Fi
 }
 
 /**
+ * Flush a workplace's banked whole bonus units after stock LEFT it — a withdrawal frees the space a
+ * capacity-blocked unit was waiting for, and the completion-path flush may never come again (inputs
+ * starved, operator reassigned), so the withdrawal seam must release it too. Cheap no-op for the
+ * common building holding no {@link ProductionBonus}.
+ */
+export function flushBankedBonus(world: World, ctx: SystemContext, building: Entity): void {
+  if (!world.has(building, ProductionBonus)) return;
+  flushWholeUnits(world, ctx, building, recipesByProductOf(world, ctx, building));
+}
+
+/**
  * Move each whole remainder unit into real stock (emitting `goodProduced` like a deposited batch),
  * honoring the room the in-flight same-product batches have RESERVED — their own deposits are
  * unconditional (`depositCycleOutput`: "room reserved at start"), so a bonus unit must never consume a
- * reserved slot. A blocked unit simply holds until space frees; the component is dropped once every
- * remainder is zero.
+ * reserved slot. A blocked unit holds until space frees (the next completion here, or a withdrawal via
+ * {@link flushBankedBonus}); the component is dropped once every remainder is zero.
  */
 function flushWholeUnits(
   world: World,

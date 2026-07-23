@@ -210,7 +210,12 @@ export function stockRows(
       // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
       label: goodLabel(ctx, slot.goodType),
       // Whole units plus the pending experience-bonus fraction (see ProductionBonus) — display only.
-      amount: (live.get(slot.goodType) ?? 0) + (fractions.get(slot.goodType) ?? 0),
+      // Floored to one decimal (a 0.97 pending fraction must not read as an extractable whole unit)
+      // and clamped at the slot capacity (a capacity-blocked banked unit must not read as overfull).
+      amount: Math.min(
+        (live.get(slot.goodType) ?? 0) + Math.floor((fractions.get(slot.goodType) ?? 0) * 10) / 10,
+        slot.capacity,
+      ),
       category: goodCategoryTab(goodId),
       capacity: slot.capacity,
       ...(goodId !== undefined ? { goodId } : {}),

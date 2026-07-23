@@ -7,6 +7,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { flushBankedBonus } from '../../economy/production/bonus-output.js';
 import { stockCapacity } from '../../stores/index.js';
 import { carriedGoodForm } from '../economy/routing.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
@@ -57,6 +58,7 @@ export function pickupFromStore(
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   setStockAmount(world, stock.amounts, goodType, have - moved);
   addCarry(world, settler, carried, moved);
+  flushBankedBonus(world, ctx, from); // the freed slot may release a capacity-blocked bonus unit
   reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
 }
 

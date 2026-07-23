@@ -16,6 +16,7 @@ import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
+import { SCOUT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
 import { MILITARY_MODE, type MilitaryMode, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
@@ -101,6 +102,21 @@ describe('vision radii — the per-job classification', () => {
     expect(SOLDIER_VISION_NODES).toBeGreaterThan(HUNTER_VISION_NODES);
     expect(HUNTER_VISION_NODES).toBeGreaterThan(CIVILIAN_VISION_NODES);
     expect(BUILDING_VISION_NODES).toBeGreaterThan(HUNTER_VISION_NODES);
+  });
+});
+
+describe('scout experience — the signpost craft widens the eye', () => {
+  it('a mastered scout sees cells a fresh scout cannot (the visionRadiusOf wiring)', () => {
+    const sim = simOn(FOG_MODE.RECON, 48, 8);
+    const scout = unit(sim, 4, 4, P0, { jobType: SCOUT_JOB });
+    for (let t = 0; t <= VISION_CADENCE_TICKS + 1; t++) sim.step();
+    // 15 cells (30 nodes) east: beyond the base 26-node eye, inside mastery's +6.
+    expect(rawState(sim, P0, 19, 4)).not.toBe(FOG_STATE.VISIBLE);
+
+    sim.world.get(scout, Settler).experience.set(SCOUT_EXPERIENCE_TYPE, 100); // mastery: the full cap
+    sim.world.touch(scout);
+    for (let t = 0; t <= VISION_CADENCE_TICKS + 1; t++) sim.step();
+    expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.VISIBLE);
   });
 });
 
