@@ -4,6 +4,7 @@ export {
   type ContentFileHit,
   type ContentHit,
   type ContentJsonHit,
+  isContentRoute,
   resolveContentRequest,
 } from './routes.js';
 export { resolveFileUnderRoot } from './under-root.js';

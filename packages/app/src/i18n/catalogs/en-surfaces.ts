@@ -89,6 +89,8 @@ export const enSurfaces = {
     soundOn: '🔊 Sound on',
     soundOff: '🔇 Click to enable sound',
     missingContentTitle: 'Decoded content is unavailable',
+    missingTerrainDetail:
+      'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on a game copy you own (npm run pipeline), then reload.',
     availableScenes: 'Available worlds:',
     unknownScene: 'Unknown world: "{id}"',
     copied: 'copied',

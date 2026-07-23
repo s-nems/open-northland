@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveContentRequest } from '@open-northland/content-resolver';
+import { isContentRoute, resolveContentRequest } from '@open-northland/content-resolver';
 import { defineConfig, type Plugin } from 'vite';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
@@ -14,8 +14,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 // OUTSIDE the app's vite root. The shared route table (`@open-northland/content-resolver`) bridges it in
 // — `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`, plus the
 // computed `/maps-index` + `/bobs-index` menu/gallery payloads — with path traversal rejected and only
-// per-route extensions served. Anything unmatched or absent falls through to Vite's 404, so a checkout
-// without `content/` still boots (the menu shows a "run the pipeline" hint instead of map cards).
+// per-route extensions served. An in-namespace miss is answered 404 HERE: Vite's SPA fallback would
+// otherwise serve `index.html` as HTTP 200 `text/html` and the loaders' `!res.ok` absence checks would
+// mis-read a missing `content/` as bytes. Off-namespace paths fall through to Vite as before.
 const contentRoot = resolve(here, '../../content');
 
 function serveContent(): Plugin {
@@ -26,6 +27,11 @@ function serveContent(): Plugin {
         const pathname = (req.url ?? '').split('?')[0] ?? '';
         const hit = resolveContentRequest(pathname, contentRoot);
         if (hit === undefined) {
+          if (isContentRoute(pathname)) {
+            res.statusCode = 404;
+            res.end();
+            return;
+          }
           next();
           return;
         }

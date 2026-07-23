@@ -1,9 +1,9 @@
-import type { WorldRenderer } from '@open-northland/render';
+import type { TerrainTextureSet, WorldRenderer } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
-import { loadRealTerrain } from '../content/terrain.js';
+import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
@@ -12,6 +12,7 @@ import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
   createWorldRenderer,
+  haltOnMissingContent,
   loadLocalizedRealContent,
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
@@ -31,8 +32,10 @@ declare global {
 
 /**
  * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
- * can watch the mechanic. Normal play always loads decoded sprites and terrain when available, with
- * hand-authored fallbacks for a bare checkout. The sim is the exact one the headless acceptance test runs.
+ * can watch the mechanic. Normal play loads decoded sprites (hand-authored stand-ins cover a partial
+ * `content/`) and requires the decoded terrain: without served content the boot halts on the
+ * missing-content notice instead of drawing a flat world. The sim is the exact one the headless
+ * acceptance test runs.
  */
 
 /** The boot steps this entry runs, in order — the loading card's step list. */
@@ -70,12 +73,13 @@ export async function renderSceneMode(
   await boot.begin('content');
   // The shared decoded content: localized good names and the merged real content the browser scene runs
   // on when it is served (real footprints/recipes), so it collides/doors/places exactly like the live map
-  // view instead of the hand-authored class squares. A bare checkout falls back to sandbox content and
-  // the authored approximations; the headless twin never loads either, so copyrighted content stays out
-  // of tests.
+  // view instead of the hand-authored class squares. Without served content the sandbox fallback stands
+  // in only until the terrain step below halts the boot; the headless twin never loads either, so
+  // copyrighted content stays out of tests.
   const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  const ir = await loadIr();
   // Real extracted building footprints (like the `?map=` entry); empty on a bare checkout.
-  const footprints = buildingFootprints(await loadIr());
+  const footprints = buildingFootprints(ir);
   await boot.begin('world');
   const sim = createSceneSim(scene, {
     goodNames,
@@ -97,7 +101,14 @@ export async function renderSceneMode(
   const sheet = await resolveSpriteSheet(sim.content.goods);
   // The meshing below is the rest of this step, as in the `?map=` entry.
   await boot.begin('terrain');
-  const terrain = await loadRealTerrain();
+  let terrain: TerrainTextureSet;
+  try {
+    terrain = await loadRealTerrain(ir);
+  } catch (err) {
+    if (!(err instanceof MissingTerrainError)) throw err;
+    haltOnMissingContent(err);
+    return;
+  }
 
   const renderer = createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);

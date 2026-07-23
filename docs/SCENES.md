@@ -10,8 +10,10 @@ scene when a mechanic needs both state assertions and a human check of its prese
 | Headless | `packages/app/test/scenes.test.ts` | mechanics, invariants, and determinism |
 | Browser | `?scene=<id>` | pixels, animation, controls, and sound |
 
-Both consumers use the same seed, sandbox content, setup, and run length. The browser may add local
-decoded art and footprints, but the headless test must not require copyrighted content.
+Both consumers use the same seed, sandbox content, setup, and run length. The browser adds local
+decoded terrain (required: without generated `content/` the entry halts on the missing-content
+notice) and decoded sprites and footprints when served, but the headless test must not require
+copyrighted content.
 
 ## Scene definition
 

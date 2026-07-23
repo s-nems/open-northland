@@ -42,6 +42,9 @@ type ServedExtension = keyof typeof CONTENT_TYPES;
 const MAPS_ROOT = 'maps';
 const BOBS_ROOT = 'Data/engine2d/bin/bobs';
 
+/** The one whole-file top-level route: the generated IR document. */
+const IR_PATHNAME = '/ir.json';
+
 /** One URL prefix → subtree-of-`content/` file route with its extension allowlist. */
 interface FileRoute {
   readonly prefix: string;
@@ -84,6 +87,24 @@ function servedExtension(file: string, allowed: readonly ServedExtension[]): Ser
   return best;
 }
 
+/**
+ * Whether a pathname belongs to the content namespace, even when nothing resolves there. A host with
+ * its own catch-all page route (Vite's SPA fallback) must answer a real 404 for an in-namespace miss:
+ * falling through would serve `index.html` as HTTP 200 `text/html`, and every content loader's
+ * absence check (`!res.ok`) would mis-read the missing file as bytes.
+ */
+export function isContentRoute(rawPathname: string): boolean {
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(rawPathname);
+  } catch {
+    return false;
+  }
+  if (pathname === IR_PATHNAME) return true;
+  if (INDEX_ROUTES.some((route) => pathname === route.pathname)) return true;
+  return FILE_ROUTES.some((route) => pathname.startsWith(route.prefix));
+}
+
 /** Resolve a request path (the raw URL pathname, query already stripped) against the content dir. */
 export function resolveContentRequest(rawPathname: string, contentRoot: string): ContentHit | undefined {
   let pathname: string;
@@ -92,7 +113,7 @@ export function resolveContentRequest(rawPathname: string, contentRoot: string):
   } catch {
     return undefined;
   }
-  if (pathname === '/ir.json') {
+  if (pathname === IR_PATHNAME) {
     const file = join(contentRoot, 'ir.json');
     return existsSync(file) ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] } : undefined;
   }

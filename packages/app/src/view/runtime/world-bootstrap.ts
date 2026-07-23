@@ -8,7 +8,11 @@ import {
   logRealContentGaps,
   type RealContentMerge,
 } from '../../content/real-content.js';
+import { diag } from '../../diag/index.js';
 import { fogModeParam } from '../../game/fog.js';
+import { messages } from '../../i18n/index.js';
+import { dismissBootProgress } from '../boot-progress.js';
+import { mountMessage, navButton } from '../overlay.js';
 import type { GameViewDeps } from './game-view.js';
 
 /**
@@ -61,6 +65,20 @@ export function createWorldRenderer(
 }
 
 /**
+ * Halt a playable boot on missing decoded content (a {@link import('../../content/terrain.js').MissingTerrainError}):
+ * one bounded diagnostic, the boot card down, and the how-to-fix notice up, with a way back to the
+ * menu (the menu boots without `content/`, so a bare checkout is never dead-ended).
+ */
+export function haltOnMissingContent(err: Error): void {
+  const copy = messages().common;
+  diag.warn('content', `real terrain unavailable: ${err.message}`);
+  dismissBootProgress();
+  mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [
+    navButton(copy.backToMenu, false, ''),
+  ]);
+}
+
+/**
  * Apply `?fog=off|reveal|recon` to a freshly built sim. Enqueued after whatever fog the world set for
  * itself (FIFO — the later write wins), so the flag overrides a scene's own mode; absent, the world
  * keeps its default.
@@ -71,9 +89,7 @@ export function applyFogOverride(sim: Simulation, params: URLSearchParams): void
 }
 
 /** The minimap's ground colours from the real terrain set's per-type debug colours, as a spreadable
- *  {@link GameViewDeps} fragment — empty without a terrain set, so the minimap falls back to flat tints. */
-export function terrainColourOption(
-  terrain: TerrainTextureSet | undefined,
-): Pick<GameViewDeps, 'terrainColour'> {
-  return terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {};
+ *  {@link GameViewDeps} fragment. The set is required: a playable entry never boots without one. */
+export function terrainColourOption(terrain: TerrainTextureSet): Pick<GameViewDeps, 'terrainColour'> {
+  return { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour };
 }

@@ -15,5 +15,6 @@ test; do not weaken required-asset loaders.
 
 ## Verify
 
-Tests cover a rejected request and an unloadable image. A bare checkout reaches its fallback renderer;
-`npm test`, `npm run check`, and `npm run build` pass.
+Tests cover a rejected request and an unloadable image. A checkout whose `content/` lacks (or ships a
+corrupt) optional texture still boots the world and galleries instead of aborting; `npm test`,
+`npm run check`, and `npm run build` pass.

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolveContentRequest } from '../src/routes.js';
+import { isContentRoute, resolveContentRequest } from '../src/routes.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
@@ -123,5 +123,26 @@ describe('resolveContentRequest', () => {
     ).toBeUndefined();
     expect(resolveContentRequest('/maps/%zz.json', contentRoot)).toBeUndefined();
     expect(resolveContentRequest('/maps/%.json', contentRoot)).toBeUndefined();
+  });
+});
+
+describe('isContentRoute', () => {
+  it('claims every content-namespace path even when nothing resolves there', () => {
+    // A host must 404 these itself; an SPA fallback answering 200 text/html would make the loaders'
+    // `!res.ok` absence checks read a missing content/ as bytes.
+    expect(isContentRoute('/ir.json')).toBe(true);
+    expect(isContentRoute('/maps-index')).toBe(true);
+    expect(isContentRoute('/bobs-index')).toBe(true);
+    expect(isContentRoute('/bobs/cr_hum_body_00.atlas.json')).toBe(true);
+    expect(isContentRoute('/textures/text_001.png')).toBe(true);
+    expect(isContentRoute('/maps/missing.json')).toBe(true);
+    expect(isContentRoute('/bobs/../escape.json')).toBe(true); // in-namespace junk stays a 404, not a page
+  });
+
+  it('leaves off-namespace and malformed paths to the host', () => {
+    expect(isContentRoute('/')).toBe(false);
+    expect(isContentRoute('/src/main.ts')).toBe(false);
+    expect(isContentRoute('/maps')).toBe(false); // the file routes own only their `/maps/…` subtree
+    expect(isContentRoute('/maps/%zz.json')).toBe(false);
   });
 });
