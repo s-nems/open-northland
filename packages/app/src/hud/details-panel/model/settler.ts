@@ -215,11 +215,12 @@ const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud'
  * (`humanjobexperiencetypes` id → raw points, serialized as a sorted `[id, points]` array), most-trained
  * first. Raw points are shown as completed-work REPEATS (`systems.experienceRepeats` divides the track's
  * accrual rate back out) so the number matches the user's mental model — "Zbieracz Drewna 5" = five wood
- * gathered — and each row carries the shared curve's bonus percent (`systems.experienceBonus`). A
- * good-specific track labels by its hand-translated `hud.trackLabels` entry (keyed by the track's content
- * id slug), falling back to "job - good"; a general track labels by its owning job ("Piekarz"); a fight
- * bucket (no content track, accrued at the soldier-general rate) reads its weapon-class label
- * ("Walka - Łuk") with raw points as repeats.
+ * gathered — and each row carries its bonus percent: the shared curve (`systems.experienceBonus`) for
+ * work tracks, the combat damage scale (`systems.fightDamageBonus` — its own deeper mastery + 50% cap)
+ * for fight buckets. A good-specific track labels by its hand-translated `hud.trackLabels` entry (keyed
+ * by the track's content id slug), falling back to "job - good"; a general track labels by its owning
+ * job ("Piekarz"); a fight bucket (no content track, accrued at the soldier-general rate) reads its
+ * weapon-class label ("Walka - Łuk") with raw points as repeats.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const exp = (comps.Settler as Comp | undefined)?.experience;
@@ -246,7 +247,11 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
             : formatMessage(messages().hud.specialization, { id: spec });
     const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat — nothing to show yet
-    const bonusPct = Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
+    const bonus =
+      track === undefined && weaponKey !== undefined
+        ? systems.fightDamageBonus(points)
+        : systems.experienceBonus(repeats);
+    const bonusPct = Math.round(fx.toFloat(bonus) * 100);
     rows.push({ label, repeats, bonusPct, spec });
   }
   rows.sort((a, b) => b.repeats - a.repeats || a.spec - b.spec);

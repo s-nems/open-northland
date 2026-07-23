@@ -188,6 +188,54 @@ describe('mining — chipping a deposit', () => {
   });
 });
 
+describe('mining — a trained swing advances multiple strikes (the work-credit path)', () => {
+  const WOOD = 1;
+  const WOODCUTTER = 1; // fixture job with a wood track (typeId 1, factor 10) — a MASTER swings double
+  const WOOD_MASTERY_XP = 1000; // 100 repeats at factor 10 → work-speed bonus ONE
+
+  /** A mastered woodcutter and a WOOD-typed 3-strikes-per-unit deposit (the markers, not the good,
+   *  decide the harvest shape — a wood deposit is legal and reuses the trained wood track). */
+  const trainedMinerScene = (units: number, strikesPerUnit?: number) => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const master = makeMiner(sim, 0, 0);
+    const s = sim.world.get(master, Settler);
+    s.jobType = WOODCUTTER;
+    s.experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
+    const node = sim.world.create();
+    sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(node, Resource, { goodType: WOOD, remaining: units, harvestAtomic: HARVEST_STONE });
+    sim.world.add(node, MineDeposit, {
+      initial: units,
+      levels: DEPOSIT_LEVELS,
+      ...(strikesPerUnit !== undefined ? { strikesPerUnit } : {}),
+    });
+    return { sim, master, node };
+  };
+
+  it('carries the counter across swings, frees the unit mid-count, and releases with the remainder banked', () => {
+    const { sim, master, node } = trainedMinerScene(4, 3);
+    harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // +2 strikes: 2 of 3 — no unit yet
+    expect(sim.world.get(node, MineDeposit).strikes).toBe(2);
+    expect(oreDrops(sim)).toHaveLength(0);
+    expect(sim.world.has(master, CurrentAtomic)).toBe(true); // mid-unit — the swing chains
+
+    // The next swing crosses the unit boundary (2 + 2 = 4 of 3): one unit freed, remainder 1 banked on
+    // the node, and the settler is RELEASED to haul the ore despite the counter being non-zero.
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(node, MineDeposit).strikes).toBe(1);
+    expect(sim.world.get(node, Resource).remaining).toBe(3);
+    expect(oreDrops(sim)).toHaveLength(1);
+    expect(sim.world.has(master, CurrentAtomic)).toBe(false);
+  });
+
+  it('a freed count beyond the deposit clamps to what remains (no conjured ore)', () => {
+    const { sim, master, node } = trainedMinerScene(1); // no strikesPerUnit — every swing frees a unit
+    harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // a double swing against a single unit
+    expect(oreDrops(sim)).toHaveLength(1);
+    expect(sim.world.has(node, Resource)).toBe(false); // depleted and removed, exactly one unit dropped
+  });
+});
+
 describe('mining — the mushroom direct-pickup variant', () => {
   it('a bare node (no MineDeposit) yields one unit onto the back, is removed, and emits resourceDepleted', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });

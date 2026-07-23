@@ -1,7 +1,7 @@
 import { CurrentAtomic, DeferredOrder, ownerOf, Settler } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { assertNever } from '../../core/brand.js';
-import { fx } from '../../core/fixed.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
@@ -31,6 +31,7 @@ import {
   harvestFromNode,
   pickupFromStore,
   pileupIntoStore,
+  swingWorkUnits,
 } from './effects-goods/index.js';
 
 /**
@@ -118,7 +119,7 @@ export const atomicSystem: System = (world, ctx) => {
     }
 
     // Completed this tick: apply the effect, notify render/audio, and free the settler.
-    applyEffect(world, ctx, e, atomic.effect);
+    const extracted = applyEffect(world, ctx, e, atomic);
     // An attacker pays the swing's NEED cost on completion — the attack animation's REST/HUNGER channel
     // drains (`event <at> {1,2} <delta>`), resolved through the atomic's own id (so it stays scoped to
     // combat and reads the exact animation that just played). Done here, not in `applyEffect`, because
@@ -128,12 +129,14 @@ export const atomicSystem: System = (world, ctx) => {
     // A multi-swing harvest job never releases the settler between swings, since the one-tick planner gap
     // draws an idle-pose flick mid-work: a swing on the burst boundary holds the same atomic open as the
     // breather tail (`beginRestTail` — the render holds the ready pose), any other still-in-progress swing
-    // re-arms immediately, and only the swing that fells / chips a unit loose / depletes hands the settler
-    // back to the planner (it routes the pickup/carry). Mutating in place (never remove+add) keeps this
-    // iteration-safe. A parked order (DeferredOrder) breaks the chain instead: "non-interruptible" protects
-    // the swing in flight, not the whole job, so the settler is released at this swing boundary and the
-    // deferredOrderSystem (scheduled next) applies the order.
-    if (atomic.effect.kind === 'harvest' && !world.has(e, DeferredOrder)) {
+    // re-arms immediately, and only the swing that EXTRACTS (fells / chips unit(s) loose / depletes) hands
+    // the settler back to the planner (it routes the pickup/carry) — gated on the extraction result, not
+    // the node's counters, since a trained swing can free a unit while banking a strike remainder.
+    // Mutating in place (never remove+add) keeps this iteration-safe. A parked order (DeferredOrder)
+    // breaks the chain instead: "non-interruptible" protects the swing in flight, not the whole job, so
+    // the settler is released at this swing boundary and the deferredOrderSystem (scheduled next)
+    // applies the order.
+    if (atomic.effect.kind === 'harvest' && (extracted ?? 0) === 0 && !world.has(e, DeferredOrder)) {
       if (beginRestTail(world, atomic, atomic.effect.resource)) continue;
       if (continuesHarvest(world, atomic.effect.resource)) {
         atomic.elapsed = 0;
@@ -167,12 +170,20 @@ function atomicSoundFrame(world: World, ctx: SystemContext, e: Entity, atomicId:
 }
 
 /**
- * Apply a completed atomic's effect. Exhaustive over {@link AtomicEffect}: adding a variant is a compile
- * error until it is handled here (`assertNever`).
+ * Apply a completed atomic's effect (reading it off the live `atomic` component, whose bookkeeping
+ * fields the harvest work credit mutates in place). Exhaustive over {@link AtomicEffect}: adding a
+ * variant is a compile error until it is handled here (`assertNever`). Returns the units a `harvest`
+ * swing extracted (the executor's release signal — see the harvest-chain branch), undefined otherwise.
  */
-function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: AtomicEffect): void {
+function applyEffect(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  atomic: { effect: AtomicEffect; workCredit?: Fixed },
+): number | undefined {
+  const effect = atomic.effect;
   switch (effect.kind) {
-    case 'harvest':
+    case 'harvest': {
       // Three harvest shapes, keyed by the node's own markers (data, not a goodType check): a FELLABLE
       // node ({@link Felling}, a tree) is chopped down over several swings and drops its whole yield as a
       // ground trunk; a MINED node ({@link MineDeposit}, an ore deposit) drops one unit at its cell as an
@@ -181,14 +192,17 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // shape (nothing teleports; a drained node conjures nothing).
       // XP scales with the units the swing actually extracted, not with swings: a mid-job chop or
       // strike trains nothing, the felling/reaping swing trains the whole yield (see grantWorkExperience).
-      grantWorkExperience(
+      const units = harvestFromNode(
         world,
         ctx,
         settler,
+        effect.resource,
         effect.goodType,
-        harvestFromNode(world, ctx, settler, effect.resource, effect.goodType),
+        swingWorkUnits(world, ctx, settler, atomic, effect.goodType),
       );
-      return;
+      grantWorkExperience(world, ctx, settler, effect.goodType, units);
+      return units;
+    }
     case 'pickup':
       pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
       return;

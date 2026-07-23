@@ -123,13 +123,14 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
   // its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
-  // wood into the mill and hauls finished planks back out). This golden includes the user-observed
-  // movement calibration: every default settler now takes 18 rather than 12 ticks per cell.
+  // wood into the mill and hauls finished planks back out). Cadence notes: a default settler walks a
+  // cell in 18 ticks, the inter-swing breather lands after every 2nd swing of a worker's burst, and a
+  // trained swing advances a tree by more than one chop (the woodcutter's second tree).
   const GOLDEN_TRACE: readonly string[] = [
     '26:8:22',
     '43:5:24',
+    '46:5:24',
     '52:8:23',
-    '61:5:24',
     '64:5:24',
     '68:5:22',
     '90:7:22',
@@ -144,9 +145,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '214:7:22',
     '242:8:22',
     '265:5:24',
+    '268:5:24',
     '268:8:23',
     '276:7:23',
-    '283:5:24',
     '286:5:24',
     '290:5:22',
     '314:8:22',

@@ -9,9 +9,11 @@ import {
   WorkFlag,
 } from '../../../components/index.js';
 import { eventAt } from '../../../core/events.js';
+import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { unstampResourceFootprint } from '../../footprint/index.js';
+import { workSpeedBonus } from '../../progression/bonus.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 
@@ -43,23 +45,23 @@ export function continuesHarvest(world: World, node: Entity): boolean {
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) return felling.chopsLeft > 0;
   const deposit = world.tryGet(node, MineDeposit);
-  if (deposit !== undefined) return (deposit.strikes ?? 0) > 0; // 0 = a unit just came loose
+  // A deposit is mid-unit while its strike counter is advanced. A trained swing can free a unit AND
+  // bank a remainder here — the executor releases on the extraction result, not this test, and the
+  // banked strikes persist on the node across the pickup trip.
+  if (deposit !== undefined) return (deposit.strikes ?? 0) > 0;
   return false;
 }
 
 /**
  * Whether the swing that just resolved against `node` should chain into the inter-swing breather: a
- * {@link continuesHarvest} job whose swing count sits on a {@link HARVEST_SWINGS_PER_REST} boundary, read
- * off the node's own counters (a {@link Felling} tree's `chopsLeft`, a {@link MineDeposit}'s `strikes`).
- * Off-boundary swings chain straight into the next swing instead.
+ * {@link continuesHarvest} job whose SETTLER has landed {@link HARVEST_SWINGS_PER_REST} swings since its
+ * last breather (the atomic's own `swingsSinceRest`, counted by {@link beginRestTail} — a per-worker
+ * count, since an experienced worker's swing advances the node's counters by more than one and their
+ * parity no longer tracks swings). Off-boundary swings chain straight into the next swing instead.
  */
-function restAfterHarvest(world: World, node: Entity): boolean {
+function restAfterHarvest(world: World, atomic: RestTailAtomic, node: Entity): boolean {
   if (!continuesHarvest(world, node)) return false;
-  const felling = world.tryGet(node, Felling);
-  if (felling !== undefined) return felling.chopsLeft % HARVEST_SWINGS_PER_REST === 0;
-  const deposit = world.tryGet(node, MineDeposit);
-  if (deposit !== undefined) return (deposit.strikes ?? 0) % HARVEST_SWINGS_PER_REST === 0;
-  return false;
+  return (atomic.swingsSinceRest ?? 0) >= HARVEST_SWINGS_PER_REST;
 }
 
 /**
@@ -75,12 +77,14 @@ const HARVEST_REST_TICKS = 15;
 interface RestTailAtomic {
   duration: number;
   restTail?: boolean;
+  swingsSinceRest?: number;
+  workCredit?: Fixed;
 }
 
 /**
- * Hold a just-completed harvest swing open as its inter-swing breather when the node's swing count calls
- * for one ({@link restAfterHarvest}), reporting whether the tail began. Never after the final swing
- * (felled/depleted/plucked — the settler moves straight on to carrying).
+ * Hold a just-completed harvest swing open as its inter-swing breather when the settler's swing count
+ * calls for one ({@link restAfterHarvest}), reporting whether the tail began; never after the final
+ * swing (felled/depleted/plucked — the settler moves straight on to carrying).
  *
  * The tail is the SAME atomic extended, not a second one, so the render keeps the swing's binding and
  * stands its ready stance instead of snapping to another animation. Invariant: `duration` carries
@@ -88,7 +92,12 @@ interface RestTailAtomic {
  * one reversal of both — the pair must stay matched or an inflated duration reaches `hashState()`.
  */
 export function beginRestTail(world: World, atomic: RestTailAtomic, node: Entity): boolean {
-  if (HARVEST_REST_TICKS <= 0 || !restAfterHarvest(world, node)) return false;
+  atomic.swingsSinceRest = (atomic.swingsSinceRest ?? 0) + 1;
+  if (HARVEST_REST_TICKS <= 0 || !restAfterHarvest(world, atomic, node)) {
+    if (!continuesHarvest(world, node)) delete atomic.swingsSinceRest; // the job's break resets the burst
+    return false;
+  }
+  delete atomic.swingsSinceRest; // the breather closes this burst
   atomic.duration += HARVEST_REST_TICKS;
   atomic.restTail = true;
   return true;
@@ -108,6 +117,30 @@ export function endRestTail(atomic: RestTailAtomic): void {
  * — kept a constant so tuning is a diff.
  */
 const HARVEST_YIELD = 1;
+
+/**
+ * The whole work units the swing that just completed performs: `1 + workSpeedBonus` per swing, the
+ * fraction banked on the atomic's `workCredit` across the multi-swing job (the atomic re-arms in place
+ * between swings, so the credit lives exactly as long as the job). The gatherer half of the fewer-swings
+ * rule (`scaledWorkRepeats`, progression/bonus.ts): a mastered swing counts double, each animation at
+ * its natural length. A novice's credit stays whole, so its atomic keeps its historical component shape
+ * (no `workCredit` field).
+ */
+export function swingWorkUnits(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  atomic: { workCredit?: Fixed },
+  goodType: number,
+): number {
+  const bonus = workSpeedBonus(world, ctx, settler, goodType);
+  const credit = fx.add(atomic.workCredit ?? ZERO, fx.add(ONE, bonus));
+  const whole = fx.toInt(credit);
+  const rest = fx.sub(credit, fx.fromInt(whole));
+  if (rest === ZERO) delete atomic.workCredit;
+  else atomic.workCredit = rest;
+  return whole;
+}
 
 /**
  * Resolve one completed harvest swing, in one of four shapes decided by the node's own marker
@@ -134,8 +167,13 @@ const HARVEST_YIELD = 1;
  * likewise a `remaining <= 0` node is left untouched. Goods stay conserved (no unit is conjured for a
  * swing that landed on air, and a drained node's removal never doubles up).
  *
+ * `swings` is the whole work units the completed swing performs ({@link swingWorkUnits} — 1 for a
+ * novice, up to 2 at gather mastery): a chop drives a {@link Felling} tree that many steps, a strike
+ * advances a {@link MineDeposit} that many counts (chipping more than one unit when they complete). A
+ * bare-node pluck stays one unit regardless — the pluck IS the pickup and the on-foot carry holds one.
+ *
  * Returns the units this swing actually extracted (the trunk/sheaf's whole yield on the swing that
- * fells/reaps, one chipped/plucked unit, 0 for a mid-job chop or strike), the executor's basis for
+ * fells/reaps, the chipped/plucked unit(s), 0 for a mid-job chop or strike), the executor's basis for
  * per-unit work XP.
  */
 export function harvestFromNode(
@@ -144,6 +182,7 @@ export function harvestFromNode(
   settler: Entity,
   node: Entity,
   goodType: number,
+  swings = 1,
 ): number {
   const res = world.tryGet(node, Resource);
   if (res === undefined) return 0; // node already felled/gone — the swing struck nothing (conserved)
@@ -152,7 +191,7 @@ export function harvestFromNode(
   }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
-    felling.chopsLeft -= 1;
+    felling.chopsLeft = Math.max(0, felling.chopsLeft - swings);
     world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
     if (felling.chopsLeft > 0) return 0; // a mid-job chop extracts nothing yet
     fellNode(world, ctx, settler, node, res.goodType, res.remaining);
@@ -161,20 +200,24 @@ export function harvestFromNode(
   // A node emptied since the planner chose it (a competing collector took its last unit): nothing left
   // to give, so conserve goods and don't re-remove it (its own drain already removed it).
   if (res.remaining <= 0) return 0;
-  const took = Math.min(HARVEST_YIELD, res.remaining);
   const deposit = world.tryGet(node, MineDeposit);
+  let took = Math.min(HARVEST_YIELD, res.remaining);
   if (deposit !== undefined) {
     // Several strikes chip one unit (observed calibration, see MineDeposit doc — the data pins only the
-    // single-swing cycle length): only the strike that completes the unit drops ore and drains the node;
+    // single-swing cycle length): only the strike that completes a unit drops ore and drains the node;
     // earlier strikes just advance the counter. A legacy 1-strike deposit never touches the counter, so its
     // unstamped component shape (hash) survives being worked — the guarantee `createResourceNode`'s conditional
     // stamp promises.
     const strikesPerUnit = deposit.strikesPerUnit ?? 1;
     if (strikesPerUnit > 1) {
-      deposit.strikes = (deposit.strikes ?? 0) + 1;
+      const advanced = (deposit.strikes ?? 0) + swings;
+      const freed = Math.floor(advanced / strikesPerUnit);
+      deposit.strikes = advanced % strikesPerUnit;
       world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-      if (deposit.strikes < strikesPerUnit) return 0;
-      deposit.strikes = 0;
+      if (freed === 0) return 0;
+      took = Math.min(freed * HARVEST_YIELD, res.remaining);
+    } else {
+      took = Math.min(swings * HARVEST_YIELD, res.remaining);
     }
     dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {

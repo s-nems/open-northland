@@ -79,6 +79,13 @@ export const CurrentAtomic = defineComponent<{
    * The tail completes silently — no `atomicCompleted` re-emit.
    */
   restTail?: boolean;
+  /** Swings landed since the last breather in a multi-swing harvest burst (the rest cadence is counted
+   *  per WORKER, not off the node's counters — an expert's swing advances those by more than one).
+   *  Absent outside a burst. */
+  swingsSinceRest?: number;
+  /** The fractional work credit an experienced gatherer's swings bank across a multi-swing harvest job
+   *  (see swingWorkUnits) — in [0, ONE); absent while whole (every novice swing). */
+  workCredit?: Fixed;
 }>('CurrentAtomic');
 
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */

@@ -1,14 +1,28 @@
 import { describe, expect, it } from 'vitest';
+import { CurrentAtomic, Felling, Position, Resource, Settler } from '../../../src/components/index.js';
 import { ZERO } from '../../../src/core/fixed.js';
-import { fx, ONE } from '../../../src/index.js';
+import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
+  atomicSystem,
   EXPERIENCE_MASTERY_REPEATS,
   experienceBonus,
   experienceRepeats,
+  FIGHT_DAMAGE_BONUS_MAX,
+  FIGHT_EXPERIENCE_TYPE,
+  FIGHT_MASTERY_HITS,
+  fightDamageBonus,
   SCOUT_EXPERIENCE_TYPE,
   SCOUT_VISION_BONUS_MAX_NODES,
+  scaledWorkRepeats,
   scoutVisionBonusNodes,
+  WEAPON_MAIN_TYPE,
+  withFightDamageBonus,
 } from '../../../src/systems/index.js';
+import { testContent } from '../../fixtures/content.js';
+import { ctxOf } from '../../fixtures/context.js';
+import { settlerAt } from '../../fixtures/settler.js';
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+import { WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
 describe('experienceBonus — the repeats → bonus curve', () => {
   it('matches the reference table within 2 points at repeats 1..11', () => {
@@ -45,6 +59,97 @@ describe('scoutVisionBonusNodes — signpost craft widens the scout eye a little
     expect(scoutVisionBonusNodes(new Map())).toBe(0);
     expect(scoutVisionBonusNodes(withPosts(10))).toBe(4); // ~69% of the 6-node cap, truncated
     expect(scoutVisionBonusNodes(withPosts(100))).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
+  });
+});
+
+describe('scaledWorkRepeats — experience buys fewer repetitions, never faster ones', () => {
+  it('leaves the count whole at no bonus and halves it at mastery', () => {
+    expect(scaledWorkRepeats(15, ZERO)).toBe(15);
+    expect(scaledWorkRepeats(15, ONE)).toBe(8); // 15/2 rounded
+    expect(scaledWorkRepeats(4, ONE)).toBe(2);
+  });
+
+  it('never scales below one repetition', () => {
+    expect(scaledWorkRepeats(1, ONE)).toBe(1);
+  });
+
+  it('a mid-curve bonus shrinks proportionally (rounded, not truncated)', () => {
+    // bonus(10) ≈ 0.694: 15 / 1.694 ≈ 8.85 → 9 (truncation would give 8).
+    expect(scaledWorkRepeats(15, experienceBonus(10))).toBe(9);
+  });
+});
+
+describe('fightDamageBonus — hits with a weapon class buy extra damage', () => {
+  it('is zero untrained and caps at +50% at combat mastery', () => {
+    expect(fightDamageBonus(0)).toBe(ZERO);
+    expect(fightDamageBonus(FIGHT_MASTERY_HITS)).toBe(FIGHT_DAMAGE_BONUS_MAX);
+    expect(fightDamageBonus(FIGHT_MASTERY_HITS * 3)).toBe(FIGHT_DAMAGE_BONUS_MAX);
+  });
+
+  it('scales the shared curve onto the deeper 500-hit mastery', () => {
+    // 50 hits = 10 curve repeats ≈ 69% of the halved cap ≈ +35%.
+    expect(fx.toFloat(fightDamageBonus(50))).toBeCloseTo(0.347, 2);
+  });
+
+  it('withFightDamageBonus raises base damage by the truncated bonus fraction', () => {
+    const sword = new Map([[FIGHT_EXPERIENCE_TYPE.SWORD, FIGHT_MASTERY_HITS]]);
+    expect(withFightDamageBonus(10, sword, WEAPON_MAIN_TYPE.SWORD)).toBe(15);
+    expect(withFightDamageBonus(10, sword, WEAPON_MAIN_TYPE.AXE)).toBe(10); // untrained class
+    expect(withFightDamageBonus(10, new Map(), WEAPON_MAIN_TYPE.SWORD)).toBe(10); // no hits yet
+    expect(withFightDamageBonus(10, sword, undefined)).toBe(10); // a class-less weapon
+  });
+});
+
+describe('work-credit wiring — an experienced gatherer fells in fewer swings, not faster ones', () => {
+  const WOOD_MASTERY_XP = 1000; // 100 repeats at the fixture wood track's factor 10
+
+  /** A woodcutter with `xp` on its wood track, a 3-chop tree, and one completed swing (duration 1). */
+  const swingOnce = (xp: number) => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
+    if (xp > 0) sim.world.get(e, Settler).experience.set(WOOD_TRACK, xp);
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
+    sim.world.add(tree, Felling, { chopsLeft: 3 });
+    sim.world.add(e, CurrentAtomic, {
+      atomicId: 24,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 1,
+      effect: { kind: 'harvest', resource: tree, goodType: WOOD },
+      targetEntity: tree,
+      targetTile: null,
+    });
+    atomicSystem(sim.world, ctxOf(sim));
+    return { sim, settler: e, tree };
+  };
+
+  it("a novice's swing lands one chop; a master's swing counts double", () => {
+    const novice = swingOnce(0);
+    expect(novice.sim.world.get(novice.tree, Felling).chopsLeft).toBe(2);
+    const master = swingOnce(WOOD_MASTERY_XP);
+    expect(master.sim.world.get(master.tree, Felling).chopsLeft).toBe(1);
+    // A whole credit banks no fraction — the novice atomic keeps its historical shape.
+    expect(novice.sim.world.get(novice.settler, CurrentAtomic).workCredit).toBeUndefined();
+  });
+
+  it('a mid-curve gatherer banks the fraction and cashes it on a later swing', () => {
+    // 40 XP = 4 repeats → bonus ≈ 0.46: swings land 1, 1, then 2 chops (0.46 + 0.46 + 0.46 crosses 1).
+    const { sim, settler, tree } = swingOnce(40);
+    expect(sim.world.get(tree, Felling).chopsLeft).toBe(2);
+    expect(sim.world.get(settler, CurrentAtomic).workCredit).toBeDefined();
+    const rearm = () => {
+      const atomic = sim.world.get(settler, CurrentAtomic);
+      atomic.elapsed = 0;
+      atomic.duration = 1;
+      delete atomic.restTail; // strip any breather — this drives raw swings only
+      atomicSystem(sim.world, ctxOf(sim));
+    };
+    rearm();
+    expect(sim.world.get(tree, Felling).chopsLeft).toBe(1);
+    rearm();
+    expect(sim.world.has(tree, Felling)).toBe(false); // the banked credit felled it a swing early
   });
 });
 
