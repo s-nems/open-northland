@@ -156,12 +156,18 @@ export function pageSection(title: string, children: readonly HTMLElement[]): HT
   return wrap;
 }
 
-/** Mount a small message panel (missing `content/`, an empty filter, …) instead of a blank canvas. */
-export function mountMessage(title: string, detail: string): void {
+/** Mount a small message panel (missing `content/`, an empty filter, …) instead of a blank canvas.
+ *  Optional `actions` (buttons/links) mount under the detail so the panel is never a dead-end. */
+export function mountMessage(title: string, detail: string, actions?: readonly HTMLElement[]): void {
   const panel = el('div', PANEL_STYLE);
   panel.append(
     el('div', 'font-weight:700;font-size:14px;margin-bottom:6px', title),
     el('div', 'opacity:0.85', detail),
   );
+  if (actions !== undefined && actions.length > 0) {
+    const row = el('div', 'display:flex;gap:8px;margin-top:10px');
+    row.append(...actions);
+    panel.append(row);
+  }
   document.body.append(panel);
 }

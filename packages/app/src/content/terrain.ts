@@ -75,16 +75,29 @@ export function buildTerrainDebugColourIndex(tables: ContentIr): ReadonlyMap<num
 }
 
 /**
+ * Real terrain content is absent: no served `ir.json`, or not one referenced ground texture page could
+ * be loaded. An environment precondition (the pipeline has not populated `content/`), not a decode bug.
+ * The playable entries catch exactly this to halt boot with the run-the-pipeline notice; `?shot&terrain`
+ * lets it fail the harness.
+ */
+export class MissingTerrainError extends Error {}
+
+/**
  * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table
  * (from `terrainPatterns`) plus the 1:1 per-triangle pattern join (from the full `gfxPatterns`
- * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws if
- * the IR is missing (an environment precondition, not a recoverable failure); the shared memoized
- * {@link loadIr} means the (multi-MB) fetch is paid once per page regardless of who reads it first.
+ * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws
+ * {@link MissingTerrainError} when the environment has no real terrain to serve; pass `ir: null` when
+ * the caller already resolved the IR as absent. The shared memoized {@link loadIr} means the (multi-MB)
+ * fetch is paid once per page regardless of who reads it first. `loadPage` is injectable so the absence
+ * policy is testable without a GPU; the default loads linear-filtered (see the module doc).
  */
-export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet> {
-  const tables = ir ?? (await loadIr());
+export async function loadRealTerrain(
+  ir?: ContentIr | null,
+  loadPage: (url: string) => Promise<LoadedSource> = (url) => loadAtlasSource(url, 'linear'),
+): Promise<TerrainTextureSet> {
+  const tables = ir !== undefined ? ir : await loadIr();
   if (tables === null) {
-    throw new Error(
+    throw new MissingTerrainError(
       'terrain: content/ir.json not found. Run `npm run pipeline` against an owned game copy to populate content/.',
     );
   }
@@ -117,19 +130,27 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
     pageKeys.add(pageKey);
     transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }
-  // Load the distinct pages any table references (~56 + ~19 overlays on the real data) in parallel,
-  // linear-filtered (see the module doc). A page that fails to load is skipped (warn once): the renderer
-  // falls back per triangle / skips that overlay.
+  // Load the distinct pages any table references (~56 + ~19 overlays on the real data) in parallel.
+  // A page that fails to load is skipped (warn once): the renderer falls back per triangle / skips
+  // that overlay.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(
     [...pageKeys].map(async (key) => {
       try {
-        pages.set(key, await loadAtlasSource(`/textures/${key}.png`, 'linear'));
+        pages.set(key, await loadPage(`/textures/${key}.png`));
       } catch {
         diag.warn('content', `terrain: page ${key}.png failed to load; its triangles fall back`);
       }
     }),
   );
+  // Zero loaded pages is not a degradation but the missing-content state (an ir.json with no terrain
+  // lanes, or a content/ without served textures): a set that flat-tints every triangle must not pass
+  // as real terrain.
+  if (pages.size === 0) {
+    throw new MissingTerrainError(
+      'terrain: content/ has no loadable ground texture pages. Run `npm run pipeline` against an owned game copy to populate content/.',
+    );
+  }
   return {
     pages,
     cellFor: (typeId) => cellByType.get(typeId),

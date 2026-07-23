@@ -3,6 +3,7 @@ import {
   createWindowPixiApp,
   type MapObjectSprite,
   makeElevationField,
+  type TerrainTextureSet,
 } from '@open-northland/render';
 import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
@@ -11,7 +12,7 @@ import { loadIr } from '../content/ir/load.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
-import { loadRealTerrain } from '../content/terrain.js';
+import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { mapStartFocus } from '../game/map-start.js';
 import {
@@ -36,6 +37,7 @@ import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
   createWorldRenderer,
+  haltOnMissingContent,
   loadLocalizedRealContent,
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
@@ -49,9 +51,9 @@ import {
  *
  * The backing store tracks the window at device resolution (`createWindowPixiApp`; `app.screen` stays in
  * CSS px), so resizing the browser changes the visible field, never the scale — read live dimensions
- * from `app.screen`. When the map is
- * absent or unloadable (the maps are gitignored) it falls back to the synthetic grass strip so a bare
- * checkout still boots.
+ * from `app.screen`. An unknown or undecodable map id falls back to the synthetic grass strip; a
+ * checkout without served `content/` halts at the terrain step with the missing-content notice instead
+ * of booting a flat world.
  */
 
 /** The slice sim's deterministic seed. */
@@ -123,14 +125,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // The IR indexes the terrain set, so it is the first half of the terrain step.
   await boot.begin('terrain');
   const ir = await loadIr();
-  if (ir === null) diag.warn('content', 'content/ir.json unavailable, placeholder graphics fallback');
-  let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
-  if (ir !== null) {
-    try {
-      terrain = await loadRealTerrain(ir);
-    } catch (err) {
-      diag.warn('content', `real terrain unavailable, flat tint fallback: ${String(err)}`);
-    }
+  let terrain: TerrainTextureSet;
+  try {
+    terrain = await loadRealTerrain(ir);
+  } catch (err) {
+    if (!(err instanceof MissingTerrainError)) throw err;
+    haltOnMissingContent(err);
+    return;
   }
   const renderer = createWorldRenderer(app, params, sheet, playerColourOf);
   renderer.setTerrain(terrainGrid, terrain);
@@ -160,14 +161,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // The slice sim (kept live and stepped one tick per fixed interval) is built below; its demo units are
   // owned by the human player so they can be selected + ordered.
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
-  // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
+  // is blocked where a house doesn't fit and the build overlay greys those tiles.
   await boot.begin('world');
   const footprints = buildingFootprints(ir);
   // The sim navigates + validates placement against the collision grid — the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
   // stones, ore deposits block; see content/collision.ts). The render layers keep reading `loaded`
-  // (raw typeIds drive the flat-tint fallback + the ambience beds). Without the IR the grid degrades
-  // to all-open ground rather than mis-classing the raw lane against the synthetic table.
+  // (raw typeIds drive the per-triangle fallback + the ambience beds). The `ir !== null` guards here
+  // and below are type narrowing only: the terrain halt above proves the IR at runtime.
   // Harvestable placements are excluded from the static grid: they spawn as `Resource` entities below,
   // whose dynamic footprints block while standing and unblock when felled/depleted — statically baked,
   // a felled tree's cell stayed walled off forever and its dropped trunk was unreachable.

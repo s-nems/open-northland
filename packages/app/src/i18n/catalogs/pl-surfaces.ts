@@ -88,6 +88,8 @@ export const plSurfaces = {
     soundOn: '🔊 Dźwięk włączony',
     soundOff: '🔇 Kliknij, aby włączyć dźwięk',
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',
+    missingTerrainDetail:
+      'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na posiadanej kopii gry (npm run pipeline) i odśwież stronę.',
     availableScenes: 'Dostępne światy:',
     unknownScene: 'Nieznany świat: „{id}”',
     copied: 'skopiowano',

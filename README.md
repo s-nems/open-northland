@@ -38,8 +38,10 @@ npm test
 npm run check
 ```
 
-The source, tests, and synthetic scenes work without the original game. `npm run build` typechecks
-the workspaces and creates the browser bundle in `packages/app/dist/`.
+The source, tests, and headless scene checks work without the original game. `npm run build`
+typechecks the workspaces and creates the browser bundle in `packages/app/dist/`. The playable
+browser entries need generated content (next section); without it they show a notice explaining how
+to generate it.
 
 ## Generate local content
 
