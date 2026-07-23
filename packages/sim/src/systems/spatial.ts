@@ -2,7 +2,7 @@ import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../compon
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
-import { forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
+import { closer, forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
 import { insertSortedById, removeSortedById } from './sorted-id.js';
 
 // The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
@@ -221,9 +221,9 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
   return terrain.nodeAtClamped(n.hx, n.hy);
 }
 
-// manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for its
-// nearest-node picks) and are re-exported here with nodeKey so consumers keep the single spatial import site.
-export { forEachRingOffset, manhattan };
+// closer, manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for
+// its nearest-node picks) and are re-exported here with nodeKey so consumers keep the single spatial import site.
+export { closer, forEachRingOffset, manhattan };
 
 /**
  * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the sim's

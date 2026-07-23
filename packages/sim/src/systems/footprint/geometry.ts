@@ -82,18 +82,34 @@ export function translatedCells(
   return out;
 }
 
+/** Compare nearest-candidate picks by distance, then canonical cell/node id — the one `(distance, id)`
+ *  tie-break every nearest scan shares. Re-exported by spatial.ts. */
+export function closer(dist: number, cell: number, bestDist: number, bestCell: number): boolean {
+  return dist < bestDist || (dist === bestDist && cell < bestCell);
+}
+
+/** The {@link closer} winner over a candidate list, measured from `from` (all candidates tie at 0 when
+ *  `from` is undefined, so the min id wins). `accept` skips candidates (a taken melee slot, an occupied
+ *  work cell); null when none qualify. */
 export function nearestCell(
   terrain: TerrainGraph,
   candidates: readonly NodeId[],
   from: NodeId | undefined,
+  accept?: (cell: NodeId) => boolean,
 ): NodeId | null {
+  const fx = from === undefined ? 0 : terrain.xOf(from);
+  const fy = from === undefined ? 0 : terrain.yOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
-    const dist = from === undefined ? 0 : manhattan(terrain, from, cell);
-    if (best === null || dist < bestDist || (dist === bestDist && cell < best)) {
+    if (accept !== undefined && !accept(cell)) continue;
+    const dist =
+      from === undefined ? 0 : Math.abs(terrain.xOf(cell) - fx) + Math.abs(terrain.yOf(cell) - fy);
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = cell;
       bestDist = dist;
+      bestCell = cell;
     }
   }
   return best;

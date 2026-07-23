@@ -2,9 +2,10 @@ import { AttackOrder, Engagement, MoveGoal, PathRequest } from '../../components
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { nearestCell } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { clearNavState, isTravelling, manhattan, redirectRoute } from '../spatial.js';
+import { clearNavState, closer, isTravelling, manhattan, redirectRoute } from '../spatial.js';
 import type { CombatantStance } from './engagement.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a
@@ -121,7 +122,13 @@ export function chase(
   // holding behind the first rank.
   const dest =
     target.body !== null && target.body.length > 0
-      ? pickSlot(terrain, here, encircleCandidates(terrain, slots, target, weapon, isOpen), isTaken)
+      ? // The untaken candidate nearest the unit — null when every slot is taken, the full-perimeter hold.
+        nearestCell(
+          terrain,
+          encircleCandidates(terrain, slots, target, weapon, isOpen),
+          here,
+          (cell) => !isTaken(cell),
+        )
       : approachCell(terrain, here, target.node, weapon.minRange, weapon.maxRange, isOpen, isTaken);
   if (dest === null) {
     // Every walkable cell of the target's reach band is a taken slot (a standing body, or dealt to an earlier
@@ -180,6 +187,7 @@ function approachCell(
   const f = terrain.coordsOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
   let anyOpen = false;
   for (let dy = -maxRange; dy <= maxRange; dy++) {
     for (let dx = -maxRange; dx <= maxRange; dx++) {
@@ -193,9 +201,10 @@ function approachCell(
       anyOpen = true;
       if (isTaken(cell)) continue; // an occupied melee slot — someone already fights (or was dealt) here
       const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
-      if (d < bestDist || (d === bestDist && (best === null || cell < best))) {
+      if (closer(d, cell, bestDist, bestCell)) {
         best = cell;
         bestDist = d;
+        bestCell = cell;
       }
     }
   }
@@ -210,7 +219,7 @@ function approachCell(
  * rule the reach check uses, so a body cell — reach 0 — is never dealt). Memoized per (building × weapon
  * band) in {@link MeleeSlots.bands}: the building never moves within the tick, so the O(bandCells × body)
  * scan runs once and every chaser (and every full-perimeter holder re-asking at the chase cadence) pays only
- * the {@link pickSlot} filter over it.
+ * the untaken-slot {@link nearestCell} pick over it.
  */
 function encircleCandidates(
   terrain: TerrainGraph,
@@ -246,30 +255,6 @@ function encircleCandidates(
   }
   slots.bands.set(key, candidates);
   return candidates;
-}
-
-/** The canonical slot pick over a candidate list: the untaken cell closest to the unit (`from`), ties broken
- *  by min cell id — the same (distance, id) winner a full scan would choose, independent of list order.
- *  `null` when every candidate is taken — the full-perimeter hold. */
-function pickSlot(
-  terrain: TerrainGraph,
-  from: NodeId,
-  candidates: readonly NodeId[],
-  isTaken: (cell: NodeId) => boolean,
-): NodeId | null {
-  const f = terrain.coordsOf(from);
-  let best: NodeId | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const cell of candidates) {
-    if (isTaken(cell)) continue;
-    const c = terrain.coordsOf(cell);
-    const d = Math.abs(c.x - f.x) + Math.abs(c.y - f.y);
-    if (d < bestDist || (d === bestDist && (best === null || cell < best))) {
-      best = cell;
-      bestDist = d;
-    }
-  }
-  return best;
 }
 
 /** The chase destinations en-route chasers already own — every {@link Engagement}-carrying unit's live

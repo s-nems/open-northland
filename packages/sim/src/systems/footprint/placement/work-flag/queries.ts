@@ -2,7 +2,7 @@ import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { forEachRingOffset } from '../../geometry.js';
+import { closer, forEachRingOffset } from '../../geometry.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount, workFlagPlacementBlocks } from './incremental-blocks.js';
 
@@ -76,14 +76,16 @@ export function nearestWorkFlagPlacement(
   // match — the whole-map reference scan finds the same winner the uncapped search would.
   let best: NodeId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
   for (let node = 0; node < terrain.nodeCount; node++) {
     const candidate = node as NodeId;
     if (!legal(candidate)) continue;
     const c = terrain.coordsOf(candidate);
     const distance = Math.abs(c.x - origin.x) + Math.abs(c.y - origin.y);
-    if (distance < bestDistance || (distance === bestDistance && (best === null || candidate < best))) {
+    if (closer(distance, candidate, bestDistance, bestCell)) {
       best = candidate;
       bestDistance = distance;
+      bestCell = candidate;
     }
   }
   return best;

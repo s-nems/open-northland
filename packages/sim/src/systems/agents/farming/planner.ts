@@ -16,17 +16,11 @@ import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { manhattan } from '../../spatial.js';
+import { closer, manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
-import {
-  closer,
-  interactionCell,
-  jobAtomics,
-  unreachableWorkCell,
-  type WorkCellGates,
-} from '../targets/index.js';
+import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../targets/index.js';
 import { unreachableGoals } from '../unreachable-goals.js';
 
 // The farmer drive — the field-cultivation rung of the planner ladder: a worker bound to a farm (a workplace

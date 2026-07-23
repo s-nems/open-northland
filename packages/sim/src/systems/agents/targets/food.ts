@@ -15,11 +15,10 @@ import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { isFood } from '../../readviews/index.js';
-import { manhattan } from '../../spatial.js';
+import { closer, manhattan } from '../../spatial.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
-import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
 
 /**
