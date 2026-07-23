@@ -18,9 +18,8 @@ const SETTLER_NAME_H = 15;
 const SETTLER_META_H = 14;
 /** One stat-bar row in the Ogólne right column (label + bar). */
 const BAR_ROW_H = 13;
-/** Text rows the fixed Praca / Doświadczenie bodies reserve. */
+/** Text rows the fixed Praca body reserves. */
 const WORK_ROWS = 2;
-const EXP_ROWS = 1;
 /** Diameter of the small round "przydziel miejsce pracy" button — left-aligned under the gather row, with
  *  its description to its right. */
 const ASSIGN_ICON = 20;
@@ -113,8 +112,9 @@ export interface SettlerLayout {
   /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
-  /** The Doświadczenie body's single text row. */
-  readonly expRow: Rect;
+  /** The Doświadczenie body's text rows — one per `model.experience` entry (a single row when empty,
+   *  for the "żadne" placeholder). */
+  readonly expRows: readonly Rect[];
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
   readonly equipRows: readonly EquipRowRect[];
@@ -158,7 +158,9 @@ export function layoutSettler(
   // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
   const workBodyH =
     WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
-  const expBodyH = EXP_ROWS * rowH;
+  // The Doświadczenie body scales with the settler's trained specializations (min one row: "żadne").
+  const expRowCount = Math.max(1, model.experience.length);
+  const expBodyH = expRowCount * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
   const heights = [generalBodyH, workBodyH, expBodyH, equipBodyH].map(
@@ -257,7 +259,12 @@ export function layoutSettler(
   };
 
   const experience = next(expBodyH);
-  const expRow: Rect = { x: experience.body.x, y: experience.body.y, w: experience.body.w, h: rowH };
+  const expRows: Rect[] = Array.from({ length: expRowCount }, (_unused, i) => ({
+    x: experience.body.x,
+    y: experience.body.y + i * rowH,
+    w: experience.body.w,
+    h: rowH,
+  }));
 
   // Ekwipunek: one labeled row per equipment slot group — a label column, then the slot sockets.
   const equipment = next(equipBodyH);
@@ -302,7 +309,7 @@ export function layoutSettler(
     gatherChoiceHits,
     craftChoiceHits,
     experience,
-    expRow,
+    expRows,
     equipment,
     equipRows,
   };

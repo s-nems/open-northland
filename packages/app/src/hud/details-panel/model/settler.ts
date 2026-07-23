@@ -1,8 +1,8 @@
-import { components, systems } from '@open-northland/sim';
+import { components, fx, systems } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
-import { type Comp, goodDef, type UnitPanelModelContext } from './context.js';
+import { type Comp, goodDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
 /**
@@ -38,7 +38,6 @@ export const HUMANWINDOW = {
   boots: 66, // 'Buty'
   tools: 69, // 'Narzędzia'
   misc: 72, // 'Ekwipunek'
-  highestExp: 130, // 'Najwyższe Doświadczenie'
 } as const;
 
 /** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
@@ -98,9 +97,9 @@ export interface SettlerPanelModel {
    *  all as satisfaction levels — see {@link satisfactionBars}. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
-  /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none.
-   *  See {@link highestExperience}. */
-  readonly experience: { readonly label: string; readonly points: number } | null;
+  /** The Doświadczenie section: every specialization the settler has trained, most-trained first.
+   *  Empty when it has none. See {@link experienceRows}. */
+  readonly experience: readonly ExperienceRowModel[];
   /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. See {@link equipmentRows}. */
   readonly equipmentRows: readonly EquipRow[];
 }
@@ -193,27 +192,59 @@ export function satisfactionBars(comps: Comp): PanelBar[] {
   return bars;
 }
 
+/** One Doświadczenie row: a specialization's label, its completed-work repeats (the player-facing
+ *  experience number — "Drewno 5" means five units gathered), and the shared curve's bonus percent. */
+export interface ExperienceRowModel {
+  readonly label: string;
+  readonly repeats: number;
+  readonly bonusPct: number;
+}
+
+/** The fight-XP buckets' i18n keys — `systems.FIGHT_EXPERIENCE_TYPE` id → `hud.weaponXp` label key. */
+const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud']['weaponXp']> = new Map([
+  [systems.FIGHT_EXPERIENCE_TYPE.FIST, 'fist'],
+  [systems.FIGHT_EXPERIENCE_TYPE.SPEAR, 'spear'],
+  [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 'sword'],
+  [systems.FIGHT_EXPERIENCE_TYPE.AXE, 'axe'],
+  [systems.FIGHT_EXPERIENCE_TYPE.BOW, 'bow'],
+  [systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, 'catapult'],
+]);
+
 /**
- * The Doświadczenie section's headline datum: the specialization the settler is most trained in, from its
- * `Settler.experience` map (`humanjobexperiencetypes` id → points, serialized as a sorted `[id, points]`
- * array). Null when the map is empty — which it always is today: the sim awards no experience yet, so the
- * row renders empty. (The per-specialization label/icon strip the original shows is a deferred follow-up;
- * the id→category-name map — `humanwindow` 131–140 — is not yet pinned to the sim's specialization ids.)
+ * The Doświadczenie rows: every specialization on the settler's `Settler.experience` map
+ * (`humanjobexperiencetypes` id → raw points, serialized as a sorted `[id, points]` array), most-trained
+ * first. Raw points are shown as completed-work REPEATS (`systems.experienceRepeats` divides the track's
+ * accrual rate back out) so the number matches the user's mental model — "Drewno 5" = five wood gathered —
+ * and each row carries the shared curve's bonus percent (`systems.experienceBonus`). A row's label is its
+ * track's good ("Drewno"), or its owning job for a general track ("Cieśla"); a fight bucket (no content
+ * track, accrued at the soldier-general rate) reads its weapon-class label with raw points as repeats.
  */
-export function highestExperience(comps: Comp): { label: string; points: number } | null {
+export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const exp = (comps.Settler as Comp | undefined)?.experience;
-  if (!Array.isArray(exp) || exp.length === 0) return null;
-  let best: { spec: number; points: number } | null = null;
+  if (!Array.isArray(exp)) return [];
+  const rows: (ExperienceRowModel & { spec: number })[] = [];
   for (const pair of exp) {
     if (!Array.isArray(pair)) continue;
     const spec = num(pair[0]);
     const points = num(pair[1]);
-    if (spec === undefined || points === undefined) continue;
-    if (best === null || points > best.points) best = { spec, points };
+    if (spec === undefined || points === undefined || points <= 0) continue;
+    const track = ctx.jobExperience.find((t) => t.typeId === spec);
+    const weaponKey = WEAPON_XP_KEY.get(spec);
+    const label =
+      track !== undefined
+        ? track.goodType !== undefined
+          ? goodLabel(ctx, track.goodType)
+          : jobDisplayName(ctx, track.jobType)
+        : weaponKey !== undefined
+          ? messages().hud.weaponXp[weaponKey]
+          : formatMessage(messages().hud.specialization, { id: spec });
+    const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
+    if (repeats <= 0) continue; // partial credit toward the first repeat — nothing to show yet
+    const bonusPct = Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
+    rows.push({ label, repeats, bonusPct, spec });
   }
-  return best === null
-    ? null
-    : { label: formatMessage(messages().hud.specialization, { id: best.spec }), points: best.points };
+  rows.sort((a, b) => b.repeats - a.repeats || a.spec - b.spec);
+  return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));
 }
 
 export function settlerStatus(components: Comp): string {

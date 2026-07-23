@@ -69,6 +69,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     buildings: opts.content.buildings,
     goods: opts.content.goods,
     jobs: opts.content.jobs,
+    jobExperience: opts.content.jobExperience,
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),

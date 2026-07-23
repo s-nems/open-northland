@@ -24,8 +24,15 @@ export const plGame = {
     recipeNoInputs: 'bez surowców',
     stockAllTab: 'Wszystkie',
     workFlag: 'Flaga robocza',
-    highestExperience: 'Najwyższe doświadczenie',
     specialization: 'Specjalizacja {id}',
+    weaponXp: {
+      fist: 'Pięści',
+      spear: 'Włócznia',
+      sword: 'Miecz',
+      axe: 'Topór',
+      bow: 'Łuk',
+      catapult: 'Katapulta',
+    },
     noWorkplace: 'Brak miejsca pracy',
     assignWorkplace: 'Przydziel miejsce pracy',
     assignWorkplaceHint:
