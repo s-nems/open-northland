@@ -133,6 +133,10 @@ const HARVEST_YIELD = 1;
  * completing (another collector beat this one to it) — the swing hit nothing, so it yields nothing;
  * likewise a `remaining <= 0` node is left untouched. Goods stay conserved (no unit is conjured for a
  * swing that landed on air, and a drained node's removal never doubles up).
+ *
+ * Returns the units this swing actually extracted (the trunk/sheaf's whole yield on the swing that
+ * fells/reaps, one chipped/plucked unit, 0 for a mid-job chop or strike), the executor's basis for
+ * per-unit work XP.
  */
 export function harvestFromNode(
   world: World,
@@ -140,23 +144,23 @@ export function harvestFromNode(
   settler: Entity,
   node: Entity,
   goodType: number,
-): void {
+): number {
   const res = world.tryGet(node, Resource);
-  if (res === undefined) return; // node already felled/gone — the swing struck nothing (conserved)
+  if (res === undefined) return 0; // node already felled/gone — the swing struck nothing (conserved)
   if (world.has(node, Crop)) {
-    reapField(world, node, res);
-    return;
+    return reapField(world, node, res);
   }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
     felling.chopsLeft -= 1;
     world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-    if (felling.chopsLeft <= 0) fellNode(world, ctx, settler, node, res.goodType, res.remaining);
-    return;
+    if (felling.chopsLeft > 0) return 0; // a mid-job chop extracts nothing yet
+    fellNode(world, ctx, settler, node, res.goodType, res.remaining);
+    return res.remaining;
   }
   // A node emptied since the planner chose it (a competing collector took its last unit): nothing left
   // to give, so conserve goods and don't re-remove it (its own drain already removed it).
-  if (res.remaining <= 0) return;
+  if (res.remaining <= 0) return 0;
   const took = Math.min(HARVEST_YIELD, res.remaining);
   const deposit = world.tryGet(node, MineDeposit);
   if (deposit !== undefined) {
@@ -169,7 +173,7 @@ export function harvestFromNode(
     if (strikesPerUnit > 1) {
       deposit.strikes = (deposit.strikes ?? 0) + 1;
       world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-      if (deposit.strikes < strikesPerUnit) return;
+      if (deposit.strikes < strikesPerUnit) return 0;
       deposit.strikes = 0;
     }
     dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
@@ -189,6 +193,7 @@ export function harvestFromNode(
     const pos = world.get(node, Position);
     ctx.events.emit({ kind: 'resourceMined', node, goodType: res.goodType, at: eventAt(pos.x, pos.y) });
   }
+  return took;
 }
 
 /**
@@ -198,14 +203,15 @@ export function harvestFromNode(
  * `landscapeToPickup` "cut wheat" look) — and remove the field, freeing the tile to sow again. An unripe field
  * (`remaining <= 0`) yields nothing and stays standing (goods conserved). No owner stamp (a farm's fields are
  * shared by all its farmers) and no stump — the field clears to bare ground, faithful to the original's wheat
- * cycle.
+ * cycle. Returns the units reaped (the whole yield, or 0 for stubble).
  */
-function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): void {
-  if (res.remaining <= 0) return; // unripe / raced — the swing cut stubble (nothing conjured)
+function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): number {
+  if (res.remaining <= 0) return 0; // unripe / raced — the swing cut stubble (nothing conjured)
   const { x, y } = world.get(node, Position);
   dropGroundPile(world, x, y, res.goodType, res.remaining);
   unstampResourceFootprint(world, node); // through the incremental cache, never a full overlay rebuild
   world.destroy(node);
+  return res.remaining;
 }
 
 /**

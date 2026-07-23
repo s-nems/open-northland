@@ -179,11 +179,15 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // ore pile per swing and shrinks by level; a bare node (a mushroom) yields one unit onto the back.
       // A mined/bare node is REMOVED once drained. See {@link harvestFromNode}. Goods are conserved every
       // shape (nothing teleports; a drained node conjures nothing).
-      harvestFromNode(world, ctx, settler, effect.resource, effect.goodType);
-      // Completing a work atomic that yields a good trains the settler's `(job, good)` specialization
-      // — the original grants XP within a narrow `(job, good)` track, not just per job (see
-      // ProgressionSystem). No-op when the job/good pairing has no track.
-      grantWorkExperience(world, ctx, settler, effect.goodType);
+      // XP scales with the units the swing actually extracted, not with swings: a mid-job chop or
+      // strike trains nothing, the felling/reaping swing trains the whole yield (see grantWorkExperience).
+      grantWorkExperience(
+        world,
+        ctx,
+        settler,
+        effect.goodType,
+        harvestFromNode(world, ctx, settler, effect.resource, effect.goodType),
+      );
       return;
     case 'pickup':
       pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);

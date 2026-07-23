@@ -12,10 +12,10 @@ import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
  * In Cultures, experience is granted within a narrow `(job, good)` specialization (e.g. "collector wood" =
  * job 8 + good 5), not just per job — doing the same job on the same good repeatedly is what makes a settler
  * an expert at it (see `HumanJobExperienceType`, the `humanjobexperiencetypes` IR). This module owns the
- * lookup-and-grant so the AtomicSystem stays the executor: when a settler completes a work atomic that
- * yields a good (today: `harvest`), {@link grantWorkExperience} finds the matching track for
- * `(settler.jobType, goodType)` and adds its `experienceFactor` to the settler's per-specialization XP,
- * keyed by the track's `typeId`.
+ * lookup-and-grant so the AtomicSystem stays the executor: when a settler's completed work atomic
+ * extracts units of a good (today: `harvest`), {@link grantWorkExperience} finds the matching track for
+ * `(settler.jobType, goodType)` and adds its `experienceFactor` per unit to the settler's
+ * per-specialization XP, keyed by the track's `typeId`.
  *
  * A helper called from the executor, not a per-tick `System`: XP is event-shaped (it accrues the instant a
  * work atomic completes), and sim events are render-only (must not be read back in sim logic — see
@@ -53,24 +53,26 @@ export function trackFor(
 }
 
 /**
- * Grant a settler XP for completing a work atomic that yielded `goodType`. No-ops when the settler has no
- * job, is gone, or no track matches the `(job, good)` pairing. Adds the track's `experienceFactor` to the
- * settler's running XP for that specialization, keyed by the track's `typeId`. `experienceFactor` is the
- * original's per-track accrual rate (raw integer, 1..250 in the base data); summing it per completed work
- * is the basic "repetition builds expertise" accrual — the non-linear XP→level curve (`baseRepeatCounter`)
- * is a later balance slice (source basis).
+ * Grant a settler XP for `units` of `goodType` its completed work atomic actually extracted. No-ops when
+ * the settler has no job, is gone, no track matches the `(job, good)` pairing, or the swing extracted
+ * nothing (a mid-job chop/strike). Adds the track's `experienceFactor` per unit — XP counts resource
+ * units gathered, never swings, so a felled trunk trains its whole yield at once (design rule,
+ * user-specified). `experienceFactor` is the original's per-track accrual rate (raw integer, 1..250 in
+ * the base data); the non-linear XP→level curve (`baseRepeatCounter`) is a later balance slice.
  */
 export function grantWorkExperience(
   world: World,
   ctx: SystemContext,
   settler: Entity,
   goodType: number,
+  units: number,
 ): void {
+  if (units <= 0) return; // the swing extracted nothing — nothing to train on
   const s = world.tryGet(settler, Settler);
   if (s === undefined || s.jobType === null) return; // gone, or no job to train a specialization
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return; // this (job, good) pairing trains no specialization
-  accrueExperience(s, track.typeId, track.experienceFactor);
+  accrueExperience(s, track.typeId, track.experienceFactor * units);
 }
 
 /** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
