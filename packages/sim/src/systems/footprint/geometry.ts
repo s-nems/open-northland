@@ -104,8 +104,7 @@ export function nearestCell(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
     if (accept !== undefined && !accept(cell)) continue;
-    const dist =
-      from === undefined ? 0 : Math.abs(terrain.xOf(cell) - fx) + Math.abs(terrain.yOf(cell) - fy);
+    const dist = from === undefined ? 0 : Math.abs(terrain.xOf(cell) - fx) + Math.abs(terrain.yOf(cell) - fy);
     if (closer(dist, cell, bestDist, bestCell)) {
       best = cell;
       bestDist = dist;
