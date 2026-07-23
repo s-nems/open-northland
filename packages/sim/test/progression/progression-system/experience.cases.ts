@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, CurrentAtomic, Resource, Settler } from '../../../src/components/index.js';
+import {
+  Carrying,
+  CurrentAtomic,
+  Felling,
+  Position,
+  Resource,
+  Settler,
+} from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { atomicSystem, grantWorkExperience, trackFor } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -29,7 +36,7 @@ describe('grantWorkExperience — accrual on a completed work atomic', () => {
   it('adds the wood track factor to the matching specialization', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
-    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD);
+    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(10); // experienceFactor
     expect(sim.world.get(e, Settler).experience.has(GENERAL_TRACK)).toBe(false); // wood preferred
   });
@@ -38,31 +45,40 @@ describe('grantWorkExperience — accrual on a completed work atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     const ctx = ctxOf(sim);
-    grantWorkExperience(sim.world, ctx, e, WOOD);
-    grantWorkExperience(sim.world, ctx, e, WOOD);
-    grantWorkExperience(sim.world, ctx, e, WOOD);
+    grantWorkExperience(sim.world, ctx, e, WOOD, 1);
+    grantWorkExperience(sim.world, ctx, e, WOOD, 1);
+    grantWorkExperience(sim.world, ctx, e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(30); // 3 × 10
   });
 
   it('grants the general track when working a good with no specific track', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
-    grantWorkExperience(sim.world, ctxOf(sim), e, 2 /* plank: no specific track */);
+    grantWorkExperience(sim.world, ctxOf(sim), e, 2 /* plank: no specific track */, 1);
     expect(sim.world.get(e, Settler).experience.get(GENERAL_TRACK)).toBe(1);
   });
 
   it('is a no-op for an unemployed settler (no job → no specialization)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, null);
-    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD);
+    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.size).toBe(0);
   });
 
   it('is a no-op when the job/good pairing has no track', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, MINER /* no tracks */);
-    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD);
+    grantWorkExperience(sim.world, ctxOf(sim), e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.size).toBe(0);
+  });
+
+  it('scales with extracted units and skips a zero-unit swing (XP counts resources, not swings)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = makeSettler(sim, WOODCUTTER);
+    const ctx = ctxOf(sim);
+    grantWorkExperience(sim.world, ctx, e, WOOD, 5); // a felled trunk trains its whole yield at once
+    grantWorkExperience(sim.world, ctx, e, WOOD, 0); // a mid-job chop trains nothing
+    expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(50); // 5 units × factor 10
   });
 });
 
@@ -84,5 +100,31 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
     atomicSystem(sim.world, ctxOf(sim)); // completes this tick → harvest + XP grant
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // harvest still happens
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(10); // and trained the spec
+  });
+
+  it('a felling job trains only on the swing that drops the trunk, by its whole yield', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = makeSettler(sim, WOODCUTTER);
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
+    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
+    sim.world.add(tree, Felling, { chopsLeft: 2 });
+    const swing = () => {
+      sim.world.add(e, CurrentAtomic, {
+        atomicId: 24,
+        elapsed: 0,
+        progress: fx.fromInt(0),
+        duration: 1,
+        effect: { kind: 'harvest', resource: tree, goodType: WOOD },
+        targetEntity: null,
+        targetTile: null,
+      });
+      atomicSystem(sim.world, ctxOf(sim));
+      sim.world.remove(e, CurrentAtomic); // shed any rest tail so the next swing starts clean
+    };
+    swing(); // chop 1 of 2 — nothing extracted yet
+    expect(sim.world.get(e, Settler).experience.size).toBe(0);
+    swing(); // the felling chop — the whole 4-unit trunk drops
+    expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(40); // 4 units × factor 10
   });
 });
