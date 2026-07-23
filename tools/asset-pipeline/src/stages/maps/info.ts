@@ -1,22 +1,18 @@
 import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { MapInfo } from '@open-northland/data';
-import { decodeCifStringArray } from '../../decoders/cif.js';
-import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
+import { cifBytesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { collectSourceFilesNamed, type SourceRoots } from '../../roots.js';
 
 /**
- * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header.
- * Decodes the encrypted `CStringArray` root ({@link decodeCifStringArray}), folds its level-tagged
- * lines into `RuleSection`s ({@link cifLinesToSections}), and runs {@link extractMapInfo}. The
- * decoders stay pure; this is the only wiring. Throws an
- * `ini:`/`cif:`-prefixed error for a non-map or header-less `.cif`; {@link decodeMapTree} catches it
- * per-file so one bad map can't abort the batch.
+ * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header
+ * ({@link cifBytesToSections} then {@link extractMapInfo}). The decoders stay pure; this is the only
+ * wiring. Throws an `ini:`/`cif:`-prefixed error for a non-map or header-less `.cif`;
+ * {@link decodeMapTree} catches it per-file so one bad map can't abort the batch.
  */
 export function mapCifToInfo(bytes: Uint8Array, id: string, src: SourceRef): MapInfo {
-  const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
-  return extractMapInfo(sections, id, src);
+  return extractMapInfo(cifBytesToSections(bytes), id, src);
 }
 
 /**

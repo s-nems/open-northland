@@ -1,8 +1,7 @@
 /**
  * String-table decoders: numbered display strings from `.ini` sections and the encrypted `.cif` string blob (latin1 → CP1250).
  */
-import { decodeCifStringArray } from '../cif.js';
-import { cifLinesToSections, decodeIni, type RuleSection } from './grammar.js';
+import { cifBytesToSections, decodeIni, type RuleSection } from './grammar.js';
 
 /**
  * Walks a decoded string table — a `[control]` section with `stringidmultiplier <N>`, then a `[text]`
@@ -76,14 +75,14 @@ export function latin1ToCp1250(latin1: string): string {
 
 /**
  * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight
- * to display text: {@link decodeCifStringArray} → {@link cifLinesToSections} → {@link extractStringTable},
+ * to display text: {@link cifBytesToSections} → {@link extractStringTable},
  * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam preserves bytes as latin1,
  * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode — this
  * helper keeps the codepage invariant in one place for both `.cif` string-table consumers (the
  * `ingamegui*` UI tables and the map folders' `strings.cif`).
  */
 export function decodeCifStringTable(bytes: Uint8Array): Record<number, string> {
-  const raw = extractStringTable(cifLinesToSections(decodeCifStringArray(bytes).lines));
+  const raw = extractStringTable(cifBytesToSections(bytes));
   const table: Record<number, string> = {};
   for (const [id, display] of Object.entries(raw)) table[Number(id)] = latin1ToCp1250(display);
   return table;

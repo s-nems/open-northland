@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import {
   decodeCifStringTable,
-  decodeIni,
   extractStringTable,
-  parseIniSections,
+  iniBytesToSections,
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
@@ -75,7 +74,7 @@ async function resolveMapNameStringIds(
     const path = await findPathCaseInsensitiveInDirs(mapDirs, [file]);
     if (path === undefined) continue;
     try {
-      consider(parseIniSections(decodeIni(await readFile(path))));
+      consider(iniBytesToSections(await readFile(path)));
     } catch (err) {
       console.warn(`[pipeline] map ${rel}: ${file} unreadable: ${errorMessage(err)}`);
     }
@@ -90,7 +89,7 @@ async function resolveMapNameStringIds(
 /**
  * Loads one map folder's string table (`<mapDir>/text/<lang>/strings.*`) as `{ <stringId>: <text> }`,
  * trying each {@link MAP_TEXT_LANGS} language in order. Per language the readable `strings.ini` is
- * preferred (golden rule #4; {@link decodeIni} already yields CP1250 text) over the encrypted
+ * preferred (golden rule #4; {@link iniBytesToSections} already yields CP1250 text) over the encrypted
  * `strings.cif` twin ({@link decodeCifStringTable}) — e.g. the tutorial maps ship `.cif`-only. Paths
  * resolve case-insensitively ({@link findPathCaseInsensitiveInDirs}); a missing file is normal absence, an
  * unreadable one warns and falls through, and an empty table falls through to the next form/language.
@@ -110,7 +109,7 @@ export async function loadMapStringTable(
         const bytes = await readFile(path);
         table =
           form === 'strings.ini'
-            ? extractStringTable(parseIniSections(decodeIni(bytes)))
+            ? extractStringTable(iniBytesToSections(bytes))
             : decodeCifStringTable(bytes);
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${errorMessage(err)}`);

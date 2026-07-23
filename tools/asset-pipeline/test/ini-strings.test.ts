@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  decodeIni,
   extractStringnById,
   extractStringTable,
+  iniBytesToSections,
   latin1ToCp1250,
   parseIniSections,
 } from '../src/decoders/ini.js';
@@ -36,10 +36,10 @@ describe('extractStringTable', () => {
     expect(extractStringTable([])).toEqual({});
   });
 
-  it('keeps CP1250 text intact through the readable-.ini seam (decodeIni)', () => {
+  it('keeps CP1250 text intact through the readable-.ini seam (iniBytesToSections)', () => {
     // "BŁĘKITNY" as CP1250 bytes (Ł=0xA3, Ę=0xCA) — the real map strings.ini codepage.
     const bytes = Uint8Array.from('[text]\nstringn 0 "B\xa3\xcaKITNY"\n', (c) => c.charCodeAt(0) & 0xff);
-    const table = extractStringTable(parseIniSections(decodeIni(bytes)));
+    const table = extractStringTable(iniBytesToSections(bytes));
     expect(table[0]).toBe('BŁĘKITNY');
   });
 });

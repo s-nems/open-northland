@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { BuildingFootprint } from '@open-northland/data';
 import {
-  decodeIni,
   extractAnimals,
   extractArmor,
   extractAtomicAnimations,
@@ -23,15 +22,15 @@ import {
   extractUpgradeTargets,
   extractVehicles,
   extractWeapons,
-  parseIniSections,
+  iniBytesToSections,
   type SourceRef,
 } from '../../decoders/ini.js';
 import type { IniSource } from './sources.js';
 
 /**
  * Reads + parses every resolved `.ini` source and runs the typed extractors over it, returning one
- * table per record kind. Decoding stays pure (`decodeIni`/`parseIniSections`/`extract*` take
- * bytes/text, not the filesystem); the only I/O here is reading the resolved files. Each extractor
+ * table per record kind. Decoding stays pure (`iniBytesToSections`/`extract*` take bytes/text, not
+ * the filesystem); the only I/O here is reading the resolved files. Each extractor
  * pulls only its own `[section]`s from a file, so passing every file's sections to every extractor is
  * correct and order-independent.
  *
@@ -73,7 +72,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const buildingOverlays = [];
 
   for (const { path, file, layer } of sources) {
-    const sections = parseIniSections(decodeIni(await readFile(path)));
+    const sections = iniBytesToSections(await readFile(path));
     const src: SourceRef = { file, layer };
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));

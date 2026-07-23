@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { MapScript } from '@open-northland/data';
-import { decodeIni, extractMapScript, parseIniSections, type RuleSection } from '../../decoders/ini.js';
+import { extractMapScript, iniBytesToSections, type RuleSection } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 
@@ -46,7 +46,7 @@ export async function resolveMapScript(
       const path = await findPathCaseInsensitiveInDirs(mapDirs, [inc]);
       if (path === undefined) continue;
       try {
-        sections.push(...parseIniSections(decodeIni(await readFile(path))));
+        sections.push(...iniBytesToSections(await readFile(path)));
         read.push(inc);
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: ${inc} unreadable: ${errorMessage(err)}`);
