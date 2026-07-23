@@ -93,3 +93,49 @@ describe('SettlerBubbleLayer head anchoring', () => {
     expect(tip.y).toBe(p.y - HEAD_ABOVE_FEET - BUBBLE_GAP);
   });
 });
+
+describe('SettlerBubbleLayer viewport cull', () => {
+  /** A viewport framing (or excluding) the raw projection of tile (3,5), the layer's cull anchor. */
+  const p = tileToScreen(3, 5);
+  const framing = { minX: p.x - 100, minY: p.y - 100, maxX: p.x + 100, maxY: p.y + 100 };
+  const excluding = { minX: p.x + 1000, minY: p.y + 1000, maxX: p.x + 2000, maxY: p.y + 2000 };
+
+  it('pools no node for an off-viewport needy settler', () => {
+    const layer = new SettlerBubbleLayer();
+    layer.setGfx(GFX);
+    layer.draw({ bubbles: [bubble(3, 5)] }, excluding);
+    expect(layer.container.children.length).toBe(0);
+  });
+
+  it('retires the pooled node when its settler scrolls off-screen, and re-mints it on return', () => {
+    const layer = new SettlerBubbleLayer();
+    layer.setGfx(GFX);
+    layer.draw({ bubbles: [bubble(3, 5)] }, framing);
+    expect(layer.container.children.length).toBe(1);
+
+    layer.draw({ bubbles: [bubble(3, 5)] }, excluding);
+    expect(layer.container.children.length).toBe(0);
+
+    layer.draw({ bubbles: [bubble(3, 5)] }, framing);
+    expect(layer.container.children.length).toBe(1);
+  });
+
+  it('never touches the pool geometry seams for a culled bubble', () => {
+    // The cull must run BEFORE the head estimate: an off-screen needy settler costs a bounds test only.
+    const layer = new SettlerBubbleLayer();
+    layer.setGfx(GFX);
+    let lookups = 0;
+    const counting = drawnWith({
+      boundsOf: () => {
+        lookups++;
+        return undefined;
+      },
+      anchorOf: () => {
+        lookups++;
+        return undefined;
+      },
+    });
+    layer.draw({ bubbles: [bubble(3, 5)], drawn: counting }, excluding);
+    expect(lookups).toBe(0);
+  });
+});
