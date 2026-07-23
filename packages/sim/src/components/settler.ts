@@ -1,4 +1,5 @@
 import type { AtomicEffect } from '../core/atomic-effect.js';
+import type { Command } from '../core/commands/index.js';
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
@@ -141,3 +142,17 @@ export const Age = defineComponent<{ ticks: number }>('Age');
  * the tick the drop finishes, then clears the field. Absent on a move order issued to an empty-handed settler.
  */
 export const PlayerOrder = defineComponent<{ pendingGoal?: NodeId }>('PlayerOrder');
+
+/** The order kinds a running non-interruptible atomic parks instead of cancelling (see {@link DeferredOrder}). */
+export type DeferrableOrderCommand = Extract<Command, { kind: 'moveUnit' | 'setJob' | 'placeSignpost' }>;
+
+/**
+ * A gameplay order parked behind a non-interruptible atomic (a harvest swing, a half-eaten meal — see
+ * `isInterruptibleAtomic` for the flag and its default): the handler stores the whole command here instead
+ * of cancelling the action, and the {@link import('../systems/orders/index.js').deferredOrderSystem}
+ * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins: a newer order of any
+ * kind replaces (or, when it executes immediately, clears) the parked one — a named approximation; the
+ * original's queueing depth under back-to-back orders is unobserved. Hashed state like any component, so
+ * replays carry parked orders.
+ */
+export const DeferredOrder = defineComponent<{ command: DeferrableOrderCommand }>('DeferredOrder');

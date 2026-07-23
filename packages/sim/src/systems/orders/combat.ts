@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Building,
   CurrentAtomic,
+  DeferredOrder,
   Engagement,
   Fleeing,
   Health,
@@ -102,8 +103,10 @@ export function attackUnit(
   if (!world.has(target, Settler) && !world.has(target, Building)) return; // a unit or a besiegeable building
 
   // The order is authoritative — cancel the unit's current action + any in-flight route/hold so it obeys
-  // now (a non-interruptible-atomic exception is a deferred refinement, as with moveUnit).
+  // now. Unlike moveUnit/setJob this still cancels a NON-interruptible atomic too — a remaining member of
+  // the class tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
   world.remove(e, CurrentAtomic);
+  world.remove(e, DeferredOrder); // an attack order executing now supersedes any earlier parked order
   clearNavState(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode — stop running, fight

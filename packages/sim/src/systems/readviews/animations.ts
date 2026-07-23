@@ -128,6 +128,11 @@ export function atomicAnimationName(
  * an idle/walk a settler can abandon the instant a higher-priority drive fires, versus a harvest swing or
  * attack that must play to completion. Returns `false` for an unknown name, the safe default that never
  * preempts work with no timing record.
+ *
+ * Named approximation: most clips carry NO `interruptable` key and extraction defaults them to `false`.
+ * The data's shape backs that reading (idles/walks/talk/sleep are marked `1`, the work swings are unmarked,
+ * the few explicit `0` rows are dock/animal clips), but the original engine's missing-key default is
+ * unverified — flipping it would make eat/harvest obey orders instantly.
  */
 export function isInterruptibleAtomic(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.interruptible ?? false;

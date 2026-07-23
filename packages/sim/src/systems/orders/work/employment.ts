@@ -6,6 +6,7 @@ import {
   Carrying,
   CraftSelection,
   CurrentAtomic,
+  DeferredOrder,
   Engagement,
   Equipment,
   Fleeing,
@@ -32,7 +33,7 @@ import { isFighterJob } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial.js';
 import { stampDefaultStance } from '../combat.js';
-import { isOrderableSettler, isTradeAssignable } from '../guards.js';
+import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
 
 /**
  * Change one owned settler's profession: set its `Settler.jobType` and reset it to a fresh idle worker of the
@@ -52,6 +53,8 @@ export function setJob(
   const e = command.entity;
   if (!isTradeAssignable(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
+  // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 
   world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
   reidleAsJob(world, ctx, e, command.jobType);
@@ -69,7 +72,11 @@ export function setJob(
  */
 function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   world.get(e, Settler).jobType = jobType;
-  world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
+  // Cancel whatever it was doing under the old job. setJob vets interruptibility before reaching here
+  // (deferOrderDuringAtomic); assignWorker still cancels unconditionally — a remaining member of the
+  // uninterruptible-atomic class, tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
+  world.remove(e, CurrentAtomic);
+  world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
   // A profession change makes a hands-full settler set its load down first: it replaces the cancelled action
   // with the drop atomic, so the old trade's haul lands on the ground here rather than being carried on to a
   // store under the new trade (the requested "drop when you change job" behavior).
@@ -196,7 +203,10 @@ export function assignBuilder(
   if (settler.jobType === null || !jobCanBuild(ctx, settler.jobType)) return;
 
   world.add(e, SiteAssignment, { site, pinned: true });
-  world.remove(e, CurrentAtomic); // obey now — the planner heads for the pinned site this tick
+  // Obey now — the planner heads for the pinned site this tick. Still an unconditional cancel (a remaining
+  // member of the uninterruptible-atomic class, same ticket as reidleAsJob's note).
+  world.remove(e, CurrentAtomic);
+  world.remove(e, DeferredOrder); // a builder pin executing now supersedes any earlier parked order
   // A builder pinned mid-haul keeps its load (unlike a profession change): re-pinning is the same trade, just a
   // different site, so it carries the (often scarce) material onward and the delivery drive banks it, rather
   // than dumping it in the field. Only a job change or an enemy makes a carrier set its load down.

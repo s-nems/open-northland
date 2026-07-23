@@ -173,7 +173,9 @@ export const societyContent = {
     { id: 'viking_sow', name: 'viking_sow', length: 3 },
     { id: 'viking_water', name: 'viking_water', length: 3 },
     { id: 'viking_eat', name: 'viking_eat', length: 5 },
-    { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
+    // Interruptible like the original's outdoor sleep (`interruptable 1`) — a sleeper obeys an order at
+    // once, while an unmarked clip (eat, the swings) defaults non-interruptible and parks orders.
+    { id: 'viking_sleep', name: 'viking_sleep', length: 6, interruptible: true },
     { id: 'viking_pray', name: 'viking_pray', length: 7 },
     // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
     // pulses totalling the 4000-unit full bar — `viking_civilist_talk`), compressed to a short
