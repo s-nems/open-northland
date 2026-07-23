@@ -3,7 +3,14 @@ import type { UiString } from '../../../content/gui-gfx.js';
 import { messages } from '../../../i18n/index.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
-import { type ButtonAction, EQUIP_ROW_H, ROW_H, ROW_TEXT_PAD, type SettlerLayout } from '../layout/index.js';
+import {
+  type ButtonAction,
+  EQUIP_ROW_H,
+  equipActionKey,
+  ROW_H,
+  ROW_TEXT_PAD,
+  type SettlerLayout,
+} from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
 
 /** Key column width of a key/value row. */
@@ -33,12 +40,13 @@ export function drawSettler(
   ui: UiString,
   hoverAction: ButtonAction | null,
   hoveredGatherGood: number | null | undefined,
+  hoveredEquipAction: string | null,
   s: number,
 ): void {
   drawGeneralSection(chrome, layout, model, s);
   drawWorkSection(chrome, layout, model, ui, hoverAction, hoveredGatherGood, s);
   drawExperienceSection(chrome, layout, model, ui, s);
-  drawEquipmentSection(chrome, layout, model, ui, s);
+  drawEquipmentSection(chrome, layout, model, ui, hoveredEquipAction, s);
 }
 
 /**
@@ -213,15 +221,19 @@ function drawExperienceSection(
 
 /**
  * Ekwipunek: one labeled row per slot group (Buty / Narzędzia / Broń / Zbroja / Ekwipunek). Each row's
- * label sits left of its round sockets; an occupied socket shows the good's icon (when it has an
- * `ls_goods` pile — potions/amulets have none, so they read by the warm-tinted socket) and, for a
- * wearing good, its "degree of use" percent in the column right of the socket.
+ * label sits left of its round sockets; an occupied socket shows the good's icon (the generic pile for
+ * an iconless potion/amulet - the socket tooltip names the item). The per-slot order buttons hug the
+ * socket: put-an-item-on (plus) for an empty slot, swap (arrows) plus take-off (cross) for a worn one
+ * - their names live in the cursor tooltip, like the Praca round controls. A wearing good's "degree of
+ * use" percent follows in the badge column right of the buttons. The order buttons are an
+ * OpenNorthland extension (the original window shows slots only), like the "usuń z domu" control.
  */
 function drawEquipmentSection(
   chrome: Chrome,
   layout: SettlerLayout,
   model: SettlerPanelModel,
   ui: UiString,
+  hoveredEquipAction: string | null,
   s: number,
 ): void {
   chrome.window(layout.equipment.frame);
@@ -249,15 +261,21 @@ function drawEquipmentSection(
           h: slotRect.h + iconOverflow * 2,
         });
       }
-      if (slot?.usePct != null) {
+      const badge = rowRect.useBadges[j];
+      if (slot?.usePct != null && badge != null) {
         chrome.textAt(
           `${slot.usePct}%`,
-          // Past the icon's right overflow, so a bigger icon can't crowd the "70%" badge.
-          slotRect.x + slotRect.w + iconOverflow + Math.round(2 * s),
-          slotRect.y + Math.round((slotRect.h - ROW_H * s) / 2) + ROW_TEXT_PAD * s,
+          badge.x,
+          badge.y + Math.round((badge.h - ROW_H * s) / 2) + ROW_TEXT_PAD * s,
           'white',
         );
       }
     });
   });
+  for (const hit of layout.equipActionHits) {
+    chrome.roundButton(hit.rect, true, equipActionKey(hit) === hoveredEquipAction);
+    if (hit.kind === 'equip') chrome.glyphPlus(hit.rect);
+    else if (hit.kind === 'swap') chrome.glyphSwap(hit.rect);
+    else chrome.glyphCross(hit.rect);
+  }
 }

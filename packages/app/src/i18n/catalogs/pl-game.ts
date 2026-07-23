@@ -54,6 +54,9 @@ export const plGame = {
     unassignHome: 'Usuń z domu',
     unassignHomeHint:
       'Wyprowadza całą rodzinę tego osadnika z domu i zwalnia miejsce dla rodziny. Nowy dom można przydzielić w każdej chwili.',
+    equipSlotHint: 'Rozkaż osadnikowi założyć przedmiot.',
+    swapSlotHint: 'Rozkaż osadnikowi wymienić ten przedmiot na inny.',
+    unequipSlotHint: 'Rozkaż osadnikowi zdjąć ten przedmiot.',
     defenseStopped: 'Obrona zatrzymana',
     upgrade: 'Rozbuduj',
     upgradeCostHint: 'Rozbudowa wymaga:',

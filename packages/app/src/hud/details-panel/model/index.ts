@@ -65,6 +65,7 @@ export type {
 } from './building.js';
 export type { UnitPanelModelContext } from './context.js';
 export {
+  type EquipGroup,
   type EquipRow,
   type EquipSlotModel,
   HUMANWINDOW,

@@ -54,6 +54,9 @@ export const enGame = {
     unassignHome: 'Remove from home',
     unassignHomeHint:
       "Moves this settler's whole family out of its home, freeing the family slot. You can assign them a new home anytime.",
+    equipSlotHint: 'Order this settler to put on an item.',
+    swapSlotHint: 'Order this settler to swap this item for another.',
+    unequipSlotHint: 'Order this settler to take this item off.',
     defenseStopped: 'Defence stopped',
     upgrade: 'Upgrade',
     upgradeCostHint: 'Upgrade requires:',

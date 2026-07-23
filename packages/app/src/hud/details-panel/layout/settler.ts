@@ -1,6 +1,6 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
-import type { UnitPanelModel } from '../model/index.js';
+import type { EquipGroup, UnitPanelModel } from '../model/index.js';
 import type { ButtonHit } from './building.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
@@ -38,18 +38,54 @@ const GATHER_ASSIGN_SEP = 9;
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
 export const EQUIP_SOCKET = 18;
-/** The use-% column drawn right of each socket (a wearing item's "degree of use"). */
+/** The use-% badge column right of a cell's action buttons - fits a spent item's "100%". */
 export const EQUIP_USE_W = 28;
-/** Gap after a socket's use-% column before the next socket (the misc Ekwipunek row). */
+/** Gap after a slot cell's use-% column before the next socket (the misc Ekwipunek row). */
 const EQUIP_SOCKET_GAP = 6;
 /** The row-label column width before the sockets (fits the widest slot label, "Narzędzia"). */
 export const EQUIP_LABEL_W = 74;
+/** Diameter of a round per-slot action button (equip/swap, and the take-off cross beside it). */
+const EQUIP_ACTION_BTN = 16;
+/** Gap between a socket and its first action button - clears the icon's 3 px overflow past the ring
+ *  (user feedback 2026-07-23: the buttons hug their slot). */
+const EQUIP_BTN_INSET = 4;
+/** Gap between a slot's equip/swap button and its take-off cross. */
+const EQUIP_ACTION_GAP = 2;
+/** Gap between the last action button and the use-% badge. */
+const EQUIP_USE_PAD = 4;
 
-/** One labeled equipment row's geometry: its label column + the slot sockets to its right. */
+/** One labeled equipment row's geometry: its label column + the slot sockets to its right (possibly
+ *  spanning several lines - see `slotsPerLine` in {@link layoutSettler}). */
 export interface EquipRowRect {
   readonly label: Rect;
   readonly slots: readonly Rect[];
+  /** Per slot (same order as {@link slots}): the use-% badge column right of the slot's action
+   *  buttons, or null when the slot shows no percent (empty, or a permanent good). */
+  readonly useBadges: readonly (Rect | null)[];
 }
+
+/** Which sim `Equipment` slot an action button addresses (`slot` indexes the misc row; 0 elsewhere). */
+export interface EquipSlotRef {
+  readonly group: EquipGroup;
+  readonly slot: number;
+}
+
+/** `equip` opens the pick menu for an empty slot, `swap` for an occupied one, `unequip` orders the worn
+ *  item taken off. */
+export type EquipActionKind = 'equip' | 'swap' | 'unequip';
+
+/** One per-slot equipment action button. Always enabled: an order can target any shown slot - what can
+ *  actually be worn is the (deferred) pick menu's decision, and a worn item can always come off. */
+export interface EquipActionHit {
+  readonly ref: EquipSlotRef;
+  readonly kind: EquipActionKind;
+  /** The worn good's name (the swap/take-off tooltips); absent for an empty slot's equip button. */
+  readonly label?: string;
+  readonly rect: Rect;
+}
+
+/** A hover identity for an action button, stable across panel rebuilds. */
+export const equipActionKey = (hit: EquipActionHit): string => `${hit.ref.group}:${hit.ref.slot}:${hit.kind}`;
 
 export interface GatherChoiceHit {
   readonly goodType: number | null;
@@ -117,6 +153,8 @@ export interface SettlerLayout {
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
   readonly equipRows: readonly EquipRowRect[];
+  /** The per-slot action buttons (equip/swap + take-off), flat across every equipment row. */
+  readonly equipActionHits: readonly EquipActionHit[];
 }
 
 export function layoutSettler(
@@ -161,7 +199,25 @@ export function layoutSettler(
   // upcoming-unlock rows under them (empty when untrained and nothing is in reach).
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
-  const equipBodyH = model.equipmentRows.length * equipRowH;
+  // An equipment slot cell: the socket, its equip/swap button and take-off cross hugging it, then the
+  // use-% badge column. The pitch reserves both buttons and the badge for every cell so sockets stay
+  // column-aligned; a row whose cells overflow the body width (the four misc consumables) wraps onto
+  // further EQUIP_ROW_H lines.
+  const socket = Math.round(EQUIP_SOCKET * s);
+  const equipLabelW = Math.round(EQUIP_LABEL_W * s);
+  const useW = Math.round(EQUIP_USE_W * s);
+  const actionBtn = Math.round(EQUIP_ACTION_BTN * s);
+  const btnInset = Math.round(EQUIP_BTN_INSET * s);
+  const actionGap = Math.round(EQUIP_ACTION_GAP * s);
+  const usePad = Math.round(EQUIP_USE_PAD * s);
+  const socketGap = Math.round(EQUIP_SOCKET_GAP * s);
+  const slotPitch = socket + btnInset + actionBtn + actionGap + actionBtn + usePad + useW + socketGap;
+  // The last cell needs no trailing gap, hence the +socketGap headroom.
+  const slotsPerLine = Math.max(1, Math.floor((bodyW - equipLabelW + socketGap) / slotPitch));
+  const equipRowLines = model.equipmentRows.map((row) =>
+    Math.max(1, Math.ceil(row.slots.length / slotsPerLine)),
+  );
+  const equipBodyH = equipRowLines.reduce((a, b) => a + b, 0) * equipRowH;
 
   const heights = [generalBodyH, workBodyH, expBodyH, equipBodyH].map(
     (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
@@ -266,25 +322,37 @@ export function layoutSettler(
     h: rowH,
   }));
 
-  // Ekwipunek: one labeled row per equipment slot group — a label column, then the slot sockets.
+  // Ekwipunek: one labeled row per equipment slot group - a label column, then the slot cells with
+  // their action buttons (the cell anatomy and wrap rule live at the slotPitch/slotsPerLine calc above).
   const equipment = next(equipBodyH);
-  const socket = Math.round(EQUIP_SOCKET * s);
-  const labelW = Math.round(EQUIP_LABEL_W * s);
-  // Each socket owns a pitch of itself + its use-% column + a trailing gap, so the misc row's sockets
-  // and their percentages don't collide.
-  const pitch = socket + Math.round(EQUIP_USE_W * s) + Math.round(EQUIP_SOCKET_GAP * s);
   const socketPadY = Math.round((equipRowH - socket) / 2);
+  const actionPadY = Math.round((equipRowH - actionBtn) / 2);
+  const equipActionHits: EquipActionHit[] = [];
+  let equipRowY = equipment.body.y;
   const equipRows: EquipRowRect[] = model.equipmentRows.map((row, i) => {
-    const rowY = equipment.body.y + i * equipRowH;
-    const label: Rect = { x: equipment.body.x, y: rowY, w: labelW, h: equipRowH };
-    const slotsX = equipment.body.x + labelW;
-    const slots: Rect[] = row.slots.map((_unused, j) => ({
-      x: slotsX + j * pitch,
-      y: rowY + socketPadY,
-      w: socket,
-      h: socket,
-    }));
-    return { label, slots };
+    const rowY = equipRowY;
+    equipRowY += (equipRowLines[i] ?? 1) * equipRowH;
+    const label: Rect = { x: equipment.body.x, y: rowY, w: equipLabelW, h: equipRowH };
+    const slotsX = equipment.body.x + equipLabelW;
+    const useBadges: (Rect | null)[] = [];
+    const slots: Rect[] = row.slots.map((slot, j) => {
+      const cellX = slotsX + (j % slotsPerLine) * slotPitch;
+      const cellY = rowY + Math.floor(j / slotsPerLine) * equipRowH;
+      const btnRect = (col: number): Rect => ({
+        x: cellX + socket + btnInset + col * (actionBtn + actionGap),
+        y: cellY + actionPadY,
+        w: actionBtn,
+        h: actionBtn,
+      });
+      const ref: EquipSlotRef = { group: row.group, slot: j };
+      const named = slot.label !== undefined ? { label: slot.label } : {};
+      equipActionHits.push({ ref, kind: slot.occupied ? 'swap' : 'equip', ...named, rect: btnRect(0) });
+      if (slot.occupied) equipActionHits.push({ ref, kind: 'unequip', ...named, rect: btnRect(1) });
+      const badgeX = cellX + socket + btnInset + 2 * actionBtn + actionGap + usePad;
+      useBadges.push(slot.usePct === null ? null : { x: badgeX, y: cellY, w: useW, h: equipRowH });
+      return { x: cellX, y: cellY + socketPadY, w: socket, h: socket };
+    });
+    return { label, slots, useBadges };
   });
 
   return {
@@ -312,5 +380,6 @@ export function layoutSettler(
     expRows,
     equipment,
     equipRows,
+    equipActionHits,
   };
 }

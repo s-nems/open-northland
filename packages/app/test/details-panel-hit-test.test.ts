@@ -1,9 +1,15 @@
 import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { BUILDING_HEADQUARTERS, GOOD_STONE, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
+import {
+  BUILDING_HEADQUARTERS,
+  GOOD_SHOES,
+  GOOD_STONE,
+  JOB_COLLECTOR,
+} from '../src/game/sandbox/ids/index.js';
 import {
   hitButton,
   hitCraftChoice,
+  hitEquipAction,
   hitGatherChoice,
   hitStockTab,
   nextCraftGoods,
@@ -18,6 +24,7 @@ import {
   visibleStockRows,
 } from '../src/hud/details-panel/stock-tabs.js';
 import type { Rect } from '../src/hud/geometry.js';
+import { messages } from '../src/i18n/index.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 const SCREEN = { width: 1600, height: 1200 };
@@ -91,6 +98,61 @@ describe('details panel hit-testing', () => {
     if (slot === undefined || heldLabel === undefined) throw new Error('expected a held stock row');
     const p = center(slot);
     expect(tooltipTextAt(view, p.x, p.y, SCALE, ALL_STOCK_TAB)).toBe(heldLabel);
+  });
+
+  it('routes the equip action buttons and names them (with the worn good) in the tooltip', () => {
+    const view = viewOfKind(
+      modelOf({
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          Equipment: {
+            boots: { goodType: GOOD_SHOES, degreeOfUse: 0 },
+            tool: null,
+            weapon: null,
+            armor: null,
+            misc: [null, null, null, null],
+          },
+        },
+      }),
+      'settler',
+    );
+    const hud = messages().hud;
+
+    const swap = view.layout.equipActionHits.find((h) => h.kind === 'swap');
+    const off = view.layout.equipActionHits.find((h) => h.kind === 'unequip');
+    const equip = view.layout.equipActionHits.find((h) => h.kind === 'equip');
+    if (swap === undefined || off === undefined || equip === undefined)
+      throw new Error('expected all three equip action kinds');
+
+    const sp = center(swap.rect);
+    expect(hitEquipAction(view, sp.x, sp.y)).toBe(swap);
+    expect(tooltipTextAt(view, sp.x, sp.y, SCALE, ALL_STOCK_TAB)).toBe(`${hud.swapSlotHint}\n${swap.label}`);
+
+    const op = center(off.rect);
+    expect(hitEquipAction(view, op.x, op.y)).toBe(off);
+    expect(tooltipTextAt(view, op.x, op.y, SCALE, ALL_STOCK_TAB)).toBe(
+      `${hud.unequipSlotHint}\n${off.label}`,
+    );
+
+    // An empty slot's equip button carries no item name - just the order hint.
+    const ep = center(equip.rect);
+    expect(hitEquipAction(view, ep.x, ep.y)).toBe(equip);
+    expect(tooltipTextAt(view, ep.x, ep.y, SCALE, ALL_STOCK_TAB)).toBe(hud.equipSlotHint);
+
+    // Hovering a worn socket names the item with its use percent; an empty socket names nothing.
+    const bootsSocket = view.layout.equipRows[0]?.slots[0];
+    const bootsSlot = view.model.equipmentRows[0]?.slots[0];
+    if (bootsSocket === undefined || bootsSlot?.label === undefined)
+      throw new Error('expected the worn boots socket');
+    const wp = center(bootsSocket);
+    expect(tooltipTextAt(view, wp.x, wp.y, SCALE, ALL_STOCK_TAB)).toBe(
+      `${bootsSlot.label} (${bootsSlot.usePct}%)`,
+    );
+    const toolSocket = view.layout.equipRows[1]?.slots[0];
+    if (toolSocket === undefined) throw new Error('expected the empty tool socket');
+    const np = center(toolSocket);
+    expect(tooltipTextAt(view, np.x, np.y, SCALE, ALL_STOCK_TAB)).toBeNull();
   });
 
   it('reports no target or tooltip for a point outside every field', () => {

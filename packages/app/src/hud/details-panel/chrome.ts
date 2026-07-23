@@ -92,6 +92,13 @@ export interface Chrome extends TextKit {
   /** A small house glyph centered in `r` — the assign-workplace round button's face (assign this settler
    *  to a building); `enabled` picks the lit vs. dimmed cream. */
   glyphHouse(r: Rect, enabled: boolean): void;
+  /** A plus glyph centered in `r` - an empty equip slot's "put an item on" button face. Always lit:
+   *  the per-slot order buttons are never disabled (see `EquipActionHit`). */
+  glyphPlus(r: Rect): void;
+  /** Two opposing horizontal arrows centered in `r` - a worn equip slot's "swap the item" button face. */
+  glyphSwap(r: Rect): void;
+  /** A diagonal cross centered in `r` - a worn equip slot's "take the item off" button face. */
+  glyphCross(r: Rect): void;
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
@@ -264,6 +271,55 @@ export function createChrome(
     });
   };
 
+  const glyphPlus = (r: Rect): void => {
+    const color = GLYPH_LIGHT;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const arm = r.w * 0.22;
+    const th = Math.max(1, Math.round(r.w * 0.14));
+    g.rect(cx - arm, cy - th / 2, arm * 2, th).fill(color);
+    g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(color);
+  };
+
+  const glyphSwap = (r: Rect): void => {
+    const color = GLYPH_LIGHT;
+    const x0 = r.x + r.w * 0.22;
+    const x1 = r.x + r.w * 0.78;
+    const cy = r.y + r.h / 2;
+    // Two opposed arrow lanes around the centre line: top shaft points right, bottom shaft points left.
+    const lane = r.h * 0.14;
+    const th = Math.max(1, Math.round(r.w * 0.1));
+    const head = r.w * 0.16;
+    g.moveTo(x0, cy - lane)
+      .lineTo(x1 - head, cy - lane)
+      .stroke({ color, width: th });
+    g.moveTo(x1, cy - lane)
+      .lineTo(x1 - head, cy - lane - head)
+      .lineTo(x1 - head, cy - lane + head)
+      .closePath()
+      .fill(color);
+    g.moveTo(x1, cy + lane)
+      .lineTo(x0 + head, cy + lane)
+      .stroke({ color, width: th });
+    g.moveTo(x0, cy + lane)
+      .lineTo(x0 + head, cy + lane - head)
+      .lineTo(x0 + head, cy + lane + head)
+      .closePath()
+      .fill(color);
+  };
+
+  const glyphCross = (r: Rect): void => {
+    const color = GLYPH_LIGHT;
+    const pad = r.w * 0.3;
+    const th = Math.max(1, Math.round(r.w * 0.14));
+    const x0 = r.x + pad;
+    const x1 = r.x + r.w - pad;
+    const y0 = r.y + pad;
+    const y1 = r.y + r.h - pad;
+    g.moveTo(x0, y0).lineTo(x1, y1).stroke({ color, width: th });
+    g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color, width: th });
+  };
+
   const headline = (r: Rect, title: string): void => {
     const inset = Math.max(1, Math.round(scale));
     const strip: Rect = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - inset };
@@ -382,6 +438,9 @@ export function createChrome(
     slotSocket,
     roundButton,
     glyphHouse,
+    glyphPlus,
+    glyphSwap,
+    glyphCross,
     headline,
     selectedUnderline,
     scrim,

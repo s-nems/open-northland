@@ -58,10 +58,19 @@ export function stanceLabel(mode: number | undefined): string {
   return '-';
 }
 
-/** One equipment slot's contents. Empty (`goodId` undefined, `usePct` null) for an unworn slot. */
+/** The equipment slot groups the sim `Equipment` component carries - the row identity and the slot
+ *  address an equip/swap/take-off order names (`misc` rows address their slot by index). */
+export type EquipGroup = 'boots' | 'tool' | 'weapon' | 'armor' | 'misc';
+
+/** One equipment slot's contents. Empty (`occupied` false, `usePct` null) for an unworn slot. */
 export interface EquipSlotModel {
+  /** Whether the slot holds a good - true even when the good's def failed to resolve (no icon/label),
+   *  so the action buttons still read the slot as worn. */
+  readonly occupied: boolean;
   /** The worn good's string id (the icon key) — undefined when the slot is empty. */
   readonly goodId?: string;
+  /** The worn good's display name (the action buttons' tooltip line) - undefined when empty. */
+  readonly label?: string;
   /** The "degree of use" percent for an occupied wearing item (potion/shoes/tool); null when the slot
    *  is empty or holds a permanent good (weapon/armour/amulet). */
   readonly usePct: number | null;
@@ -75,6 +84,8 @@ export interface EquipSlotModel {
 export interface EquipRow {
   readonly titleId: number;
   readonly fallback: string;
+  /** Which sim `Equipment` field this row shows - the slot address its action buttons order against. */
+  readonly group: EquipGroup;
   readonly slots: readonly EquipSlotModel[];
 }
 
@@ -131,14 +142,16 @@ interface RawEquipment {
  *  (potion/shoes/tool) carries its "degree of use" percent, a permanent good (weapon/armour/amulet,
  *  `equip.wears` false) none. */
 function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotModel {
-  if (slot == null) return { usePct: null };
+  if (slot == null) return { occupied: false, usePct: null };
   const goodType = num(slot.goodType);
-  if (goodType === undefined) return { usePct: null };
+  if (goodType === undefined) return { occupied: false, usePct: null };
   const def = goodDef(ctx, goodType);
   const wears = def?.equip?.wears ?? false;
   return {
+    occupied: true,
     usePct: wears ? pct(num(slot.degreeOfUse)) : null,
     ...(def?.id !== undefined ? { goodId: def.id } : {}),
+    label: goodLabel(ctx, goodType),
   };
 }
 
@@ -153,18 +166,28 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const slots = messages().hud.equipmentSlots;
   const eq = comps.Equipment as RawEquipment | undefined;
   const rows: EquipRow[] = [
-    { titleId: HUMANWINDOW.boots, fallback: slots.boots, slots: [slotModel(ctx, eq?.boots)] },
-    { titleId: HUMANWINDOW.tools, fallback: slots.tools, slots: [slotModel(ctx, eq?.tool)] },
+    { titleId: HUMANWINDOW.boots, fallback: slots.boots, group: 'boots', slots: [slotModel(ctx, eq?.boots)] },
+    { titleId: HUMANWINDOW.tools, fallback: slots.tools, group: 'tool', slots: [slotModel(ctx, eq?.tool)] },
   ];
   const soldier = 'Weapon' in comps || eq?.weapon != null || eq?.armor != null;
   if (soldier) {
-    rows.push({ titleId: HUMANWINDOW.weapon, fallback: slots.weapon, slots: [slotModel(ctx, eq?.weapon)] });
-    rows.push({ titleId: HUMANWINDOW.armor, fallback: slots.armor, slots: [slotModel(ctx, eq?.armor)] });
+    rows.push({
+      titleId: HUMANWINDOW.weapon,
+      fallback: slots.weapon,
+      group: 'weapon',
+      slots: [slotModel(ctx, eq?.weapon)],
+    });
+    rows.push({
+      titleId: HUMANWINDOW.armor,
+      fallback: slots.armor,
+      group: 'armor',
+      slots: [slotModel(ctx, eq?.armor)],
+    });
   }
   const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
   const miscSlots: EquipSlotModel[] = [];
   for (let i = 0; i < components.MISC_EQUIP_SLOTS; i++) miscSlots.push(slotModel(ctx, misc[i] ?? null));
-  rows.push({ titleId: HUMANWINDOW.misc, fallback: slots.misc, slots: miscSlots });
+  rows.push({ titleId: HUMANWINDOW.misc, fallback: slots.misc, group: 'misc', slots: miscSlots });
   return rows;
 }
 

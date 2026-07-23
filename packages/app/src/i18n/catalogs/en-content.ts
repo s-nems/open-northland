@@ -208,5 +208,10 @@ export const enContent = {
       summary:
         'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
     },
+    equipment: {
+      title: 'Equipment window',
+      summary:
+        'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler.',
+    },
   },
 } as const;

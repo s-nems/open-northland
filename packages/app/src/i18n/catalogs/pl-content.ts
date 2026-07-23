@@ -209,5 +209,10 @@ export const plContent = {
       summary:
         'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
     },
+    equipment: {
+      title: 'Okno ekwipunku',
+      summary:
+        'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego.',
+    },
   },
 } as const;

@@ -13,12 +13,13 @@ import { createChrome, type PanelLayers } from './chrome.js';
 import {
   hitButton,
   hitCraftChoice,
+  hitEquipAction,
   hitGatherChoice,
   hitStockTab,
   nextCraftGoods,
   tooltipTextAt,
 } from './hit-test.js';
-import { type ButtonHit, mapLayout, ROW_H } from './layout/index.js';
+import { type ButtonHit, type EquipSlotRef, equipActionKey, mapLayout, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
@@ -77,6 +78,12 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Remove the selected settler's family from its home (the `unassignHouse` command) — the inverse of
    *  {@link onAssignHome}. No pick mode: it acts on the current home immediately. Absent → button inert. */
   readonly onUnassignHome?: (settlerId: number) => void;
+  /** Open the equip pick menu for one of the selected settler's equipment slots - invoked by the round
+   *  per-slot button (an empty slot's plus = put an item on, a worn slot's arrows = swap it; `ref` names
+   *  the slot). The menu itself is the deferred next step. Absent → the buttons are inert. */
+  readonly onEquipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
+  /** Order the worn item in `ref` taken off - the per-slot cross button. Absent → the button is inert. */
+  readonly onUnequipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product.
    *  The panel computes the toggled set from the clicked button + the model's effective selection. */
@@ -165,6 +172,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let view: PanelView = EMPTY_PANEL_VIEW;
   let hoverAction: ButtonHit['action'] | null = null;
   let hoveredGatherGood: number | null | undefined;
+  /** The hovered equipment action button's {@link equipActionKey}, or null. */
+  let hoveredEquipAction: string | null = null;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
    *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
@@ -225,7 +234,16 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       }
       case 'settler': {
         const draw = mapLayout(view.layout, toDraw);
-        drawSettler(chrome, draw, view.model, uiString, hoverAction, hoveredGatherGood, ss);
+        drawSettler(
+          chrome,
+          draw,
+          view.model,
+          uiString,
+          hoverAction,
+          hoveredGatherGood,
+          hoveredEquipAction,
+          ss,
+        );
         break;
       }
       case 'compact':
@@ -332,6 +350,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         );
         return true;
       }
+      const equipHit = hitEquipAction(view, x, y);
+      if (equipHit !== undefined) {
+        if (equipHit.kind === 'unequip') opts.onUnequipSlot?.(view.model.entityId, equipHit.ref);
+        else opts.onEquipSlot?.(view.model.entityId, equipHit.ref);
+        return true;
+      }
     }
     if (view.kind === 'building') {
       const tab = hitStockTab(view, x, y);
@@ -386,9 +410,17 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     // button) must not fall through to the craft probe, so this is an explicit undefined-check.
     const gather = hitGatherChoice(view, x, y);
     const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(view, x, y);
-    if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
+    const equipHit = hitEquipAction(view, x, y);
+    const nextEquipAction = equipHit !== undefined ? equipActionKey(equipHit) : null;
+    if (
+      next === hoverAction &&
+      nextGatherGood === hoveredGatherGood &&
+      nextEquipAction === hoveredEquipAction
+    )
+      return;
     hoverAction = next;
     hoveredGatherGood = nextGatherGood;
+    hoveredEquipAction = nextEquipAction;
     if (view.kind !== 'empty') rebuild(view.model);
   };
 
@@ -396,9 +428,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const onMouseLeave = (): void => {
     lastPointer = null;
     opts.tooltip?.hide();
-    if (hoverAction !== null || hoveredGatherGood !== undefined) {
+    if (hoverAction !== null || hoveredGatherGood !== undefined || hoveredEquipAction !== null) {
       hoverAction = null;
       hoveredGatherGood = undefined;
+      hoveredEquipAction = null;
       if (view.kind !== 'empty') rebuild(view.model);
     }
   };

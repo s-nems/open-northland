@@ -1,6 +1,6 @@
 import { messages } from '../../i18n/index.js';
 import { contains } from '../geometry.js';
-import { type ButtonHit, stockSlotRects } from './layout/index.js';
+import { type ButtonHit, type EquipActionHit, stockSlotRects } from './layout/index.js';
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
@@ -67,6 +67,12 @@ export const nextCraftGoods = (
   return products.filter((g) => next.has(g));
 };
 
+/** The per-slot equipment action button under a canvas point, or undefined (settler layouts only). */
+export const hitEquipAction = (view: PanelView, x: number, y: number): EquipActionHit | undefined => {
+  if (view.kind !== 'settler') return undefined;
+  return view.layout.equipActionHits.find((hit) => contains(hit.rect, x, y));
+};
+
 /** The good name under a canvas point in the stock grid, or null. Probes the same slot rects the rows
  *  draw into ({@link stockSlotRects}), then maps the slot index through the same visible-row split the
  *  draw applies, so a hovered slot names exactly the drawn good. */
@@ -119,6 +125,32 @@ const gatherChoiceHint = (view: PanelView, x: number, y: number): string | null 
   return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
 };
 
+/** The worn good under a hovered equipment socket ("Miód (50%)"), or null - an iconless potion/amulet
+ *  draws the generic pile, so the socket tooltip is what identifies the item. Empty sockets name nothing. */
+const equipSocketHint = (view: PanelView, x: number, y: number): string | null => {
+  if (view.kind !== 'settler') return null;
+  for (let i = 0; i < view.layout.equipRows.length; i++) {
+    const rects = view.layout.equipRows[i]?.slots ?? [];
+    const j = rects.findIndex((r) => contains(r, x, y));
+    if (j < 0) continue;
+    const slot = view.model.equipmentRows[i]?.slots[j];
+    if (slot?.label === undefined) return null;
+    return slot.usePct !== null ? `${slot.label} (${slot.usePct}%)` : slot.label;
+  }
+  return null;
+};
+
+/** The equip action buttons' tooltips - the glyph faces carry no label, and a swap/take-off button
+ *  names the worn good on its second line. */
+const equipActionHint = (view: PanelView, x: number, y: number): string | null => {
+  const hit = hitEquipAction(view, x, y);
+  if (hit === undefined) return null;
+  const hud = messages().hud;
+  const hint =
+    hit.kind === 'equip' ? hud.equipSlotHint : hit.kind === 'swap' ? hud.swapSlotHint : hud.unequipSlotHint;
+  return hit.label !== undefined ? `${hint}\n${hit.label}` : hint;
+};
+
 /** The Upgrade button's cost card ("Upgrade requires:" then one "- Drewno ×5" line per required good),
  *  or null. Only building layouts carry the button, and only an upgradable building has a cost. */
 const upgradeButtonHint = (view: PanelView, x: number, y: number): string | null => {
@@ -158,6 +190,8 @@ export const tooltipTextAt = (
     tabLabel ??
     hitBarValue(view, x, y) ??
     gatherChoiceHint(view, x, y) ??
+    equipSocketHint(view, x, y) ??
+    equipActionHint(view, x, y) ??
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
     assignButtonHint(view, x, y)

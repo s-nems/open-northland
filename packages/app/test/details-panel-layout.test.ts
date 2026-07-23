@@ -4,6 +4,8 @@ import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
+  GOOD_MEAD,
+  GOOD_SHOES,
   GOOD_STONE,
   JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
@@ -11,6 +13,7 @@ import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/
 import {
   type BuildingLayout,
   type DetailsLayout,
+  equipActionKey,
   MAX_STOCK_ROWS,
   mapLayout,
   type SettlerLayout,
@@ -80,6 +83,80 @@ describe('details panel layout', () => {
     expect(
       layout.gatherChoiceHits.filter((choice) => choice.selected).map((choice) => choice.goodType),
     ).toEqual([GOOD_STONE]);
+  });
+
+  it('lays per-slot equip action buttons: equip on empty, swap + take-off on worn, misc wrapped', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            Equipment: {
+              boots: { goodType: GOOD_SHOES, degreeOfUse: 0 },
+              tool: null,
+              weapon: null,
+              armor: null,
+              misc: [{ goodType: GOOD_MEAD, degreeOfUse: 0 }, null, null, null],
+            },
+          },
+        },
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    const layout = settlerLayoutOf(model);
+
+    // A worn slot offers swap + take-off, an empty one only equip (no weapon/armour rows: not a soldier).
+    expect(layout.equipActionHits.map(equipActionKey).sort()).toEqual(
+      [
+        'boots:0:swap',
+        'boots:0:unequip',
+        'tool:0:equip',
+        'misc:0:swap',
+        'misc:0:unequip',
+        'misc:1:equip',
+        'misc:2:equip',
+        'misc:3:equip',
+      ].sort(),
+    );
+    // The worn goods' buttons name the item for the tooltip; an empty slot's equip button has no name.
+    const hitOf = (key: string) => layout.equipActionHits.find((hit) => equipActionKey(hit) === key);
+    expect(hitOf('boots:0:swap')?.label).toBe(hitOf('boots:0:unequip')?.label);
+    expect(hitOf('boots:0:swap')?.label).toBeDefined();
+    expect(hitOf('tool:0:equip')?.label).toBeUndefined();
+
+    // The four misc cells (socket + use-% + two buttons each) overflow one line and wrap onto a second.
+    const misc = layout.equipRows[layout.equipRows.length - 1];
+    if (misc === undefined) throw new Error('expected the misc equipment row');
+    expect(new Set(misc.slots.map((r) => r.y)).size).toBe(2);
+
+    // Every socket, button and use-% badge stays inside the Ekwipunek body (the wrapped line must be
+    // paid for in the section height).
+    const body = layout.equipment.body;
+    const rects = [
+      ...layout.equipRows.flatMap((r) => [...r.slots]),
+      ...layout.equipRows.flatMap((r) => r.useBadges.filter((b): b is Rect => b !== null)),
+      ...layout.equipActionHits.map((h) => h.rect),
+    ];
+    for (const r of rects) {
+      expect(r.x).toBeGreaterThanOrEqual(body.x);
+      expect(r.x + r.w).toBeLessThanOrEqual(body.x + body.w + 1);
+      expect(r.y).toBeGreaterThanOrEqual(body.y);
+      expect(r.y + r.h).toBeLessThanOrEqual(body.y + body.h + 1);
+    }
+    // Cell order: the buttons hug their socket (a few px for the icon overflow), and the worn boots'
+    // use-% badge sits right of the take-off cross. Empty and permanent slots carry no badge.
+    const bootsSocket = layout.equipRows[0]?.slots[0];
+    const bootsBadge = layout.equipRows[0]?.useBadges[0];
+    const bootsSwap = hitOf('boots:0:swap');
+    const bootsOff = hitOf('boots:0:unequip');
+    if (bootsSocket === undefined || bootsSwap === undefined || bootsOff === undefined)
+      throw new Error('expected the boots cell');
+    expect(bootsSwap.rect.x - (bootsSocket.x + bootsSocket.w)).toBeLessThanOrEqual(4);
+    if (bootsBadge == null) throw new Error('expected the worn boots use-% badge');
+    expect(bootsBadge.x).toBeGreaterThanOrEqual(bootsOff.rect.x + bootsOff.rect.w);
+    expect(layout.equipRows[1]?.useBadges[0]).toBeNull(); // the empty tool slot shows no percent
   });
 
   it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
