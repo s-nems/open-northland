@@ -36,8 +36,10 @@ export type {
   SourceRef,
 } from './ini/grammar.js';
 export {
+  cifBytesToSections,
   cifLinesToSections,
   decodeIni,
+  iniBytesToSections,
   makeSource,
   normalizeAssetPath,
   parseIniSections,

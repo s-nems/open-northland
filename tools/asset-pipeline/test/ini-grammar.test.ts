@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
-import { cifLinesToSections, decodeIni, parseIniSections } from '../src/decoders/ini.js';
+import { cifLinesToSections, decodeIni, iniBytesToSections, parseIniSections } from '../src/decoders/ini.js';
 
 describe('decodeIni (CP1250 byte->text seam)', () => {
   it('decodes 0x80..0xFF bytes as CP1250 Polish glyphs, not UTF-8', () => {
@@ -35,7 +35,7 @@ describe('decodeIni (CP1250 byte->text seam)', () => {
       0x22,
       0x0a, // '"\n'
     ]);
-    const [sec] = parseIniSections(decodeIni(bytes));
+    const [sec] = iniBytesToSections(bytes);
     expect(sec?.props.find((p) => p.key === 'name')?.values).toEqual(['śą']);
   });
 });

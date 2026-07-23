@@ -1,12 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { MapScript } from '@open-northland/data';
-import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
-  cifLinesToSections,
-  decodeIni,
+  cifBytesToSections,
   extractStaticObjects,
-  parseIniSections,
+  iniBytesToSections,
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
@@ -102,8 +100,7 @@ export async function convertMapDatTree(
       const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
       if (cifPath === undefined) continue;
       try {
-        const cifBytes = await readFile(cifPath);
-        cifSections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
+        cifSections = cifBytesToSections(await readFile(cifPath));
         const entities = extractStaticObjects(cifSections);
         if (entities !== undefined) terrain = { ...terrain, entities };
         break;
@@ -122,7 +119,7 @@ export async function convertMapDatTree(
       const incPath = await findPathCaseInsensitiveInDirs(mapDirs, ['staticobjects.inc']);
       if (incPath !== undefined) {
         try {
-          const entities = extractStaticObjects(parseIniSections(decodeIni(await readFile(incPath))));
+          const entities = extractStaticObjects(iniBytesToSections(await readFile(incPath)));
           if (entities !== undefined) terrain = { ...terrain, entities };
         } catch (err) {
           console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${errorMessage(err)}`);

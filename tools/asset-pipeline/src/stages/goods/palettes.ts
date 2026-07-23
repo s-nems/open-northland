@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { decodeIni, extractPaletteIndex, paletteAliasMap, parseIniSections } from '../../decoders/ini.js';
+import { extractPaletteIndex, iniBytesToSections, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
@@ -27,7 +27,7 @@ export type PaletteAliasMap = ReadonlyMap<string, string>;
  *  warned) when the file is unreadable, so palette resolution degrades to the {@link PALETTE_DIRS} search. */
 export async function loadPaletteAliases(roots: SourceRoots): Promise<PaletteAliasMap> {
   try {
-    const sections = parseIniSections(decodeIni(await readSourceFile(roots, PALETTES_INI)));
+    const sections = iniBytesToSections(await readSourceFile(roots, PALETTES_INI));
     return paletteAliasMap(extractPaletteIndex(sections));
   } catch (err) {
     console.warn(`[pipeline] goods: palettes.ini unreadable (${errorMessage(err)}); resolving by path`);

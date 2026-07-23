@@ -1,19 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
   type BmdPaletteBinding,
-  cifLinesToSections,
-  decodeIni,
+  cifBytesToSections,
   extractBuildingGraphics,
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  iniBytesToSections,
   type JobBaseGraphicsBinding,
   type PaletteAlias,
-  parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
 import { CULTURESNATION_MOD } from '../../probe.js';
@@ -107,7 +105,7 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  *    {@link extractGraphicsBindings}; ships only as encrypted `.cif`;
  *  - base `.../humans/jobgraphics.cif` `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]`
  *    (per-job equipment skin) — the human body/head bob sets, `.cif`-only (no readable twin), decoded via
- *    {@link decodeCifStringArray} → {@link cifLinesToSections} into the same {@link RuleSection} model;
+ *    {@link cifBytesToSections} into the same {@link RuleSection} model;
  *  - base `.../landscapes/landscapes.cif` `[GfxLandscape]` — the map's pre-placed landscape-object bobs;
  *  - the mod's readable twins under `DataCnmd/` (golden rule #4): `types/humanstype/jobgraphics.ini`,
  *    `types/vehiclestype/jobgraphics.ini` (broader per-tribe cart/ship recolours), and
@@ -115,9 +113,8 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  *
  * All human/vehicle sources flatten via {@link jobBaseGraphicsToBindings}/{@link extractGraphicsBindings}
  * into one flat shape; landscape and house bindings dedup on `(bmd, palette)` (see the push sites). The
- * palette index comes from `.../palettes/palettes.ini`. `.ini` sources decode as CP1250 (Polish display
- * names) via {@link decodeIni}; `.cif` text is latin1. A missing/corrupt file contributes nothing (with a
- * warning) so a partial install still runs the rest of the pipeline.
+ * palette index comes from `.../palettes/palettes.ini`. A missing/corrupt file contributes nothing
+ * (with a warning) so a partial install still runs the rest of the pipeline.
  *
  * The goods graphics table (`goods/goodgraphics.cif`) is intentionally not read: its `[goodgraphics]`
  * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so there
@@ -128,7 +125,7 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
     try {
       const path = await resolveSourceFile(roots, rel);
       if (path === undefined) throw new Error('unresolved');
-      return parseIniSections(decodeIni(await readFile(path)));
+      return iniBytesToSections(await readFile(path));
     } catch {
       console.warn(`[pipeline] graphics binding source not found, skipping: ${rel}`);
       return undefined;
@@ -138,7 +135,7 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
     try {
       const path = await resolveSourceFile(roots, rel);
       if (path === undefined) throw new Error('unresolved');
-      return cifLinesToSections(decodeCifStringArray(await readFile(path)).lines);
+      return cifBytesToSections(await readFile(path));
     } catch {
       console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${rel}`);
       return undefined;

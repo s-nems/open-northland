@@ -1,7 +1,7 @@
 /**
  * Shared .ini/.cif grammar: byte decode, tokenizer, section parsers, generic property accessors, and asset-path normalizers. The domain-free kernel every extractor builds on.
  */
-import type { CifLine } from '../cif.js';
+import { type CifLine, decodeCifStringArray } from '../cif.js';
 
 /**
  * Decodes raw `.ini` bytes to text as CP1250 (Windows-1250, Central-European), not UTF-8.
@@ -91,6 +91,15 @@ export function parseIniSections(text: string): RuleSection[] {
 }
 
 /**
+ * Readable `.ini` bytes straight to sections: {@link decodeIni} (CP1250) then
+ * {@link parseIniSections}. The one composition every `.ini` reader uses, so the byte→text seam
+ * and the grammar cannot be paired differently per call site.
+ */
+export function iniBytesToSections(bytes: Uint8Array): RuleSection[] {
+  return parseIniSections(decodeIni(bytes));
+}
+
+/**
  * Adapts decoded `.cif` lines (from {@link CifLine}) into the same {@link RuleSection} model: a
  * level-1 (or level-0) line opens a new section named by its first token; deeper lines are its
  * properties. This is what lets type tables with no readable `.ini` twin (`housetypes`,
@@ -115,6 +124,14 @@ export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
     }
   }
   return sections;
+}
+
+/**
+ * Encrypted `.cif` bytes straight to sections: {@link decodeCifStringArray} (latin1 lines) then
+ * {@link cifLinesToSections}. The `.cif` twin of {@link iniBytesToSections}.
+ */
+export function cifBytesToSections(bytes: Uint8Array): RuleSection[] {
+  return cifLinesToSections(decodeCifStringArray(bytes).lines);
 }
 
 /** First property with this key, or undefined. Repeated keys (e.g. `transition`) keep file order. */

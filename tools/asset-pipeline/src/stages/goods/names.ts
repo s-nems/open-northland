@@ -1,11 +1,9 @@
 import { join } from 'node:path';
-import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
-  cifLinesToSections,
-  decodeIni,
+  cifBytesToSections,
   extractStringnById,
+  iniBytesToSections,
   latin1ToCp1250,
-  parseIniSections,
 } from '../../decoders/ini.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../source-files.js';
@@ -70,13 +68,12 @@ export async function loadGoodNames(
       continue;
     }
     if (encrypted) {
-      const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
-      const raw = extractStringnById(sections);
+      const raw = extractStringnById(cifBytesToSections(bytes));
       tables[code] = Object.fromEntries(
         Object.entries(raw).map(([id, text]) => [Number(id), latin1ToCp1250(text)]),
       );
     } else {
-      tables[code] = extractStringnById(parseIniSections(decodeIni(bytes)));
+      tables[code] = extractStringnById(iniBytesToSections(bytes));
     }
   }
   return resolveGoodNames(goods, tables);

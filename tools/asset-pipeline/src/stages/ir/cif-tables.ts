@@ -1,17 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { decodeCifStringArray } from '../../decoders/cif.js';
-import { cifLinesToSections, type RuleSection, type SourceRef } from '../../decoders/ini.js';
+import { cifBytesToSections, type RuleSection, type SourceRef } from '../../decoders/ini.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
-
-/**
- * Decodes a `.cif`-only table (no readable `.ini` twin — `pattern.cif`, `trianglepatterntypes.cif`)
- * into the shared {@link RuleSection} model, or `null` if the file is absent.
- */
-async function loadCifSections(path: string | undefined): Promise<RuleSection[] | null> {
-  if (path === undefined) return null;
-  const { lines } = decodeCifStringArray(new Uint8Array(await readFile(path)));
-  return cifLinesToSections(lines);
-}
 
 /**
  * Loads a `.cif`-only table at `relFile` (no readable `.ini` twin — overlay-first, since the CnMod
@@ -28,6 +17,8 @@ export async function loadCifTable<T>(
   extract: (sections: RuleSection[], src: SourceRef) => T,
   fallback: T,
 ): Promise<T> {
-  const sections = await loadCifSections(await resolveSourceFile(roots, relFile));
-  return sections ? extract(sections, { file: relFile, layer: 'base' }) : fallback;
+  const path = await resolveSourceFile(roots, relFile);
+  if (path === undefined) return fallback;
+  const sections = cifBytesToSections(await readFile(path));
+  return extract(sections, { file: relFile, layer: 'base' });
 }

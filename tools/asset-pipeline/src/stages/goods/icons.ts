@@ -1,11 +1,9 @@
 import { join } from 'node:path';
-import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
-  cifLinesToSections,
-  decodeIni,
+  cifBytesToSections,
   extractGoods,
   extractLandscapeGfx,
-  parseIniSections,
+  iniBytesToSections,
 } from '../../decoders/ini.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../source-files.js';
@@ -118,8 +116,8 @@ export async function buildGoodIcons(
   roots: SourceRoots,
   goods: readonly GoodLike[],
 ): Promise<Record<string, GoodIcon>> {
-  const { lines } = decodeCifStringArray(await readSourceFile(roots, LANDSCAPES_CIF));
-  const landscapeGfx = extractLandscapeGfx(cifLinesToSections(lines), {
+  const sections = cifBytesToSections(await readSourceFile(roots, LANDSCAPES_CIF));
+  const landscapeGfx = extractLandscapeGfx(sections, {
     file: LANDSCAPES_CIF,
     layer: 'base',
   });
@@ -130,6 +128,6 @@ export async function buildGoodIcons(
 export async function loadGoods(
   roots: SourceRoots,
 ): Promise<readonly (GoodLike & { readonly typeId: number })[]> {
-  const sections = parseIniSections(decodeIni(await readSourceFile(roots, GOODTYPES_INI)));
+  const sections = iniBytesToSections(await readSourceFile(roots, GOODTYPES_INI));
   return extractGoods(sections, { file: GOODTYPES_INI, layer: 'base' });
 }
