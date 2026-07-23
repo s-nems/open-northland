@@ -179,6 +179,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '962:7:22',
     '962:8:22',
     '988:8:23',
+    '992:8:22',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -193,15 +194,18 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
     // per-animation lengths) AND the hash's coverage of string state (an `AtomicEffect`'s `kind`,
     // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
-    // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery).
-    expect(run.hash).toBe('a0699b1f');
+    // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery) AND
+    // the fractional experience-bonus output (ProductionBonus) with the extra goods it yields.
+    expect(run.hash).toBe('82e7cc5d');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The slower journeys leave 13 completed planks inside this fixed 1000-tick observation window.
-    expect(run.produced).toBe(13);
+    // The slower journeys leave 13 completed batches inside this fixed 1000-tick observation window;
+    // the carpenter's growing experience banks ~7.1 planks of bonus fractions over them, so 7 whole
+    // bonus units land on top (see the production-bonus cases).
+    expect(run.produced).toBe(20);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

@@ -1,5 +1,9 @@
 import type { HumanJobExperienceType } from '@open-northland/data';
+import { Settler } from '../../components/index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { SystemContext } from '../context.js';
+import { generalTrackFor } from './experience.js';
 
 /**
  * ProgressionSystem (bonus-curve half): how much better an experienced settler is at its specialization.
@@ -48,4 +52,17 @@ export function experienceBonus(repeats: number): Fixed {
  */
 export function experienceRepeats(xp: number, track: HumanJobExperienceType): number {
   return track.experienceFactor > 0 ? Math.trunc(xp / track.experienceFactor) : 0;
+}
+
+/**
+ * A production operator's current bonus fraction — the curve read on its job-GENERAL track (the same
+ * track production XP accrues into): "baker 5" bakes half a bread extra per cycle. ZERO for a gone or
+ * jobless operator, a profession with no general track, or one with no repeats yet.
+ */
+export function operatorProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
+  const s = world.tryGet(operator, Settler);
+  if (s === undefined || s.jobType === null) return ZERO;
+  const track = generalTrackFor(ctx, s.jobType);
+  if (track === undefined) return ZERO;
+  return experienceBonus(experienceRepeats(s.experience.get(track.typeId) ?? 0, track));
 }

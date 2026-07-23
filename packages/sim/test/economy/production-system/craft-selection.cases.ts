@@ -65,7 +65,9 @@ describe('productionSystem — per-product recipes and the craft selection', () 
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
-    expect(stock.get(FOOD)).toBe(4);
+    // 4 base + 1 whole experience-bonus unit: the smith's four batches bank 17+29+38+46% of extra
+    // output, crossing 1.0 on the fourth (see the production bonus cases).
+    expect(stock.get(FOOD)).toBe(5);
     expect(stock.get(PLANK) ?? 0).toBe(0);
   });
 
