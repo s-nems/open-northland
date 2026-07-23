@@ -1,8 +1,9 @@
 /**
  * The scene layer's shared vocabulary — the {@link DrawItem} shape the pure scene builders emit and the
- * GPU layer consumes. Types + one paint-order table only; the builders live in
- * {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')} (the latter also owns the
- * terrain-grid shapes), the per-component snapshot reads in {@link import('./snapshot-readers/index.js')}.
+ * GPU layer consumes. Types only; the depth/paint-order keys live in {@link import('./depth.js')}, the
+ * builders in {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')} (the latter also
+ * owns the terrain-grid shapes), the per-component snapshot reads in
+ * {@link import('./snapshot-readers/index.js')}.
  */
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
@@ -27,49 +28,6 @@ export type DrawKind =
  * this slice).
  */
 export type SpriteState = 'idle' | 'moving' | 'acting';
-
-/**
- * Same-feet-anchor paint priority per drawable kind — a higher value draws later (in front) when two
- * sprites resolve to (nearly) the same depth. A worker stands on the resource cell it harvests and a
- * delivery flag sits on the ground drops piling up around it, so without a tiebreak the taller node/drop
- * paints over the unit/flag by mere attach order. Applied as a sub-cell epsilon (`PAINT_ORDER_EPS` in
- * the scene builder; `SCREEN_PAINT_EPS` in the live painter) — orders of magnitude below one row's depth
- * separation — so it only breaks ties at a shared anchor and never reorders sprites a genuine row apart.
- * Read it through {@link paintOrderBias} (never combined with {@link FLAG_PAINT_STEP} by hand). `tile`
- * is 0 (tiles carry their own sub-zero depth band).
- */
-const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
-  tile: 0,
-  resource: 0,
-  berrybush: 0, // a bush sits behind the settler foraging it, like a resource node
-  stump: 0,
-  building: 1,
-  grounddrop: 1,
-  signpost: 1, // the post occludes like a small building; its boards ride the flag half-step above it
-  stockpile: 2,
-  settler: 3,
-  projectile: 4, // an arrow in flight crosses over the fighters it flies between
-};
-
-/**
- * Extra fractional paint-order step a delivery flag ({@link DrawItem.isFlag}) gets above a plain
- * `stockpile` heap on the same tile. A flag and the goods heaps it collects are both `stockpile` kind
- * (same {@link SPRITE_PAINT_ORDER}), so the kind bias alone ties them — and since the flag is created
- * first (lowest id) the id tiebreak would bury it under the later heap. Half a paint step lifts the flag
- * just past a co-located heap; `2 + 0.5` sits below `settler`'s `3`, so a worker on the tile still draws
- * in front.
- */
-const FLAG_PAINT_STEP = 0.5;
-
-/**
- * The same-feet-anchor paint bias of a draw item — the kind's {@link SPRITE_PAINT_ORDER} plus the extra
- * {@link FLAG_PAINT_STEP} for a delivery flag — as a unitless order value. Both the headless oracle and
- * the live painter multiply it by their own sub-cell epsilon, so the tiebreak can't drift between the
- * two depth keys.
- */
-export function paintOrderBias(kind: DrawKind, isFlag = false): number {
-  return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
-}
 
 /**
  * One item to draw, already projected to isometric screen space (before the camera transform). The
@@ -107,7 +65,8 @@ export interface DrawItem {
   /**
    * For a stockpile: whether it is a designated delivery flag (a
    * {@link import('@open-northland/sim').DeliveryFlag}) rather than a loose pile — a marker holding no
-   * goods that draws the flag graphic, painted a hair above any co-located heap ({@link FLAG_PAINT_STEP}).
+   * goods that draws the flag graphic, painted a hair above any co-located heap (the flag paint step
+   * in {@link import('./depth.js')}).
    * Omitted (falsy) for a loose pile and non-stockpiles.
    */
   readonly isFlag?: boolean;

@@ -137,7 +137,7 @@ export function cameraScreenY(camera: Camera, worldY: number): number {
 /**
  * The deterministic secondary depth key weight: a feet-anchored sprite sorts by `depthKey = y + x *
  * this`. Small enough that the x term can never overturn a meaningful y difference (max |x| on a
- * 1024-wide map ≈ 32k px → contributes ~0.03), large enough to order same-row overlaps stably
+ * 1024-wide map ≈ 70k px → contributes ~0.07), large enough to order same-row overlaps stably
  * regardless of attach order.
  */
 const DEPTH_X_TIEBREAK = 1 / (1 << 20);
