@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Production, ProductionBonus, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, Simulation } from '../../../src/index.js';
+import { pickupFromStore } from '../../../src/systems/agents/effects-goods/index.js';
 import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
 import { experienceBonus, productionSystem, recipesByProductOf } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -91,5 +92,22 @@ describe('productionSystem accrues the experience bonus as fractional output', (
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // base deposit filled the store
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(ONE); // held, not lost
+  });
+
+  it('a withdrawal frees the slot and releases the held unit — production may never complete again', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { mill, worker } = sawmill(sim, [
+      [WOOD, 1],
+      [PLANK, 19],
+    ]);
+    if (worker === null) throw new Error('staffed sawmill should have a worker');
+    seedRepeats(sim, worker, 200);
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    // Full store, one whole bonus unit banked (the case above). A porter lifts one plank out: the
+    // withdrawal seam must flush the banked unit into the freed slot, not wait for another batch.
+    const porter = sim.world.create();
+    pickupFromStore(sim.world, ctxOf(sim), porter, mill, PLANK, 1);
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // 19 + the released unit
+    expect(sim.world.has(mill, ProductionBonus)).toBe(false); // nothing banked anymore
   });
 });

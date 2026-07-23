@@ -2,7 +2,14 @@ import { components, fx, systems } from '@open-northland/sim';
 import { num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
-import { type Comp, goodDef, goodLabel, jobDisplayName, type UnitPanelModelContext } from './context.js';
+import {
+  type Comp,
+  goodDef,
+  goodLabel,
+  type JobExperienceDef,
+  jobDisplayName,
+  type UnitPanelModelContext,
+} from './context.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
 /**
@@ -33,7 +40,6 @@ export const HUMANWINDOW = {
   assignHome: 28, // 'Przydziel Dom'
   assignWork: 31, // 'Przydziel Miejsce Pracy'
   weapon: 60, // 'Broń'
-  none: 61, // 'żadna' / 'żadne' — an empty slot
   armor: 63, // 'Zbroja'
   boots: 66, // 'Buty'
   tools: 69, // 'Narzędzia'
@@ -193,11 +199,12 @@ export function satisfactionBars(comps: Comp): PanelBar[] {
 }
 
 /** One Doświadczenie row: a specialization's label, its completed-work repeats (the player-facing
- *  experience number — "Drewno 5" means five units gathered), and the shared curve's bonus percent. */
+ *  experience number — "Drewno 5" means five units gathered), and its bonus percent — `null` for a
+ *  specialization whose experience buys nothing (the carrier; design rule, user-specified). */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
-  readonly bonusPct: number;
+  readonly bonusPct: number | null;
 }
 
 /** The fight-XP buckets' i18n keys — `systems.FIGHT_EXPERIENCE_TYPE` id → `hud.weaponXp` label key. */
@@ -210,22 +217,64 @@ const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud'
   [systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, 'catapult'],
 ]);
 
+/** A specialization row's label: a good-specific track by its hand-translated `hud.trackLabels` entry
+ *  (keyed by the track's content id slug) falling back to "job - good"; a general track by its owning
+ *  job ("Piekarz"); a track-less fight bucket by its weapon class ("Walka - Łuk"); the scout bucket by
+ *  the scout job name. */
+function experienceLabel(
+  ctx: UnitPanelModelContext,
+  spec: number,
+  track: JobExperienceDef | undefined,
+): string {
+  if (track !== undefined) {
+    if (track.goodType === undefined) return jobDisplayName(ctx, track.jobType);
+    const trackLabels: Readonly<Record<string, string | undefined>> = messages().hud.trackLabels;
+    return (
+      trackLabels[track.id] ?? `${jobDisplayName(ctx, track.jobType)} - ${goodLabel(ctx, track.goodType)}`
+    );
+  }
+  const weaponKey = WEAPON_XP_KEY.get(spec);
+  if (weaponKey !== undefined) return messages().hud.weaponXp[weaponKey];
+  if (spec === systems.SCOUT_EXPERIENCE_TYPE) return jobDisplayName(ctx, systems.SCOUT_JOB);
+  return formatMessage(messages().hud.specialization, { id: spec });
+}
+
+/**
+ * A specialization row's shown percent — always the REAL effect of that experience, never a raw curve
+ * read: a fight bucket shows its damage scale (`systems.fightDamageBonus`, deeper mastery + 50% cap);
+ * the scout bucket shows its vision gain (`scoutVisionBonusNodes` over the scout's base radius); a
+ * carrier track shows none (its XP is display-only, mirroring the sim's carrier exclusions); every
+ * other work track shows the shared curve, which IS its output/speed effect.
+ */
+function experienceBonusPct(
+  ctx: UnitPanelModelContext,
+  spec: number,
+  track: JobExperienceDef | undefined,
+  points: number,
+  repeats: number,
+): number | null {
+  if (track === undefined && WEAPON_XP_KEY.has(spec)) {
+    return Math.round(fx.toFloat(systems.fightDamageBonus(points)) * 100);
+  }
+  if (spec === systems.SCOUT_EXPERIENCE_TYPE) {
+    return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);
+  }
+  const trackJob = track !== undefined ? ctx.jobs.find((j) => j.typeId === track.jobType) : undefined;
+  if (trackJob?.id === 'carrier') return null; // the sim's isCarrierJob rule, by the same content slug
+  return Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
+}
+
 /**
  * The Doświadczenie rows: every specialization on the settler's `Settler.experience` map
  * (`humanjobexperiencetypes` id → raw points, serialized as a sorted `[id, points]` array), most-trained
  * first. Raw points are shown as completed-work REPEATS (`systems.experienceRepeats` divides the track's
  * accrual rate back out) so the number matches the user's mental model — "Zbieracz Drewna 5" = five wood
- * gathered — and each row carries its bonus percent: the shared curve (`systems.experienceBonus`) for
- * work tracks, the combat damage scale (`systems.fightDamageBonus` — its own deeper mastery + 50% cap)
- * for fight buckets. A good-specific track labels by its hand-translated `hud.trackLabels` entry (keyed
- * by the track's content id slug), falling back to "job - good"; a general track labels by its owning
- * job ("Piekarz"); a fight bucket (no content track, accrued at the soldier-general rate) reads its
- * weapon-class label ("Walka - Łuk") with raw points as repeats.
+ * gathered; a track-less bucket (fight, scout) shows raw points. Labels via {@link experienceLabel},
+ * percents via {@link experienceBonusPct}.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const exp = (comps.Settler as Comp | undefined)?.experience;
   if (!Array.isArray(exp)) return [];
-  const trackLabels: Readonly<Record<string, string | undefined>> = messages().hud.trackLabels;
   const rows: (ExperienceRowModel & { spec: number })[] = [];
   for (const pair of exp) {
     if (!Array.isArray(pair)) continue;
@@ -233,26 +282,14 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
     const points = num(pair[1]);
     if (spec === undefined || points === undefined || points <= 0) continue;
     const track = ctx.jobExperience.find((t) => t.typeId === spec);
-    const weaponKey = WEAPON_XP_KEY.get(spec);
-    const label =
-      track !== undefined
-        ? track.goodType !== undefined
-          ? (trackLabels[track.id] ??
-            `${jobDisplayName(ctx, track.jobType)} - ${goodLabel(ctx, track.goodType)}`)
-          : jobDisplayName(ctx, track.jobType)
-        : weaponKey !== undefined
-          ? messages().hud.weaponXp[weaponKey]
-          : spec === systems.SCOUT_EXPERIENCE_TYPE
-            ? jobDisplayName(ctx, systems.SCOUT_JOB)
-            : formatMessage(messages().hud.specialization, { id: spec });
     const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;
     if (repeats <= 0) continue; // partial credit toward the first repeat — nothing to show yet
-    const bonus =
-      track === undefined && weaponKey !== undefined
-        ? systems.fightDamageBonus(points)
-        : systems.experienceBonus(repeats);
-    const bonusPct = Math.round(fx.toFloat(bonus) * 100);
-    rows.push({ label, repeats, bonusPct, spec });
+    rows.push({
+      label: experienceLabel(ctx, spec, track),
+      repeats,
+      bonusPct: experienceBonusPct(ctx, spec, track, points, repeats),
+      spec,
+    });
   }
   rows.sort((a, b) => b.repeats - a.repeats || a.spec - b.spec);
   return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));

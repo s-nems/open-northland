@@ -3,6 +3,7 @@ import { Settler } from '../../components/index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { isCarrierJob } from '../stores/index.js';
 import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFor } from './experience.js';
 
 /**
@@ -13,9 +14,9 @@ import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFo
  *   bonus(n) = n / (n + K * (1 - n/N)),  K = 4.9,  N = 100
  *
  * a diminishing-returns hyperbola whose K shrinks to zero as n approaches N, so 100% is actually
- * reachable at n = N (a plain n/(n+K) never gets there). K = 4.9 fits the reference bonus table
- * (1: 17%, 2: 29%, 3: 38% ... 11: 70%) within ~2 points; N = 100 is the chosen mastery point (design
- * rule, user-specified; an approximation, not an extracted original curve).
+ * reachable at n = N (a plain n/(n+K) never gets there). K = 4.9 fits the USER-PROVIDED reference
+ * bonus table (1: 17%, 2: 29%, 3: 38% ... 11: 70%, part of the feature spec — not extracted from the
+ * original) within ~2 points; N = 100 is the chosen mastery point (design rule, user-specified).
  *
  * What a bonus point buys (output per cycle, gather speed, damage) is the consuming system's concern;
  * this module only owns the shared curve.
@@ -57,11 +58,13 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
 /**
  * A production operator's current bonus fraction — the curve read on its job-GENERAL track (the same
  * track production XP accrues into): "baker 5" bakes half a bread extra per cycle. ZERO for a gone or
- * jobless operator, a profession with no general track, or one with no repeats yet.
+ * jobless operator, a profession with no general track, or one with no repeats yet. A carrier operator
+ * (a carrier-run utility like the well) is ZERO too: its delivery-earned XP is display-only and must
+ * not leak into output, mirroring its exclusion from batch XP (design rule, user-specified).
  */
 export function operatorProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
   const s = world.tryGet(operator, Settler);
-  if (s === undefined || s.jobType === null) return ZERO;
+  if (s === undefined || s.jobType === null || isCarrierJob(ctx, s.jobType)) return ZERO;
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return ZERO;
   return experienceBonus(experienceRepeats(s.experience.get(track.typeId) ?? 0, track));
@@ -135,10 +138,9 @@ export function withFightDamageBonus(
  *  (design rule, user-specified: a seasoned scout sees a bit farther, never twice as far). */
 export const SCOUT_VISION_BONUS_MAX_NODES = 6;
 
-/** The extra vision nodes a scout's signpost experience grants: the curve read on its
- *  {@link SCOUT_EXPERIENCE_TYPE} bucket (raw XP = erected posts), scaled to
- *  {@link SCOUT_VISION_BONUS_MAX_NODES} and truncated to whole nodes. */
-export function scoutVisionBonusNodes(experience: ReadonlyMap<number, number>): number {
-  const posts = experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0;
+/** The extra vision nodes `posts` erected signposts grant (the {@link SCOUT_EXPERIENCE_TYPE} bucket's
+ *  raw XP): the curve scaled to {@link SCOUT_VISION_BONUS_MAX_NODES} and truncated to whole nodes.
+ *  Takes the count, not the experience map, so the settler panel can state the real effect too. */
+export function scoutVisionBonusNodes(posts: number): number {
   return fx.toInt(fx.mul(experienceBonus(posts), fx.fromInt(SCOUT_VISION_BONUS_MAX_NODES)));
 }

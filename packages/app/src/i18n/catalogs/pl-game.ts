@@ -41,6 +41,8 @@ export const plGame = {
       collector_gold: 'Zbieracz Złota',
       collector_mushroom: 'Zbieracz Grzybów',
       farmer_wheat: 'Farmer Pszenicy',
+      herb_mushroom: 'Zielarz - Grzyby',
+      herb_herb: 'Zielarz - Zioła',
     },
     noWorkplace: 'Brak miejsca pracy',
     assignWorkplace: 'Przydziel miejsce pracy',
@@ -96,7 +98,6 @@ export const plGame = {
     defend: 'Obrona',
     ignore: 'Ignoruj',
     flee: 'Ucieczka',
-    nothing: 'Brak',
     fields: 'Pola',
     capacity: 'Pojemność: {value}',
     categories: {

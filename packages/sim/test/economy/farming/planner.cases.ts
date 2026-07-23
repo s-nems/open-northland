@@ -79,6 +79,42 @@ describe('planFarmer — the drive ladder', () => {
     expect(reapTicks(2)).toBe(reapTicks(1) * 2);
   });
 
+  it('experience cuts the strokes per spot — a master reaps in half the strokes (scaledWorkRepeats wiring)', () => {
+    // The fixture carries no farmer track, so graft one (typeId 90, rate 1) and pin wheat at 4 strokes:
+    // 100 XP = 100 repeats = mastery, so the same reap must plan 2 strokes instead of 4.
+    const FARMER_WHEAT_TRACK = 90;
+    const reapTicks = (xp: number): number => {
+      const base = testContent();
+      const content = {
+        ...base,
+        goods: base.goods.map((g) =>
+          g.typeId === WHEAT && g.farming !== undefined
+            ? { ...g, farming: { ...g.farming, workRepeats: 4 } }
+            : g,
+        ),
+        jobExperience: [
+          ...base.jobExperience,
+          {
+            typeId: FARMER_WHEAT_TRACK,
+            id: 'farmer_wheat',
+            name: 'farmer wheat',
+            jobType: FARMER,
+            goodType: WHEAT,
+            experienceFactor: 1,
+          },
+        ],
+      };
+      const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
+      const farm = farmAt(sim, 4, 4);
+      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
+      const farmer = farmerAt(sim, 4, 4, farm);
+      if (xp > 0) sim.world.get(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
+      aiSystem(sim.world, ctxOf(sim));
+      return sim.world.get(farmer, components.CurrentAtomic).duration;
+    };
+    expect(reapTicks(100)).toBe(reapTicks(0) / 2);
+  });
+
   it('waters a thirsty field once the roster is at its cap (the can circles between sowings)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);

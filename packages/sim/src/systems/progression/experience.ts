@@ -118,8 +118,8 @@ export function grantProductionExperience(
  * Grant a settler carry XP for one delivery that landed in a store, accruing the `carrier general`
  * track's `experienceFactor`. Carriers only ({@link isCarrierJob}): everyone hauls sometimes, but only
  * the transport trade trains on it, and a blocked deposit or flag drop trains nothing (design rule,
- * user-specified). Per-landed-delivery is the deterministic reading of the original's undecoded
- * accrual trigger (approximation).
+ * user-specified). Per-landed-delivery is the same deterministic reading of the original's undecoded
+ * trigger as the batch grant above.
  */
 export function grantCarryExperience(world: World, ctx: SystemContext, settler: Entity): void {
   const s = world.tryGet(settler, Settler);

@@ -11,7 +11,7 @@ import {
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_MASTERY_HITS,
   fightDamageBonus,
-  SCOUT_EXPERIENCE_TYPE,
+  operatorProductionBonus,
   SCOUT_VISION_BONUS_MAX_NODES,
   scaledWorkRepeats,
   scoutVisionBonusNodes,
@@ -22,7 +22,7 @@ import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
-import { WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
+import { CARRIER, CARRIER_TRACK, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
 describe('experienceBonus — the repeats → bonus curve', () => {
   it('matches the reference table within 2 points at repeats 1..11', () => {
@@ -53,12 +53,10 @@ describe('experienceBonus — the repeats → bonus curve', () => {
 });
 
 describe('scoutVisionBonusNodes — signpost craft widens the scout eye a little', () => {
-  const withPosts = (posts: number) => new Map([[SCOUT_EXPERIENCE_TYPE, posts]]);
-
   it('scales the curve to whole extra nodes, capped well below a 2x eye', () => {
-    expect(scoutVisionBonusNodes(new Map())).toBe(0);
-    expect(scoutVisionBonusNodes(withPosts(10))).toBe(4); // ~69% of the 6-node cap, truncated
-    expect(scoutVisionBonusNodes(withPosts(100))).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
+    expect(scoutVisionBonusNodes(0)).toBe(0);
+    expect(scoutVisionBonusNodes(10)).toBe(4); // ~69% of the 6-node cap, truncated
+    expect(scoutVisionBonusNodes(100)).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
   });
 });
 
@@ -150,6 +148,15 @@ describe('work-credit wiring — an experienced gatherer fells in fewer swings, 
     expect(sim.world.get(tree, Felling).chopsLeft).toBe(1);
     rearm();
     expect(sim.world.has(tree, Felling)).toBe(false); // the banked credit felled it a swing early
+  });
+});
+
+describe('operatorProductionBonus — the transport trade never boosts output', () => {
+  it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const carrier = settlerAt(sim, { jobType: CARRIER });
+    sim.world.get(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
+    expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier)).toBe(ZERO);
   });
 });
 

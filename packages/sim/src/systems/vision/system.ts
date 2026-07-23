@@ -11,7 +11,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
-import { scoutVisionBonusNodes } from '../progression/index.js';
+import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
 import { HUNTER_JOB } from '../readviews/tribes/index.js';
 import { cellOfNode } from './gates.js';
@@ -126,7 +126,9 @@ function visionRadiusOf(world: World, e: Entity): number | null {
   if (settler !== undefined) {
     const base = visionRadiusForJob(settler.jobType);
     // A seasoned scout sees a bit farther — its signpost craft widens the ellipse (scoutVisionBonusNodes).
-    return settler.jobType === SCOUT_JOB ? base + scoutVisionBonusNodes(settler.experience) : base;
+    return settler.jobType === SCOUT_JOB
+      ? base + scoutVisionBonusNodes(settler.experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0)
+      : base;
   }
   if (world.has(e, Building)) return BUILDING_VISION_NODES;
   if (world.has(e, Vehicle)) return CIVILIAN_VISION_NODES;

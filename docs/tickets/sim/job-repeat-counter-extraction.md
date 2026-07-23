@@ -1,4 +1,4 @@
-# Wire the already-extracted `baserepeatcounter` into work atomics, and model its experience scaling
+# Wire the already-extracted `baserepeatcounter` into the hunter and fisher work atomics
 
 **Area:** sim · **Origin:** farm pacing calibration, 2026-07-20 · **Priority:** P2
 
@@ -13,36 +13,35 @@ worker plays per work action, which is what a unit of output costs in labor:
 
 The pipeline already extracts all three (`tools/asset-pipeline/src/decoders/ini/types/jobs.ts`), the
 schema carries them (`packages/data/src/schema/economy/jobs.ts` `baseRepeatCounter`), and the sim indexes
-them (`content-index.ts` `jobExperience`). What is missing is a CONSUMER: no work atomic reads the field.
+them (`content-index.ts` `jobExperience`).
 
-Only the farmer's is modelled today, and only for the field loop, via a literal restated as
-`GoodFarming.workRepeats` in `packages/app/src/catalog/farming.ts` and multiplied into the plant/cultivate/
-harvest durations in `packages/sim/src/systems/agents/farming/planner.ts`. It is the dial the farm's whole
-throughput rests on.
+The farmer's is modelled via the literal `GoodFarming.workRepeats` in
+`packages/app/src/catalog/farming.ts`, multiplied into the plant/cultivate/harvest durations in
+`packages/sim/src/systems/agents/farming/planner.ts`. Experience scaling of the stroke count exists
+(`scaledWorkRepeats` there; a named approximation, feat/experience branch) — the remaining question is
+only where the BASE number comes from.
 
-Three gaps:
+Remaining gaps:
 
 1. **The hunter and fisher run one stroke per action**, so both are ~5× faster than the original's data
    says. Nobody has measured either against the running game; the farm was measured, they were not.
-2. **"base" implies experience scales it.** `experiencefactor` sits in the same records (hunter 200,
-   fisher 150, farmer wheat 100) and settlers already carry an `experience` map (`Settler.experience`),
-   so a veteran presumably needs fewer strokes than a novice. That relationship is not decoded.
-3. **Three modules read the key three different ways.** `packages/sim/src/systems/progression/experience.ts:59`
-   calls it the non-linear XP→level curve, `packages/data/src/schema/economy/jobs.ts:42` calls it
-   "repeat-count tuning", and `GoodFarming.workRepeats` asserts strokes-per-action. At most one is right;
-   settle it against the original before building on any of them.
+2. **The base count is a restated literal, not the extracted field.** `GoodFarming.workRepeats` asserts
+   strokes-per-action while `packages/data/src/schema/economy/jobs.ts:42` calls the same key
+   "repeat-count tuning"; settle the reading against the original, then retire the farming-block literal
+   into the indexed `jobExperience` track.
 
 ## Scope
 
 - Give the sim a content-driven repeat count for work atomics generally, reading the indexed
-  `jobExperience` track (`experience.ts` already resolves `(jobType, goodType)` → record), and retire the
-  farming-block `workRepeats` into it. Keep the farm's effective value at 2 so
-  `packages/app/test/farm-pacing.test.ts` stays green — this is a refactor of where the number lives, not a
-  rebalance. Note the sandbox `ContentSet` defaults `jobExperience` to `[]`, so the sandbox needs either a
-  seeded track or a documented fallback.
+  `jobExperience` track (`progression/experience.ts` already resolves `(jobType, goodType)` → record),
+  and retire the farming-block `workRepeats` into it. Keep the farm's effective value at 2 so
+  `packages/app/test/farm-pacing.test.ts` stays green — this is a refactor of where the number lives, not
+  a rebalance. Note the sandbox `ContentSet` defaults `jobExperience` to `[]`, so the sandbox needs either
+  a seeded track or a documented fallback.
 - Applying it to the hunter and fisher IS a rebalance and will move gathering pacing. Measure both against
-  the running original first; do not just multiply their durations by 5 and call it faithful.
-- Decode the experience relationship, or explicitly leave it out with a named approximation in the code.
+  the running original first; do not just multiply their durations by 5 and call it faithful. (The user
+  decided 2026-07-23 that hunter/fisher get NO experience effects — this ticket is about their BASE
+  stroke count only.)
 
 ## Verify
 

@@ -41,6 +41,8 @@ export const enGame = {
       collector_gold: 'Gold Gatherer',
       collector_mushroom: 'Mushroom Gatherer',
       farmer_wheat: 'Wheat Farmer',
+      herb_mushroom: 'Herbalist - Mushrooms',
+      herb_herb: 'Herbalist - Herbs',
     },
     noWorkplace: 'No workplace',
     assignWorkplace: 'Assign a workplace',
@@ -96,7 +98,6 @@ export const enGame = {
     defend: 'Defend',
     ignore: 'Ignore',
     flee: 'Flee',
-    nothing: 'None',
     fields: 'Fields',
     capacity: 'Capacity: {value}',
     categories: {

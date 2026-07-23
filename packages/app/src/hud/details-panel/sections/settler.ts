@@ -199,7 +199,9 @@ function drawExperienceSection(
   layout.expRows.forEach((r, i) => {
     const row = model.experience[i];
     if (row === undefined) return;
-    chrome.textAt(`${row.label} ${row.repeats} (+${row.bonusPct}%)`, r.x, r.y + ROW_TEXT_PAD * s, 'white');
+    // A null percent (carrier) draws the bare count — its experience is a record, not a bonus.
+    const pct = row.bonusPct === null ? '' : ` (+${row.bonusPct}%)`;
+    chrome.textAt(`${row.label} ${row.repeats}${pct}`, r.x, r.y + ROW_TEXT_PAD * s, 'white');
   });
 }
 
