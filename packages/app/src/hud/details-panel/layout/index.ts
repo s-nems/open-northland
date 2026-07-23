@@ -15,7 +15,14 @@ export {
   STOCK_ROW_H,
   stockSlotRects,
 } from './building.js';
-export { EQUIP_ROW_H, layoutSettler, type SettlerLayout } from './settler.js';
+export {
+  EQUIP_ROW_H,
+  type EquipActionHit,
+  type EquipSlotRef,
+  equipActionKey,
+  layoutSettler,
+  type SettlerLayout,
+} from './settler.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
 /** The multi-select / generic views: one section window with a single hint row. */
@@ -92,7 +99,12 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       experience: sec(layout.experience),
       expRows: layout.expRows.map(fn),
       equipment: sec(layout.equipment),
-      equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
+      equipRows: layout.equipRows.map((r) => ({
+        label: fn(r.label),
+        slots: r.slots.map(fn),
+        useBadges: r.useBadges.map((b) => (b === null ? null : fn(b))),
+      })),
+      equipActionHits: layout.equipActionHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
     };
   }
   if (layout.kind === 'signpost') {

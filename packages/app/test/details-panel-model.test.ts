@@ -29,15 +29,15 @@ import {
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
+import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
-import { equipmentFixture } from './support/equipment.js';
 import { buildingEntity, ctxOf, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
-/** The equipment fixture's first-tick snapshot + its content context — the preamble both equipment
+/** The equipment scene's first-tick snapshot + its content context - the preamble both equipment
  *  tests open with. */
 function equipmentWorld(): { snapshot: WorldSnapshot; ctx: UnitPanelModelContext } {
-  const sim = createSceneSim(equipmentFixture);
+  const sim = createSceneSim(equipmentScene);
   sim.step();
   return { snapshot: sim.snapshot(), ctx: ctxOf(sim) };
 }
@@ -534,7 +534,14 @@ describe('selection details panel model', () => {
       HUMANWINDOW.tools,
       HUMANWINDOW.misc,
     ]);
-    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]).toMatchObject({ goodId: 'shoes', usePct: 70 });
+    // Each row names the sim Equipment field it shows - the slot address an equip order targets.
+    expect(civModel.equipmentRows.map((r) => r.group)).toEqual(['boots', 'tool', 'misc']);
+    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]).toMatchObject({
+      goodId: 'shoes',
+      usePct: 70,
+      occupied: true,
+    });
+    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]?.label).toBeDefined();
     // The misc row holds the four consumable slots: a worn mead carries a use percent, a permanent amulet
     // does not, and one slot stays empty.
     const misc = rowOf(civModel, HUMANWINDOW.misc)?.slots ?? [];
@@ -542,6 +549,7 @@ describe('selection details panel model', () => {
     expect(misc.some((sl) => sl.goodId === 'mead' && sl.usePct === 50)).toBe(true);
     expect(misc.some((sl) => sl.goodId === 'amulet_strength' && sl.usePct === null)).toBe(true);
     expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
+    expect(misc.filter((sl) => !sl.occupied)).toHaveLength(1);
 
     // The soldier additionally carries the Broń + Zbroja rows.
     const soldier = snapshot.entities.find(hasWeaponSlot);
@@ -576,7 +584,7 @@ describe('selection details panel model', () => {
     expect(
       model.equipmentRows
         .flatMap((r) => r.slots)
-        .every((sl) => sl.goodId === undefined && sl.usePct === null),
+        .every((sl) => sl.goodId === undefined && sl.usePct === null && !sl.occupied),
     ).toBe(true);
   });
 
