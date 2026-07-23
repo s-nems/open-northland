@@ -2,9 +2,18 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
-import { assignProjectileArc, assignSettlerFields, pushGhostItems, spriteDepth } from './collect-fields.js';
+import {
+  assignBerryBushFields,
+  assignBuildingFields,
+  assignProjectileArc,
+  assignResourceFields,
+  assignSettlerFields,
+  assignStockpileFields,
+  pushGhostItems,
+  pushSignpostItems,
+  spriteDepth,
+} from './collect-fields.js';
 import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
-import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {
   assignStaticFields,
@@ -12,17 +21,9 @@ import {
   facingTowardTile,
   readActingAtomic,
   readAtomicTargetEntity,
-  readBerryBushGfxIndex,
-  readBerryBushLevel,
-  readHpFraction,
-  readOwnerPlayer,
   readPosition,
-  readProducing,
-  readResourceLevelCount,
   readSpriteState,
-  readStockpile,
   readStoreExchangeRef,
-  readUpgradePct,
 } from './snapshot-readers/index.js';
 
 /**
@@ -202,87 +203,25 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       depth: spriteDepth(tileX, tileY, kind, isFlag),
       state,
     };
-    // Per-kind reads, assigned (not spread) so an absent fact stays an absent property under
-    // exactOptionalPropertyTypes without a throwaway spread object per field.
+    // Per-kind dispatch; each helper documents the fields its kind carries (`collect-fields.ts`).
     if (kind === 'settler') {
       assignSettlerFields(item, components, actingAtomic, targetFacing);
     } else if (kind === 'building') {
-      // A building carries its type id (the `[GfxHouse]` `LogicType` → `GfxBobId` join a per-type binding
-      // draws its house bob by) and, while under construction, its progress percent (the stage binding
-      // picks the visible layers: grey foundation → stages → body).
-      assignStaticFields(item, 'building', components);
-      // An upgrading building keeps its old-tier body while the next tier reveals over it. Live-only, like
-      // `working` below: a fog ghost shows the frozen old tier, not a partial upgrade.
-      const upgradePct = readUpgradePct(components);
-      if (upgradePct !== undefined) item.upgradePct = upgradePct;
-      // Mid production cycle: the switch a type's animated state overlay flips on (the mill's rotor).
-      // Live-only, since a fog ghost never animates.
-      if (readProducing(components)) item.working = true;
-      // A damaged finished building's remaining HP fraction — the damage-smoke drive. Live-only too.
-      const hpFrac = readHpFraction(components);
-      if (hpFrac !== undefined) item.hpFrac = hpFrac;
+      assignBuildingFields(item, components);
     } else if (kind === 'resource') {
-      // A resource node carries its `goodType` (per-good species/deposit), its shrink-by-`level` fill, and
-      // its source-variant `gfxIndex` ("pine 02", not the representative "yew 01") — via the shared static
-      // reader so a live node and its fog ghost read the same fields.
-      assignStaticFields(item, 'resource', components);
-      // The ladder denominator rides alongside `level` so the resolver can rescale the sim's ladder onto
-      // the bound record's own state count. Live-only: ghosts omit it (see assignStaticFields).
-      if (item.level !== undefined) {
-        const levels = readResourceLevelCount(components);
-        if (levels !== undefined) item.levels = levels;
-      }
+      assignResourceFields(item, components);
     } else if (kind === 'stump') {
       assignStaticFields(item, 'stump', components);
     } else if (kind === 'berrybush') {
-      // A berry bush carries its render-variant `gfxIndex` (the fruited-bush record, i.e. its species) and
-      // a ripe/bare level (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state
-      // the sim last set (foraged → bare, regrown → ripe).
-      const gfxIndex = readBerryBushGfxIndex(components);
-      if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
-      const level = readBerryBushLevel(components);
-      if (level !== undefined) item.level = level;
+      assignBerryBushFields(item, components);
     } else if (kind === 'signpost') {
-      // The post draws as-is; each connected in-range neighbour adds one direction-board item at the
-      // same feet anchor (the board frames' offsets carry the post-top pivot), painted the flag
-      // half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
-      // (signpost, angle-bucket) without colliding with real entity ids.
-      // The post's ribbon and runic lettering are the team colour — the owner picks the baked
-      // per-player guidepost atlas; the boards below read the same owner.
-      const postPlayer = readOwnerPlayer(components);
-      if (postPlayer !== undefined) item.player = postPlayer;
-      for (const bucket of signpostBoardsOf(snapshot).get(entity.id) ?? []) {
-        const boardRef = -(entity.id * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
-        liveRefs.add(boardRef);
-        const board: MutableDrawItem = {
-          kind: 'signpost',
-          ref: boardRef,
-          x: drawX,
-          y: drawY,
-          depth: spriteDepth(tileX, tileY, 'signpost', true),
-          state: 'idle',
-          boardIndex: bucket,
-        };
-        // The board's lettering is the team colour — it reads the same owner LUT row as its post
-        // (colour-mapped below like the main item, since boards bypass the shared push site).
-        if (postPlayer !== undefined) {
-          board.player = playerColourOf === undefined ? postPlayer : playerColourOf(postPlayer);
-        }
-        if (lift !== 0) board.lift = lift;
-        items.push(board);
-      }
+      pushSignpostItems(items, liveRefs, snapshot, item, components, tileX, tileY, lift, playerColourOf);
     } else if (kind === 'projectile') {
       // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
       arcLift = assignProjectileArc(item, components, screen, posByRef);
     } else {
-      // stockpile | grounddrop: both read their held good and fill from the stockpile — the trunk keys its
-      // per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`.
-      const { goodType, fill } = readStockpile(components);
-      if (goodType !== undefined) item.goodType = goodType;
-      if (fill !== undefined) item.fill = fill;
-      // A designated delivery flag draws the flag graphic and is painted above a co-located heap (the
-      // depth key already carries the FLAG_PAINT_STEP bump; this just tags the item for the resolver).
-      if (isFlag) item.isFlag = true;
+      // stockpile | grounddrop
+      assignStockpileFields(item, components, isFlag);
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
