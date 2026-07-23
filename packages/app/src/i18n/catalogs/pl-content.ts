@@ -157,10 +157,10 @@ export const plContent = {
       title: 'Bitwa masowa',
       summary: 'Dwie armie walczą na dużą skalę z użyciem czterech rodzajów broni.',
     },
-    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
     siege: {
-      title: 'Siege',
-      summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
+      title: 'Oblężenie',
+      summary:
+        'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
     'goods-catalog': {
       title: 'Katalog towarów',
@@ -178,16 +178,15 @@ export const plContent = {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
-    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
     construction: {
-      title: 'Raising buildings',
+      title: 'Wznoszenie budynków',
       summary:
-        'Foundations rise the normal way — carriers haul wood and stone, builders hammer — while the scaffolding stays up until the roof grows over it and comes down at completion.',
+        'Fundamenty rosną normalnym trybem: tragarze znoszą drewno i kamień, budowniczowie pracują młotkami, a rusztowanie stoi, aż przerośnie je dach, i znika przy ukończeniu.',
     },
     upgrade: {
-      title: 'Building upgrades',
+      title: 'Rozbudowa budynków',
       summary:
-        'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
+        'Dom ponownie staje się placem budowy i rośnie o poziom za różnicę kosztów; drugi dom czeka na twój przycisk Rozbuduj.',
     },
     signposts: {
       title: 'Drogowskazy',
@@ -202,9 +201,9 @@ export const plContent = {
       summary: 'Głodne dzieci podchodzą do dzikich krzaków i jedzą; niemowlę pod opieką samo się nie karmi.',
     },
     gossip: {
-      title: 'Gossip and need bubbles',
+      title: 'Plotki i dymki potrzeb',
       summary:
-        'Idle settlers pair up and chat to refill their company need — soldiers never join — while hungry and sleepy settlers show thought bubbles.',
+        'Bezczynni osadnicy dobierają się w pary i rozmawiają, odnawiając potrzebę towarzystwa (żołnierze nigdy nie dołączają), a głodni i senni pokazują dymki myśli.',
     },
   },
 } as const;
