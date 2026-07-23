@@ -12,7 +12,8 @@ Per-frame draw cost must follow the viewport, not total map size.
   frame.
 - Chunk static terrain and cull chunks by viewport bounds.
 - Cull sprites before drawing. Keep off-screen live entities pooled and destroy only entities that
-  left the snapshot.
+  left the snapshot. A cheap transient overlay node may instead retire on cull and re-mint on return
+  when retaining it would scale with entity state, not the screen (the settler-bubble policy).
 - Cache frame textures and decoded bindings.
 - Preserve batching. Per-sprite filters, masks, and blend modes need a measured reason.
 - Keep zoom-out bounded. A wider view needs a deliberate level-of-detail strategy.
