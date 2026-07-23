@@ -553,7 +553,13 @@ describe('selection details panel model', () => {
     const ctx = {
       ...sandboxCtx(),
       jobExperience: [
-        { typeId: 3, id: 'collector_wood', jobType: JOB_COLLECTOR, goodType: GOOD_WOOD, experienceFactor: 10 },
+        {
+          typeId: 3,
+          id: 'collector_wood',
+          jobType: JOB_COLLECTOR,
+          goodType: GOOD_WOOD,
+          experienceFactor: 10,
+        },
         { typeId: 9, id: 'collector_general', jobType: JOB_COLLECTOR, experienceFactor: 100 },
       ],
     };
@@ -581,9 +587,8 @@ describe('selection details panel model', () => {
       { repeats: 4, bonusPct: 46 },
       { repeats: 1, bonusPct: 17 },
     ]);
-    expect(model.experience[1]?.label).toBe('Miecz'); // the sword fight bucket's weapon-class label
-    // The tracked rows label by good / owning job, never the numeric fallback.
-    expect(model.experience[0]?.label).not.toMatch(/Specjalizacja/);
-    expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/);
+    expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
+    expect(model.experience[1]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
+    expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
   });
 });

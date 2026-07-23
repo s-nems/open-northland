@@ -154,7 +154,7 @@ export function buildUnitPanelModel(
       tribe: `${num(b.tribe) ?? '-'}`,
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
-      stock: stockRows(ctx, def, ent.components.Stockpile),
+      stock: stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
       workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
       // A home shows its residents (family-grouped) where a workshop shows workers.
       home:

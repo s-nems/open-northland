@@ -112,8 +112,7 @@ export interface SettlerLayout {
   /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
-  /** The Doświadczenie body's text rows — one per `model.experience` entry (a single row when empty,
-   *  for the "żadne" placeholder). */
+  /** The Doświadczenie body's text rows — one per `model.experience` entry (empty when untrained). */
   readonly expRows: readonly Rect[];
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
@@ -158,8 +157,8 @@ export function layoutSettler(
   // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
   const workBodyH =
     WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
-  // The Doświadczenie body scales with the settler's trained specializations (min one row: "żadne").
-  const expRowCount = Math.max(1, model.experience.length);
+  // The Doświadczenie body scales with the settler's trained specializations (empty when untrained).
+  const expRowCount = model.experience.length;
   const expBodyH = expRowCount * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 

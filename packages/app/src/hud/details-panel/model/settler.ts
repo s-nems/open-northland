@@ -214,14 +214,17 @@ const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud'
  * The Doświadczenie rows: every specialization on the settler's `Settler.experience` map
  * (`humanjobexperiencetypes` id → raw points, serialized as a sorted `[id, points]` array), most-trained
  * first. Raw points are shown as completed-work REPEATS (`systems.experienceRepeats` divides the track's
- * accrual rate back out) so the number matches the user's mental model — "Drewno 5" = five wood gathered —
- * and each row carries the shared curve's bonus percent (`systems.experienceBonus`). A row's label is its
- * track's good ("Drewno"), or its owning job for a general track ("Cieśla"); a fight bucket (no content
- * track, accrued at the soldier-general rate) reads its weapon-class label with raw points as repeats.
+ * accrual rate back out) so the number matches the user's mental model — "Zbieracz Drewna 5" = five wood
+ * gathered — and each row carries the shared curve's bonus percent (`systems.experienceBonus`). A
+ * good-specific track labels by its hand-translated `hud.trackLabels` entry (keyed by the track's content
+ * id slug), falling back to "job - good"; a general track labels by its owning job ("Piekarz"); a fight
+ * bucket (no content track, accrued at the soldier-general rate) reads its weapon-class label
+ * ("Walka - Łuk") with raw points as repeats.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const exp = (comps.Settler as Comp | undefined)?.experience;
   if (!Array.isArray(exp)) return [];
+  const trackLabels: Readonly<Record<string, string | undefined>> = messages().hud.trackLabels;
   const rows: (ExperienceRowModel & { spec: number })[] = [];
   for (const pair of exp) {
     if (!Array.isArray(pair)) continue;
@@ -233,7 +236,8 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
     const label =
       track !== undefined
         ? track.goodType !== undefined
-          ? goodLabel(ctx, track.goodType)
+          ? (trackLabels[track.id] ??
+            `${jobDisplayName(ctx, track.jobType)} - ${goodLabel(ctx, track.goodType)}`)
           : jobDisplayName(ctx, track.jobType)
         : weaponKey !== undefined
           ? messages().hud.weaponXp[weaponKey]
