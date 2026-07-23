@@ -4,6 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_STAGE_TICKS } from '../../economy/berries.js';
 import { shrinkCarry } from './carry.js';
+import { reapEmptyLoosePile } from './piles.js';
 
 // The consume effects: eat a unit of food (from a store or the carried load) and forage a ripe berry
 // bush. A raced-empty source is a no-op — nothing conjured — while the atomic still feeds the eater.
@@ -22,6 +23,7 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0) return; // emptied since the planner chose it — eat anyway, but take nothing
     setStockAmount(world, stock.amounts, goodType, have - 1);
+    reapEmptyLoosePile(world, from); // the last bite of a ground heap reaps it (a warehouse/hull stays)
     return;
   }
   // No store: consume from the settler's own carried load.
