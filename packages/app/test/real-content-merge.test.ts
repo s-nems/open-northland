@@ -68,9 +68,16 @@ function rawRealLike(): ContentSet {
   const firstBuilding = base.buildings[0];
   if (firstBuilding === undefined) throw new Error('fixture: no buildings');
   const uncataloged = { ...firstBuilding, typeId: OUT_OF_CATALOG_TYPE_ID, id: 'wonder_test' };
+  // Real ir.json ships no `equip` axis at all (the pipeline does not extract it yet) - strip the
+  // sandbox's so the merge has to overlay it back.
+  const stripEquip = (g: ContentSet['goods'][number]) => {
+    if (g.equip === undefined) return g;
+    const { equip: _equip, ...rest } = g;
+    return rest;
+  };
   return parseContentSet({
     ...base,
-    goods: [...base.goods.map((g) => stripFarming(zeroGathering(g))), unbalanced, unfarmed],
+    goods: [...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))), unbalanced, unfarmed],
     buildings: [...base.buildings, uncataloged],
   });
 }
@@ -104,6 +111,15 @@ describe('mergeRealContent', () => {
     expect(goodById(raw, 'wheat').farming).toBeUndefined(); // stand-in ships no block, like real ir.json
     const { content } = mergeRealContent(raw);
     expect(goodById(content, 'wheat').farming).toEqual(FARMING_BALANCE_BY_ID.wheat);
+  });
+
+  it('overlays the clean-room equip axis onto goods the pipeline ships without one', () => {
+    const raw = rawRealLike();
+    expect(goodById(raw, 'shoes').equip).toBeUndefined(); // stand-in ships none, like real ir.json
+    const { content } = mergeRealContent(raw);
+    expect(goodById(content, 'shoes').equip).toEqual({ category: 'boots', wears: true });
+    expect(goodById(content, 'sword_shord').equip).toEqual({ category: 'weapon', wears: false });
+    expect(goodById(content, 'wood').equip).toBeUndefined(); // a non-equippable stays bare
   });
 
   it('surfaces gathered/field goods it cannot complete, and buildings beyond the clean-room catalog', () => {

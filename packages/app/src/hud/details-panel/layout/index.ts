@@ -99,11 +99,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       experience: sec(layout.experience),
       expRows: layout.expRows.map(fn),
       equipment: sec(layout.equipment),
-      equipRows: layout.equipRows.map((r) => ({
-        label: fn(r.label),
-        slots: r.slots.map(fn),
-        useBadges: r.useBadges.map((b) => (b === null ? null : fn(b))),
-      })),
+      equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
       equipActionHits: layout.equipActionHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
     };
   }

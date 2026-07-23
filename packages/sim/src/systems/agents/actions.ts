@@ -118,7 +118,8 @@ export function startDrop(world: World, ctx: SystemContext, settler: Entity): vo
 /**
  * Start a {@link CurrentAtomic} on a settler: the executor (AtomicSystem) will advance it and apply
  * `effect` on completion. `duration` is the animation length in ticks (clamped to ≥1 by the
- * executor); `target` is the action's object (the resource/store), recorded for render/inspection.
+ * executor); `target` is the action's object (the resource/store), recorded for render/inspection -
+ * null for a self-directed action (taking a worn good off).
  */
 export function startAtomic(
   world: World,
@@ -126,7 +127,7 @@ export function startAtomic(
   atomicId: number,
   effect: AtomicEffect,
   duration: number,
-  target: Entity,
+  target: Entity | null,
 ): void {
   world.add(settler, CurrentAtomic, {
     atomicId,

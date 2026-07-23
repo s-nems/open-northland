@@ -1,5 +1,5 @@
 import type { Simulation } from '@open-northland/sim';
-import { components } from '@open-northland/sim';
+import { cellAnchorNode, components, type Entity } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
@@ -15,8 +15,9 @@ import type { SceneDefinition } from './types.js';
 /**
  * Three settlers exercising every Ekwipunek slot state: a civilian with worn boots/tool/consumables
  * (mixed use percentages, a permanent amulet, one empty misc slot), a soldier adding the Broń/Zbroja
- * rows plus a spent 100% potion (the widest use badge the slot cell must clear), and a bare settler
- * with no Equipment component.
+ * rows, and a bare settler with no Equipment component. Ground piles of spare gear (swords, bows,
+ * shoes, tools, armour, consumables) lie by the HQ so the per-slot order buttons have something for
+ * their pick menus and the equip/swap/take-off errands can be exercised by hand.
  */
 
 const { Equipment, Settler } = components;
@@ -26,7 +27,7 @@ const BOOTS_USE_PCT = 70;
 const TOOL_USE_PCT = 40;
 const MEAD_USE_PCT = 50;
 const FOOD_POTION_USE_PCT = 25;
-/** Fully spent - renders the widest "100%" badge, which must not collide with the action buttons. */
+/** Fully spent - the wear gauge under its socket draws empty and the tooltip reads "(100%)". */
 const STAMINA_POTION_USE_PCT = 100;
 
 /** A good slug's typeId in the RUNNING content - the sandbox fallback carries the equippables at +100
@@ -38,8 +39,31 @@ function goodBySlug(sim: Simulation, slug: string): number {
   return good.typeId;
 }
 
+/** The spare gear lying west of the settlers: slug, cell, and stack size (packed two per row). Kept
+ *  well clear of the HQ at (9,12) - real content's extracted footprint is larger than the sandbox
+ *  approximation, and a pile inside a building's walls is unreachable to the fetch (its stand is
+ *  buried; see `buriedUnderBuilding`). */
+const YARD_PILES: readonly { slug: string; x: number; y: number; amount: number }[] = [
+  { slug: 'sword_shord', x: 4, y: 8, amount: 1 },
+  { slug: 'bow_long', x: 5, y: 8, amount: 1 },
+  { slug: 'shoes', x: 4, y: 9, amount: 2 },
+  { slug: 'tool_wooden', x: 5, y: 9, amount: 1 },
+  { slug: 'armor_plate', x: 4, y: 10, amount: 1 },
+  { slug: 'mead', x: 5, y: 10, amount: 2 },
+];
+
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, 9, 12, HUMAN_PLAYER);
+  for (const pile of YARD_PILES) {
+    const node = cellAnchorNode(pile.x, pile.y);
+    sim.enqueue({
+      kind: 'dropGood',
+      good: goodBySlug(sim, pile.slug),
+      x: node.hx,
+      y: node.hy,
+      amount: pile.amount,
+    });
+  }
   spawnSandboxSettler(sim, JOB_COLLECTOR, 9, 8, HUMAN_PLAYER, {
     equipment: {
       boots: { goodType: goodBySlug(sim, 'shoes'), degreeOfUsePct: BOOTS_USE_PCT },
@@ -106,6 +130,16 @@ export const equipmentScene: SceneDefinition = {
     {
       label: 'the bare settler carries no Equipment component',
       predicate: (sim) => [...sim.world.query(Settler)].some((e) => !sim.world.has(e, Equipment)),
+    },
+    {
+      label: 'the yard piles hold the spare gear the pick menus list',
+      predicate: (sim) =>
+        YARD_PILES.every((pile) =>
+          [...sim.world.query(components.Stockpile)].some(
+            (e: Entity) =>
+              (sim.world.get(e, components.Stockpile).amounts.get(goodBySlug(sim, pile.slug)) ?? 0) > 0,
+          ),
+        ),
     },
   ],
 };

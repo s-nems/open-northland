@@ -57,6 +57,12 @@ export const economyContent = {
     // by nobody — it becomes `food_simple` the moment a carrier lifts it out, exactly like the
     // original's bread. Nothing in the golden slice produces it.
     { typeId: 7, id: 'bread', weight: 1 },
+    // Two equippables for the equip-errand tests: a WEARING boots good and a permanent weapon good
+    // (the two `equip.wears` shapes the slot mechanics distinguish).
+    { typeId: 8, id: 'shoes', weight: 1, equip: { category: 'boots', wears: true } },
+    { typeId: 9, id: 'sword', weight: 1, equip: { category: 'weapon' } },
+    // A second boots good, so a swap test can order different gear into an occupied slot.
+    { typeId: 10, id: 'fur_boots', weight: 1, equip: { category: 'boots', wears: true } },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
@@ -254,6 +260,19 @@ export const economyContent = {
       recipes: [
         { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
         { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 3, amount: 1 }], ticks: 20 },
+      ],
+    },
+    {
+      // A passive GEAR store (a small armoury) - the only fixture store with slots for the two
+      // equippables above, so the equip-errand tests control exactly where gear can come from and go
+      // to. Nothing else places it (goldens untouched). typeId 22: 10..19 are reserved for suites that
+      // append their own types (see the kitchen note above).
+      typeId: 22,
+      id: 'armoury',
+      kind: 'storage',
+      stock: [
+        { goodType: 8, capacity: 10, initial: 0 },
+        { goodType: 9, capacity: 10, initial: 0 },
       ],
     },
   ],

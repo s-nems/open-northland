@@ -19,6 +19,7 @@ import {
   assignHouse,
   assignWorker,
   attackUnit,
+  equipGood,
   makeChild,
   marry,
   moveUnit,
@@ -29,6 +30,7 @@ import {
   setStance,
   setWorkFlag,
   unassignHouse,
+  unequipGood,
 } from '../orders/index.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
@@ -125,6 +127,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'makeChild':
       makeChild(world, ctx, command);
+      return;
+    case 'equipGood':
+      equipGood(world, ctx, command);
+      return;
+    case 'unequipGood':
+      unequipGood(world, ctx, command);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

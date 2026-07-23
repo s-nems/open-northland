@@ -211,7 +211,7 @@ export const enContent = {
     equipment: {
       title: 'Equipment window',
       summary:
-        'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler.',
+        'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler. Spare gear lies by the HQ for the per-slot equip, swap and take-off orders.',
     },
   },
 } as const;

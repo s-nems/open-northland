@@ -27,11 +27,13 @@ import {
   drawUtilityGood,
   dropCarriedLoad,
   endRestTail,
+  equipFromStore,
   forageBerry,
   harvestFromNode,
   pickupFromStore,
   pileupIntoStore,
   swingWorkUnits,
+  unequipToCarry,
 } from './effects-goods/index.js';
 
 /**
@@ -308,6 +310,15 @@ function applyEffect(
       // Set the carried load on the ground so the interrupting action proceeds empty-handed (see
       // dropCarriedLoad for the own-tile-then-spill placement). A settler carrying nothing is a no-op.
       dropCarriedLoad(world, ctx.terrain, settler);
+      return;
+    case 'equip':
+      // The equip errand's acquire step: one unit leaves the source store straight onto the body, a
+      // swapped-out good onto the back. Advances the errand's stage (see equipFromStore).
+      equipFromStore(world, settler, effect.from, effect.goodType, effect.group, effect.slot);
+      return;
+    case 'unequip':
+      // The take-off errand's in-place first step: the worn good moves onto the back for the stow leg.
+      unequipToCarry(world, settler, effect.group, effect.slot);
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above

@@ -141,6 +141,12 @@ const COMBATANT_HITPOINTS = 500;
 const SHOES_GOOD = 30;
 const MEAD_GOOD = 43;
 const MAX_USE_PCT = 100;
+/** Equip-order slot groups: the five valid categories the `equipGood`/`unequipGood` rolls draw from. */
+const EQUIP_GROUPS = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
+/** Equip-order goods: the fixture's equippables (shoes/sword/fur_boots), a non-equippable (wood), an
+ *  id outside the fixture (SHOES_GOOD is the ORIGINAL's 30, unknown here) and a wild invalid one -
+ *  the accept + every skip path of the `equipGood` validation. */
+const EQUIP_ORDER_GOODS = [8, 9, 10, RESOURCE_GOOD, SHOES_GOOD, INVALID_TYPE] as const;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
@@ -470,6 +476,27 @@ function nextCommand(rng: Rng): Command {
       // built buildings / non-building / dead ids (skipped). Exercises the cancelUpgrade accept + skip
       // paths against the upgradeBuilding rolls above.
       return { kind: 'cancelUpgrade', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 33:
+      // An equip order at a random id: valid, mismatched-category, unknown and non-equippable goods
+      // against slot addresses on and past both ends of the valid band - live settlers (an errand walks
+      // out mid-stream), children, jobless, unowned/dead targets. Must hash and replay whether it
+      // stamps an errand or validation turns it into a no-op.
+      return {
+        kind: 'equipGood',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        group: pick(rng, EQUIP_GROUPS),
+        slot: rng.int(6) - 1,
+        goodType: pick(rng, EQUIP_ORDER_GOODS),
+      };
+    case 34:
+      // The take-off twin: mostly empty-slot skips, an occasional live take-off against the spawn
+      // rolls' worn boots/mead (the stow/return legs then run mid-stream).
+      return {
+        kind: 'unequipGood',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        group: pick(rng, EQUIP_GROUPS),
+        slot: rng.int(6) - 1,
+      };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

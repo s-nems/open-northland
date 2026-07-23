@@ -212,7 +212,7 @@ export const plContent = {
     equipment: {
       title: 'Okno ekwipunku',
       summary:
-        'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego.',
+        'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego. Przy ratuszu leży zapasowy sprzęt do rozkazów załóż, wymień i zdejmij.',
     },
   },
 } as const;

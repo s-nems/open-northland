@@ -90,6 +90,12 @@ export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory;
   EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
 );
 
+/** The same classification keyed by good SLUG - the id-space bridge (`shoes` is 130 in the sandbox but 30
+ *  in real content) the real-content merge overlays with, until the pipeline extracts an equip axis. */
+export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, { category: EquipCategory; wears: boolean }> = new Map(
+  EQUIP_GOODS.map((g) => [g.id, { category: g.category, wears: g.wears }]),
+);
+
 /**
  * The sandbox weapon set — each viking soldier job's weapon with its range band and synthetic damage.
  * Bound to `sandboxContent().weapons`; the melee weapons swing at range 1(-2), the bows fire arrows.

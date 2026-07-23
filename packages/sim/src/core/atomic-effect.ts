@@ -1,3 +1,4 @@
+import type { EquipCategory } from '@open-northland/data';
 import type { Entity } from '../ecs/world.js';
 
 /**
@@ -121,4 +122,20 @@ export type AtomicEffect =
    *  No good is lost — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the
    *  settler at apply time. */
   | { readonly kind: 'drop' }
+  /** The settler lifts one unit of `goodType` out of the store/pile `from` STRAIGHT into its equipment
+   *  slot (`group`, `slot`) - the equip errand's acquire step, a `pickup` whose unit lands on the body
+   *  instead of the back. A swapped-out good moves onto the back (the errand stows it next). Goods are
+   *  conserved: the source loses exactly the worn unit; a source gone/emptied mid-swing whiffs (the
+   *  planner re-searches). The worn unit is fresh (`degreeOfUse` 0) - stored goods are fungible stock
+   *  amounts, so per-unit wear does not survive a store round-trip (named approximation). */
+  | {
+      readonly kind: 'equip';
+      readonly from: Entity;
+      readonly goodType: number;
+      readonly group: EquipCategory;
+      readonly slot: number;
+    }
+  /** The settler takes the good in equipment slot (`group`, `slot`) off onto its back - the take-off
+   *  errand's in-place first step (the errand stows the unit next). An already-empty slot whiffs. */
+  | { readonly kind: 'unequip'; readonly group: EquipCategory; readonly slot: number }
   | { readonly kind: 'idle' };

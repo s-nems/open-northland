@@ -28,6 +28,9 @@ const STAT_BAR_H = 11;
 const SLOT_ICON_OVERFLOW = 3;
 /** Inset (design px) of a gather-choice good icon inside its round button, so the pile clears the rim. */
 const GATHER_ICON_PAD = 3;
+/** A wearing equip slot's condition gauge under its socket (design px tall, socket wide) - replaces a
+ *  text percent column so four misc cells fit one line; the exact percent stays in the socket tooltip. */
+const WEAR_BAR_H = 3;
 
 /**
  * The settler view: the original's stacked human-window sections — Ogólne, Praca, Doświadczenie,
@@ -224,9 +227,10 @@ function drawExperienceSection(
  * label sits left of its round sockets; an occupied socket shows the good's icon (the generic pile for
  * an iconless potion/amulet - the socket tooltip names the item). The per-slot order buttons hug the
  * socket: put-an-item-on (plus) for an empty slot, swap (arrows) plus take-off (cross) for a worn one
- * - their names live in the cursor tooltip, like the Praca round controls. A wearing good's "degree of
- * use" percent follows in the badge column right of the buttons. The order buttons are an
- * OpenNorthland extension (the original window shows slots only), like the "usuń z domu" control.
+ * - their names live in the cursor tooltip, like the Praca round controls. A wearing good's condition
+ * draws as a thin gauge under its socket (full = fresh; the exact percent stays in the socket tooltip).
+ * The order buttons are an OpenNorthland extension (the original window shows slots only), like the
+ * "usuń z domu" control.
  */
 function drawEquipmentSection(
   chrome: Chrome,
@@ -261,13 +265,12 @@ function drawEquipmentSection(
           h: slotRect.h + iconOverflow * 2,
         });
       }
-      const badge = rowRect.useBadges[j];
-      if (slot?.usePct != null && badge != null) {
-        chrome.textAt(
-          `${slot.usePct}%`,
-          badge.x,
-          badge.y + Math.round((badge.h - ROW_H * s) / 2) + ROW_TEXT_PAD * s,
-          'white',
+      if (slot?.usePct != null) {
+        // The gauge shows what's LEFT (the sim tracks use), so a fresh item reads full and green.
+        chrome.bar(
+          { x: slotRect.x, y: slotRect.y + slotRect.h, w: slotRect.w, h: Math.round(WEAR_BAR_H * s) },
+          100 - slot.usePct,
+          'gauge',
         );
       }
     });

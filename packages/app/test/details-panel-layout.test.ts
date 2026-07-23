@@ -1,5 +1,6 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { MENU_UISCALES } from '../src/entries/menu/settings.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -28,6 +29,8 @@ import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 const BUILDING_TOWER = 40;
 
 const SCREEN = { width: 1600, height: 1200 };
+/** The settings menu's `?uiscale` steps as numbers - a newly offered scale joins the coverage. */
+const MENU_UISCALE_VALUES = MENU_UISCALES.map(Number);
 
 function viewOfKind<K extends PanelView['kind']>(model: UnitPanelModel, kind: K, s = 1) {
   const view = panelViewFor(model, SCREEN, s);
@@ -36,7 +39,8 @@ function viewOfKind<K extends PanelView['kind']>(model: UnitPanelModel, kind: K,
 }
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;
-const settlerLayoutOf = (model: UnitPanelModel): SettlerLayout => viewOfKind(model, 'settler').layout;
+const settlerLayoutOf = (model: UnitPanelModel, s = 1): SettlerLayout =>
+  viewOfKind(model, 'settler', s).layout;
 
 describe('details panel layout', () => {
   it('pairs every selection kind with the geometry laid out for it', () => {
@@ -85,7 +89,7 @@ describe('details panel layout', () => {
     ).toEqual([GOOD_STONE]);
   });
 
-  it('lays per-slot equip action buttons: equip on empty, swap + take-off on worn, misc wrapped', () => {
+  it('lays per-slot equip action buttons: equip on empty, swap + take-off on worn, misc on one line', () => {
     const model = buildUnitPanelModel(
       snapshotOf([
         {
@@ -126,17 +130,10 @@ describe('details panel layout', () => {
     expect(hitOf('boots:0:swap')?.label).toBeDefined();
     expect(hitOf('tool:0:equip')?.label).toBeUndefined();
 
-    // The four misc cells (socket + use-% + two buttons each) overflow one line and wrap onto a second.
-    const misc = layout.equipRows[layout.equipRows.length - 1];
-    if (misc === undefined) throw new Error('expected the misc equipment row');
-    expect(new Set(misc.slots.map((r) => r.y)).size).toBe(2);
-
-    // Every socket, button and use-% badge stays inside the Ekwipunek body (the wrapped line must be
-    // paid for in the section height).
+    // Every socket and button stays inside the Ekwipunek body.
     const body = layout.equipment.body;
     const rects = [
       ...layout.equipRows.flatMap((r) => [...r.slots]),
-      ...layout.equipRows.flatMap((r) => r.useBadges.filter((b): b is Rect => b !== null)),
       ...layout.equipActionHits.map((h) => h.rect),
     ];
     for (const r of rects) {
@@ -145,18 +142,40 @@ describe('details panel layout', () => {
       expect(r.y).toBeGreaterThanOrEqual(body.y);
       expect(r.y + r.h).toBeLessThanOrEqual(body.y + body.h + 1);
     }
-    // Cell order: the buttons hug their socket (a few px for the icon overflow), and the worn boots'
-    // use-% badge sits right of the take-off cross. Empty and permanent slots carry no badge.
+    // The buttons hug their socket (a few px for the icon overflow past the ring).
     const bootsSocket = layout.equipRows[0]?.slots[0];
-    const bootsBadge = layout.equipRows[0]?.useBadges[0];
     const bootsSwap = hitOf('boots:0:swap');
-    const bootsOff = hitOf('boots:0:unequip');
-    if (bootsSocket === undefined || bootsSwap === undefined || bootsOff === undefined)
-      throw new Error('expected the boots cell');
+    if (bootsSocket === undefined || bootsSwap === undefined) throw new Error('expected the boots cell');
     expect(bootsSwap.rect.x - (bootsSocket.x + bootsSocket.w)).toBeLessThanOrEqual(4);
-    if (bootsBadge == null) throw new Error('expected the worn boots use-% badge');
-    expect(bootsBadge.x).toBeGreaterThanOrEqual(bootsOff.rect.x + bootsOff.rect.w);
-    expect(layout.equipRows[1]?.useBadges[0]).toBeNull(); // the empty tool slot shows no percent
+  });
+
+  it('keeps the four misc cells on one Ekwipunek line at every menu uiscale', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            Equipment: {
+              boots: null,
+              tool: null,
+              weapon: null,
+              armor: null,
+              misc: [{ goodType: GOOD_MEAD, degreeOfUse: 0 }, null, null, null],
+            },
+          },
+        },
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    for (const s of MENU_UISCALE_VALUES) {
+      const layout = settlerLayoutOf(model, s);
+      const misc = layout.equipRows[layout.equipRows.length - 1];
+      if (misc === undefined) throw new Error('expected the misc equipment row');
+      expect(misc.slots).toHaveLength(4);
+      expect(new Set(misc.slots.map((r) => r.y)).size, `uiscale ${s}`).toBe(1);
+    }
   });
 
   it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {

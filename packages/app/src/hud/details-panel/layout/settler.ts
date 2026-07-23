@@ -38,30 +38,26 @@ const GATHER_ASSIGN_SEP = 9;
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
 export const EQUIP_SOCKET = 18;
-/** The use-% badge column right of a cell's action buttons - fits a spent item's "100%". */
-export const EQUIP_USE_W = 28;
-/** Gap after a slot cell's use-% column before the next socket (the misc Ekwipunek row). */
-const EQUIP_SOCKET_GAP = 6;
+/** Gap after a slot cell's last action button before the next socket (the misc Ekwipunek row). */
+const EQUIP_SOCKET_GAP = 4;
 /** The row-label column width before the sockets (fits the widest slot label, "Narzędzia"). */
 export const EQUIP_LABEL_W = 74;
-/** Diameter of a round per-slot action button (equip/swap, and the take-off cross beside it). */
-const EQUIP_ACTION_BTN = 16;
+/** Diameter of a round per-slot action button (equip/swap, and the take-off cross beside it). Sized so
+ *  four misc cells (socket + two buttons each) share one line with the label at every menu uiscale
+ *  (user request 2026-07-23: the Ekwipunek row on one line). */
+const EQUIP_ACTION_BTN = 15;
 /** Gap between a socket and its first action button - clears the icon's 3 px overflow past the ring
  *  (user feedback 2026-07-23: the buttons hug their slot). */
 const EQUIP_BTN_INSET = 4;
 /** Gap between a slot's equip/swap button and its take-off cross. */
 const EQUIP_ACTION_GAP = 2;
-/** Gap between the last action button and the use-% badge. */
-const EQUIP_USE_PAD = 4;
 
 /** One labeled equipment row's geometry: its label column + the slot sockets to its right (possibly
- *  spanning several lines - see `slotsPerLine` in {@link layoutSettler}). */
+ *  spanning several lines - see `slotsPerLine` in {@link layoutSettler}). A wearing slot's use percent
+ *  draws as a thin gauge under its socket (derived from the socket rect) and in the socket tooltip. */
 export interface EquipRowRect {
   readonly label: Rect;
   readonly slots: readonly Rect[];
-  /** Per slot (same order as {@link slots}): the use-% badge column right of the slot's action
-   *  buttons, or null when the slot shows no percent (empty, or a permanent good). */
-  readonly useBadges: readonly (Rect | null)[];
 }
 
 /** Which sim `Equipment` slot an action button addresses (`slot` indexes the misc row; 0 elsewhere). */
@@ -199,19 +195,17 @@ export function layoutSettler(
   // upcoming-unlock rows under them (empty when untrained and nothing is in reach).
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
-  // An equipment slot cell: the socket, its equip/swap button and take-off cross hugging it, then the
-  // use-% badge column. The pitch reserves both buttons and the badge for every cell so sockets stay
-  // column-aligned; a row whose cells overflow the body width (the four misc consumables) wraps onto
-  // further EQUIP_ROW_H lines.
+  // An equipment slot cell: the socket, then its equip/swap button and take-off cross hugging it. The
+  // pitch reserves both buttons for every cell so sockets stay column-aligned; a row whose cells
+  // overflow the body width wraps onto further EQUIP_ROW_H lines (the cell constants keep the four
+  // misc consumables on one line at the menu uiscales).
   const socket = Math.round(EQUIP_SOCKET * s);
   const equipLabelW = Math.round(EQUIP_LABEL_W * s);
-  const useW = Math.round(EQUIP_USE_W * s);
   const actionBtn = Math.round(EQUIP_ACTION_BTN * s);
   const btnInset = Math.round(EQUIP_BTN_INSET * s);
   const actionGap = Math.round(EQUIP_ACTION_GAP * s);
-  const usePad = Math.round(EQUIP_USE_PAD * s);
   const socketGap = Math.round(EQUIP_SOCKET_GAP * s);
-  const slotPitch = socket + btnInset + actionBtn + actionGap + actionBtn + usePad + useW + socketGap;
+  const slotPitch = socket + btnInset + actionBtn + actionGap + actionBtn + socketGap;
   // The last cell needs no trailing gap, hence the +socketGap headroom.
   const slotsPerLine = Math.max(1, Math.floor((bodyW - equipLabelW + socketGap) / slotPitch));
   const equipRowLines = model.equipmentRows.map((row) =>
@@ -334,7 +328,6 @@ export function layoutSettler(
     equipRowY += (equipRowLines[i] ?? 1) * equipRowH;
     const label: Rect = { x: equipment.body.x, y: rowY, w: equipLabelW, h: equipRowH };
     const slotsX = equipment.body.x + equipLabelW;
-    const useBadges: (Rect | null)[] = [];
     const slots: Rect[] = row.slots.map((slot, j) => {
       const cellX = slotsX + (j % slotsPerLine) * slotPitch;
       const cellY = rowY + Math.floor(j / slotsPerLine) * equipRowH;
@@ -348,11 +341,9 @@ export function layoutSettler(
       const named = slot.label !== undefined ? { label: slot.label } : {};
       equipActionHits.push({ ref, kind: slot.occupied ? 'swap' : 'equip', ...named, rect: btnRect(0) });
       if (slot.occupied) equipActionHits.push({ ref, kind: 'unequip', ...named, rect: btnRect(1) });
-      const badgeX = cellX + socket + btnInset + 2 * actionBtn + actionGap + usePad;
-      useBadges.push(slot.usePct === null ? null : { x: badgeX, y: cellY, w: useW, h: equipRowH });
       return { x: cellX, y: cellY + socketPadY, w: socket, h: socket };
     });
-    return { label, slots, useBadges };
+    return { label, slots };
   });
 
   return {

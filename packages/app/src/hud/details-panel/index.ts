@@ -3,6 +3,7 @@
  * original-art drawing (`chrome.ts` + `sections.ts`), and the app wiring (`panel.ts`).
  */
 
+export type { EquipSlotRef } from './layout/index.js';
 export type {
   SettlerPanelModel,
   StockRow,

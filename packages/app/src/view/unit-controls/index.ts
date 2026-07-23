@@ -6,6 +6,7 @@ import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions } from './action-ring/index.js';
+import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createPickModeController } from './pick-mode.js';
@@ -59,6 +60,16 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
   // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
   let selectFromPanel: (id: number) => void = () => {};
+  // The equipment pick-menu, only when the shell handed in the sim's pick-list seam; without it the
+  // panel's equip/swap buttons stay inert (their callback is simply not passed).
+  const equipPicker: EquipPickController | null =
+    opts.equipPickList === undefined
+      ? null
+      : await mountEquipPicker({
+          pickList: opts.equipPickList,
+          goods: opts.content.goods,
+          enqueue: opts.enqueue,
+        });
   const panel: UnitPanel = await mountUnitPanel({
     app: opts.app,
     canvas,
@@ -87,6 +98,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
     onSetCraftGoods: (id, goods) =>
       opts.enqueue({ kind: 'setCraftGoods', entity: id as Entity, goods: [...goods] }),
+    // The per-slot order buttons: plus/swap opens the pick-menu, the cross enqueues the take-off
+    // directly (no target to choose - like remove-from-home).
+    ...(equipPicker !== null ? { onEquipSlot: (id, ref) => equipPicker.open(id, ref) } : {}),
+    onUnequipSlot: (id, ref) =>
+      opts.enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
@@ -293,6 +309,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       marquee.dispose();
       panel.dispose();
       actions.dispose();
+      equipPicker?.dispose();
     },
   };
 }
