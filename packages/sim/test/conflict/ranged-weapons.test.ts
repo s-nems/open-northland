@@ -34,7 +34,7 @@ function weaponFixture(
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: jobs ?? [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     ...(weapons !== undefined ? { weapons } : {}),
   });
 }

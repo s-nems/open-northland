@@ -146,7 +146,7 @@ export function combatCadenceContent(): ContentSet {
       { typeId: WOMAN, id: 'woman' },
       ...soldierJobs.map((typeId) => ({ typeId, id: `soldier_${typeId}` })),
     ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' as const }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' as const }],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [...weaponsFor(VIKING), ...weaponsFor(SAXON)],
     armor: [

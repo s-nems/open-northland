@@ -82,7 +82,7 @@ function familyContent(): ContentSet {
         stock: [{ goodType: FOOD, capacity: 5 }],
       },
       // A non-home food store (the settlement HQ): its stock feeds anyone, unlike a home larder.
-      { typeId: WAREHOUSE, id: 'warehouse', kind: 'warehouse', stock: [{ goodType: FOOD, capacity: 99 }] },
+      { typeId: WAREHOUSE, id: 'warehouse', kind: 'storage', stock: [{ goodType: FOOD, capacity: 99 }] },
     ],
   });
 }

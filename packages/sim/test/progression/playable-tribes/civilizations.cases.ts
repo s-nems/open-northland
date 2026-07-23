@@ -21,7 +21,7 @@ describe('playableTribes', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [{ typeId: 9, id: 'wolves', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'w' }] }],
     });
     expect(playableTribes(content)).toEqual([]);

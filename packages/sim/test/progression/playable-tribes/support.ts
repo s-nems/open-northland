@@ -24,7 +24,7 @@ export function tribeContent(): ContentSet {
       { typeId: 5, id: 'civilist' }, // the enabling job both tech edges hang off
     ],
     buildings: [
-      { typeId: 1, id: 'headquarters', kind: 'headquarters' },
+      { typeId: 1, id: 'headquarters', kind: 'storage' },
       { typeId: 4, id: 'home', kind: 'home' }, // the building a viking's tech edge unlocks
     ],
     tribes: [

@@ -49,7 +49,7 @@ describe('mayAttack (the combat hostility relation)', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [
         { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },
         { typeId: 5, id: 'bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
@@ -77,7 +77,7 @@ describe('mayHunt (the hunter predation relation)', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [
         { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },
         { typeId: 5, id: 'tame_bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },

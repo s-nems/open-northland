@@ -13,7 +13,7 @@ export const SCAFFOLD = {
   manifest: TEST_MANIFEST,
   goods: [{ typeId: 0, id: 'none' }],
   jobs: [{ typeId: 0, id: 'idle' }],
-  buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' as const }],
+  buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' as const }],
 };
 
 /**

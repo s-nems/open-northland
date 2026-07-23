@@ -70,7 +70,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [
         { typeId: 5, id: 'bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
         { typeId: 6, id: 'wasps', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'w' }] },
@@ -144,7 +144,7 @@ describe('herdParams (the animal herd/spawn read view)', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [{ typeId: 7, id: 'eagle', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'e' }] }],
       animals: [{ id: 'eagle', tribeType: 7 }],
     });

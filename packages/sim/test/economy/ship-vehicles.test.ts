@@ -35,7 +35,7 @@ function vehicleContent(): ContentSet {
     manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     vehicles: [
       // ship big (typeId 4) declared first — a ship: passengerSlots > 0. Proves the sort, not order.
       // cargoGoods mirrors the real ships' full haulable-goods enumeration (sampled to a few ids here).
@@ -94,7 +94,7 @@ describe('shipVehicles', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
     });
     expect(shipVehicles(content)).toEqual([]);
@@ -105,7 +105,7 @@ describe('shipVehicles', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     });
     expect(shipVehicles(content)).toEqual([]);
   });
@@ -128,7 +128,7 @@ describe('largestShipCapacity', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
     });
     expect(largestShipCapacity(cartsOnly)).toBe(0);
@@ -183,7 +183,7 @@ describe('vehicleSizeOf', () => {
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
     });
     const v = vehicle(content, 'handcart');
