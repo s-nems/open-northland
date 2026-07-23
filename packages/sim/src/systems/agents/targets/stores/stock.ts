@@ -23,8 +23,8 @@ import type { YardTargets } from '../candidates.js';
 import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
-// / "may this settler staff that workplace" query the atomic planner asks. Split out of ai.ts (which
-// keeps the planner state-machine + drives + navigation) so each file is one job. Determinism: every
+// / "may this settler staff that workplace" query the atomic planner asks. Split out of the planner
+// (ai.ts keeps the sweep, drive-ladder.ts the drives) so each file is one job. Determinism: every
 // scan walks the candidate lists in canonical (ascending entity-id) order with a Manhattan-distance +
 // ascending-cell-id tie-break, so the winner never depends on store insertion history (goldens hold).
 

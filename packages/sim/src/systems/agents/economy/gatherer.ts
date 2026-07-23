@@ -15,7 +15,7 @@ import type { HarvestClaims } from './harvest-claims.js';
 import { deliveryTargetFor } from './routing.js';
 
 /**
- * 3. HARVEST / COLLECT — the gatherer drive, in two shapes:
+ * HARVEST / COLLECT — the gatherer drive, in two shapes:
  *
  *  - **Flag-bound** (carries a {@link WorkFlag}): the user-specified collector — it works only the nodes within
  *    its flag's radius, carries off only the trunks/ore it dug itself, delivers to its own flag, and stands

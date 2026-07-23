@@ -9,7 +9,7 @@ import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.
 import { deliverableGoodProbe } from './routing.js';
 
 /**
- * 4. PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier
+ * PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier
  * rule ("tragarz"):
  *
  *  - a carrier at a **producing building** (a FARM: no recipe, but produces a field good) HAULS its
@@ -44,10 +44,11 @@ export function planPorter(plan: PlannerContext): boolean {
 }
 
 /**
- * 5. STORE-CARRIER HAUL — an employed carrier (the transport trade, bound to a building — in practice a
- * warehouse/HQ transport slot; a workshop-bound carrier never falls this far, rung 2a owns it) hauls a
- * finished workplace output to a store, so producing workshops don't clog and goods reach the settlement's
- * stores; the delivery rung then routes the load to its bound store when that store can take it. Nobody
+ * STORE-CARRIER HAUL — an employed carrier (the transport trade, bound to a building — in practice a
+ * warehouse/HQ transport slot; a workshop-bound carrier never falls this far, the workshop-supplier
+ * rung owns it) hauls a finished workplace output to a store, so producing workshops don't clog and
+ * goods reach the settlement's stores; the delivery rung then routes the load to its bound store when
+ * that store can take it. Nobody
  * else ferries: a settler of another trade with nothing to do idles, and an unemployed or unbound settler
  * does no work at all — transport is a job one is hired for, never a default pastime (observed original
  * behaviour; a carrier works only through its assignment, and the JobSystem's report-in pass is what binds

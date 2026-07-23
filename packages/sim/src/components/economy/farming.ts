@@ -47,7 +47,7 @@ export const Crop = defineComponent<{
 /**
  * A farmer's **in-flight field intent** — which node its current farm action (reap / sheaf pickup /
  * sow / water) targets. Stamped by the planFarmer drive when it issues the action and removed the
- * moment the settler replans (ai.ts), so it exists exactly while the farmer is walking to or swinging
+ * moment the settler replans (replan.ts), so it exists exactly while the farmer is walking to or swinging
  * at the target. Its ONE purpose is work division: the planner folds every live FarmTask into the
  * tick's claim set, so a second farmer never picks a node a colleague is already en route to — the
  * fix for two farmers shadowing each other sowing/reaping the same spot (and what makes N farmers
@@ -80,7 +80,7 @@ export const StrandedField = defineComponent<{
 /**
  * A settler WAITING INSIDE its workplace — stamped by a drive whose settler is at its building with
  * nothing to do this tick (the farmer between field chores), and removed the moment it replans
- * (ai.ts, beside the FarmTask release), so it exists exactly while the settler idles at the door.
+ * (replan.ts, beside the FarmTask release), so it exists exactly while the settler idles at the door.
  * PURELY a render fact: the original's off-duty workers wait inside the house, not lined up at the
  * door — the render hides a Resting settler (it "went in") and it steps back out the tick work
  * appears. No sim decision reads it. Inert on every golden that farms nothing.

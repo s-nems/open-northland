@@ -73,7 +73,7 @@ export function sleepAtHome(
 
 /**
  * Whether `e` is inside its OWN house mid-sleep — the test that stops the planner shedding the marker
- * that put it there. Every other drive treats a lingering {@link Resting} as stale (`ai.ts`,
+ * that put it there. Every other drive treats a lingering {@link Resting} as stale (`drive-ladder.ts`,
  * `replan.ts`), so without this the settler would be turfed out of its own bed the tick it got in.
  *
  * The `at === home` check is load-bearing, not belt-and-braces: the open-ground rung starts an

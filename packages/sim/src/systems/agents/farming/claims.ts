@@ -2,7 +2,9 @@ import { FarmTask } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 
-/** Tick-shared field claims and lazily built sow-search state. */
+/** Tick-shared field claims and lazily built sow-search state: nodes held by live in-flight tasks
+ *  plus the picks made earlier in this planner pass, so two farmers never shadow each other to the
+ *  same field/sheaf/sow spot, across ticks as within one. */
 export interface FarmClaims {
   readonly nodes: Set<NodeId>;
   readonly byFarm: Map<Entity, number>;

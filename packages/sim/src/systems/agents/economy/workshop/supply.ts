@@ -12,7 +12,8 @@ import { buriedUnderBuilding, type InteractionCellIndex } from '../../targets/in
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
-// It sits beside the target-scan layer (targets/); ai.ts wires these into the per-settler decision.
+// It sits beside the target-scan layer (targets/); the drive ladder wires these into the
+// per-settler decision.
 //
 // The split from the plain haul model: before this, inputs reached a workplace only because a harvester
 // happened to deposit them there (`nearestStoreFor` picks the workplace when it's the nearest sink), and

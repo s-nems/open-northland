@@ -20,7 +20,7 @@ import {
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 
 /**
- * 2b. BUILD — a builder raises a construction site of its tribe, faithful to the original's "settlers search
+ * BUILD — a builder raises a construction site of its tribe, faithful to the original's "settlers search
  * for a foundation, get put on it, and hammer it up carrying material" flow. A non-builder trade
  * ({@link jobCanBuild}) returns false at once and falls through to the gather/porter/carrier rungs.
  * The site is the player-pinned one when an `assignBuilder` right-click bound it

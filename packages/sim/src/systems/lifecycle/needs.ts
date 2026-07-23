@@ -126,9 +126,9 @@ export const STARVATION_BITES_TO_DIE = 240;
  * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
  * bind a baby sleep animation with rest events (`setatomic 1/2 8 "viking_baby_*_sleep"`); it is
  * deliberately unwired — the family-care freeze covers rest too. A baby weans into childhood with its
- * birth needs, and from there the child eat/sleep drives take over (`ai.ts`). Keyed on Age + stage like
- * the planner's gate, so an adult fixture whose synthetic job id collides with a baby id still lives a
- * full needs life.
+ * birth needs, and from there the child eat/sleep drives take over (`agents/drive-ladder.ts`). Keyed
+ * on Age + stage like the planner's gate, so an adult fixture whose synthetic job id collides with a
+ * baby id still lives a full needs life.
  *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
@@ -136,7 +136,7 @@ export const STARVATION_BITES_TO_DIE = 240;
  * starving them would only depopulate the map — a named approximation each:
  *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
  *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
- *    lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds).
+ *    lives in the job planner, which skips a jobless settler before any needs drive runs (`agents/ai.ts`).
  * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
  * food is truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a
  * child's 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold.
