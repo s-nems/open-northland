@@ -1,12 +1,12 @@
 import type { Entity, Fixed, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
+import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   JOB_BABY_MALE,
   JOB_CHILD_FEMALE,
   JOB_CHILD_MALE,
   placeSandboxBerryBush,
+  spawnSettlerDirect,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -43,7 +43,7 @@ const CHILD_SPAWN_AGE_TICKS = systems.CHILD_AGE_TICKS + 100;
 
 const { Age, BerryBush, Settler } = components;
 
-/** Spawn a young settler (a born-life-stage jobType plus the Age marker) directly, pre-tick-0. */
+/** Spawn a young settler (a born-life-stage jobType) with its Age marker and `hunger` authored. */
 function spawnYoung(
   sim: Simulation,
   jobType: number,
@@ -52,15 +52,7 @@ function spawnYoung(
   ageTicks: number,
   hunger: Fixed,
 ): Entity {
-  const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-  });
-  if (e === null) throw new Error('children scene: unknown age-class job');
+  const e = spawnSettlerDirect(sim, jobType, x, y);
   sim.world.add(e, Age, { ticks: ageTicks });
   sim.world.get(e, Settler).hunger = hunger;
   return e;

@@ -40,12 +40,36 @@ export function spawnSandboxSettler(
 }
 
 /**
+ * Spawn a settler of `jobType` directly (scene setup, pre-tick-0, the sanctioned direct-store
+ * exception, see ./index.js) and return it. Unlike the `spawnSettler` command, the entity id is known
+ * at build time, so a scene can address it in orders and layer authored state (needs, `Age`) on it.
+ */
+export function spawnSettlerDirect(
+  sim: Simulation,
+  jobType: number,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): Entity {
+  const node = cellAnchorNode(x, y);
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
+    jobType,
+    x: node.hx,
+    y: node.hy,
+    tribe: PRIMARY_TRIBE,
+    owner,
+  });
+  if (e === null) throw new Error(`spawnSettlerDirect: unknown settler job ${jobType}`);
+  return e;
+}
+
+/**
  * Spawn an unemployed settler (jobType null) directly (scene setup, pre-tick-0) and return it. Unlike
  * {@link spawnSandboxSettler} (which spawns a settler already doing a named job), an idle settler is the
  * one the JobSystem's second pass employs — it binds an idle settler to the first canonical building with an
  * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
  * warehouse/HQ is not adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
- * so its haulers arrive as idle settlers the JobSystem assigns. Built via {@link systems.createSettler} then
+ * so its haulers arrive as idle settlers the JobSystem assigns. Spawned as {@link JOB_IDLE} then
  * re-idled, because the `spawnSettler` command has no null-job form.
  */
 export function spawnIdleSettler(
@@ -54,15 +78,7 @@ export function spawnIdleSettler(
   y: number,
   owner: number = HUMAN_PLAYER,
 ): Entity {
-  const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType: JOB_IDLE,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner,
-  });
-  if (e === null) throw new Error('spawnIdleSettler: createSettler failed');
+  const e = spawnSettlerDirect(sim, JOB_IDLE, x, y, owner);
   sim.world.get(e, components.Settler).jobType = null; // re-idle so the JobSystem's assign pass employs it
   return e;
 }

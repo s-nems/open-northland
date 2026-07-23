@@ -1,8 +1,14 @@
 import type { Entity, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
+import { cellAnchorNode, components, fx } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { GATHERERS, JOB_COLLECTOR, JOB_SCOUT, placeResourceNode } from '../game/sandbox/index.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
+import {
+  GATHERERS,
+  JOB_COLLECTOR,
+  JOB_SCOUT,
+  placeResourceNode,
+  spawnSettlerDirect,
+} from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -42,20 +48,6 @@ const INITIAL_ZOOM = 1.1;
 
 const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled } = components;
 
-/** Spawn a settler of `jobType` directly (pre-tick-0) so the scene can address it in commands. */
-function spawnUnit(sim: Simulation, jobType: number, x: number, y: number): Entity {
-  const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-  });
-  if (e === null) throw new Error('signposts scene: unknown job');
-  return e;
-}
-
 /** Stamp a standing signpost directly (pre-tick-0) — the scene's pre-existing network fixture. */
 function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = HUMAN_PLAYER): void {
   const e = sim.world.create();
@@ -87,9 +79,9 @@ function build(sim: Simulation): void {
   stampPost(sim, CHAIN_B.x, CHAIN_B.y, CHAIN_RADIUS_NODES);
   stampPost(sim, LONE_POST.x, LONE_POST.y, CHAIN_RADIUS_NODES);
   stampPost(sim, ENEMY_POST.x, ENEMY_POST.y, CHAIN_RADIUS_NODES, ENEMY_PLAYER);
-  spawnUnit(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y);
+  spawnSettlerDirect(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y);
   // The scout erects the fourth post on command: walk two tiles, one hammer swing, the post rises.
-  const scout = spawnUnit(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
+  const scout = spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
   const erectNode = cellAnchorNode(ERECT_AT.x, ERECT_AT.y);
   sim.enqueue({ kind: 'placeSignpost', entity: scout, x: erectNode.hx, y: erectNode.hy });
 }

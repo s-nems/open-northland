@@ -34,4 +34,4 @@ export {
   resourceSpecFor,
   spawnBoundGatherer,
 } from './resources.js';
-export { spawnIdleSettler, spawnSandboxSettler } from './settlers.js';
+export { spawnIdleSettler, spawnSandboxSettler, spawnSettlerDirect } from './settlers.js';

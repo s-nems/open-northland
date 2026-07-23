@@ -1,8 +1,7 @@
 import type { CellTerrainMap, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
+import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { JOB_COLLECTOR, placeSandboxBerryBush } from '../game/sandbox/index.js';
+import { JOB_COLLECTOR, placeSandboxBerryBush, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -48,18 +47,9 @@ const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 
 const { BerryBush, Settler } = components;
 
-/** Spawn a hungry woodcutter directly (pre-tick-0) so its `hunger` can be authored — a command-spawned
- *  settler's id isn't known until tick 0. With no trees to fell it forages, then idles. */
+/** Spawn a hungry woodcutter with its `hunger` authored. With no trees to fell it forages, then idles. */
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
-  const node = cellAnchorNode(x, y); // whole-tile → half-cell node anchor
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType: JOB_COLLECTOR,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-  });
-  if (e === null) throw new Error('berries scene: unknown forager job');
+  const e = spawnSettlerDirect(sim, JOB_COLLECTOR, x, y);
   sim.world.get(e, Settler).hunger = HUNGRY;
 }
 
