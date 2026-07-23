@@ -16,7 +16,7 @@ import {
   rootsInOrder,
   type SourceRoots,
 } from '../../roots.js';
-import { mapIdFromPath } from './info.js';
+import { excludeStringTableCopies, mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
 import { resolveMapScript } from './script.js';
@@ -51,9 +51,11 @@ export interface MapDatConversion {
  * `maps/<id>.meta.json` (the display name/description — {@link resolveMapMeta}), `maps/<id>.png`
  * (the shipped minimap decoded to a cropped transparent-filler PNG — {@link minimapToPng}), and
  * `maps/<id>.script.json` (the validated player roster/diplomacy/mission script —
- * {@link resolveMapScript}). Each is deleted before the conditional emit, so a re-run over a source
- * that lost its text/minimap/script cannot leave a stale sidecar joined onto a fresh grid. The dev
- * server's `/maps-index` route joins them onto the map list for the main menu's cards.
+ * {@link resolveMapScript}). The stage owns `<outDir>/maps/` wholesale and clears it up front, so a
+ * re-run drops artifacts whose map vanished from discovery (a renamed folder, an excluded stray) and
+ * sidecars a source no longer carries - the menu scans `maps/*.json`, so a stale artifact would
+ * resurface as a card. The dev server's `/maps-index` route joins them onto the map list for the
+ * main menu's cards.
  *
  * A `map.dat` that fails to read or decode (not a container, missing `lsiz`/`lmlt`, an `X6el`-only
  * grid, a dims/length mismatch, corrupt RLE) is logged and skipped — a batch over many maps must not
@@ -62,18 +64,21 @@ export interface MapDatConversion {
  *
  * Ids collapse on the folder name, so two maps in same-named folders under different roots
  * (e.g. `Data/maps/oasis_o_plenty` vs `CnModMaps/oasis_o_plenty`) write the same `<id>.json`
- * last-write-wins (on the real game, 130 `map.dat` → 125 files). This is deliberately the same
+ * last-write-wins (on the real game, 128 kept `map.dat` → 124 files). This is deliberately the same
  * `mapIdFromPath` collapse `decodeMapTree` applies to `map.cif`, so the terrain artifact and its
- * `MapInfo` agree on the id and stay joinable — a path-scoped unique id would have to change both legs
- * together. (A localization sub-folder like `WICHRY_ZIMY/text/map.dat` likewise slugs to `text`; that
- * too matches the existing `map.cif` behavior.)
+ * `MapInfo` agree on the id and stay joinable — a path-scoped unique id would have to change both
+ * legs together. Stray copies inside a map's `text/` string-table subfolder are excluded on both
+ * legs ({@link excludeStringTableCopies}).
  */
 export async function convertMapDatTree(
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<MapDatConversion[]> {
-  const found = await collectSourceFilesNamed(roots, 'map.dat');
+  const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.dat'));
+  // This stage is the only writer under <outDir>/maps; an interrupted run already reads as
+  // "regenerate" (the manifest is cleared before the first stage), so a wholesale reset is safe.
+  await rm(join(outDir, 'maps'), { recursive: true, force: true });
   const done: MapDatConversion[] = [];
   for (const [processed, { rel, path }] of found.entries()) {
     onItem?.(processed, found.length);
@@ -133,9 +138,10 @@ export async function convertMapDatTree(
     // them one-per-line would blow the artifact up ~8×.
     await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
 
-    // Menu-facing sidecars, all optional (the menu card degrades per missing piece). Clear any
-    // previous run's sidecars first so a source that lost its text/minimap/script doesn't keep stale
-    // ones. The string table is loaded once and feeds both the meta strings and the script's slot names.
+    // Menu-facing sidecars, all optional (the menu card degrades per missing piece). A same-id twin
+    // converted earlier this run may have emitted sidecars; clear them so last-write-wins covers the
+    // sidecars, not just the grid. The string table is loaded once and feeds both the meta strings
+    // and the script's slot names.
     const metaPath = join(outDir, 'maps', `${id}.meta.json`);
     const pngPath = join(outDir, 'maps', `${id}.png`);
     const scriptPath = join(outDir, 'maps', `${id}.script.json`);

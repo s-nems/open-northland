@@ -53,6 +53,24 @@ describe('convertMapDatTree', () => {
     expect(done.map((d) => d.id)).toContain(mapIdFromPath(join('CnModMaps', 'tutorial_002', 'map.dat')));
   });
 
+  it('skips a stray map.dat in the Text/ string-table subfolder of a map folder', async () => {
+    const dir = join(game, 'CnModMaps', 'tutorial_002', 'Text');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
+    expect(done.map((d) => d.id)).toEqual(['forteca', 'tutorial_002']); // no ghost `text` map
+    await expect(readFile(join(out, 'maps', 'text.json'))).rejects.toThrow();
+  });
+
+  it('drops the artifacts of a map that vanished from the source between runs', async () => {
+    await convertMapDatTree({ game, mod: undefined }, out);
+    await readFile(join(out, 'maps', 'forteca.json')); // emitted on the first run
+    await rm(join(game, 'CnModMaps', 'forteca'), { recursive: true, force: true });
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
+    expect(done.map((d) => d.id)).toEqual(['tutorial_002']);
+    await expect(readFile(join(out, 'maps', 'forteca.json'))).rejects.toThrow();
+  });
+
   it('skips a malformed map.dat with a warning instead of aborting the batch', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await writeFile(join(game, 'CnModMaps', 'forteca', 'map.dat'), Uint8Array.from([0, 1, 2, 3]));
@@ -216,6 +234,22 @@ describe('convertMapDatTree', () => {
     await rm(join(dir, 'text'), { recursive: true, force: true });
     const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: false });
+    await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
+  });
+
+  it('clears a same-id twin sidecar within one run so last-write-wins covers sidecars too', async () => {
+    // `tutorial-002` slugs to the same id and sorts first (`-` < `_`); it carries strings, the
+    // winning `tutorial_002` does not, so the winner must clear the twin's meta.
+    const twin = join(game, 'CnModMaps', 'tutorial-002');
+    await mkdir(join(twin, 'text', 'pol'), { recursive: true });
+    await writeFile(join(twin, 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
+    await writeFile(join(twin, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
+    expect(done.map((d) => [d.id, d.meta])).toEqual([
+      ['forteca', false],
+      ['tutorial_002', true],
+      ['tutorial_002', false],
+    ]);
     await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
   });
 });

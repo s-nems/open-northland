@@ -7,6 +7,7 @@ import {
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
+import { STRING_TABLE_DIR } from './info.js';
 
 /**
  * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to one
@@ -102,7 +103,7 @@ export async function loadMapStringTable(
 ): Promise<Record<number, string> | undefined> {
   for (const lang of MAP_TEXT_LANGS) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
-      const path = await findPathCaseInsensitiveInDirs(mapDirs, ['text', lang, form]);
+      const path = await findPathCaseInsensitiveInDirs(mapDirs, [STRING_TABLE_DIR, lang, form]);
       if (path === undefined) continue;
       let table: Record<number, string>;
       try {

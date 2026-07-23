@@ -3,7 +3,13 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
-import { decodeMapTree, mapCifToInfo, mapIdFromPath, minimapToPng } from '../src/stages/maps/index.js';
+import {
+  decodeMapTree,
+  excludeStringTableCopies,
+  mapCifToInfo,
+  mapIdFromPath,
+  minimapToPng,
+} from '../src/stages/maps/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
@@ -16,6 +22,19 @@ describe('mapIdFromPath', () => {
 
   it('handles forward-slash paths regardless of host separator', () => {
     expect(mapIdFromPath('CnModMaps/Zgielk2/map.cif')).toBe('zgielk2');
+  });
+});
+
+describe('excludeStringTableCopies', () => {
+  it('drops a candidate in a Text/ subfolder of another candidate folder (case-folded)', () => {
+    const map = { rel: join('CnModMaps', 'WICHRY_ZIMY', 'map.dat'), path: '/m' };
+    const stray = { rel: join('CnModMaps', 'WICHRY_ZIMY', 'Text', 'map.dat'), path: '/s' };
+    expect(excludeStringTableCopies([map, stray])).toEqual([map]);
+  });
+
+  it('keeps a top-level map folder that happens to be named text', () => {
+    const map = { rel: join('CnModMaps', 'text', 'map.dat'), path: '/m' };
+    expect(excludeStringTableCopies([map])).toEqual([map]);
   });
 });
 
@@ -66,6 +85,13 @@ describe('decodeMapTree', () => {
     expect(maps.map((m) => m.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
     expect(maps.find((m) => m.id === 'tutorial_002')).toMatchObject({ width: 142, height: 146, mapType: 1 });
     expect(maps.find((m) => m.id === 'forteca')?.campaign).toBeUndefined();
+  });
+
+  it('skips a stray map.cif in the text/ string-table subfolder of a map folder', async () => {
+    await mkdir(join(game, 'CnModMaps', 'forteca', 'text'), { recursive: true });
+    await writeFile(join(game, 'CnModMaps', 'forteca', 'text', 'map.cif'), buildStringCif(sampleMapLines()));
+    const maps = await decodeMapTree({ game, mod: undefined });
+    expect(maps.map((m) => m.id)).toEqual(['forteca', 'tutorial_002']); // no ghost `text` entry
   });
 
   it('skips a malformed map.cif with a warning instead of aborting the batch', async () => {
