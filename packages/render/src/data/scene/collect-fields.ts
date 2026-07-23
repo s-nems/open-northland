@@ -1,26 +1,38 @@
+import type { WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { type DrawKind, type MutableDrawItem, paintOrderBias } from './draw-item.js';
 import { projectileArc } from './projectile-arc.js';
+import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import {
+  assignStaticFields,
   copyStaticFields,
   readAtomicElapsed,
+  readBerryBushGfxIndex,
+  readBerryBushLevel,
   readCarrying,
   readEngaged,
   readEquipmentWeaponGood,
   readFacing,
+  readHpFraction,
   readJobType,
   readOwnerPlayer,
+  readProducing,
   readProjectileOrigin,
   readProjectileTarget,
+  readResourceLevelCount,
+  readStockpile,
+  readUpgradePct,
 } from './snapshot-readers/index.js';
 
 /**
  * The per-item field tagging {@link import('./sprite-scene.js').collectSpriteScene} dispatches to: the
- * feet-anchor depth key, the settler render-side reads, the projectile ballistic arc, and the fog-ghost
- * emit. Split from the scene builder so the main loop reads project → cull → dispatch; each function is a
- * pure "what fields does this kind carry" decision.
+ * feet-anchor depth key, the per-kind render-side reads, the projectile ballistic arc, the signpost
+ * board emit, and the fog-ghost emit. Split from the scene builder so the main loop reads project →
+ * cull → dispatch; each function is a pure "what fields does this kind carry" decision. Fields are
+ * assigned (not spread) so an absent fact stays an absent property under exactOptionalPropertyTypes
+ * without a throwaway spread object per field.
  */
 
 /**
@@ -47,7 +59,7 @@ export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag
  * Tag a settler draw item with the render-side reads a per-character binding needs: the running atomic
  * (+ its elapsed clock), the combat-engaged gait flag, the drawn facing (target-facing wins over the
  * walk heading), the hauled good, the job/weapon look, the owner player LUT row, and the born-young age
- * flag. Assigned (not spread) so an absent fact stays an absent property under exactOptionalPropertyTypes.
+ * flag.
  */
 export function assignSettlerFields(
   item: MutableDrawItem,
@@ -84,6 +96,111 @@ export function assignSettlerFields(
   // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
   // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
   if ('Age' in components) item.young = true;
+}
+
+/**
+ * Tag a building draw item: its type id + construction progress (the shared static fields a fog ghost
+ * also carries) plus the live-only reads a ghost never shows: the upgrade progress revealing the next
+ * tier over the old body, the mid-production switch a type's animated state overlay flips on (the
+ * mill's rotor), and a damaged finished building's remaining HP fraction (the damage-smoke drive).
+ */
+export function assignBuildingFields(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+): void {
+  assignStaticFields(item, 'building', components);
+  const upgradePct = readUpgradePct(components);
+  if (upgradePct !== undefined) item.upgradePct = upgradePct;
+  if (readProducing(components)) item.working = true;
+  const hpFrac = readHpFraction(components);
+  if (hpFrac !== undefined) item.hpFrac = hpFrac;
+}
+
+/**
+ * Tag a resource node: the shared static fields (per-good species/deposit, shrink-by-`level` fill,
+ * source-variant `gfxIndex`) plus the live-only ladder denominator `levels`, so the resolver can
+ * rescale the sim's ladder onto the bound record's own state count (ghosts omit it, see
+ * {@link assignStaticFields}).
+ */
+export function assignResourceFields(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+): void {
+  assignStaticFields(item, 'resource', components);
+  if (item.level !== undefined) {
+    const levels = readResourceLevelCount(components);
+    if (levels !== undefined) item.levels = levels;
+  }
+}
+
+/** Tag a berry bush: its render-variant `gfxIndex` (the fruited-bush record, i.e. its species) and a
+ *  ripe/bare level (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state the
+ *  sim last set (foraged → bare, regrown → ripe). */
+export function assignBerryBushFields(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+): void {
+  const gfxIndex = readBerryBushGfxIndex(components);
+  if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
+  const level = readBerryBushLevel(components);
+  if (level !== undefined) item.level = level;
+}
+
+/** Tag a ground pile / delivery flag / trunk drop with its held good and fill — the trunk keys its
+ *  per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`. A
+ *  designated delivery flag is tagged for the resolver (its paint-above-the-heap bump already rides
+ *  the depth key the caller computed). */
+export function assignStockpileFields(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+  isFlag: boolean,
+): void {
+  const { goodType, fill } = readStockpile(components);
+  if (goodType !== undefined) item.goodType = goodType;
+  if (fill !== undefined) item.fill = fill;
+  if (isFlag) item.isFlag = true;
+}
+
+/**
+ * Tag a signpost post with its owner and append one direction-board item per connected in-range
+ * neighbour at the same feet anchor (the board frames' offsets carry the post-top pivot), painted the
+ * flag half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
+ * (signpost, angle-bucket) without colliding with real entity ids. The post's ribbon and runic
+ * lettering are the team colour — the owner picks the baked per-player guidepost atlas; each board
+ * reads the same owner, colour-mapped here because boards bypass the caller's shared push site (the
+ * post itself is mapped there).
+ */
+export function pushSignpostItems(
+  items: MutableDrawItem[],
+  liveRefs: Set<number>,
+  snapshot: WorldSnapshot,
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+  tileX: number,
+  tileY: number,
+  lift: number,
+  playerColourOf: ((player: number) => number) | undefined,
+): void {
+  const postPlayer = readOwnerPlayer(components);
+  if (postPlayer !== undefined) item.player = postPlayer;
+  for (const bucket of signpostBoardsOf(snapshot).get(item.ref) ?? []) {
+    const boardRef = -(item.ref * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
+    liveRefs.add(boardRef);
+    const board: MutableDrawItem = {
+      kind: 'signpost',
+      ref: boardRef,
+      x: item.x,
+      y: item.y,
+      depth: spriteDepth(tileX, tileY, 'signpost', true),
+      state: 'idle',
+      boardIndex: bucket,
+    };
+    if (postPlayer !== undefined) {
+      board.player = playerColourOf === undefined ? postPlayer : playerColourOf(postPlayer);
+    }
+    if (lift !== 0) board.lift = lift;
+    items.push(board);
+  }
 }
 
 /**
