@@ -6,7 +6,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
-import { manhattan } from '../../spatial.js';
+import { closer, manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import {
@@ -110,6 +110,7 @@ export function nextSowNode(
   const first = (v: number): number => Math.floor((v - radius) / FIELD_LATTICE_STEP) * FIELD_LATTICE_STEP;
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
   for (let by = first(at.y); by <= at.y + radius; by += FIELD_LATTICE_STEP) {
     for (let bx = first(at.x); bx <= at.x + radius; bx += FIELD_LATTICE_STEP) {
       const j = sowJitter(bx, by);
@@ -126,9 +127,10 @@ export function nextSowNode(
       // spans, or a pocket the surrounding walls seal off. The sow node IS the walk goal, so without this
       // the farmer re-picks the same doomed spot every replan and its whole plot goes untended behind it.
       if (unreachableWorkCell(gates, here, node)) continue;
-      if (dist < bestDist || (dist === bestDist && (best === null || node < best))) {
+      if (closer(dist, node, bestDist, bestCell)) {
         best = node;
         bestDist = dist;
+        bestCell = node;
       }
     }
   }

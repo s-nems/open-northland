@@ -1,6 +1,7 @@
 import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { nearestCell } from '../footprint/geometry.js';
 import type { PlannerSpacing } from './planner-spacing.js';
 
 // The spacing drives — the two consumers of the planner-tick occupancy state:
@@ -66,13 +67,13 @@ export function claimWorkCell(
 ): NodeId | null {
   const cells = spacing.workCells(site);
   if (cells.length === 0) return null;
-  if (!world.has(e, Owner)) return nearestWorkCell(terrain, cells, here);
+  if (!world.has(e, Owner)) return nearestCell(terrain, cells, here);
   if (cells.includes(here)) {
     const hereXY = terrain.coordsOf(here);
     const bucket = spacing.occupancy.at(hereXY.x, hereXY.y);
     if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
   }
-  const free = nearestWorkCell(terrain, cells, here, (cell) => {
+  const free = nearestCell(terrain, cells, here, (cell) => {
     if (spacing.isClaimed(cell)) return false;
     const { x, y } = terrain.coordsOf(cell);
     return spacing.occupancy.at(x, y).length === 0;
@@ -81,28 +82,7 @@ export function claimWorkCell(
     spacing.claim(free);
     return free;
   }
-  return nearestWorkCell(terrain, cells, here);
-}
-
-function nearestWorkCell(
-  terrain: TerrainGraph,
-  cells: readonly NodeId[],
-  from: NodeId,
-  accept: (cell: NodeId) => boolean = () => true,
-): NodeId | null {
-  const origin = terrain.coordsOf(from);
-  let best: NodeId | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (const cell of cells) {
-    if (!accept(cell)) continue;
-    const candidate = terrain.coordsOf(cell);
-    const distance = Math.abs(candidate.x - origin.x) + Math.abs(candidate.y - origin.y);
-    if (distance < bestDistance || (distance === bestDistance && (best === null || cell < best))) {
-      best = cell;
-      bestDistance = distance;
-    }
-  }
-  return best;
+  return nearestCell(terrain, cells, here);
 }
 
 /**
