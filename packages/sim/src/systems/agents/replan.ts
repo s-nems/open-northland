@@ -7,21 +7,24 @@ import {
   PathRequest,
   PlayerOrder,
   Resting,
+  Stance,
   Stranded,
   Wedding,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { MILITARY_MODE } from '../readviews/index.js';
 import { clearNavState, isTravelling } from '../spatial.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../stores/index.js';
 import { reconcileYardRoute } from './economy/index.js';
 import { type FarmClaims, releaseFarmTask } from './farming/index.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from './unreachable-goals.js';
 
-// The planner's per-settler prologue: decide whether a settler is idle enough to re-plan this tick and,
-// when it is, shed every intent a previous tick left on it — so the drive ladder in ./ai.ts sees a clean
-// settler and never re-chooses against its own stale claims.
+// The planner's per-settler availability checks: decide whether a settler is idle enough to re-plan this
+// tick and, when it is, shed every intent a previous tick left on it, so the drive ladder in ./ai.ts sees
+// a clean settler and never re-chooses against its own stale claims. Also home to the economy's
+// ownership gate (anotherSystemOwns).
 
 /** How long a stranded walker parks before shedding its failed route and re-planning — long enough that
  *  a permanently blocked target costs one path query per episode, short enough that a transient blockage
@@ -31,13 +34,42 @@ const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
 
 /** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
  *  flee, wedding, and gossip systems each read the `failed` flag and clear/cancel it themselves — the
- *  planner's stranded recovery must not eat their signal. */
+ *  planner's stranded recovery must not eat their signal. A narrower set than
+ *  {@link anotherSystemOwns}: a guard's post and family duty hold a settler off the economy but do not
+ *  own a route's failure signal. */
 function ownsFailedRoute(world: World, e: Entity): boolean {
   return (
     world.has(e, PlayerOrder) ||
     world.has(e, Engagement) ||
     world.has(e, Fleeing) ||
     world.has(e, Wedding) ||
+    world.has(e, Chat)
+  );
+}
+
+/**
+ * Whether a system outside the planner currently owns `e`'s actions, so the economy ladder must not
+ * re-task it:
+ *  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its atomic
+ *    (the swing); it clears the marker when the fight ends.
+ *  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed in,
+ *    or in the flee cool-down); while running it carries a MoveGoal and the ladder's busy check
+ *    ({@link releaseStaleIntent}) already skipped it.
+ *  - DEFEND stance: a guard holds its post against the economy (the CombatSystem walks it back when
+ *    displaced); owned-only, so unowned/golden fixtures are untouched.
+ *  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
+ *    on arrival, and the economy re-tasks it the same tick.
+ *  - Wedding / FamilyDuty: the FamilySystem drives a settler mid-wedding or on family duty.
+ *  - Chat: a settler mid-chat is the GossipSystem's.
+ */
+export function anotherSystemOwns(world: World, e: Entity): boolean {
+  return (
+    world.has(e, Engagement) ||
+    world.has(e, Fleeing) ||
+    world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND ||
+    world.has(e, PlayerOrder) ||
+    world.has(e, Wedding) ||
+    world.has(e, FamilyDuty) ||
     world.has(e, Chat)
   );
 }

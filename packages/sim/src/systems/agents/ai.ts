@@ -1,20 +1,13 @@
 import {
   Age,
   Carrying,
-  Chat,
-  Engagement,
-  FamilyDuty,
   Female,
-  Fleeing,
   JobAssignment,
   ownerOf,
-  PlayerOrder,
   Position,
   Resting,
   Settler,
-  Stance,
   UnderConstruction,
-  Wedding,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -25,7 +18,6 @@ import { ExternalFoodIndex } from '../family/food-search.js';
 import { planWomanHoard } from '../family/hoard.js';
 import { planChildWander } from '../family/wander.js';
 import { isChild } from '../lifecycle/ageclass.js';
-import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { GossipCandidates, planGossipIdle, planGossipSeek } from '../social/index.js';
 import { canonicalById } from '../spatial.js';
@@ -48,7 +40,7 @@ import { collectFarmClaims, planFarmer } from './farming/index.js';
 import { navigationPlanner } from './navigation.js';
 import type { PlannerContext } from './planner-context.js';
 import { PlannerSpacing } from './planner-spacing.js';
-import { releaseStaleIntent } from './replan.js';
+import { anotherSystemOwns, releaseStaleIntent } from './replan.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targets/index.js';
 
@@ -77,11 +69,11 @@ export const aiSystem: System = (world, ctx) => {
  * ladder, in this fixed priority order (each drive returns `true` when it takes the settler for
  * this tick):
  *
- *   needs (eat > sleep > pray) → combat/hold gates → family/gossip fences + the company (chat-seek) rung →
- *   deliver a carried load → bound-farmer field loop → bound-producer loop → gather (chop/collect) →
- *   porter ferrying → store-carrier haul → idle chat → idle de-stack.
+ *   needs (eat > sleep > pray) → the ownership gate → the company (chat-seek) rung → deliver a carried
+ *   load → bound-farmer field loop → bound-producer loop → gather (chop/collect) → porter ferrying →
+ *   store-carrier haul → idle chat → idle de-stack.
  *
- * The order is part of the design (and of the goldens): needs sit above the combat/hold gates so a
+ * The order is part of the design (and of the goldens): needs sit above the ownership gate so a
  * starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
  * a gatherer works its own trade before ferrying others' goods.
  *
@@ -179,30 +171,13 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // Combat / hold gates — a unit that combat or the player currently owns skips economy planning. All
-    // four sit below the needs drives on purpose (soft overrides — hunger/fatigue/piety still pull the
-    // unit away, faithful to the autonomous-settler model):
-    //  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its atomic
-    //    (the swing); it clears the marker when the fight ends.
-    //  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed in,
-    //    or in the flee cool-down); while running it carries a MoveGoal and was skipped above.
-    //  - DEFEND stance: a guard holds its post against the economy (the CombatSystem walks it back when
-    //    displaced); owned-only, so unowned/golden fixtures are untouched.
-    //  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
-    //    on arrival, and the economy re-tasks it the same tick.
-    if (world.has(e, Engagement)) continue;
-    if (world.has(e, Fleeing)) continue;
-    const stance = world.tryGet(e, Stance);
-    if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) continue;
-    if (world.has(e, PlayerOrder)) continue;
-    // Family fences (below needs, like the gates above, so a marrying/child-making settler still eats):
-    // the FamilySystem drives a settler mid-wedding or on family duty; the economy leaves it alone.
-    if (world.has(e, Wedding)) continue;
-    if (world.has(e, FamilyDuty)) continue;
-    // Gossip fence + the company rung: a settler mid-chat is the GossipSystem's; a lonely one (deficit at
-    // the seek threshold) leaves its work to find a partner — above the economy rungs on purpose, the
-    // "worker downs tools to socialize" beat (see ../social/gossip/).
-    if (world.has(e, Chat)) continue;
+    // Ownership gate (see anotherSystemOwns for the per-marker owners). Sits below the needs drives on
+    // purpose (soft overrides: hunger/fatigue/piety still pull the unit away, and a marrying/child-making
+    // settler still eats, faithful to the autonomous-settler model).
+    if (anotherSystemOwns(world, e)) continue;
+    // The company rung: a lonely settler (deficit at the seek threshold) leaves its work to find a
+    // partner — above the economy rungs on purpose, the "worker downs tools to socialize" beat
+    // (see ../social/gossip/).
     if (planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
       continue;
     }
