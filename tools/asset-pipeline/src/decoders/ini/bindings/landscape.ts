@@ -17,8 +17,7 @@ import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from './bmd-palet
  * match that casing; there are no `logictribe`/`logicjob` keys, so `tribeId`/`jobId` stay undefined.
  *
  * A record without a body bob or palette is skipped. Repeated `(bmd, palette)` pairs (the ~99 tree
- * species share a dozen palettes) are not deduped here — `convertBmdTree` keys on `(bmd, palette)`, so a
- * duplicate only re-emits identical bytes; deduping is the caller's concern.
+ * species share a dozen palettes) are not deduped here; deduping is the caller's concern.
  */
 export function extractLandscapeGraphics(sections: readonly RuleSection[]): NamedBmdPaletteBinding[] {
   const bindings: NamedBmdPaletteBinding[] = [];

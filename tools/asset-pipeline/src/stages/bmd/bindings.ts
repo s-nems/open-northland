@@ -31,15 +31,15 @@ export interface GraphicsBindingSet {
 }
 
 /** The `(bmd, palette)` identity of a binding — the unit an atlas file is emitted (and deduped) per. */
-function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): string {
+export function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): string {
   return `${binding.bmd} ${binding.paletteName}`;
 }
 
 /**
- * Appends `records` to `target`, dropping `(bmd, palette)` duplicates within `records` — a repeated
- * bob+palette pair would only make `convertBmdTree` re-emit identical atlas bytes. Each call dedups
- * only its own records (the landscape and house tables both repeat a bob across variants), not the
- * bindings already accumulated. `onEach` runs for every record before the dedup, duplicates included.
+ * Appends `records` to `target`, dropping `(bmd, palette)` duplicates within `records`: the landscape
+ * and house tables repeat a bob across variants, and the repeats carry no extra cross-refs worth
+ * keeping in the binding list. Each call dedups only its own records, not the bindings already
+ * accumulated. `onEach` runs for every record before the dedup, duplicates included.
  */
 function pushDeduped(
   target: BmdPaletteBinding[],
@@ -186,9 +186,9 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
   // `types/vehiclestype/jobgraphics.ini` overlays the base cart/ship recolours, and the
   // culturesnation mod carries the broader per-tribe set (22 records across tribes 1..4 vs the
   // base .cif's 6 across tribes 1 & 4 only). The flat [jobgraphics] grammar is identical, so the
-  // same extractor applies; `convertBmdTree` keys atlases on (bmd, palette), so the base bindings'
-  // (bmd, palette) pairs — a strict subset of the mod's — emit the same atlas files either way,
-  // while the mod's extra tribe-2/3 rows carry the per-tribe logicvehicle cross-refs.
+  // same extractor applies; the base bindings' (bmd, palette) pairs, a strict subset of the
+  // mod's, dedup at conversion, while the mod's extra tribe-2/3 rows carry the per-tribe
+  // logicvehicle cross-refs.
   const vehicleGraphics = await readIni(join(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'));
   if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
   // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement

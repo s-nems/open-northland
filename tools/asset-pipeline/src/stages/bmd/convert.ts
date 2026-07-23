@@ -13,7 +13,7 @@ import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { walkFiles } from '../../walk.js';
 import { writeAtlasBeside } from '../content-tree.js';
-import type { GraphicsBindingSet } from './bindings.js';
+import { bindingKey, type GraphicsBindingSet } from './bindings.js';
 
 /**
  * Pure composition: `.bmd` bytes + a 768-byte RGB palette -> a packed bob atlas (the RGBA sheet to
@@ -86,6 +86,10 @@ function paletteSlug(name: string): string {
  * the unpacked `--out` tree (the `.lib` unpack stage extracted them there); {@link indexOutTree}
  * resolves the extractors' lower-cased references to the real (mixed-case) on-disk paths.
  *
+ * Duplicate `(bmd, palette)` bindings convert once: the binding legs deliberately overlap (a base
+ * `.cif` leg is a subset of its mod `.ini` twin, kept for the cross-refs), and a repeat would re-emit
+ * identical bytes through the full decode/pack/encode path.
+ *
  * Per-binding boundary failures are warned-and-skipped, never fatal — an unresolvable palette name, a
  * `.pcx`/`.bmd` missing from `--out`, a palette-less `.pcx`, or a malformed `.bmd` only drops that one
  * atlas, matching the other tree-walk stages. Each binding emits `<bmd>.<palette>.png` (the atlas sheet)
@@ -112,8 +116,12 @@ export async function convertBmdTree(
   const { bindings, palettes, buildTimeBmds } = graphics;
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
+  const seen = new Set<string>();
   for (const [processed, binding] of bindings.entries()) {
     onItem?.(processed, bindings.length);
+    const key = bindingKey(binding);
+    if (seen.has(key)) continue;
+    seen.add(key);
     const pcxRel = paletteByName.get(binding.paletteName);
     if (pcxRel === undefined) {
       console.warn(`[pipeline] skipped ${binding.bmd}: unknown palette "${binding.paletteName}"`);
