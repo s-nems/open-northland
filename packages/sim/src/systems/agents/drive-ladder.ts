@@ -6,6 +6,7 @@ import {
   Position,
   Resting,
   type Settler,
+  Stance,
   UnderConstruction,
 } from '../../components/index.js';
 import type { Entity } from '../../ecs/world.js';
@@ -14,6 +15,7 @@ import { jobCanHarvest } from '../economy/flags.js';
 import { planWomanHoard } from '../family/hoard.js';
 import { planChildWander } from '../family/wander.js';
 import { isChild } from '../lifecycle/ageclass.js';
+import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../social/index.js';
 import { isCarrierJob } from '../stores/index.js';
@@ -28,6 +30,7 @@ import {
   planProducer,
   planWorkshopSupplier,
 } from './economy/index.js';
+import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
 import type { PlannerContext } from './planner-context.js';
 import type { PlannerPass } from './planner-pass.js';
@@ -104,6 +107,16 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // purpose (soft overrides: hunger/fatigue/piety still pull the unit away, and a marrying/child-making
   // settler still eats, faithful to the autonomous-settler model).
   if (anotherSystemOwns(world, e)) return;
+  // EQUIP ERRAND — a live player equip order outranks the DEFEND hold below, socialising and every
+  // economy rung (the player sent the settler for gear), but sits under the needs drives and the
+  // ownership gate above, like the other soft overrides. A DEFEND guard walks the errand and re-holds
+  // its unchanged anchor afterwards (the combat walk-back pass defers to the errand — see
+  // returnToAnchor). See ./equip-order.ts.
+  if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets)) return;
+  // DEFEND hold: a guard keeps its post against the company and economy rungs (the CombatSystem walks
+  // it back when displaced); owned-only, so unowned/golden fixtures are untouched. Below the equip
+  // errand on purpose — the one player order a guard still runs without dropping its stance.
+  if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler (deficit at the seek threshold) leaves its work to find a
   // partner — above the economy rungs on purpose, the "worker downs tools to socialize" beat
   // (see ../social/gossip/).

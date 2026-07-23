@@ -551,16 +551,16 @@ describe('selection details panel model', () => {
     expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
     expect(misc.filter((sl) => !sl.occupied)).toHaveLength(1);
 
-    // The soldier additionally carries the Broń + Zbroja rows.
+    // The soldier additionally carries the Broń + Zbroja rows, combat gear first.
     const soldier = snapshot.entities.find(hasWeaponSlot);
     if (soldier === undefined) throw new Error('equipment scene did not place the equipped soldier');
     const solModel = buildUnitPanelModel(snapshot, new Set([soldier.id]), ctx);
     if (solModel.kind !== 'settler') throw new Error('expected a settler model');
     expect(solModel.equipmentRows.map((r) => r.titleId)).toEqual([
-      HUMANWINDOW.boots,
-      HUMANWINDOW.tools,
       HUMANWINDOW.weapon,
       HUMANWINDOW.armor,
+      HUMANWINDOW.boots,
+      HUMANWINDOW.tools,
       HUMANWINDOW.misc,
     ]);
     expect(rowOf(solModel, HUMANWINDOW.weapon)?.slots[0]?.goodId).toBe('sword_shord');

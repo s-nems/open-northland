@@ -1,3 +1,4 @@
+import type { EquipCategory } from '@open-northland/data';
 import type { Entity } from '../../ecs/world.js';
 
 /** Commands that direct existing settlers and their work. */
@@ -193,6 +194,36 @@ export type UnitOrderCommand =
        */
       readonly kind: 'unassignHouse';
       readonly entity: Entity;
+    }
+  | {
+      /**
+       * Order one owned settler to put a good on in equipment slot (`group`, `slot`) - the equip
+       * window's plus/swap button, stamping the {@link import('../../components/index.js').EquipOrder}
+       * errand the planner's equip rung walks out (fetch → wear → stow a swap-out → return). `goodType`
+       * must be an equippable good whose `equip.category` matches `group`. Recoverable bad input
+       * (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral issuer, a
+       * still-growing child, a jobless settler, a bad slot address, or a non-matching good. No source
+       * holding the good makes the errand return empty-handed, not a rejected command. See `equipGood`.
+       */
+      readonly kind: 'equipGood';
+      readonly entity: Entity;
+      readonly group: EquipCategory;
+      /** The misc row's slot index; 0 for the single-slot groups. */
+      readonly slot: number;
+      readonly goodType: number;
+    }
+  | {
+      /**
+       * Order one owned settler to take the good in equipment slot (`group`, `slot`) off - the equip
+       * window's cross button, stamping the take-off flavour of the same errand (remove in place →
+       * stow → return). Recoverable bad input (skipped, still logged): the `equipGood` issuer guards,
+       * or an already-empty slot. See `unequipGood`.
+       */
+      readonly kind: 'unequipGood';
+      readonly entity: Entity;
+      readonly group: EquipCategory;
+      /** The misc row's slot index; 0 for the single-slot groups. */
+      readonly slot: number;
     }
   | {
       /**

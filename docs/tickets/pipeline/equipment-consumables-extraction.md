@@ -7,6 +7,12 @@ The sim's equipment component axis exists, but the extractor does not populate `
 have no icons — their `landscapeType` has no `good piles all` record (the same gap leaves `fruit`
 iconless).
 
+Interim: the app overlays the clean-room classification by good slug at load
+(`withEquipClass` in `packages/app/src/content/real-content.ts`), so the equip window works on real
+content today. Extracted data wins over the overlay once this lands (the overlay keeps a
+ships-with-`equip` good untouched); remove the overlay in the landing commit if the extraction
+covers every equippable.
+
 **Source basis:** weapons/armour/amulets don't wear — their `equip.wears` is false (the sim's
 `packages/sim/src/components/equipment.ts` already pins this).
 

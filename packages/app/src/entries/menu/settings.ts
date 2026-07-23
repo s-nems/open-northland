@@ -5,6 +5,10 @@ export const MENU_SPEEDS = ['0.25', '0.5', '1', '2', '3', '4', '6', '8'] as cons
 export const MENU_FOG_MODES = ['off', 'reveal', 'recon'] as const;
 export const MENU_PROGRESSION_MODES = ['on', 'off'] as const;
 
+/** The `?uiscale` steps the menu offers - also the scales layout tests must hold at (fractional
+ *  values beyond these are allowed via the raw URL param). */
+export const MENU_UISCALES = ['1', '1.25', '1.4', '1.75', '2'] as const;
+
 interface SettingOption {
   readonly value: string;
   readonly label: string;
@@ -23,7 +27,7 @@ function settingModel(): readonly MenuSetting[] {
     {
       param: 'uiscale',
       fallback: '1.4',
-      options: ['1', '1.25', '1.4', '1.75', '2'].map((value) => ({ value, label: `${value}×` })),
+      options: MENU_UISCALES.map((value) => ({ value, label: `${value}×` })),
     },
     {
       param: 'speed',

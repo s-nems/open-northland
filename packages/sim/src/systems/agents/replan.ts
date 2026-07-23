@@ -55,18 +55,18 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  *  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed in,
  *    or in the flee cool-down); while running it carries a MoveGoal and the ladder's busy check
  *    ({@link releaseStaleIntent}) already skipped it.
- *  - DEFEND stance: a guard holds its post against the economy (the CombatSystem walks it back when
- *    displaced); owned-only, so unowned/golden fixtures are untouched.
  *  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
  *    on arrival, and the economy re-tasks it the same tick.
  *  - Wedding / FamilyDuty: the FamilySystem drives a settler mid-wedding or on family duty.
  *  - Chat: a settler mid-chat is the GossipSystem's.
+ *
+ * The DEFEND-stance hold is deliberately NOT here: it lives in the drive ladder below the equip
+ * errand (the one player order a guard walks without dropping its post — see planAdult).
  */
 export function anotherSystemOwns(world: World, e: Entity): boolean {
   return (
     world.has(e, Engagement) ||
     world.has(e, Fleeing) ||
-    world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND ||
     world.has(e, PlayerOrder) ||
     world.has(e, Wedding) ||
     world.has(e, FamilyDuty) ||

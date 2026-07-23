@@ -1,10 +1,10 @@
-import type { ContentSet } from '@open-northland/data';
+import type { ContentSet, EquipCategory } from '@open-northland/data';
 import { type FogMode, fogMode, needsEnabled, professionProgressionEnabled } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
 import { Rng } from './core/rng.js';
-import { World } from './ecs/world.js';
+import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
@@ -18,6 +18,7 @@ import {
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
+import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
 import { FogState } from './systems/vision/index.js';
@@ -225,6 +226,16 @@ export class Simulation {
    */
   constructionPlots(): ConstructionPlot[] {
     return constructionSitePlots(this.world, this.content);
+  }
+
+  /**
+   * The equip pick-menu's rows for one settler and slot group - every good wearable there that the
+   * settler could reach and fetch right now, with the reachable unit count (see {@link equipPickList}).
+   * The read seam behind the equipment panel's plus/swap buttons; the `equipGood` command re-validates,
+   * so a row that staled between the menu and the click just returns the settler empty-handed.
+   */
+  equipPickList(entity: Entity, group: EquipCategory): EquipPickEntry[] {
+    return equipPickList(this.world, this.content, this.terrain, entity, group);
   }
 
   /**

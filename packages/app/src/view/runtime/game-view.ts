@@ -1,6 +1,6 @@
 import { indexById } from '@open-northland/data';
 import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
-import type { Command, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
+import type { Command, Entity, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import {
@@ -282,6 +282,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: issueCommand,
     drawnItems: () => renderer.drawnItems(),
+    equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
     claimPointer: (x: number, y: number) =>

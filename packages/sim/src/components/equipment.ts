@@ -1,5 +1,7 @@
+import type { EquipCategory } from '@open-northland/data';
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * The number of general "misc" consumable slots a character carries (mead / potions / amulets). The
@@ -47,10 +49,28 @@ export interface EquipmentSlot {
  * scenario). Determinism: every field is a whole integer id or a {@link Fixed} scaled integer, stamped
  * from command data and read by pure UI/queries — no RNG, no wall-clock.
  */
-export const Equipment = defineComponent<{
+export interface EquipmentData {
   boots: EquipmentSlot | null;
   tool: EquipmentSlot | null;
   weapon: EquipmentSlot | null;
   armor: EquipmentSlot | null;
   misc: ReadonlyArray<EquipmentSlot | null>;
-}>('Equipment');
+}
+
+export const Equipment = defineComponent<EquipmentData>('Equipment');
+
+/**
+ * A player equip errand in flight on a settler: one slot address (`group` + `slot`, the misc row
+ * indexed, 0 elsewhere) and one intent - `goodType` set puts that good on (a swap when the slot is
+ * worn), null takes the worn good off. Stamped by the `equipGood`/`unequipGood` order handlers;
+ * `agents/equip-order.ts` owns the stage protocol that drives it and removes it. `returnTo` is the
+ * node the settler stood on at issue - the errand ends where it began (user-specified design; the
+ * original's equip flow is not decoded). `stage` only advances (acquire → stow → return).
+ */
+export const EquipOrder = defineComponent<{
+  group: EquipCategory;
+  slot: number;
+  goodType: number | null;
+  returnTo: NodeId;
+  stage: 'acquire' | 'stow' | 'return';
+}>('EquipOrder');

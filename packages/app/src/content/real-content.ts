@@ -5,6 +5,7 @@ import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { diag } from '../diag/index.js';
+import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
 import { loadIrRaw } from './ir/load.js';
 import { fetchJsonOrNull } from './net.js';
 
@@ -81,6 +82,17 @@ function withFarmingBalance(good: GoodType): GoodType {
   return farming !== undefined ? { ...good, farming } : good;
 }
 
+/** Overlay the clean-room equip classification (slot category + wear axis) the pipeline does not yet
+ *  extract (see `docs/tickets/pipeline/equipment-consumables-extraction.md`), keyed by good id from the
+ *  same source-pinned table the sandbox catalog merges by typeId (`EQUIP_GOODS` - `allowequip` membership
+ *  + the manual's Equipment section), so the equip window's pick menus and orders work on either content
+ *  base. A good already shipping an `equip` block keeps it - extracted data wins over the overlay. */
+function withEquipClass(good: GoodType): GoodType {
+  if (good.equip !== undefined) return good;
+  const equip = EQUIP_CLASS_BY_SLUG.get(good.id);
+  return equip !== undefined ? { ...good, equip } : good;
+}
+
 /** Overlay the clean-room felling/mining balance (chops-to-fell / yield / deposit size+levels) into the
  *  pipeline's zeroed gathering block, keyed by good id from the shared {@link GATHERING_BALANCE_BY_ID}
  *  (the mod data carries no chop count — `catalog/felling.ts`), preserving everything else real ships
@@ -104,10 +116,11 @@ function withGatheringBalance(good: GoodType): GoodType {
 
 /**
  * Ready the real content for the sim by completing the clean-room balance the pipeline cannot extract,
- * then surface what it still cannot fill. Each good passes through three named overlays, all keyed by the
+ * then surface what it still cannot fill. Each good passes through four named overlays, all keyed by the
  * good's string id: {@link withLocalizedName}, {@link withFarmingBalance} (the field-cultivation timing),
- * and {@link withGatheringBalance} (the felling/mining tuning). The farming and gathering tables are the
- * same ones the sandbox reads, so a mechanic runs at one pace on either content base.
+ * {@link withGatheringBalance} (the felling/mining tuning), and {@link withEquipClass} (the equip
+ * slot/wear axis). The overlay tables are the same ones the sandbox reads, so a mechanic runs at one
+ * pace on either content base.
  *
  * Today's felling still runs through the sandbox `GATHERERS` placement path (`game/sandbox/place/`,
  * re-keyed to real ids) reading the same balance table, proven by `test/map-gatherer-cycle.test.ts`;
@@ -126,7 +139,7 @@ export function mergeRealContent(
   goodNames?: ReadonlyMap<string, string>,
 ): RealContentMerge {
   const goods = real.goods.map((raw) =>
-    withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames))),
+    withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
   );
   // A gathered good (carries a `gathering` block) still lacking clean-room balance stays uncalibrated.
   const unbalancedGoods = goods

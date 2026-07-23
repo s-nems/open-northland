@@ -1,4 +1,4 @@
-import { AttackOrder, Engagement, MoveGoal, PathRequest } from '../../components/index.js';
+import { AttackOrder, Engagement, EquipOrder, MoveGoal, PathRequest } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -51,9 +51,12 @@ export const REPATH_CADENCE = 8;
 /** Send a DEFEND unit back to its anchor when no enemy is in its defend radius: drop the {@link Engagement} and
  *  either hold in place (already home — clear any stale route) or walk home (a fresh {@link MoveGoal} to the
  *  anchor). With the leash in {@link chase}, this is the "engage in a radius, don't chase far, return to post"
- *  behaviour of the DEFEND mode. */
+ *  behaviour of the DEFEND mode. The Engagement ALWAYS drops here (the planner's Engagement gate would
+ *  otherwise bench the guard for good), but the walk home defers to a live equip errand - clearing the
+ *  nav state mid-fetch would tug the guard off it; the errand's end re-holds the unchanged anchor. */
 export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
+  if (world.has(e, EquipOrder)) return;
   clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
 }

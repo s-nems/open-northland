@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   DeferredOrder,
   Engagement,
+  EquipOrder,
   ErectSignpostOrder,
   Fleeing,
   MoveGoal,
@@ -119,6 +120,10 @@ export function moveUnit(
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
   world.remove(e, ErectSignpostOrder); // a fresh move order supersedes a pending erect intent
+  // A fresh move order also cancels an in-flight equip errand - the player's one way to call it off
+  // (the mirror of stampEquipOrder cancelling a PlayerOrder); without this the errand would resume
+  // after the walk and drag the settler back to its stale pre-order return spot.
+  world.remove(e, EquipOrder);
   // A move order relocates a DEFEND unit's post: the guard defends the spot it was sent to, not the tile the
   // stance was set on. Without the re-anchor, the arrived-hold combat pass would march the guard back to its
   // old anchor the moment it found no enemy there.

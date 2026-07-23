@@ -78,4 +78,5 @@ export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './syste
 // independently without restating the sim's travel time.
 export { WALK_TICKS_PER_CELL } from './systems/movement/movement.js';
 export * as systems from './systems/public.js';
+export type { EquipPickEntry } from './systems/readviews/index.js';
 export { FOG_STATE } from './systems/vision/index.js';
