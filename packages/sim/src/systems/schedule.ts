@@ -19,7 +19,7 @@ import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
-import { playerOrderSystem, signpostOrderSystem } from './orders/index.js';
+import { deferredOrderSystem, playerOrderSystem, signpostOrderSystem } from './orders/index.js';
 import { gossipSystem } from './social/index.js';
 import { visionSystem } from './vision/index.js';
 
@@ -49,6 +49,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
   { name: 'atomic', system: atomicSystem },
+  // Directly after the executor: an order parked behind a non-interruptible atomic applies the tick that
+  // atomic completes, before any drive could see the freed settler (aiSystem already ran this tick).
+  { name: 'deferredOrder', system: deferredOrderSystem },
   { name: 'production', system: productionSystem },
   { name: 'cropGrowth', system: cropGrowthSystem },
   { name: 'fieldReclaim', system: fieldReclaimSystem },

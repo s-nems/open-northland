@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Carrying,
   CurrentAtomic,
+  DeferredOrder,
   Engagement,
   ErectSignpostOrder,
   Fleeing,
@@ -24,6 +25,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState, isTravelling } from '../spatial.js';
+import { deferOrderDuringAtomic } from './guards.js';
 
 /**
  * The player-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move order
@@ -64,7 +66,8 @@ function clearPlayerOrder(world: World, e: Entity): void {
 
 /**
  * Order one owned settler to walk to (x,y) — the RTS "go there" order. It drops whatever the unit was doing
- * (a mid-action atomic, a stale route, an old goal) so the order takes effect immediately, sets a fresh
+ * (a mid-action atomic, a stale route, an old goal) so the order takes effect immediately — except a
+ * NON-interruptible atomic, which parks the order instead ({@link deferOrderDuringAtomic}) — sets a fresh
  * {@link MoveGoal} (the existing pathfinding→movement pipeline carries it out), and stamps the
  * {@link PlayerOrder} en-route marker so the autonomous drives leave the walk alone until arrival (see
  * {@link playerOrderSystem}).
@@ -96,8 +99,12 @@ export function moveUnit(
   // fighters are exempt (navigationLimitFor returns null for them, and whenever confinement is off).
   const limit = navigationLimitFor(world, terrain, e);
   if (limit !== null && !limit.allowsNode(goal)) return;
-  // The order is authoritative — cancel the unit's current action + any pending route request so it obeys
-  // now, then set the new goal. (A non-interruptible-atomic exception is a deferred refinement.) A live
+  // A non-interruptible atomic (a mid-swing harvest, a half-eaten meal) parks the whole order instead of
+  // being discarded. Gated after the refusals above, so a refused click neither parks nor displaces one.
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
+  world.remove(e, DeferredOrder); // this order executes now — it supersedes any earlier parked one
+  // The order is authoritative — cancel the unit's current action (vetted interruptible above) + any pending
+  // route request so it obeys now, then set the new goal. A live
   // PathFollow is deliberately kept: the planner sees a route whose destination no longer matches the goal and
   // re-routes the same tick, and the routing splice replaces the path while carrying the walker's momentum
   // through the turn (movement inertia) — dropping it here made every redirect stop dead and re-accelerate.

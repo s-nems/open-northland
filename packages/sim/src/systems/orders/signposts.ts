@@ -15,7 +15,7 @@ import { atomicDuration } from '../readviews/animations.js';
 import { SCOUT_JOB } from '../readviews/index.js';
 import { canPlaceSignpost } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
-import { isOrderableSettler } from './guards.js';
+import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
 /**
@@ -46,6 +46,11 @@ export function placeSignpost(
   const goal = terrain.nodeAtClamped(command.x, command.y);
   const player = world.get(e, Owner).player;
   if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return;
+  // A non-interruptible atomic (typically the scout's own previous build-guide swing) parks the WHOLE
+  // command — deferring only the inner moveUnit would strand an ErectSignpostOrder the parked move erases
+  // on apply. Replayed (revalidating the spot) once the swing completes, so an AI re-order mid-swing no
+  // longer destroys the swing.
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
   const c = terrain.coordsOf(goal);
   // The walk reuses the whole moveUnit order dance (cancel current action, drop a carried load first,
   // PlayerOrder en-route marker); the erect intent rides beside it. canPlaceSignpost proved the goal

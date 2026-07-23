@@ -1,4 +1,4 @@
-import { CurrentAtomic, ownerOf, Settler } from '../../components/index.js';
+import { CurrentAtomic, DeferredOrder, ownerOf, Settler } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { assertNever } from '../../core/brand.js';
 import { fx } from '../../core/fixed.js';
@@ -103,7 +103,11 @@ export const atomicSystem: System = (world, ctx) => {
     // competitor may have finished the node mid-rest) — re-arming the SAME atomic keeps the settler
     // continuously acting, so the render never flicks through an idle pose between swings.
     if (atomic.restTail === true) {
-      if (atomic.effect.kind === 'harvest' && continuesHarvest(world, atomic.effect.resource)) {
+      if (
+        atomic.effect.kind === 'harvest' &&
+        !world.has(e, DeferredOrder) && // a parked order releases the settler at the swing boundary
+        continuesHarvest(world, atomic.effect.resource)
+      ) {
         endRestTail(atomic); // back to the swing's own length and pre-rest component shape
         atomic.elapsed = 0;
         atomic.progress = fx.fromInt(0);
@@ -126,8 +130,10 @@ export const atomicSystem: System = (world, ctx) => {
     // breather tail (`beginRestTail` — the render holds the ready pose), any other still-in-progress swing
     // re-arms immediately, and only the swing that fells / chips a unit loose / depletes hands the settler
     // back to the planner (it routes the pickup/carry). Mutating in place (never remove+add) keeps this
-    // iteration-safe.
-    if (atomic.effect.kind === 'harvest') {
+    // iteration-safe. A parked order (DeferredOrder) breaks the chain instead: "non-interruptible" protects
+    // the swing in flight, not the whole job, so the settler is released at this swing boundary and the
+    // deferredOrderSystem (scheduled next) applies the order.
+    if (atomic.effect.kind === 'harvest' && !world.has(e, DeferredOrder)) {
       if (beginRestTail(world, atomic, atomic.effect.resource)) continue;
       if (continuesHarvest(world, atomic.effect.resource)) {
         atomic.elapsed = 0;
