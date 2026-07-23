@@ -182,8 +182,8 @@ function drawWorkSection(
   chrome.glyphHouse(layout.unassignIcon, model.canUnassignHome);
 }
 
-/** Doświadczenie: one row per trained specialization — its label, the experience count (completed
- *  works), and the bonus percent the curve grants — or a lone "żadne" for an untrained settler. */
+/** Doświadczenie: one left-aligned "label count (+bonus%)" line per trained specialization; an
+ *  untrained settler's body is simply empty (no placeholder — user decision 2026-07-23). */
 function drawExperienceSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -192,20 +192,14 @@ function drawExperienceSection(
   s: number,
 ): void {
   chrome.window(layout.experience.frame);
-  const hud = messages().hud;
-  chrome.headline(layout.experience.title, ui('humanwindow', HUMANWINDOW.experience, hud.experience));
-  if (model.experience.length === 0) {
-    const r = layout.expRows[0];
-    if (r !== undefined) {
-      chrome.textAt(ui('humanwindow', HUMANWINDOW.none, hud.nothing), r.x, r.y + ROW_TEXT_PAD * s, 'dimmed');
-    }
-    return;
-  }
+  chrome.headline(
+    layout.experience.title,
+    ui('humanwindow', HUMANWINDOW.experience, messages().hud.experience),
+  );
   layout.expRows.forEach((r, i) => {
     const row = model.experience[i];
     if (row === undefined) return;
-    chrome.textAt(row.label, r.x, r.y + ROW_TEXT_PAD * s, 'white');
-    chrome.textRight(`${row.repeats} (+${row.bonusPct}%)`, r.x + r.w, r.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textAt(`${row.label} ${row.repeats} (+${row.bonusPct}%)`, r.x, r.y + ROW_TEXT_PAD * s, 'white');
   });
 }
 
