@@ -1,8 +1,7 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { JOB_CIVILIST, JOB_WOMAN, placeSandboxBuilding } from '../game/sandbox/index.js';
+import { JOB_CIVILIST, JOB_WOMAN, placeSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -82,31 +81,17 @@ function homeFoodUnits(sim: Simulation): number {
   return total;
 }
 
-/** Create one adult settler directly (pre-tick-0, so its id is known to the build's orders). */
-function spawnAdult(sim: Simulation, jobType: number, x: number, y: number): Entity {
-  const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-  });
-  if (e === null) throw new Error('family scene: unknown settler job');
-  return e;
-}
-
 function build(sim: Simulation): void {
   // The child vignette's couple — pre-married (the wedding vignette shows the ceremony itself), so
   // the `makeChild` order below validates on tick 0.
-  const wife = spawnAdult(sim, JOB_WOMAN, WIFE.x, WIFE.y);
-  const husband = spawnAdult(sim, JOB_CIVILIST, HUSBAND.x, HUSBAND.y);
+  const wife = spawnSettlerDirect(sim, JOB_WOMAN, WIFE.x, WIFE.y);
+  const husband = spawnSettlerDirect(sim, JOB_CIVILIST, HUSBAND.x, HUSBAND.y);
   sim.world.add(wife, Marriage, { spouse: husband, child: null });
   sim.world.add(husband, Marriage, { spouse: wife, child: null });
 
   // The wedding vignette's singles — the `marry` order pairs them and they walk together and kiss.
-  const bride = spawnAdult(sim, JOB_WOMAN, BRIDE.x, BRIDE.y);
-  spawnAdult(sim, JOB_CIVILIST, GROOM.x, GROOM.y);
+  const bride = spawnSettlerDirect(sim, JOB_WOMAN, BRIDE.x, BRIDE.y);
+  spawnSettlerDirect(sim, JOB_CIVILIST, GROOM.x, GROOM.y);
 
   placeSandboxBuilding(sim, HOME_REF, HOME.x, HOME.y);
   const pile = cellAnchorNode(FOOD_PILE.x, FOOD_PILE.y);

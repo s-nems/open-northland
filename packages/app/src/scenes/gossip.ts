@@ -1,7 +1,6 @@
 import type { Entity, Fixed, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, fx, ONE, systems } from '@open-northland/sim';
+import { components, fx, ONE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   GATHERERS,
   JOB_CIVILIST,
@@ -10,6 +9,7 @@ import {
   JOB_WOMAN,
   placeResourceNode,
   placeSandboxBerryBush,
+  spawnSettlerDirect,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -67,8 +67,8 @@ const INITIAL_ZOOM = 0.9;
 
 const { Settler } = components;
 
-/** Spawn one settler directly (pre-tick-0) with every need authored, so the vignette timing is exact
- *  (createSettler's seeded random starting needs would blur the thresholds). */
+/** Spawn one settler with every need authored, so the vignette timing is exact (the spawn's seeded
+ *  random starting needs would blur the thresholds). */
 function spawnActor(
   sim: Simulation,
   jobType: number,
@@ -76,15 +76,7 @@ function spawnActor(
   y: number,
   needs: { hunger?: Fixed; fatigue?: Fixed; enjoyment?: Fixed },
 ): Entity {
-  const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
-    jobType,
-    x: node.hx,
-    y: node.hy,
-    tribe: PRIMARY_TRIBE,
-    owner: HUMAN_PLAYER,
-  });
-  if (e === null) throw new Error('gossip scene: unknown settler job');
+  const e = spawnSettlerDirect(sim, jobType, x, y);
   const s = sim.world.get(e, Settler);
   s.hunger = needs.hunger ?? fx.fromInt(0);
   s.fatigue = needs.fatigue ?? fx.fromInt(0);
