@@ -1,6 +1,5 @@
 import type { GuiColorKey } from '@open-northland/render';
 import { type Application, type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
-import type { FontColorName } from '../../content/font-gfx.js';
 import { GENERIC_GOOD_ICON, type GoodIcon, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import type { GuiPaletteName } from '../../content/gui-gfx.js';
@@ -9,7 +8,7 @@ import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import { createFrameBorderKit } from './frame-border.js';
 import { drawGauge, PRODUCTION_BAR_FILL, rampColor } from './gauge.js';
-import { createTextKit, type FontVariant } from './text.js';
+import { createTextKit, type TextKit } from './text.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
@@ -59,25 +58,8 @@ export interface PanelLayers {
   readonly text: Container;
 }
 
-export interface Chrome {
-  /** Draw a line of text with its top-left at `(x, y)`. */
-  textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
-  /** Center a line of text in `r` (both axes). `maxWidth` (in `r`'s px) shrinks an over-long line to fit
-   *  the box instead of overflowing it — the seam for long personalized names in the section headline. */
-  textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
-  /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
-   *  still sit on a field's centre line (the stock amount in its plate). `maxWidth` shrinks an over-long
-   *  line to fit its column instead of overflowing (a production row's label before its bar). */
-  textLeftMiddle(
-    text: string,
-    x: number,
-    centerY: number,
-    color: FontColorName,
-    variant?: FontVariant,
-    maxWidth?: number,
-  ): void;
-  /** Right-align a line of text's end at `rightX` (top at `y`). */
-  textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
+/** The drawing kit: the {@link TextKit} placement primitives plus the panel's original-art pieces. */
+export interface Chrome extends TextKit {
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
   tile(texture: Texture | undefined, r: Rect, target?: Container): boolean;
   /** A GUI-sheet sprite centered in `r` at its native size. */
