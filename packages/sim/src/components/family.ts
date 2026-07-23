@@ -20,9 +20,9 @@ export const FEMALE = { female: true } as const;
 
 /**
  * A married settler: `spouse` is its partner for life (both partners carry the mirrored component; a
- * spouse's death removes it — see the CleanupSystem's widowing — except while the couple's child still
- * grows: the widowed parent keeps it as the carrier of the parent-child edge, and `mayMarry` treats
- * that dead-spouse marriage as dissolved once the child is grown). `child` is the couple's one child
+ * spouse's death removes it (see `systems/family/widowhood.ts`), except while the couple's child
+ * still grows: the widowed parent keeps it as the carrier of the parent-child edge until the child
+ * grows up or dies, when the widowing rule dissolves it). `child` is the couple's one child
  * while it is still growing up — the couple may conceive again only once the child reaches adulthood
  * (its `Age` component is gone) or dies; entity ids are never recycled, so a stale `child` id stays a
  * safe liveness probe.

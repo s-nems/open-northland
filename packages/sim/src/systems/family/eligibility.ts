@@ -44,8 +44,8 @@ export function isAdultSettler(world: World, e: Entity): boolean {
 
 /** Whether `e` may enter a marriage right now: a living adult settler, unmarried, not mid-wedding, and
  *  not away on a mission ({@link isOnMission}). A widowed parent counts as married until the couple's
- *  child grows up (the widowing rule — see the CleanupSystem's reap); with the child grown (or none)
- *  the dead-spouse marriage is dissolved and the next wedding overwrites the stale component. */
+ *  child grows up or dies, when the widowing rule (`family/widowhood.ts`) removes the dead-spouse
+ *  Marriage, so the raising carve-out is the one stale-marriage state this predicate still rejects. */
 export function mayMarry(world: World, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
   if (world.has(e, Wedding)) return false;
@@ -57,7 +57,7 @@ export function mayMarry(world: World, e: Entity): boolean {
 }
 
 /** Whether the marriage still has a growing child to raise (alive and still a minor). */
-function raisingChild(world: World, marriage: { child: Entity | null }): boolean {
+export function raisingChild(world: World, marriage: { child: Entity | null }): boolean {
   return marriage.child !== null && world.isAlive(marriage.child) && isMinor(world, marriage.child);
 }
 
