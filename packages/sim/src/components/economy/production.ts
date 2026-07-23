@@ -1,3 +1,4 @@
+import type { Fixed } from '../../core/fixed.js';
 import { defineComponent } from '../../ecs/world.js';
 
 /** One in-flight production BATCH — see {@link Production}. */
@@ -48,3 +49,16 @@ export const CraftSelection = defineComponent<{
   /** Rotation position into the effective product list (`>= 0`; consumers take it modulo the list). */
   cursor: number;
 }>('CraftSelection');
+
+/**
+ * A workplace's fractional experience-bonus output — the decimal part of "an experienced baker bakes
+ * 1.5 bread per cycle". Each completed batch adds its operator's bonus fraction here per output good;
+ * whole units move into the {@link Stockpile} the moment a fraction crosses 1.0 (capacity permitting),
+ * so only whole units are ever visible to withdrawal — a 0.9 remainder cannot leave the building
+ * (design rule, user-specified). Values are `Fixed` in [0, capacity-blocked overflow); the component
+ * exists only while some remainder is non-zero.
+ */
+export const ProductionBonus = defineComponent<{
+  /** goodType → the accumulated fractional bonus output (`Fixed`), pending its next whole unit. */
+  remainders: Map<number, Fixed>;
+}>('ProductionBonus');

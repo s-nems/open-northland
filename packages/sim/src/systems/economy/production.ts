@@ -4,6 +4,7 @@ import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
+import { accrueBonusOutput } from './production/bonus-output.js';
 import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
@@ -88,6 +89,8 @@ export const productionSystem: System = (world, ctx) => {
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
     chargeMilitaryPietyCost(world, ctx, done, staffing);
     grantProductionExperience(world, ctx, done.length, staffing);
+    // After the grant, so the batch that just finished already counts toward its own bonus fraction.
+    accrueBonusOutput(world, ctx, e, done, staffing, recipes);
     if (prod.cycles.length === 0) world.remove(e, Production);
   }
 

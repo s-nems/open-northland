@@ -82,8 +82,9 @@ function accrueExperience(s: { experience: Map<number, number> }, trackId: numbe
 }
 
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
- *  {@link trackFor} it never resolves a good-specific track. */
-function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {
+ *  {@link trackFor} it never resolves a good-specific track. The profession-wide grants below and the
+ *  production-bonus read (`operatorProductionBonus`) key on it. */
+export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {
   return ctx.content.jobExperience.find((t) => t.jobType === jobType && t.goodType === undefined);
 }
 
