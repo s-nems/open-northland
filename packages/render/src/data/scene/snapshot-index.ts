@@ -1,5 +1,11 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { readActingAtomic, readBuiltPct, readPosition } from './snapshot-readers/index.js';
+import {
+  readActingAtomic,
+  readAtomicTargetEntity,
+  readBuiltPct,
+  readPosition,
+  readProjectileTarget,
+} from './snapshot-readers/index.js';
 
 /**
  * The per-snapshot memoized pre-scans {@link import('./sprite-scene.js').collectSpriteScene} reads before
@@ -95,28 +101,33 @@ const targetPosBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: 
 
 /**
  * The `entity id → live Position` index used to face a mid-swing attacker/harvester at its target and to
- * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for. Built
- * only for a snapshot that actually has such an actor (a cheap early-exit scan decides; a scene with
- * nobody working, fighting or shooting memoizes the shared empty index and does no per-entity work), and
- * memoized per snapshot (the module doc's per-frame-vs-per-tick memo). Stores the snapshot's own Position
- * object (readPosition returns it, not a copy), so the fill is N `Map.set`s with no per-entity
- * allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups.
+ * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for.
+ * Holds only the ids actually referenced as a target this tick (a first pass collects them), so a busy
+ * map's index stays a handful of entries instead of every positioned entity — one settlement fighting
+ * must not re-index a whole map's forests each tick. A snapshot with no target-facing actor memoizes the
+ * shared empty index. Memoized per snapshot (the module doc's per-frame-vs-per-tick memo). Stores the
+ * snapshot's own Position object (readPosition returns it, not a copy); the `/ONE` to tile space is
+ * deferred to the rare facing lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
   const cached = targetPosBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
-  let needed = false;
+  const wanted = new Set<number>();
+  const collect = (ref: number | null): void => {
+    if (ref !== null) wanted.add(ref);
+  };
   for (const entity of snapshot.entities) {
     const acting = readActingAtomic(entity.components);
-    if ((acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) || 'Projectile' in entity.components) {
-      needed = true;
-      break;
+    if (acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) {
+      collect(readAtomicTargetEntity(entity.components));
     }
+    if ('Projectile' in entity.components) collect(readProjectileTarget(entity.components));
   }
   let index: ReadonlyMap<number, { x: number; y: number }> = EMPTY_POS_INDEX;
-  if (needed) {
+  if (wanted.size > 0) {
     const byRef = new Map<number, { x: number; y: number }>();
     for (const entity of snapshot.entities) {
+      if (!wanted.has(entity.id)) continue;
       const p = readPosition(entity.components);
       if (p !== null) byRef.set(entity.id, p);
     }

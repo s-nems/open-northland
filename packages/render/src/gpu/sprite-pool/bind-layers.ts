@@ -217,10 +217,11 @@ export class LayerBinder {
         : this.textures.get(layer.source, layer.frame));
     spr.position.set(box.ox, box.drawnOy);
     spr.scale.set(layer.scale);
-    // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
-    // across the live↔ghost transition always carries the right tint (tint is a cheap batch
-    // attribute — ghosts are never paletted, statics don't take the mesh path).
-    spr.tint = tint;
+    // A fog ghost dims to the explored-grey grading; checked every bind so a sprite reused across
+    // the live↔ghost transition always carries the right tint, but assigned only on change — the
+    // per-frame no-op-tint churn guard (see TallObjectLayer.update, the same allocating setter).
+    // (Ghosts are never paletted, statics don't take the mesh path.)
+    if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
   }
 
@@ -238,7 +239,9 @@ export class LayerBinder {
     pe.placeholder.visible = true;
     // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see {@link bind}); a
     // highlighted candidate building's placeholder takes the same green/red assign-mode tint.
-    pe.placeholder.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
+    // Change-guarded like the layer sprites' tint (the setter allocates even on an unchanged value).
+    const tint = entityTint(item.ref, item.ghost === true, frame.highlight);
+    if (pe.placeholder.tint !== tint) pe.placeholder.tint = tint;
     // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
     // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;

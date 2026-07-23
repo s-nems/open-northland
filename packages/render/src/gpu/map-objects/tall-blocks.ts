@@ -209,11 +209,13 @@ export class TallObjectLayer {
             po.shadowSprite.zIndex = depthKey(obj.x, obj.y) - SHADOW_DEPTH_EPS;
           }
         }
-        // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
-        // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
+        // Explored-but-unwatched ground dims the object to the ghost grading; a pick between two
+        // cached colours, assigned only on change — Pixi's tint setter allocates (a Color.shared
+        // round-trip) even for an unchanged value, and this runs per visible object per frame.
         // Unexplored never reaches here (detached above), so visible is the one live state.
         const watched = fogState === FOG_STATE.VISIBLE;
-        po.sprite.tint = watched ? po.baseTint : po.ghostTint;
+        const tint = watched ? po.baseTint : po.ghostTint;
+        if (po.sprite.tint !== tint) po.sprite.tint = tint;
         // A ghosted object's animation freezes: unwatched frames bind at a fixed clock, live ones
         // advance; a watched↔ghosted flip rebinds once so the pose switches with the tint.
         if (

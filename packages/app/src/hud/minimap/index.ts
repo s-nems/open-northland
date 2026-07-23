@@ -22,6 +22,7 @@ import {
   pointOverMinimap,
   pointOverMinimapHole,
   rasterizeTerrain,
+  stampDot,
   terrainWorldBounds,
   viewportRectOnMinimap,
 } from './model.js';
@@ -30,8 +31,8 @@ import {
  * The bottom-left minimap in the original's braided overview frame: the whole map's ground (built
  * once — terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick),
  * the fog-of-war mask over both (a per-cell alpha raster refreshed only when the fog generation
- * moves; dots draw only on currently-visible ground) and the camera's view rectangle (refreshed per
- * frame). Left-click (or drag) in the map hole jumps the camera to the pointed world spot; the whole
+ * moves; dots draw only on currently-visible ground) and the camera's view rectangle (redrawn only
+ * when it moves). Left-click (or drag) in the map hole jumps the camera to the pointed world spot; the whole
  * framed window claims its clicks so they never fall through to unit selection or world orders.
  *
  * The mount half (this file) owns Pixi + DOM; the geometry/projection/raster math is the pure
@@ -225,8 +226,25 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     fogSprite.visible = true;
   };
 
-  // Dots above ground, the view rectangle on top.
-  const dots = new Graphics();
+  // Dots above ground, the view rectangle on top. The dots are a retained raster like the fog mask
+  // (one buffer + texture for the session, rewritten and re-uploaded in place per tick — see
+  // `stampDot` for why a raster, not Graphics rects). 1:1 with minimap logical px, nearest-scaled,
+  // so a dot stays a blocky square.
+  const dotsPxW = Math.max(1, Math.round(mapL.w));
+  const dotsPxH = Math.max(1, Math.round(mapL.h));
+  const dotsBuffer = new Uint8Array(dotsPxW * dotsPxH * 4);
+  const dotsTexture = new Texture({
+    source: new BufferImageSource({
+      resource: dotsBuffer,
+      width: dotsPxW,
+      height: dotsPxH,
+      scaleMode: 'nearest',
+    }),
+  });
+  const dots = new Sprite(dotsTexture);
+  dots.position.set(mapL.x, mapL.y);
+  dots.width = mapL.w;
+  dots.height = mapL.h;
   const viewRect = new Graphics();
   container.addChild(dots, viewRect);
 
@@ -268,8 +286,12 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // ── Per-frame refresh ─────────────────────────────────────────────────────────────────────────────
   let lastDotsTick = -1;
   let lastHeight = -1;
+  // The view rect the Graphics currently shows (`[x, y, w, h]`; NaN = cleared). Redrawn only on
+  // change: a per-frame clear+stroke re-tessellates and forces the stage's instruction rebuild even
+  // while the camera holds still.
+  let lastViewRect: [number, number, number, number] = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
   const drawDots = (snapshot: WorldSnapshot, fog: FogView | null): void => {
-    dots.clear();
+    dotsBuffer.fill(0);
     for (const e of snapshot.entities) {
       const player = ownerPlayerOf(e);
       if (player === undefined) continue; // neutral (piles, projectiles…) — the minimap shows forces
@@ -281,14 +303,16 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       // their own cell; an enemy in unexplored/grey ground stays off the minimap).
       if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
       const s = tileToScreen(pos.x / ONE, pos.y / ONE);
-      const mx = layout.map.x - layout.panel.x + (s.x - bounds.minX) * layout.scale;
-      const my = layout.map.y - layout.panel.y + (s.y - bounds.minY) * layout.scale;
+      // Raster px coords — the buffer is 1:1 with the map picture's logical px.
+      const bx = (s.x - bounds.minX) * layout.scale;
+      const by = (s.y - bounds.minY) * layout.scale;
       const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
       const colourSlot = opts.playerColourOf?.(player) ?? player;
       const colour =
         PLAYER_SWATCH_COLORS[colourSlot % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
-      dots.rect(mx - half, my - half, half * 2, half * 2).fill(colour);
+      stampDot(dotsBuffer, dotsPxW, dotsPxH, bx, by, half, colour);
     }
+    dotsTexture.source.update();
   };
 
   return {
@@ -313,17 +337,25 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         lastDotsTick = snapshot.tick;
         drawDots(snapshot, fog);
       }
-      viewRect.clear();
       const vp = viewportRectOnMinimap(
         layout,
         bounds,
         cameraViewport(opts.camera(), app.screen.width, app.screen.height),
       );
-      if (vp !== null) {
-        const vpl = local(vp);
-        viewRect
-          .rect(vpl.x, vpl.y, vpl.w, vpl.h)
-          .stroke({ width: 1, color: VIEW_RECT_COLOUR, alpha: VIEW_RECT_ALPHA });
+      const vpl = vp === null ? null : local(vp);
+      const [lx, ly, lw, lh] = lastViewRect;
+      const unchanged =
+        vpl === null ? Number.isNaN(lx) : vpl.x === lx && vpl.y === ly && vpl.w === lw && vpl.h === lh;
+      if (!unchanged) {
+        viewRect.clear();
+        if (vpl === null) {
+          lastViewRect = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+        } else {
+          viewRect
+            .rect(vpl.x, vpl.y, vpl.w, vpl.h)
+            .stroke({ width: 1, color: VIEW_RECT_COLOUR, alpha: VIEW_RECT_ALPHA });
+          lastViewRect = [vpl.x, vpl.y, vpl.w, vpl.h];
+        }
       }
     },
     dispose: () => {
@@ -334,6 +366,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       container.destroy({ children: true });
       frame?.dispose();
       groundTex.destroy(true);
+      dotsTexture.destroy(true);
       fogTexture?.destroy(true);
     },
   };

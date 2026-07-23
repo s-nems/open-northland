@@ -8,6 +8,7 @@ import {
   pointOverMinimap,
   pointOverMinimapHole,
   rasterizeTerrain,
+  stampDot,
   terrainWorldBounds,
   viewportRectOnMinimap,
   worldToMinimap,
@@ -192,5 +193,40 @@ describe('PLAYER_SWATCH_COLORS', () => {
   it('carries one distinct swatch per player colour slot', () => {
     expect(PLAYER_SWATCH_COLORS.length).toBe(PLAYER_COLOR_COUNT);
     expect(new Set(PLAYER_SWATCH_COLORS).size).toBe(PLAYER_COLOR_COUNT);
+  });
+});
+
+describe('stampDot', () => {
+  const W = 8;
+  const H = 6;
+  const pixel = (rgba: Uint8Array, x: number, y: number): readonly number[] => {
+    const o = (y * W + x) * 4;
+    return [rgba[o] ?? 0, rgba[o + 1] ?? 0, rgba[o + 2] ?? 0, rgba[o + 3] ?? 0];
+  };
+
+  it('stamps an opaque square of the colour bytes around the centre', () => {
+    const rgba = new Uint8Array(W * H * 4);
+    stampDot(rgba, W, H, 4, 3, 1, 0x123456); // 2×2 px: [3,5) × [2,4)
+    expect(pixel(rgba, 3, 2)).toEqual([0x12, 0x34, 0x56, 0xff]);
+    expect(pixel(rgba, 4, 3)).toEqual([0x12, 0x34, 0x56, 0xff]);
+    expect(pixel(rgba, 2, 2)).toEqual([0, 0, 0, 0]); // one left of the square
+    expect(pixel(rgba, 5, 4)).toEqual([0, 0, 0, 0]); // one past its far corner
+  });
+
+  it('clips a dot straddling the buffer edge instead of wrapping', () => {
+    const rgba = new Uint8Array(W * H * 4);
+    stampDot(rgba, W, H, 0, 0, 1.5, 0xffffff); // 3×3 block centred on the corner
+    expect(pixel(rgba, 0, 0)[3]).toBe(0xff);
+    expect(pixel(rgba, 1, 1)[3]).toBe(0xff);
+    // Nothing wrapped to the right edge of the rows above/below.
+    expect(pixel(rgba, W - 1, 0)[3]).toBe(0);
+    expect(pixel(rgba, W - 1, 1)[3]).toBe(0);
+  });
+
+  it('draws nothing for a dot entirely outside the buffer', () => {
+    const rgba = new Uint8Array(W * H * 4);
+    stampDot(rgba, W, H, -5, -5, 1, 0xffffff);
+    stampDot(rgba, W, H, W + 5, H + 5, 1, 0xffffff);
+    expect(rgba.every((b) => b === 0)).toBe(true);
   });
 });
