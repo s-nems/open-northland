@@ -1,5 +1,6 @@
 import type { Recipe } from '@open-northland/data';
 import {
+  Production,
   ProductionBonus,
   type ProductionCycle,
   Stockpile,
@@ -12,13 +13,11 @@ import { operatorProductionBonus } from '../../progression/index.js';
 import { stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * The experience-bonus half of a completed batch: an experienced operator's cycle yields a fraction of
- * extra output ("baker 5" bakes ~1.5 bread per cycle). Each done cycle credits its operator's current
- * bonus ({@link operatorProductionBonus}) times each output's amount into the workplace's
- * {@link ProductionBonus} remainders; whole units move into the stockpile the moment a remainder
- * crosses 1.0 and the good has room (a full store holds the remainder until space frees), so
- * withdrawal only ever sees whole units (design rule, user-specified). Cycle→operator pairing is the
- * same canonical slice the XP grant and piety charge use.
+ * The experience-bonus half of a completed batch: each done cycle credits its operator's current bonus
+ * ({@link operatorProductionBonus}) times its recipe outputs into the workplace's
+ * {@link ProductionBonus} remainders — cycle→operator pairing index-for-index, the XP grant's slice —
+ * then whole remainder units flush into the stockpile. The flush runs on every completion regardless
+ * of the crediting operator's bonus, so a unit banked earlier is never stranded behind a fresh worker.
  */
 export function accrueBonusOutput(
   world: World,
@@ -28,47 +27,78 @@ export function accrueBonusOutput(
   operators: WorkplaceOperators,
   recipes: ReadonlyMap<number, Recipe> | undefined,
 ): void {
-  if (operators.kind === 'unstaffed') return; // an anonymous batch has no operator to be good at it
-  done.forEach((cycle, i) => {
-    const op = operators.operators[i];
-    if (op === undefined) return;
-    const bonus = operatorProductionBonus(world, ctx, op);
-    if (bonus <= ZERO) return;
-    const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
-    for (const output of outputs) {
-      addBonusRemainder(world, ctx, building, output.goodType, fx.mul(bonus, fx.fromInt(output.amount)));
-    }
-  });
-  reapEmptyBonus(world, building);
+  if (operators.kind === 'staffed') {
+    done.forEach((cycle, i) => {
+      const op = operators.operators[i];
+      if (op === undefined) return;
+      const bonus = operatorProductionBonus(world, ctx, op);
+      if (bonus <= ZERO) return;
+      const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
+      for (const output of outputs) {
+        creditBonus(world, building, output.goodType, fx.mul(bonus, fx.fromInt(output.amount)));
+      }
+    });
+  }
+  flushWholeUnits(world, ctx, building, recipes);
 }
 
-/** Accumulate `extra` bonus output of `goodType`, converting each whole unit into real stock while the
- *  good has room (emitting `goodProduced` per unit, like a deposited batch). */
-function addBonusRemainder(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  goodType: number,
-  extra: Fixed,
-): void {
+/** Accumulate `extra` bonus output of `goodType` on the workplace's remainder map. */
+function creditBonus(world: World, building: Entity, goodType: number, extra: Fixed): void {
   const bonus =
     world.tryGet(building, ProductionBonus) ??
     world.add(building, ProductionBonus, { remainders: new Map() });
-  let remainder = fx.add(bonus.remainders.get(goodType) ?? ZERO, extra);
-  const stock = world.get(building, Stockpile).amounts;
-  while (remainder >= ONE) {
-    const have = stock.get(goodType) ?? 0;
-    if (have >= stockCapacity(world, ctx, building, goodType)) break; // full — hold until space frees
-    setStockAmount(world, stock, goodType, have + 1);
-    remainder = fx.sub(remainder, ONE);
-    ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: 1 });
-  }
-  if (remainder > ZERO) bonus.remainders.set(goodType, remainder);
-  else bonus.remainders.delete(goodType);
+  bonus.remainders.set(goodType, fx.add(bonus.remainders.get(goodType) ?? ZERO, extra));
 }
 
-/** Drop the component once every remainder is zero — its absence means "no pending bonus fraction". */
-function reapEmptyBonus(world: World, building: Entity): void {
+/**
+ * Move each whole remainder unit into real stock (emitting `goodProduced` like a deposited batch),
+ * honoring the room the in-flight same-product batches have RESERVED — their own deposits are
+ * unconditional (`depositCycleOutput`: "room reserved at start"), so a bonus unit must never consume a
+ * reserved slot. A blocked unit simply holds until space frees; the component is dropped once every
+ * remainder is zero.
+ */
+function flushWholeUnits(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipes: ReadonlyMap<number, Recipe> | undefined,
+): void {
   const bonus = world.tryGet(building, ProductionBonus);
-  if (bonus !== undefined && bonus.remainders.size === 0) world.remove(building, ProductionBonus);
+  if (bonus === undefined) return;
+  const stock = world.get(building, Stockpile).amounts;
+  for (const [goodType, held] of bonus.remainders) {
+    let remainder = held;
+    while (remainder >= ONE) {
+      const have = stock.get(goodType) ?? 0;
+      const free =
+        stockCapacity(world, ctx, building, goodType) -
+        have -
+        reservedFor(world, building, goodType, recipes);
+      if (free <= 0) break;
+      setStockAmount(world, stock, goodType, have + 1);
+      remainder = fx.sub(remainder, ONE);
+      ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: 1 });
+    }
+    if (remainder > ZERO) bonus.remainders.set(goodType, remainder);
+    else bonus.remainders.delete(goodType);
+  }
+  if (bonus.remainders.size === 0) world.remove(building, ProductionBonus);
+}
+
+/** Units of `goodType` the in-flight cycles will deposit on completion — the reserved slots a bonus
+ *  unit must leave free. Mirrors the per-batch reservation `outputRoomForCycles` admits cycles under. */
+function reservedFor(
+  world: World,
+  building: Entity,
+  goodType: number,
+  recipes: ReadonlyMap<number, Recipe> | undefined,
+): number {
+  const cycles = world.tryGet(building, Production)?.cycles;
+  if (cycles === undefined) return 0;
+  let reserved = 0;
+  for (const c of cycles) {
+    const outputs = recipes?.get(c.goodType)?.outputs ?? [{ goodType: c.goodType, amount: 1 }];
+    for (const output of outputs) if (output.goodType === goodType) reserved += output.amount;
+  }
+  return reserved;
 }

@@ -194,21 +194,6 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
  * filters the list to the active tab. The good→category mapping is a named approximation (not in the
  * extracted data — see `hud/good-categories.ts`), so the tab assignment is provisional, not source-pinned.
  */
-/** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float),
- *  for display only — withdrawal never sees these. Empty for a building without the component. */
-function bonusFractions(productionBonus: unknown): Map<number, number> {
-  const out = new Map<number, number>();
-  const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
-  if (!Array.isArray(remainders)) return out;
-  for (const pair of remainders) {
-    if (!Array.isArray(pair)) continue;
-    const goodType = num(pair[0]);
-    const raw = num(pair[1]);
-    if (goodType !== undefined && raw !== undefined) out.set(goodType, fx.toFloat(raw as Fixed));
-  }
-  return out;
-}
-
 export function stockRows(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
@@ -224,14 +209,28 @@ export function stockRows(
       // The stock row's display name (localized content name, else the id) — shown by the hover tooltip;
       // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
       label: goodLabel(ctx, slot.goodType),
-      // Whole units plus the pending experience-bonus fraction, so a workshop's "1.5 bread" is visible
-      // even though only whole units can ever leave the store (the fraction lives in ProductionBonus).
+      // Whole units plus the pending experience-bonus fraction (see ProductionBonus) — display only.
       amount: (live.get(slot.goodType) ?? 0) + (fractions.get(slot.goodType) ?? 0),
       category: goodCategoryTab(goodId),
       capacity: slot.capacity,
       ...(goodId !== undefined ? { goodId } : {}),
     };
   });
+}
+
+/** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float),
+ *  for display only — withdrawal never sees these. Empty for a building without the component. */
+function bonusFractions(productionBonus: unknown): Map<number, number> {
+  const out = new Map<number, number>();
+  const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
+  if (!Array.isArray(remainders)) return out;
+  for (const pair of remainders) {
+    if (!Array.isArray(pair)) continue;
+    const goodType = num(pair[0]);
+    const raw = num(pair[1]);
+    if (goodType !== undefined && raw !== undefined) out.set(goodType, fx.toFloat(raw as Fixed));
+  }
+  return out;
 }
 
 /**
