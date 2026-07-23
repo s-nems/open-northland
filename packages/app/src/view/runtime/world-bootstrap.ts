@@ -73,9 +73,7 @@ export function haltOnMissingContent(err: Error): void {
   const copy = messages().common;
   diag.warn('content', `real terrain unavailable: ${err.message}`);
   dismissBootProgress();
-  mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [
-    navButton(copy.backToMenu, false, ''),
-  ]);
+  mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [navButton(copy.backToMenu, false, '')]);
 }
 
 /**
