@@ -94,8 +94,8 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
 /**
  * Run the needs ladder for one idle settler. Returns `true` when a drive acted (started an atomic or
  * set a walk goal — the settler is spoken for this tick), `false` when every need is either below its
- * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to combat
- * gates and economy work, with the unsatisfied bar staying clamped at ONE.
+ * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to the
+ * ownership gate and economy work, with the unsatisfied bar staying clamped at ONE.
  *
  *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
