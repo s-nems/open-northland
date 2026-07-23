@@ -20,6 +20,7 @@ import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import { noteUnreachableGoal } from '../../src/systems/agents/unreachable-goals.js';
 import {
+  ADULT_AGE_TICKS,
   BABY_FEMALE,
   EAT_HUNGER_RESTORE,
   familiesOf,
@@ -324,6 +325,72 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The surviving woman is widowed (free to remarry) but NOT evicted: she keeps her slot, and a new
     // husband joins her home on remarriage.
     expect(sim.world.has(woman(), Marriage)).toBe(false);
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+  });
+
+  it("a widower's carve-out expires when his child grows up (evicted, slot freed)", () => {
+    const { sim, woman, man, home } = familySim(43);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'male' });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'birth');
+    const child = sim.world.get(woman(), Marriage).child as Entity;
+    sim.enqueue({ kind: 'debugKill', target: woman() });
+    runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
+    expect(sim.world.get(man(), Residence).home).toBe(home()); // the carve-out holds while raising
+
+    // Age the child to the eve of adulthood; the next step runs the real graduation path.
+    sim.world.get(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.step();
+    expect(sim.world.has(child, Age)).toBe(false); // grown - the carve-out expired
+    // The widowed father is released: the stale union dissolves, he vacates, and the slot is free.
+    expect(sim.world.has(man(), Marriage)).toBe(false);
+    expect(sim.world.has(man(), Residence)).toBe(false);
+    expect(familiesOf(sim.world, home())).toHaveLength(0);
+  });
+
+  it("a widower's carve-out expires when his child dies (evicted, slot freed)", () => {
+    const { sim, woman, man, home } = familySim(47);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'female' });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'birth');
+    const child = sim.world.get(woman(), Marriage).child as Entity;
+    sim.enqueue({ kind: 'debugKill', target: woman() });
+    runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
+    expect(sim.world.get(man(), Residence).home).toBe(home()); // the carve-out holds while raising
+
+    sim.enqueue({ kind: 'debugKill', target: child });
+    runUntil(sim, () => !sim.world.isAlive(child), 5, 'child death');
+    // The minor's death is the other expiry: the widowed father is released the same way.
+    expect(sim.world.has(man(), Marriage)).toBe(false);
+    expect(sim.world.has(man(), Residence)).toBe(false);
+    expect(familiesOf(sim.world, home())).toHaveLength(0);
+  });
+
+  it('a widow stays housed when her child grows up (free to remarry, slot kept)', () => {
+    const { sim, woman, man, home } = familySim(53);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'male' });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'birth');
+    const child = sim.world.get(woman(), Marriage).child as Entity;
+    sim.enqueue({ kind: 'debugKill', target: man() });
+    runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
+
+    sim.world.get(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.step();
+    // Same expiry, opposite sex: the stale union dissolves (she may remarry) but homes anchor on
+    // women, so the widow keeps her slot and refills it by remarrying.
+    expect(sim.world.has(woman(), Marriage)).toBe(false);
+    expect(mayMarry(sim.world, woman())).toBe(true);
     expect(sim.world.get(woman(), Residence).home).toBe(home());
     expect(familiesOf(sim.world, home())).toHaveLength(1);
   });

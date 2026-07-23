@@ -28,6 +28,7 @@ import { Age, Residence, Settler } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
+import { releaseWidowedParentsOf } from '../family/widowhood.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`) — the data cross-reference into the
  * `JobType` IR, not control-flow opcodes. */
@@ -144,8 +145,10 @@ export const growthSystem: System = (world) => {
     world.remove(e, Age);
     // A grown child moves out: it stops counting in its parents' family slot (a homeSize-3 home would
     // otherwise silently fill with grown-up "families") and picks its own home when the player assigns
-    // one (user decision 2026-07-16).
+    // one (user decision 2026-07-16). Growing up also ends a widowed parent's raising carve-out, so
+    // the widowing rule re-evaluates the parents (the Age removal above is what expires it).
     world.remove(e, Residence);
+    releaseWidowedParentsOf(world, e);
   }
 };
 
