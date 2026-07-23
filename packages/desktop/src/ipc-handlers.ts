@@ -58,6 +58,13 @@ async function candidateOf(path: string): Promise<GameFolderCandidate> {
   return { path, probe: await probeGameFolder(path) };
 }
 
+/** Native open-directory dialog; `undefined` when the user cancels. */
+async function pickDirectory(win: BrowserWindow, title: string): Promise<string | undefined> {
+  const picked = await dialog.showOpenDialog(win, { title, properties: ['openDirectory'] });
+  const path = picked.filePaths[0];
+  return picked.canceled || path === undefined ? undefined : path;
+}
+
 export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   handleFromAppFrame(IPC_CHANNELS.getState, () => state.desktopState());
   handleFromAppFrame(IPC_CHANNELS.probeGamePath, (path: unknown) => {
@@ -66,12 +73,8 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   });
   handleFromAppFrame(IPC_CHANNELS.detectGameFolders, () => detectGameFolders());
   handleFromAppFrame(IPC_CHANNELS.pickGameFolder, async () => {
-    const picked = await dialog.showOpenDialog(win, {
-      title: messages().dialogs.pickGameTitle,
-      properties: ['openDirectory'],
-    });
-    const path = picked.filePaths[0];
-    return picked.canceled || path === undefined ? null : candidateOf(path);
+    const path = await pickDirectory(win, messages().dialogs.pickGameTitle);
+    return path === undefined ? null : candidateOf(path);
   });
 
   let modDownload: AbortController | undefined;
@@ -118,12 +121,8 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     modDownload?.abort();
   });
   handleFromAppFrame(IPC_CHANNELS.pickModFolder, async () => {
-    const picked = await dialog.showOpenDialog(win, {
-      title: messages().dialogs.pickModTitle,
-      properties: ['openDirectory'],
-    });
-    const path = picked.filePaths[0];
-    if (picked.canceled || path === undefined) return null;
+    const path = await pickDirectory(win, messages().dialogs.pickModTitle);
+    if (path === undefined) return null;
     // Accept the mod root itself, its wrapping folder, or a directly-picked DataCnmd child.
     const root = (await findModRootUnder(path)) ?? (await findModRootUnder(dirname(path)));
     if (root === undefined) {
