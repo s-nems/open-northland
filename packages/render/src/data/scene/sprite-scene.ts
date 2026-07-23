@@ -11,8 +11,8 @@ import {
   assignStockpileFields,
   pushGhostItems,
   pushSignpostItems,
-  spriteDepth,
 } from './collect-fields.js';
+import { spriteDepth } from './depth.js';
 import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
 import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {

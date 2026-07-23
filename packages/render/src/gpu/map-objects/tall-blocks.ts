@@ -8,6 +8,7 @@ import {
   screenToCell,
   type Viewport,
 } from '../../data/projection/index.js';
+import { SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
@@ -20,15 +21,6 @@ import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js
  * {@link import('./map-object-layer.js').MapObjectLayer}, which owns the flat decor half and buckets the
  * placements into the per-block groups this consumes.
  */
-
-/**
- * How far below its caster's depth key a tall object's cast shadow sorts. The original blits a shadow
- * immediately before its caster, so the shadow draws over sprites behind the caster but under the
- * caster itself. Above `depthKey`'s max x-tiebreak contribution (~0.03) so the pair can't interleave,
- * and below the pool's `SCREEN_PAINT_EPS` (0.25) kind-bias step so the shadow never drops behind a
- * genuinely earlier sprite.
- */
-const SHADOW_DEPTH_EPS = 0.125;
 
 /** One tall (non-decor) map object: its static draw data + a lazily-minted pooled sprite. */
 interface PooledObject {

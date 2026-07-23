@@ -2,7 +2,8 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
-import { type DrawKind, type MutableDrawItem, paintOrderBias } from './draw-item.js';
+import { spriteDepth } from './depth.js';
+import type { MutableDrawItem } from './draw-item.js';
 import { projectileArc } from './projectile-arc.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import {
@@ -28,32 +29,12 @@ import {
 
 /**
  * The per-item field tagging {@link import('./sprite-scene.js').collectSpriteScene} dispatches to: the
- * feet-anchor depth key, the per-kind render-side reads, the projectile ballistic arc, the signpost
- * board emit, and the fog-ghost emit. Split from the scene builder so the main loop reads project →
- * cull → dispatch; each function is a pure "what fields does this kind carry" decision. Fields are
- * assigned (not spread) so an absent fact stays an absent property under exactOptionalPropertyTypes
- * without a throwaway spread object per field.
+ * per-kind render-side reads, the projectile ballistic arc, the signpost board emit, and the fog-ghost
+ * emit. Split from the scene builder so the main loop reads project → cull → dispatch; each function is
+ * a pure "what fields does this kind carry" decision. Fields are assigned (not spread) so an absent
+ * fact stays an absent property under exactOptionalPropertyTypes without a throwaway spread object per
+ * field.
  */
-
-/**
- * Sprite depth packing. A sprite's sort key is `tileY * ROW_STRIDE + tileX`, so the integer-tile
- * `y` dominates and `x` orders within a row — valid only while `tileX < ROW_STRIDE`, which holds for
- * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Terrain tiles
- * sit in a band shifted strictly below every sprite (see {@link import('./terrain-scene.js')}).
- */
-const ROW_STRIDE = 4096;
-
-/** Depth added per {@link paintOrderBias} step in the oracle sort key. `< 1 / maxOrder` so the whole
- *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
-const PAINT_ORDER_EPS = 1 / 16;
-
-/** The oracle depth key for a sprite at integer-tile `(tileX, tileY)` (x-first, like `tileToScreen`):
- *  the row-major feet-anchor packing (`tileY` dominates, `tileX` orders within a row) plus the sub-cell
- *  {@link paintOrderBias} tiebreak. The live painter's screen-space twin (`sprite-pool.ts`) shares the
- *  same {@link paintOrderBias}, so the two orders can't diverge. */
-export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
-  return tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
-}
 
 /**
  * Tag a settler draw item with the render-side reads a per-character binding needs: the running atomic

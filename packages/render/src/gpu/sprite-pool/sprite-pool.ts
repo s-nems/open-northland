@@ -1,14 +1,8 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { FogGhost } from '../../data/fog/index.js';
-import {
-  type Camera,
-  cameraScreenX,
-  cameraScreenY,
-  depthKey,
-  type Viewport,
-} from '../../data/projection/index.js';
-import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
+import { type Camera, cameraScreenX, cameraScreenY, type Viewport } from '../../data/projection/index.js';
+import { collectSpriteScene, type DrawItem, screenDepth } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -29,13 +23,6 @@ import { resolveLayers } from './resolve-layers.js';
  * Per-frame heap allocation is small plain data (draw items, resolved layers) at O(visible), bounded
  * by the screen and never the map (the render contract).
  */
-
-/**
- * Screen-px depth added per {@link paintOrderBias} step in the live painter key. Comfortably above the
- * `depthKey` x-tiebreak's max contribution (so the kind order wins at a shared feet anchor) yet far below
- * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
- */
-export const SCREEN_PAINT_EPS = 0.25;
 
 /**
  * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
@@ -131,7 +118,7 @@ export class SpritePool {
 
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
-   * entity, update it in place, order it by its feet-anchor {@link depthKey}, detach entities not drawn
+   * entity, update it in place, order it by its feet-anchor {@link screenDepth}, detach entities not drawn
    * this frame (culled or gone), and reap the ones that left the snapshot (died). Only the death reap
    * must diff the whole pool against the live set, so it runs on an interval
    * ({@link POOL_REAP_INTERVAL_FRAMES}); every other pass is O(visible).
@@ -182,9 +169,12 @@ export class SpritePool {
       // the feet-anchor screen y (∝ row under the staggered raster) is the iso-correct occlusion key once
       // static objects interleave with entities. Depth reads the drawn (lerped) anchor restored to its
       // pre-lift y (`+ item.lift`), so occlusion still sorts by map row while the sprite rides the hill.
-      pe.container.zIndex =
-        depthKey(pe.motion.drawX, pe.motion.drawY + (item.lift ?? 0)) +
-        paintOrderBias(item.kind, item.isFlag === true) * SCREEN_PAINT_EPS;
+      pe.container.zIndex = screenDepth(
+        pe.motion.drawX,
+        pe.motion.drawY + (item.lift ?? 0),
+        item.kind,
+        item.isFlag === true,
+      );
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;

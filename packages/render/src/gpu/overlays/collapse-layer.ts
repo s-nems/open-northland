@@ -9,11 +9,10 @@ import {
   DUST_PUFFS,
   foldBuildingCollapses,
 } from '../../data/effects/index.js';
-import { depthKey, isVisible, type Viewport } from '../../data/projection/index.js';
-import type { DrawItem } from '../../data/scene/index.js';
-import { paintOrderBias } from '../../data/scene/index.js';
+import { isVisible, type Viewport } from '../../data/projection/index.js';
+import { type DrawItem, screenDepth } from '../../data/scene/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
-import { type ResolvedLayer, resolveLayers, SCREEN_PAINT_EPS } from '../sprite-pool/index.js';
+import { type ResolvedLayer, resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
@@ -76,7 +75,7 @@ export class CollapseLayer {
       }
       node.visible = true;
       node.position.set(p.x, p.y);
-      node.zIndex = depthKey(p.x, p.y) + paintOrderBias('building') * SCREEN_PAINT_EPS;
+      node.zIndex = screenDepth(p.x, p.y, 'building');
       this.sinkTo(node, collapseProgress(c, tick));
       poseDust(node, c.entity, age);
       this.seen.add(key);
