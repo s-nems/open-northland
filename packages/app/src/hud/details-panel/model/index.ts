@@ -38,17 +38,17 @@ import {
   type SettlerPanelModel,
   satisfactionBars,
   settlerStatus,
-  settlerWork,
   stanceLabel,
 } from './settler.js';
+import { settlerWork } from './settler-work.js';
 
 /**
  * The pure selection→panel-model half of the details panel: what the bottom-right panel shows for the
  * current selection, with no Pixi/DOM in sight (the headless tests exercise exactly this seam). The
  * rendering half lives in `sections.ts`/`panel.ts`. The per-selection model builders are split by domain:
- * shared context/lookups in `context.ts`, gauge primitives in `bars.ts`, the settler half in `settler.ts`,
- * the building half in `building.ts`; this module is the barrel + the top-level {@link buildUnitPanelModel}
- * classifier that dispatches a selection to one of the model shapes.
+ * shared context/lookups in `context.ts`, gauge primitives in `bars.ts`, the settler half in `settler.ts`
+ * (its work menus in `settler-work.ts`), the building half in `building.ts`; this module is the barrel +
+ * the top-level {@link buildUnitPanelModel} classifier that dispatches a selection to one of the model shapes.
  */
 
 export { type BarTone, barTone, type PanelBar } from './bars.js';
