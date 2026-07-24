@@ -1,3 +1,4 @@
+import type { EquipCategory } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
@@ -32,14 +33,15 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  * store/pile, wear it, stow a swap-out, and walk back to where it was ordered; `unequipGood` walks to
  * the stow store STILL WEARING the good and takes it off there (in place only when destroying it or
  * dropping it on the ground). A part-used unit is destroyed instead of stowed - fungible store stock
- * would regenerate it to fresh. Fixture: good 8 = shoes (boots, wears), 9 = sword (weapon),
- * 10 = fur_boots (boots); building 22 = armoury (the only store with gear slots); tribe 1 = viking,
- * job 1 = woodcutter.
+ * would regenerate it to fresh. Fixture: good 8 = shoes (boots, wears), 9 = sword / 17 = long_sword
+ * (permanent weapons), 10 = fur_boots (boots); building 22 = armoury (the only store with gear
+ * slots); tribe 1 = viking, job 1 = woodcutter.
  */
 
 const SHOES = 8;
 const SWORD = 9;
 const FUR_BOOTS = 10;
+const LONG_SWORD = 17;
 const WOOD = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
@@ -111,7 +113,12 @@ function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapo
   });
 }
 
-const equip = (entity: Entity, goodType: number, group = 'boots' as const, slot = 0): Command => ({
+const equip = (
+  entity: Entity,
+  goodType: number,
+  group: EquipCategory = 'boots',
+  slot = 0,
+): Command => ({
   kind: 'equipGood',
   entity,
   group,
@@ -138,7 +145,9 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     sim.enqueue(equip(settler, SHOES));
     sim.run(ERRAND_TICKS);
 
-    expect(sim.world.get(settler, Equipment).boots).toEqual({ goodType: SHOES, degreeOfUse: 0 });
+    // Worn fresh at the pile; the walk home has already worn the pair a few steps (boots wear per
+    // walked waypoint - see systems/equipment/), so only the good is pinned here.
+    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
     expect(sim.world.isAlive(pile)).toBe(false); // the emptied loose pile is reaped
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
     expect(sim.world.has(settler, Carrying)).toBe(false);
@@ -149,15 +158,18 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
   it('swap: the replaced good is stowed into a store that can take it', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
-    wear(sim, settler, { boots: SHOES });
-    pileAt(sim, 12, 2, FUR_BOOTS, 1);
+    // A weapon swap is the fresh-stow shape: boots wear per walked waypoint, so a swapped-out pair
+    // is part-used (destroyed) by the time the settler reaches its replacement; a permanent weapon
+    // arrives at the pile still fresh and stows.
+    wear(sim, settler, { weapon: SWORD });
+    pileAt(sim, 12, 2, LONG_SWORD, 1);
     const armoury = armouryAt(sim, 6, 4);
 
-    sim.enqueue(equip(settler, FUR_BOOTS));
+    sim.enqueue(equip(settler, LONG_SWORD, 'weapon'));
     sim.run(ERRAND_TICKS);
 
-    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(FUR_BOOTS);
-    expect(sim.world.get(armoury, Stockpile).amounts.get(SHOES)).toBe(1);
+    expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(LONG_SWORD);
+    expect(sim.world.get(armoury, Stockpile).amounts.get(SWORD)).toBe(1);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
     expect(sim.world.has(settler, Carrying)).toBe(false);
   });

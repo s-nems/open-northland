@@ -2,7 +2,7 @@ import { components, fx, systems } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { type PanelBar, pct, pctRatio } from './bars.js';
+import { type PanelBar, pct, pctRatio, remainingPct } from './bars.js';
 import {
   type Comp,
   goodDef,
@@ -150,7 +150,7 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
   const wears = def?.equip?.wears ?? false;
   return {
     occupied: true,
-    conditionPct: wears ? 100 - pct(num(slot.degreeOfUse)) : null,
+    conditionPct: wears ? remainingPct(num(slot.degreeOfUse)) : null,
     ...(def?.id !== undefined ? { goodId: def.id } : {}),
     label: goodLabel(ctx, goodType),
   };

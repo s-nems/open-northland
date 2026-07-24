@@ -52,7 +52,7 @@ import { settlerWork } from './settler-work.js';
  * the top-level {@link buildUnitPanelModel} classifier that dispatches a selection to one of the model shapes.
  */
 
-export { type BarTone, barTone, type PanelBar } from './bars.js';
+export { type BarTone, barTone, type PanelBar, remainingPct } from './bars.js';
 export type {
   BuildingPanelModel,
   ConstructionModel,

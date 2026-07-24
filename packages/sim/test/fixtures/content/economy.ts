@@ -67,13 +67,13 @@ export const economyContent = {
       equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 },
     },
     { typeId: 9, id: 'sword', weight: 1, equip: { category: 'weapon' } },
-    // A second boots good, so a swap test can order different gear into an occupied slot; its tiny
-    // 2-use rating is the cheap mid-walk breakage shape.
+    // A second boots good, so a swap test can order different gear into an occupied slot (rated like
+    // shoes - the errand's walk must not break it; breakage tests stamp `degreeOfUse` near ONE).
     {
       typeId: 10,
       id: 'fur_boots',
       weight: 1,
-      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 2 },
+      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 },
     },
     // The equipment-effects goods: tools (additive production credit) and the draughts (auto-drunk).
     {
@@ -112,6 +112,9 @@ export const economyContent = {
       weight: 1,
       equip: { category: 'misc', wears: true, uses: 2, restorePct: { healthMax: 50 } },
     },
+    // A second permanent weapon good: the fresh-swap shape - walking wears boots, so only a
+    // non-wearing good still stows after the walk to its replacement.
+    { typeId: 17, id: 'long_sword', weight: 1, equip: { category: 'weapon' } },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
