@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import type { ContentSet, TerrainMapFile } from '@open-northland/data';
 import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
@@ -116,6 +116,12 @@ function enableSignpostNavigation(sim: Simulation): void {
   sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
 }
 
+function newSliceSim(seed: number, map: TerrainMap, content: ContentSet): Simulation {
+  const sim = new Simulation({ seed, content, map });
+  enableSignpostNavigation(sim);
+  return sim;
+}
+
 /**
  * Enqueue resolved placements in order — the one spot the `placeBuilding`/`spawnSettler` command
  * shapes are written, shared by the demo strip and the authored import (list order = enqueue order,
@@ -222,8 +228,7 @@ export function runSlice(
   const content = resolveWorldContent(usable ? map : undefined, options);
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
-  const sim = new Simulation({ seed, content, map: terrain });
-  enableSignpostNavigation(sim);
+  const sim = newSliceSim(seed, terrain, content);
 
   const cellAt = (i: number): { x: number; y: number } => {
     const c = cells[i];
@@ -287,9 +292,7 @@ export function runSlice(
  */
 export function runBareMap(seed: number, map: TerrainMap, options: WorldContentOptions = {}): Simulation {
   const content = resolveWorldContent(map, options);
-  const sim = new Simulation({ seed, content, map });
-  enableSignpostNavigation(sim);
-  return sim;
+  return newSliceSim(seed, map, content);
 }
 
 /**
@@ -348,8 +351,7 @@ export function runAuthoredSlice(
     tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
   });
 
-  const sim = new Simulation({ seed, content, map });
-  enableSignpostNavigation(sim);
+  const sim = newSliceSim(seed, map, content);
   enqueuePlacements(sim, placements);
   sim.run(ticks);
   return sim;
