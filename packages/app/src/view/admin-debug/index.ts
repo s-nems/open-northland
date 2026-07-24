@@ -2,7 +2,7 @@ import type { Command, Entity } from '@open-northland/sim';
 import { HUMAN_HITPOINTS } from '../../catalog/units.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place/index.js';
-import { formatMessage, type Messages, messages, professionLabel } from '../../i18n/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { DEBUG_ACTIONS, type DebugAction, type DebugTargetKind } from './actions-catalog.js';
 import {
@@ -21,6 +21,7 @@ import {
   setButtonActive,
   TOGGLE_STYLE,
 } from './chrome.js';
+import { type Armed, createAdminLabels, sameArmed } from './labels.js';
 import { createFogSwitcher, createGeometryToggle, createNeedsToggle } from './live-toggles.js';
 import {
   ARMOR_CLASSES,
@@ -29,7 +30,6 @@ import {
   goodDropCommand,
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
-  type UnitPreset,
   unitSpawnCommand,
   WARRIOR_PRESETS,
 } from './spawn-catalog.js';
@@ -89,13 +89,6 @@ export interface AdminDebugDeps {
   readonly setGeometryEnabled: (enabled: boolean) => void;
 }
 
-/** What the next map click will do. */
-type Armed =
-  | { readonly kind: 'unit'; readonly preset: UnitPreset }
-  | { readonly kind: 'resource'; readonly good: number }
-  | { readonly kind: 'good'; readonly good: number }
-  | { readonly kind: 'action'; readonly action: DebugAction };
-
 /** The default hitpoint pool shown in the HP field — the clean-room settler HP the content's tribes carry
  *  ({@link HUMAN_HITPOINTS}), so the palette's number matches what an untouched spawn gets from its tribe. */
 const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
@@ -103,28 +96,11 @@ const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
 /** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
 export function mountAdminDebug(deps: AdminDebugDeps): void {
   const { canvas } = deps;
-  const copy = messages().admin;
-  const goodNames = messages().goods;
+  const msgs = messages();
+  const copy = msgs.admin;
+  const labels = createAdminLabels(msgs, deps.goodLabel, deps.goods);
   // The goods table in the weapon-lookup seam shape, mapped once (GoodEntry names the typeId `good`).
   const spawnGoods = deps.goods.map((g) => ({ typeId: g.good, id: g.id }));
-  const targetNoun: Record<DebugTargetKind, string> = {
-    settler: copy.targetSettler,
-    building: copy.targetBuilding,
-  };
-
-  // Resolve a good's palette label through the shared localized name source, keeping the catalog's built-in
-  // label as the fallback (a bare checkout with no name tables, or a good the source doesn't name).
-  const goodLabelOf = (good: number, fallback: string): string => deps.goodLabel?.(good) ?? fallback;
-  const localizedGood = (entry: { readonly good: number; readonly id: string }): string =>
-    goodLabelOf(entry.good, goodNames[entry.id as keyof Messages['goods']] ?? entry.id);
-  const unitLabel = (preset: UnitPreset): string => {
-    const direct = copy.units[preset.id as keyof Messages['admin']['units']];
-    if (direct !== undefined) return direct;
-    if (preset.id === 'collector') return professionLabel('collector');
-    return preset.id;
-  };
-  const actionLabel = (action: DebugAction): string => copy.actionsCatalog[action.id];
-  const playerName = (player: number): string => messages().animation.playerColors[player] ?? String(player);
 
   // ---- spawn state ---------------------------------------------------------
   let armed: Armed | null = null;
@@ -137,48 +113,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   const swatchButtons: { readonly button: HTMLButtonElement; readonly player: number }[] = [];
   const status = el('div', FOOTER_STYLE);
 
-  const sameArmed = (a: Armed, b: Armed | null): boolean => {
-    if (b === null) return false;
-    if (a.kind === 'unit' && b.kind === 'unit') return a.preset.id === b.preset.id;
-    if (a.kind === 'resource' && b.kind === 'resource') return a.good === b.good;
-    if (a.kind === 'good' && b.kind === 'good') return a.good === b.good;
-    if (a.kind === 'action' && b.kind === 'action') return a.action.id === b.action.id;
-    return false;
-  };
-
-  const armedLabel = (): string => {
-    if (armed === null) return copy.nothingArmed;
-    if (armed.kind === 'resource') {
-      const good = armed.good;
-      const entry = RESOURCE_ENTRIES.find((candidate) => candidate.good === good);
-      const label = entry === undefined ? copy.resourceFallback : localizedGood(entry);
-      return formatMessage(copy.armedResource, { label });
-    }
-    if (armed.kind === 'good') {
-      const good = armed.good;
-      const entry = deps.goods.find((candidate) => candidate.good === good);
-      const label = entry === undefined ? copy.goodFallback : localizedGood(entry);
-      return formatMessage(copy.armedGood, { label });
-    }
-    if (armed.kind === 'action') {
-      return formatMessage(copy.armedAction, {
-        label: actionLabel(armed.action),
-        target: targetNoun[armed.action.targetKind],
-      });
-    }
-    const who = PLAYER_SWATCHES.find((s) => s.player === player);
-    return formatMessage(copy.armedUnit, {
-      label: unitLabel(armed.preset),
-      player,
-      name: who === undefined ? '?' : playerName(who.player),
-    });
-  };
-
   const refresh = (): void => {
     for (const { button, armed: a } of armedButtons) setButtonActive(button, sameArmed(a, armed));
     for (const { button, player: p } of swatchButtons)
       button.style.outline = p === player ? '2px solid #e8dcc8' : '1px solid #000';
-    status.textContent = armedLabel();
+    status.textContent = labels.status(armed, player);
     canvas.style.cursor = armed === null ? '' : 'crosshair';
   };
 
@@ -227,7 +166,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       'button',
       `width:26px;height:22px;border-radius:4px;cursor:pointer;background:${s.css};border:1px solid #000`,
     );
-    b.title = formatMessage(copy.playerTitle, { player: s.player, name: playerName(s.player) });
+    b.title = formatMessage(copy.playerTitle, { player: s.player, name: labels.player(s.player) });
     b.addEventListener('click', () => {
       player = s.player;
       refresh();
@@ -284,17 +223,17 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // Wojownicy open by default — the first thing a "spawn a fight" session reaches for.
   addPaletteSection(
     copy.warriors,
-    WARRIOR_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
+    WARRIOR_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     true,
   );
   addPaletteSection(
     copy.civilians,
-    CIVILIAN_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
+    CIVILIAN_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     false,
   );
   addPaletteSection(
     copy.resources,
-    RESOURCE_ENTRIES.map((r) => ({ label: localizedGood(r), armed: { kind: 'resource', good: r.good } })),
+    RESOURCE_ENTRIES.map((r) => ({ label: labels.good(r), armed: { kind: 'resource', good: r.good } })),
     false,
   );
   // Towary — every good the running content defines, dropped as a loose ground pile (`dropGood`); the name
@@ -302,14 +241,14 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // sim would refuse to drop (the mismatch when a sandbox-scoped list met real content).
   addPaletteSection(
     copy.goods,
-    deps.goods.map((g) => ({ label: localizedGood(g), armed: { kind: 'good', good: g.good } })),
+    deps.goods.map((g) => ({ label: labels.good(g), armed: { kind: 'good', good: g.good } })),
     false,
     copy.filterGoods,
   );
   // Akcje debug — click-a-target tools (kill / needs / fill / finish); inert without an entity picker.
   addPaletteSection(
     copy.actions,
-    DEBUG_ACTIONS.map((action) => ({ label: actionLabel(action), armed: { kind: 'action', action } })),
+    DEBUG_ACTIONS.map((action) => ({ label: labels.action(action), armed: { kind: 'action', action } })),
     false,
   );
 
