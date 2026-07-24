@@ -8,12 +8,11 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 // The wear seam: a wearing item spends its content-rated `uses` in divCeil steps and breaks (slot
-// clears) at ONE. Fixture goods: shoes 8 (6000 uses), fur_boots 10 (2), tool_wooden 11 (100),
-// mead 13 (2 sips), sword 9 (permanent - no uses).
+// clears) at ONE. Fixture goods: shoes 8 (6000 uses), tool_wooden 11 (100), mead 13 (2 sips),
+// sword 9 (permanent - no uses).
 
 const SHOES = 8;
 const SWORD = 9;
-const FUR_BOOTS = 10;
 const TOOL_WOODEN = 11;
 const MEAD = 13;
 
@@ -34,7 +33,7 @@ describe('equipment wear', () => {
   it('mints divCeil wear steps so an item never outlives its rated uses', () => {
     const ctx = ctxOf(simWithWearer().sim);
     // 2 uses divide ONE exactly; 100 do not (655.36) - divCeil rounds up so the 100th use lands >= ONE.
-    expect(wearStepOf(ctx, FUR_BOOTS)).toBe(fx.divCeil(ONE, fx.fromInt(2)));
+    expect(wearStepOf(ctx, MEAD)).toBe(fx.divCeil(ONE, fx.fromInt(2)));
     expect(wearStepOf(ctx, TOOL_WOODEN)).toBe(fx.divCeil(ONE, fx.fromInt(100)));
     const toolStep = wearStepOf(ctx, TOOL_WOODEN);
     expect(toolStep * 99).toBeLessThan(ONE);
@@ -47,12 +46,13 @@ describe('equipment wear', () => {
     const { sim, e } = simWithWearer();
     const ctx = ctxOf(sim);
     const eq = sim.world.get(e, Equipment);
-    eq.boots = { goodType: FUR_BOOTS, degreeOfUse: fx.fromInt(0) };
-    const step = wearStepOf(ctx, FUR_BOOTS);
+    eq.boots = { goodType: SHOES, degreeOfUse: fx.fromInt(0) };
+    const step = wearStepOf(ctx, SHOES);
     applyEquipWear(sim.world, e, 'boots', 0, step);
-    expect(eq.boots).toEqual({ goodType: FUR_BOOTS, degreeOfUse: step });
+    expect(eq.boots).toEqual({ goodType: SHOES, degreeOfUse: step });
+    eq.boots = { goodType: SHOES, degreeOfUse: fx.sub(ONE, step) }; // one use left on the rating
     applyEquipWear(sim.world, e, 'boots', 0, step);
-    expect(eq.boots).toBeNull(); // second (last rated) use breaks the pair
+    expect(eq.boots).toBeNull(); // the last rated use breaks the pair
   });
 
   it('replaces the misc array on wear and clears only the addressed slot at breakage', () => {

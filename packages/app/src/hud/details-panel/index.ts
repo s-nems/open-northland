@@ -10,6 +10,6 @@ export type {
   UnitPanelModel,
   UnitPanelModelContext,
 } from './model/index.js';
-export { barTone, buildUnitPanelModel, HUMANWINDOW } from './model/index.js';
+export { barTone, buildUnitPanelModel, HUMANWINDOW, remainingPct } from './model/index.js';
 export type { PortraitBox, UnitPanel } from './panel.js';
 export { mountUnitPanel } from './panel.js';

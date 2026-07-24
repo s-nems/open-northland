@@ -26,6 +26,7 @@ import {
   barTone,
   buildUnitPanelModel,
   HUMANWINDOW,
+  remainingPct,
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
@@ -632,6 +633,16 @@ describe('selection details panel model', () => {
     expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
     expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
+  });
+
+  it('floors the remaining-condition percent, so any wear at all reads below 100', () => {
+    expect(remainingPct(undefined)).toBe(100); // fresh (absent degreeOfUse)
+    expect(remainingPct(0)).toBe(100);
+    // A barely-worn item must never claim freshness: taking it off would still destroy it.
+    expect(remainingPct(1)).toBe(99);
+    expect(remainingPct(Math.round(ONE * 0.004))).toBe(99);
+    expect(remainingPct(ONE / 2)).toBe(50);
+    expect(remainingPct(ONE)).toBe(0);
   });
 });
 

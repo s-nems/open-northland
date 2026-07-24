@@ -48,3 +48,10 @@ export function pctRatio(elapsed: number | undefined, duration: number | undefin
   if (elapsed === undefined || duration === undefined || duration <= 0) return 0;
   return clampPct((elapsed / duration) * 100);
 }
+
+/** Remaining-life percent of a wearing item, FLOORED: any wear at all reads ≤ 99 (rounding would show
+ *  a slightly-worn item as 100 - and a part-used item is destroyed on take-off, so the display must
+ *  never claim it is fresh). */
+export function remainingPct(used: number | undefined): number {
+  return Math.max(0, Math.min(100, Math.floor((1 - (used ?? 0) / ONE) * 100)));
+}

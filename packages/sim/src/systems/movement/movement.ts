@@ -3,6 +3,7 @@ import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
 import type { Entity } from '../../ecs/world.js';
 import { worldDistance } from '../../nav/metric.js';
 import type { System } from '../context.js';
+import { bootsSpeedBonus, wearWornBoots } from '../equipment/index.js';
 import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
 
 /**
@@ -57,8 +58,9 @@ export const ARRIVAL_SPEED_DIV = 2;
 /**
  * MovementSystem — advances entity positions one tick, in two modes with this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
- *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}) — accelerating from rest
- *     by {@link ACCEL_TICKS}, braking over the last leg's final approach
+ *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; worn boots raise it by
+ *     the content-rated bonus and wear one step per waypoint reached — `systems/equipment/`) —
+ *     accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final approach
  *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step straight toward the current
  *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at —
  *     `routing.ts`) by that speed, the step length measured in the staggered lattice's world metric so every
@@ -73,7 +75,7 @@ export const ARRIVAL_SPEED_DIV = 2;
  * An E/W leg's step is bit-exact `speed`; every other heading paces by the world metric. The straight-line
  * step uses isqrt homing, so there are no floats and no overshoot.
  */
-export const movementSystem: System = (world) => {
+export const movementSystem: System = (world, ctx) => {
   // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the pass, so
   // pass 2 can't re-derive membership by checking has(PathFollow). Used only as a skip filter — never
   // iterated for a decision — so it stays determinism-safe.
@@ -94,7 +96,12 @@ export const movementSystem: System = (world) => {
     // no progress ever — the walker stalls and the path never completes (the planner reads it as busy
     // forever). Flooring at one ULP keeps an absurdly slow data-pinned pace slow but terminating.
     const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
-    const gait = rawGait > ULP ? rawGait : ULP;
+    const floored = rawGait > ULP ? rawGait : ULP;
+    // Worn boots raise the cruise gait by their content-rated fraction (+40%). The > ZERO guard keeps
+    // every bootless walker's arithmetic byte-identical; the brake floor and arrival snap below scale
+    // with the gait, so a faster pace still terminates.
+    const bootBonus = bootsSpeedBonus(world, ctx, e);
+    const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
     const p = world.get(e, Position);
 
     // The tick's target speed: the cruise gait, capped on the last leg's final approach — the cap shrinks
@@ -130,7 +137,9 @@ export const movementSystem: System = (world) => {
     }
 
     if (stepTowardPoint(p, target, pf.speed)) {
-      // Arrived at this waypoint; advance to the next (turning momentum onto it), or finish.
+      // Arrived at this waypoint; advance to the next (turning momentum onto it), or finish. Either
+      // way the arrival wears the walker's boots one step (an empty-path drop above is not a walk).
+      wearWornBoots(world, ctx, e);
       if (pf.index + 1 >= pf.waypoints.length) {
         world.remove(e, PathFollow); // path complete
       } else {
