@@ -57,9 +57,9 @@ function sceneryCloneCache(world: World): Map<Entity, EntitySnapshot> {
 
 function cloneEntity(world: World, id: Entity): EntitySnapshot {
   const components: Record<string, unknown> = {};
-  for (const [name, value] of world.componentEntries(id)) {
+  world.forEachComponent(id, (name, value) => {
     components[name] = clonePlain(value);
-  }
+  });
   return { id: id as number, components };
 }
 
@@ -134,6 +134,12 @@ type PlainOf<T> = T extends null | undefined | string | number | boolean | bigin
  * The public overload carries the honest {@link PlainOf} shape; the wider implementation signature lets the
  * body build the plain value without casting away type safety (a conditional type can't be proven over the
  * unresolved generic `T` inside the body).
+ *
+ * Object keys keep their insertion order rather than being re-sorted: a component value is a fixed-shape
+ * literal, so its keys already appear in one deterministic order every clone (the per-clone key sort bought no
+ * canonical gain). `Map` entries ARE sorted: a Map's key set varies at runtime, and
+ * {@link import('./snapshot-diff.js').diffSnapshots}'s canonical-JSON equality (and its agreement with
+ * `hashState`) depends on that ordering.
  */
 function clonePlain<T>(value: T): PlainOf<T>;
 function clonePlain(value: unknown): unknown {
@@ -145,7 +151,7 @@ function clonePlain(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((e) => clonePlain(e));
   const record = value as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const k of Object.keys(record).sort()) {
+  for (const k of Object.keys(record)) {
     out[k] = clonePlain(record[k]);
   }
   return out;

@@ -230,32 +230,11 @@ export class World {
 
   /**
    * Iterate entities that have all of the given components, in deterministic insertion order of the smallest
-   * store. O(min store size). No sorting in the hot path.
+   * store. O(min store size). No sorting in the hot path. Returns a reused-result {@link QueryIterator}, not a
+   * generator; iteration order and membership are identical to the former generator body.
    */
-  *query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
-    if (required.length === 0) return;
-    // Resolve every required store once, tracking the smallest to drive iteration; a never-added
-    // required component means no matches at all.
-    const stores: Array<Map<Entity, unknown>> = [];
-    let smallest: Map<Entity, unknown> | undefined;
-    for (const c of required) {
-      const s = this.stores.get(c);
-      if (s === undefined) return;
-      stores.push(s);
-      if (smallest === undefined || s.size < smallest.size) smallest = s;
-    }
-    if (smallest === undefined) return; // unreachable (required is non-empty), but proves it to the type
-
-    for (const id of smallest.keys()) {
-      let ok = true;
-      for (const s of stores) {
-        if (s !== smallest && !s.has(id)) {
-          ok = false;
-          break;
-        }
-      }
-      if (ok) yield id;
-    }
+  query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
+    return new QueryIterator(this.stores, required);
   }
 
   /**
@@ -313,16 +292,25 @@ export class World {
   }
 
   /**
-   * Canonical [componentName, value] pairs for an entity, in registration order. The single
-   * traversal used by hashing and (later) snapshot/save — so "what the state is" has one
-   * definition, owned by the World, not re-implemented by each consumer.
+   * Visit an entity's components (name + live value) in registration order — the single canonical traversal
+   * "what the state is" has, owned by the World. Allocation-free (the per-frame snapshot clone runs it per
+   * entity); {@link componentEntries} builds a `[name, value]` array on top for callers that want one.
+   */
+  forEachComponent(entity: Entity, visit: (name: string, value: unknown) => void): void {
+    for (const c of this.registered) {
+      const v = this.stores.get(c)?.get(entity);
+      if (v !== undefined) visit(c.name, v);
+    }
+  }
+
+  /**
+   * Canonical [componentName, value] pairs for an entity, in registration order — {@link forEachComponent}
+   * collected into an array. Used where a materialized list is convenient (state hashing); the snapshot clone
+   * uses the callback directly to stay allocation-free.
    */
   componentEntries(entity: Entity): Array<[string, unknown]> {
     const out: Array<[string, unknown]> = [];
-    for (const c of this.registered) {
-      const v = this.stores.get(c)?.get(entity);
-      if (v !== undefined) out.push([c.name, v]);
-    }
+    this.forEachComponent(entity, (name, value) => out.push([name, value]));
     return out;
   }
 
@@ -366,5 +354,77 @@ export class World {
       return null;
     }
     return journal.entities.slice(since - journal.base);
+  }
+}
+
+/**
+ * The iterator {@link World.query} returns: walk the smallest required store, yielding each entity present in
+ * every other required store, in that store's insertion order. Hand-written rather than a generator so the hot
+ * per-tick query path reuses one {@link result} object across steps instead of allocating a `{value, done}`
+ * per entity. Reuse is safe because the for-of / spread protocol reads `.value` before calling `next()` again,
+ * so the shared object never carries a stale id out of the loop. A missing required store yields nothing.
+ */
+class QueryIterator implements IterableIterator<Entity> {
+  private readonly result: IteratorResult<Entity> = { done: false, value: 0 as Entity };
+  private readonly stores: Array<Map<Entity, unknown>> = [];
+  private readonly smallest: Map<Entity, unknown> | null;
+  private keys: Iterator<Entity> | null;
+
+  constructor(
+    all: ReadonlyMap<Component<unknown>, Map<Entity, unknown>>,
+    required: ReadonlyArray<Component<unknown>>,
+  ) {
+    let smallest: Map<Entity, unknown> | undefined;
+    let resolvable = required.length > 0;
+    for (const c of required) {
+      const s = all.get(c);
+      if (s === undefined) {
+        resolvable = false;
+        break;
+      }
+      this.stores.push(s);
+      if (smallest === undefined || s.size < smallest.size) smallest = s;
+    }
+    if (!resolvable || smallest === undefined) {
+      this.smallest = null;
+      this.keys = null;
+    } else {
+      this.smallest = smallest;
+      this.keys = smallest.keys();
+    }
+  }
+
+  next(): IteratorResult<Entity> {
+    const keys = this.keys;
+    if (keys === null) return this.finish();
+    const smallest = this.smallest;
+    for (;;) {
+      const step = keys.next();
+      if (step.done === true) return this.finish();
+      const id = step.value;
+      let match = true;
+      for (const s of this.stores) {
+        if (s !== smallest && !s.has(id)) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        this.result.value = id;
+        return this.result; // `done` is already false and stays so until the store is exhausted
+      }
+    }
+  }
+
+  private finish(): IteratorResult<Entity> {
+    this.keys = null;
+    this.result.done = true;
+    // The iterator protocol ignores `value` once `done` is true (for-of / spread read it only on a
+    // not-done step), so the last yielded id is left in place rather than cleared with a cast.
+    return this.result;
+  }
+
+  [Symbol.iterator](): IterableIterator<Entity> {
+    return this;
   }
 }

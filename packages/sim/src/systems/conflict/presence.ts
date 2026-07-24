@@ -1,6 +1,6 @@
 import { Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { indexNodesFor } from '../spatial.js';
+import { forEachIndexNode, type IndexNodeVisitor } from '../spatial.js';
 
 /**
  * Coarse presence-cell edge (half-cell nodes). Sized so a sight/defend-radius query (≤ ~20 nodes)
@@ -30,6 +30,20 @@ interface PresenceCell {
 export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */
   private readonly byCx = new Map<number, Map<number, PresenceCell>>();
+  private readonly world: World;
+  /**
+   * One reused tally visitor for the whole build (no per-entity closure): count the entity into its coarse
+   * cell's total and, for an owned unit, that player's share. Owner is read per visit (a Map lookup) so the
+   * visitor keeps no per-entity state — a unit resolves to one node, a building's few walls to several. The
+   * node ladder it tallies over (and why that keeps `othersWithin` a superset of the ring search) is
+   * {@link forEachIndexNode}.
+   */
+  private readonly tally: IndexNodeVisitor = (e, x, y) => {
+    const cell = this.cellAt(Math.floor(x / PRESENCE_CELL_NODES), Math.floor(y / PRESENCE_CELL_NODES));
+    cell.total++;
+    const owner = this.world.tryGet(e, Owner);
+    if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
+  };
 
   constructor(
     world: World,
@@ -37,21 +51,8 @@ export class HostilePresence {
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
   ) {
-    for (const e of combatants) {
-      // Tally by the SHARED {@link indexNodesFor} ladder — the very resolution NodeBuckets buckets with —
-      // so the "not-mine within radius" superset claim holds per entity by construction: a building's
-      // every wall cell (which can span several coarse cells, waking a seeker near any face), else the
-      // single `nodeOf`, else the entity's own Position node; resolver-null / Position-less is dropped.
-      const owner = world.tryGet(e, Owner);
-      for (const node of indexNodesFor(world, e, nodeOf, nodesOf)) {
-        const cell = this.cellAt(
-          Math.floor(node.x / PRESENCE_CELL_NODES),
-          Math.floor(node.y / PRESENCE_CELL_NODES),
-        );
-        cell.total++;
-        if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
-      }
-    }
+    this.world = world;
+    for (const e of combatants) forEachIndexNode(world, e, nodeOf, nodesOf, this.tally);
   }
 
   /**

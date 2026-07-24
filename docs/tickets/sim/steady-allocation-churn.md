@@ -1,33 +1,42 @@
-# Reduce the sim's steady per-tick allocation churn
+# Reduce the sim's steady per-tick allocation churn (long tail)
 
-**Area:** sim · **Priority:** P2
+**Area:** sim · **Priority:** P3
 
-Measured in real Chrome (Apple GPU, `?map=blekiny_nurt` with active AI combat, 8 s of 100 ms
-`performance.memory` samples plus a CDP allocation-sampling profile that keeps GC-collected
-samples): the app steadily allocates ~55 MB/s at ANY zoom, driving ~2.5 GC heap drops per second.
-The render/app side was already cut (the old zoom-out ticket - zoomed-out churn now equals the
-zoom-1 rate); what remains is sim-side, per tick (~4.5 MB per 12 Hz tick), dominated by:
+A first wave of cuts landed on `perf/steady-alloc-churn` and roughly halved the steady rate in a
+headless proxy that mirrors the app frame loop (per-tick `step()` + `snapshot()` on the bench world,
+profiled with the same GC-inclusive CDP allocation sampling the original ticket described):
 
-- **World query iteration** - `World.query` frames plus iterator-result churn (`next`) were the two
-  largest sites (~180 MB over the 8 s window). Hot callers: `tribeUnlockEnabled` via
-  `productionSystem`/`recipeUnlocked`, `navigationLimitFor` (jobs + AI planner).
-- **Spatial search** - `NodeBuckets` construction + `indexNodesFor` + `nearest`
-  (`systems/spatial.js`, ~90 MB), mostly under `combatSystem`/`engageCombatant` and the AI planner;
-  `nodesOf` (`conflict/combat.js`) adds ~38 MB.
-- **Snapshot cloning** - `takeSnapshot`/`cloneEntity`/`clonePlain` (~75 MB): every non-scenery
-  entity re-clones each tick; with hundreds of settlers plus animals that is the third pillar.
+- `World.query` is a reused-result iterator, not a `{value,done}`-per-step generator;
+- `World.forEachComponent` replaces the throwaway `componentEntries` array in the snapshot clone;
+- spatial index/presence builds go through a callback (`forEachIndexNode`) with one reused visitor
+  instead of a fresh `[{x,y}]` per entity;
+- `snapshot` `clonePlain` no longer re-sorts object keys every frame (Map-entry sort kept).
 
-## Scope
+Proxy A/B (400 measured ticks, 4 settlements, snapshots each tick): pure-economy -57%, 30
+fighters/side -53%, 120 fighters/side -51%. `bench:sim` whole-tick median 3.34 ms -> 1.70 ms, p95
+30.7 ms -> 7.85 ms, state hash unchanged.
 
-Profile with the same procedure (allocation sampling with
-`includeObjectsCollectedByMajorGC/MinorGC: true` - the default live-only profile hides exactly this
-garbage) and cut the dominant sites, e.g. reusable query/iteration paths, reused spatial scratch
-structures per tick, and a cheaper snapshot story for high-churn components. Sim purity and
-determinism rules apply; per-tick cost must keep scaling with active work.
+## Confirm (still owed)
 
-## Verify
+The proxy is not the real map. Run the original in-Chrome A/B on a busy map before considering the
+halving proven: 8 s of 100 ms `performance.memory.usedJSHeapSize` samples (summing positive
+increments) on `?map=blekiny_nurt` with active AI combat, before vs after the branch. The `pamięć`
+overlay sawtooth should visibly flatten.
 
-Repeat the A/B measurement (8 s of 100 ms `performance.memory.usedJSHeapSize` samples, summing
-positive increments, on a busy map); the steady rate should drop by at least half and the perf
-overlay's `pamięć` sawtooth should flatten correspondingly. `npm run bench:sim` before/after for
-tick-cost regressions.
+## Remaining sites (measured, after the first wave)
+
+Each is real but lower-leverage than the wave above; take them only if the Chrome A/B still shows an
+unacceptable rate. Sim purity/determinism and the scaling budget apply.
+
+- **Ring searches** - `NodeBuckets.nearest` (`systems/spatial.ts`) and `ringNearest`
+  (`agents/targets/cell-index.ts`) allocate a result object per call and a `forEachRingOffset` closure
+  per ring, under combat and the AI planner.
+- **`nodeOfPosition`** (`nav/halfcell.ts`) returns a fresh `{hx,hy}` per call and is called broadly;
+  a non-allocating variant for the hottest loops would help.
+- **AI store scan** - `stockCapacity` / `lowestStockedGood` (`systems/stores/capacity.ts`) and
+  `canStoreGood` (`agents/targets/stores/stock.ts`) churn while the planner scans stockpiles.
+- **`singletonCarrier`** (`components/rules.ts`) runs a full query per settler per tick via
+  `signpostNavigationEnabled` -> `navigationLimitFor`; memoize the carrier on the component generation.
+- **Snapshot clone floor** - every non-scenery entity still re-clones each frame. A wider clone cache
+  needs reliable `World.touch` coverage on in-place mutations (today only ~17 sites touch), so it is a
+  deliberate, larger follow-up, not a quick cut.
