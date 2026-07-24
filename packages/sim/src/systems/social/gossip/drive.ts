@@ -17,6 +17,7 @@ import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../agents/drives-needs.js';
 import type { System, SystemContext } from '../../context.js';
+import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
@@ -58,15 +59,9 @@ export const CHAT_COOLDOWN_TICKS = 40;
  */
 const SOCIAL_EVENT_UNITS_PER_BAR = 4000;
 
-/**
- * The civilist job (`jobtypes.ini` `type 6 name "civilist"`) — the base atomic set most trades inherit
- * (`baseatomics 6`). The readable `setatomic` talk/listen bindings exist only for the woman/civilist jobs,
- * so a trade's chat animation resolves through this job, mirroring that inheritance.
- */
-const CIVILIST_JOB = 6;
-
 /** Resolve the animation name a settler's tribe binds to a chat atomic, falling back to the tribe's
- *  civilist binding — the `baseatomics 6` inheritance the readable per-trade rows leave implicit. */
+ *  {@link CIVILIST_JOB} binding: the readable `setatomic` talk/listen rows exist only for the woman and
+ *  civilist jobs, so every trade's chat resolves through the civilist's `baseatomics 6` inheritance. */
 function chatAnimationName(ctx: SystemContext, s: SettlerIdentity, atomicId: number): string | undefined {
   return (
     atomicAnimationName(ctx.content, s, atomicId) ??
