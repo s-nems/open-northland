@@ -1,4 +1,4 @@
-import { Carrying, Position } from '../../../components/index.js';
+import { Carrying, ownerOf, Position } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -57,7 +57,7 @@ export function dropCarryAtOwnTile(world: World, settler: Entity): number {
   if (pos === undefined) return 0;
   const node = nodeOfPosition(pos.x, pos.y);
   const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice Position, so drops stack
-  const placed = stackOntoTile(world, at.x, at.y, load.goodType, load.amount);
+  const placed = stackOntoTile(world, at.x, at.y, load.goodType, load.amount, ownerOf(world, settler));
   if (placed > 0) shrinkCarry(world, settler, load, placed); // fully placed ⇒ Carrying removed
   return placed;
 }
@@ -95,11 +95,12 @@ export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined,
 
   let total = dropCarryAtOwnTile(world, settler); // own tile first (the shared set-down-at-feet step)
   if (terrain === undefined) return total; // mapless: no lattice to spill onto
+  const owner = ownerOf(world, settler); // every spilled heap belongs to this settler's player (same-side gate)
 
   // Set `load`'s remainder down at the half-cell node (hx, hy); returns how many units actually fit there.
   const placeAt = (hx: number, hy: number): number => {
     const at = positionOfNode(hx, hy);
-    const placed = stackOntoTile(world, at.x, at.y, good, load.amount);
+    const placed = stackOntoTile(world, at.x, at.y, good, load.amount, owner);
     if (placed > 0) shrinkCarry(world, settler, load, placed); // fully placed ⇒ Carrying removed
     return placed;
   };

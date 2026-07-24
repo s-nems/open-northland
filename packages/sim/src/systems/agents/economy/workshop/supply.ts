@@ -1,5 +1,11 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, Production, Stockpile, UnderConstruction } from '../../../../components/index.js';
+import {
+  Building,
+  Production,
+  Stockpile,
+  sameSideAs,
+  UnderConstruction,
+} from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
@@ -95,6 +101,9 @@ export function nearestMissingInputSource(
   gate?: SpatialGate,
   /** The worker's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
+  /** The worker's owning player — never fetches/draws an input from another player's store or utility
+   *  ({@link sameSideAs}). */
+  owner?: number,
 ): MissingInputSource | null {
   const stock = world.get(workplace, Stockpile).amounts;
   const walls = buildingBlockedCells(world, ctx, terrain);
@@ -124,6 +133,7 @@ export function nearestMissingInputSource(
       },
       gate,
       avoid,
+      sameSideAs(world, owner),
     );
     if (winner === null) continue;
     return winner.payload === 'draw'

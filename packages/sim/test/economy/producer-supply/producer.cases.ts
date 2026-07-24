@@ -48,6 +48,27 @@ describe('producer self-service — fetching a missing recipe input', () => {
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
   });
 
+  it('skips a nearer ENEMY store and fetches its missing input from its own side', () => {
+    // The same-side rule reaches the workshop supplier too: two players field the same tribe, so a
+    // craftsman must not cross into a rival's warehouse for a recipe input.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const mill = buildingAt(sim, SAWMILL, 4, 0); // empty: needs wood for its 1 wood → 1 plank recipe
+    const enemyStore = buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 3]]); // NEARER, another player's wood
+    const myStore = buildingAt(sim, HEADQUARTERS, 7, 0, [[WOOD, 3]]); // its own side's wood, farther
+    const smith = settlerAt(sim, 4, 0, CARPENTER, mill);
+    sim.world.add(smith, Owner, { player: 0 });
+    sim.world.add(mill, Owner, { player: 0 });
+    sim.world.add(enemyStore, Owner, { player: 1 });
+    sim.world.add(myStore, Owner, { player: 0 });
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Proximity alone would send it to the enemy warehouse (cell 2); the same-side gate sends it to
+    // its own side's wood (cell 7).
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 7, 0));
+    expect(sim.world.get(enemyStore, Stockpile).amounts.get(WOOD)).toBe(3); // enemy store untouched
+  });
+
   it('fetches a missing input from another WORKPLACE’s store (the farm next door), like from a warehouse', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // The input source scan accepts ANY positioned stockpile that holds the good — a warehouse, a

@@ -7,6 +7,7 @@ import {
   Position,
   SiteAssignment,
   Stockpile,
+  sameSideAs,
   UnderConstruction,
   WorkFlag,
 } from '../../../components/index.js';
@@ -97,7 +98,17 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate, avoid);
+    return nearestStoreFor(
+      stores,
+      world,
+      ctx,
+      here,
+      goodType,
+      /* excludeProducers */ true,
+      gate,
+      avoid,
+      owner,
+    );
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -136,11 +147,11 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //     only the surplus later (user rule 2026-07-19). Falls through to the storage default when no
   //     consumer has room. Gated to the utility carrier: an ordinary hauler keeps the plain store default.
   if (home !== undefined && producesGoodWithoutInputs(world, ctx, home, goodType)) {
-    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate, avoid);
+    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate, avoid, owner);
     if (consumer !== null) return consumer;
   }
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
-  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, avoid);
+  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, avoid, owner);
 }
 
 /**
@@ -158,6 +169,7 @@ function nearestRecipeConsumer(
   goodType: number,
   gate?: SpatialGate,
   avoid?: (cell: NodeId) => boolean,
+  owner?: number,
 ): Entity | null {
   return (
     index.nearest(
@@ -170,6 +182,7 @@ function nearestRecipeConsumer(
       },
       gate,
       avoid,
+      sameSideAs(world, owner),
     )?.entity ?? null
   );
 }

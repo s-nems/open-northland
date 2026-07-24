@@ -3,6 +3,7 @@ import {
   GroundDrop,
   Position,
   Stockpile,
+  sameSideAs,
   UnderConstruction,
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
@@ -56,6 +57,8 @@ export function nearestStoreFor(
   gate?: SpatialGate,
   /** The hauler's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
+  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}). */
+  owner?: number,
 ): Entity | null {
   return (
     index.nearest(
@@ -63,6 +66,7 @@ export function nearestStoreFor(
       (e) => (canStoreGood(world, ctx, e, goodType, excludeProducers) ? QUALIFIES : null),
       gate,
       avoid,
+      sameSideAs(world, owner),
     )?.entity ?? null
   );
 }
@@ -195,6 +199,8 @@ export function nearestStoreHolding(
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
+  /** The fetcher's owning player — never fetches from another player's store ({@link sameSideAs}). */
+  owner?: number,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
   // accept just excludes sites, stores that don't hold the good, and buried piles. `gate` is the
@@ -212,6 +218,7 @@ export function nearestStoreHolding(
           : null,
       gate,
       avoid,
+      sameSideAs(world, owner),
     )?.entity ?? null
   );
 }

@@ -1,4 +1,4 @@
-import type { SettlerIdentity } from '../../components/index.js';
+import { ownerOf, type SettlerIdentity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -184,6 +184,7 @@ export function planNeeds(
       here,
       gate,
       unreachableGoalVeto(world, ctx, e),
+      ownerOf(world, e),
     );
     if (temple !== null) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>

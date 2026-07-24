@@ -3,9 +3,11 @@ import {
   Felling,
   HarvestedBy,
   MineDeposit,
+  ownerOf,
   Position,
   Resource,
   Stump,
+  stampOwner,
   WorkFlag,
 } from '../../../components/index.js';
 import { eventAt } from '../../../core/events.js';
@@ -136,14 +138,18 @@ function removeResourceNode(world: World, node: Entity): void {
  * ripeness) at its node as a ground sheaf pile — the same {@link GroundDrop} shape a felled trunk takes, so the
  * farmer's pickup + the porter/delivery machinery carry it off unchanged (it draws the good's
  * `landscapeToPickup` "cut wheat" look) — and remove the field, freeing the tile to sow again. An unripe field
- * (`remaining <= 0`) yields nothing and stays standing (goods conserved). No owner stamp (a farm's fields are
- * shared by all its farmers) and no stump — the field clears to bare ground, faithful to the original's wheat
- * cycle. Returns the units reaped (the whole yield, or 0 for stubble).
+ * (`remaining <= 0`) yields nothing and stays standing (goods conserved). The sheaf inherits the FARM's
+ * {@link Owner} (via the field's {@link Crop} link), not the reaping farmer's — the farm's own farmers are the
+ * same player so they still collect it, while the gated porter/gatherer scans keep a rival's hauler off it.
+ * No stump — the field clears to bare ground, faithful to the original's wheat cycle. Returns the units reaped
+ * (the whole yield, or 0 for stubble).
  */
 function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): number {
   if (res.remaining <= 0) return 0; // unripe / raced — the swing cut stubble (nothing conjured)
   const { x, y } = world.get(node, Position);
-  dropGroundPile(world, x, y, res.goodType, res.remaining);
+  const sheaf = dropGroundPile(world, x, y, res.goodType, res.remaining);
+  const farm = world.tryGet(node, Crop)?.farm;
+  if (farm !== undefined) stampOwner(world, sheaf, ownerOf(world, farm));
   removeResourceNode(world, node);
   return res.remaining;
 }
@@ -201,13 +207,16 @@ function dropMinedOre(world: World, miner: Entity, node: Entity, goodType: numbe
 }
 
 /**
- * Record who harvested a fresh ground drop, but only when that harvester is a flag-bound gatherer (it carries a
- * {@link WorkFlag}). The mark ({@link HarvestedBy}) is what lets that gatherer later reclaim only its own
- * trunk/ore and leave every other loose pile alone. A flagless collector stamps nothing, so its drop hashes and
- * is collected as normal — the ownership rule is inert wherever no flag-bound gatherer works.
+ * Mark a fresh ground drop with its harvester's identity and player. Two orthogonal stamps:
+ *  - {@link HarvestedBy} names the exact gatherer, but only when it is FLAG-BOUND (carries a {@link WorkFlag}) —
+ *    what lets that gatherer later reclaim only its own trunk/ore and leave every other pile alone. A flagless
+ *    collector marks nothing here, so its drop hashes and is collected as normal.
+ *  - {@link Owner} is the harvester's PLAYER (via {@link stampOwner}) — so the pile stays on its own side and a
+ *    rival player's hauler cannot fetch it (the same-side rule).
  */
 function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
   if (world.has(harvester, WorkFlag)) world.add(drop, HarvestedBy, { by: harvester });
+  stampOwner(world, drop, ownerOf(world, harvester));
 }
 
 /**

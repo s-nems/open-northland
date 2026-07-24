@@ -124,6 +124,25 @@ describe('confinement gates the housewife hoard source', () => {
   });
 });
 
+describe('the same-side rule gates the housewife hoard source', () => {
+  it('a housed woman ignores an enemy food pile but hoards her own side’s', () => {
+    const sim = confinedSim();
+    const home = homeAt(sim, 4, 2);
+    const woman = adultAt(sim, 2, 2, WOMAN, true); // player 0 (adultAt stamps PLAYER)
+    sim.world.add(woman, Residence, { home });
+    const enemyPile = foodPileAt(sim, IN_AREA, 2, 3); // in her area, but another player's larder
+    sim.world.add(enemyPile, Owner, { player: PLAYER + 1 });
+    sim.step();
+    expect(acted(sim, woman)).toBe(false); // an enemy's food is not hers to haul — nothing to hoard
+
+    const myPile = foodPileAt(sim, IN_AREA + 1, 2, 3); // her own player's food, also in her area
+    sim.world.add(myPile, Owner, { player: PLAYER });
+    sim.step();
+    expect(acted(sim, woman)).toBe(true); // she hoards from her own side's pile
+    expect(sim.world.get(enemyPile, Stockpile).amounts.get(FOOD)).toBe(3); // enemy pile untouched
+  });
+});
+
 describe('confinement gates the marry partner pick', () => {
   it('a marry order ignores an out-of-area match but takes an in-area one', () => {
     const sim = confinedSim();

@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   Health,
   MoveGoal,
+  Owner,
   Stance,
   Stockpile,
 } from '../../../src/components/index.js';
@@ -207,5 +208,47 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
 
     expect(sim.world.get(farm, Stockpile).amounts.get(WHEAT) ?? 0).toBe(0);
     expect(sim.world.get(granary, Stockpile).amounts.get(WHEAT) ?? 0).toBe(5);
+  });
+});
+
+describe('the same-side rule — a hauler works only its own player’s stores and piles', () => {
+  // Two players field the same VIKING tribe, so `tribe` alone can't keep their logistics apart; `Owner`
+  // decides side. These mirror the construction `sameSide` test: proximity alone would pull an
+  // ownership-blind hauler onto the enemy candidate, and the gate must leave it untouched.
+  it('a porter reaches past a NEARER enemy pile to its own player’s pile', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const hq = buildingAt(sim, HEADQUARTERS, 6, 0); // its bound warehouse (accepts wood)
+    const enemyPile = pileAt(sim, 2, 0, [[WOOD, 2]]); // NEARER, but another player's heap
+    const myPile = pileAt(sim, 4, 0, [[WOOD, 2]]); // its own player's heap, farther
+    const porter = settlerAt(sim, 0, 0, CARRIER, hq);
+    sim.world.add(porter, Owner, { player: 0 });
+    sim.world.add(hq, Owner, { player: 0 });
+    sim.world.add(enemyPile, Owner, { player: 1 });
+    sim.world.add(myPile, Owner, { player: 0 });
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Skips the nearer enemy pile (cell 2), walks to its own (cell 4).
+    expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 4, 0));
+    expect(sim.world.get(enemyPile, Stockpile).amounts.get(WOOD)).toBe(2); // enemy pile untouched
+  });
+
+  it('a farm carrier routes its output past a NEARER enemy warehouse to its own player’s storage', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const farm = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
+    const enemyGranary = buildingAt(sim, GRANARY, 4, 0); // NEARER, but another player's — no sink for me
+    const myGranary = buildingAt(sim, GRANARY, 8, 0); // its own player's storage, farther
+    const carrier = settlerAt(sim, 3, 0, CARRIER, farm);
+    sim.world.add(carrier, Owner, { player: 0 });
+    sim.world.add(farm, Owner, { player: 0 });
+    sim.world.add(enemyGranary, Owner, { player: 1 });
+    sim.world.add(myGranary, Owner, { player: 0 });
+    sim.world.add(carrier, Carrying, { goodType: WHEAT, amount: 1 }); // already carrying the farm's wheat
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The load heads for its own granary (cell 8), never the nearer enemy one (cell 4).
+    expect(sim.world.get(carrier, MoveGoal).cell).toBe(cell(sim, 8, 0));
+    expect(sim.world.get(enemyGranary, Stockpile).amounts.get(WHEAT) ?? 0).toBe(0); // enemy store untouched
   });
 });
