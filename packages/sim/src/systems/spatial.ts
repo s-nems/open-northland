@@ -31,29 +31,42 @@ const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 // re-exported here so consumers keep a single spatial import site.
 export { nodeKey };
 
+/** A per-entity spatial-index visitor: called once per node the entity occupies (see {@link forEachIndexNode}). */
+export type IndexNodeVisitor = (e: Entity, x: number, y: number) => void;
+
 /**
- * The node(s) an entity is spatially indexed at — the ONE resolution ladder {@link NodeBuckets} and the
+ * Visit each node an entity is spatially indexed at — the ONE resolution ladder {@link NodeBuckets} and the
  * coarse {@link import('./conflict/presence.js').HostilePresence} grid both use, so the "presence tallies
  * an entity at the same node(s) the index buckets it at" superset invariant lives in a single function
  * instead of drifting across two parallel copies: the multi-node `nodesOf` (a building at EVERY wall cell)
- * wins, then the single-node `nodeOf`, then the entity's {@link Position} node; empty when the entity
- * resolves to none (dropped from the grid).
+ * wins, then the single-node `nodeOf`, then the entity's {@link Position} node; nothing is visited when the
+ * entity resolves to none (dropped from the grid).
+ *
+ * A callback rather than a returned array so the per-tick index build allocates no per-entity `[{x,y}]`; each
+ * consumer passes one reused visitor (a class field), so the common Position case allocates nothing beyond the
+ * node lookup.
  */
-export function indexNodesFor(
+export function forEachIndexNode(
   world: World,
   e: Entity,
   nodeOf: ((e: Entity) => { x: number; y: number } | null) | undefined,
   nodesOf: ((e: Entity) => readonly { x: number; y: number }[] | null) | undefined,
-): readonly { x: number; y: number }[] {
-  if (nodesOf !== undefined) return nodesOf(e) ?? [];
+  visit: IndexNodeVisitor,
+): void {
+  if (nodesOf !== undefined) {
+    const ns = nodesOf(e);
+    if (ns !== null) for (const n of ns) visit(e, n.x, n.y);
+    return;
+  }
   if (nodeOf !== undefined) {
     const node = nodeOf(e);
-    return node === null ? [] : [node];
+    if (node !== null) visit(e, node.x, node.y);
+    return;
   }
   const p = world.tryGet(e, Position);
-  if (p === undefined) return [];
+  if (p === undefined) return;
   const n = nodeOfPosition(p.x, p.y);
-  return [{ x: n.hx, y: n.hy }];
+  visit(e, n.hx, n.hy);
 }
 
 /**
@@ -70,6 +83,8 @@ export function indexNodesFor(
  */
 export class NodeBuckets {
   private readonly byX = new Map<number, Map<number, Entity[]>>();
+  /** One reused visitor for the whole build (no per-entity closure). */
+  private readonly pushNode: IndexNodeVisitor = (e, x, y) => this.push(e, x, y);
 
   constructor(
     world: World,
@@ -77,11 +92,9 @@ export class NodeBuckets {
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
   ) {
-    for (const e of entities) {
-      // The shared {@link indexNodesFor} ladder — the same node(s) the coarse presence grid tallies, so
-      // the presence early-out stays a superset of what a ring search over these buckets can find.
-      for (const n of indexNodesFor(world, e, nodeOf, nodesOf)) this.push(e, n.x, n.y);
-    }
+    // The shared {@link forEachIndexNode} ladder — the same node(s) the coarse presence grid tallies, so
+    // the presence early-out stays a superset of what a ring search over these buckets can find.
+    for (const e of entities) forEachIndexNode(world, e, nodeOf, nodesOf, this.pushNode);
   }
 
   /** The bucket for node (x,y), minting its column and bucket on first use. */

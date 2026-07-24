@@ -15,16 +15,17 @@ import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
  *
  * Snapshots are already canonical: entities ascending by id, and a component `Map` is cloned to a
  * sorted `[key,value]` array (`snapshot.ts` `clonePlain`). This diff walks both entity lists in that
- * ascending-id order (a merge join) and walks each entity's component names in sorted order, so its
- * output arrays are deterministic without any extra sort — same two snapshots in, byte-identical diff
- * out, regardless of how the live stores happened to be traversed.
+ * ascending-id order (a merge join) and re-sorts each entity's component names here, so its output
+ * arrays are deterministic without relying on store traversal order.
  *
  * ## Equality
  *
- * Component values are compared by **canonical JSON** (`JSON.stringify` over the already-sorted plain
- * clone). Because the clone sorts object keys and Map entries, two values that are deeply equal
- * serialize identically — and the snapshot's plain shape has no functions/cycles to trip `stringify`.
- * This mirrors how `hashState()` fingerprints a component, so "diverged" here agrees with the hash.
+ * Component values are compared by **canonical JSON** (`JSON.stringify` over the plain clone). A
+ * component value is a fixed-shape literal, so `clonePlain` leaves its object keys in their one
+ * deterministic insertion order (it only sorts Map entries, whose key set varies), and two deeply-equal
+ * values therefore serialize identically — the snapshot's plain shape has no functions/cycles to trip
+ * `stringify`. This mirrors how `hashState()` fingerprints a component, so "diverged" here agrees with
+ * the hash.
  */
 
 /** A single component's change on an entity present in both snapshots. */
