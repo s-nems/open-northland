@@ -5,7 +5,7 @@
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
-export { equipFromStore, equipSlotValue, isUsed, unequipWornGood } from './equip.js';
+export { equipFromStore, isUsed, unequipWornGood } from './equip.js';
 export { harvestFromNode } from './harvest.js';
 export {
   beginRestTail,

@@ -1,12 +1,13 @@
 import type { EquipCategory } from '@open-northland/data';
 import {
   Equipment,
-  type EquipmentData,
   type EquipmentSlot,
   EquipOrder,
+  equipSlotValue,
   MISC_EQUIP_SLOTS,
   Stockpile,
   setStockAmount,
+  writeEquipSlot,
 } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -20,26 +21,6 @@ import { pileupIntoStore } from './transfer.js';
 // part-used take-off/swap-out (see isUsed) - stores hold fungible stock amounts, so stowing a used
 // unit would round-trip it back to fresh, and destroying it closes that regeneration (user rule
 // 2026-07-23). The fresh `degreeOfUse` on wear is the same approximation's other side.
-
-/** The good worn in one addressed equipment slot, or null when the slot is empty / out of range. */
-export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: number): EquipmentSlot | null {
-  if (group === 'misc') return eq.misc[slot] ?? null;
-  return eq[group];
-}
-
-/** Write one addressed equipment slot (the misc array is replaced, never mutated in place). */
-function writeEquipSlot(
-  eq: EquipmentData,
-  group: EquipCategory,
-  slot: number,
-  value: EquipmentSlot | null,
-): void {
-  if (group === 'misc') {
-    eq.misc = eq.misc.map((held, i) => (i === slot ? value : held));
-    return;
-  }
-  eq[group] = value;
-}
 
 /** The settler's Equipment component, created empty on first wear (a bare settler carries none until
  *  something is actually put on it - see the component's absence contract). */
