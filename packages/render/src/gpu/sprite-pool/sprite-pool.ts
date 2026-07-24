@@ -25,12 +25,14 @@ import { resolveLayers } from './resolve-layers.js';
  */
 
 /**
- * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
- * display objects can be freed. A death detaches immediately — invisible that same frame — so destroying
- * it only reclaims memory; this whole-pool diff against the live set therefore runs on an interval, not
- * every frame, keeping the per-frame reconcile bounded by the screen. 30 ≈ twice a second at 60 fps.
+ * How many pooled entries the death reap sweeps per frame ({@link SpritePool.reap}). Walking the pool
+ * round-robin at this fixed budget keeps the reap's per-frame cost constant instead of a whole-pool spike,
+ * trading a reclaim latency: a dead entity's display object is freed within one full pass
+ * (⌈pooled / budget⌉ frames, as long as fewer than a budget of first-seen entities enter per frame). A
+ * death detaches immediately (invisible that frame), so that lag is memory reclamation only. 32 keeps the
+ * latency near the old 30-frame interval at a pool of ~1000.
  */
-const POOL_REAP_INTERVAL_FRAMES = 30;
+const POOL_REAP_BUDGET = 32;
 
 /**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
@@ -87,6 +89,9 @@ export class SpritePool {
    *  screen (O(visible)), never every entity ever seen — the pool only shrinks on death. Kept in sync with
    *  each entity's `attached` flag: added on attach, removed on detach. */
   private readonly attached = new Set<PooledEntity>();
+  /** The death reap's round-robin cursor: a Map-key iterator carried across frames, `undefined` between
+   *  passes so a fresh one restarts from the front. See {@link reap}. */
+  private reapCursor: MapIterator<number> | undefined;
   private frameId = 0;
   /** The last {@link reconcile}'s culled, depth-sorted draw list — retained so read-only per-frame
    *  consumers (the ground-pile hover targets) reuse it instead of building the scene a second time. */
@@ -119,9 +124,9 @@ export class SpritePool {
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
    * entity, update it in place, order it by its feet-anchor {@link screenDepth}, detach entities not drawn
-   * this frame (culled or gone), and reap the ones that left the snapshot (died). Only the death reap
-   * must diff the whole pool against the live set, so it runs on an interval
-   * ({@link POOL_REAP_INTERVAL_FRAMES}); every other pass is O(visible).
+   * this frame (culled or gone), and reap the ones that left the snapshot (died). The reap is the only pass
+   * that must reach off-screen entities, so it sweeps a bounded {@link POOL_REAP_BUDGET} slice per frame
+   * ({@link reap}) rather than the whole pool.
    */
   reconcile(frame: PoolFrame): void {
     // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
@@ -198,17 +203,30 @@ export class SpritePool {
       this.attached.delete(pe);
     }
 
-    // Reap entities that left the snapshot (died), freeing their display objects — a merely culled one
-    // stays pooled to scroll back. Interval-gated; see POOL_REAP_INTERVAL_FRAMES. `reconcileSprites` is
-    // the pure, tested decision (a pooled ref absent from the pre-cull live set has died).
-    if (this.frameId % POOL_REAP_INTERVAL_FRAMES === 0) {
-      for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
-        const pe = this.pool.get(ref);
-        if (pe !== undefined) {
-          pe.container.destroy({ children: true });
-          this.pool.delete(ref);
-        }
+    this.reap(scene.liveRefs);
+  }
+
+  /**
+   * Reap a bounded slice of the pool: sweep the next {@link POOL_REAP_BUDGET} pooled entries the
+   * {@link reapCursor} yields and free any that left the snapshot (died); a still-live culled entity is in
+   * `liveRefs`, so it is kept to scroll back. `reconcileSprites` is the pure, tested death test on the slice.
+   */
+  private reap(liveRefs: ReadonlySet<number>): void {
+    const swept: number[] = [];
+    for (let i = 0; i < POOL_REAP_BUDGET; i++) {
+      if (this.reapCursor === undefined) this.reapCursor = this.pool.keys();
+      const next = this.reapCursor.next();
+      if (next.done === true) {
+        this.reapCursor = undefined;
+        break;
       }
+      swept.push(next.value);
+    }
+    for (const ref of reconcileSprites(liveRefs, swept).toDestroy) {
+      const pe = this.pool.get(ref);
+      if (pe === undefined) continue;
+      pe.container.destroy({ children: true });
+      this.pool.delete(ref);
     }
   }
 
@@ -293,6 +311,7 @@ export class SpritePool {
     for (const pe of this.pool.values()) pe.container.destroy({ children: true });
     this.pool.clear();
     this.attached.clear();
+    this.reapCursor = undefined;
   }
 
   /** Update one pooled entity for this frame: place it at its interpolated feet anchor, resolve its

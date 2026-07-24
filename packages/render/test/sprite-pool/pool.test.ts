@@ -64,6 +64,9 @@ const FRAMES_FIRST: Viewport = {
   minY: nth(POS, 0).y - MARGIN,
   maxY: nth(POS, 0).y + MARGIN,
 };
+// A viewport wide enough to frame every entity, whatever its tile. The bounded-reap test needs a large
+// all-attached pool without hand-fitting the box to each generated position.
+const FRAMES_EVERYTHING: Viewport = { minX: -1e9, maxX: 1e9, minY: -1e9, maxY: 1e9 };
 
 describe('SpritePool — reconcile scans track the screen, not the pool', () => {
   it('attaches only the visible entities and keeps culled ones pooled', () => {
@@ -92,7 +95,7 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
     expect(pool.stats().pooled).toBe(3);
   });
 
-  it('detaches a dead entity immediately, defers its reap, and keeps a culled-but-live one', () => {
+  it('detaches a dead entity immediately, reaps it within the budget, and keeps a culled-but-live one', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
 
@@ -100,19 +103,48 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
     expect(layer.children.length).toBe(3);
     expect(pool.stats().pooled).toBe(3);
 
-    // Building 2 leaves the snapshot (died) while still framed. The next frame is not a reap frame, so it
-    // detaches at once (invisible) but its display object is not yet freed — the deferred-reap contract.
+    // Building 2 leaves the snapshot (died). Frame only building 1; building 3 stays live but culled.
     const survivors = snapshotOf([nth(BUILDINGS, 0), nth(BUILDINGS, 2)]);
-    pool.reconcile(poolFrame(survivors, FRAMES_ALL)); // frame 2 — not a reap multiple
-    expect(layer.children.length).toBe(2); // detached the same frame it died
-    expect(pool.stats().pooled).toBe(3); // still pooled — reap runs on an interval, not every frame
+    pool.reconcile(poolFrame(survivors, FRAMES_FIRST)); // frame 2
+    expect(layer.children.length).toBe(1); // building 2 detached the frame it died; building 3 culled off
+    // The whole pool (3 entries) fits inside one reap budget, so the incremental sweep frees the dead
+    // entity that same frame; the culled-but-live building 3 is in liveRefs, so it is kept to scroll back.
+    expect(pool.stats().pooled).toBe(2);
+  });
 
-    // Now frame only building 1 (building 3 stays live but culled). Drive frames until the reap fires.
-    for (let i = 0; i < 64 && pool.stats().pooled > 2; i++) {
-      pool.reconcile(poolFrame(survivors, FRAMES_FIRST));
+  // Frame a pool of `n` live buildings, then kill every one at once and drive the reap to completion.
+  // Returns how many were freed on the first dead frame (the per-frame reap slice) and how many frames the
+  // whole pool took to drain. Buildings sit on distinct columns so FRAMES_EVERYTHING attaches all of them.
+  function reapDrain(n: number): { firstSlice: number; framesToDrain: number } {
+    const pool = new SpritePool(new Container(), new TextureCache(), undefined);
+    const live = Array.from({ length: n }, (_, i) => building(i + 1, i, 0));
+    pool.reconcile(poolFrame(snapshotOf(live), FRAMES_EVERYTHING));
+    expect(pool.stats().pooled).toBe(n); // all live → nothing reaped yet
+
+    const dead = snapshotOf([]); // every entity leaves the snapshot at once
+    pool.reconcile(poolFrame(dead, FRAMES_EVERYTHING));
+    const firstSlice = n - pool.stats().pooled;
+    let framesToDrain = 1;
+    while (pool.stats().pooled > 0) {
+      if (framesToDrain > n + 2) throw new Error('reap never drained the pool'); // a stuck cursor would hang
+      pool.reconcile(poolFrame(dead, FRAMES_EVERYTHING));
+      framesToDrain++;
     }
-    expect(pool.stats().pooled).toBe(2); // the dead entity is freed; the culled-but-live one is kept
-    expect(layer.children.length).toBe(1); // only building 1 is framed
+    return { firstSlice, framesToDrain };
+  }
+
+  it('reaps a bounded slice per frame, so the per-frame reap is O(1), not O(pooled)', () => {
+    const small = reapDrain(64);
+    const large = reapDrain(256);
+
+    // The same fixed budget is freed on the first dead frame whatever the pool size: the reap does not scan
+    // the whole pool, so its per-frame cost does not grow with it. A full sweep would give 64 vs 256 here.
+    expect(large.firstSlice).toBe(small.firstSlice);
+    expect(small.firstSlice).toBeGreaterThan(0); // it does make progress
+    expect(small.firstSlice).toBeLessThan(64); // but not the whole pool in one frame (that is the bound)
+    // Flat per-frame cost means a bigger pool trades latency, not cost: 4× the entries take more frames to
+    // fully reclaim (⌈pooled / budget⌉), never a bigger per-frame scan.
+    expect(large.framesToDrain).toBeGreaterThan(small.framesToDrain);
   });
 
   it('destroy() frees the pool and detaches everything', () => {
