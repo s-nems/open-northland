@@ -124,6 +124,13 @@ export function harvestFromNode(
   return took;
 }
 
+/** Remove an exhausted resource node, dropping its footprint stamp first (through the incremental cache,
+ *  never a full overlay rebuild) so the planner never re-scans a node that no longer exists. */
+function removeResourceNode(world: World, node: Entity): void {
+  unstampResourceFootprint(world, node);
+  world.destroy(node);
+}
+
 /**
  * Reap a ripe {@link Crop} field: drop its whole yield (`Resource.remaining`, set by the CropGrowthSystem at
  * ripeness) at its node as a ground sheaf pile — the same {@link GroundDrop} shape a felled trunk takes, so the
@@ -137,8 +144,7 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
   if (res.remaining <= 0) return 0; // unripe / raced — the swing cut stubble (nothing conjured)
   const { x, y } = world.get(node, Position);
   dropGroundPile(world, x, y, res.goodType, res.remaining);
-  unstampResourceFootprint(world, node); // through the incremental cache, never a full overlay rebuild
-  world.destroy(node);
+  removeResourceNode(world, node);
   return res.remaining;
 }
 
@@ -168,9 +174,7 @@ function fellNode(
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
-  // The standing node is gone from every planner scan from here on.
-  unstampResourceFootprint(world, node);
-  world.destroy(node);
+  removeResourceNode(world, node);
   ctx.events.emit({
     kind: 'resourceFelled',
     node,
@@ -216,7 +220,6 @@ function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
   const pos = world.get(node, Position);
   const at = eventAt(pos.x, pos.y);
-  unstampResourceFootprint(world, node);
-  world.destroy(node);
+  removeResourceNode(world, node);
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }
