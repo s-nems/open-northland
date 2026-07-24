@@ -5,12 +5,12 @@
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
+export { harvestFromNode } from './harvest.js';
 export {
   beginRestTail,
   continuesHarvest,
   endRestTail,
-  harvestFromNode,
   swingWorkUnits,
-} from './harvest.js';
+} from './harvest-burst.js';
 export { dropOrStackGood } from './piles.js';
 export { drawUtilityGood, pickupFromStore, pileupIntoStore } from './transfer.js';
