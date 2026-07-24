@@ -4,6 +4,7 @@ import {
   CurrentAtomic,
   Equipment,
   EquipOrder,
+  equipSlotValue,
   MISC_EQUIP_SLOTS,
   MoveGoal,
   PathRequest,
@@ -17,7 +18,6 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { equipSlotValue } from '../agents/effects-goods/index.js';
 import type { SystemContext } from '../context.js';
 import { isOrderableSettler } from './guards.js';
 

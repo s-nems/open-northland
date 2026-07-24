@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@open-northland/data';
+import type { EquipClass } from '@open-northland/data';
 
 /** Goods and equipment ids in the sandbox-scoped economy namespace. The six gathered goods + coin carry
  *  their real `goodtypes.ini` (ir.json) typeIds, so a placed wood/stone/… resolves against either the
@@ -53,31 +53,70 @@ export const GOOD_POTION_FOOD_SMALL = 144;
 export const GOOD_POTION_STAMINA_SMALL = 146;
 export const GOOD_AMULET_STRENGTH = 152;
 
-/** One equippable good's equip axis: its slot category ({@link EquipCategory}, the shared data-package
- *  vocabulary) + whether it wears out. The good itself (name, icon) lives once in the global catalog
- *  (`catalog/goods.ts`); this is only the classification, keyed to it by `typeId`. */
-export interface EquipGoodSpec {
+/** One equippable good's full equip axis (the shared data-package {@link EquipClass}: slot category,
+ *  wear flag, and the effect/wear numbers). The good itself (name, icon) lives once in the global
+ *  catalog (`catalog/goods.ts`); this is only the classification, keyed to it by `typeId`. */
+export type EquipGoodSpec = EquipClass & {
   readonly typeId: number;
   readonly id: string;
-  readonly category: EquipCategory;
-  readonly wears: boolean;
-}
+};
+
+/** Rated waypoint-arrivals for a pair of shoes: ~1% per 30 walked cells at ~2 route waypoints per
+ *  cell (user rule 2026-07-24 for the rate class; the exact figure is a named approximation —
+ *  anisotropic by heading mix, and no readable source carries a wear rate). */
+const SHOE_USES = 6000;
+/** Rated production cycles for a tool (~1% per completed cycle — user rule 2026-07-24). */
+const TOOL_USES = 100;
+/** Sips in a small bottle (mead, small potions) and a big one — manual-pinned ("Small potions can
+ *  be used twice, large ones can be used five times"; mead sized like a small bottle). */
+const SMALL_BOTTLE_USES = 2;
+const BIG_BOTTLE_USES = 5;
+/** One sip's restore percents (user rules 2026-07-23/24): mead +40 hunger AND +40 fatigue (matches
+ *  one meal — EAT_HUNGER_RESTORE is 40%); a potion +50 of its one bar (heal: percent of max HP). */
+const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
+const POTION_RESTORE_PCT = 50;
+/** Boots walk-gait bonus, percent (user rule 2026-07-24). */
+const SHOE_SPEED_BONUS_PCT = 40;
+/** ADDITIVE per-cycle production credit, percent of the recipe outputs (user rule 2026-07-24:
+ *  added to the experience bonus, never multiplied). */
+const WOODEN_TOOL_BONUS_PCT = 30;
+const IRON_TOOL_BONUS_PCT = 60;
 
 /**
  * The equip classification for the original's equippable goods (`goodtypes.ini` ids 30–55, carried by the
- * global catalog at the sandbox-scoped 130–155); `sandboxContent()` merges this slot/wear axis onto the
+ * global catalog at the sandbox-scoped 130–155); `sandboxContent()` merges this axis onto the
  * catalog goods by `typeId`. Set membership is source-pinned to `tribetypes.ini` `allowequip`; the per-good
  * slot category is derived from the `goodtypes.ini` good names + the manual's Equipment section
  * (shoes/tools/mead/potions/amulets for anyone, weapons/armour for soldiers). `wears` is pinned to the
  * manual's two-axis split: potions, shoes and tools are "slowly used up" while "unused items such as
- * weapons, armour and amulets can be used again" (amulets "never wear out"). No per-good numeric
- * consumption rate exists in any readable `.ini` (engine-hardcoded), so none is modelled here — a wearing
- * item just carries a "degree of use".
+ * weapons, armour and amulets can be used again" (amulets "never wear out"). Effect/wear magnitudes are
+ * the named constants above; amulet and weapon/armor effects are the deferred combat phase's.
  */
 export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
-  { typeId: GOOD_SHOES, id: 'shoes', category: 'boots', wears: true },
-  { typeId: 131, id: 'tool_wooden', category: 'tool', wears: true },
-  { typeId: GOOD_TOOL_IRON, id: 'tool_iron', category: 'tool', wears: true },
+  {
+    typeId: GOOD_SHOES,
+    id: 'shoes',
+    category: 'boots',
+    wears: true,
+    speedBonusPct: SHOE_SPEED_BONUS_PCT,
+    uses: SHOE_USES,
+  },
+  {
+    typeId: 131,
+    id: 'tool_wooden',
+    category: 'tool',
+    wears: true,
+    productionBonusPct: WOODEN_TOOL_BONUS_PCT,
+    uses: TOOL_USES,
+  },
+  {
+    typeId: GOOD_TOOL_IRON,
+    id: 'tool_iron',
+    category: 'tool',
+    wears: true,
+    productionBonusPct: IRON_TOOL_BONUS_PCT,
+    uses: TOOL_USES,
+  },
   { typeId: 133, id: 'armor_wool', category: 'armor', wears: false },
   { typeId: 134, id: 'armor_leather', category: 'armor', wears: false },
   { typeId: GOOD_ARMOR_CHAIN, id: 'armor_chain', category: 'armor', wears: false },
@@ -88,13 +127,62 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
   { typeId: GOOD_SPEAR_IRON, id: 'spear_iron', category: 'weapon', wears: false },
   { typeId: GOOD_SWORD_SHORT, id: 'sword_shord', category: 'weapon', wears: false },
   { typeId: GOOD_SWORD_LONG, id: 'sword_long', category: 'weapon', wears: false },
-  { typeId: GOOD_MEAD, id: 'mead', category: 'misc', wears: true },
-  { typeId: GOOD_POTION_FOOD_SMALL, id: 'potion_food_small', category: 'misc', wears: true },
-  { typeId: 145, id: 'potion_food_big', category: 'misc', wears: true },
-  { typeId: GOOD_POTION_STAMINA_SMALL, id: 'potion_stamina_small', category: 'misc', wears: true },
-  { typeId: 147, id: 'potion_stamina_big', category: 'misc', wears: true },
-  { typeId: 148, id: 'potion_heal_small', category: 'misc', wears: true },
-  { typeId: 149, id: 'potion_heal_big', category: 'misc', wears: true },
+  {
+    typeId: GOOD_MEAD,
+    id: 'mead',
+    category: 'misc',
+    wears: true,
+    uses: SMALL_BOTTLE_USES,
+    restorePct: MEAD_RESTORE,
+  },
+  {
+    typeId: GOOD_POTION_FOOD_SMALL,
+    id: 'potion_food_small',
+    category: 'misc',
+    wears: true,
+    uses: SMALL_BOTTLE_USES,
+    restorePct: { hunger: POTION_RESTORE_PCT },
+  },
+  {
+    typeId: 145,
+    id: 'potion_food_big',
+    category: 'misc',
+    wears: true,
+    uses: BIG_BOTTLE_USES,
+    restorePct: { hunger: POTION_RESTORE_PCT },
+  },
+  {
+    typeId: GOOD_POTION_STAMINA_SMALL,
+    id: 'potion_stamina_small',
+    category: 'misc',
+    wears: true,
+    uses: SMALL_BOTTLE_USES,
+    restorePct: { fatigue: POTION_RESTORE_PCT },
+  },
+  {
+    typeId: 147,
+    id: 'potion_stamina_big',
+    category: 'misc',
+    wears: true,
+    uses: BIG_BOTTLE_USES,
+    restorePct: { fatigue: POTION_RESTORE_PCT },
+  },
+  {
+    typeId: 148,
+    id: 'potion_heal_small',
+    category: 'misc',
+    wears: true,
+    uses: SMALL_BOTTLE_USES,
+    restorePct: { healthMax: POTION_RESTORE_PCT },
+  },
+  {
+    typeId: 149,
+    id: 'potion_heal_big',
+    category: 'misc',
+    wears: true,
+    uses: BIG_BOTTLE_USES,
+    restorePct: { healthMax: POTION_RESTORE_PCT },
+  },
   { typeId: 150, id: 'amulet_food', category: 'misc', wears: false },
   { typeId: 151, id: 'amulet_stamina', category: 'misc', wears: false },
   { typeId: GOOD_AMULET_STRENGTH, id: 'amulet_strength', category: 'misc', wears: false },

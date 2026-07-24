@@ -1,12 +1,19 @@
 import type { EquipCategory } from '@open-northland/data';
-import { Carrying, Equipment, EquipOrder, MoveGoal, type SettlerIdentity } from '../../components/index.js';
+import {
+  Carrying,
+  Equipment,
+  EquipOrder,
+  equipSlotValue,
+  MoveGoal,
+  type SettlerIdentity,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from './actions.js';
-import { equipSlotValue, isUsed } from './effects-goods/index.js';
+import { isUsed } from './effects-goods/index.js';
 import type { TargetCandidates } from './targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from './targets/index.js';
 import { unreachableGoalVeto } from './unreachable-goals.js';

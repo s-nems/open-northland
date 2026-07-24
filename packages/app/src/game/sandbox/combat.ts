@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@open-northland/data';
+import type { EquipClass } from '@open-northland/data';
 import { PRIMARY_TRIBE } from '../rules.js';
 import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
 import {
@@ -84,16 +84,17 @@ const BROADSWORD_VS_BUILDING = 2000;
 const SHORT_BOW_VS_BUILDING = 140;
 const LONG_BOW_VS_BUILDING = 200;
 
-/** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
- *  global catalog good of the same typeId (an equippable good is declared once, in `EXTENDED_GOODS`). */
-export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
-  EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
+/** A good's full equip axis (slot, wear, effect numbers) per typeId, so `sandboxContent()` can merge
+ *  it onto the global catalog good of the same typeId (an equippable good is declared once, in
+ *  `EXTENDED_GOODS`). */
+export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, EquipClass> = new Map(
+  EQUIP_GOODS.map(({ typeId, id: _id, ...equip }) => [typeId, equip]),
 );
 
-/** The same classification keyed by good SLUG - the id-space bridge (`shoes` is 130 in the sandbox but 30
+/** The same axis keyed by good SLUG - the id-space bridge (`shoes` is 130 in the sandbox but 30
  *  in real content) the real-content merge overlays with, until the pipeline extracts an equip axis. */
-export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, { category: EquipCategory; wears: boolean }> = new Map(
-  EQUIP_GOODS.map((g) => [g.id, { category: g.category, wears: g.wears }]),
+export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, EquipClass> = new Map(
+  EQUIP_GOODS.map(({ typeId: _typeId, id, ...equip }) => [id, equip]),
 );
 
 /**

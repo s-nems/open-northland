@@ -117,7 +117,13 @@ describe('mergeRealContent', () => {
     const raw = rawRealLike();
     expect(goodById(raw, 'shoes').equip).toBeUndefined(); // stand-in ships none, like real ir.json
     const { content } = mergeRealContent(raw);
-    expect(goodById(content, 'shoes').equip).toEqual({ category: 'boots', wears: true });
+    // The full effect axis rides the overlay: category/wear plus the balance numbers (speed, uses).
+    expect(goodById(content, 'shoes').equip).toEqual({
+      category: 'boots',
+      wears: true,
+      speedBonusPct: 40,
+      uses: 6000,
+    });
     expect(goodById(content, 'sword_shord').equip).toEqual({ category: 'weapon', wears: false });
     expect(goodById(content, 'wood').equip).toBeUndefined(); // a non-equippable stays bare
   });

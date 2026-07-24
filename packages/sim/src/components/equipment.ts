@@ -21,9 +21,9 @@ export const MISC_EQUIP_SLOTS = 4;
  * `degreeOfUse` is a {@link Fixed} fraction in `[0, ONE]` — how used-up a WEARING item is (`0` = fresh,
  * `ONE` = spent), the original's "degree of use" the equip window shows as a percentage. It is always
  * `0` for a non-wearing good (weapons/armour/amulets never wear — the good's `equip.wears` is false;
- * source basis: manual "Unused items ... can be used again"). No consumption drive reduces it yet —
- * this slice MODELS and DISPLAYS the field; the drink/consume drive (which would decrement it, faithful
- * to potion "2 uses"/"5 uses") is deferred.
+ * source basis: manual "Unused items ... can be used again"). Use accrues in wear steps of
+ * `ONE/equip.uses` (walking for boots, production cycles for tools, sips for consumables — see
+ * `systems/equipment/`); at `ONE` the item breaks and its slot clears.
  */
 export interface EquipmentSlot {
   readonly goodType: number;
@@ -58,6 +58,26 @@ export interface EquipmentData {
 }
 
 export const Equipment = defineComponent<EquipmentData>('Equipment');
+
+/** The good worn in one addressed equipment slot, or null when the slot is empty / out of range. */
+export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: number): EquipmentSlot | null {
+  if (group === 'misc') return eq.misc[slot] ?? null;
+  return eq[group];
+}
+
+/** Write one addressed equipment slot (the misc array is replaced, never mutated in place). */
+export function writeEquipSlot(
+  eq: EquipmentData,
+  group: EquipCategory,
+  slot: number,
+  value: EquipmentSlot | null,
+): void {
+  if (group === 'misc') {
+    eq.misc = eq.misc.map((held, i) => (i === slot ? value : held));
+    return;
+  }
+  eq[group] = value;
+}
 
 /**
  * A player equip errand in flight on a settler: one slot address (`group` + `slot`, the misc row

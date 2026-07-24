@@ -58,11 +58,60 @@ export const economyContent = {
     // original's bread. Nothing in the golden slice produces it.
     { typeId: 7, id: 'bread', weight: 1 },
     // Two equippables for the equip-errand tests: a WEARING boots good and a permanent weapon good
-    // (the two `equip.wears` shapes the slot mechanics distinguish).
-    { typeId: 8, id: 'shoes', weight: 1, equip: { category: 'boots', wears: true } },
+    // (the two `equip.wears` shapes the slot mechanics distinguish). Effect/wear numbers mirror the
+    // app catalog's balance (goods.ts EQUIP_GOODS) so the effect tests exercise the shipped shapes.
+    {
+      typeId: 8,
+      id: 'shoes',
+      weight: 1,
+      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 6000 },
+    },
     { typeId: 9, id: 'sword', weight: 1, equip: { category: 'weapon' } },
-    // A second boots good, so a swap test can order different gear into an occupied slot.
-    { typeId: 10, id: 'fur_boots', weight: 1, equip: { category: 'boots', wears: true } },
+    // A second boots good, so a swap test can order different gear into an occupied slot; its tiny
+    // 2-use rating is the cheap mid-walk breakage shape.
+    {
+      typeId: 10,
+      id: 'fur_boots',
+      weight: 1,
+      equip: { category: 'boots', wears: true, speedBonusPct: 40, uses: 2 },
+    },
+    // The equipment-effects goods: tools (additive production credit) and the draughts (auto-drunk).
+    {
+      typeId: 11,
+      id: 'tool_wooden',
+      weight: 1,
+      equip: { category: 'tool', wears: true, productionBonusPct: 30, uses: 100 },
+    },
+    {
+      typeId: 12,
+      id: 'tool_iron',
+      weight: 1,
+      equip: { category: 'tool', wears: true, productionBonusPct: 60, uses: 100 },
+    },
+    {
+      typeId: 13,
+      id: 'mead',
+      weight: 1,
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 40, fatigue: 40 } },
+    },
+    {
+      typeId: 14,
+      id: 'potion_food_small',
+      weight: 1,
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { hunger: 50 } },
+    },
+    {
+      typeId: 15,
+      id: 'potion_stamina_small',
+      weight: 1,
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { fatigue: 50 } },
+    },
+    {
+      typeId: 16,
+      id: 'potion_heal_small',
+      weight: 1,
+      equip: { category: 'misc', wears: true, uses: 2, restorePct: { healthMax: 50 } },
+    },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
