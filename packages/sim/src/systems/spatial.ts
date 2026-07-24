@@ -84,9 +84,8 @@ export class NodeBuckets {
     }
   }
 
-  /** Append `e` to node (x,y)'s bucket, minting the column/bucket on first use — the per-tick constructor's
-   *  shared insert (fed a pre-sorted list, so append keeps buckets ascending-id). */
-  private push(e: Entity, x: number, y: number): void {
+  /** The bucket for node (x,y), minting its column and bucket on first use. */
+  private bucketFor(x: number, y: number): Entity[] {
     let column = this.byX.get(x);
     if (column === undefined) {
       column = new Map<number, Entity[]>();
@@ -97,7 +96,13 @@ export class NodeBuckets {
       bucket = [];
       column.set(y, bucket);
     }
-    bucket.push(e);
+    return bucket;
+  }
+
+  /** Append `e` to node (x,y)'s bucket - the per-tick constructor's shared insert (fed a pre-sorted list,
+   *  so append keeps buckets ascending-id). */
+  private push(e: Entity, x: number, y: number): void {
+    this.bucketFor(x, y).push(e);
   }
 
   /** The entities on node (x,y), in ascending-id order — empty (shared) when the node is unoccupied. */
@@ -105,20 +110,10 @@ export class NodeBuckets {
     return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
   }
 
-  /** Insert `e` into node (x,y)'s bucket keeping it ascending-id — the incremental-index maintenance seam
+  /** Insert `e` into node (x,y)'s bucket keeping it ascending-id - the incremental-index maintenance seam
    *  (the per-tick constructor path appends instead; it is fed a pre-sorted list). */
   insert(e: Entity, x: number, y: number): void {
-    let column = this.byX.get(x);
-    if (column === undefined) {
-      column = new Map<number, Entity[]>();
-      this.byX.set(x, column);
-    }
-    let bucket = column.get(y);
-    if (bucket === undefined) {
-      bucket = [];
-      column.set(y, bucket);
-    }
-    insertSortedById(bucket, e, (id) => id);
+    insertSortedById(this.bucketFor(x, y), e, (id) => id);
   }
 
   /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket/column so membership never leaks —
