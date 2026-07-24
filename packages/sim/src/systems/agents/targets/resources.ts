@@ -1,4 +1,4 @@
-import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
+import { HarvestedBy, Position, Resource, Stockpile, sameSideAs } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
@@ -171,6 +171,9 @@ export function nearestHarvestableFor(
     if (regions.unroutable(here, cell)) return null;
     return { cell, payload: null };
   });
+  // No same-side onSide arg: a standing Resource (tree/deposit/clay) is never Owner-stamped — forests are
+  // shared map features. Gating here would add an always-true owner lookup over the map-sized resource list
+  // per gatherer per tick (the collectable-pile scan below, over real drops, is the one that gates).
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
 
@@ -184,19 +187,27 @@ export function nearestHarvestableFor(
 function nearestDropFor(
   plan: PlannerContext,
   pick: (e: Entity) => number | null,
+  /** The caller's same-side gate ({@link sameSideAs}), or `undefined` when its `pick` already proves the side. */
+  onSide: ((e: Entity) => boolean) | undefined,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const gates: WorkCellGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
-  const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
-    const good = pick(e);
-    if (good === null) return null;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail - leave the pile for later
-    if (gate !== undefined && !gate.allowsNode(cell)) return null;
-    return { cell, payload: good };
-  });
+  const best = nearestByCell(
+    terrain,
+    targets.groundDrops,
+    here,
+    (e) => {
+      const good = pick(e);
+      if (good === null) return null;
+      const cell = interactionCell(world, ctx, terrain, e, here);
+      if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail - leave the pile for later
+      if (gate !== undefined && !gate.allowsNode(cell)) return null;
+      return { cell, payload: good };
+    },
+    onSide,
+  );
   return best === null ? null : { pile: best.entity, goodType: best.payload, dist: best.distance };
 }
 
@@ -222,14 +233,18 @@ export function nearestCollectablePileFor(
   const { world, ctx, targets } = plan;
   const { goodFilter } = opts;
   const allowed = jobAtomics(ctx, plan.jobType);
-  return nearestDropFor(plan, (e) => {
-    const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
-    if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
-    const harvestAtomic = targets.harvestAtomicByGood.get(good);
-    if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
-    return good;
-  });
+  return nearestDropFor(
+    plan,
+    (e) => {
+      const good = lowestStockedGood(world.get(e, Stockpile));
+      if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
+      if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
+      const harvestAtomic = targets.harvestAtomicByGood.get(good);
+      if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
+      return good;
+    },
+    sameSideAs(world, plan.owner),
+  );
 }
 
 /**
@@ -245,11 +260,17 @@ export function nearestOwnDropFor(
   plan: PlannerContext,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const { world, entity: gatherer } = plan;
-  return nearestDropFor(plan, (e) => {
-    const mark = world.tryGet(e, HarvestedBy);
-    if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
-    const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) return null; // emptied (about to be reaped)
-    return good;
-  });
+  return nearestDropFor(
+    plan,
+    (e) => {
+      const mark = world.tryGet(e, HarvestedBy);
+      if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
+      const good = lowestStockedGood(world.get(e, Stockpile));
+      if (good === null) return null; // emptied (about to be reaped)
+      return good;
+    },
+    // No same-side gate: the `mark.by === gatherer` filter already restricts to this gatherer's own
+    // drops, which carry its own player's Owner — a separate side check could never reject.
+    undefined,
+  );
 }

@@ -4,6 +4,7 @@ import {
   Position,
   Stockpile,
   setStockAmount,
+  stampOwner,
   Vehicle,
 } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
@@ -78,8 +79,19 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
  * ({@link stockpilesAtNode}), a which-entity-wins pick that must be canonical. The felled-trunk-free twin of
  * {@link dropOrStackGood} — the difference is the overflow policy: this reports the placed count so the caller
  * can carry the remainder to the next tile, where `dropOrStackGood` (a hand-placed pile) silently drops it.
+ *
+ * `owner` is the dropping settler's player: a FRESH heap is stamped with it ({@link stampOwner}), so a
+ * gatherer's yard heap / a porter's shed load stays on its own side and a rival cannot fetch it. Stacking
+ * onto an EXISTING heap leaves that heap's owner untouched (first-dropper wins).
  */
-export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, want: number): number {
+export function stackOntoTile(
+  world: World,
+  x: Fixed,
+  y: Fixed,
+  good: number,
+  want: number,
+  owner?: number,
+): number {
   if (want <= 0) return 0;
   const at = nodeOfPosition(x, y);
   for (const e of stockpilesAtNode(world, at.hx, at.hy)) {
@@ -103,6 +115,7 @@ export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, wa
   const pile = world.create();
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[good, placed]]) });
+  stampOwner(world, pile, owner);
   return placed;
 }
 

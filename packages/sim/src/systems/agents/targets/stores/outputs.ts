@@ -1,4 +1,4 @@
-import { Stockpile, stockpileEntries, UnderConstruction } from '../../../../components/index.js';
+import { Stockpile, sameSideAs, stockpileEntries, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
@@ -51,6 +51,8 @@ export function nearestWorkplaceOutput(
   gate?: SpatialGate,
   /** The carrier's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
+  /** The carrier's owning player — never hauls another player's workplace output ({@link sameSideAs}). */
+  owner?: number,
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
   // qualify, and the good that qualified the winner is the good it hauls.
@@ -59,6 +61,7 @@ export function nearestWorkplaceOutput(
     (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
     gate,
     avoid,
+    sameSideAs(world, owner),
   );
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }

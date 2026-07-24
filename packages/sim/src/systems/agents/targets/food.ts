@@ -1,8 +1,10 @@
 import {
   BerryBush,
   Building,
+  ownerOf,
   Residence,
   Stockpile,
+  sameSideAs,
   stockpileEntries,
   type UnreachableGoal,
 } from '../../../components/index.js';
@@ -53,6 +55,7 @@ function nearestFoodStore(
     (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e, home)),
     gate,
     avoid,
+    sameSideAs(world, ownerOf(world, eater)), // a settler eats from its own player's larder, not an enemy's
   );
   return winner === null
     ? null
@@ -125,6 +128,8 @@ function nearestRipeBush(
 ): { bush: Entity; dist: number; cell: NodeId } | null {
   const { x: hx, y: hy } = terrain.coordsOf(here);
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
+  // No same-side gate: a wild BerryBush is a neutral map feature foraged in place (it drops no owned pile),
+  // so any hungry settler may pick it — the shared wild fallback, unlike an owned store's larder.
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const bush = world.tryGet(e, BerryBush);
     if (bush === undefined || bush.stage !== 'ripe') return null; // bare/blooming — nothing to forage

@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Position, Stockpile } from '../../../components/index.js';
+import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { buildingBlockedCells } from '../../footprint/index.js';
@@ -34,18 +34,24 @@ export function nearestGroundPile(
   const gate = plan.limit ?? undefined; // the porter's confinement — an out-of-area pile is not one it fetches
   const walls = buildingBlockedCells(world, ctx, terrain);
   const memo = unreachableGoals(world, ctx, plan.entity);
-  const best = nearestByCell(terrain, targets.stockpiles, here, (e) => {
-    if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
-    const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) return null; // an empty pile is nothing to collect
-    if (!deliverable(good, e)) return null; // no sink this porter can reach — leave it, try another good
-    if (buriedUnderBuilding(world, terrain, walls, e)) return null; // walled in — an unreachable stand
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this porter's route just failed on
-    if (gate !== undefined && !gate.allowsNode(cell)) return null;
-    return { cell, payload: good };
-  });
+  const best = nearestByCell(
+    terrain,
+    targets.stockpiles,
+    here,
+    (e) => {
+      if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
+      if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
+      const good = lowestStockedGood(world.get(e, Stockpile));
+      if (good === null) return null; // an empty pile is nothing to collect
+      if (!deliverable(good, e)) return null; // no sink this porter can reach — leave it, try another good
+      if (buriedUnderBuilding(world, terrain, walls, e)) return null; // walled in — an unreachable stand
+      const cell = interactionCell(world, ctx, terrain, e, here);
+      if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this porter's route just failed on
+      if (gate !== undefined && !gate.allowsNode(cell)) return null;
+      return { cell, payload: good };
+    },
+    sameSideAs(world, plan.owner),
+  );
   return best === null ? null : { pile: best.entity, goodType: best.payload };
 }
 

@@ -15,6 +15,7 @@ import {
   MakingLove,
   Marriage,
   Owner,
+  ownerOf,
   PlayerOrder,
   Position,
   Residence,
@@ -265,7 +266,12 @@ function driveOrder(
   // Signpost confinement: she only sees sources inside her local circle + reachable guidepost network
   // (null when navigation is off/unlimited — the pre-signpost behaviour, byte-identical).
   const limit = terrain !== undefined ? navigationLimitFor(world, terrain, woman) : null;
-  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, woman));
+  const source = externalFood.nearest(
+    hereNode,
+    limit,
+    unreachableGoalVeto(world, ctx, woman),
+    ownerOf(world, woman),
+  );
   if (source === null) return; // no reachable food outside homes — she waits (the order stands)
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }

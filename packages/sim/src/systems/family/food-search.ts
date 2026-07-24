@@ -1,4 +1,11 @@
-import { Building, Position, Stockpile, stockpileEntries } from '../../components/index.js';
+import {
+  Building,
+  ownerOf,
+  ownersCompatible,
+  Position,
+  Stockpile,
+  stockpileEntries,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -48,11 +55,17 @@ export class ExternalFoodIndex {
    * circle plus the reachable guidepost network" rule every economy search does. `avoid` is her
    * failed-goal veto ({@link unreachableGoalVeto}), probed at the source's interaction cell — the node
    * `fetchFrom` actually walks — so a re-plan reaches the second source instead of the doomed one.
+   *
+   * `owner` is the seeker's player: she hauls food only out of her own side's stores, never an enemy
+   * larder ({@link ownersCompatible}) — the same-side rule the store scans apply, on this family fetch
+   * path too. The shared candidate list is owner-blind (built once for every family); the per-seeker
+   * `accept` is where her side is checked.
    */
   nearest(
     from: { hx: number; hy: number },
     gate: SpatialGate | null,
     avoid?: (cell: NodeId) => boolean,
+    owner?: number,
   ): { store: Entity; goodType: number } | null {
     if (this.candidates === undefined || this.buckets === undefined) {
       this.candidates = canonicalById(this.world.query(Stockpile, Position)).filter(
@@ -61,7 +74,10 @@ export class ExternalFoodIndex {
       this.buckets = new NodeBuckets(this.world, this.candidates);
     }
     if (this.candidates.length === 0) return null;
-    const accept = (e: Entity): boolean => this.inArea(e, gate) && !this.standRetired(e, from, avoid);
+    const accept = (e: Entity): boolean =>
+      ownersCompatible(owner, ownerOf(this.world, e)) &&
+      this.inArea(e, gate) &&
+      !this.standRetired(e, from, avoid);
     const hit = this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
     const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;

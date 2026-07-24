@@ -1,4 +1,4 @@
-import { Carrying, Position, Residence, Settler } from '../../components/index.js';
+import { Carrying, ownerOf, Position, Residence, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -62,7 +62,7 @@ export function planWomanHoard(
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
-  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, e));
+  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, e), ownerOf(world, e));
   if (source === null) return false; // nothing to hoard — fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;

@@ -69,6 +69,7 @@ export function planProducer(
     false,
     plan.limit ?? undefined,
     unreachableGoalVeto(world, ctx, plan.entity),
+    plan.owner,
   );
   if (source !== null) {
     routeToInputSource(plan, source, false);
@@ -108,6 +109,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     restockToCapacity,
     plan.limit ?? undefined,
     unreachableGoalVeto(world, ctx, plan.entity),
+    plan.owner,
   );
   if (source !== null) {
     routeToInputSource(plan, source, true);
