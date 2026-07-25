@@ -1,6 +1,6 @@
 import type { Camera, WorldRenderer } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type Pickable, pickTopAt, screenToWorld } from './picking.js';
+import { isHitTarget, type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';
 
 /**
@@ -62,9 +62,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     for (const it of opts.renderer.drawnItems()) {
       if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
       if (it.goodType === undefined) continue; // an empty delivery flag — nothing to name
-      // No pile is a fog ghost or portrait subject today; both guards pin the contract if those
-      // sets ever grow — a remembered or force-drawn hidden pile must not become a hover target.
-      if (it.ghost === true || it.portraitOnly === true) continue;
+      if (!isHitTarget(it)) continue;
       hoverTargets.push({ ref: it.ref, x: it.x, y: it.y, box: opts.renderer.entityBounds(it.ref) });
       hoverInfo.set(it.ref, { goodType: it.goodType, amount: it.fill ?? 0 });
     }

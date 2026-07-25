@@ -107,16 +107,16 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   const marquee = createSelectionMarquee();
 
-  // The snapshot-derived pickable target sets a click hit-tests against — owned units/buildings, enemy
-  // units, and the gatherers' work-flag proxies. See unit-targets.ts (they read only the snapshot +
-  // the injected render hit-test helpers, so they live apart from the selection/order logic here).
+  // The pickable target sets a click hit-tests against — owned units/buildings, enemy units, and the
+  // gatherers' work-flag proxies. See unit-targets.ts (they read only the snapshot + the injected render
+  // frame data, so they live apart from the selection/order logic here).
   const unitTargets = createUnitTargets({
     snapshot: opts.snapshot,
     humanPlayer: opts.humanPlayer,
     observer: opts.observer === true,
+    drawnItems: opts.drawnItems,
     boundsOf: opts.boundsOf,
     pixelHitOf: opts.pixelHitOf,
-    fogVisible: opts.fogVisible,
   });
 
   /** Client (CSS) coords → world px (through the client→screen scale + the camera inverse). */

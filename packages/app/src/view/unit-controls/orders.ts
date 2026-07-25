@@ -10,7 +10,7 @@ import {
   positionOf,
   settlerJobType,
 } from '../../game/snapshot.js';
-import { clampTile, nodeBounds, type Pickable, pickTopAt, worldToTile } from '../picking.js';
+import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargets } from './unit-targets.js';
 
@@ -50,11 +50,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return (col, row) => occupied.has(`${col},${row}`);
   };
 
-  const issueMoveOrder = (event: MouseEvent, ownSettlers: readonly Pickable[]): void => {
-    if (deps.selected.size === 0) return;
-    // A carrying settler is ordered like any other — the sim makes it set its load down first, then walk
-    // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
-    const movers: FormationUnit[] = ownSettlers.filter((target) => deps.selected.has(target.ref));
+  // A carrying settler is ordered like any other — the sim makes it set its load down first, then walk
+  // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
+  const issueMoveOrder = (event: MouseEvent, movers: readonly FormationUnit[]): void => {
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const world = deps.toWorld(event.clientX, event.clientY);
@@ -72,20 +70,18 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   const issueRightClick = (event: MouseEvent): void => {
     const world = deps.toWorld(event.clientX, event.clientY);
-    const ownSettlers = deps.targets.owned('settler');
-    const own = pickTopAt(ownSettlers, world.x, world.y);
+    const own = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
     if (own !== null) {
       deps.selectOwnSettler(own);
       deps.openActions({ x: event.clientX, y: event.clientY });
       return;
     }
     if (deps.selected.size === 0) return;
+    const commanded = deps.targets.ownedSettlersIn(deps.selected);
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) {
-      for (const target of ownSettlers) {
-        if (deps.selected.has(target.ref)) {
-          deps.enqueue({ kind: 'attackUnit', entity: target.ref as Entity, target: enemy as Entity });
-        }
+      for (const target of commanded) {
+        deps.enqueue({ kind: 'attackUnit', entity: target.ref as Entity, target: enemy as Entity });
       }
       return;
     }
@@ -97,10 +93,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // foundation"): every selected settler gets the order, and the sim binds only the builder trade
       // (a non-builder is a logged no-op — a site offers no worker jobs to fall back to).
       if (entity?.components.UnderConstruction !== undefined) {
-        for (const target of ownSettlers) {
-          if (deps.selected.has(target.ref)) {
-            deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
-          }
+        for (const target of commanded) {
+          deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
         }
         return;
       }
@@ -109,10 +103,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // A built home takes the move-in path: right-click = "live here" for every selected settler (the
       // family moves as one — the sim's assignHouse validates the free family slot and no-ops otherwise).
       if (def?.kind === 'home') {
-        for (const target of ownSettlers) {
-          if (deps.selected.has(target.ref)) {
-            deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
-          }
+        for (const target of commanded) {
+          deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
         }
         return;
       }
@@ -122,8 +114,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // warehouse's gatherer slot), else the building's default order (craftsman → carrier, gatherers
       // excluded for a non-gatherer — so a plain settler on a warehouse becomes a carrier). The sim gates
       // every candidate, so an unoffered/full trade just falls through.
-      for (const target of ownSettlers) {
-        if (!deps.selected.has(target.ref)) continue;
+      for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
         const jobPriority = assignmentPriorityFor(currentJob, slots);
@@ -137,12 +128,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       return;
     }
-    issueMoveOrder(event, ownSettlers);
+    issueMoveOrder(event, commanded);
   };
 
   const issueSetWorkFlag = (event: MouseEvent): void => {
-    if (deps.selected.size === 0) return;
-    const movers = deps.targets.owned('settler').filter((target) => deps.selected.has(target.ref));
+    const movers = deps.targets.ownedSettlersIn(deps.selected);
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const world = deps.toWorld(event.clientX, event.clientY);
