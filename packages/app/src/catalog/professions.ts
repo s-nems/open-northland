@@ -6,6 +6,7 @@ import {
   JOB_BREWER,
   JOB_BUILDER,
   JOB_CARRIER,
+  JOB_CIVILIST,
   JOB_COIN_MAKER,
   JOB_COLLECTOR,
   JOB_DRUID,
@@ -13,7 +14,6 @@ import {
   JOB_FISHER,
   JOB_HERBALIST,
   JOB_HUNTER,
-  JOB_JESTER,
   JOB_JOINER,
   JOB_MASON,
   JOB_MILLER,
@@ -41,7 +41,8 @@ import {
  *    by `(tribe, jobType)`, and no civilian trade has a binding), so a civilian is always unarmed.
  *  - **Life stages, animals, vehicles, and named heroes are not professions** (jobtypes 1..6, 42..55) and
  *    are omitted. Sea variants (`fisher_sea` 23, `trader_sea` 26) are omitted too: they need a harbour/ship
- *    the sandbox lacks. Collecting is the single `collector` ({@link JOB_COLLECTOR} = 8): the original's one
+ *    the sandbox lacks, and the jester (28) because the original's profession menu never offers it
+ *    (observed original). Collecting is the single `collector` ({@link JOB_COLLECTOR} = 8): the original's one
  *    outdoor gatherer fells wood, mines every deposit, and picks mushrooms, so there is one gatherer row.
  *
  * jobType numbering: every row carries its real `jobtypes.ini` id (collector 8, carrier 24, soldier 31, and
@@ -120,7 +121,6 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
   },
   { key: 'druid', jobType: JOB_DRUID, category: 'production', source: 'jobtypes.ini 30 "druid"' },
   { key: 'scout', jobType: JOB_SCOUT, category: 'special', source: 'jobtypes.ini 27 "scout"' },
-  { key: 'jester', jobType: JOB_JESTER, category: 'special', source: 'jobtypes.ini 28 "jester"' },
   {
     key: 'trader',
     jobType: JOB_TRADER,
@@ -163,7 +163,13 @@ export type PickerEntry =
  * in one place; the widget just renders entries top to bottom.
  */
 export function pickerEntries(locale?: Locale): PickerEntry[] {
-  const entries: PickerEntry[] = [];
+  // The leading "Cywil" row, above the groups: the original's civilist job ({@link JOB_CIVILIST} —
+  // `jobtypes.ini` 6, the trade a grown boy matures into). No workplace employs it, so assigning it
+  // means "this settler does nothing until re-traded". Not a PROFESSIONS row — the details-panel
+  // labels job 6 through the content job's `lifeStage` slug, like the other life stages.
+  const entries: PickerEntry[] = [
+    { kind: 'profession', jobType: JOB_CIVILIST, label: professionLabel('idle', locale) },
+  ];
   let group: ProfessionCategory | null = null;
   for (const p of PROFESSIONS) {
     if (p.category !== group) {

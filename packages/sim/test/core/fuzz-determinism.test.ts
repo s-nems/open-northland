@@ -179,7 +179,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(35);
+  const roll = rng.int(36);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -444,7 +444,7 @@ function nextCommand(rng: Rng): Command {
       // A signpost tear-down at a random id: live signposts (destroyed — the network memo, blockers, and
       // vision must all re-derive) and non-signpost / dead targets (skipped).
       return { kind: 'demolishSignpost', signpost: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 24:
+    case 35:
       // The profession-progression toggle: flips the ProgressionRules singleton mid-stream, lifting and
       // restoring the needfor*/jobEnables gates on staffing, harvest picks, and AI collector re-posts —
       // the rule must hash and replay like any state (the setSignpostNavigation pattern).

@@ -50,6 +50,10 @@ export const FARMER = 18; // the farm's field-worker job (plant atomic 34) — n
 export const FARM = 5;
 export const GRANARY = 6; // a passive wheat store (the warehouse a farm's wheat is hauled OUT to)
 export const VIKING = 1;
+/** The wood-track expType keying the fixture's `needforgood PLANK` row. */
+export const WOOD_TRACK = 1;
+/** Raw XP clearing that row: 30 repeats x the wood track's factor 10. */
+export const PLANK_GATE_RAW_XP = 300;
 export const PICKUP_ATOMIC = 22;
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */

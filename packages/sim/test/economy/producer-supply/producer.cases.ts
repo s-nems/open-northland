@@ -6,6 +6,7 @@ import {
   Owner,
   Production,
   Resting,
+  Settler,
   Stockpile,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
@@ -24,6 +25,7 @@ import {
   HEADQUARTERS,
   PICKUP_ATOMIC,
   PLANK,
+  PLANK_GATE_RAW_XP,
   pileAt,
   SAWMILL,
   settlerAt,
@@ -31,6 +33,7 @@ import {
   TWIN_MILL,
   WHEAT,
   WOOD,
+  WOOD_TRACK,
   WOODCUTTER,
 } from './support.js';
 
@@ -432,7 +435,9 @@ describe('producer unblocks its own full output slot', () => {
       [PLANK, 20],
     ]);
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0);
-    settlerAt(sim, 1, 0, CARPENTER, mill);
+    const smith = settlerAt(sim, 1, 0, CARPENTER, mill);
+    // The fixture's `needforgood PLANK` gate, earned up front — this case is about the shelf loop.
+    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     settlerAt(sim, 4, 0, WOODCUTTER); // unlocks PLANK; no tree, so it never competes for the wood
 
     let produced = 0;
@@ -514,7 +519,9 @@ describe('producer self-service — end to end', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(5, 1) });
     const mill = buildingAt(sim, SAWMILL, 1, 0);
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 2]]);
-    settlerAt(sim, 1, 0, CARPENTER, mill); // the smith, on its mill
+    const smith = settlerAt(sim, 1, 0, CARPENTER, mill); // the smith, on its mill
+    // The fixture's `needforgood PLANK` gate, earned up front — this case is about self-supply.
+    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     settlerAt(sim, 4, 0, WOODCUTTER); // alive → unlocks PLANK; no tree → idles, never touches the wood
 
     let produced = 0;

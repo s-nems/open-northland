@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   JobAssignment,
+  Owner,
   Position,
   Settler,
   setProfessionProgression,
@@ -9,6 +10,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { grantWorkExperience, jobSystem } from '../../src/systems/index.js';
+import { setJob } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -272,5 +274,26 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(idle, Settler).jobType).toBe(CARPENTER); // free start: both gates bypassed
+  });
+});
+
+describe('the civilist trade — the Cywil order pins a settler jobless', () => {
+  const CIVILIST = 6; // the fixture's no-trade adult (the original's `jobtypes.ini` 6)
+
+  it('setJob to civilist takes, and the assign pass never re-employs a job-6 settler', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, SAWMILL, 5, 5); // an open slot that WOULD employ any idle (jobType null) settler
+    const e = settler(sim, WOODCUTTER);
+    sim.world.add(e, Owner, { player: 0 });
+
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: e, jobType: CIVILIST });
+    expect(sim.world.get(e, Settler).jobType).toBe(CIVILIST);
+
+    jobSystem(sim.world, ctxOf(sim));
+    // Non-null jobType is never re-assigned, and no workplace declares a civilist slot — it idles.
+    expect(sim.world.get(e, Settler).jobType).toBe(CIVILIST);
+
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    expect(sim.world.get(e, Settler).jobType).toBe(WOODCUTTER); // re-traded normally
   });
 });

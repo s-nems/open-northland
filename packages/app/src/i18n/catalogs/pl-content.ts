@@ -1,6 +1,6 @@
 export const plContent = {
   profession: {
-    idle: 'Bezrobotny',
+    idle: 'Cywil',
     carrier: 'Tragarz',
     builder: 'Budowniczy',
     joiner: 'Cieśla',
@@ -20,7 +20,6 @@ export const plContent = {
     herbalist: 'Zielarz',
     druid: 'Druid',
     scout: 'Zwiadowca',
-    jester: 'Błazen',
     trader: 'Kupiec',
     soldier: 'Żołnierz',
     collector: 'Zbieracz',

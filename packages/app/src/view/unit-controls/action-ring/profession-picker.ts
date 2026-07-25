@@ -186,8 +186,9 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   const jobList = el('div', JOB_LIST_STYLE);
   jobList.className = 'opennorthland-job-list';
   // Render the grouped menu top to bottom: a dim separator per category, then its clickable profession
-  // rows. The built groups are kept so `show` can filter rows to the selection's unlocked professions.
-  const groups: { header: HTMLElement; rows: { element: HTMLElement; jobType: number }[] }[] = [];
+  // rows. Rows before the first header (the Cywil row) form a headerless leading group. The built groups
+  // are kept so `show` can filter rows to the selection's unlocked professions.
+  const groups: { header: HTMLElement | null; rows: { element: HTMLElement; jobType: number }[] }[] = [];
   for (const entry of opts.professions) {
     if (entry.kind === 'header') {
       const header = el('div', JOB_GROUP_STYLE, entry.label);
@@ -204,6 +205,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
       row.style.background = JOB_ROW_BG;
     });
     row.addEventListener('click', () => opts.onPick(entry.jobType));
+    if (groups.length === 0) groups.push({ header: null, rows: [] });
     groups[groups.length - 1]?.rows.push({ element: row, jobType: entry.jobType });
     jobList.append(row);
   }
@@ -223,7 +225,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
           row.element.style.display = offered ? '' : 'none';
           if (offered) visible += 1;
         }
-        group.header.style.display = visible > 0 ? '' : 'none';
+        if (group.header !== null) group.header.style.display = visible > 0 ? '' : 'none';
       }
       jobBackdrop.style.display = 'block';
       jobWindow.style.display = 'block';

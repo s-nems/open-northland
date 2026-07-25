@@ -18,8 +18,10 @@ export type UnitOrderCommand =
       /**
        * Change one owned settler's profession: set its `jobType` and reset it to a fresh idle worker of the new
        * trade (drop its workplace binding, cancel its action/route/order)
-       * so the JobSystem re-employs it. Skipped for a dead/stale target, a non-settler, a neutral entity, an
-       * unknown `jobType`, or a still-growing child. See `setJob`.
+       * so the JobSystem re-employs it. The civilist job (`jobtypes.ini` 6) is an ordinary assignable
+       * record no workplace employs, so assigning it is the original's "make this settler a civilian".
+       * Skipped for a dead/stale target, a non-settler, a neutral entity, an unknown `jobType`, or a
+       * still-growing child. See `setJob`.
        */
       readonly kind: 'setJob';
       readonly entity: Entity;

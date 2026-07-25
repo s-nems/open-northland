@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { JOB_CIVILIST } from '../src/catalog/jobs.js';
 import { isSoldierJob, PROFESSIONS, pickerEntries, professionDefForJob } from '../src/catalog/professions.js';
 import { JOB_IDLE, JOB_SOLDIER, JOB_SOLDIER_SWORD } from '../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
@@ -39,9 +40,10 @@ describe('profession catalog + i18n', () => {
   it('resolves Polish labels for professions, and idle for off-roster jobs', () => {
     expect(professionLabel('smith')).toBe('Kowal');
     expect(professionLabel('collector')).toBe('Zbieracz');
-    // Idle is not a picker profession; professionDefForJob returns undefined so the panel labels it itself.
+    // Idle is not a ROSTER profession (professionDefForJob returns undefined so the panel labels it
+    // itself); the picker still leads with it as the hand-added Cywil row.
     expect(professionDefForJob(JOB_IDLE)).toBeUndefined();
-    expect(professionLabel('idle')).toBe('Bezrobotny');
+    expect(professionLabel('idle')).toBe('Cywil');
   });
 
   it('is complete: covers the original production trades beyond gatherers/soldiers', () => {
@@ -49,15 +51,22 @@ describe('profession catalog + i18n', () => {
     for (const trade of ['builder', 'mason', 'smith', 'baker', 'farmer', 'tailor', 'druid'] as const) {
       expect(keys.has(trade), `missing trade "${trade}"`).toBe(true);
     }
+    // The jester (jobtypes.ini 28) is deliberately NOT a profession — 8th Wonder doesn't field it.
+    const JESTER_JOB = 28;
+    expect(PROFESSIONS.some((p) => p.jobType === JESTER_JOB)).toBe(false);
   });
 
-  it('builds a grouped picker list: a header opens each category, every profession is a row', () => {
+  it('builds a grouped picker list: Cywil leads ungrouped, then a header opens each category', () => {
     const entries = pickerEntries();
-    expect(entries[0]?.kind).toBe('header');
+    // The leading row assigns the original's civilist job (6) — the no-trade adult no workplace employs.
+    expect(entries[0]).toEqual({ kind: 'profession', jobType: JOB_CIVILIST, label: 'Cywil' });
+    expect(entries[1]?.kind).toBe('header');
     const rows = entries.filter((e) => e.kind === 'profession');
-    expect(rows).toHaveLength(PROFESSIONS.length);
+    expect(rows).toHaveLength(PROFESSIONS.length + 1); // the roster + the leading Cywil row
     // The first row after the first header is the first roster profession.
-    const firstRow = entries.find((e) => e.kind === 'profession');
-    expect(firstRow?.kind === 'profession' && firstRow.jobType).toBe(PROFESSIONS[0]?.jobType);
+    const firstRosterRow = entries
+      .slice(2)
+      .find((e): e is Extract<typeof e, { kind: 'profession' }> => e.kind === 'profession');
+    expect(firstRosterRow?.jobType).toBe(PROFESSIONS[0]?.jobType);
   });
 });

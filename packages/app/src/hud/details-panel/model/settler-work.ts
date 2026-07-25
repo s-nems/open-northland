@@ -1,5 +1,11 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { entityById, num } from '../../../game/snapshot.js';
+import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
+import {
+  entityById,
+  num,
+  professionProgressionEnabledIn,
+  settlerExperienceOf,
+} from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   buildingDef,
@@ -54,11 +60,19 @@ export function settlerWork(
     carry === undefined
       ? undefined
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
-  const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
+  const settlerComp = comps.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
+  const jobType = num(settlerComp?.jobType);
+  // The settler's earned-goods filter (`needforgood`, mirrored sim-side by the rotation/harvest gates):
+  // both product menus offer only what this settler may actually make or dig right now.
+  const progressionOn = professionProgressionEnabledIn(snapshot);
+  const experience = settlerExperienceOf(comps);
+  const earned = (goodType: number): boolean =>
+    goodUnlockedFor(ctx, progressionOn, num(settlerComp?.tribe), experience, goodType);
   const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
   if (workFlag !== undefined) {
     const selectedGood = num(workFlag.goodType) ?? null;
-    return gatherWork(ctx, messages().hud.workFlag, harvestableGoodsFor(ctx, jobType), selectedGood);
+    const goods = harvestableGoodsFor(ctx, jobType).filter((good) => earned(good.typeId));
+    return gatherWork(ctx, messages().hud.workFlag, goods, selectedGood);
   }
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
@@ -83,14 +97,14 @@ export function settlerWork(
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
-    const choices = harvestable.filter((good) => stored.has(good.typeId));
+    const choices = harvestable.filter((good) => stored.has(good.typeId) && earned(good.typeId));
     if (choices.length > 0) {
       const selectedGood =
         num((comps.GatherSelection as { goodType?: unknown } | undefined)?.goodType) ?? null;
       return gatherWork(ctx, buildingTitle(ctx, rawType), choices, selectedGood);
     }
   }
-  const craft = craftChoicesFor(ctx, def, comps);
+  const craft = craftChoicesFor(ctx, def, comps, earned);
   if (craft !== null) {
     const selectedLabels = craft.choices
       .filter((choice) => craft.selected.includes(choice.goodType))
@@ -167,12 +181,13 @@ function gatherWork(
  * a carrier ferries goods, it never picks what the smiths forge; when every slot is carrier the
  * building is carrier-operated and the carrier does choose, like the well). The effective selection
  * comes from the snapshot's `CraftSelection` goods; absent/empty reads as every product selected (the
- * sim's all-products default).
+ * sim's all-products default). `earned` narrows the toggles to this operator's unlocked products.
  */
 function craftChoicesFor(
   ctx: UnitPanelModelContext,
   def: ReturnType<typeof buildingDef>,
   comps: Comp,
+  earned: (goodType: number) => boolean,
 ): { choices: SettlerWorkModel['craftChoices']; selected: number[] } | null {
   if (def === undefined || def.recipes.length === 0) return null;
   const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
@@ -183,7 +198,7 @@ function craftChoicesFor(
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
   const choices = def.recipes.flatMap((recipe) => {
     const goodType = recipe.outputs[0]?.goodType;
-    if (goodType === undefined) return [];
+    if (goodType === undefined || !earned(goodType)) return [];
     const good = goodDef(ctx, goodType);
     return [
       {

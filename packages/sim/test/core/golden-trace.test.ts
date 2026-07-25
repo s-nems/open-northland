@@ -78,8 +78,17 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING });
   // The sawmill's operator (carpenter) is spawned standing ON the sawmill (node 8): the worker-presence
   // gate runs the mill only while it is staffed, and the planner pins a settler on a workplace it
-  // staffs so the carpenter stays put.
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 8, y: 0, tribe: VIKING });
+  // staffs so the carpenter stays put. It spawns with the fixture's `needforgood PLANK` threshold
+  // earned (30 wood-track repeats × factor 10) so the slice keeps exercising production; the unearned
+  // path is craft-selection.cases.ts. Seeded XP alters only the state hash, never the trace.
+  sim.enqueue({
+    kind: 'spawnSettler',
+    jobType: CARPENTER,
+    x: 8,
+    y: 0,
+    tribe: VIKING,
+    experience: [[1, 300]],
+  });
 
   // Finite FELLABLE wood nodes (no resource command exists yet — placed directly, like the lower
   // goldens). The wood good declares the felling lifecycle (chops + whole yield), so each tree is
@@ -197,8 +206,10 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
     // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery,
     // work feeding the good-specific AND job-general tracks) AND the fractional experience-bonus
-    // output (ProductionBonus) with the extra goods it yields.
-    expect(run.hash).toBe('5005e933');
+    // output (ProductionBonus) with the extra goods it yields, AND the carpenter spawning with the
+    // `needforgood PLANK` threshold pre-earned (the per-operator craft gate landed; the seeded XP
+    // rides in `Settler.experience`, leaving the trace and `produced` untouched).
+    expect(run.hash).toBe('7663da56');
   });
 
   it('matches the golden atomic-action trace', () => {

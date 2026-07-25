@@ -266,7 +266,7 @@ describe('selection details panel model', () => {
       'Zbieracz 0/1',
     ]);
 
-    // Selecting that bound settler must name its trade, not fall back to "Bezrobotny": its `jobType` is the
+    // Selecting that bound settler must name its trade, not fall back to "Cywil": its `jobType` is the
     // rebased building-slot id, which the profession catalog doesn't carry — so the title resolves through
     // the content job names, exactly like the worker-slot rows above.
     const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
@@ -443,6 +443,39 @@ describe('selection details panel model', () => {
     expect(model.work.product).toBe(
       model.work.gatherChoices.find((choice) => choice.goodType === GOOD_STONE)?.label,
     );
+  });
+
+  it('hides a needforgood-gated ware from the gather menu until the settler earns it', () => {
+    const DIG_TRACK = 999; // no jobExperience record — raw XP counts as repeats
+    const IRON_REPEATS = 10;
+    const ctx = sandboxCtx();
+    const tribe = ctx.tribes.find((t) => t.typeId === 1);
+    if (tribe === undefined) throw new Error('sandbox tribe missing');
+    tribe.jobRequirements.push({
+      requirement: 'need',
+      target: 'good',
+      targetId: GOOD_IRON,
+      amount: IRON_REPEATS,
+      experienceTypes: [DIG_TRACK],
+    });
+    const collector = (xp: number): WorldSnapshot =>
+      snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR, experience: [[DIG_TRACK, xp]] },
+            WorkFlag: { flag: 2, radius: 24 },
+          },
+        },
+      ]);
+
+    const fresh = buildUnitPanelModel(collector(0), new Set([1]), ctx);
+    if (fresh.kind !== 'settler') throw new Error('expected a settler model');
+    expect(fresh.work.gatherChoices.some((choice) => choice.goodType === GOOD_IRON)).toBe(false);
+
+    const veteran = buildUnitPanelModel(collector(IRON_REPEATS), new Set([1]), ctx);
+    if (veteran.kind !== 'settler') throw new Error('expected a settler model');
+    expect(veteran.work.gatherChoices.some((choice) => choice.goodType === GOOD_IRON)).toBe(true);
   });
 
   it('shows a farm as "Farma" with fields production and a single wheat stock row', () => {

@@ -6,6 +6,7 @@ import {
   Owner,
   Position,
   Production,
+  Settler,
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -13,7 +14,16 @@ import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { setCraftGoods, setJob } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { CARPENTER, CYCLE_TICKS, ctxOf, spawnSettler, WOOD, WOODCUTTER } from './support.js';
+import {
+  CARPENTER,
+  CYCLE_TICKS,
+  ctxOf,
+  PLANK_GATE_EARNED,
+  spawnSettler,
+  WOOD,
+  WOOD_TRACK,
+  WOODCUTTER,
+} from './support.js';
 
 // The fixture forge (typeId 9): one carpenter operator, TWO per-product recipes off the same wood
 // input — wood → plank (2) and wood → food_simple (3), in that content order.
@@ -29,7 +39,9 @@ function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } 
   sim.world.add(building, Building, { buildingType: FORGE, tribe: 1, built: ONE, level: 0 });
   sim.world.add(building, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
   sim.world.add(building, Stockpile, { amounts: new Map([[WOOD, wood]]) });
-  const smith = spawnSettler(sim, CARPENTER, 0, 0);
+  // Spawned with the fixture's `needforgood PLANK` row earned, like the sawmill's worker — the
+  // needforgood rotation gate has its own case below (which clears the XP again).
+  const smith = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
   // An orderable, bound operator: setCraftGoods requires an OWNED settler with a workplace binding.
   sim.world.add(smith, Owner, { player: 0 });
   sim.world.add(smith, JobAssignment, { workplace: building });
@@ -116,6 +128,30 @@ describe('productionSystem — per-product recipes and the craft selection', () 
     runCycles(sim, 2);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect((stock.get(PLANK) ?? 0) + (stock.get(FOOD) ?? 0)).toBeGreaterThan(0); // still producing
+  });
+
+  it('the needforgood threshold locks a product until the operator earns its repeats', () => {
+    // The fixture's own `needforgood PLANK` row (30 wood-track repeats): a FRESH smith may not forge
+    // planks yet, so every batch goes to the ungated food (4 + 1 experience-bonus unit); the seeded
+    // veteran path is every other case in this file.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    sim.world.get(smith, Settler).experience.delete(WOOD_TRACK); // back to unearned
+    runCycles(sim, 4);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK) ?? 0).toBe(0); // locked — the rotation skips it
+    expect(stock.get(FOOD)).toBe(5); // the ungated ware keeps flowing
+  });
+
+  it('a pick naming only unearned goods degrades to the earned products, not a stall', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    sim.world.get(smith, Settler).experience.delete(WOOD_TRACK); // plank unearned again
+    setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [PLANK] });
+    runCycles(sim, 2);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect(stock.get(PLANK) ?? 0).toBe(0); // still locked
+    expect(stock.get(FOOD) ?? 0).toBeGreaterThan(0); // kept crafting what it HAS earned
   });
 
   it('a blocked product is skipped, not a deadlock: the rotation crafts what it can', () => {

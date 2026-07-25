@@ -63,6 +63,9 @@ export const economyContent = {
     // The woodcutter is permitted the wood harvest atomic (24) — the planner's data-driven gate.
     { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
     { typeId: 2, id: 'carpenter' },
+    // The civilist (the original's job 6 — the no-trade adult): assignable via setJob, employed by no
+    // workplace, so a settler ordered into it stays jobless (the "Cywil" picker row).
+    { typeId: 6, id: 'civilist' },
     // The miner is permitted the stone harvest atomic (25) — it chips a `MineDeposit` deposit.
     { typeId: 5, id: 'miner', allowedAtomics: [25] },
     // A two-trade collector (wood 24 + stone 25) — what the employed-gatherer store-filter tests use
