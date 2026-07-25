@@ -204,5 +204,10 @@ export const plContent = {
       summary:
         'Bezczynni osadnicy dobierają się w pary i rozmawiają, odnawiając potrzebę towarzystwa (żołnierze nigdy nie dołączają), a głodni i senni pokazują dymki myśli.',
     },
+    wildlife: {
+      title: 'Dzikie stada',
+      summary:
+        'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
+    },
   },
 } as const;

@@ -23,6 +23,7 @@ import {
   readProjectileOrigin,
   readProjectileTarget,
   readResourceLevelCount,
+  readSettlerTribe,
   readStockpile,
   readUpgradePct,
 } from './snapshot-readers/index.js';
@@ -69,6 +70,9 @@ export function assignSettlerFields(
   }
   const jobType = readJobType(components);
   if (jobType !== undefined) item.jobType = jobType;
+  // The tribe rides on every settler; the animal species table keys its body look by it.
+  const tribe = readSettlerTribe(components);
+  if (tribe !== undefined) item.tribe = tribe;
   // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
   const weaponGood = readEquipmentWeaponGood(components);
   if (weaponGood !== undefined) item.weaponGood = weaponGood;

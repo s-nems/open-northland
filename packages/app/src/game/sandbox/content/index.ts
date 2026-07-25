@@ -8,6 +8,7 @@ import {
   sandboxLandscapeGfx,
   type TerrainTypeIds,
 } from '../landscape.js';
+import { buildSandboxAnimals } from './catalog/animals.js';
 import { buildSandboxAtomicAnimations } from './catalog/atomic-animations.js';
 import { buildSandboxGoods } from './catalog/goods.js';
 import { buildSandboxJobs } from './catalog/jobs.js';
@@ -31,6 +32,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     gatheringPipeline: sandboxGatheringPipeline(),
     weapons: sandboxWeapons(),
     tribes: [...tribes.values()],
+    animals: buildSandboxAnimals(),
     atomicAnimations: buildSandboxAtomicAnimations(),
   });
 }

@@ -50,6 +50,37 @@ export function eightDirAnim(
 }
 
 /**
+ * `gfxanimframelistdir <dir>` index → the render facing (the `CR_Hum_Body` strip-block order
+ * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
+ * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
+ * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
+ * Data-pinned: across every extracted human character-body `[gfxanimatomic]` record whose strip is a
+ * uniform ×8 block layout (`human_*`, the bodies these warrior bindings draw), each dir-`d` frame list
+ * indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]`. Indexing frame lists by facing without this
+ * remap draws the NW swing on an east-facing attacker. The animal `[gfxanimatomic]` tables ride the
+ * same remap by analogy (their strips are not all uniform ×8); the wildlife scene is its eyes-check.
+ */
+const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
+
+/**
+ * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-facing order (a
+ * {@link import('@open-northland/render').FrameListAnim}'s `frameLists` is indexed by facing). A
+ * single-list table is facing-locked (a bare `gfxanimframelist`) and plays verbatim on every facing.
+ * Any multi-list table lives in the `<dir>` space and is remapped — including a partial one (dirs
+ * authored sparsely): each authored dir lands on its facing, and an unauthored slot stays an empty
+ * list (`frameOf` then holds the pool's first frame for that facing rather than borrowing a
+ * neighbour's swing). Pure.
+ */
+export function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
+  if (dirLists.length === 1) return dirLists; // facing-locked single list — no direction table to remap
+  const byFacing: (readonly number[])[] = new Array(DIRS).fill([]);
+  GFX_DIR_TO_BLOCK.forEach((facing, dir) => {
+    byFacing[facing] = dirLists[dir] ?? [];
+  });
+  return byFacing;
+}
+
+/**
  * A `[bobseq]` row as a facing-locked clip (`dirs: 1`, the whole strip played on one facing) — the
  * `clipDirs` reading for a non-×8 strip (a wait/idle, the aggressive ready stance). `undefined` for a
  * missing/empty row so a caller can chain a fallback. The single-direction twin of {@link eightDirAnim};

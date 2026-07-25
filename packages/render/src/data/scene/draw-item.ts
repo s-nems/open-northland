@@ -143,6 +143,13 @@ export interface DrawItem {
    */
   readonly jobType?: number;
   /**
+   * For a settler: its `Settler.tribe`, the species join key for a wildlife entity (an animal IS a
+   * settler of an animal tribe, `jobType` null). A
+   * {@link import('../../gpu/sprite-sheet.js').SettlerCharacterSet.animals} table keyed by it picks the
+   * species body instead of the human job look; carried for every settler, unused by the human bindings.
+   */
+  readonly tribe?: number;
+  /**
    * For a settler: the `typeId` of the good in its `Equipment.weapon` slot. A per-character binding
    * maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood}) so the drawn
    * weapon follows the slot rather than the job. Omitted when unarmed (falls back to the {@link jobType} look).

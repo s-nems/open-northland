@@ -13,6 +13,7 @@ import { signpostsScene } from './signposts.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
 import { warehouseScene } from './warehouse.js';
+import { wildlifeScene } from './wildlife.js';
 
 export { createSceneSim } from './runtime.js';
 export type { SceneDefinition } from './types.js';
@@ -37,6 +38,7 @@ export const SCENES: readonly SceneDefinition[] = [
   familyScene,
   childrenScene,
   gossipScene,
+  wildlifeScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

@@ -55,10 +55,14 @@ export class LayerBinder {
 
   /** A fresh pooled entity of `kind`. A settler with both the player-colour LUT and the indexed
    *  characters loaded (real graphics + the pipeline's colour stage) is created paletted, carrying the
-   *  LUT its meshes bind through; the sheet never changes, so the sprite class is decided once here. */
-  create(kind: SpriteKind): PooledEntity {
+   *  LUT its meshes bind through; the sheet never changes and an entity's tribe never changes, so the
+   *  sprite class is decided once here. A wildlife item stays plain: its atlases are baked
+   *  recolours, never LUT-indexed ({@link import('../sprite-sheet.js').SettlerCharacterSet.animals}). */
+  create(kind: SpriteKind, item: DrawItem): PooledEntity {
     const sheet = this.sheet;
-    const palette = kind === 'settler' && sheet?.characters !== undefined ? sheet.palette : undefined;
+    const characters = sheet?.characters;
+    const isAnimal = item.tribe !== undefined && characters?.animals?.tribes.has(item.tribe) === true;
+    const palette = kind === 'settler' && characters !== undefined && !isAnimal ? sheet?.palette : undefined;
     return createPooled(kind, palette);
   }
 

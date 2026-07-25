@@ -43,6 +43,7 @@ export {
   readEquipmentWeaponGood,
   readJobType,
   readOwnerPlayer,
+  readSettlerTribe,
   readSpriteState,
   readStoreExchangeRef,
 } from './unit-readers.js';

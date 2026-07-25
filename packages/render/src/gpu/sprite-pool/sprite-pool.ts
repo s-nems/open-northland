@@ -156,7 +156,7 @@ export class SpritePool {
       if (item.kind === 'tile') continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
-        pe = this.binder.create(item.kind);
+        pe = this.binder.create(item.kind, item);
         this.pool.set(item.ref, pe);
       }
       // An entity absent from last frame's draw list still holds the motion track from whenever it was
