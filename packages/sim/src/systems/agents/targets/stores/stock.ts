@@ -1,6 +1,7 @@
 import {
   Building,
   GroundDrop,
+  ownersCompatible,
   Position,
   Stockpile,
   sameSideAs,
@@ -46,9 +47,7 @@ export function nearestStoreFor(
   ctx: SystemContext,
   here: NodeId,
   goodType: number,
-  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}).
-   *  Required so no call site can forget the side; pass an explicit `undefined` only for a truly
-   *  neutral scan. */
+  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}). */
   owner: number | undefined,
   /** Skip EVERY store whose building type PRODUCES `goodType` — the haul-OUT mode. A carrier
    *  clearing a producer's output must deliver to STORAGE, never to another producer of the same
@@ -124,6 +123,9 @@ export function nearestFreeYardNode(
   flag: Entity,
   good: number,
   here: NodeId,
+  /** The gatherer's owning player — a rival's heap counts as occupied ({@link ownersCompatible}),
+   *  mirroring `stackOntoTile`'s merge refusal so the steering never picks a tile the drop rejects. */
+  owner: number | undefined,
   after?: NodeId,
   /** The gatherer's signpost confinement — a yard tile outside its allowed area is never a drop spot
    *  (the flag itself was placed inside the area, so in practice this trims only the yard's far fringe). */
@@ -134,7 +136,9 @@ export function nearestFreeYardNode(
   const flagNode = terrain.nodeAtClamped(fn.hx, fn.hy);
   const hasRoom = (node: NodeId): boolean => {
     const o = yard.occupied.get(node);
-    return o === undefined || (o.good === good && o.fill < MAX_GROUND_STACK);
+    return (
+      o === undefined || (o.good === good && o.fill < MAX_GROUND_STACK && ownersCompatible(owner, o.owner))
+    );
   };
   const component = terrain.componentOf(here);
   const usable = (node: NodeId): boolean =>

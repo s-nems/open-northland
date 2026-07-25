@@ -60,13 +60,8 @@ export function ownersCompatible(a: number | undefined, b: number | undefined): 
 }
 
 /**
- * A per-candidate side filter for the economy target scans: given the scanning settler's `owner`, a
- * predicate that holds for a candidate entity on the SAME SIDE ({@link ownersCompatible} against the
- * candidate's own {@link Owner}). A neutral scanner (`owner === undefined`) or a neutral candidate
- * passes, so the all-neutral goldens are unchanged. The scans hand this to their shared nearest-X seam
- * ({@link import('../systems/agents/targets/cell-index.js').InteractionCellIndex.nearest} /
- * `nearestByCell`), so every store/pile/building pick rejects another player's entities in one place
- * rather than repeating the check per scan.
+ * {@link ownersCompatible} as a per-candidate predicate — the `onSide` gate the economy scans hand to
+ * their shared nearest-X seams. A neutral scanner or a neutral candidate always passes.
  */
 export function sameSideAs(world: World, owner: number | undefined): (e: Entity) => boolean {
   return (e) => ownersCompatible(owner, ownerOf(world, e));
