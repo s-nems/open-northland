@@ -18,8 +18,10 @@ describe('classifyContent', () => {
     expect(classifyContent({ irVersion: 2, contentRevision: 3 }, current, true)).toBe('ready');
   });
 
-  it('treats an IR schema mismatch as blocking', () => {
+  it('treats an IR schema mismatch in either direction as blocking', () => {
     expect(classifyContent({ irVersion: 1, contentRevision: 3 }, current, true)).toBe('stale-schema');
+    // Newer content is not forward-compatible either.
+    expect(classifyContent({ irVersion: 3, contentRevision: 3 }, current, true)).toBe('stale-schema');
   });
 
   it('treats an older revision or a missing stamp as regeneration-recommended', () => {

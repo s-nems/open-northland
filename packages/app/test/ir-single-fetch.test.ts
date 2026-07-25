@@ -1,3 +1,4 @@
+import { IR_VERSION } from '@open-northland/data';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -20,7 +21,7 @@ const IR_LOADER_TIMEOUT_MS = 30_000;
 
 /** The smallest document `parseContentSet` accepts — every other lane defaults to empty. */
 const MINIMAL_IR = {
-  manifest: { version: 1, generatedFrom: { game: 'test' } },
+  manifest: { version: IR_VERSION, generatedFrom: { game: 'test' } },
   goods: [],
   jobs: [],
   buildings: [],
@@ -59,7 +60,7 @@ describe('the shared ir.json fetch', { timeout: IR_LOADER_TIMEOUT_MS }, () => {
     expect(urls).toEqual(['/ir.json']);
     // Each view still hands back its own shape off the one document: the graphics view is the raw
     // lanes cast at the boundary, the sim view the zod-validated `ContentSet` (defaults filled in).
-    expect(ir).toMatchObject({ manifest: { version: 1 } });
+    expect(ir).toMatchObject({ manifest: { version: IR_VERSION } });
     expect(ir).not.toHaveProperty('sounds');
     expect(content?.goods).toEqual([]);
     expect(content?.sounds).toEqual({ staticGroups: [], ambient: [], jingles: [] });

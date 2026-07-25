@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   extractAtomicAnimations,
@@ -29,7 +29,7 @@ import {
  * `overrides` replacing whichever tables the case under test supplies.
  */
 const contentSet = (overrides: Record<string, unknown>): Record<string, unknown> => ({
-  manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+  manifest: { version: IR_VERSION, generatedFrom: { game: 'Cultures 8th Wonder' } },
   goods: [],
   jobs: [],
   buildings: [],
