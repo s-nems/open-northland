@@ -12,6 +12,7 @@ import {
   isSignpost,
   num,
   ownerPlayerOf,
+  professionProgressionEnabledIn,
   residenceHomeOf,
   surnameSourceOf,
 } from '../../../game/snapshot.js';
@@ -39,6 +40,7 @@ import {
   satisfactionBars,
   settlerStatus,
   stanceLabel,
+  unlockProgressRows,
 } from './settler.js';
 import { settlerWork } from './settler-work.js';
 
@@ -68,6 +70,7 @@ export {
   type EquipSlotModel,
   HUMANWINDOW,
   type SettlerPanelModel,
+  type UnlockProgressRowModel,
 } from './settler.js';
 
 export interface MultiSettlerPanelModel {
@@ -235,6 +238,7 @@ export function buildUnitPanelModel(
       bars: satisfactionBars(comps),
       work: settlerWork(ctx, snapshot, comps),
       experience: experienceRows(ctx, comps),
+      upcomingUnlocks: unlockProgressRows(ctx, comps, professionProgressionEnabledIn(snapshot)),
       equipmentRows: equipmentRows(ctx, comps),
     };
   }

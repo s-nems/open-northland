@@ -106,6 +106,9 @@ export interface SettlerPanelModel {
   /** The Doświadczenie section: every specialization the settler has trained, most-trained first.
    *  Empty when it has none. See {@link experienceRows}. */
   readonly experience: readonly ExperienceRowModel[];
+  /** Progress toward the professions this settler's current work unlocks next — drawn dimmed under
+   *  the trained rows; empty while progression is off. See {@link unlockProgressRows}. */
+  readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
   /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. See {@link equipmentRows}. */
   readonly equipmentRows: readonly EquipRow[];
 }
@@ -293,6 +296,87 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   }
   rows.sort((a, b) => b.repeats - a.repeats || a.spec - b.spec);
   return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));
+}
+
+/** One upcoming-unlock row: the target profession with the settler's repeats-progress toward its
+ *  `needforjob` threshold, pre-formatted ("Stolarz: 4/10 (Drewno)"). */
+export interface UnlockProgressRowModel {
+  readonly label: string;
+  /** Summed repeats across the requirement's experience tracks. */
+  readonly current: number;
+  /** The requirement's `amount` (the repeats threshold). */
+  readonly required: number;
+}
+
+/** The most unlock-progress rows the Doświadczenie section shows — the nearest unlocks only, so a
+ *  many-gated tribe table can't flood the panel. */
+const UPCOMING_UNLOCK_ROWS_MAX = 4;
+
+/**
+ * Progress toward the professions the settler's CURRENT job can unlock — the tribe's `needforjob`
+ * requirements whose experience tracks this job accrues (a farmer sees the miller gate, a collector
+ * the carpenter/mason/smith family), as repeats-progress toward each `amount`. Unmet requirements
+ * only, nearest first (highest progress ratio), capped at {@link UPCOMING_UNLOCK_ROWS_MAX}.
+ * Fighter-band targets are never listed (barracks training, not experience, unlocks those), and the
+ * whole list is empty while profession progression is off — the panel then has nothing to promise.
+ */
+export function unlockProgressRows(
+  ctx: UnitPanelModelContext,
+  comps: Comp,
+  progressionEnabled: boolean,
+): UnlockProgressRowModel[] {
+  if (!progressionEnabled) return [];
+  const s = (comps.Settler ?? {}) as Comp;
+  const jobType = num(s.jobType);
+  const tribe = num(s.tribe);
+  if (jobType === undefined || tribe === undefined) return [];
+  const tribeType = ctx.tribes.find((t) => t.typeId === tribe);
+  if (tribeType === undefined) return [];
+  const exp = (comps.Settler as Comp | undefined)?.experience;
+  const points = new Map<number, number>();
+  if (Array.isArray(exp)) {
+    for (const pair of exp) {
+      if (!Array.isArray(pair)) continue;
+      const spec = num(pair[0]);
+      const value = num(pair[1]);
+      if (spec !== undefined && value !== undefined) points.set(spec, value);
+    }
+  }
+  const rows: (UnlockProgressRowModel & { targetId: number })[] = [];
+  for (const req of tribeType.jobRequirements) {
+    if (req.requirement !== 'need' || req.target !== 'job') continue;
+    if (systems.isFighterJob(req.targetId)) continue; // barracks territory, never an XP promise
+    // "Reachable": at least one required track is one this settler's current job accrues.
+    const tracks = req.experienceTypes.map((t) => ctx.jobExperience.find((d) => d.typeId === t));
+    if (!tracks.some((t) => t?.jobType === jobType)) continue;
+    let current = 0;
+    for (const [i, expType] of req.experienceTypes.entries()) {
+      const raw = points.get(expType) ?? 0;
+      const track = tracks[i];
+      current += track !== undefined ? systems.experienceRepeats(raw, track) : raw;
+    }
+    if (current >= req.amount) continue; // already unlocked — nothing left to show
+    const firstType = req.experienceTypes[0];
+    const trackLabel =
+      firstType !== undefined ? experienceLabel(ctx, firstType, tracks[0]) : jobDisplayName(ctx, jobType);
+    rows.push({
+      label: formatMessage(messages().hud.unlockProgress, {
+        job: jobDisplayName(ctx, req.targetId),
+        current,
+        required: req.amount,
+        track: trackLabel,
+      }),
+      current,
+      required: req.amount,
+      targetId: req.targetId,
+    });
+  }
+  rows.sort((a, b) => b.current / b.required - a.current / a.required || a.targetId - b.targetId);
+  return rows.slice(0, UPCOMING_UNLOCK_ROWS_MAX).map(({ label, current, required }) => ({
+    label,
+    current,
+    required,
+  }));
 }
 
 export function settlerStatus(components: Comp): string {

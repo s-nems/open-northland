@@ -44,7 +44,7 @@ export {
 export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
 export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
 export { IDLE_JOB } from './readviews/hud.js';
-export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
+export { isFighterJob, MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,

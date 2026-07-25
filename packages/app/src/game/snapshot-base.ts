@@ -39,6 +39,16 @@ export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefine
   return x !== undefined && y !== undefined ? { x: x as Fixed, y: y as Fixed } : undefined;
 }
 
+/** Whether profession progression gates trades — the `ProgressionRules` singleton in the snapshot;
+ *  an absent singleton means the sim default (enabled), mirroring the sim-side reader. */
+export function professionProgressionEnabledIn(snapshot: WorldSnapshot): boolean {
+  for (const e of snapshot.entities) {
+    const rules = e.components.ProgressionRules as { professionProgressionEnabled?: unknown } | undefined;
+    if (rules !== undefined) return rules.professionProgressionEnabled !== false;
+  }
+  return true;
+}
+
 /** True when the entity is a settler / a building (carries the marker component). */
 export function isSettler(e: SnapshotEntity): boolean {
   return e.components.Settler !== undefined;
