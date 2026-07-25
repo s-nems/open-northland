@@ -131,6 +131,7 @@ export const enGame = {
       misc: 'Equipment',
     },
     extras: {
+      title: 'Extras window',
       assistantTab: 'Assistant',
       plansTab: 'Plans',
       extraWomen: 'Extra women',

@@ -1,6 +1,17 @@
-import type { Container } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import { CLOSE_X_COLOR, drawCloseX, drawTabButton, drawWindowPanel, WIN_PAD } from '../chrome.js';
+import {
+  CLOSE_X_COLOR,
+  drawBevel,
+  drawCloseX,
+  drawPlateOutline,
+  drawTabButton,
+  drawWindowFrame,
+  HEADLINE_FILL,
+  tileBitmap,
+  WIN_PAD,
+  WOOD_FILL,
+} from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import {
@@ -15,12 +26,24 @@ import {
 } from './extras-menu.js';
 import { createWindowShell } from './window-shell.js';
 
-/** Text insets (design px) - where a run sits inside its rect. Match the goods window's nudges. */
-const TAB_INSET_X = 3;
-const TAB_INSET_Y = 2;
-const LABEL_INSET_Y = 1;
+/** Text sizes (design px) - the build menu's title/tab/row scale. */
+const TITLE_PX = 13;
+const TAB_PX = 11;
+const ROW_PX = 11;
+/** Approx. cap height (design px) of the body text - vertical centring inside a chrome rect. */
+const TEXT_CAP_H = 10;
+/** Left inset (design px) of a row label inside its button-card. */
+const ROW_INSET_X = 8;
+/** Vertical inset (design px) of a row card inside its slot - the gap separating consecutive cards. */
+const CARD_INSET_Y = 2;
+/** Design-px inset of the headline strip inside the window frame (so the frame reads around it). */
+const HEADLINE_INSET = 2;
 /** The −/+ glyph stroke inset inside its stepper plate (design px). */
-const GLYPH_INSET = 3;
+const GLYPH_INSET = 4;
+/** The recessed value cell's dark backdrop. */
+const VALUE_CELL_FILL = 0x161009;
+/** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
+const EXTRAS_TITLE_STRING_ID = 500;
 
 export interface ExtrasWindowDeps {
   readonly ctx: PanelContext;
@@ -43,13 +66,17 @@ export interface ExtrasWindow {
 
 /**
  * Build the extras-window controller over the pure {@link layoutExtrasMenu} geometry, on the shared
- * {@link createWindowShell} lifecycle - rebuilt on open and on any control click (every click moves a
- * visible value, and the window is a dozen runs). The assistant state survives close/reopen: it is the
- * player's session settings, not a per-open scratch value.
+ * {@link createWindowShell} lifecycle and the build menu's chrome (tiled wood body, rust headline,
+ * button-card rows; every bitmap degrades to flat Graphics). Rebuilt on open and on any control click
+ * (every click moves a visible value, and the window is a dozen runs). The assistant state survives
+ * close/reopen: it is the player's session settings, not a per-open scratch value.
  */
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
   const { scale } = ctx;
+  // The tiled bitmap fills draw behind the shell's frame Graphics (child order back < frame).
+  const back = new Container();
+  deps.container.addChild(back);
   const shell = createWindowShell(deps.container);
   // Right of the strip, dropping from the extras (chest) button - same reasoning as the building
   // menu's origin: it clears the top-left debug overlay and anchors the window to its button.
@@ -64,15 +91,48 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
   let runsAt: { x: number; y: number }[] = [];
 
-  const addRun = (text: string, color: 'white' | 'dimmed', x: number, y: number): void => {
-    const run = ctx.makeText(text, color);
+  const clear = (): void => {
+    shell.clear();
+    for (const child of back.removeChildren()) child.destroy();
+    runsAt = [];
+  };
+
+  /** Queue a run with its top-left already resolved (rounded for crisp glyphs). */
+  const addRunAt = (text: string, color: 'white' | 'dimmed', x: number, y: number, px?: number): void => {
+    const run = ctx.makeText(text, color, px);
     deps.container.addChild(run.container);
     shell.runs.push(run);
-    runsAt.push({ x, y });
+    runsAt.push({ x: Math.round(x), y: Math.round(y) });
+  };
+
+  /** Queue a run centred in `rect` (native-px width scaled for screen px, cap height for the y). */
+  const addRunCentred = (text: string, color: 'white' | 'dimmed', rect: Rect, px?: number): void => {
+    const run = ctx.makeText(text, color, px);
+    deps.container.addChild(run.container);
+    shell.runs.push(run);
+    runsAt.push({
+      x: Math.round(rect.x + Math.max(0, (rect.w - run.width * scale) / 2)),
+      y: Math.round(rect.y + (rect.h - TEXT_CAP_H * scale) / 2),
+    });
+  };
+
+  /** The row's card plate inside its slot - inset vertically so consecutive cards read as separate. */
+  const cardRect = (slot: Rect): Rect => ({
+    x: slot.x,
+    y: Math.round(slot.y + CARD_INSET_Y * scale),
+    w: slot.w,
+    h: Math.round(slot.h - 2 * CARD_INSET_Y * scale),
+  });
+
+  /** A raised button plate: tiled button bitmap + gold outline (flat tab-button fallback). */
+  const drawPlate = (r: Rect, lit: boolean): void => {
+    const tex = lit ? ctx.bitmaps.buttonHilite : ctx.bitmaps.button;
+    if (tileBitmap(back, tex, r, scale)) drawPlateOutline(shell.graphics, r, scale);
+    else drawTabButton(shell.graphics, r, scale, lit);
   };
 
   const drawStepper = (r: Rect, glyph: 'minus' | 'plus'): void => {
-    drawTabButton(shell.graphics, r, scale, false);
+    drawPlate(r, false);
     const inset = Math.max(2, GLYPH_INSET * scale);
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
@@ -82,50 +142,83 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   };
 
   const rebuild = (): void => {
-    shell.clear();
-    runsAt = [];
+    clear();
     menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state });
-    drawWindowPanel(shell.graphics, menuLayout.window, scale);
-    drawCloseX(shell.graphics, menuLayout.closeRect, scale);
+    const layout = menuLayout;
 
-    for (const t of menuLayout.tabs) {
-      drawTabButton(shell.graphics, t.rect, scale, t.selected);
-      addRun(
-        t.label,
-        t.selected ? 'white' : 'dimmed',
-        t.rect.x + TAB_INSET_X * scale,
-        t.rect.y + TAB_INSET_Y * scale,
-      );
+    // Window body: tiled wood, framed in gilt (flat warm fill when the bitmap is absent).
+    if (!tileBitmap(back, ctx.bitmaps.bg, layout.window, scale)) {
+      shell.graphics.rect(layout.window.x, layout.window.y, layout.window.w, layout.window.h).fill(WOOD_FILL);
     }
-    for (const c of menuLayout.counters) {
-      addRun(c.label, 'white', c.labelPos.x, c.labelPos.y + LABEL_INSET_Y * scale);
+    drawWindowFrame(shell.graphics, layout.window, scale);
+
+    // Headline band: tiled rust (flat fill fallback), inset so the frame reads around it.
+    const inset = Math.round(HEADLINE_INSET * scale);
+    const band: Rect = {
+      x: layout.titleRect.x + inset,
+      y: layout.titleRect.y + inset,
+      w: layout.titleRect.w - 2 * inset,
+      h: layout.titleRect.h - inset,
+    };
+    if (!tileBitmap(back, ctx.bitmaps.headline, band, scale)) {
+      shell.graphics.rect(band.x, band.y, band.w, band.h).fill(HEADLINE_FILL);
+    }
+    drawCloseX(shell.graphics, layout.closeRect, scale);
+    // Decoded title (`miscwindow` 500 "Okno Dodatków") with the catalog fallback.
+    addRunCentred(
+      ctx.uiString('miscwindow', EXTRAS_TITLE_STRING_ID, layout.title),
+      'white',
+      layout.titleRect,
+      TITLE_PX,
+    );
+
+    for (const t of layout.tabs) {
+      drawPlate(t.rect, t.selected);
+      if (!t.selected && ctx.bitmaps.button !== undefined) {
+        drawBevel(shell.graphics, t.rect, scale, 'pressed'); // recede the inactive tab
+      }
+      addRunCentred(t.label, t.selected ? 'white' : 'dimmed', t.rect, TAB_PX);
+    }
+    for (const c of layout.counters) {
+      const card = cardRect(c.rect);
+      drawPlate(card, false);
+      addRunAt(
+        c.label,
+        'white',
+        card.x + ROW_INSET_X * scale,
+        card.y + (card.h - TEXT_CAP_H * scale) / 2,
+        ROW_PX,
+      );
       drawStepper(c.minusRect, 'minus');
       drawStepper(c.plusRect, 'plus');
-      const value = ctx.makeText(String(c.value), 'white');
-      deps.container.addChild(value.container);
-      shell.runs.push(value);
-      runsAt.push({
-        x: c.valueRect.x + (c.valueRect.w - value.width * scale) / 2,
-        y: c.valueRect.y,
-      });
+      // The value sits in a recessed cell between the steppers.
+      shell.graphics.rect(c.valueRect.x, c.valueRect.y, c.valueRect.w, c.valueRect.h).fill(VALUE_CELL_FILL);
+      drawBevel(shell.graphics, c.valueRect, scale, 'pressed');
+      addRunCentred(String(c.value), 'white', c.valueRect, ROW_PX);
     }
-    for (const g of menuLayout.grants) {
-      addRun(g.label, 'white', g.labelPos.x, g.labelPos.y + LABEL_INSET_Y * scale);
-      drawTabButton(shell.graphics, g.switchRect, scale, g.on);
-      const face = ctx.makeText(
+    for (const g of layout.grants) {
+      const card = cardRect(g.rect);
+      drawPlate(card, false);
+      addRunAt(
+        g.label,
+        'white',
+        card.x + ROW_INSET_X * scale,
+        card.y + (card.h - TEXT_CAP_H * scale) / 2,
+        ROW_PX,
+      );
+      drawPlate(g.switchRect, g.on); // lit when ON, dull when OFF
+      if (!g.on && ctx.bitmaps.button !== undefined)
+        drawBevel(shell.graphics, g.switchRect, scale, 'pressed');
+      addRunCentred(
         g.on ? messages().hud.extras.on : messages().hud.extras.off,
         g.on ? 'white' : 'dimmed',
+        g.switchRect,
+        ROW_PX,
       );
-      deps.container.addChild(face.container);
-      shell.runs.push(face);
-      runsAt.push({
-        x: g.switchRect.x + (g.switchRect.w - face.width * scale) / 2,
-        y: g.switchRect.y,
-      });
     }
-    if (menuLayout.plansPlaceholder !== null) {
-      const p = menuLayout.plansPlaceholder;
-      addRun(p.label, 'dimmed', p.x, p.y + LABEL_INSET_Y * scale);
+    if (layout.plansPlaceholder !== null) {
+      const p = layout.plansPlaceholder;
+      addRunAt(p.label, 'dimmed', p.x, p.y + (layout.scale * TEXT_CAP_H) / 2, ROW_PX);
     }
     place();
   };
@@ -141,9 +234,8 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   const close = (): void => {
     shell.setOpen(false);
-    shell.clear();
+    clear();
     menuLayout = null;
-    runsAt = [];
   };
 
   return {

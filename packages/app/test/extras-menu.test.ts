@@ -59,13 +59,15 @@ describe('assistant state', () => {
 });
 
 describe('extras menu layout', () => {
-  it('lays out both tabs on top and the assistant rows below, grants gapped from counters', () => {
+  it('lays out the headline, the tabs under it and the assistant rows below, grants gapped from counters', () => {
     const layout = layoutExtrasMenu(OPTS);
+    expect(layout.title).toBe(messages().hud.extras.title);
+    expect(layout.titleRect.y).toBe(layout.window.y);
     expect(layout.tabs.map((t) => t.tab)).toEqual(['assistant', 'plans']);
     expect(layout.tabs[0]?.selected).toBe(true);
-    // Tabs sit side by side on one line at the window top.
+    // Tabs sit side by side on one line right under the headline band.
     expect(layout.tabs[1]?.rect.y).toBe(layout.tabs[0]?.rect.y);
-    expect(layout.tabs[0]?.rect.y).toBe(layout.window.y);
+    expect(layout.tabs[0]?.rect.y).toBe(layout.window.y + layout.titleRect.h);
 
     expect(layout.counters.map((c) => c.id)).toEqual(['extraWomen', 'extraMen', 'trainSoldiers']);
     expect(layout.grants.map((g) => g.id)).toEqual([
@@ -77,9 +79,9 @@ describe('extras menu layout', () => {
     expect(layout.plansPlaceholder).toBeNull();
 
     // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").
-    const lastCounterY = layout.counters[2]?.labelPos.y ?? 0;
-    const firstGrantY = layout.grants[0]?.labelPos.y ?? 0;
-    const counterRowH = (layout.counters[1]?.labelPos.y ?? 0) - (layout.counters[0]?.labelPos.y ?? 0);
+    const lastCounterY = layout.counters[2]?.rect.y ?? 0;
+    const firstGrantY = layout.grants[0]?.rect.y ?? 0;
+    const counterRowH = (layout.counters[1]?.rect.y ?? 0) - (layout.counters[0]?.rect.y ?? 0);
     expect(firstGrantY - lastCounterY).toBeGreaterThan(counterRowH);
 
     // Everything sits inside the window rect.
@@ -142,9 +144,9 @@ describe('extras menu hit-test', () => {
     const sw = centreOf(layout.grants[1]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(hitTestExtrasMenu(layout, sw.x, sw.y)).toEqual({ kind: 'grant', id: 'giveWoodenTools' });
 
-    // Label area: inside the window but not a control.
-    const label = layout.counters[0]?.labelPos ?? { x: 0, y: 0 };
-    expect(hitTestExtrasMenu(layout, label.x + 1, label.y + 1)).toEqual({ kind: 'window' });
+    // Label area (the card's left half): inside the window but not a control.
+    const card = layout.counters[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+    expect(hitTestExtrasMenu(layout, card.x + 2, card.y + card.h / 2)).toEqual({ kind: 'window' });
     expect(hitTestExtrasMenu(layout, layout.window.x - 1, layout.window.y - 1)).toBeNull();
   });
 });
