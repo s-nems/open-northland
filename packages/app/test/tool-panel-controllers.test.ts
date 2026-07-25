@@ -6,12 +6,15 @@ import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { layoutBuildingMenu, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
+import { defaultAssistantState, layoutExtrasMenu } from '../src/hud/tool-panel/extras-menu.js';
+import { createExtrasWindow } from '../src/hud/tool-panel/extras-window.js';
 import { layoutGoodsMenu, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 import { createGoodsWindow } from '../src/hud/tool-panel/goods-window.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
+import { messages } from '../src/i18n/index.js';
 
 /**
  * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / goods / stats / placement) over a stubbed
@@ -334,5 +337,91 @@ describe('placement controller', () => {
     placement.cancel();
     expect(placement.isActive()).toBe(false);
     expect(placement.handleClick(10, 10)).toBe(false);
+  });
+});
+
+describe('extras window controller', () => {
+  /** The same layout the controller builds internally (same origin formula, given tab + state):
+   *  right of the strip, dropping from the extras (chest) button. */
+  function expectedLayout(ctx: PanelContext, state = defaultAssistantState()) {
+    const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
+    return layoutExtrasMenu({
+      originX: ctx.layout.width + WIN_PAD * ctx.scale,
+      originY: extrasY,
+      scale: ctx.scale,
+      tab: 'assistant',
+      state,
+    });
+  }
+
+  it('opens on toggle, claims the window rect, and closes on the close box', () => {
+    const { ctx } = stubContext();
+    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const geo = expectedLayout(ctx);
+
+    expect(extras.isOpen()).toBe(false);
+    expect(extras.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
+
+    extras.toggle();
+    expect(extras.isOpen()).toBe(true);
+    expect(extras.claims(geo.window.x + 1, geo.window.y + 1)).toBe(true);
+    expect(extras.claims(geo.window.x - 1, geo.window.y - 1)).toBe(false); // outside the window
+
+    const close = centreOf(geo.closeRect);
+    expect(extras.handleClick(close.x, close.y)).toBe(true);
+    expect(extras.isOpen()).toBe(false);
+  });
+
+  it('steppers and switches mutate the drawn state, which survives close/reopen', () => {
+    const { ctx, made } = stubContext();
+    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+
+    // + on the first counter: the rebuilt window draws "1".
+    const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
+    expect(made).toContain('1');
+
+    // The mead switch flips its face to OFF.
+    const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    expect(extras.handleClick(sw.x, sw.y)).toBe(true);
+    expect(made).toContain(messages().hud.extras.off);
+
+    // Close and reopen: the session settings persist (counter 1, mead still OFF).
+    extras.toggle();
+    made.length = 0;
+    extras.toggle();
+    expect(made).toContain('1');
+    expect(made).toContain(messages().hud.extras.off);
+  });
+
+  it('the plans tab replaces the controls with the placeholder; clicks there are inert but consumed', () => {
+    const { ctx, made } = stubContext();
+    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+
+    const plansTab = centreOf(geo.tabs[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    expect(extras.handleClick(plansTab.x, plansTab.y)).toBe(true);
+    expect(made).toContain(messages().hud.extras.plansEmpty);
+    expect(made).not.toContain(messages().hud.extras.extraWomen);
+
+    // A click where a stepper used to sit is now bare chrome or outside the shrunken window — never a step.
+    const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    extras.handleClick(plus.x, plus.y);
+    expect(made).not.toContain('1');
+  });
+
+  it('does not consume clicks outside the open window', () => {
+    const { ctx } = stubContext();
+    const extras = createExtrasWindow({ ctx, container: new Container() });
+    extras.toggle();
+    expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
+    expect(extras.isOpen()).toBe(true);
   });
 });
