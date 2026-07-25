@@ -4,6 +4,7 @@ import { eventAt } from '../../../../core/events.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { combatTargetNode } from '../../../conflict/target-node.js';
 import type { SystemContext } from '../../../context.js';
+import { tryDeathSaveDraught } from '../../../equipment/index.js';
 import { grantFightExperience } from '../../../progression/index.js';
 import { entityNode, manhattan } from '../../../spatial.js';
 import { launchProjectile } from './projectile-launch.js';
@@ -136,9 +137,14 @@ export function resolveCombatHit(
   // A hit that connected and did harm — the condition the fight-XP + stagger follow-ups need. Computed before
   // the drain so an overkill still counts as a damaging blow.
   const dealtDamage = damage > 0;
-  // The inner `Math.max(0, damage)` guards against a malformed (negative) hit *healing* the target;
-  // the outer floors the pool itself (a hit never drives it below 0).
-  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
+  const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
+  if (health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target)) {
+    // The healing draught's death-save (user rule 2026-07-24): the killing blow spends one sip and
+    // the bearer stands at the sip's restore instead of dying. The blow still counted (XP, anger).
+  } else {
+    // The outer max floors the pool itself (a hit never drives it below 0).
+    health.hitpoints = Math.max(0, health.hitpoints - dealt);
+  }
   provokeAnger(world, ctx, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType); // train the weapon class
   if (health.hitpoints <= 0) {

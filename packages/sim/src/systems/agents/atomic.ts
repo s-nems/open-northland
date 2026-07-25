@@ -25,6 +25,7 @@ import {
   consumeFood,
   continuesHarvest,
   drawUtilityGood,
+  drinkDraught,
   dropCarriedLoad,
   endRestTail,
   equipFromStore,
@@ -236,6 +237,9 @@ function applyEffect(
       // gone since the planner chose it grants no food but still feeds the eater, like `eat`.
       forageBerry(world, ctx, effect.bush);
       relieveHunger(world, settler);
+      return;
+    case 'drink':
+      drinkDraught(world, ctx, settler, effect.slot);
       return;
     case 'sleep': {
       // Resting takes SLEEP_FATIGUE_RESTORE off fatigue (no goods consumed — sleeping is free, unlike

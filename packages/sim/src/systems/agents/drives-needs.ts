@@ -14,6 +14,7 @@ import {
   SLEEP_ATOMIC_ID,
   startAtomic,
 } from './actions.js';
+import { draughtSlotFor, startDrink } from './drives-drink.js';
 import type { PlannerSpacing } from './planner-spacing.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
@@ -97,7 +98,8 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
  * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to the
  * ownership gate and economy work, with the unsatisfied bar staying clamped at ONE.
  *
- *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
+ *  - **EAT** (highest): eat a carried edible on the spot; else drink a carried draught in place
+ *    ({@link draughtSlotFor} - a food potion, else mead); else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
  *    forage it there. A settler that finds nothing keeps climbing to {@link HUNGER_BUBBLE_THRESHOLD},
  *    which is where the HUD's famine icon comes in.
@@ -136,6 +138,14 @@ export function planNeeds(
       );
       return true;
     }
+    // A carried draught (food potion, else mead) is drunk IN PLACE - it replaces the walk to food,
+    // which is exactly what the manual sells it as ("cover longer distances without needing food").
+    // Below the carried-food branch: food in hand is already free, a bottle sip is finite.
+    const draught = draughtSlotFor(world, ctx, e, 'hunger');
+    if (draught !== null) {
+      startDrink(world, ctx, e, settler, draught);
+      return true;
+    }
     // Find the NEAREST food of any kind — a stocked/produced larder or a wild berry bush (the fallback
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
@@ -157,6 +167,13 @@ export function planNeeds(
   }
 
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+    // A stamina draught (dedicated potion, else mead) is drunk IN PLACE - it replaces the walk to a
+    // bed, the manual's "remain awake and ready longer".
+    const draught = draughtSlotFor(world, ctx, e, 'fatigue');
+    if (draught !== null) {
+      startDrink(world, ctx, e, settler, draught);
+      return true;
+    }
     // A settler with a house goes home to bed — the data gives that a clip of its own worth the same
     // rest in a fifth of the time (see {@link sleepAtHome}).
     if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;

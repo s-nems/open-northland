@@ -14,7 +14,7 @@ export type EquipCategory = z.infer<typeof EquipCategory>;
 
 /** What one sip of a drinkable equipment good restores, in whole percent of each bar (`healthMax` =
  *  percent of the bearer's max hitpoints, capped at max). Magnitudes are project balance (user rule
- *  2026-07-24) — the engine's values are unreadable; the manual gives only the qualitative effect. */
+ *  2026-07-24) - the engine's values are unreadable; the manual gives only the qualitative effect. */
 export const EquipRestorePct = z.strictObject({
   hunger: z.number().int().min(1).max(100).optional(),
   fatigue: z.number().int().min(1).max(100).optional(),
@@ -27,7 +27,7 @@ export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
  * The wear split is source-pinned to the manual: potions, shoes and tools are "slowly used up"
  * ("Partly used items (potions, shoes, ...) you drop are lost"), while "unused items such as weapons,
  * armour and amulets can be used again" (amulets: "their power is never diminished"). Effect and wear
- * MAGNITUDES are engine-hardcoded (no numeric field exists in any readable `.ini` — verified), so the
+ * MAGNITUDES are engine-hardcoded (no numeric field exists in any readable `.ini` - verified), so the
  * optional numbers below are project balance (user rule 2026-07-24), except potion `uses`, which the
  * manual pins ("Small potions can be used twice, large ones can be used five times"). Integer percents
  * keep the schema→fixed-point conversion exact.
@@ -40,12 +40,12 @@ export const EquipClass = z.strictObject({
   /** Walk-gait bonus while worn, whole percent (boots +40). */
   speedBonusPct: z.number().int().positive().optional(),
   /** ADDITIVE per-cycle production credit, whole percent of the recipe outputs (wooden tool 30,
-   *  iron 60) — added to the operator's experience bonus fraction, never multiplied. */
+   *  iron 60) - added to the operator's experience bonus fraction, never multiplied. */
   productionBonusPct: z.number().int().positive().optional(),
   /** Rated uses before a wearing item breaks: one use = one walked waypoint (boots), one completed
    *  production cycle (tools), or one sip (consumables). */
   uses: z.number().int().positive().optional(),
-  /** What one sip restores — present only on drinkable goods (mead, potions). */
+  /** What one sip restores - present only on drinkable goods (mead, potions). */
   restorePct: EquipRestorePct.optional(),
 });
 export type EquipClass = z.infer<typeof EquipClass>;

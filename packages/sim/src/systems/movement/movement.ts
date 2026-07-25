@@ -59,7 +59,7 @@ export const ARRIVAL_SPEED_DIV = 2;
  * MovementSystem — advances entity positions one tick, in two modes with this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
  *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; worn boots raise it by
- *     the content-rated bonus and wear one step per waypoint reached — `systems/equipment/`) —
+ *     the content-rated bonus and wear one step per waypoint reached - `systems/equipment/`) -
  *     accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final approach
  *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step straight toward the current
  *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at —

@@ -214,5 +214,10 @@ export const plContent = {
       summary:
         'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego. Przy ratuszu leży zapasowy sprzęt do rozkazów załóż, wymień i zdejmij.',
     },
+    'equipment-effects': {
+      title: 'Efekty ekwipunku',
+      summary:
+        'Dwaj zbieracze maszerują do lasu - ten w butach wyraźnie szybciej, a buty zużywają się w drodze; młynarz z żelaznym narzędziem miele 5 pszenicy z premią do produkcji, a osadnicy sami piją miód i mikstury, gdy dopada ich głód lub zmęczenie.',
+    },
   },
 } as const;

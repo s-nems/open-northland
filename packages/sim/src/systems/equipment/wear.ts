@@ -6,7 +6,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
 // Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one walked
-// waypoint for boots, one production cycle for tools, one sip for consumables) and BREAKS at ONE —
+// waypoint for boots, one production cycle for tools, one sip for consumables) and BREAKS at ONE -
 // the slot clears and the unit leaves the economy (the manual's "slowly used up ... need renewing";
 // step magnitudes are project balance, user rule 2026-07-24).
 
@@ -19,8 +19,8 @@ export function wearStepOf(ctx: SystemContext, goodType: number): Fixed {
 }
 
 /**
- * Advance the addressed worn slot's `degreeOfUse` by `step`; reaching ONE breaks the item — the slot
- * clears and the unit is gone (deliberate sink, like the destroy-used rule — see
+ * Advance the addressed worn slot's `degreeOfUse` by `step`; reaching ONE breaks the item - the slot
+ * clears and the unit is gone (deliberate sink, like the destroy-used rule - see
  * `agents/effects-goods/equip.ts`). No-op for an empty slot, a ZERO step, or an already-spent unit
  * (a scene can stamp one at 100%).
  */

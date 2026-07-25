@@ -30,7 +30,7 @@ const WALK: Array<{ x: number; y: number }> = [
   { x: 3, y: 0 },
 ];
 
-describe('movementSystem — worn boots', () => {
+describe('movementSystem - worn boots', () => {
   it('a booted walker beats a bare one over the same path (+40% cruise gait)', () => {
     const bare = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const bareTicks = ticksToArrive(bare, followerAt(bare, 0, 0, WALK));
