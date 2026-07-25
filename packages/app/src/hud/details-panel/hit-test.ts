@@ -4,9 +4,10 @@ import { type ButtonHit, stockSlotRects } from './layout/index.js';
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
-// Pure hit-testing for the details panel: map a canvas point in the current PanelView to the action
-// target under it, or the tooltip text that names it. No Pixi or DOM, so panel.ts stays the stateful
-// controller and this seam is tested headlessly (see details-panel-hit-test.test.ts).
+// Pure input decisions for the details panel: map a canvas point in the current PanelView to the
+// action target under it or the tooltip text that names it, and resolve what a craft-choice click does
+// to the product selection. No Pixi or DOM, so panel.ts stays the stateful controller and this seam is
+// tested headlessly (see details-panel-hit-test.test.ts).
 
 /** The buttons the current view exposes to pointer routing, in hit-test order. */
 const panelButtons = (view: PanelView): readonly ButtonHit[] => {
@@ -42,6 +43,28 @@ export const hitGatherChoice = (view: PanelView, x: number, y: number): number |
 export const hitCraftChoice = (view: PanelView, x: number, y: number): number | undefined => {
   if (view.kind !== 'settler') return undefined;
   return view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+};
+
+/**
+ * The next selection after a craft-choice click, given the worker's `products` (all its craftable
+ * goods) and current `selected` set. A plain click REPLACES the selection with just the clicked product
+ * (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set (user decision
+ * 2026-07-16). The toggle normalizes both edges: all products selected reads as the `[]` all-mode (so
+ * the sim drops the component), and toggling the LAST product off falls back to all-mode too (a worker
+ * can't craft nothing).
+ */
+export const nextCraftGoods = (
+  products: readonly number[],
+  selected: readonly number[],
+  goodType: number,
+  toggle: boolean,
+): readonly number[] => {
+  if (!toggle) return products.length === 1 ? [] : [goodType];
+  const next = new Set(selected);
+  if (next.has(goodType)) next.delete(goodType);
+  else next.add(goodType);
+  if (next.size === 0 || next.size === products.length) return [];
+  return products.filter((g) => next.has(g));
 };
 
 /** The good name under a canvas point in the stock grid, or null. Probes the same slot rects the rows

@@ -6,6 +6,7 @@ import {
   hitCraftChoice,
   hitGatherChoice,
   hitStockTab,
+  nextCraftGoods,
   tooltipTextAt,
 } from '../src/hud/details-panel/hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModel } from '../src/hud/details-panel/index.js';
@@ -99,5 +100,33 @@ describe('details panel hit-testing', () => {
     expect(hitButton(view, far.x, far.y)).toBeNull();
     expect(hitGatherChoice(view, far.x, far.y)).toBeUndefined();
     expect(tooltipTextAt(view, far.x, far.y, SCALE, ALL_STOCK_TAB)).toBeNull();
+  });
+});
+
+describe('nextCraftGoods', () => {
+  const PRODUCTS = [10, 20, 30];
+
+  it('replaces the selection with just the clicked product on a plain click', () => {
+    expect(nextCraftGoods(PRODUCTS, [20], 30, false)).toEqual([30]);
+  });
+
+  it('replaces with all-mode when the worker makes only one product (it cannot craft nothing)', () => {
+    expect(nextCraftGoods([10], [], 10, false)).toEqual([]);
+  });
+
+  it('toggles a product into the multi-set, keeping product order', () => {
+    expect(nextCraftGoods(PRODUCTS, [30], 10, true)).toEqual([10, 30]);
+  });
+
+  it('toggles a product out of the multi-set', () => {
+    expect(nextCraftGoods(PRODUCTS, [10, 20], 20, true)).toEqual([10]);
+  });
+
+  it('normalizes toggling the last product off to all-mode', () => {
+    expect(nextCraftGoods(PRODUCTS, [20], 20, true)).toEqual([]);
+  });
+
+  it('normalizes toggling every product on to all-mode', () => {
+    expect(nextCraftGoods(PRODUCTS, [10, 20], 30, true)).toEqual([]);
   });
 });
