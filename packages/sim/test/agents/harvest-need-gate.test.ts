@@ -15,19 +15,21 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  * The shared fixture's only `needforgood` is on PLANK (good 2) — never a harvestable good — so it
  * leaves the harvest planner inert. To exercise the gate we inject a `needforgood` on WOOD (the
  * fixture's one harvestable good) into the in-memory IR: producing/harvesting wood (good 1) needs 20
- * XP in the wood track (typeId 1). The woodcutter accrues that very track by harvesting wood, so the
- * gate is self-consistent — a fresh woodcutter is held out until pre-seeded XP clears it.
+ * REPEATS of the wood track (typeId 1, factor 10 — 200 raw XP). The woodcutter accrues that very
+ * track by harvesting wood, so the gate is self-consistent — a fresh woodcutter is held out until
+ * pre-seeded XP clears it.
  */
 
 const WOOD = 1;
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
+const WOOD_FACTOR = 10; // that track's experienceFactor — raw XP per completed harvest repeat
 const WOODCUTTER = 1;
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
 /**
- * A content set whose viking tribe gates harvesting WOOD behind `needforgood 1 20 [1]` — a wood-track
- * XP threshold on a harvestable good (the shared fixture only thresholds PLANK, which is never
+ * A content set whose viking tribe gates harvesting WOOD behind `needforgood 1 20 [1]` — a 20-repeat
+ * wood-track threshold on a harvestable good (the shared fixture only thresholds PLANK, which is never
  * harvested). The IR is plain post-parse data, so a test may author the requirement directly.
  */
 function woodGatedContent(): ReturnType<typeof testContent> {
@@ -70,7 +72,7 @@ function woodAt(sim: Simulation, x: number, y: number): Entity {
 describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
   it('does not target a wood node when the settler is below the wood threshold', () => {
     const sim = new Simulation({ seed: 1, content: woodGatedContent(), map: grassMap(4, 1) });
-    const cutter = woodcutterAt(sim, 0, 0, 19); // one short of the 20-XP threshold
+    const cutter = woodcutterAt(sim, 0, 0, 20 * WOOD_FACTOR - 1); // one raw XP short of 20 repeats
     woodAt(sim, 1, 0);
 
     aiSystem(sim.world, {
@@ -89,7 +91,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
 
   it('targets the wood node once the settler clears the wood threshold', () => {
     const sim = new Simulation({ seed: 1, content: woodGatedContent(), map: grassMap(4, 1) });
-    const cutter = woodcutterAt(sim, 0, 0, 20); // exactly at the 20-XP threshold
+    const cutter = woodcutterAt(sim, 0, 0, 20 * WOOD_FACTOR); // exactly 20 repeats of wood XP
     woodAt(sim, 1, 0);
 
     aiSystem(sim.world, {

@@ -69,6 +69,8 @@ const BAKERY_TYPE = 8;
 const BAKERY_TOP_TYPE = 9;
 /** The stone-collector XP track (fixture = real track id 5) iron's `needforgood` measures. */
 const STONE_XP_TRACK = 5;
+/** Raw XP clearing iron's `needforgood` gate: 10 repeats × the stone track's factor 100. */
+const IRON_GATE_XP = 1000;
 const WOOD = 1;
 const MUD = 2;
 const STONE = 4;
@@ -124,6 +126,7 @@ function spawnMen(sim: Simulation, count: number, jobType = CIVILIST): void {
 function placeResources(
   sim: Simulation,
   spots: readonly { x: number; y: number; good: number; harvest: number }[] = Object.values(RESOURCE_SPOTS),
+  remaining = 5,
 ): void {
   for (const spot of spots) {
     sim.enqueue({
@@ -131,7 +134,7 @@ function placeResources(
       good: spot.good,
       x: spot.x,
       y: spot.y,
-      remaining: 5,
+      remaining,
       harvestAtomic: spot.harvest,
     });
   }
@@ -327,7 +330,7 @@ describe('workforce module (collectResources)', () => {
     // One man has dug stone before — iron's `needforgood` XP gate demands an experienced digger.
     const veteran = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === CIVILIST);
     if (veteran === undefined) throw new Error('setup: no spawned man');
-    sim.world.get(veteran, Settler).experience.set(STONE_XP_TRACK, 100);
+    sim.world.get(veteran, Settler).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
 
     // The gate: iron is listed after the farm entry, so an unmet farm keeps it unwanted.
     const gated = workforceModule([
@@ -367,7 +370,7 @@ describe('workforce module (collectResources)', () => {
     // iron — the fresh spare still may not mine iron.
     const collector = [...sim.world.query(Settler, WorkFlag)][0];
     if (collector === undefined) throw new Error('setup: stone collector missing');
-    sim.world.get(collector, Settler).experience.set(STONE_XP_TRACK, 100);
+    sim.world.get(collector, Settler).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
     const swap = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(swap.filter((c) => c.kind === 'setGatherGood')).toEqual([
       { kind: 'setGatherGood', entity: collector, goodType: IRON },
@@ -1000,7 +1003,9 @@ describe('the full strategic registry — determinism and replay', () => {
       owner: SEAT,
       fillStock: true,
     });
-    placeResources(sim);
+    // Deep deposits: the iron gate now demands 10 digging REPEATS, so the stone digger must dig ten
+    // times before it may be re-posted to iron — a 5-unit deposit would starve the qualification.
+    placeResources(sim, Object.values(RESOURCE_SPOTS), 40);
     // Fourteen men: four collectors (iron staffed by re-posting a veteran digger once reached),
     // the scout, and five staffing posts (farmer, miller, two bakers after the upgrade, the bakery
     // carrier — the well's transport slot stays empty) still leave builders free to raise the

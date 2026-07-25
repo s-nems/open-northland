@@ -4,6 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { experienceRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
  *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md. Annotated
@@ -110,11 +111,16 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
  * per-specialization XP `grantWorkExperience` accrues onto `Settler.experience` (keyed by the
  * `humanjobexperiencetypes` track typeId).
  *
- * A `needfor*` requirement demands `amount` experience measured in its `experienceTypes` track(s). Settler XP
- * is keyed by the same track typeIds, so the check sums the settler's XP across the named tracks and compares
- * to `amount`. A requirement with no `experienceTypes` (none in the real data, but the schema permits it) is
- * vacuously met. Only `requirement === 'need'` is interpreted here — `train` requirements are a schooling
- * cost paid at a training house, not an already-accrued threshold.
+ * A `needfor*` requirement demands `amount` experience measured in REPEATS of its `experienceTypes`
+ * track(s) — completed works, not raw XP ("the carpenter needs 10 gathered logs"). Raw XP accrues at
+ * `experienceFactor` per work, so each track's contribution divides the factor back out
+ * ({@link experienceRepeats}); an expType with no track record (the fight buckets, the TRAINING and scout
+ * ids) accrues at rate 1, so its raw XP already is a repeat count. The repeats scale is what makes the
+ * data's flat 5..20 amounts commensurable across tracks whose factors span 1..250 (source basis: the
+ * factor-invariant amounts themselves; approximation — the original's threshold unit is not readable).
+ * A requirement with no `experienceTypes` (none in the real data, but the schema permits it) is vacuously
+ * met. Only `requirement === 'need'` is interpreted here — `train` requirements are a schooling cost paid
+ * at a training house, not an already-accrued threshold.
  *
  * source-basis (approximated): whether a two-`expType` line means "sum both" or "either alone" has no
  * readable oracle, since the original's threshold rides the same below-the-`.ini` XP logic the per-animation
@@ -122,14 +128,20 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
  * XP curve is observed.
  */
 export function experienceRequirementMet(
+  ctx: SystemContext,
   experience: ReadonlyMap<number, number>,
   requirement: JobRequirement,
 ): boolean {
   if (requirement.requirement !== 'need') return true; // not an accrued-XP threshold (train = schooling)
   if (requirement.experienceTypes.length === 0) return true; // no track to measure against
-  let accrued = 0;
-  for (const expType of requirement.experienceTypes) accrued += experience.get(expType) ?? 0;
-  return accrued >= requirement.amount;
+  const tracks = contentIndex(ctx.content).jobExperience;
+  let repeats = 0;
+  for (const expType of requirement.experienceTypes) {
+    const xp = experience.get(expType) ?? 0;
+    const track = tracks.get(expType);
+    repeats += track === undefined ? xp : experienceRepeats(xp, track);
+  }
+  return repeats >= requirement.amount;
 }
 
 /**
@@ -152,7 +164,7 @@ export function settlerMeetsNeed(
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
-    if (!experienceRequirementMet(experience, req)) return false;
+    if (!experienceRequirementMet(ctx, experience, req)) return false;
   }
   return true; // no unmet `need` requirement gates this target
 }
