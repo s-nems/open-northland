@@ -25,6 +25,11 @@ export function bobKey(draw: BuildingDraw): string {
   return `${draw.bob}:${draw.layer ?? ''}`;
 }
 
+/** Map a 1-based fill/level count to a 0-based frame index, clamped into `[0, frameCount - 1]`. */
+function fillFrameIndex(fillOneBased: number, frameCount: number): number {
+  return Math.min(frameCount, Math.max(1, fillOneBased)) - 1;
+}
+
 const finishedKeyCache = new WeakMap<BuildingTypeBinding, ReadonlySet<string>>();
 
 /**
@@ -209,8 +214,8 @@ export function resolveResourceDraw(
   const variantFrames = item.gfxIndex !== undefined ? binding.byGfxIndex?.[item.gfxIndex] : undefined;
   const frames = variantFrames ?? (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined);
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
-  // 1-based level (rescaled onto the record's own state count when the ladders differ) or drop fill →
-  // a 0-based frame index, clamped into range; neither present falls to the full, last state.
+  // A 1-based level (rescaled onto the record's own state count when the ladders differ) or a drop's
+  // fill; neither present falls to the full, last state.
   const ladder = item.level ?? item.fill;
   const span = item.level !== undefined && item.levels !== undefined && item.levels > 0 ? item.levels : null;
   const scaled =
@@ -219,7 +224,7 @@ export function resolveResourceDraw(
       : span !== null && span !== frames.length
         ? Math.ceil((ladder * frames.length) / span)
         : ladder;
-  const idx = Math.min(frames.length, Math.max(1, scaled)) - 1;
+  const idx = fillFrameIndex(scaled, frames.length);
   const ref = frames[idx];
   if (ref === null) return null; // a data-pinned invisible level — draw nothing, never the placeholder
   return unwrapBobRef(ref ?? binding.default);
@@ -239,8 +244,7 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
   if (item.goodType === undefined) return unwrapBobRef(binding.flag); // empty pile → the delivery flag
   const frames = binding.byGood[item.goodType];
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
-  // 1-based fill amount → a 0-based frame index, clamped to the heap's available fill states.
-  const idx = Math.min(frames.length, Math.max(1, item.fill ?? 1)) - 1;
+  const idx = fillFrameIndex(item.fill ?? 1, frames.length);
   return unwrapBobRef(frames[idx] ?? binding.default);
 }
 
