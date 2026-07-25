@@ -10,6 +10,7 @@ import {
   spawnSandboxSettler,
   WEAPON_SWORD,
 } from '../game/sandbox/index.js';
+import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -30,15 +31,6 @@ const MEAD_USE_PCT = 50;
 const FOOD_POTION_USE_PCT = 25;
 /** Fully spent - the condition gauge under its socket draws empty and the tooltip reads "(0%)". */
 const STAMINA_POTION_USE_PCT = 100;
-
-/** A good slug's typeId in the RUNNING content - the sandbox fallback carries the equippables at +100
- *  while real content keeps the `goodtypes.ini` ids, so the scene resolves slugs like every other
- *  spawn path (see `weaponEquipmentFor`) instead of stamping one id space. */
-function goodBySlug(sim: Simulation, slug: string): number {
-  const good = sim.content.goods.find((g) => g.id === slug);
-  if (good === undefined) throw new Error(`equipment scene: content has no '${slug}' good`);
-  return good.typeId;
-}
 
 /** The spare gear lying west of the settlers: slug, cell, and stack size (packed two per row). Kept
  *  well clear of the HQ at (9,12) - real content's extracted footprint is larger than the sandbox

@@ -213,5 +213,10 @@ export const enContent = {
       summary:
         'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler. Spare gear lies by the HQ for the per-slot equip, swap and take-off orders.',
     },
+    'equipment-effects': {
+      title: 'Equipment effects',
+      summary:
+        'Two collectors trek to a forest - the booted one visibly faster, its boots wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
+    },
   },
 } as const;

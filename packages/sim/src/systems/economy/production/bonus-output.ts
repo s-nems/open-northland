@@ -15,7 +15,7 @@ import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../.
 
 /**
  * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus
- * ({@link operatorProductionBonus}) PLUS its worn tool's credit ({@link toolProductionBonus} — additive,
+ * ({@link operatorProductionBonus}) PLUS its worn tool's credit ({@link toolProductionBonus} - additive,
  * never multiplied, user rule 2026-07-24) times its recipe outputs into the workplace's
  * {@link ProductionBonus} remainders — cycle→operator pairing index-for-index, the XP grant's slice —
  * then whole remainder units flush into the stockpile. The tool also wears one step per completed

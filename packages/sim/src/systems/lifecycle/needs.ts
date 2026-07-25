@@ -4,6 +4,7 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
+import { tryDeathSaveDraught } from '../equipment/index.js';
 import { isFighterJob } from '../readviews/index.js';
 import { isBaby } from './ageclass.js';
 
@@ -167,6 +168,9 @@ export const needsSystem: System = (world, ctx) => {
     if (starvationBeat && settler.hunger === ONE && settler.jobType !== null && world.has(e, Health)) {
       const health = world.get(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
+      // The healing draught's death-save (user rule 2026-07-24): a bite that would finish the settler
+      // instead spends one sip and resets the pool - it starves on, but the potion buys it time.
+      if (health.hitpoints - bite <= 0 && tryDeathSaveDraught(world, ctx, e)) continue;
       health.hitpoints = Math.max(0, health.hitpoints - bite);
     }
   }

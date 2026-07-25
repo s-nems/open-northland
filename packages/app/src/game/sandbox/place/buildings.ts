@@ -4,6 +4,7 @@ import {
   type Entity,
   ONE,
   positionOfNode,
+  type SettlerEquipment,
   type Simulation,
 } from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../../catalog/buildings.js';
@@ -116,11 +117,21 @@ export function spawnWorkersAtDoor(
   y: number,
   count: number,
   owner: number = HUMAN_PLAYER,
+  /** Worn gear stamped on every spawned worker (e.g. a tool for the equipment-effects scene). */
+  equipment?: SettlerEquipment,
 ): void {
   const door = buildingDoorNode(sim, buildingType, x, y);
   const jobType = primaryWorkerJob(sim, buildingType);
   for (let i = 0; i < count; i++) {
-    sim.enqueue({ kind: 'spawnSettler', jobType, x: door.hx, y: door.hy, tribe: PRIMARY_TRIBE, owner });
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType,
+      x: door.hx,
+      y: door.hy,
+      tribe: PRIMARY_TRIBE,
+      owner,
+      ...(equipment !== undefined ? { equipment } : {}),
+    });
   }
 }
 

@@ -62,17 +62,17 @@ export type EquipGoodSpec = EquipClass & {
 };
 
 /** Rated waypoint-arrivals for a pair of shoes: ~1% per 30 walked cells at ~2 route waypoints per
- *  cell (user rule 2026-07-24 for the rate class; the exact figure is a named approximation —
+ *  cell (user rule 2026-07-24 for the rate class; the exact figure is a named approximation -
  *  anisotropic by heading mix, and no readable source carries a wear rate). */
 const SHOE_USES = 6000;
-/** Rated production cycles for a tool (~1% per completed cycle — user rule 2026-07-24). */
+/** Rated production cycles for a tool (~1% per completed cycle - user rule 2026-07-24). */
 const TOOL_USES = 100;
-/** Sips in a small bottle (mead, small potions) and a big one — manual-pinned ("Small potions can
+/** Sips in a small bottle (mead, small potions) and a big one - manual-pinned ("Small potions can
  *  be used twice, large ones can be used five times"; mead sized like a small bottle). */
 const SMALL_BOTTLE_USES = 2;
 const BIG_BOTTLE_USES = 5;
 /** One sip's restore percents (user rules 2026-07-23/24): mead +40 hunger AND +40 fatigue (matches
- *  one meal — EAT_HUNGER_RESTORE is 40%); a potion +50 of its one bar (heal: percent of max HP). */
+ *  one meal - EAT_HUNGER_RESTORE is 40%); a potion +50 of its one bar (heal: percent of max HP). */
 const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
 const POTION_RESTORE_PCT = 50;
 /** Boots walk-gait bonus, percent (user rule 2026-07-24). */

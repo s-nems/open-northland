@@ -22,7 +22,7 @@ export const MISC_EQUIP_SLOTS = 4;
  * `ONE` = spent), the original's "degree of use" the equip window shows as a percentage. It is always
  * `0` for a non-wearing good (weapons/armour/amulets never wear — the good's `equip.wears` is false;
  * source basis: manual "Unused items ... can be used again"). Use accrues in wear steps of
- * `ONE/equip.uses` (walking for boots, production cycles for tools, sips for consumables — see
+ * `ONE/equip.uses` (walking for boots, production cycles for tools, sips for consumables - see
  * `systems/equipment/`); at `ONE` the item breaks and its slot clears.
  */
 export interface EquipmentSlot {

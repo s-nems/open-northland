@@ -18,6 +18,15 @@ export function buildingOfType(sim: Simulation, typeId: number): Entity | null {
   return null;
 }
 
+/** A good slug's typeId in the RUNNING content - the sandbox fallback carries the equippables at +100
+ *  while real content keeps the `goodtypes.ini` ids, so a scene resolves slugs like every other spawn
+ *  path (see `weaponEquipmentFor`) instead of stamping one id space. */
+export function goodBySlug(sim: Simulation, slug: string): number {
+  const good = sim.content.goods.find((g) => g.id === slug);
+  if (good === undefined) throw new Error(`scene content has no '${slug}' good`);
+  return good.typeId;
+}
+
 /**
  * Total `good` banked in the goods yard — summed across every loose ground heap holding it. A flag-bound
  * gatherer spreads its harvest onto separate ground heaps around the flag, capped per tile, so a good's
