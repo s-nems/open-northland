@@ -122,6 +122,7 @@ export const plGame = {
       misc: 'Ekwipunek',
     },
     extras: {
+      title: 'Okno dodatków',
       assistantTab: 'Asystent',
       plansTab: 'Plany',
       extraWomen: 'Dodatkowe kobiety',

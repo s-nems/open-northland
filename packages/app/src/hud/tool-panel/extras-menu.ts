@@ -8,9 +8,9 @@ import { contains, type Rect } from '../geometry.js';
  *
  * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
  * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500
- * "Okno Dodatków", 501 "Papiery", 502-510 the grant commands "Zgromadź Buty!" etc.). The tab pair,
- * the wording used here, the counter set and the geometry are a project reconstruction (named
- * deviation): labels follow the feature spec, not the decoded table.
+ * "Okno Dodatków" - the title used here, 501 "Papiery", 502-510 the grant commands "Zgromadź Buty!"
+ * etc.). The tab pair, the row wording, the counter set and the geometry are a project
+ * reconstruction (named deviation): labels follow the feature spec, not the decoded table.
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
@@ -50,24 +50,31 @@ export function toggleGrant(state: AssistantState, id: AssistantGrantId): Assist
   return { ...state, grants: { ...state.grants, [id]: !state.grants[id] } };
 }
 
-// --- Layout (design px, scaled by uiscale like the tool panel) ------------------------------------
+// --- Layout (design px, scaled by uiscale like the tool panel; building-menu proportions) ----------
 
 const MENU_PAD = 6;
-const TAB_W = 70;
-const TAB_H = 16;
-const ROW_H = 15;
+/** The rust title band across the top of the window (matches the build menu's). */
+const HEADLINE_H = 18;
+const TAB_W = 80;
+const TAB_H = 18;
+/** A small gap between the tab row and the first card, so the tabs read as a header. */
+const LIST_GAP = 3;
+/** Each control row sits on its own button-card, so the slot is taller than a plain text line. */
+const ROW_H = 20;
 const MENU_CLOSE = 13;
-/** Gap between the tab strip and the first row, and between the counter and grant blocks. */
+/** Wood gap between the counter block and the grant block. */
 const BLOCK_GAP = 8;
 /** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at the HUD text size. */
-const MENU_WIDTH = 250;
-/** The −/+ stepper squares and the value cell between them. */
-const STEPPER = 12;
-const VALUE_W = 22;
-const CONTROL_GAP = 2;
-/** The ON/OFF switch plate. */
-const SWITCH_W = 30;
-const SWITCH_H = 12;
+const MENU_WIDTH = 260;
+/** The −/+ stepper plates and the recessed value cell between them. */
+const STEPPER = 14;
+const VALUE_W = 24;
+const CONTROL_GAP = 3;
+/** The Wł./Wył. switch plate. */
+const SWITCH_W = 36;
+const SWITCH_H = 14;
+/** Right-hand inset of a row's control column inside its card. */
+const CONTROL_INSET_X = 4;
 
 export interface ExtrasMenuTabRect {
   readonly tab: ExtrasTab;
@@ -80,7 +87,8 @@ export interface ExtrasCounterRow {
   readonly id: AssistantCounterId;
   readonly label: string;
   readonly value: number;
-  readonly labelPos: { readonly x: number; readonly y: number };
+  /** The row's card slot (the controller insets it vertically into a plate, like the build menu). */
+  readonly rect: Rect;
   readonly minusRect: Rect;
   readonly valueRect: Rect;
   readonly plusRect: Rect;
@@ -90,13 +98,17 @@ export interface ExtrasGrantRow {
   readonly id: AssistantGrantId;
   readonly label: string;
   readonly on: boolean;
-  readonly labelPos: { readonly x: number; readonly y: number };
+  /** The row's card slot (see {@link ExtrasCounterRow.rect}). */
+  readonly rect: Rect;
   readonly switchRect: Rect;
 }
 
 export interface ExtrasMenuLayout {
   readonly scale: number;
   readonly window: Rect;
+  /** The headline (title-band) rect; the close X sits on it. */
+  readonly titleRect: Rect;
+  readonly title: string;
   readonly closeRect: Rect;
   readonly tabs: readonly ExtrasMenuTabRect[];
   /** Empty on the plans tab. */
@@ -119,9 +131,9 @@ const COUNTER_IDS: readonly AssistantCounterId[] = ['extraWomen', 'extraMen', 't
 const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 'giveIronTools', 'giveMead'];
 
 /**
- * Resolve the window to screen rects: the two tabs + close X on top, then (assistant tab) the three
- * counter rows and, after a block gap, the four grant rows - controls right-aligned on a shared column.
- * Purely geometric - text fits each rect at render time.
+ * Resolve the window to screen rects: the rust headline + close X on top, the two tabs under it, then
+ * (assistant tab) three counter cards and, after a wood gap, four grant cards - controls right-aligned
+ * on a shared column. Purely geometric - text fits each rect at render time.
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Fractional scale (the building menu's convention) so the geometry agrees with the text runs,
@@ -132,10 +144,11 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
 
   const width = MENU_WIDTH * s;
   const pad = MENU_PAD * s;
+  const headlineH = HEADLINE_H * s;
   const tabH = TAB_H * s;
   const rowH = ROW_H * s;
-  const bodyTop = originY + tabH + BLOCK_GAP * s;
-  const controlRight = originX + width - pad;
+  const bodyTop = originY + headlineH + tabH + LIST_GAP * s;
+  const controlRight = originX + width - pad - CONTROL_INSET_X * s;
 
   const tabs: ExtrasMenuTabRect[] = (
     [
@@ -145,7 +158,7 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
   ).map((t, i) => ({
     ...t,
     selected: t.tab === tab,
-    rect: { x: originX + pad + i * TAB_W * s, y: originY, w: TAB_W * s, h: tabH },
+    rect: { x: originX + pad + i * TAB_W * s, y: originY + headlineH, w: TAB_W * s, h: tabH },
   }));
 
   const counterLabels: Readonly<Record<AssistantCounterId, string>> = {
@@ -176,7 +189,7 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
             id,
             label: counterLabels[id],
             value: state.counters[id],
-            labelPos: { x: originX + pad, y },
+            rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
             minusRect: { x: minusX, y: controlY, w: stepper, h: stepper },
             valueRect: { x: valueX, y: controlY, w: valueW, h: stepper },
             plusRect: { x: plusX, y: controlY, w: stepper, h: stepper },
@@ -195,7 +208,7 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
             id,
             label: grantLabels[id],
             on: state.grants[id],
-            labelPos: { x: originX + pad, y },
+            rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
             switchRect: {
               x: controlRight - switchW,
               y: y + (rowH - switchH) / 2,
@@ -206,22 +219,27 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
         });
 
   const bodyH = tab === 'assistant' ? (COUNTER_IDS.length + GRANT_IDS.length) * rowH + BLOCK_GAP * s : rowH;
-  const height = tabH + BLOCK_GAP * s + bodyH + pad;
+  const height = headlineH + tabH + LIST_GAP * s + bodyH + pad;
 
   const closeSize = MENU_CLOSE * s;
   return {
     scale: s,
     window: { x: originX, y: originY, w: width, h: height },
+    titleRect: { x: originX, y: originY, w: width, h: headlineH },
+    title: labels.title,
     closeRect: {
       x: originX + width - closeSize - pad,
-      y: originY + (tabH - closeSize) / 2,
+      y: originY + (headlineH - closeSize) / 2,
       w: closeSize,
       h: closeSize,
     },
     tabs,
     counters,
     grants,
-    plansPlaceholder: tab === 'plans' ? { label: labels.plansEmpty, x: originX + pad, y: bodyTop } : null,
+    plansPlaceholder:
+      tab === 'plans'
+        ? { label: labels.plansEmpty, x: originX + pad + CONTROL_INSET_X * s, y: bodyTop }
+        : null,
   };
 }
 
