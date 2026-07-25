@@ -262,10 +262,11 @@ export class Simulation {
 
   /**
    * The good types `player`'s assistant may hand out (the `setAssistantGrant` command's state; empty
-   * when nothing is granted). The chest window's grant switches label themselves from this.
+   * when nothing is granted). The chest window's grant switches label themselves from this. A
+   * detached copy - never the live component array.
    */
   assistantGrants(player: number): readonly number[] {
-    return assistantGrantedGoods(this.world, player);
+    return [...assistantGrantedGoods(this.world, player)];
   }
 
   /**

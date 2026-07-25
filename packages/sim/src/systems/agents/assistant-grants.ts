@@ -2,6 +2,7 @@ import type { EquipCategory } from '@open-northland/data';
 import {
   Age,
   AssistantGrants,
+  Carrying,
   Equipment,
   type EquipmentData,
   EquipOrder,
@@ -11,6 +12,7 @@ import {
   Position,
   Settler,
   Stockpile,
+  SupplyRun,
   UnderConstruction,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -30,8 +32,9 @@ import { unreachableGoalVeto } from './unreachable-goals.js';
  * WITHOUT the manual order's interrupts - the settler finishes its current step first). Two brakes
  * keep a big settlement from mobbing two pairs of boots (user rule 2026-07-25):
  *
- *  - demand-side reservation: per player and good, fetch errands underway (`acquire` stage) never
- *    exceed the player's store stock, so no one is sent after a unit someone else is walking to;
+ *  - demand-side reservation: per player and good, the assistant stops dispatching once fetch
+ *    errands underway (`acquire` stage, manual orders counted too) match the player's store stock,
+ *    so no one is sent after a unit someone else is already walking to;
  *  - a trickle: at most {@link ASSISTANT_MAX_IN_FLIGHT} of a player's settlers fetch at once, and
  *    each settler is considered only on its {@link ASSISTANT_SCAN_PERIOD_TICKS} stride beat, so the
  *    hand-out paces itself to errand completion instead of dispatching a whole village on one tick.
@@ -49,7 +52,7 @@ const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
 
 /** The per-player cap on concurrent assistant fetch errands - the incremental-rollout brake. Small
  *  enough that switching a grant on in a living settlement reads as a steady trickle, large enough
- *  that the queue drains across a few storehouses at once. Our balance (user rule 2026-07-25). */
+ *  that the queue drains across a few storehouses at once. Our balance. */
 export const ASSISTANT_MAX_IN_FLIGHT = 4;
 
 /** One granted good, its slot group pre-resolved from content. */
@@ -73,7 +76,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const inFlight = collectInFlightFetches(world);
   const stockCache = new Map<number, Map<number, number>>();
 
-  for (const e of canonicalById(world.query(Settler, Position))) {
+  for (const e of pass.settlers) {
     if ((e + ctx.tick) % ASSISTANT_SCAN_PERIOD_TICKS !== 0) continue;
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
@@ -83,6 +86,10 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (tally.total >= ASSISTANT_MAX_IN_FLIGHT) continue;
     if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
     if (world.get(e, Settler).jobType === null) continue; // the ladder never plans a jobless settler
+    // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would
+    // dump the carried load where the settler stands (a manual order may do that - the assistant
+    // has no such urgency). A later beat catches the settler with free hands.
+    if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
 
     const eq = world.tryGet(e, Equipment);
     // The settler's confinement/veto are computed once, and only when a grant actually has a free
@@ -157,6 +164,10 @@ function collectInFlightFetches(world: World): Map<number, FetchTally> {
   for (const e of world.query(EquipOrder)) {
     const order = world.get(e, EquipOrder);
     if (order.stage !== 'acquire' || order.goodType === null) continue;
+    // A jobless settler's errand is frozen (the ladder never plans one - e.g. its workplace was
+    // demolished mid-fetch): it must not hold a reservation or a cap slot while it cannot advance.
+    const settler = world.tryGet(e, Settler);
+    if (settler === undefined || settler.jobType === null) continue;
     const owner = ownerOf(world, e);
     if (owner === undefined) continue;
     const tally = tallyFor(byPlayer, owner);
@@ -187,7 +198,7 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
   }
   if (eq === undefined) return 0;
   if (eq.misc.some((s) => s?.goodType === spec.goodType)) return null;
-  const free = eq.misc.findIndex((s) => s === null);
+  const free = eq.misc.indexOf(null);
   return free === -1 ? null : free;
 }
 

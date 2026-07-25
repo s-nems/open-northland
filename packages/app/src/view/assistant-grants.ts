@@ -37,12 +37,14 @@ function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, read
 }
 
 /** The chest window's live grant seam for `player`: reads the sim's grant list, writes one
- *  `setAssistantGrant` per mapped good through the session's command seam. */
+ *  `setAssistantGrant` per mapped good through the session's command seam. `writable: false` (a
+ *  read-only spectator session) rejects every write, so the window never echoes a dropped command. */
 export function assistantGrantsSeam(
   sim: Pick<Simulation, 'assistantGrants'>,
   content: GrantContent,
   player: number,
   enqueue: (command: Command) => void,
+  writable = true,
 ): ExtrasGrantsSeam {
   const grantGoods = resolveGrantGoods(content);
   return {
@@ -56,9 +58,12 @@ export function assistantGrantsSeam(
       return state;
     },
     set: (id, enabled) => {
-      for (const goodType of grantGoods[id]) {
+      const goods = grantGoods[id];
+      if (!writable || goods.length === 0) return false;
+      for (const goodType of goods) {
         enqueue({ kind: 'setAssistantGrant', player, goodType, enabled });
       }
+      return true;
     },
   };
 }

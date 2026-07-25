@@ -54,7 +54,9 @@ const EXTRAS_TITLE_STRING_ID = 500;
 export interface ExtrasGrantsSeam {
   /** The live per-switch state (a switch is ON when every good it flips is granted). */
   read(): Readonly<Record<AssistantGrantId, boolean>>;
-  set(id: AssistantGrantId, enabled: boolean): void;
+  /** Flip one switch; false when the write was rejected (a read-only session, an unmapped switch) -
+   *  the window must not echo a rejected write, or its face would lie until the next open. */
+  set(id: AssistantGrantId, enabled: boolean): boolean;
 }
 
 export interface ExtrasWindowDeps {
@@ -277,9 +279,10 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         state = adjustCounter(state, hit.id, hit.delta);
         rebuild();
       } else if (hit.kind === 'grant') {
-        state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
-        deps.grants.set(hit.id, state.grants[hit.id]);
-        rebuild();
+        if (deps.grants.set(hit.id, !state.grants[hit.id])) {
+          state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
+          rebuild();
+        }
       }
       // 'window' → consumed, no-op
       return true;

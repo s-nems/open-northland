@@ -365,6 +365,7 @@ describe('extras window controller', () => {
         set: (id, enabled) => {
           writes.push([id, enabled]);
           state[id] = enabled;
+          return true;
         },
       },
       writes,
@@ -429,6 +430,19 @@ describe('extras window controller', () => {
     extras.toggle();
     expect(made).toContain('1');
     expect(made).toContain(messages().hud.extras.off);
+  });
+
+  it('a rejected write (a read-only session) leaves the switch face untouched', () => {
+    const { ctx, made } = stubContext();
+    const rejecting: ExtrasGrantsSeam = { read: stubGrantsSeam().seam.read, set: () => false };
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: rejecting });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+
+    const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    expect(extras.handleClick(sw.x, sw.y)).toBe(true); // still consumed by the window
+    expect(made).toEqual([]); // no rebuild: the face never flipped, so it cannot lie
   });
 
   it('reads the switch faces from the sim seam on every open', () => {

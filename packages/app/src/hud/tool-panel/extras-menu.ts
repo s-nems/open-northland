@@ -8,9 +8,10 @@ import { contains, type Rect } from '../geometry.js';
  *
  * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
  * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500
- * "Okno Dodatków" - the title used here, 501 "Papiery", 502-510 the grant commands "Zgromadź Buty!"
- * etc.). The tab pair, the row wording, the counter set and the geometry are a project
- * reconstruction (named deviation): labels follow the feature spec, not the decoded table.
+ * "Okno Dodatków" - the title used here, 501 "Papiery", 502 the block header, 503-509 the grant
+ * commands "Zgromadź Buty!" etc. with their descriptions). The tab pair, the row wording, the
+ * counter set and the geometry are a project reconstruction (named deviation): labels follow the
+ * feature spec, not the decoded table.
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
@@ -30,8 +31,9 @@ export interface AssistantState {
 export const COUNTER_MIN = 0;
 export const COUNTER_MAX = 99;
 
-/** All grants default ON: the assistant hands out gear unless switched off - a project decision
- *  (the original's decoded "Zgromadź X!" command labels suggest player-armed toggles). */
+/** Counters start at zero; the grant values are only the pre-read placeholder - the window
+ *  overwrites them from the sim seam on every open, and the real default-ON rule lives in the map
+ *  entry's `grantAssistantDefaults` (view/assistant-grants.ts). */
 export function defaultAssistantState(): AssistantState {
   return {
     counters: { extraWomen: 0, extraMen: 0, trainSoldiers: 0 },

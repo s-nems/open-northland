@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AssistantGrants,
+  Carrying,
   Equipment,
   type EquipmentSlot,
   EquipOrder,
@@ -216,6 +217,50 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
 
     const shod = [dressed, late].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
     expect(shod).toHaveLength(1); // the underway fetch completed, nobody new was sent
+  });
+
+  it('leaves a loaded hauler alone until its hands are free', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    sim.world.add(settler, Carrying, { goodType: WOOD, amount: 1 });
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    // The errand may only ever start once the load is gone (the economy sets it down first); an
+    // EquipOrder coexisting with the initial Carrying would mean the assistant yanked a loaded hauler.
+    let orderWithLoad = false;
+    for (let i = 0; i < 2 * ERRAND_TICKS; i++) {
+      sim.run(1);
+      if (sim.world.has(settler, EquipOrder) && sim.world.has(settler, Carrying)) orderWithLoad = true;
+    }
+    expect(orderWithLoad).toBe(false);
+    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
+  });
+
+  it('frozen errands of jobless settlers hold neither reservations nor cap slots', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // Enough stuck fetchers to fill the whole cap: jobless (the ladder never plans one), each
+    // frozen on an acquire-stage errand for the same good the live settler needs.
+    for (let i = 0; i < ASSISTANT_MAX_IN_FLIGHT; i++) {
+      const stuck = ownedSettler(sim, 4 + i, 4);
+      sim.world.get(stuck, Settler).jobType = null;
+      sim.world.add(stuck, EquipOrder, {
+        group: 'boots',
+        slot: 0,
+        goodType: SHOES,
+        returnTo: terrain.nodeAtClamped(0, 0),
+        stage: 'acquire',
+      });
+    }
+    const live = ownedSettler(sim, 2, 2);
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(live, Equipment).boots?.goodType).toBe(SHOES);
   });
 
   it('ignores settlers of a player with no grants and grants with no stock', () => {

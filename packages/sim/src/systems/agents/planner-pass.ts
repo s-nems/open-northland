@@ -1,8 +1,10 @@
-import type { World } from '../../ecs/world.js';
+import { Position, Settler } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ExternalFoodIndex } from '../family/food-search.js';
 import { GossipCandidates } from '../social/index.js';
+import { canonicalById } from '../spatial.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../stores/index.js';
 import { collectHarvestClaims, type HarvestClaims } from './economy/harvest-claims.js';
 import { SiteLeads, type WorkSeatClaims } from './economy/index.js';
@@ -20,6 +22,10 @@ export interface PlannerPass {
   readonly world: World;
   readonly ctx: SystemContext;
   readonly terrain: TerrainGraph;
+  /** Every positioned settler in canonical (ascending entity-id) order - the assistant dispatch and
+   *  the ladder sweep share one sort, and both must visit in id order because the per-tick claim
+   *  maps and the fetch reservations hand out targets first-come-first-served. */
+  readonly settlers: readonly Entity[];
   readonly targets: TargetCandidates;
   /** Whether any workplace holds a haulable output: the tick-level dormancy gate for the
    *  store-carrier fallback scan (see {@link hasHaulableOutput}). */
@@ -41,6 +47,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     world,
     ctx,
     terrain,
+    settlers: canonicalById(world.query(Settler, Position)),
     targets,
     anyHaulable: hasHaulableOutput(world, ctx, targets.stockpiles),
     externalFood: new ExternalFoodIndex(world, ctx, terrain),

@@ -2,12 +2,8 @@ import type { Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { assistantGrantsSeam, grantAssistantDefaults } from '../src/view/assistant-grants.js';
 
-/**
- * The switch-to-good content join: the seam translates the four chest-window switches to
- * `setAssistantGrant` commands and back from the sim's granted-goods list. Good type ids are
- * resolved from the live content BY SLUG (sandbox and real content number the same goods
- * differently), so the fixture uses arbitrary ids on the shared slugs.
- */
+/** The seam translating the four chest-window switches to `setAssistantGrant` commands and back -
+ *  good ids resolved from the live content by slug, so the fixture uses arbitrary ids. */
 
 const CONTENT = {
   goods: [
@@ -37,11 +33,11 @@ describe('assistantGrantsSeam', () => {
   it('writes one command per mapped good, carrying the seat and the flip', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam({ assistantGrants: () => [] }, CONTENT, 2, (c) => sent.push(c));
-    seam.set('giveBoots', false);
+    expect(seam.set('giveBoots', false)).toBe(true);
     expect(sent).toEqual([{ kind: 'setAssistantGrant', player: 2, goodType: SHOES, enabled: false }]);
   });
 
-  it('a switch whose slug the content lacks reads OFF and writes nothing', () => {
+  it('a switch whose slug the content lacks reads OFF and rejects writes', () => {
     const sent: Command[] = [];
     const seam = assistantGrantsSeam(
       { assistantGrants: () => [SHOES] },
@@ -50,7 +46,14 @@ describe('assistantGrantsSeam', () => {
       (c) => sent.push(c),
     );
     expect(seam.read().giveMead).toBe(false);
-    seam.set('giveMead', true);
+    expect(seam.set('giveMead', true)).toBe(false);
+    expect(sent).toEqual([]);
+  });
+
+  it('a read-only session rejects every write', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam({ assistantGrants: () => [] }, CONTENT, 0, (c) => sent.push(c), false);
+    expect(seam.set('giveBoots', true)).toBe(false);
     expect(sent).toEqual([]);
   });
 });

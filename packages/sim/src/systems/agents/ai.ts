@@ -1,8 +1,7 @@
-import { Age, Position, Settler } from '../../components/index.js';
+import { Age, Settler } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
-import { canonicalById } from '../spatial.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { planAdult, planChild } from './drive-ladder.js';
 import { navigationPlanner } from './navigation.js';
@@ -34,11 +33,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // The assistant's grant errands are stamped before the sweep, so a dispatched settler is planned
   // onto its fetch the same tick (see ./assistant-grants.ts).
   dispatchAssistantGrants(pass);
-  // Canonical settler order: the per-tick claim maps (farm, seat, harvest) hand out targets first-
-  // come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
-  // entity-id, never store insertion history. Today Settler stores happen to insert in id order
-  // (settlers are never re-added), but nothing enforces that; the sort pins the winner.
-  for (const e of canonicalById(world.query(Settler, Position))) {
+  // Canonical order (the pass's shared sort - see PlannerPass.settlers): the per-tick claim maps
+  // hand out targets first-come-first-served, so the visit order is a pick, not a mere sweep.
+  for (const e of pass.settlers) {
     // Busy (an atomic running, a live route, a parked failed one) — leave it to play out; else the
     // settler is re-planning, and every intent the previous plan left is shed first (./replan.ts).
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound)) continue;

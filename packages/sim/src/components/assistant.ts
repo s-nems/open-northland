@@ -3,10 +3,11 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 /**
  * The per-player assistant grant list - the wearable good types the settlement assistant (the chest
  * window's "give everyone ..." switches) may hand out to settlers with a free slot. At most one
- * carrier entity exists per player (the rules-singleton convention; the `setAssistantGrant` command
- * creates/updates/destroys it), so the state hashes and replays like any component, and a command
- * stream that never grants anything leaves every existing golden hash untouched. Which goods a
- * switch maps to is the app's content decision - the sim only reads the good's `equip` class.
+ * carrier entity exists per player (the rules-singleton convention; the `setAssistantGrant` handler
+ * in `systems/orders/assistant.ts` owns the carrier lifecycle), so the state hashes and replays
+ * like any component, and a command stream that never grants anything leaves every existing golden
+ * hash untouched. Which goods a switch maps to is the app's content decision - the sim only reads
+ * the good's `equip` class.
  */
 export const AssistantGrants = defineComponent<{
   /** The player slot the grants belong to (`[0, MAX_PLAYERS)`). */
