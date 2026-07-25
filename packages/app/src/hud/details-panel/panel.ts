@@ -10,7 +10,14 @@ import { uiStringLookup } from '../../content/gui-gfx.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
-import { hitButton, hitCraftChoice, hitGatherChoice, hitStockTab, tooltipTextAt } from './hit-test.js';
+import {
+  hitButton,
+  hitCraftChoice,
+  hitGatherChoice,
+  hitStockTab,
+  nextCraftGoods,
+  tooltipTextAt,
+} from './hit-test.js';
 import { type ButtonHit, mapLayout, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
@@ -284,27 +291,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToCanvas(opts.backingScale(canvas), clientX, clientY);
 
-  /**
-   * The next selection after a craft-choice click. A plain click REPLACES the selection with just the
-   * clicked product (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set
-   * (user decision 2026-07-16). The toggle normalizes both edges — all products selected reads as the
-   * `[]` all-mode (so the sim drops the component), and toggling the LAST product off falls back to
-   * all-mode too (a worker can't craft nothing).
-   */
-  const nextCraftGoods = (
-    model: Extract<UnitPanelModel, { kind: 'settler' }>,
-    goodType: number,
-    toggle: boolean,
-  ): readonly number[] => {
-    const products = model.work.craftChoices.map((c) => c.goodType);
-    if (!toggle) return products.length === 1 ? [] : [goodType];
-    const next = new Set(model.work.selectedCraftGoods);
-    if (next.has(goodType)) next.delete(goodType);
-    else next.add(goodType);
-    if (next.size === 0 || next.size === products.length) return [];
-    return products.filter((g) => next.has(g));
-  };
-
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (view.kind === 'empty') return false;
     const { x, y } = toCanvas(clientX, clientY);
@@ -334,7 +320,15 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       }
       const craftGood = hitCraftChoice(view, x, y);
       if (craftGood !== undefined) {
-        opts.onSetCraftGoods(view.model.entityId, nextCraftGoods(view.model, craftGood, toggleModifier));
+        opts.onSetCraftGoods(
+          view.model.entityId,
+          nextCraftGoods(
+            view.model.work.craftChoices.map((c) => c.goodType),
+            view.model.work.selectedCraftGoods,
+            craftGood,
+            toggleModifier,
+          ),
+        );
         return true;
       }
     }
