@@ -14,9 +14,10 @@ import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFo
  *   bonus(n) = n / (n + K * (1 - n/N)),  K = 4.9,  N = 100
  *
  * a diminishing-returns hyperbola whose K shrinks to zero as n approaches N, so 100% is actually
- * reachable at n = N (a plain n/(n+K) never gets there). K = 4.9 fits the USER-PROVIDED reference
- * bonus table (1: 17%, 2: 29%, 3: 38% ... 11: 70%, part of the feature spec — not extracted from the
- * original) within ~2 points; N = 100 is the chosen mastery point (design rule, user-specified).
+ * reachable at n = N (a plain n/(n+K) never gets there). K = 4.9 fits the reference bonus table
+ * (1: 17%, 2: 29%, 3: 38% ... 11: 70%) within ~2 points; the table was MEASURED from the original
+ * game by the user (observation, 2026-07-25 — not extracted data). N = 100 is the chosen mastery
+ * point (design rule, user-specified).
  *
  * What a bonus point buys (output per cycle, gather speed, damage) is the consuming system's concern;
  * this module only owns the shared curve.
