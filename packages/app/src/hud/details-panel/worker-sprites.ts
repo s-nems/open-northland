@@ -15,8 +15,8 @@ import {
   Sprite,
   Texture,
 } from 'pixi.js';
-import { isSettler, num } from '../../game/snapshot.js';
 import type { Rect } from '../geometry.js';
+import { boundWorkers, groupedEntities } from './worker-selection.js';
 
 /**
  * The animated worker sprites drawn in the details panel's "Pracownicy" field — the settlers bound to
@@ -32,11 +32,6 @@ import type { Rect } from '../geometry.js';
  * nothing, so the panel still works.
  */
 
-/** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
-const MAX_WORKERS = 8;
-/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell —
- *  members of one family stand close, the next family starts after this breather. */
-const FAMILY_GAP_FRAC = 0.45;
 /** A worker who has stepped inside the building stands frozen on this fixed animation tick — a still
  *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
  *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
@@ -46,9 +41,6 @@ const INDOOR_POSE_TICK = 0;
 const FIELD_PAD = 4;
 const CHAR_FILL = 0.82;
 const SLOT_W_FRAC = 0.72;
-
-/** A snapshot entity, as `buildSpriteScene` consumes it — the narrowed scene reuses these objects. */
-type WorkerEntity = WorldSnapshot['entities'][number];
 
 /** One drawn worker's clickable box (screen px) → its entity, so a click on the sprite selects it. */
 interface WorkerHit {
@@ -104,8 +96,8 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const grouped = groups !== undefined ? this.groupedEntities(snapshot, groups) : undefined;
-    const workerEntities = grouped?.entities ?? this.boundWorkers(snapshot, buildingId, siteCrew);
+    const grouped = groups !== undefined ? groupedEntities(snapshot, groups) : undefined;
+    const workerEntities = grouped?.entities ?? boundWorkers(snapshot, buildingId, siteCrew);
     if (workerEntities.length === 0) {
       this.hideRest();
       this.container.visible = false;
@@ -204,61 +196,6 @@ export class WorkerSpriteOverlay {
     this.container.destroy({ children: true });
     this.sprites.clear();
     this.plainTextures.clear();
-  }
-
-  /** The entities of a grouped id list (a home's residents), flattened in group order and capped like
-   *  the worker scan, plus each drawn slot's leading gap ({@link FAMILY_GAP_FRAC} where a new family
-   *  starts). One entity pass builds the id→entity map; missing ids (a member died between frames)
-   *  are skipped. */
-  private groupedEntities(
-    snapshot: WorldSnapshot,
-    groups: readonly (readonly number[])[],
-  ): { entities: WorkerEntity[]; gaps: number[] } {
-    const wanted = new Set<number>();
-    for (const group of groups) for (const id of group) wanted.add(id);
-    const byId = new Map<number, WorkerEntity>();
-    for (const e of snapshot.entities) {
-      if (wanted.has(e.id) && isSettler(e)) byId.set(e.id, e);
-    }
-    const entities: WorkerEntity[] = [];
-    const gaps: number[] = [];
-    for (const group of groups) {
-      let firstOfGroup = true;
-      for (const id of group) {
-        if (entities.length >= MAX_WORKERS) return { entities, gaps };
-        const e = byId.get(id);
-        if (e === undefined) continue;
-        gaps.push(firstOfGroup && entities.length > 0 ? FAMILY_GAP_FRAC : 0);
-        entities.push(e);
-        firstOfGroup = false;
-      }
-    }
-    return { entities, gaps };
-  }
-
-  /** The (snapshot-ordered, capped) settler entities bound to `buildingId` — one O(entities) scan, whose
-   *  result also narrows the sprite-scene build above. With `siteCrew` (a construction site — builders
-   *  are never JobAssignment-bound to it) a settler counts by its persistent crew membership
-   *  (`SiteAssignment` — hammering, waiting for material, or detoured, it stays listed), and a plain
-   *  hauler shows transiently while depositing there (`CurrentAtomic.targetEntity`) or on a supply
-   *  errand for it (`SupplyRun`). A view read, so snapshot order is fine. */
-  private boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): WorkerEntity[] {
-    const out: WorkerEntity[] = [];
-    for (const e of snapshot.entities) {
-      if (out.length >= MAX_WORKERS) break;
-      if (!isSettler(e)) continue;
-      const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
-      const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
-      const supply = e.components.SupplyRun as { site?: unknown } | undefined;
-      const crew = e.components.SiteAssignment as { site?: unknown } | undefined;
-      const working =
-        siteCrew &&
-        (num(crew?.site) === buildingId ||
-          num(atomic?.targetEntity) === buildingId ||
-          num(supply?.site) === buildingId);
-      if (num(assignment?.workplace) === buildingId || working) out.push(e);
-    }
-    return out;
   }
 
   private drawLayer(
