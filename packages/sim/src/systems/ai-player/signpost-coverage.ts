@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { withinNodeRadius } from '../../nav/node-metric.js';
 import type { SystemContext } from '../context.js';
-import { interactionNode } from '../footprint/interaction.js';
+import { interactionNode, routeRegions } from '../footprint/index.js';
 import { SCOUT_JOB } from '../readviews/stances.js';
 import { signpostNetwork, signpostProbe } from '../signposts/index.js';
 import type { AiPlayerModule } from './index.js';
@@ -121,6 +121,13 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
     if (node !== null) buildings.push(node);
   }
   let probe: ReturnType<typeof signpostProbe> | null = null;
+  // The sealed-pocket veto (routeRegions): without it a provably sealed spot wins the search and the
+  // module re-aims at it every decision. Judged from the HQ door; the scout's own cell is unknowable
+  // in a per-seat pick (named approximation). A pocketed reference would invert the veto (every open
+  // spot reads unroutable), so the pick fails open to the unvetoed search instead.
+  let veto: ReturnType<typeof routeRegions> | null = null;
+  const refNode =
+    door !== null ? terrain.nodeAtClamped(door.x, door.y) : terrain.nodeAtClamped(anchor.hx, anchor.hy);
   const maxRing = latticeRingBound(anchor, buildings);
   for (let ring = 0; ring <= maxRing; ring++) {
     for (const { q, r } of latticeRing(ring)) {
@@ -138,14 +145,23 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
         withinNodeRadius(s.hx, s.hy, tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES),
       );
       if (satisfied) continue;
-      if (probe === null) probe = signpostProbe(world, ctx.content, terrain, player);
+      if (probe === null) {
+        probe = signpostProbe(world, ctx.content, terrain, player);
+        const regions = routeRegions(world, ctx, terrain);
+        veto = regions.pocketed(refNode) ? null : regions;
+      }
       const p = probe;
-      // Never the doorway itself: a post there stands where the HQ's settlers enter and leave.
+      const v = veto;
+      // Never the doorway itself: a post there stands where the HQ's settlers enter and leave. The
+      // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
       const spot = firstRingNode(
         tx,
         ty,
         SIGNPOST_TARGET_TOLERANCE_NODES,
-        (x, y) => p.canPlace(x, y) && !(door !== null && x === door.x && y === door.y),
+        (x, y) =>
+          p.canPlace(x, y) &&
+          !(door !== null && x === door.x && y === door.y) &&
+          (v === null || !v.unroutable(refNode, terrain.nodeAt(x, y))),
       );
       if (spot !== null) return spot;
     }
