@@ -5,6 +5,7 @@ import {
   EquipOrder,
   equipSlotValue,
   MoveGoal,
+  ownerOf,
   type SettlerIdentity,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -56,6 +57,7 @@ export function planEquipOrder(
   if (order === undefined) return false;
   const gate = limit ?? undefined;
   const avoid = unreachableGoalVeto(world, ctx, e);
+  const owner = ownerOf(world, e); // the errand fetches/stows only through same-side stores
 
   if (order.stage === 'acquire') {
     const worn = world.tryGet(e, Equipment);
@@ -73,7 +75,17 @@ export function planEquipOrder(
       // sink null = take off in place: a part-used unit destroys, an unstowable one gets ground-dropped.
       const sink = isUsed(takenOff)
         ? null
-        : nearestStoreFor(targets.stockpileCells, world, ctx, here, takenOff.goodType, false, gate, avoid);
+        : nearestStoreFor(
+            targets.stockpileCells,
+            world,
+            ctx,
+            here,
+            takenOff.goodType,
+            owner,
+            false,
+            gate,
+            avoid,
+          );
       if (sink === null) {
         startUnequip(world, ctx, e, settler, order.group, order.slot, null);
         return true;
@@ -93,7 +105,17 @@ export function planEquipOrder(
       return true;
     }
     const goodType = order.goodType;
-    const src = nearestStoreHolding(targets.stockpileCells, world, ctx, terrain, here, goodType, gate, avoid);
+    const src = nearestStoreHolding(
+      targets.stockpileCells,
+      world,
+      ctx,
+      terrain,
+      here,
+      goodType,
+      owner,
+      gate,
+      avoid,
+    );
     if (src === null) {
       order.stage = 'return'; // nothing reachable holds the good - give up and walk home
       return planReturn(world, e, order.returnTo, here, avoid);
@@ -118,7 +140,17 @@ export function planEquipOrder(
       order.stage = 'return';
       return planReturn(world, e, order.returnTo, here, avoid);
     }
-    const sink = nearestStoreFor(targets.stockpileCells, world, ctx, here, load.goodType, false, gate, avoid);
+    const sink = nearestStoreFor(
+      targets.stockpileCells,
+      world,
+      ctx,
+      here,
+      load.goodType,
+      owner,
+      false,
+      gate,
+      avoid,
+    );
     if (sink === null) {
       startDrop(world, ctx, e); // no store can take it - onto the ground where the settler stands
       return true;
