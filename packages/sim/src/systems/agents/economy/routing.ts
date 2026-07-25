@@ -104,10 +104,10 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
       ctx,
       here,
       goodType,
+      owner,
       /* excludeProducers */ true,
       gate,
       avoid,
-      owner,
     );
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
@@ -147,11 +147,11 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //     only the surplus later (user rule 2026-07-19). Falls through to the storage default when no
   //     consumer has room. Gated to the utility carrier: an ordinary hauler keeps the plain store default.
   if (home !== undefined && producesGoodWithoutInputs(world, ctx, home, goodType)) {
-    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate, avoid, owner);
+    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, owner, gate, avoid);
     if (consumer !== null) return consumer;
   }
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
-  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, avoid, owner);
+  return nearestStoreFor(stores, world, ctx, here, goodType, owner, false, gate, avoid);
 }
 
 /**
@@ -167,9 +167,9 @@ function nearestRecipeConsumer(
   ctx: SystemContext,
   here: NodeId,
   goodType: number,
+  owner: number | undefined,
   gate?: SpatialGate,
   avoid?: (cell: NodeId) => boolean,
-  owner?: number,
 ): Entity | null {
   return (
     index.nearest(

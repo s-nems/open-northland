@@ -18,11 +18,11 @@ export function nearestTemple(
   world: World,
   ctx: SystemContext,
   here: NodeId,
+  /** The settler's owning player — a settler prays only in its own player's temple ({@link sameSideAs}). */
+  owner: number | undefined,
   gate?: SpatialGate,
   /** The settler's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
-  /** The settler's owning player — a settler prays only in its own player's temple ({@link sameSideAs}). */
-  owner?: number,
 ): Entity | null {
   // buildingCells holds only Building + Position candidates, so only the temple filter remains.
   return (

@@ -150,9 +150,9 @@ function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
       terrain,
       here,
       need.goodType,
+      plan.owner,
       plan.limit ?? undefined,
       avoid,
-      plan.owner,
     );
     if (src == null) continue; // no store holds this material — try the next bill line
     const batch = Math.min(need.amount, CARRY_CAPACITY);

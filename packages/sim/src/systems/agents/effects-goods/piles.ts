@@ -90,7 +90,7 @@ export function stackOntoTile(
   y: Fixed,
   good: number,
   want: number,
-  owner?: number,
+  owner: number | undefined,
 ): number {
   if (want <= 0) return 0;
   const at = nodeOfPosition(x, y);
