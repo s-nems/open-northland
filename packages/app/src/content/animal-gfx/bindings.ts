@@ -1,7 +1,7 @@
 import type { FrameListAnim, SettlerStateBinding, SpriteFrameRef } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow } from '../ir/rows.js';
-import { eightDirAnim, frameListsByFacing, singleDirAnim } from '../settler-gfx/index.js';
+import { eightDirAnim, frameListsByFacing } from '../settler-gfx/index.js';
 
 /**
  * The pure animal-look binding: turn one animal tribe's own `[gfxwalkatomic]` / `[gfxanimatomic]`
@@ -65,14 +65,13 @@ export function animalWalkSeqName(
  * no idle resolves (a tribe with no usable rows), so the caller leaves the tribe unbound instead of
  * binding a bogus range.
  *
- * The idle reading follows the row's own shape: a single-list row (bear, dog, wolf, lion) loops its
- * wait strip facing-locked; a per-direction row (deer, boar, cattle, chicken, ...) becomes a
- * {@link FrameListAnim}, which the idle clock holds on each facing's first entry, a correctly-faced
- * standing pose. Approximations: those per-direction waits stand still rather than loop (the
- * resolver plays a frame list one-shot, so they also play through once, in lockstep, over a fresh
- * world's first ticks); a single-list wait loops the raw strip, dropping the authored frame-list
- * program (its inline holds and ping-pongs); and the ladder keeps only its first hit, dropping the
- * original's idle variety (the chicken's pick vs look-left vs look-right).
+ * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list
+ * row (bear, dog, wolf, lion) plays facing-locked, a per-direction row (deer, boar, cattle, ...)
+ * per facing. Playing the program — not the raw wait strip — matters: a strip packs several poses
+ * back-to-back (the bear's sniff, lie, sit) and the program picks one with its authored holds;
+ * the raw strip teleports between poses. Approximations: every animal of a species breathes in
+ * lockstep (the free tick clock has no per-entity phase), and the ladder keeps only its first hit,
+ * dropping the original's idle variety (the chicken's pick vs look-left vs look-right).
  */
 export function animalBinding(
   ir: ContentIr | null,
@@ -88,11 +87,9 @@ export function animalBinding(
     if (row === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || seq.length <= 0) continue;
-    idle =
-      row.dirFrames.length <= 1
-        ? (singleDirAnim(seq) ?? null)
-        : { start: seq.start, frameLists: frameListsByFacing(row.dirFrames) };
-    if (idle !== null) break;
+    if (row.dirFrames.every((list) => list.length === 0)) continue; // no program — nothing to play
+    idle = { start: seq.start, frameLists: frameListsByFacing(row.dirFrames), loop: true };
+    break;
   }
   // No authored wait: hold the walk's first frame per facing (still the right species and heading).
   idle ??= walk !== undefined ? { ...walk, frames: 1 } : null;

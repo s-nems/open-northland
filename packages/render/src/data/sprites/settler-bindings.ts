@@ -59,8 +59,10 @@ export interface DirectionalAnim {
  * cannot ride {@link DirectionalAnim}. The facing index selects the list ({@link frameLists} length =
  * directions; a length-1 list is facing-locked). Advances one entry every {@link ticksPerFrame} ticks
  * on the driving clock (an action's `elapsed`), the same tick-locked cadence {@link DirectionalAnim}
- * uses, but one-shot: past the last entry the sprite shows the first entry, the ready stance, instead
- * of wrapping (an authored list is one complete motion, and only some lists author a trailing rest pad).
+ * uses. One-shot by default: past the last entry the sprite shows the first entry, the ready stance,
+ * instead of wrapping (an authored list is one complete motion, and only some lists author a trailing
+ * rest pad). {@link loop} opts a list into wrapping instead — the idle-wait reading, where the list is
+ * a breathing cycle on the endless free tick clock, not a bounded action.
  */
 export interface FrameListAnim {
   /** Bob id of the pool's frame 0 — the bobseq `start` the local {@link frameLists} indices add to. */
@@ -69,6 +71,10 @@ export interface FrameListAnim {
   readonly frameLists: readonly (readonly number[])[];
   /** Sim ticks per animation frame — the fixed cadence (default `1`), like {@link DirectionalAnim.ticksPerFrame}. */
   readonly ticksPerFrame?: number;
+  /** Wrap past the last entry (`step % length`) instead of the one-shot return-to-first — for a list
+   *  driven by the endless free tick clock (an idle wait cycle), which would otherwise play once at
+   *  world start and freeze on its first entry. */
+  readonly loop?: boolean;
 }
 
 /** A frame reference in a settler binding: a fixed bob id, a uniform {@link DirectionalAnim}, or an

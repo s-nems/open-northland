@@ -16,8 +16,8 @@ import { settlerItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the settler animation PLAYBACK — the per-state frame pick, the directional
- * (start + facing*stride + phase) sequence, and the explicit per-facing FrameListAnim one-shot. All
- * pure "which bob id at this state/facing/clock" decisions.
+ * (start + facing*stride + phase) sequence, and the explicit per-facing FrameListAnim (one-shot by
+ * default, looped for an idle wait). All pure "which bob id at this state/facing/clock" decisions.
  */
 
 describe('resolveSpriteFrame — per-state settler binding', () => {
@@ -228,5 +228,17 @@ describe('resolveSpriteBobId — FrameListAnim (explicit per-direction attack la
     expect(resolveSpriteBobId(settlerItem('acting', { facing: 0, atomicId: ATTACK, elapsed: 5 }), b, 0)).toBe(
       3000,
     ); // dir 0 is empty -> start
+  });
+
+  it('loop wraps past the end instead of the one-shot return-to-first (the idle wait cycle)', () => {
+    // A facing-locked 3-entry wait program on the free tick clock. One-shot would freeze on entry 0
+    // from step 3 on; loop keeps cycling — step 4 diverges (entry 1, not 0).
+    const WAIT: FrameListAnim = { start: 4000, frameLists: [[0, 5, 6]], loop: true };
+    const b: SpriteBindings = { settler: { idle: WAIT }, building: 0, resource: 0 };
+    const at = (tick: number): number | null =>
+      resolveSpriteBobId(settlerItem('idle', { facing: 5 }), b, tick);
+    expect(at(1)).toBe(4000 + 5); // entry 1 mid-list, same as one-shot
+    expect(at(3)).toBe(4000 + 0); // 3 % 3 == 0 — the cycle restarts
+    expect(at(4)).toBe(4000 + 5); // one-shot would show entry 0 here; the wrap replays the motion
   });
 });

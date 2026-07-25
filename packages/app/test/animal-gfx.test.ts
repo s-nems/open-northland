@@ -55,7 +55,7 @@ describe('animalWalkSeqName', () => {
 });
 
 describe('animalBinding', () => {
-  it('loops a single-list wait facing-locked and binds the ×8 fight as a facing-remapped attack', () => {
+  it('loops a single-list wait program facing-locked and binds the ×8 fight as a facing-remapped attack', () => {
     const ir: ContentIr = {
       gfxWalkAtomics: [{ tribe: 8, job: ADULT, goodType: 0, bodySeq: 'animal_bear_walk' }],
       gfxAtomics: [
@@ -64,8 +64,10 @@ describe('animalBinding', () => {
       ],
     };
     const binding = animalBinding(ir, 8, seqs);
-    // The single-view wait strip plays whole, facing-locked, on the free tick (the breathing idle).
-    expect(binding?.idle).toEqual({ start: 88, dirs: 1, stride: 27 });
+    // The wait's authored program loops facing-locked on the free tick (the breathing idle) — NOT the
+    // raw strip: the real bear strip packs sniff/lie/sit poses back-to-back and only the program's
+    // slice is the wait.
+    expect(binding?.idle).toEqual({ start: 88, frameLists: [[0, 1, 2]], loop: true });
     expect(binding?.moving).toEqual({ start: 115, dirs: 8, stride: 16 });
     const attack = binding?.byAtomic?.[ATTACK_ATOMIC];
     if (attack === undefined || typeof attack === 'number' || !('frameLists' in attack)) {
@@ -76,7 +78,7 @@ describe('animalBinding', () => {
     expect(attack.frameLists[4]).toEqual([0]);
   });
 
-  it('binds a per-direction wait as a facing-remapped frame list (the deer stand)', () => {
+  it('binds a per-direction wait as a looping facing-remapped frame list (the deer idle)', () => {
     const ir: ContentIr = {
       gfxAtomics: [
         {
@@ -94,6 +96,17 @@ describe('animalBinding', () => {
     }
     expect(idle.start).toBe(963);
     expect(idle.frameLists[4]).toEqual([0]);
+    expect(idle.loop).toBe(true); // the ear-flick program cycles instead of freezing after one pass
+  });
+
+  it('skips a wait row whose program is empty (falls through to the walk-hold pose)', () => {
+    const ir: ContentIr = {
+      gfxWalkAtomics: [{ tribe: 8, job: ADULT, goodType: 0, bodySeq: 'animal_bear_walk' }],
+      gfxAtomics: [
+        { tribe: 8, job: ADULT, action: IDLE_ACTION, bodySeq: 'animal_bear_wait', dirFrames: [[]] },
+      ],
+    };
+    expect(animalBinding(ir, 8, seqs)?.idle).toEqual({ start: 115, dirs: 8, stride: 16, frames: 1 });
   });
 
   it('holds the walk first frame per facing when no wait row exists (synthetic; the real hare authors one-frame per-direction waits)', () => {
