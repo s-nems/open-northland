@@ -36,6 +36,19 @@ export type RulesCommand =
        */
       readonly kind: 'setSignpostNavigation';
       readonly enabled: boolean;
+    }
+  | {
+      /**
+       * Toggle the profession-progression tech tree globally: while disabled, the `needfor*` XP thresholds
+       * and the `jobEnables` presence graph stop gating CIVILIAN jobs and goods — every settler may take any
+       * civilian trade from the start (a multiplayer-style free start). Fighter-band jobs (soldier/hero)
+       * stay gated regardless: those are unlocked by barracks training, not by the toggle. XP accrual keeps
+       * running, so experience bonuses still pay off. Sets the
+       * {@link import('../../components/rules.js').ProgressionRules} singleton (created on first use), so
+       * the toggle hashes and replays like any other state. Default on — the original always gates.
+       */
+      readonly kind: 'setProfessionProgression';
+      readonly enabled: boolean;
     };
 
 /** Replayable admin commands used to drive existing mechanics during testing. */

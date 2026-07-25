@@ -5,6 +5,7 @@ import {
   isValidPlayer,
   setFogMode,
   setNeedsEnabled,
+  setProfessionProgression,
   setSignpostNavigation,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
@@ -106,6 +107,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setSignpostNavigation':
       setSignpostNavigation(world, command.enabled);
+      return;
+    case 'setProfessionProgression':
+      setProfessionProgression(world, command.enabled);
       return;
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);

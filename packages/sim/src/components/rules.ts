@@ -136,3 +136,37 @@ export function setSignpostNavigation(world: World, enabled: boolean): void {
   if (rules === null) world.add(world.create(), SignpostRules, { navigationEnabled: enabled });
   else world.get(rules, SignpostRules).navigationEnabled = enabled;
 }
+
+/**
+ * The profession-progression rules singleton — whether the experience tech tree gates who may work what.
+ * While disabled, the `needfor*` XP thresholds and the `jobEnables` presence graph stop gating CIVILIAN
+ * jobs and goods (every settler "knows" every trade — a multiplayer-style free start); fighter-band jobs
+ * (soldier/hero) stay gated regardless, reserved for barracks training. XP keeps accruing either way, so
+ * experience bonuses still pay off. A separate singleton beside its siblings for the same reason those
+ * are separate: an untouched command stream leaves every existing golden hash unchanged. Default ON —
+ * the original always gates.
+ */
+export const ProgressionRules = defineComponent<{ professionProgressionEnabled: boolean }>(
+  'ProgressionRules',
+);
+
+/** The progression-rules singleton's entity, or null when never set (lowest id wins — the
+ *  {@link worldRulesEntity} convention). */
+export function progressionRulesEntity(world: World): Entity | null {
+  return singletonCarrier(world, ProgressionRules);
+}
+
+/** Whether profession progression gates job/good access — defaults to true when the singleton is absent
+ *  (a world that never toggled it gates exactly as before the feature). */
+export function professionProgressionEnabled(world: World): boolean {
+  const e = progressionRulesEntity(world);
+  return e === null ? true : world.get(e, ProgressionRules).professionProgressionEnabled;
+}
+
+/** Set the {@link ProgressionRules} singleton (the {@link setNeedsEnabled} pattern) — the
+ *  `setProfessionProgression` command's whole body. */
+export function setProfessionProgression(world: World, enabled: boolean): void {
+  const rules = progressionRulesEntity(world);
+  if (rules === null) world.add(world.create(), ProgressionRules, { professionProgressionEnabled: enabled });
+  else world.get(rules, ProgressionRules).professionProgressionEnabled = enabled;
+}

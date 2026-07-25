@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
+import { setProfessionProgression } from '../../src/components/index.js';
 import { grantWorkExperience, jobSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -244,5 +245,27 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     // The general track accrued alongside the wood track (5 repeats at factor 1) clears the gate.
     expect(sim.world.get(veteran, Settler).jobType).toBe(CARPENTER);
     expect(sim.world.get(fresh, Settler).jobType).toBeNull(); // one slot, and fresh never qualified
+  });
+
+  it('staffs an XP- and tech-gated civilian job from zero XP while profession progression is off', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    // Both gate kinds at once: a needforjob threshold AND a jobEnablesJob edge on a dead woodcutter.
+    tribe.jobRequirements.push({
+      requirement: 'need',
+      target: 'job',
+      targetId: CARPENTER,
+      amount: 30,
+      experienceTypes: [WOOD_TRACK],
+    });
+    tribe.jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    const idle = settler(sim, null);
+    setProfessionProgression(sim.world, false);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(CARPENTER); // free start: both gates bypassed
   });
 });
