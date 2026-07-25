@@ -8,9 +8,16 @@ import { anchorNodeOf, buildingTypeByContentId, headquartersOf, ownedBuildings }
 import { type BuildOrderEntry, MAX_ACTIVE_CONSTRUCTION_SITES } from './entries.js';
 import { placementSpot } from './placement.js';
 import { entryStatus, upgradeCandidate } from './progress.js';
+import { firstUncoveredBuilding, towerPlacementSpot } from './tower-coverage.js';
 
 export * from './entries.js';
-export { collectorGoodsWanted } from './progress.js';
+export {
+  barracksEntryIndex,
+  collectorGoodsWanted,
+  type EntryStatus,
+  entryStatuses,
+} from './progress.js';
+export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
  * The HouseBuild module — the executor over the authored {@link BuildOrderEntry} list. It walks the
@@ -80,6 +87,25 @@ function runBuildOrder(
       }
       case 'collector':
         return []; // the workforce module hires it (collectorGoodsWanted) — wait here
+      case 'towerCoverage': {
+        const type = buildingTypeByContentId(ctx.content, entry.building);
+        if (type === undefined) return []; // unreachable after 'skip', kept for the type system
+        const target = firstUncoveredBuilding(world, ctx, owned);
+        if (target === null) return []; // status said unmet — defensive
+        const spot = towerPlacementSpot(world, ctx, terrain, owned, anchor, type, target);
+        if (spot === null) return []; // no legal covering node — stall, same contract as 'place'
+        return [
+          {
+            kind: 'placeBuilding',
+            buildingType: type.typeId,
+            x: spot.hx,
+            y: spot.hy,
+            tribe: world.get(hq, Building).tribe,
+            owner: player,
+            underConstruction: true,
+          },
+        ];
+      }
     }
   }
   return []; // the list is satisfied — the module goes quiet

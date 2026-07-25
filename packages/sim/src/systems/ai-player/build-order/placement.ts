@@ -7,7 +7,15 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementProbe } from '../../footprint/index.js';
-import { anchorNodeOf, firstRingNode, goodTypeByContentId, nearestLiveResource } from '../shared.js';
+import {
+  anchorCentroid,
+  anchorNodeOf,
+  firstRingNode,
+  goodTypeByContentId,
+  nearestLiveResource,
+  outwardNode,
+  tiersAtOrAbove,
+} from '../shared.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
@@ -17,15 +25,21 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 // rule as an extra accept filter. No affinity and no ground rule reproduces the original
 // closest-to-HQ pick exactly.
 
+/** How far past the frontier building an `outskirts` anchor is pushed away from the settlement
+ *  centroid — roughly a footprint plus clearance beyond the built edge (named approximation, user
+ *  plan 2026-07-25). */
+export const OUTSKIRTS_PUSH_NODES = 8;
+
 /** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
- *  the live resource of the good nearest the HQ, or the map's centre node. Unresolvable anchors
- *  are dropped. */
+ *  the live resource of the good nearest the HQ, the map's centre node, or the settlement's
+ *  outskirts past its frontier building. Unresolvable anchors are dropped. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
   hq: HalfCellNode,
+  type: BuildingType,
   affinity: PlacementAffinity,
 ): HalfCellNode | null {
   switch (affinity.kind) {
@@ -46,7 +60,39 @@ function affinityNode(
     }
     case 'mapCentre':
       return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
+    case 'outskirts':
+      return outskirtsNode(world, ctx, owned, type);
   }
+}
+
+/** The `outskirts` anchor: the frontier building (farthest anchor from the settlement centroid,
+ *  strict `>` over the canonical list so ties keep the lowest id) pushed {@link OUTSKIRTS_PUSH_NODES}
+ *  further out. Buildings the entry itself counts (the placed type's tier chain) are excluded, so
+ *  warehouse #2 spreads away from warehouse #1 instead of anchoring on it. `searchCentre` clamps
+ *  the result back into the near-HQ disc, so no new stall surface opens. */
+function outskirtsNode(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  type: BuildingType,
+): HalfCellNode | null {
+  const centroid = anchorCentroid(world, owned);
+  if (centroid === null) return null;
+  const index = contentIndex(ctx.content);
+  const ownKind = tiersAtOrAbove(index, type);
+  let frontier: HalfCellNode | null = null;
+  let frontierDist = -1;
+  for (const e of owned) {
+    if (ownKind.has(world.get(e, Building).buildingType)) continue;
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    const dist = Math.abs(node.hx - centroid.hx) + Math.abs(node.hy - centroid.hy);
+    if (dist > frontierDist) {
+      frontier = node;
+      frontierDist = dist;
+    }
+  }
+  return frontier === null ? null : outwardNode(centroid, frontier, OUTSKIRTS_PUSH_NODES);
 }
 
 /** The centre the ring search grows from: the integer-mean of the entry's resolved affinity nodes,
@@ -58,11 +104,12 @@ function searchCentre(
   terrain: TerrainGraph,
   owned: readonly Entity[],
   hq: HalfCellNode,
+  type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, owned, hq, affinity);
+    const node = affinityNode(world, ctx, terrain, owned, hq, type, affinity);
     if (node !== null) anchors.push(node);
   }
   if (anchors.length === 0) return hq;
@@ -110,6 +157,31 @@ function groundAccepted(
 }
 
 /**
+ * The building-agnostic legality core every spot search shares: in-bounds buildable ground, off
+ * every existing building's anchor (explicit, so a footprint-less synthetic type never stacks), and
+ * accepted by the placement probe. One occupied-set scan per call — build it once per search, not
+ * per candidate.
+ */
+export function buildingSpotAccept(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  buildingTypeId: number,
+): (x: number, y: number) => boolean {
+  const occupied = new Set<string>();
+  for (const e of world.query(Building)) {
+    const node = anchorNodeOf(world, e);
+    if (node !== null) occupied.add(`${node.hx},${node.hy}`);
+  }
+  const probe = placementProbe(world, ctx.content, terrain, buildingTypeId);
+  return (x, y) => {
+    if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
+    if (occupied.has(`${x},${y}`)) return false;
+    return probe.canPlace(x, y);
+  };
+}
+
+/**
  * The spot a `place` entry builds on: the legal anchor closest to the entry's {@link searchCentre},
  * restricted to the near-HQ disc, on buildable (and, when required, plantable) ground, off every
  * existing building's anchor, and accepted by the shared placement probe. Ring order is canonical,
@@ -125,21 +197,14 @@ export function placementSpot(
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode | null {
-  // Occupied anchors are rejected explicitly so a footprint-less type (synthetic content, where
-  // the probe accepts everything) still never stacks on an existing building.
-  const occupied = new Set<string>();
-  for (const e of world.query(Building)) {
-    const node = anchorNodeOf(world, e);
-    if (node !== null) occupied.add(`${node.hx},${node.hy}`);
-  }
-  const probe = placementProbe(world, ctx.content, terrain, type.typeId);
-  const centre = searchCentre(world, ctx, terrain, owned, hq, entry);
+  const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
+  const centre = searchCentre(world, ctx, terrain, owned, hq, type, entry);
   return firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
     // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
     // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
     if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
-    if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
-    if (occupied.has(`${x},${y}`) || !groundAccepted(ctx, terrain, type, entry, x, y)) return false;
-    return probe.canPlace(x, y);
+    if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes — bounds come first
+    if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
+    return accept(x, y);
   });
 }

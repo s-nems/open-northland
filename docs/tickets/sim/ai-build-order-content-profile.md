@@ -12,10 +12,12 @@ authored content, not pipeline output.
 
 Add a Zod `z.strictObject` schema (e.g. `schema/economy/ai-profile.ts`) mirroring the
 `BuildOrderEntry` union (ordered `place` — with `near` affinities and the `ground` rule — /
-`upgrade` / `collector` entries) per profile id, a `.default([])` ContentSet field, a memoized
-lookup, and `buildOrderModule` + `workforceModule` resolving the seat's profile (falling back to
-the current default table). The workforce's `CARRIER_STAFFED_BUILDING_IDS` (`workforce.ts`) is the
-same kind of authored data and should ride the profile too.
+`upgrade` / `collector` / `towerCoverage` entries) per profile id, a `.default([])` ContentSet
+field, a memoized lookup, and `buildOrderModule` + `workforceModule` resolving the seat's profile
+(falling back to the current default table). The workforce's authored tables are the same kind of
+data and should ride the profile too: `STAFFING_BY_BUILDING_ID` (`workforce/staffing.ts`),
+`COLLECTOR_TARGET_BY_GOOD_ID` (`workforce/collectors.ts`), `CRAFT_RESTRICTIONS_BY_BUILDING_ID`
+(`workforce/craft.ts`), and the tower allowlist/radius (`build-order/tower-coverage.ts`).
 
 ## Verify
 

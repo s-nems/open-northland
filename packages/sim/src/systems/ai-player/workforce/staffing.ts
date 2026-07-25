@@ -1,84 +1,149 @@
+import type { BuildingType } from '@open-northland/data';
 import { Building, Settler } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { buildStaffingTally } from '../../economy/jobs/openings.js';
+import { incrementStaffing, type StaffingTally } from '../../economy/jobs/openings.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { isBuilt, ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
-/** Buildings staffed with a transport carrier on top of their operators, by stable content id
- *  (user plan 2026-07-18: the bakery gets a carrier; the upgraded tier keeps it). */
-export const CARRIER_STAFFED_BUILDING_IDS: readonly string[] = ['work_bakery_00', 'work_bakery_01'];
+/** A building's staffing plan: workers per OPERATOR trade and TOTAL transport carriers, each read
+ *  at the `min` tier first (everyone's minimum beats anyone's second worker) and topped up to the
+ *  `target` tier once every minimum stands. Slot counts cap every value. */
+export interface BuildingStaffing {
+  readonly operatorMin: number;
+  readonly operatorTarget: number;
+  readonly carrierMin: number;
+  readonly carrierTarget: number;
+}
 
-/** Carriers assigned per carrier-staffed building (the plan assigns one). */
-export const CARRIERS_PER_STAFFED_BUILDING = 1;
+/** Whichever tier a staffing pass fills toward — see {@link staffBuildings}. */
+export type StaffingTier = 'min' | 'target';
 
-/** Workers assigned per (workplace, trade): the user's opening plan staffs each workshop with one
- *  worker per trade (e.g. a single farmer), even when the building offers more slots. */
-export const WORKERS_PER_TRADE = 1;
-
-/** Per-building overrides of {@link WORKERS_PER_TRADE}, by stable content id (user plan
- *  2026-07-18: the upgraded bakery runs two bakers; upgraded pottery/mason keep one worker). */
-export const OPERATORS_PER_TRADE_BY_BUILDING_ID: Readonly<Record<string, number>> = {
-  work_bakery_01: 2,
+/** The baseline workplace plan: one worker per operator trade, no carrier (user plan 2026-07-18 —
+ *  a carrier-only utility like the well stays a self-served shared facility). */
+export const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
+  operatorMin: 1,
+  operatorTarget: 1,
+  carrierMin: 0,
+  carrierTarget: 0,
 };
 
+/** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (user plan
+ *  2026-07-25). Applies per building INSTANCE — a second bakery gets the same one-baker minimum and
+ *  two-plus-carrier target as the first. The bakery keeps its carrier at the MIN tier (the plan's
+ *  original carrier post); the other carriers are target-tier extras. */
+export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
+  work_farm_00: { operatorMin: 2, operatorTarget: 3 },
+  work_brewery: { operatorTarget: 2, carrierTarget: 1 },
+  // The level-0 bakery has a single baker slot — only its carrier is planned; the two-baker
+  // target belongs to the level-2 tier, which actually offers the seats.
+  work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
+  work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
+  work_sewery_01: { operatorTarget: 2 },
+  work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
+  work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
+};
+
+/** The storage plan — the HQ and every warehouse run 1–3 transport carriers (user plan 2026-07-25);
+ *  their fisher/hunter/collector slots stay open (the storage-staffs-transport-only rule in
+ *  {@link staffBuildings} — not every such slot classifies as a harvest trade). */
+export const STORAGE_STAFFING: BuildingStaffing = {
+  operatorMin: 0,
+  operatorTarget: 0,
+  carrierMin: 1,
+  carrierTarget: 3,
+};
+
+/** The builder reserve: the pool keeps up to this many builders (user plan 2026-07-25 — "8
+ *  builders max"). Claimed right after minimum staffing, so construction never starves, and before
+ *  every top-up tier, so the reserve is what the surplus ladder distributes BEYOND. */
+export const BUILDER_CAP = 8;
+
+/** The staffing plan for a building type, or null for kinds the allocator never staffs (homes,
+ *  towers — their slots are fighter-band garrisons — and the barracks, the recruit phase's own
+ *  concern). */
+function staffingOf(type: BuildingType): BuildingStaffing | null {
+  if (type.kind === 'storage') return STORAGE_STAFFING;
+  if (type.kind !== 'workplace') return null;
+  return { ...DEFAULT_WORKPLACE_STAFFING, ...STAFFING_BY_BUILDING_ID[type.id] };
+}
+
 /**
- * Phase 3: staff each built workplace with one worker per operator trade — where "operator" is a
- * non-carrier, non-gatherer slot. Carrier and gatherer slots are never staffed by default, so a
+ * The two staffing passes (min, then target — ladder order lives in `runWorkforce`): staff each
+ * built workplace and storage toward its {@link BuildingStaffing} tier —
+ * where "operator" is a non-carrier, non-gatherer slot. Gatherer slots are never staffed, so a
  * carrier-only workplace (the well, the hive) gets no permanent worker: it is a shared utility a
- * consumer self-serves (a baker cranks the well for its own water, see agents/economy/workshop). The
- * {@link CARRIER_STAFFED_BUILDING_IDS} exceptions add one transport slot on top of their operators;
- * {@link OPERATORS_PER_TRADE_BY_BUILDING_ID} overrides the per-trade worker count. Slots are filled
- * from the spare pool in the canonical building order; once the pool runs dry the rest waits for grown
- * sons (user rules 2026-07-18).
+ * consumer self-serves (a baker cranks the well for its own water, see agents/economy/workshop).
+ * Within a tier, every WORKPLACE fills before any storage (the plan lists warehouse carriers below
+ * workshop staffing), each kind in canonical building order; both tiers advance ONE shared
+ * {@link StaffingTally} per decision (commands apply next tick, so the target pass must see the min
+ * pass's claims). Once the pool runs dry the rest waits for grown sons (user rules 2026-07-18/-25).
  */
-export function staffWorkplaces(
+export function staffBuildings(
   world: World,
   ctx: SystemContext,
-  hq: Entity,
   player: number,
   force: SpareForce,
+  tally: StaffingTally,
+  tier: StaffingTier,
 ): Command[] {
   const commands: Command[] = [];
   const index = contentIndex(ctx.content);
-  const tally = buildStaffingTally(world);
-  for (const building of ownedBuildings(world, player)) {
-    if (building === hq || !isBuilt(world, building)) continue;
+  const owned = ownedBuildings(world, player);
+  const ordered = [
+    ...owned.filter((e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === 'workplace'),
+    ...owned.filter((e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === 'storage'),
+  ];
+  for (const building of ordered) {
+    if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
-    if (type === undefined || type.kind !== 'workplace') continue;
-    const operators = type.workers.filter(
-      (w) => !isCarrierJob(ctx, w.jobType) && !index.harvestJobs.has(w.jobType),
-    );
-    const carriers = CARRIER_STAFFED_BUILDING_IDS.includes(type.id)
-      ? type.workers.filter((w) => isCarrierJob(ctx, w.jobType))
-      : [];
-    const operatorCap = OPERATORS_PER_TRADE_BY_BUILDING_ID[type.id] ?? WORKERS_PER_TRADE;
-    for (const [slot, cap] of [
-      ...operators.map((s) => [s, operatorCap] as const),
-      ...carriers.map((s) => [s, CARRIERS_PER_STAFFED_BUILDING] as const),
-    ]) {
+    if (type === undefined) continue;
+    const staffing = staffingOf(type);
+    if (staffing === null) continue;
+    const operatorWant = tier === 'min' ? staffing.operatorMin : staffing.operatorTarget;
+    const carrierWant = tier === 'min' ? staffing.carrierMin : staffing.carrierTarget;
+    for (const slot of type.workers) {
+      const carrier = isCarrierJob(ctx, slot.jobType);
+      if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open
+      if (type.kind === 'storage' && !carrier) continue; // storage staffs transport only
+      const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
       const held = tally.get(building)?.get(slot.jobType) ?? 0;
-      const want = Math.min(slot.count, cap);
       for (let i = held; i < want; i++) {
         const spare = force.take();
         if (spare === null) return commands; // pool dry — the rest waits for grown sons
         commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
+        incrementStaffing(tally, building, slot.jobType);
       }
     }
   }
   return commands;
 }
 
-/** Phase 4, the total reset: every still-unclaimed pool man of any other trade becomes a builder. */
-export function resetPoolToBuilders(world: World, force: SpareForce, builderJob: number | null): Command[] {
+/**
+ * The builder reserve: CLAIM up to {@link BUILDER_CAP} pool men — existing builders first (no
+ * churn), then conversions. Because the men are claimed, the top-up tiers, generic collectors, and
+ * recruits behind this phase distribute only the surplus BEYOND the reserve, so construction keeps
+ * its crew while the settlement staffs up. Men left over once every phase has drawn keep their
+ * current trade (idle civilians) until a post opens or the recruit ramp takes them — the cap is
+ * one-way, never a demotion.
+ */
+export function reserveBuilders(world: World, force: SpareForce, builderJob: number | null): Command[] {
   if (builderJob === null) return [];
   const commands: Command[] = [];
-  for (const e of force.remaining()) {
-    if (world.get(e, Settler).jobType === builderJob) continue;
-    commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
+  let builders = 0;
+  while (builders < BUILDER_CAP) {
+    const keep = force.take((e) => world.get(e, Settler).jobType === builderJob);
+    if (keep === null) break;
+    builders++;
+  }
+  while (builders < BUILDER_CAP) {
+    const spare = force.take();
+    if (spare === null) break;
+    commands.push({ kind: 'setJob', entity: spare, jobType: builderJob });
+    builders++;
   }
   return commands;
 }

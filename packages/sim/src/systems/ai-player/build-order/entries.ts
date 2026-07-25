@@ -6,12 +6,15 @@
  */
 
 /** Where a placement should gravitate, on top of the always-on near-HQ rule: toward the seat's
- *  first building of a stable content id, toward the nearest live resource of a good, or toward
- *  the map's centre (the barracks rule — face the contested middle, not the town's back). */
+ *  first building of a stable content id, toward the nearest live resource of a good, toward
+ *  the map's centre (the barracks rule — face the contested middle, not the town's back), or
+ *  toward the settlement's outskirts (past the building farthest from the centroid — the
+ *  warehouse rule, user plan 2026-07-25; see `placement.ts`). */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
-  | { readonly kind: 'mapCentre' };
+  | { readonly kind: 'mapCentre' }
+  | { readonly kind: 'outskirts' };
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. Owned buildings at the placed tier OR any
@@ -31,7 +34,13 @@ export type BuildOrderEntry =
   | { readonly kind: 'upgrade'; readonly building: string; readonly count: number }
   /** Wait for one flag-bound gatherer of the good (hired by the workforce module once the list
    *  reaches this entry — see `collectorGoodsWanted`). A good with no live resource is skipped. */
-  | { readonly kind: 'collector'; readonly good: string };
+  | { readonly kind: 'collector'; readonly good: string }
+  /** Keep every owned building inside some tower's (or the HQ's) assumed defence circle, placing
+   *  towers of the stable content id on the settlement's outskirts as it grows — a PERPETUAL entry:
+   *  it re-arms whenever a later building lands uncovered, so the tower count is dynamic (user plan
+   *  2026-07-25; see `tower-coverage.ts`). A target with no legal covering spot stalls the list
+   *  (the documented executor contract — expansion's concern, never a skip). */
+  | { readonly kind: 'towerCoverage'; readonly building: string };
 
 /**
  * The opening list (source: the user's authored plan, 2026-07-17, extended and revised
@@ -44,8 +53,15 @@ export type BuildOrderEntry =
  * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is
  * hired only when the list reaches it. The tail
  * is material-ordered: the pottery/mason upgrades unlock tile and ornament, which the level-4/5
- * home upgrades then consume; the barracks faces the map centre; the bakery upgrade comes last and
- * gains a second baker (`OPERATORS_PER_TRADE_BY_BUILDING_ID`).
+ * home upgrades then consume; the barracks faces the map centre; the bakery upgrade
+ * gains a second baker (`STAFFING_BY_BUILDING_ID`).
+ *
+ * The late-game tail (user plan 2026-07-25) opens with the perpetual tower-coverage entry, then
+ * doubles the food/tool economy directly at the level-2 tiers (the same `jobEnablesHouse` evidence
+ * as above covers `work_bakery_01`, `work_armory_01`, `work_smithy_01`, `tower_01`, and `stock_02`),
+ * grows the housing to five top-tier homes ("level 5" is the player label of `home_level_04` — no
+ * higher tier exists), and ends with two outskirts warehouses. The tower entry interleaves by
+ * design: an outskirts warehouse landing uncovered re-arms it, a tower goes up, the list resumes.
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
@@ -98,6 +114,27 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
+  { kind: 'towerCoverage', building: 'tower_01' },
+  { kind: 'place', building: 'work_bakery_01', count: 2, near: [{ kind: 'building', id: 'work_mill_00' }] },
+  {
+    kind: 'place',
+    building: 'work_armory_01',
+    count: 1,
+    near: [{ kind: 'building', id: 'work_smithy_01' }],
+  },
+  {
+    kind: 'place',
+    building: 'work_brewery',
+    count: 2,
+    near: [
+      { kind: 'building', id: 'work_well_00' },
+      { kind: 'building', id: 'work_hive_00' },
+    ],
+  },
+  { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'place', building: 'home_level_00', count: 5 },
+  { kind: 'upgrade', building: 'home_level_04', count: 5 },
+  { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }] },
 ];
 
 /** Concurrent construction sites per seat — upgrades included (user rule, 2026-07-18: exactly one

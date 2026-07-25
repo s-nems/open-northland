@@ -16,7 +16,10 @@ verdict.
 
 Share the gatherer's work-cell eligibility with the dry-patch and relocation probes while retaining the
 resource-region index. Keep the current Manhattan work-area shape in this task; changing that mechanic
-requires separate source evidence.
+requires separate source evidence. The 2026-07-25 workforce ladder added two probe variants in the same
+class: the generic-collector retire probe (`allocateGenericCollectors`, `jobCanHarvestGood` without the
+XP gate — a circle holding only XP-gated goods parks an idle generic collector forever) and the top-up
+hires' `collectorSpot`; both should share the same eligibility verdict.
 
 ## Verify
 

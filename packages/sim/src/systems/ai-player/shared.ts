@@ -1,6 +1,6 @@
 import type { BuildingType, ContentSet, GoodType } from '@open-northland/data';
 import { Building, Owner, ownerOf, Position, Resource, Settler } from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
+import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
@@ -16,6 +16,10 @@ import { canonicalById } from '../spatial.js';
 // the AI barrel's consumers keep their import site. A seat with no built, owned headquarters gets no
 // strategic decisions (user rule: no HQ → the AI stays off).
 export { HEADQUARTERS_BUILDING_ID };
+
+/** The barracks content id — the anchor of the recruit phase (`workforce/recruits.ts`) and the army
+ *  ramp's build-order milestone (`build-order/progress.ts`). */
+export const BARRACKS_BUILDING_ID = 'barracks';
 
 /**
  * Ticks between one seat's decision passes — 2 s at the 12 ticks/s base clock. A genre-convention
@@ -34,6 +38,19 @@ export function buildingTypeByContentId(content: ContentSet, id: string): Buildi
  *  {@link buildingTypeByContentId}). */
 export function goodTypeByContentId(content: ContentSet, id: string): GoodType | undefined {
   return content.goods.find((g) => g.id === id);
+}
+
+/** The typeIds at or above `target` on its `upgradeTarget` chain: `target` itself plus everything it
+ *  upgrades into. The visited guard bounds a malformed cyclic chain. Shared by the build-order
+ *  progress counting and the `outskirts` affinity's own-kind exclusion. */
+export function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<number> {
+  const tiers = new Set<number>();
+  let step: BuildingType | undefined = target;
+  while (step !== undefined && !tiers.has(step.typeId)) {
+    tiers.add(step.typeId);
+    step = step.upgradeTarget === undefined ? undefined : index.buildings.get(step.upgradeTarget);
+  }
+  return tiers;
 }
 
 /** The first expanding-box reach of the live-resource searches below (Chebyshev half-cell nodes). */
@@ -165,6 +182,39 @@ export function headquartersOf(world: World, ctx: SystemContext, player: number)
 export function anchorNodeOf(world: World, e: Entity): HalfCellNode | null {
   const pos = world.tryGet(e, Position);
   return pos === undefined ? null : nodeOfPosition(pos.x, pos.y);
+}
+
+/** The integer-mean node of the entities' anchors (the settlement centroid when fed the seat's
+ *  buildings), or null when none has a Position. Commutative sums — no canonical order needed. */
+export function anchorCentroid(world: World, entities: readonly Entity[]): HalfCellNode | null {
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (const e of entities) {
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    sx += node.hx;
+    sy += node.hy;
+    n++;
+  }
+  return n === 0 ? null : { hx: Math.floor(sx / n), hy: Math.floor(sy / n) };
+}
+
+/**
+ * `from` pushed `push` nodes further away from `origin` along the straight `origin → from` ray — the
+ * outskirts bias shared by the tower spot and the `outskirts` placement affinity. Integer-trunc ray
+ * projection (the `searchCentre` idiom): plain `/` on integer operands is IEEE-exact-rounded, hence
+ * byte-identical across engines. Coincident points have no direction — `from` is returned as-is.
+ */
+export function outwardNode(origin: HalfCellNode, from: HalfCellNode, push: number): HalfCellNode {
+  const dx = from.hx - origin.hx;
+  const dy = from.hy - origin.hy;
+  const dist = Math.abs(dx) + Math.abs(dy);
+  if (dist === 0) return from;
+  return {
+    hx: from.hx + Math.trunc((dx * push) / dist),
+    hy: from.hy + Math.trunc((dy * push) / dist),
+  };
 }
 
 /**

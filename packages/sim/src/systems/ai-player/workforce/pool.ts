@@ -1,4 +1,5 @@
-import { Female, JobAssignment, Settler } from '../../../components/index.js';
+import { Building, Female, JobAssignment, Settler } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { jobCanBuild } from '../../agents/actions.js';
 import { jobAtomics } from '../../agents/targets/index.js';
@@ -7,15 +8,25 @@ import { liveWorkFlag } from '../../economy/flags.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { ownedSettlers } from '../shared.js';
-import type { WantedGood } from './collectors.js';
+import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors.js';
 
 /** The seat's adult non-fighter men sorted into the workforce this decision allocates: the recognized
- *  collectors (by good type) and scouts kept in place, and everyone else in the spare `pool`. */
+ *  collectors (by good type), generic collectors, scouts, and barracks recruits kept in place, and
+ *  everyone else in the spare `pool`. */
 export interface Workforce {
   /** The builder pool the phases draw from, in classification (deterministic) order. */
   readonly pool: Entity[];
-  readonly collectorByGood: Map<number, Entity>;
+  /** Recognized flag gatherers per good, in classification order, capped at the good's target —
+   *  extras fall to the pool (self-healing). The phases push their own hires in, so within-decision
+   *  counts stay honest before the commands apply. */
+  readonly collectorsByGood: Map<number, Entity[]>;
+  /** Collect-anything gatherers (a live flag with no good filter), capped at
+   *  {@link GENERIC_COLLECTOR_TARGET}. */
+  readonly genericCollectors: Entity[];
   readonly scouts: Entity[];
+  /** Civilians standing at the barracks — carrier-slot holders awaiting the future training flow
+   *  (see `recruits.ts`), in classification (ascending id) order. */
+  readonly recruits: Entity[];
 }
 
 /** The lowest builder-trade job in content, or null when the content has no builder. */
@@ -29,10 +40,11 @@ export function builderJobOf(ctx: SystemContext): number | null {
 }
 
 /**
- * Classify the seat's adult non-fighter men: employed workers keep their post, the current collector of
- * each wanted good and the scouts are recognized in place, and everyone else (civilians, stray trades,
- * duplicate collectors) lands in the spare pool — the builder pool of the plan. Soldiers stay soldiers:
- * the reset covers civilians only.
+ * Classify the seat's adult non-fighter men: employed workers keep their post (a barracks-bound
+ * carrier is recognized as a recruit), the collectors of each wanted good — up to its target — the
+ * generic collectors, and the scouts are recognized in place, and everyone else (civilians, stray
+ * trades, surplus collectors) lands in the spare pool — the builder pool of the plan. Soldiers stay
+ * soldiers: the reset covers civilians only.
  */
 export function classifyWorkforce(
   world: World,
@@ -40,9 +52,12 @@ export function classifyWorkforce(
   player: number,
   wanted: readonly WantedGood[],
 ): Workforce {
+  const index = contentIndex(ctx.content);
   const pool: Entity[] = [];
-  const collectorByGood = new Map<number, Entity>();
+  const collectorsByGood = new Map<number, Entity[]>();
+  const genericCollectors: Entity[] = [];
   const scouts: Entity[] = [];
+  const recruits: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
     const job = world.get(e, Settler).jobType;
@@ -53,19 +68,30 @@ export function classifyWorkforce(
       continue;
     }
     if (job !== null) {
-      const goodType = liveWorkFlag(world, e)?.goodType;
-      if (
-        goodType !== undefined &&
-        !collectorByGood.has(goodType) &&
-        wanted.some((w) => w.good.typeId === goodType && jobAtomics(ctx, job).has(w.harvestAtomic))
+      const flag = liveWorkFlag(world, e);
+      const goodType = flag?.goodType;
+      if (goodType !== undefined) {
+        const want = wanted.find(
+          (w) => w.good.typeId === goodType && jobAtomics(ctx, job).has(w.harvestAtomic),
+        );
+        const holders = collectorsByGood.get(goodType) ?? [];
+        if (want !== undefined && holders.length < want.target) {
+          holders.push(e);
+          collectorsByGood.set(goodType, holders);
+          continue;
+        }
+      } else if (
+        flag !== undefined &&
+        index.harvestJobs.has(job) &&
+        genericCollectors.length < GENERIC_COLLECTOR_TARGET
       ) {
-        collectorByGood.set(goodType, e);
+        genericCollectors.push(e);
         continue;
       }
     }
     pool.push(e);
   }
-  return { pool, collectorByGood, scouts };
+  return { pool, collectorsByGood, genericCollectors, scouts, recruits };
 }
 
 /**

@@ -8,13 +8,16 @@ import { liveWorkFlag } from '../../economy/flags.js';
 import {
   anchorNodeOf,
   anyLiveResource,
+  BARRACKS_BUILDING_ID,
   buildingTypeByContentId,
   goodTypeByContentId,
   headquartersOf,
   ownedBuildings,
   ownedSettlers,
+  tiersAtOrAbove,
 } from '../shared.js';
 import type { BuildOrderEntry } from './entries.js';
+import { firstUncoveredBuilding } from './tower-coverage.js';
 
 // ENTRY PROGRESS — the one shared reading of "is this build-order entry done", used by the
 // executor (what to do next) and the workforce allocator (which collector goods the list has
@@ -35,17 +38,6 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
     step = step.upgradeTarget === undefined ? undefined : index.buildings.get(step.upgradeTarget);
   }
   return false;
-}
-
-/** The typeIds at or above `target` on its chain: `target` itself plus everything it upgrades into. */
-function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<number> {
-  const tiers = new Set<number>();
-  let step: BuildingType | undefined = target;
-  while (step !== undefined && !tiers.has(step.typeId)) {
-    tiers.add(step.typeId);
-    step = step.upgradeTarget === undefined ? undefined : index.buildings.get(step.upgradeTarget);
-  }
-  return tiers;
 }
 
 /** The seat's build-order progress on one entry (see {@link EntryStatus}). `owned` is the seat's
@@ -96,7 +88,38 @@ export function entryStatus(
       const near = hq === null ? null : anchorNodeOf(world, hq);
       return anyLiveResource(world, good.typeId, near) ? 'unmet' : 'skip';
     }
+    case 'towerCoverage': {
+      const type = buildingTypeByContentId(ctx.content, entry.building);
+      if (type === undefined) return 'skip';
+      return firstUncoveredBuilding(world, ctx, owned) === null ? 'satisfied' : 'unmet';
+    }
   }
+}
+
+/**
+ * Every entry's {@link EntryStatus} in list order, over one `ownedBuildings` computation — the
+ * decision-wide snapshot the workforce module derives its collector gating and army ramp from.
+ * Statuses are recomputed each decision, so they can REGRESS (a razed home; a fringe building
+ * re-arming `towerCoverage`) — consumers must tolerate a temporary drop.
+ */
+export function entryStatuses(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: readonly BuildOrderEntry[],
+): EntryStatus[] {
+  const owned = ownedBuildings(world, player);
+  return order.map((entry) => entryStatus(world, ctx, player, owned, entry));
+}
+
+/** The index of the LAST place-barracks entry, or -1 — the army ramp's milestone
+ *  (`workforce/recruits.ts`). */
+export function barracksEntryIndex(order: readonly BuildOrderEntry[]): number {
+  let last = -1;
+  for (const [i, entry] of order.entries()) {
+    if (entry.kind === 'place' && entry.building === BARRACKS_BUILDING_ID) last = i;
+  }
+  return last;
 }
 
 /** The lowest-id owned BUILT building the seat can upgrade toward `target` (its type strictly below
@@ -121,20 +144,18 @@ export function upgradeCandidate(
  * The collector goods the build order has reached, in list order — the workforce allocator hires a
  * flag gatherer for each (on top of its base goods). An entry is reached while every entry before it
  * is satisfied (or skipped), and a reached-but-unmet collector blocks the entries after it — the
- * plan's sequencing. Reached state is re-derived each decision, not persisted: if an earlier entry
- * regresses (a razed home), a later collector drops out of the wanted set and its holder returns to
- * the pool until the plan re-reaches the entry — self-healing, at the cost of a mid-career re-hire.
+ * plan's sequencing. Reached state is re-derived each decision (`statuses` is the matching
+ * {@link entryStatuses} snapshot), not persisted: if an earlier entry regresses (a razed home), a
+ * later collector drops out of the wanted set and its holder returns to the pool until the plan
+ * re-reaches the entry — self-healing, at the cost of a mid-career re-hire.
  */
 export function collectorGoodsWanted(
-  world: World,
-  ctx: SystemContext,
-  player: number,
   order: readonly BuildOrderEntry[],
+  statuses: readonly EntryStatus[],
 ): readonly string[] {
-  const owned = ownedBuildings(world, player);
   const wanted: string[] = [];
-  for (const entry of order) {
-    const status = entryStatus(world, ctx, player, owned, entry);
+  for (const [i, entry] of order.entries()) {
+    const status = statuses[i];
     if (entry.kind === 'collector' && status !== 'skip') wanted.push(entry.good);
     if (status === 'unmet') break;
   }

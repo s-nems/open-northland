@@ -6,7 +6,9 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
  * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`,
  * `HAI_DisableHouseUpgrade`, `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map
  * onto it one-to-one; the behavior INSIDE each module is a named genre-convention approximation
- * (no byte-level evidence of the original's internals exists).
+ * (no byte-level evidence of the original's internals exists). `military` has no module of its own:
+ * it gates the workforce module's recruit phase (`ai-player/workforce/recruits.ts`) — the allocator
+ * itself runs under `collectResources`, staying the seat's single settler allocator.
  */
 export const AI_MODULE_IDS = [
   'collectResources',
