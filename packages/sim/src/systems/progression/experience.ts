@@ -56,10 +56,16 @@ export function trackFor(
 /**
  * Grant a settler XP for `units` of `goodType` its completed work atomic actually extracted. No-ops when
  * the settler has no job, is gone, no track matches the `(job, good)` pairing, or the swing extracted
- * nothing (a mid-job chop/strike). Adds the track's `experienceFactor` per unit — XP counts resource
+ * nothing (a mid-job chop/strike). Adds each track's `experienceFactor` per unit — XP counts resource
  * units gathered, never swings, so a felled trunk trains its whole yield at once (design rule,
  * user-specified). `experienceFactor` is the original's per-track accrual rate (raw integer, 1..250 in
  * the base data); the non-linear XP→level curve (`baseRepeatCounter`) is a later balance slice.
+ *
+ * Work trains BOTH the `(job, good)` specialization and the job-general track: the `needfor*` table
+ * keys gates on either kind (the carpenter gate reads collector-WOOD, the miller gate reads
+ * farmer-GENERAL), so a specific-only accrual would leave every general-keyed profession permanently
+ * locked. Each track accrues at its own factor; the bonus reads stay single-track (`workSpeedBonus`
+ * on the specific, `operatorProductionBonus` on the general), so no bonus double-counts a grant.
  */
 export function grantWorkExperience(
   world: World,
@@ -74,6 +80,9 @@ export function grantWorkExperience(
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return; // this (job, good) pairing trains no specialization
   accrueExperience(s, track.typeId, track.experienceFactor * units);
+  const general = generalTrackFor(ctx, s.jobType);
+  if (general === undefined || general.typeId === track.typeId) return; // no second track to train
+  accrueExperience(s, general.typeId, general.experienceFactor * units);
 }
 
 /** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
