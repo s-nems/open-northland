@@ -39,3 +39,18 @@ describe('SelectionLayer elevation lift', () => {
     expect(layer.container.children[0]?.position.y).toBe(feet.y);
   });
 });
+
+describe('SelectionLayer ring sizing', () => {
+  it('gives a building a larger ring than a settler, classified from its marker', () => {
+    const layer = new SelectionLayer();
+    // Same feet cell: the size difference is the marker classification, not the position.
+    layer.draw(
+      { snapshot: snapshotOf([settler(1, 1, 8), entity(2, 1, 8, { Building: {} })]) },
+      new Set([1, 2]),
+    );
+    const settlerW = layer.container.children[0]?.getLocalBounds().width ?? 0;
+    const buildingW = layer.container.children[1]?.getLocalBounds().width ?? 0;
+    expect(settlerW).toBeGreaterThan(0);
+    expect(buildingW).toBeGreaterThan(settlerW);
+  });
+});
