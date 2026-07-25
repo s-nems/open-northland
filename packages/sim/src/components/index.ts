@@ -8,6 +8,7 @@
  */
 
 export * from './ai-player.js';
+export * from './assistant.js';
 export * from './combat.js';
 export * from './economy/index.js';
 export * from './equipment.js';

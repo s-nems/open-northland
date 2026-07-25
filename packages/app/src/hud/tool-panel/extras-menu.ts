@@ -3,8 +3,8 @@ import { contains, type Rect } from '../geometry.js';
 
 /**
  * The extras ("chest") window model: the assistant/plans tabs, the assistant's counter and grant
- * controls, their layout and hit-test (pure, no Pixi/DOM). UI-only: nothing consumes this state yet
- * (the sim's auto-drink runs regardless of the mead switch until the grant wiring lands).
+ * controls, their layout and hit-test (pure, no Pixi/DOM). The grant switches drive the sim's
+ * auto-equip (`setAssistantGrant` through the controller's seam); the counters are still UI-only.
  *
  * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
  * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500

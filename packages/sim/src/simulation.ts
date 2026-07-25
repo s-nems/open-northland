@@ -1,5 +1,11 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import { type FogMode, fogMode, needsEnabled, professionProgressionEnabled } from './components/index.js';
+import {
+  assistantGrantedGoods,
+  type FogMode,
+  fogMode,
+  needsEnabled,
+  professionProgressionEnabled,
+} from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -252,6 +258,14 @@ export class Simulation {
    */
   professionProgressionEnabled(): boolean {
     return professionProgressionEnabled(this.world);
+  }
+
+  /**
+   * The good types `player`'s assistant may hand out (the `setAssistantGrant` command's state; empty
+   * when nothing is granted). The chest window's grant switches label themselves from this.
+   */
+  assistantGrants(player: number): readonly number[] {
+    return assistantGrantedGoods(this.world, player);
   }
 
   /**

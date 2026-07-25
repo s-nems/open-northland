@@ -3,6 +3,7 @@ import type { World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { canonicalById } from '../spatial.js';
+import { dispatchAssistantGrants } from './assistant-grants.js';
 import { planAdult, planChild } from './drive-ladder.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './planner-pass.js';
@@ -30,6 +31,9 @@ export const aiSystem: System = (world, ctx) => {
 /** Sweep every settler through the drive ladder, sharing one {@link beginPlannerPass} snapshot. */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   const pass = beginPlannerPass(world, ctx, terrain);
+  // The assistant's grant errands are stamped before the sweep, so a dispatched settler is planned
+  // onto its fetch the same tick (see ./assistant-grants.ts).
+  dispatchAssistantGrants(pass);
   // Canonical settler order: the per-tick claim maps (farm, seat, harvest) hand out targets first-
   // come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
   // entity-id, never store insertion history. Today Settler stores happen to insert in id order

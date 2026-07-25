@@ -14,6 +14,7 @@ import {
 } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
+import type { AssistantGrantId } from './extras-menu.js';
 import {
   type AssistantState,
   adjustCounter,
@@ -45,10 +46,22 @@ const VALUE_CELL_FILL = 0x161009;
 /** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
 const EXTRAS_TITLE_STRING_ID = 500;
 
+/**
+ * The grant switches' sim seam: the switch faces mirror the sim's per-player grant list, a click
+ * writes through it (one `setAssistantGrant` command per mapped good - the mapping is the seam
+ * builder's content join, `view/assistant-grants.ts`).
+ */
+export interface ExtrasGrantsSeam {
+  /** The live per-switch state (a switch is ON when every good it flips is granted). */
+  read(): Readonly<Record<AssistantGrantId, boolean>>;
+  set(id: AssistantGrantId, enabled: boolean): void;
+}
+
 export interface ExtrasWindowDeps {
   readonly ctx: PanelContext;
   /** The panel's window container the window parents its graphics + text under. */
   readonly container: Container;
+  readonly grants: ExtrasGrantsSeam;
 }
 
 /** The pop-up extras ("chest") window: the assistant/plans tabs and the assistant's controls. */
@@ -68,8 +81,10 @@ export interface ExtrasWindow {
  * Build the extras-window controller over the pure {@link layoutExtrasMenu} geometry, on the shared
  * {@link createWindowShell} lifecycle and the build menu's chrome (tiled wood body, rust headline,
  * button-card rows; every bitmap degrades to flat Graphics). Rebuilt on open and on any control click
- * (every click moves a visible value, and the window is a dozen runs). The assistant state survives
- * close/reopen: it is the player's session settings, not a per-open scratch value.
+ * (every click moves a visible value, and the window is a dozen runs). The grant switches live in the
+ * sim (read on every open, written through {@link ExtrasGrantsSeam} on click - the click's local echo
+ * keeps the face snappy while the command applies next tick); the counters are still UI-only session
+ * state and survive close/reopen locally.
  */
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
@@ -244,6 +259,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (shell.isOpen()) close();
       else {
         shell.setOpen(true);
+        state = { ...state, grants: deps.grants.read() }; // the sim owns the switch state
         rebuild();
       }
     },
@@ -261,7 +277,8 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         state = adjustCounter(state, hit.id, hit.delta);
         rebuild();
       } else if (hit.kind === 'grant') {
-        state = toggleGrant(state, hit.id);
+        state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
+        deps.grants.set(hit.id, state.grants[hit.id]);
         rebuild();
       }
       // 'window' → consumed, no-op
