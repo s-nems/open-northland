@@ -196,7 +196,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
 
   it('gates assignment on the settler clearing the job needforjob XP threshold', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // Producing a carpenter requires 30 XP in the wood track (typeId 1) before taking the job.
+    // Taking the carpenter job requires 30 REPEATS of the wood track (typeId 1, factor 10 — 300 raw XP).
     const tribe = sim.content.tribes[0];
     if (tribe === undefined) throw new Error('fixture has no tribe');
     tribe.jobRequirements.push({
@@ -207,8 +207,8 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
       experienceTypes: [WOOD_TRACK],
     });
     placeBuilding(sim, SAWMILL, 5, 5);
-    const low = settler(sim, null, new Map([[WOOD_TRACK, 29]])); // one short
-    const high = settler(sim, null, new Map([[WOOD_TRACK, 30]])); // exactly clears
+    const low = settler(sim, null, new Map([[WOOD_TRACK, 299]])); // one raw XP short of 30 repeats
+    const high = settler(sim, null, new Map([[WOOD_TRACK, 300]])); // exactly clears
 
     jobSystem(sim.world, ctxOf(sim));
 

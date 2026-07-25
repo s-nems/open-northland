@@ -5,12 +5,13 @@ import { GATHERERS } from '../ids/index.js';
 
 /**
  * The starting XP that clears every `needforgood` gate on the sandbox's gatherable goods for
- * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums the XP across
- * its named tracks, so granting its `amount` into its FIRST track satisfies it. Real extracted content
- * gates iron/gold behind clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5) — a fresh
- * collector pinned to an iron camp would never qualify and stands idle beside the deposit, so sandbox
- * collectors spawn as veterans instead. Empty on the synthetic sandbox content (it declares no
- * requirements), keeping the headless twin byte-identical.
+ * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums REPEATS
+ * (raw XP / the track's `experienceFactor`) across its named tracks, so granting `amount × factor`
+ * raw XP into its FIRST track satisfies it. Real extracted content gates iron/gold behind
+ * clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5) — a fresh collector pinned to an iron
+ * camp would never qualify and stands idle beside the deposit, so sandbox collectors spawn as
+ * veterans instead. Empty on the synthetic sandbox content (it declares no requirements), keeping
+ * the headless twin byte-identical.
  */
 export function gatherMasteryExperience(sim: Simulation): ReadonlyArray<readonly [number, number]> {
   return gatherMasteryExperienceFor(sim.content, PRIMARY_TRIBE);
@@ -28,9 +29,11 @@ export function gatherMasteryExperienceFor(
   const byTrack = new Map<number, number>();
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== 'good' || !gathered.has(req.targetId)) continue;
-    const track = req.experienceTypes[0];
-    if (track === undefined) continue;
-    byTrack.set(track, Math.max(byTrack.get(track) ?? 0, req.amount));
+    const trackId = req.experienceTypes[0];
+    if (trackId === undefined) continue;
+    // A track-less expType (fight/TRAINING buckets) accrues at rate 1 — raw XP already is repeats.
+    const factor = content.jobExperience.find((t) => t.typeId === trackId)?.experienceFactor ?? 1;
+    byTrack.set(trackId, Math.max(byTrack.get(trackId) ?? 0, req.amount * factor));
   }
   return [...byTrack].sort((a, b) => a[0] - b[0]);
 }
