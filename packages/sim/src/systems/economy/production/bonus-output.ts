@@ -9,15 +9,19 @@ import {
 import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { toolProductionBonus, wearWornTool } from '../../equipment/index.js';
 import { operatorProductionBonus } from '../../progression/index.js';
 import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * The experience-bonus half of a completed batch: each done cycle credits its operator's current bonus
- * ({@link operatorProductionBonus}) times its recipe outputs into the workplace's
+ * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus
+ * ({@link operatorProductionBonus}) PLUS its worn tool's credit ({@link toolProductionBonus} — additive,
+ * never multiplied, user rule 2026-07-24) times its recipe outputs into the workplace's
  * {@link ProductionBonus} remainders — cycle→operator pairing index-for-index, the XP grant's slice —
- * then whole remainder units flush into the stockpile. The flush runs on every completion regardless
- * of the crediting operator's bonus, so a unit banked earlier is never stranded behind a fresh worker.
+ * then whole remainder units flush into the stockpile. The tool also wears one step per completed
+ * cycle. Farms never reach here (the field loop runs no recipe cycles), so tools leave them alone by
+ * construction. The flush runs on every completion regardless of the crediting operator's bonus, so a
+ * unit banked earlier is never stranded behind a fresh worker.
  */
 export function accrueBonusOutput(
   world: World,
@@ -31,7 +35,11 @@ export function accrueBonusOutput(
     done.forEach((cycle, i) => {
       const op = operators.operators[i];
       if (op === undefined) return;
-      const bonus = operatorProductionBonus(world, ctx, op);
+      // A live tool on a non-carrier operator both credits and wears; toolBonus > ZERO is exactly
+      // that condition (every rated tool carries a bonus), so no separate wear guard is needed.
+      const toolBonus = toolProductionBonus(world, ctx, op);
+      if (toolBonus > ZERO) wearWornTool(world, ctx, op);
+      const bonus = fx.add(operatorProductionBonus(world, ctx, op), toolBonus);
       if (bonus <= ZERO) return;
       const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
       for (const output of outputs) {
