@@ -1,6 +1,8 @@
 import {
   Building,
   GroundDrop,
+  ownerOf,
+  ownersCompatible,
   Position,
   Stockpile,
   setStockAmount,
@@ -81,8 +83,11 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
  * can carry the remainder to the next tile, where `dropOrStackGood` (a hand-placed pile) silently drops it.
  *
  * `owner` is the dropping settler's player: a FRESH heap is stamped with it ({@link stampOwner}), so a
- * gatherer's yard heap / a porter's shed load stays on its own side and a rival cannot fetch it. Stacking
- * onto an EXISTING heap leaves that heap's owner untouched (first-dropper wins).
+ * gatherer's yard heap / a porter's shed load stays on its own side and a rival cannot fetch it. An
+ * EXISTING heap merges only when its side is compatible ({@link ownersCompatible}) — a rival's same-good
+ * heap counts as a full tile (returns 0, the load walks on), so a drop never feeds the other side. A
+ * compatible merge leaves the heap's owner untouched, so an owned settler topping up a NEUTRAL heap
+ * keeps it neutral (fetchable by either side).
  */
 export function stackOntoTile(
   world: World,
@@ -99,6 +104,7 @@ export function stackOntoTile(
     const stock = world.get(e, Stockpile);
     const pos = world.get(e, Position);
     if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
+    if (!ownersCompatible(owner, ownerOf(world, e))) return 0; // a rival's heap — never merge across sides
     // Skip a tile occupied by a different good; a heap of our good (even one drained to 0 by a porter and not
     // yet reaped) is stackable — testing the stocked good, not `size`, is what keeps a re-fill from livelocking
     // against a stale zero entry.
