@@ -444,6 +444,11 @@ function nextCommand(rng: Rng): Command {
       // A signpost tear-down at a random id: live signposts (destroyed — the network memo, blockers, and
       // vision must all re-derive) and non-signpost / dead targets (skipped).
       return { kind: 'demolishSignpost', signpost: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 24:
+      // The profession-progression toggle: flips the ProgressionRules singleton mid-stream, lifting and
+      // restoring the needfor*/jobEnables gates on staffing, harvest picks, and AI collector re-posts —
+      // the rule must hash and replay like any state (the setSignpostNavigation pattern).
+      return { kind: 'setProfessionProgression', enabled: rng.int(2) === 0 };
     case 30:
       // An upgrade order at a random id: built chained homes (re-opened as an upgrade site — stash,
       // separate hold, difference bill), plus unbuilt sites / top-tier or unchained types / non-building

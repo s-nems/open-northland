@@ -10,7 +10,7 @@ import {
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
 import { fogModeParam } from '../../game/fog.js';
-import { progressionDisabled } from '../../game/progression.js';
+import { progressionOverride } from '../../game/progression.js';
 import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { mountMessage, navButton } from '../overlay.js';
@@ -88,12 +88,14 @@ export function applyFogOverride(sim: Simulation, params: URLSearchParams): void
 }
 
 /**
- * Apply `?progression=off` to a freshly built sim: enqueue the free-start command (every settler knows
- * every civilian trade; fighters stay barracks-gated). Absent or `on` enqueues nothing, so the command
- * stream — and any golden derived from it — stays byte-identical to a pre-toggle run.
+ * Apply an explicit `?progression=on|off` to a freshly built sim (the {@link applyFogOverride}
+ * pattern): enqueued after the world's own rule, so the flag overrides a scene's `progression: false`
+ * in either direction. An absent/unrecognized flag enqueues nothing, so an untouched URL keeps the
+ * command stream — and any golden derived from it — byte-identical to a pre-toggle run.
  */
 export function applyProgressionOverride(sim: Simulation, params: URLSearchParams): void {
-  if (progressionDisabled(params)) sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
+  const enabled = progressionOverride(params);
+  if (enabled !== null) sim.enqueue({ kind: 'setProfessionProgression', enabled });
 }
 
 /** The minimap's ground colours from the real terrain set's per-type debug colours, as a spreadable

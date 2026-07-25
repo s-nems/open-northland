@@ -238,6 +238,21 @@ export class World {
   }
 
   /**
+   * The lowest-id entity carrying `component`, or null — the world-rules singleton read
+   * (`components/rules.ts`), called from hot per-candidate gates. No {@link QueryIterator}; a missing
+   * or empty store (every rule at its default) answers without allocating anything.
+   */
+  lowestEntityWith(component: Component<unknown>): Entity | null {
+    const store = this.stores.get(component);
+    if (store === undefined || store.size === 0) return null;
+    let best: Entity | null = null;
+    for (const e of store.keys()) {
+      if (best === null || e < best) best = e;
+    }
+    return best;
+  }
+
+  /**
    * Ascending-sorted alive entity ids — the canonical order for snapshots, golden hashes, and any
    * system that must *pick* an entity deterministically. Memoized per alive-set generation (see
    * {@link canonicalCache}); the result is shared + read-only — never mutate it (sort/reverse a copy).

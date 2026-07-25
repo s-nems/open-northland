@@ -1,8 +1,9 @@
+import type { ContentSet, JobRequirement } from '@open-northland/data';
 import type { Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
-import { BUILDING_JOINERY, buildingDef, placeBuiltSandboxBuilding, spawnIdleSettler } from '../game/sandbox/index.js';
+import { BUILDING_JOINERY, placeBuiltSandboxBuilding, spawnIdleSettler } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -12,8 +13,8 @@ import type { SceneDefinition } from './types.js';
  * proves the free-start staffing; in the browser a human sees the workshop manned and the settler
  * panel's Doświadczenie section WITHOUT upcoming-unlock promises (the toggle hides them).
  *
- * The gate is injected into this sim's own content copy (`sandboxContent` builds a fresh set per
- * world), so the shared sandbox catalog — and every other scene's staffing — stays untouched.
+ * The gate rides `amendContent`, which copies the tribe row before adding the requirement — the
+ * resolved set may be the browser's shared memoized real content, which no scene may mutate.
  */
 
 const MAP_W = 20;
@@ -23,34 +24,44 @@ const SETTLERS = [
   { x: 5, y: 8 },
   { x: 6, y: 10 },
 ] as const;
-/** The injected gate: an expType with no content track (raw XP = repeats) nobody ever accrues here. */
-const GATE_EXPERIENCE_TYPE = 77;
+/** The injected gate's expType: outside the original's id space (`logicdefines.inc` max 78) and away
+ *  from the scout bucket (100), so no track — raw XP = repeats — and nothing here ever accrues it. */
+const GATE_EXPERIENCE_TYPE = 200;
 const GATE_AMOUNT = 10;
 /** Staffing is an early-tick pass; a small budget keeps the headless run tight. */
 const RUN_TICKS = 50;
 
 const { Settler } = components;
 
-/** The joinery's (rebased) worker-slot job — the trade the injected gate thresholds. */
-function joineryWorkerJob(sim: Simulation): number {
-  const slot = buildingDef(sim, BUILDING_JOINERY)?.workers[0];
-  if (slot === undefined) throw new Error('sandbox joinery declares no worker slot');
+/** The joinery's worker-slot job in `content` — the trade the injected gate thresholds. */
+function joineryWorkerJob(content: ContentSet): number {
+  const slot = content.buildings.find((b) => b.typeId === BUILDING_JOINERY)?.workers[0];
+  if (slot === undefined) throw new Error('content declares no joinery worker slot');
   return slot.jobType;
+}
+
+/** Gate the joinery's trade behind XP nobody has: with progression ON this workshop would stand
+ *  empty forever. Copies the set and the tribe row — never mutates the (possibly shared) input. */
+function gatedContent(content: ContentSet): ContentSet {
+  const gate: JobRequirement = {
+    requirement: 'need',
+    target: 'job',
+    targetId: joineryWorkerJob(content),
+    amount: GATE_AMOUNT,
+    experienceTypes: [GATE_EXPERIENCE_TYPE],
+  };
+  return {
+    ...content,
+    tribes: content.tribes.map((tribe) =>
+      tribe.typeId === PRIMARY_TRIBE
+        ? { ...tribe, jobRequirements: [...tribe.jobRequirements, gate] }
+        : tribe,
+    ),
+  };
 }
 
 function build(sim: Simulation): void {
   placeBuiltSandboxBuilding(sim, BUILDING_JOINERY, JOINERY.x, JOINERY.y);
-  // Gate the joinery's trade behind XP nobody has: with progression ON this workshop would stand
-  // empty forever. This mutates only this sim's fresh content copy, never the shared catalog.
-  const tribe = sim.content.tribes.find((t) => t.typeId === PRIMARY_TRIBE);
-  if (tribe === undefined) throw new Error('sandbox content has no primary tribe');
-  tribe.jobRequirements.push({
-    requirement: 'need',
-    target: 'job',
-    targetId: joineryWorkerJob(sim),
-    amount: GATE_AMOUNT,
-    experienceTypes: [GATE_EXPERIENCE_TYPE],
-  });
   for (const spot of SETTLERS) spawnIdleSettler(sim, spot.x, spot.y);
 }
 
@@ -58,6 +69,7 @@ export const progressionScene: SceneDefinition = {
   id: 'progression',
   seed: 12,
   terrain: grassTerrain(MAP_W, MAP_H),
+  amendContent: gatedContent,
   build,
   progression: false,
   runTicks: RUN_TICKS,
@@ -69,7 +81,7 @@ export const progressionScene: SceneDefinition = {
     {
       label: 'the XP-gated joinery trade is staffed from zero experience (free-start staffing)',
       predicate: (sim) => {
-        const gated = joineryWorkerJob(sim);
+        const gated = joineryWorkerJob(sim.content);
         for (const e of sim.world.query(Settler)) {
           if (sim.world.get(e, Settler).jobType === gated) return true;
         }

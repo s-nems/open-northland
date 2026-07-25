@@ -17,7 +17,7 @@ import {
   targetSearch,
 } from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
-import { progressionDisabled } from '../src/game/progression.js';
+import { progressionOverride } from '../src/game/progression.js';
 
 /**
  * The menu's `/maps-index` narrowing (the JSON boundary between the dev-server middleware and the
@@ -286,10 +286,10 @@ describe('targetSearch', () => {
 
   it('offers the two profession-progression modes, defaulting to gated', () => {
     expect(MENU_PROGRESSION_MODES).toEqual(['on', 'off']);
-    expect(progressionDisabled(new URLSearchParams(''))).toBe(false); // absent = original gating
-    expect(progressionDisabled(new URLSearchParams('progression=on'))).toBe(false);
-    expect(progressionDisabled(new URLSearchParams('progression=off'))).toBe(true);
-    expect(progressionDisabled(new URLSearchParams('progression=nonsense'))).toBe(false);
+    expect(progressionOverride(new URLSearchParams(''))).toBeNull(); // absent = keep the world's rule
+    expect(progressionOverride(new URLSearchParams('progression=on'))).toBe(true); // explicit re-enable
+    expect(progressionOverride(new URLSearchParams('progression=off'))).toBe(false);
+    expect(progressionOverride(new URLSearchParams('progression=nonsense'))).toBeNull();
   });
 
   it('defaults maps to classic fog when no mode was selected', () => {

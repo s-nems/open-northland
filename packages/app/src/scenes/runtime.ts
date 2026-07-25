@@ -17,9 +17,12 @@ import type { SceneWorld } from './types.js';
  * (and under real content).
  */
 export function createSceneSim(scene: SceneWorld, options: WorldContentOptions = {}): Simulation {
+  const resolved = resolveWorldContent(scene.terrain, options);
   const sim = new Simulation({
     seed: scene.seed,
-    content: resolveWorldContent(scene.terrain, options),
+    // The scene's amendment copies before changing — the resolved set may be the shared memoized
+    // real content, which no world may mutate.
+    content: scene.amendContent?.(resolved) ?? resolved,
     // Scenes author cell grids; the sim navigates their half-cell lattice.
     map: halfCellMapFromCells(scene.terrain),
   });

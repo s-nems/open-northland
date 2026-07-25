@@ -2,13 +2,11 @@ import { type Component, defineComponent, type Entity, type World } from '../ecs
 
 /** The lowest-id carrier of a world-scope singleton `component`, or null when none exists. The canonical pick
  *  (ascending id wins) shared by the {@link WorldRules} and {@link FogRules} singletons: their command handlers
- *  only ever create one, but the tie-break keeps hashed state deterministic should more than one ever appear. */
+ *  only ever create one, but the tie-break keeps hashed state deterministic should more than one ever appear.
+ *  Reads through {@link World.lowestEntityWith} — rules are consulted per candidate in hot gates (staffing,
+ *  harvest picks), and the default-config case (no singleton) must not allocate a query iterator. */
 function singletonCarrier(world: World, component: Component<unknown>): Entity | null {
-  let best: Entity | null = null;
-  for (const e of world.query(component)) {
-    if (best === null || e < best) best = e;
-  }
-  return best;
+  return world.lowestEntityWith(component);
 }
 
 /**
