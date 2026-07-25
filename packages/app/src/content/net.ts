@@ -1,4 +1,5 @@
 import { loadAtlasSource, type TextureSource } from '@open-northland/render';
+import { diag } from '../diag/log.js';
 
 /**
  * The two fetch idioms every `content/` loader in this folder shares, kept in one place so the
@@ -6,8 +7,9 @@ import { loadAtlasSource, type TextureSource } from '@open-northland/render';
  *
  *  - {@link fetchJsonOrNull} — optional JSON (a manifest, metrics, the IR): absent/unreadable → `null`,
  *    the caller falls back instead of crashing (a checkout without `content/` must still boot).
- *  - {@link loadTextureIfPresent} — optional texture (a palette/colour LUT): HEAD-probe first so a
- *    missing PNG degrades to `undefined` instead of a texture-load error.
+ *  - {@link loadTextureIfPresent} — optional texture (a palette/colour LUT): absent/unreadable →
+ *    `undefined`, likewise. Absent is silent (the pipeline stage simply hasn't run); unreadable warns,
+ *    because falling back to preview graphics over a broken artifact must not pass unannounced.
  */
 
 /**
@@ -25,11 +27,19 @@ export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = 
   }
 }
 
-/** Load a texture if the server has it (HEAD probe), else `undefined` so the caller degrades. */
+/**
+ * Load a texture if the server has it (HEAD probe), else `undefined` so the caller degrades. Never
+ * rejects: `undefined` is the only failure signal its callers read.
+ */
 export async function loadTextureIfPresent(url: string): Promise<TextureSource | undefined> {
-  const res = await fetch(url, { method: 'HEAD' });
-  if (!res.ok) return undefined;
-  return loadAtlasSource(url);
+  try {
+    const res = await fetch(url, { method: 'HEAD' });
+    if (!res.ok) return undefined;
+    return await loadAtlasSource(url);
+  } catch (err) {
+    diag.warn('content', `net: optional texture ${url} failed to load; its caller falls back`, err);
+    return undefined;
+  }
 }
 
 /**
