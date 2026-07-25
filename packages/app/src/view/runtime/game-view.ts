@@ -209,7 +209,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     uiscale,
     camera: () => cameraCtl.camera(),
     enqueue: issueCommand,
-    grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand),
+    grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, deps.readOnly !== true),
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
