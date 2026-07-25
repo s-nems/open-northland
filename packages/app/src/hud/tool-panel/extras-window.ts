@@ -1,6 +1,6 @@
 import type { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import { drawCloseX, drawTabButton, drawWindowPanel, WIN_PAD } from '../chrome.js';
+import { CLOSE_X_COLOR, drawCloseX, drawTabButton, drawWindowPanel, WIN_PAD } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import {
@@ -15,12 +15,11 @@ import {
 } from './extras-menu.js';
 import { createWindowShell } from './window-shell.js';
 
-/** Text insets (design px) — where a run sits inside its rect. Match the goods window's nudges. */
+/** Text insets (design px) - where a run sits inside its rect. Match the goods window's nudges. */
 const TAB_INSET_X = 3;
 const TAB_INSET_Y = 2;
 const LABEL_INSET_Y = 1;
-/** The −/+ glyph strokes (the same pale tone as the close X). */
-const GLYPH_COLOR = 0xd8ccb0;
+/** The −/+ glyph stroke inset inside its stepper plate (design px). */
 const GLYPH_INSET = 3;
 
 export interface ExtrasWindowDeps {
@@ -44,7 +43,7 @@ export interface ExtrasWindow {
 
 /**
  * Build the extras-window controller over the pure {@link layoutExtrasMenu} geometry, on the shared
- * {@link createWindowShell} lifecycle — rebuilt on open and on any control click (every click moves a
+ * {@link createWindowShell} lifecycle - rebuilt on open and on any control click (every click moves a
  * visible value, and the window is a dozen runs). The assistant state survives close/reopen: it is the
  * player's session settings, not a per-open scratch value.
  */
@@ -52,7 +51,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
   const { scale } = ctx;
   const shell = createWindowShell(deps.container);
-  // Right of the strip, dropping from the extras (chest) button — same reasoning as the building
+  // Right of the strip, dropping from the extras (chest) button - same reasoning as the building
   // menu's origin: it clears the top-left debug overlay and anchors the window to its button.
   const origin = {
     x: ctx.layout.width + WIN_PAD * scale,
@@ -62,7 +61,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   let tab: ExtrasTab = 'assistant';
   let state: AssistantState = defaultAssistantState();
   let menuLayout: ExtrasMenuLayout | null = null;
-  /** Screen position per run, same order as `shell.runs` — `place()` replays them. */
+  /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
   let runsAt: { x: number; y: number }[] = [];
 
   const addRun = (text: string, color: 'white' | 'dimmed', x: number, y: number): void => {
@@ -79,7 +78,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     const cy = r.y + r.h / 2;
     shell.graphics.moveTo(r.x + inset, cy).lineTo(r.x + r.w - inset, cy);
     if (glyph === 'plus') shell.graphics.moveTo(cx, r.y + inset).lineTo(cx, r.y + r.h - inset);
-    shell.graphics.stroke({ color: GLYPH_COLOR, width: Math.max(1, scale) });
+    shell.graphics.stroke({ color: CLOSE_X_COLOR, width: Math.max(1, scale) });
   };
 
   const rebuild = (): void => {
@@ -105,7 +104,6 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       const value = ctx.makeText(String(c.value), 'white');
       deps.container.addChild(value.container);
       shell.runs.push(value);
-      // Centre the value in its cell (TextRun.width is native font px — scale it for screen px).
       runsAt.push({
         x: c.valueRect.x + (c.valueRect.w - value.width * scale) / 2,
         y: c.valueRect.y,

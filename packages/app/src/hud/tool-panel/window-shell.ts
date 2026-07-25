@@ -5,8 +5,8 @@ import type { TextRun } from '../text-run.js';
 /**
  * The open/close plumbing every tool-panel pop-up window repeats: an open flag, the vector text runs, and
  * one `Graphics` buffer parented under the panel's window container. Each window keeps its own layout,
- * rebuild, and hit-test; the shell owns only what they all share, so a new window (see
- * `docs/tickets/app/hud-missing-windows.md`) inherits the lifecycle instead of re-implementing it.
+ * rebuild, and hit-test; the shell owns only what they all share, so a new window inherits the
+ * lifecycle instead of re-implementing it.
  *
  * A window with extra draw layers (the build menu's tiled `back` + hover `Graphics`) creates them itself
  * around the shell — the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.

@@ -256,15 +256,18 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         menu.toggle();
         break;
       case 'extras':
-        // The chest window — the assistant's counters and grant switches (+ the empty plans tab).
+        // The chest window - the assistant's counters and grant switches (+ the empty plans tab).
+        // Closes statistics too: the two windows overlap, and a click on the visible one must never
+        // land on a control hidden under it.
         placement.cancel();
         goodsDrop.cancel();
         menu.close();
         goodsWindow.close();
+        stats.close();
         extras.toggle();
         break;
       case 'mission':
-        // Temporary home for the goods drop palette — "put a good on the ground" (`dropGood`) — until
+        // Temporary home for the goods drop palette - "put a good on the ground" (`dropGood`) - until
         // the mission window exists. Mutually exclusive with the build menu / building placement (one
         // held thing at a time).
         placement.cancel();
@@ -275,13 +278,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         break;
       case 'statistics':
       case 'help': // placeholder alias: Help has no window yet, so it toggles Statistics for now.
+        extras.close(); // the chest window overlaps the stats rect (see the 'extras' case)
         stats.toggle();
         break;
       case 'options':
         opts.onSystemMenu?.();
         break;
       default:
-        // diplomacy / population / tech_tree — not wired in v1.
+        // diplomacy / population / tech_tree - not wired in v1.
         break;
     }
   };
@@ -362,7 +366,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    if (menu.handleWheel(x, y, e.deltaY) || extras.claims(x, y) || stats.claims(x, y)) e.preventDefault();
+    if (
+      menu.handleWheel(x, y, e.deltaY) ||
+      goodsWindow.claims(x, y) ||
+      extras.claims(x, y) ||
+      stats.claims(x, y)
+    )
+      e.preventDefault();
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {

@@ -341,16 +341,16 @@ describe('placement controller', () => {
 });
 
 describe('extras window controller', () => {
-  /** The same layout the controller builds internally (same origin formula, given tab + state):
+  /** The same layout the controller builds internally (same origin formula + default state):
    *  right of the strip, dropping from the extras (chest) button. */
-  function expectedLayout(ctx: PanelContext, state = defaultAssistantState()) {
+  function expectedLayout(ctx: PanelContext) {
     const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
     return layoutExtrasMenu({
       originX: ctx.layout.width + WIN_PAD * ctx.scale,
       originY: extrasY,
       scale: ctx.scale,
       tab: 'assistant',
-      state,
+      state: defaultAssistantState(),
     });
   }
 
@@ -410,7 +410,7 @@ describe('extras window controller', () => {
     expect(made).toContain(messages().hud.extras.plansEmpty);
     expect(made).not.toContain(messages().hud.extras.extraWomen);
 
-    // A click where a stepper used to sit is now bare chrome or outside the shrunken window — never a step.
+    // A click where a stepper used to sit is now bare chrome or outside the shrunken window - never a step.
     const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
     made.length = 0;
     extras.handleClick(plus.x, plus.y);

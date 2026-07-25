@@ -35,8 +35,8 @@ const TAB_SELECTED_FILL = 0x4a3720;
 /** Scrollbar: a recessed track and a raised thumb. */
 const SCROLL_TRACK = 0x161009;
 const SCROLL_THUMB = 0x6b5836;
-/** The close-box X stroke. */
-const CLOSE_X_COLOR = 0xd8ccb0;
+/** The pale control-glyph stroke (the close-box X, the extras window's −/+ steppers). */
+export const CLOSE_X_COLOR = 0xd8ccb0;
 /** The close-box backdrop dim. */
 const CLOSE_BOX_ALPHA = 0.3;
 

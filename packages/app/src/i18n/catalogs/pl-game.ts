@@ -131,8 +131,8 @@ export const plGame = {
       giveWoodenTools: 'Przyznaj wszystkim drewniane narzędzia',
       giveIronTools: 'Przyznaj wszystkim żelazne narzędzia',
       giveMead: 'Przyznaj wszystkim miód pitny',
-      on: 'ON',
-      off: 'OFF',
+      on: 'Wł.',
+      off: 'Wył.',
       plansEmpty: 'Brak planów',
     },
     stats: {
