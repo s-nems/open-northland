@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { type FogMode, fogMode, needsEnabled } from './components/index.js';
+import { type FogMode, fogMode, needsEnabled, professionProgressionEnabled } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -233,6 +233,14 @@ export class Simulation {
    */
   needsEnabled(): boolean {
     return needsEnabled(this.world);
+  }
+
+  /**
+   * Whether profession progression gates job/good access (the `ProgressionRules` rule the
+   * `setProfessionProgression` command sets; absent = enabled). App surfaces label themselves from this.
+   */
+  professionProgressionEnabled(): boolean {
+    return professionProgressionEnabled(this.world);
   }
 
   /**

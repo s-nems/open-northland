@@ -1,13 +1,15 @@
 import type { JobRequirement, JobRequirementTarget, VehicleType } from '@open-northland/data';
-import { Settler } from '../../components/index.js';
+import { professionProgressionEnabled, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { isFighterJob } from '../readviews/stances.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { experienceRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
- *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md. Annotated
+ *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md; when it lands,
+ *  the gate should consult `ProgressionRules` the way {@link jobEnabled}/{@link goodEnabled} do. Annotated
  *  `boolean` (not narrowed to the literal) so both branches of the gate stay live for the type checker. */
 const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 
@@ -41,6 +43,7 @@ export function buildingEnabled(
  * tanner that enables it.
  */
 export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goodType: number): boolean {
+  if (!professionProgressionEnabled(world)) return true; // free start: goods are civilian, no carve-out
   return tribeUnlockEnabled(world, ctx, tribe, 'good', goodType);
 }
 
@@ -51,6 +54,7 @@ export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goo
  * Consumed by the JobSystem's assignment gate ({@link openJobAt}).
  */
 export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobType: number): boolean {
+  if (!professionProgressionEnabled(world) && !isFighterJob(jobType)) return true; // free start, fighters stay gated
   return tribeUnlockEnabled(world, ctx, tribe, 'job', jobType);
 }
 
@@ -151,15 +155,18 @@ export function experienceRequirementMet(
  * job being present in the tribe, `needfor*` gates it on this settler having accrued enough XP. A target with
  * no `need` requirement is unthresholded; one with several must clear every one (a master baker needs both
  * bread- and flour-track XP). A tribe absent from content thresholds nothing, consistent with the
- * `jobEnables` gate.
+ * `jobEnables` gate. While profession progression is off (`ProgressionRules`), every civilian target is
+ * unthresholded; fighter-band jobs stay gated for the barracks-training path.
  */
 export function settlerMeetsNeed(
+  world: World,
   ctx: SystemContext,
   tribe: number,
   target: JobRequirementTarget,
   targetId: number,
   experience: ReadonlyMap<number, number>,
 ): boolean {
+  if (!professionProgressionEnabled(world) && !(target === 'job' && isFighterJob(targetId))) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
   for (const req of tribeType.jobRequirements) {

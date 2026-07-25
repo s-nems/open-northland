@@ -1,7 +1,13 @@
 import type { JobRequirement } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { setProfessionProgression } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { experienceRequirementMet, settlerMeetsNeed } from '../../../src/systems/index.js';
+import {
+  experienceRequirementMet,
+  goodEnabled,
+  jobEnabled,
+  settlerMeetsNeed,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from './support.js';
 
@@ -78,25 +84,64 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
   it('gates a good below its accrued-XP threshold and clears it at/above', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    expect(settlerMeetsNeed(ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 299]]))).toBe(false);
-    expect(settlerMeetsNeed(ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 299]]))).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
   });
 
   it('ignores the train requirement on the same target (only need thresholds apply)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // The fixture also carries a `train` requirement on PLANK with amount 999 — if it were treated as
     // an accrued-XP threshold, 300 XP could never clear it. settlerMeetsNeed must skip it.
-    expect(settlerMeetsNeed(ctxOf(sim), 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
   });
 
   it('is met for a target with no need requirement at all', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Good 1 (wood) carries no `needfor` requirement in the fixture → any settler clears it.
-    expect(settlerMeetsNeed(ctxOf(sim), 1, 'good', 1, new Map())).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', 1, new Map())).toBe(true);
   });
 
   it('thresholds nothing for a tribe absent from content', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    expect(settlerMeetsNeed(ctxOf(sim), 999, 'good', PLANK, new Map())).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 999, 'good', PLANK, new Map())).toBe(true);
+  });
+
+  it('unthresholds civilian targets while profession progression is off, but not fighter jobs', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const ctx = ctxOf(sim);
+    const SOLDIER_JOB = 33; // soldier band 31..41 — stays gated for barracks training
+    sim.content.tribes[0]?.jobRequirements.push({
+      requirement: 'need',
+      target: 'job',
+      targetId: SOLDIER_JOB,
+      amount: 10,
+      experienceTypes: [72],
+    });
+    setProfessionProgression(sim.world, false);
+    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map())).toBe(true); // free start
+    expect(settlerMeetsNeed(sim.world, ctx, 1, 'job', SOLDIER_JOB, new Map())).toBe(false); // carve-out
+    setProfessionProgression(sim.world, true); // re-enabling restores the civilian threshold
+    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map())).toBe(false);
+  });
+});
+
+describe('jobEnables tech-graph under the profession-progression toggle', () => {
+  it('bypasses the presence graph for civilian jobs and goods while off, fighters stay gated', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const ctx = ctxOf(sim);
+    const SOLDIER_JOB = 33;
+    // Gate the carpenter job and a soldier job on a (nonexistent) living woodcutter.
+    sim.content.tribes[0]?.jobEnables.push(
+      { jobType: 1, kind: 'job', targetId: 2 },
+      { jobType: 1, kind: 'job', targetId: SOLDIER_JOB },
+    );
+    // Gated while progression is on: no woodcutter is alive.
+    expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(false); // fixture: plank gated on a woodcutter
+
+    setProfessionProgression(sim.world, false);
+    expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(true); // civilian job: free start
+    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(true); // goods: free start
+    expect(jobEnabled(sim.world, ctx, 1, SOLDIER_JOB)).toBe(false); // fighter band: still gated
   });
 });

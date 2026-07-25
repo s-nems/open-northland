@@ -144,7 +144,7 @@ function resolveOpenWorkerJob(
     // scan still enforces both, so the AI never self-unlocks a specialization.
     if (mode.kind === 'playerDirected') return jobType;
     if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
-    if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, query.experience)) continue; // XP gate (needforjob)
+    if (!settlerMeetsNeed(world, ctx, tribe, 'job', jobType, query.experience)) continue; // XP gate (needforjob)
     return jobType;
   }
   return null;

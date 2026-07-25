@@ -148,7 +148,7 @@ export function nearestHarvestableFor(
     if (!world.has(e, Position)) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
-    if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) return null;
+    if (!settlerMeetsNeed(world, ctx, settler.tribe, 'good', res.goodType, settler.experience)) return null;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
     // Reachability gate: a resource walled off from the settler by static terrain — the far bank of a river
     // with no land crossing — sits in a different connected component, so `findPath` would reject the route

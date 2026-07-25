@@ -138,7 +138,7 @@ export function allocateCollectors(
   // target scan would refuse (iron/gold demand clay/stone-track XP in the base data).
   const meetsNeed = (e: Entity, goodType: number): boolean => {
     const s = world.get(e, Settler);
-    return settlerMeetsNeed(ctx, s.tribe, 'good', goodType, s.experience);
+    return settlerMeetsNeed(world, ctx, s.tribe, 'good', goodType, s.experience);
   };
   // Whether ANY accrued-XP threshold gates the good for this tribe — a gated good needs a veteran, an
   // ungated one accepts any fresh hire.
