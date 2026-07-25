@@ -195,9 +195,10 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
     // per-animation lengths) AND the hash's coverage of string state (an `AtomicEffect`'s `kind`,
     // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
-    // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery) AND
-    // the fractional experience-bonus output (ProductionBonus) with the extra goods it yields.
-    expect(run.hash).toBe('82e7cc5d');
+    // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery,
+    // work feeding the good-specific AND job-general tracks) AND the fractional experience-bonus
+    // output (ProductionBonus) with the extra goods it yields.
+    expect(run.hash).toBe('5005e933');
   });
 
   it('matches the golden atomic-action trace', () => {

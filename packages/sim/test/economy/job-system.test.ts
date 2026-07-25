@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { jobSystem } from '../../src/systems/index.js';
+import { grantWorkExperience, jobSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -22,6 +22,8 @@ const CARPENTER = 2; // the sawmill's worker job
 const WOODCUTTER = 1; // the HQ's worker job
 const CARRIER = 36; // the HQ's transport-slot job
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
+const GENERAL_TRACK = 2; // the woodcutter-general track (factor 1), fed alongside the wood track
+const WOOD_GOOD = 1; // the harvestable good the woodcutter's specific track trains on
 const HQ = 1; // building type: 3 woodcutter slots + a transport slot
 const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
@@ -215,5 +217,32 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     expect(sim.world.get(low, Settler).jobType).toBeNull(); // below threshold: not assigned
     // The high-XP settler clears it; only one carpenter slot, and `low` left it open, so `high` takes it.
     expect(sim.world.get(high, Settler).jobType).toBe(CARPENTER);
+  });
+
+  it('clears a GENERAL-keyed gate through specific-good work (the miller←farmer-general chain)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // Real content keys some job gates on a GENERAL track (`needforjob miller 10 farmer-general`)
+    // while the prerequisite job only ever works specific goods — the dual accrual must feed it.
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    tribe.jobRequirements.push({
+      requirement: 'need',
+      target: 'job',
+      targetId: CARPENTER,
+      amount: 5,
+      experienceTypes: [GENERAL_TRACK],
+    });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    // A woodcutter fells five wood units (all its work is wood-SPECIFIC), then goes idle.
+    const veteran = settler(sim, WOODCUTTER);
+    grantWorkExperience(sim.world, ctxOf(sim), veteran, WOOD_GOOD, 5);
+    sim.world.get(veteran, Settler).jobType = null; // lifetime XP survives leaving the job
+    const fresh = settler(sim, null);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    // The general track accrued alongside the wood track (5 repeats at factor 1) clears the gate.
+    expect(sim.world.get(veteran, Settler).jobType).toBe(CARPENTER);
+    expect(sim.world.get(fresh, Settler).jobType).toBeNull(); // one slot, and fresh never qualified
   });
 });
