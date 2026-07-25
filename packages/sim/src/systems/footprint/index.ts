@@ -50,3 +50,4 @@ export {
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from './resources.js';
+export { ROUTE_REGION_POCKET_CAP, routeRegions } from './route-regions.js';

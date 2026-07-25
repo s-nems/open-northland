@@ -19,9 +19,10 @@ goal at pocket cost):
    drive with its own protocol) clears the failed request early. Identify it (re-run the profiling
    recipe, log which system clears e155's nav state) and make it respect or share the pacing.
 2. **The target itself is dead.** Whatever aims there (the home? a construction site? a job seat)
-   keeps choosing an overlay-sealed node. The chooser should either skip a target whose request
-   just failed (blacklist for the episode, like the stranded pacing) or the placement that sealed
-   the pocket (fields/buildings enclosing a door) should be prevented up front.
+   keeps choosing an overlay-sealed node. The chooser should skip a provably sealed goal via the
+   route-region memo (`systems/footprint/route-regions.ts`, the harvest pick's sealed-pocket veto,
+   which this pocket's 494-node size fits under), skip a target whose request just failed, or the
+   placement that sealed the pocket (fields/buildings enclosing a door) should be prevented up front.
 
 ## Verify
 

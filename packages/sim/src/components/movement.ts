@@ -104,8 +104,9 @@ export interface UnreachableGoal {
  * *what* failed, so without this the deterministic nearest-first pick returns the identical doomed cell
  * every retry and the settler idles beside reachable work forever. A bounded FIFO rather than one cell so
  * a settler ringed by several walled-off targets cannot cycle between them; see
- * `systems/agents/unreachable-goals.ts` for the pacing and `docs/tickets/sim/dynamic-route-reachability.md`
- * for what it does not cover. Optional, so a settler whose routes all succeed never carries it.
+ * `systems/agents/unreachable-goals.ts` for the pacing. Provably sealed goals are the route-region
+ * memo's job (`systems/footprint/route-regions.ts`); this memo covers what that one cannot prove.
+ * Optional, so a settler whose routes all succeed never carries it.
  */
 export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>('UnreachableGoals');
 
