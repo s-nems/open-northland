@@ -1,5 +1,5 @@
 import type { HudLayout, PlacementGhost } from '@open-northland/render';
-import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
+import { FixedTimestep, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import {
   emitPerfMeasure,
@@ -152,17 +152,13 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     renderer.updateFog(fogView);
     // Presentation events only (blood/bones + positional audio): an event at ground the player does
     // not currently see is dropped — a fight in the fog must neither splatter visible blood nor ring
-    // audible clangs. Event `at` coords are half-cell nodes (`cellOfNode` owns the node→cell rule).
+    // audible clangs. Event `at` coords are half-cell nodes, gated to fog visibility by `fogGates.seesNode`.
     // The map entry's `onEvents` handover deliberately keeps the unfiltered list (sim bookkeeping,
     // not presentation — a fogged tree felled by an enemy must still hand its static sprite over).
     const presentEvents =
       fogView === null
         ? frameEvents
-        : frameEvents.filter((ev) => {
-            if (!('at' in ev)) return true;
-            const { cx, cy } = systems.cellOfNode(ev.at.hx, ev.at.hy);
-            return fogView.stateAt(cx, cy) === FOG_STATE.VISIBLE;
-          });
+        : frameEvents.filter((ev) => !('at' in ev) || fogGates.seesNode(ev.at.hx, ev.at.hy));
     // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — shown only
     // when the player opens the stats window.
     const hud = hudFor(snap);
@@ -224,10 +220,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         ? plots
         : plots
             .map((p) => ({
-              cells: p.cells.filter((c) => {
-                const { cx, cy } = systems.cellOfNode(c.col, c.row);
-                return fogView.stateAt(cx, cy) === FOG_STATE.VISIBLE;
-              }),
+              cells: p.cells.filter((c) => fogGates.seesNode(c.col, c.row)),
             }))
             .filter((p) => p.cells.length > 0),
     );
