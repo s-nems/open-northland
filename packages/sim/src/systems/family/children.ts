@@ -318,9 +318,9 @@ function enterHome(
 }
 
 /**
- * The birth: the newborn of the ordered sex joins the family (a baby with an {@link Age}, the parents'
- * {@link Owner}, and a {@link Residence} in the home), everybody steps back outside, and the order is
- * done. Emits `settlerBorn` (the original's birth jingle, `DM_MUSIC_TYPE_JINGLE_BIRTH`).
+ * The birth: a newborn ({@link spawnNewborn}) joins the family - linked to both parents, the family
+ * steps back outside, and the order is done. Emits `settlerBorn` (the original's birth jingle,
+ * `DM_MUSIC_TYPE_JINGLE_BIRTH`).
  */
 function birth(
   world: World,
@@ -330,6 +330,21 @@ function birth(
   home: Entity,
   sex: 'female' | 'male',
 ): void {
+  const baby = spawnNewborn(world, mother, home, sex);
+  world.get(mother, Marriage).child = baby;
+  world.get(father, Marriage).child = baby;
+  world.remove(mother, ChildOrder);
+  world.remove(home, MakingLove);
+  stepOut(world, mother);
+  stepOut(world, father);
+  ctx.events.emit({ kind: 'settlerBorn', entity: baby });
+}
+
+/** Assemble and return a newborn of the ordered sex at its mother's door. Deliberately not a
+ *  `createSettler` call - a newborn rolls no RNG (needs start at 0), takes its sex from the parents (not a
+ *  job slug), and uses the default hitpoint pool (no per-age pool is readable - approximated). It emits
+ *  nothing; the `settlerBorn` seam stays in {@link birth}, and the stamp order is hash-significant. */
+function spawnNewborn(world: World, mother: Entity, home: Entity, sex: 'female' | 'male'): Entity {
   const p = world.get(mother, Position); // she stands at the door she entered by — the baby appears there
   const baby = world.create();
   world.add(baby, Position, { x: p.x, y: p.y });
@@ -344,7 +359,6 @@ function birth(
   });
   if (sex === 'female') world.add(baby, Female, FEMALE);
   world.add(baby, Age, { ticks: 0 });
-  // A newborn gets the default human pool (no per-age hitpoint pool is readable — approximated).
   world.add(baby, Health, { hitpoints: DEFAULT_SETTLER_HITPOINTS, max: DEFAULT_SETTLER_HITPOINTS });
   const owner = world.tryGet(mother, Owner)?.player;
   if (owner !== undefined) {
@@ -352,11 +366,5 @@ function birth(
     stampDefaultStance(world, baby, world.get(baby, Settler).jobType);
   }
   world.add(baby, Residence, { home });
-  world.get(mother, Marriage).child = baby;
-  world.get(father, Marriage).child = baby;
-  world.remove(mother, ChildOrder);
-  world.remove(home, MakingLove);
-  stepOut(world, mother);
-  stepOut(world, father);
-  ctx.events.emit({ kind: 'settlerBorn', entity: baby });
+  return baby;
 }
