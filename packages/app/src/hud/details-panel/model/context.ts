@@ -37,7 +37,7 @@ export interface Comp {
 /**
  * A settler's profession name for the panel — resolved through the shared profession catalog + i18n
  * (`catalog/professions.ts` + `i18n/`), so a settler's label always matches the picker's. Any soldier-band
- * job reads "Żołnierz"; idle/unknown falls back to the localized "Bezrobotny".
+ * job reads "Żołnierz"; idle/unknown falls back to the localized "Cywil".
  */
 function jobLabel(jobType: number | undefined): string {
   const def = professionDefForJob(jobType);

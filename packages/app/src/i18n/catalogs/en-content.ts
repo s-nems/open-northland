@@ -1,6 +1,6 @@
 export const enContent = {
   profession: {
-    idle: 'Unemployed',
+    idle: 'Civilian',
     carrier: 'Carrier',
     builder: 'Builder',
     joiner: 'Joiner',
@@ -20,7 +20,6 @@ export const enContent = {
     herbalist: 'Herbalist',
     druid: 'Druid',
     scout: 'Scout',
-    jester: 'Jester',
     trader: 'Trader',
     soldier: 'Soldier',
     collector: 'Gatherer',

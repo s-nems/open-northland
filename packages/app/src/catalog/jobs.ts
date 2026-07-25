@@ -56,7 +56,6 @@ export const JOB_CARRIER = 24;
 export const JOB_TRADER = 25;
 /** The scout (`jobtypes.ini` type 27) — erects signposts (its one allowed atomic, build-guide 43). */
 export const JOB_SCOUT = 27;
-export const JOB_JESTER = 28;
 export const JOB_HERBALIST = 29; // jobtypes.ini "herb & mush guy"
 export const JOB_DRUID = 30;
 

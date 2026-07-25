@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jobUnlockedFor, jobUnlockedForSelection } from '../src/game/profession-unlocks.js';
+import { goodUnlockedFor, jobUnlockedFor, jobUnlockedForSelection } from '../src/game/profession-unlocks.js';
 import { snapshotOf } from './support/sandbox.js';
 
 /** The picker's qualification filter — the app-side mirror of the sim's `settlerMeetsNeed` need-job
@@ -9,6 +9,8 @@ describe('jobUnlockedFor', () => {
   const CARPENTER = 9;
   const SOLDIER = 33; // fighter band 31..41
   const WOOD_TRACK = 3;
+  const SWORD_GOOD = 52; // a needforgood-gated ware
+  const PLAIN_GOOD = 5; // no requirement row
   const content = {
     tribes: [
       {
@@ -32,6 +34,13 @@ describe('jobUnlockedFor', () => {
             amount: 5,
             experienceTypes: [72],
           },
+          {
+            requirement: 'need' as const,
+            target: 'good' as const,
+            targetId: SWORD_GOOD,
+            amount: 10,
+            experienceTypes: [WOOD_TRACK],
+          },
         ],
       },
     ],
@@ -49,6 +58,13 @@ describe('jobUnlockedFor', () => {
   it('frees civilian trades while progression is off, but never the fighter band', () => {
     expect(jobUnlockedFor(content, false, 1, new Map(), CARPENTER)).toBe(true);
     expect(jobUnlockedFor(content, false, 1, new Map(), SOLDIER)).toBe(false); // barracks territory
+  });
+
+  it('gates a needforgood ware by repeats, and the toggle frees every good (no carve-out)', () => {
+    expect(goodUnlockedFor(content, true, 1, new Map(), PLAIN_GOOD)).toBe(true); // ungated ware
+    expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 99]]), SWORD_GOOD)).toBe(false);
+    expect(goodUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 100]]), SWORD_GOOD)).toBe(true);
+    expect(goodUnlockedFor(content, false, 1, new Map(), SWORD_GOOD)).toBe(true); // goods are civilian
   });
 
   it('requires the WHOLE selection to qualify, and reads the toggle off the snapshot', () => {

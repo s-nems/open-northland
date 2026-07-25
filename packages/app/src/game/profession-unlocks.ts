@@ -10,23 +10,58 @@ import { entityById, num, professionProgressionEnabledIn, settlerExperienceOf } 
  * player-facing half ("the rest is discovered through the tree").
  */
 
+/** The requirement-table slice every qualifier reads — readonly, so both a full {@link ContentSet}
+ *  and the details-panel's readonly context slice fit. */
+export interface UnlockContent {
+  readonly tribes: readonly ContentSet['tribes'][number][];
+  readonly jobExperience: readonly ContentSet['jobExperience'][number][];
+}
+
 /**
  * Whether a settler with `tribe`/`experience` may take `jobType` right now: every `need-job` row for
  * the target is met in repeats, or profession progression is off (civilian jobs free; fighter-band
  * jobs stay barracks-gated — the sim's exact carve-out).
  */
 export function jobUnlockedFor(
-  content: Pick<ContentSet, 'tribes' | 'jobExperience'>,
+  content: UnlockContent,
   progressionEnabled: boolean,
   tribe: number | undefined,
   experience: ReadonlyMap<number, number>,
   jobType: number,
 ): boolean {
   if (!progressionEnabled && !systems.isFighterJob(jobType)) return true; // free start
+  return meetsNeedRows(content, tribe, 'job', jobType, experience);
+}
+
+/**
+ * Whether a settler with `tribe`/`experience` has earned `goodType` — the good-target sibling of
+ * {@link jobUnlockedFor} (`needforgood`: a fresh smith forges only the ungated wares). Filters the craft
+ * and gather product menus; the sim enforces the identical gate in the cycle rotation and harvest
+ * targeting. Goods are civilian, so the progression toggle lifts them all — no fighter carve-out.
+ */
+export function goodUnlockedFor(
+  content: UnlockContent,
+  progressionEnabled: boolean,
+  tribe: number | undefined,
+  experience: ReadonlyMap<number, number>,
+  goodType: number,
+): boolean {
+  if (!progressionEnabled) return true;
+  return meetsNeedRows(content, tribe, 'good', goodType, experience);
+}
+
+/** The shared `needfor*` row reading: every `need` row for `(target, targetId)` met in repeats. */
+function meetsNeedRows(
+  content: UnlockContent,
+  tribe: number | undefined,
+  target: 'job' | 'good',
+  targetId: number,
+  experience: ReadonlyMap<number, number>,
+): boolean {
   const tribeType = content.tribes.find((t) => t.typeId === tribe);
   if (tribeType === undefined) return true; // no requirement table — nothing thresholds it
   for (const req of tribeType.jobRequirements) {
-    if (req.requirement !== 'need' || req.target !== 'job' || req.targetId !== jobType) continue;
+    if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
     let repeats = 0;
     for (const expType of req.experienceTypes) {
       const track = content.jobExperience.find((t) => t.typeId === expType);
@@ -43,7 +78,7 @@ export function jobUnlockedFor(
  * unqualified anyway). Reads the progression flag once off the snapshot.
  */
 export function jobUnlockedForSelection(
-  content: Pick<ContentSet, 'tribes' | 'jobExperience'>,
+  content: UnlockContent,
   snapshot: WorldSnapshot,
   settlerIds: readonly number[],
   jobType: number,
