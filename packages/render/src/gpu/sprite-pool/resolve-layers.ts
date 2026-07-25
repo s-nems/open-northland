@@ -131,9 +131,7 @@ export function resolveLayers(
     // invisible level (the original's freshly-sown field) — draw nothing, not the placeholder.
     const draw = resolveResourceDraw(sheet.bindings.resource, item);
     if (draw === null) return [];
-    if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-      return layeredLayersWithShadow(sheet, 'resource', draw);
-    }
+    if (hasLoadedFamily(sheet, draw)) return layeredLayersWithShadow(sheet, 'resource', draw);
     bobId = draw.bob;
   } else if (item.kind === 'stockpile') {
     return resolveStockpileLayers(sheet, item);
@@ -143,9 +141,7 @@ export function resolveLayers(
     // for loaded families), so a missing family here is a placeholder, never a bare-bob fall-through
     // into the shared body atlas (a human frame drawn as a post).
     const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
-    if (draw === null || draw.layer === undefined || sheet.families?.[draw.layer] === undefined) {
-      return null;
-    }
+    if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
     const resolved = layeredLayerFor(sheet, 'signpost', draw);
     return resolved === null ? null : [resolved];
   } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
@@ -228,7 +224,7 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
   // A loaded named family resolves through the shared helper (missing/empty frame → placeholder); an
   // unloaded one falls through to the default building layer (a deliberate difference from the
   // construction path, which drops the stage instead).
-  if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+  if (hasLoadedFamily(sheet, draw)) {
     const layers = layeredLayersWithShadow(sheet, 'building', draw);
     if (layers === null) return { done: true, layers: null }; // a broken body never draws floating extras
     layers.push(...extras);
@@ -335,6 +331,12 @@ function layeredLayersWithShadow(
 function layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): ResolvedLayer | null {
   const layer = sourceLayerFor(sheet, kind, draw);
   return layer === undefined ? null : resolveFromLayer(layer, sheet, kind, draw);
+}
+
+/** Whether a layered draw names a family atlas the sheet actually loaded. A named-but-unloaded family
+ *  is not, so the caller falls through to the bare bob instead. */
+function hasLoadedFamily(sheet: SpriteSheet, draw: BuildingDraw): boolean {
+  return draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined;
 }
 
 /**
