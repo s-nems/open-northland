@@ -1,9 +1,10 @@
 import { Container, Sprite, type TextureSource } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
+import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 import type { TextureCache } from '../texture-cache.js';
+import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
@@ -118,7 +119,7 @@ export class SettlerBubbleLayer {
         const feet = tileToScreen(tileX, tileY);
         if (viewport !== undefined && !isVisible(viewport, feet.x, feet.y)) continue;
 
-        const head = this.headOf(bubble.id, frame, tileX, tileY, feet);
+        const head = this.headOf(frame, bubble);
         let entry = this.bubbles.get(bubble.id);
         if (entry === undefined || entry.kind !== bubble.kind) {
           entry?.node.destroy({ children: true });
@@ -136,20 +137,13 @@ export class SettlerBubbleLayer {
   }
 
   /** The head point the bubble's tip sits over: the pool's lerped sprite-bounds top+centre when the settler
-   *  was drawn this frame, else the lerped feet anchor lifted by a head estimate, else the caller's
-   *  raw-projected `feet` lifted the same way (standing inside a house, or no pool this frame). */
-  private headOf(
-    id: number,
-    frame: SettlerBubbleFrame,
-    tileX: number,
-    tileY: number,
-    feet: { x: number; y: number },
-  ): { x: number; y: number } {
-    const bounds = frame.drawn?.boundsOf(id);
+   *  was drawn this frame, else its {@link feetAnchor} raised by a head estimate (standing inside a house,
+   *  or no pool this frame). */
+  private headOf(frame: SettlerBubbleFrame, bubble: SettlerBubble): { x: number; y: number } {
+    const bounds = frame.drawn?.boundsOf(bubble.id);
     if (bounds !== undefined) return { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY };
-    const anchor = frame.drawn?.anchorOf(id);
-    if (anchor !== undefined) return { x: anchor.x, y: anchor.y - HEAD_ABOVE_FEET };
-    return { x: feet.x, y: feet.y - terrainLiftAt(frame.elevation, tileX, tileY) - HEAD_ABOVE_FEET };
+    const feet = feetAnchor(frame.drawn, bubble.id, bubble, frame.elevation);
+    return { x: feet.x, y: feet.y - HEAD_ABOVE_FEET };
   }
 
   destroy(): void {

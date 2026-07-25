@@ -1,9 +1,10 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
-import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/projection/index.js';
+import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
-import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
+import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
+import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
@@ -103,17 +104,7 @@ export class SelectionLayer {
         if (!ids.has(ent.id)) continue;
         const pos = readPosition(ent.components);
         if (pos === null) continue;
-        // The pool's drawn anchor (inter-tick lerped and terrain-lifted) when the entity was drawn this
-        // frame, so the ring glides with the interpolated bob and rides the hill under it. When it wasn't
-        // drawn (culled off-screen), fall back to the raw snapshot projection plus the same lift.
-        let s = frame.drawn?.anchorOf(ent.id);
-        if (s === undefined) {
-          const tileX = pos.x / ONE;
-          const tileY = pos.y / ONE;
-          const p = tileToScreen(tileX, tileY);
-          const lift = terrainLiftAt(frame.elevation, tileX, tileY);
-          s = { x: p.x, y: p.y - lift };
-        }
+        const s = feetAnchor(frame.drawn, ent.id, pos, frame.elevation);
         let ring = pool.get(ent.id);
         if (ring === undefined) {
           // Kind + size are fixed while present, so the ring geometry is authored once here.
