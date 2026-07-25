@@ -29,10 +29,12 @@ const SCOUT = { x: 5, y: 8 } as const;
  *  sit exactly ON the circle and be rejected). */
 const ERECT_AT = { x: 6, y: 8 } as const;
 /** The pre-stamped chain (small circles so the scene fits disconnection on one screen) + a lone far
- *  post whose circle overlaps neither — the "two groups act separately" case. Radii are scene data. */
+ *  post whose circle overlaps neither — the "two groups act separately" case. Radii are scene data.
+ *  CHAIN_B sits on an ODD row so the pair straddles the half-cell stagger: its node is `2x + 1`, and a
+ *  board drawn from an unstaggered node would be visibly off. */
 const CHAIN_RADIUS_NODES = 12;
 const CHAIN_A = { x: 16, y: 8 } as const;
-const CHAIN_B = { x: 26, y: 8 } as const;
+const CHAIN_B = { x: 26, y: 7 } as const;
 const LONE_POST = { x: 44, y: 8 } as const;
 /** A rival's post beside ours: signposts are per player (networks, spacing, selection, and the board
  *  lettering colour — red for the enemy slot vs the human's blue). */
