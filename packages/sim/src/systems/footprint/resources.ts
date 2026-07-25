@@ -115,9 +115,15 @@ export interface ResourceNodeSpec {
   readonly gfxIndex?: number;
   /** A felled node (a tree): its chops-to-fell counter. Mutually exclusive with `deposit`. */
   readonly felling?: { readonly chopsLeft: number };
-  /** A mined finite deposit (stone/clay/iron/gold): its level ladder (`initial` = `remaining`) and
-   *  how many work cycles chip one unit off (the app catalog's observed calibration; omitted → 1). */
-  readonly deposit?: { readonly levels: number; readonly strikesPerUnit?: number };
+  /** A mined finite deposit (stone/clay/iron/gold): its level ladder and how many work cycles chip one
+   *  unit off (the app catalog's observed calibration; omitted → 1). `initial` is the deposit's full
+   *  size — the ladder denominator — for a node placed already part-mined (a map's authored growth
+   *  level); omitted it is `remaining`, a node that spawns full. */
+  readonly deposit?: {
+    readonly levels: number;
+    readonly strikesPerUnit?: number;
+    readonly initial?: number;
+  };
 }
 
 /**
@@ -156,7 +162,7 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
   if (spec.felling !== undefined) world.add(e, Felling, { chopsLeft: spec.felling.chopsLeft });
   if (spec.deposit !== undefined) {
     world.add(e, MineDeposit, {
-      initial: spec.remaining,
+      initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
       // Stamp the strike calibration only when the caller provides one — an unstamped node keeps the
       // legacy 1-strike hash shape (the separate-optional-field pattern).

@@ -1,5 +1,5 @@
 import type { TerrainObjects } from '@open-northland/data';
-import type { ContentIr } from './ir/rows.js';
+import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**
@@ -24,6 +24,12 @@ import { forEachPlacement } from './map-placements.js';
 export interface HarvestObjectRef {
   readonly goodId: string;
   readonly gfxIndex: number;
+  /** The record's authored frame-list count, the denominator the static object layer buckets a
+   *  placement's `objects.levels` entry against ({@link import('./objects.js').stateIndexForLevel}).
+   *  NOT the record's valency ceiling: `LogicMaximumValency` can be larger (`tree_dead 01` authors one
+   *  frame list for a max valency of 3), so a level above this count reads as out of range. 0 when the
+   *  record authors no frames. */
+  readonly states: number;
 }
 
 /**
@@ -37,15 +43,20 @@ export interface HarvestObjectRef {
  * resolution: collision stays the good's own record in the sim's content set (an unrelated number space).
  */
 export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
-  const nameByIndex = new Map<number, string>();
+  const recordByIndex = new Map<number, LandscapeGfxRow>();
   for (const g of ir.landscapeGfx ?? []) {
-    if (g.editName !== undefined) nameByIndex.set(g.index, g.editName);
+    if (g.editName !== undefined) recordByIndex.set(g.index, g);
   }
   const out = new Map<string, HarvestObjectRef>();
   for (const p of ir.gatheringPipeline ?? []) {
     for (const idx of p.harvest?.gfxIndices ?? []) {
-      const name = nameByIndex.get(idx);
-      if (name !== undefined) out.set(name, { goodId: p.goodId, gfxIndex: idx });
+      const record = recordByIndex.get(idx);
+      if (record?.editName === undefined) continue;
+      out.set(record.editName, {
+        goodId: p.goodId,
+        gfxIndex: idx,
+        states: (record.frames ?? []).length,
+      });
     }
   }
   return out;
@@ -62,6 +73,13 @@ export interface MapResourceSpawn {
   readonly hx: number;
   readonly hy: number;
   readonly placement: number;
+  /**
+   * The placement's authored growth state: its 1-based `objects.levels` (`lmlv`) entry and the record's
+   * state count it counts up to (`level === states` is full-grown / a full deposit). Absent for a map
+   * with no `levels` lane and for an out-of-range entry, matching the fall-back-to-full rule of the
+   * static object layer's {@link import('./objects.js').stateIndexForLevel}.
+   */
+  readonly growth?: { readonly level: number; readonly states: number };
 }
 
 /**
@@ -82,9 +100,18 @@ export function mapResourceSpawns(
   forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
     const name = types[typeIndex];
     const ref = name !== undefined ? goodByName.get(name) : undefined;
-    if (ref !== undefined && spawnableGoodIds.has(ref.goodId)) {
-      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy, placement });
-    }
+    if (ref === undefined || !spawnableGoodIds.has(ref.goodId)) return;
+    const level = objects.levels?.[placement];
+    const growth =
+      level !== undefined && level >= 1 && level <= ref.states ? { level, states: ref.states } : undefined;
+    out.push({
+      goodId: ref.goodId,
+      gfxIndex: ref.gfxIndex,
+      hx,
+      hy,
+      placement,
+      ...(growth !== undefined ? { growth } : {}),
+    });
   });
   return out;
 }
