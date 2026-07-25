@@ -593,3 +593,89 @@ describe('selection details panel model', () => {
     expect(model.experience[2]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
   });
 });
+
+describe('settler upcoming-unlock rows', () => {
+  const WOOD_TRACK = 3;
+  // A tribe requirement table exercising every filter: one live unlock in progress, a fighter-band
+  // target, an already-met threshold, and a requirement on a track this job never accrues.
+  const GATED_JOB = 9;
+  const SOLDIER_JOB = 33;
+  const MET_JOB = 11;
+  const FOREIGN_JOB = 12;
+  const unlockCtx = () => {
+    const base = sandboxCtx();
+    const tribe = base.tribes[0];
+    if (tribe === undefined) throw new Error('sandbox has no tribe');
+    return {
+      ...base,
+      jobExperience: [
+        {
+          typeId: WOOD_TRACK,
+          id: 'collector_wood',
+          jobType: JOB_COLLECTOR,
+          goodType: GOOD_WOOD,
+          experienceFactor: 10,
+        },
+      ],
+      tribes: [
+        {
+          ...tribe,
+          typeId: 1,
+          jobRequirements: [
+            {
+              requirement: 'need',
+              target: 'job',
+              targetId: GATED_JOB,
+              amount: 10,
+              experienceTypes: [WOOD_TRACK],
+            },
+            {
+              requirement: 'need',
+              target: 'job',
+              targetId: SOLDIER_JOB,
+              amount: 5,
+              experienceTypes: [WOOD_TRACK],
+            },
+            {
+              requirement: 'need',
+              target: 'job',
+              targetId: MET_JOB,
+              amount: 3,
+              experienceTypes: [WOOD_TRACK],
+            },
+            { requirement: 'need', target: 'job', targetId: FOREIGN_JOB, amount: 10, experienceTypes: [99] },
+          ],
+        },
+      ],
+    } as ReturnType<typeof sandboxCtx>;
+  };
+  const collector = (id: number) => ({
+    id,
+    components: {
+      Settler: { tribe: 1, jobType: JOB_COLLECTOR, experience: [[WOOD_TRACK, 40]] }, // 4 repeats
+    },
+  });
+
+  it('shows repeats-progress toward reachable unmet gates only (no fighters, no met, no foreign)', () => {
+    const model = buildUnitPanelModel(snapshotOf([collector(1)]), new Set([1]), unlockCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    // Only the in-progress civilian gate survives: the soldier target is barracks territory, the met
+    // threshold has nothing left to promise, and the foreign-track requirement isn't this job's path.
+    expect(model.upcomingUnlocks.map((r) => ({ current: r.current, required: r.required }))).toEqual([
+      { current: 4, required: 10 },
+    ]);
+    expect(model.upcomingUnlocks[0]?.label).toContain('4/10');
+    expect(model.upcomingUnlocks[0]?.label).toContain('Zbieracz Drewna'); // the tracked path named
+  });
+
+  it('shows nothing while profession progression is off (the ProgressionRules singleton)', () => {
+    const snapshot = snapshotOf([
+      collector(1),
+      { id: 99, components: { ProgressionRules: { professionProgressionEnabled: false } } },
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), unlockCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.upcomingUnlocks).toEqual([]);
+    expect(model.experience.length).toBeGreaterThan(0); // trained rows still show — only promises hide
+  });
+});

@@ -12,6 +12,7 @@ export function ctxOf(sim: Simulation): UnitPanelModelContext {
     goods: sim.content.goods,
     jobs: sim.content.jobs,
     jobExperience: sim.content.jobExperience,
+    tribes: sim.content.tribes,
   };
 }
 

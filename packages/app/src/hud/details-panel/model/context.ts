@@ -14,6 +14,7 @@ export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
 export type JobDef = ContentSet['jobs'][number];
 export type JobExperienceDef = ContentSet['jobExperience'][number];
+export type TribeDef = ContentSet['tribes'][number];
 
 export interface UnitPanelModelContext {
   readonly buildings: readonly BuildingDef[];
@@ -24,6 +25,9 @@ export interface UnitPanelModelContext {
   /** The content experience tracks — the Doświadczenie rows resolve a specialization's label (its good
    *  or owning job) and its per-repeat accrual rate from here. */
   readonly jobExperience: readonly JobExperienceDef[];
+  /** The content tribes — the Doświadczenie section's upcoming-unlock rows read a settler tribe's
+   *  `needforjob` requirement table from here. */
+  readonly tribes: readonly TribeDef[];
 }
 
 export interface Comp {

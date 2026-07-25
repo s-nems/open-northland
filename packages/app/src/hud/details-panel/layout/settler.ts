@@ -157,8 +157,9 @@ export function layoutSettler(
   // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
   const workBodyH =
     WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
-  // The Doświadczenie body scales with the settler's trained specializations (empty when untrained).
-  const expRowCount = model.experience.length;
+  // The Doświadczenie body scales with the settler's trained specializations plus the dimmed
+  // upcoming-unlock rows under them (empty when untrained and nothing is in reach).
+  const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
