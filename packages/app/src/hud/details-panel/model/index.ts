@@ -40,8 +40,8 @@ import {
   satisfactionBars,
   settlerStatus,
   stanceLabel,
-  unlockProgressRows,
 } from './settler.js';
+import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
 
 /**
@@ -70,8 +70,8 @@ export {
   type EquipSlotModel,
   HUMANWINDOW,
   type SettlerPanelModel,
-  type UnlockProgressRowModel,
 } from './settler.js';
+export type { UnlockProgressRowModel } from './settler-unlocks.js';
 
 export interface MultiSettlerPanelModel {
   readonly kind: 'multi-settler';

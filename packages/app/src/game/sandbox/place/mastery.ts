@@ -1,13 +1,13 @@
 import type { ContentSet } from '@open-northland/data';
-import type { Simulation } from '@open-northland/sim';
+import { type Simulation, systems } from '@open-northland/sim';
 import { PRIMARY_TRIBE } from '../../rules.js';
 import { GATHERERS } from '../ids/index.js';
 
 /**
  * The starting XP that clears every `needforgood` gate on the sandbox's gatherable goods for
  * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums REPEATS
- * (raw XP / the track's `experienceFactor`) across its named tracks, so granting `amount × factor`
- * raw XP into its FIRST track satisfies it. Real extracted content gates iron/gold behind
+ * across its named tracks (`repeatsForExpType`), so granting `rawXpForRepeats(track, amount)`
+ * into its FIRST track satisfies it. Real extracted content gates iron/gold behind
  * clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5) — a fresh collector pinned to an iron
  * camp would never qualify and stands idle beside the deposit, so sandbox collectors spawn as
  * veterans instead. Empty on the synthetic sandbox content (it declares no requirements), keeping
@@ -31,9 +31,8 @@ export function gatherMasteryExperienceFor(
     if (req.requirement !== 'need' || req.target !== 'good' || !gathered.has(req.targetId)) continue;
     const trackId = req.experienceTypes[0];
     if (trackId === undefined) continue;
-    // A track-less expType (fight/TRAINING buckets) accrues at rate 1 — raw XP already is repeats.
-    const factor = content.jobExperience.find((t) => t.typeId === trackId)?.experienceFactor ?? 1;
-    byTrack.set(trackId, Math.max(byTrack.get(trackId) ?? 0, req.amount * factor));
+    const track = content.jobExperience.find((t) => t.typeId === trackId);
+    byTrack.set(trackId, Math.max(byTrack.get(trackId) ?? 0, systems.rawXpForRepeats(track, req.amount)));
   }
   return [...byTrack].sort((a, b) => a[0] - b[0]);
 }

@@ -57,6 +57,22 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
 }
 
 /**
+ * Repeats a raw XP total represents on an OPTIONAL track — the one reading of the `needfor*` repeats
+ * scale, shared by the sim gate (`experienceRequirementMet`), the panel's unlock forecast, and the
+ * sandbox mastery seeding, so the three can't drift. A track-less expType (the fight/TRAINING/scout
+ * buckets) accrues at rate 1, so its raw XP already is the repeat count.
+ */
+export function repeatsForExpType(track: HumanJobExperienceType | undefined, xp: number): number {
+  return track === undefined ? xp : experienceRepeats(xp, track);
+}
+
+/** The raw XP worth `repeats` on an optional track — {@link repeatsForExpType}'s inverse, for seeding
+ *  a veteran that must clear a repeats threshold (the sandbox gather-mastery stamp). */
+export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repeats: number): number {
+  return repeats * (track?.experienceFactor ?? 1);
+}
+
+/**
  * A production operator's current bonus fraction — the curve read on its job-GENERAL track (the same
  * track production XP accrues into): "baker 5" bakes half a bread extra per cycle. ZERO for a gone or
  * jobless operator, a profession with no general track, or one with no repeats yet. A carrier operator

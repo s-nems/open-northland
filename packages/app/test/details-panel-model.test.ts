@@ -602,7 +602,7 @@ describe('settler upcoming-unlock rows', () => {
   const SOLDIER_JOB = 33;
   const MET_JOB = 11;
   const FOREIGN_JOB = 12;
-  const unlockCtx = () => {
+  const unlockCtx = (): UnitPanelModelContext => {
     const base = sandboxCtx();
     const tribe = base.tribes[0];
     if (tribe === undefined) throw new Error('sandbox has no tribe');
@@ -647,7 +647,7 @@ describe('settler upcoming-unlock rows', () => {
           ],
         },
       ],
-    } as ReturnType<typeof sandboxCtx>;
+    };
   };
   const collector = (id: number) => ({
     id,

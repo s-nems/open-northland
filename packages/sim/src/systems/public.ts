@@ -31,6 +31,8 @@ export {
   experienceBonus,
   experienceRepeats,
   fightDamageBonus,
+  rawXpForRepeats,
+  repeatsForExpType,
   scoutVisionBonusNodes,
 } from './progression/bonus.js';
 export { FIGHT_EXPERIENCE_TYPE, SCOUT_EXPERIENCE_TYPE } from './progression/experience.js';
