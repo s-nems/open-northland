@@ -192,11 +192,6 @@ export const plContent = {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',
     },
-    progression: {
-      title: 'Rozwój zawodów wyłączony',
-      summary:
-        'Warsztat wymagający doświadczenia obsadza się od zera: scena startuje z wyłączonym rozwojem zawodów, więc każdy osadnik zna każdy fach, a panel osadnika nie obiecuje odblokowań.',
-    },
     family: {
       title: 'Śluby i dzieci',
       summary: 'Para bierze ślub z pocałunkiem; żona znosi jedzenie do domu i rodzi dziecko.',

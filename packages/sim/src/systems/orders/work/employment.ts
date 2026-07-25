@@ -29,6 +29,7 @@ import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
+import { settlerMeetsNeed } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial.js';
@@ -42,8 +43,11 @@ import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '.
  * a load sets it down first ({@link reidleAsJob} starts the drop atomic) so the old trade's haul isn't
  * teleported into the new job — it re-idles into the new trade once the load is on the ground.
  *
- * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, or an unknown
- * `jobType`.
+ * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, an unknown
+ * `jobType`, or a trade whose `needforjob` XP threshold this settler hasn't earned yet
+ * ({@link settlerMeetsNeed} — the tech tree's manual seam: a profession must be discovered through
+ * accrued repeats; the profession-progression toggle lifts the civilian gates, fighters stay
+ * barracks-gated either way).
  */
 export function setJob(
   world: World,
@@ -53,6 +57,8 @@ export function setJob(
   const e = command.entity;
   if (!isTradeAssignable(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
+  const s = world.get(e, Settler);
+  if (!settlerMeetsNeed(world, ctx, s.tribe, 'job', command.jobType, s.experience)) return; // unearned trade
   // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 

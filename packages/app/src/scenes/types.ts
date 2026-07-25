@@ -1,4 +1,3 @@
-import type { ContentSet } from '@open-northland/data';
 import type { CellTerrainMap, Simulation } from '@open-northland/sim';
 import type { FogModeName } from '../game/fog.js';
 
@@ -21,10 +20,6 @@ export interface SceneWorld {
   readonly terrain: CellTerrainMap;
   /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
   readonly build: (sim: Simulation) => void;
-  /** Derive this world's content from the resolved set (sandbox catalog or real content) — e.g. an
-   *  injected `needfor*` gate. MUST return a copy: the input can be the browser's shared memoized
-   *  real `ContentSet`, and mutating it would leak scene rules into every other world. */
-  readonly amendContent?: (content: ContentSet) => ContentSet;
   /** Opt back into the needs mechanic (hunger/fatigue/piety/enjoyment rise + starvation). Worlds
    *  default to needs off (an inspection unit must not starve mid-run — see `createSceneSim`);
    *  a scene that exercises needs/starvation sets this true. */

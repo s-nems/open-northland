@@ -1,4 +1,5 @@
 import type { Entity } from '@open-northland/sim';
+import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
@@ -97,6 +98,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     canvas,
     uiscale: opts.uiscale ?? 1,
     professions: opts.professions,
+    jobUnlocked: (ids, jobType) => jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
     },

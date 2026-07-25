@@ -49,6 +49,22 @@ export function professionProgressionEnabledIn(snapshot: WorldSnapshot): boolean
   return true;
 }
 
+/** A settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]` pairs)
+ *  parsed into a Map — shared by the panel's experience rows, its unlock forecast, and the profession
+ *  picker's qualification filter. Empty for a non-settler or a malformed field. */
+export function settlerExperienceOf(components: Readonly<Record<string, unknown>>): Map<number, number> {
+  const points = new Map<number, number>();
+  const exp = (components.Settler as { experience?: unknown } | undefined)?.experience;
+  if (!Array.isArray(exp)) return points;
+  for (const pair of exp) {
+    if (!Array.isArray(pair)) continue;
+    const spec = num(pair[0]);
+    const value = num(pair[1]);
+    if (spec !== undefined && value !== undefined) points.set(spec, value);
+  }
+  return points;
+}
+
 /** True when the entity is a settler / a building (carries the marker component). */
 export function isSettler(e: SnapshotEntity): boolean {
   return e.components.Settler !== undefined;

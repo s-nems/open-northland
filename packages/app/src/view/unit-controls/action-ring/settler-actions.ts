@@ -150,11 +150,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     onDismiss: (): void => closeJobWindow(),
   });
 
-  /** Open the profession list over the (hidden) ring. */
+  /** Open the profession list over the (hidden) ring, filtered to the selection's unlocked trades. */
   const openJobWindow = (): void => {
     mode = 'jobs';
     hideTransient();
-    picker.show();
+    picker.show((jobType) => opts.jobUnlocked(actionTargets, jobType));
   };
   /** Hide the list; step back to the default menu (unless we're already closing to `closed`). */
   const closeJobWindow = (): void => {

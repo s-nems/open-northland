@@ -154,8 +154,10 @@ export interface ProfessionPickerOptions {
 }
 
 export interface ProfessionPicker {
-  /** Reveal the backdrop + window (the caller has already switched the menu to its `jobs` mode). */
-  show(): void;
+  /** Reveal the backdrop + window (the caller has already switched the menu to its `jobs` mode),
+   *  offering only the professions `unlocked` admits — the tech tree's discovered set for the current
+   *  selection. A group whose every row is filtered out hides its header too. */
+  show(unlocked: (jobType: number) => boolean): void;
   /** Hide the backdrop + window. */
   hide(): void;
   /** Remove the backdrop + window from the DOM. */
@@ -183,10 +185,14 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
 
   const jobList = el('div', JOB_LIST_STYLE);
   jobList.className = 'opennorthland-job-list';
-  // Render the grouped menu top to bottom: a dim separator per category, then its clickable profession rows.
+  // Render the grouped menu top to bottom: a dim separator per category, then its clickable profession
+  // rows. The built groups are kept so `show` can filter rows to the selection's unlocked professions.
+  const groups: { header: HTMLElement; rows: { element: HTMLElement; jobType: number }[] }[] = [];
   for (const entry of opts.professions) {
     if (entry.kind === 'header') {
-      jobList.append(el('div', JOB_GROUP_STYLE, entry.label));
+      const header = el('div', JOB_GROUP_STYLE, entry.label);
+      groups.push({ header, rows: [] });
+      jobList.append(header);
       continue;
     }
     const row = el('button', JOB_ROW_STYLE, entry.label);
@@ -198,6 +204,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
       row.style.background = JOB_ROW_BG;
     });
     row.addEventListener('click', () => opts.onPick(entry.jobType));
+    groups[groups.length - 1]?.rows.push({ element: row, jobType: entry.jobType });
     jobList.append(row);
   }
   jobWindow.append(jobList);
@@ -207,7 +214,17 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   jobBackdrop.addEventListener('mousedown', () => opts.onDismiss());
 
   return {
-    show: (): void => {
+    show: (unlocked: (jobType: number) => boolean): void => {
+      // Filter to the selection's discovered professions; a fully-locked group hides its header too.
+      for (const group of groups) {
+        let visible = 0;
+        for (const row of group.rows) {
+          const offered = unlocked(row.jobType);
+          row.element.style.display = offered ? '' : 'none';
+          if (offered) visible += 1;
+        }
+        group.header.style.display = visible > 0 ? '' : 'none';
+      }
       jobBackdrop.style.display = 'block';
       jobWindow.style.display = 'block';
     },
