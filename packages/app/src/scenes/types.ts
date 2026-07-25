@@ -27,6 +27,11 @@ export interface SceneWorld {
   /** The fog-of-war mode (`setFogMode` enqueued at build; see `game/fog.ts`). Omit for no fog (the
    *  sim default); the browser `?fog=` flag overrides either way. */
   readonly fog?: FogModeName;
+
+  /** Set `false` to build the scene with profession progression off (`setProfessionProgression`
+   *  enqueued at build): every civilian trade staffs from zero XP. Omit for the sim default (gated);
+   *  the browser `?progression=` flag overrides either way. */
+  readonly progression?: boolean;
 }
 
 /**

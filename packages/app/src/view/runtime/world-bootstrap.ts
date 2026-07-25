@@ -10,6 +10,7 @@ import {
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
 import { fogModeParam } from '../../game/fog.js';
+import { progressionDisabled } from '../../game/progression.js';
 import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { mountMessage, navButton } from '../overlay.js';
@@ -84,6 +85,15 @@ export function haltOnMissingContent(err: Error): void {
 export function applyFogOverride(sim: Simulation, params: URLSearchParams): void {
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
+}
+
+/**
+ * Apply `?progression=off` to a freshly built sim: enqueue the free-start command (every settler knows
+ * every civilian trade; fighters stay barracks-gated). Absent or `on` enqueues nothing, so the command
+ * stream — and any golden derived from it — stays byte-identical to a pre-toggle run.
+ */
+export function applyProgressionOverride(sim: Simulation, params: URLSearchParams): void {
+  if (progressionDisabled(params)) sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
 }
 
 /** The minimap's ground colours from the real terrain set's per-type debug colours, as a spreadable

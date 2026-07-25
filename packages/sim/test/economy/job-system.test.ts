@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Building, JobAssignment, Position, Settler } from '../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Position,
+  Settler,
+  setProfessionProgression,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { setProfessionProgression } from '../../src/components/index.js';
 import { grantWorkExperience, jobSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';

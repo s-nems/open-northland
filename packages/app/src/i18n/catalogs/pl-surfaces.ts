@@ -34,6 +34,11 @@ export const plSurfaces = {
         detail: 'Cały teren jest znany od początku; jednostki wymagają aktualnego pola widzenia.',
       },
     },
+    progression: 'Rozwój zawodów',
+    progressionModes: {
+      on: 'Przez doświadczenie',
+      off: 'Wszystkie od początku',
+    },
     geometry: 'Siatka geometrii budynków',
     enabled: 'Włączone',
     disabled: 'Wyłączone',

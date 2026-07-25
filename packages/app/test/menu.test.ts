@@ -10,8 +10,14 @@ import {
   toggleVacantMode,
   wornByAnother,
 } from '../src/entries/menu/players/index.js';
-import { MENU_FOG_MODES, MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
+import {
+  MENU_FOG_MODES,
+  MENU_PROGRESSION_MODES,
+  MENU_SPEEDS,
+  targetSearch,
+} from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
+import { progressionDisabled } from '../src/game/progression.js';
 
 /**
  * The menu's `/maps-index` narrowing (the JSON boundary between the dev-server middleware and the
@@ -262,11 +268,11 @@ describe('roster state', () => {
 describe('targetSearch', () => {
   it('carries only player-facing game settings into the selected entry', () => {
     const current = new URLSearchParams(
-      'lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
+      'lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
     );
 
     expect(targetSearch('?scene=sandbox', current)).toBe(
-      '?lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&scene=sandbox',
+      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&debug=geometry&scene=sandbox',
     );
   });
 
@@ -276,6 +282,14 @@ describe('targetSearch', () => {
 
   it('offers only the three player-facing fog modes', () => {
     expect(MENU_FOG_MODES).toEqual(['off', 'reveal', 'recon']);
+  });
+
+  it('offers the two profession-progression modes, defaulting to gated', () => {
+    expect(MENU_PROGRESSION_MODES).toEqual(['on', 'off']);
+    expect(progressionDisabled(new URLSearchParams(''))).toBe(false); // absent = original gating
+    expect(progressionDisabled(new URLSearchParams('progression=on'))).toBe(false);
+    expect(progressionDisabled(new URLSearchParams('progression=off'))).toBe(true);
+    expect(progressionDisabled(new URLSearchParams('progression=nonsense'))).toBe(false);
   });
 
   it('defaults maps to classic fog when no mode was selected', () => {

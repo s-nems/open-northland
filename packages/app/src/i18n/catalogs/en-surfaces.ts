@@ -34,6 +34,11 @@ export const enSurfaces = {
         detail: 'All terrain is known from the start; units require current vision.',
       },
     },
+    progression: 'Profession progression',
+    progressionModes: {
+      on: 'Through experience',
+      off: 'All unlocked from start',
+    },
     geometry: 'Building geometry grid',
     enabled: 'Enabled',
     disabled: 'Disabled',
