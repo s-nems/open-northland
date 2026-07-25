@@ -32,18 +32,19 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   const ticksPerFrame = Math.max(1, ref.ticksPerFrame ?? 1);
   const step = Math.floor(clock / ticksPerFrame);
   // A FrameListAnim (the `[gfxanimatomic]` directional action layout) selects its facing's explicit
-  // list and plays it once: draw id = pool start + the local entry at the clamped step. An
-  // empty/absent list holds frame 0.
+  // list and plays it: draw id = pool start + the local entry at the step. An empty/absent list holds
+  // frame 0.
   if ('frameLists' in ref) {
     const lists = ref.frameLists;
     if (lists.length === 0) return ref.start;
     const list = lists[wrap(facing, lists.length)];
     if (list === undefined || list.length === 0) return ref.start;
-    // Past the list's end the sprite returns to the first entry — the tool-ready stance on every list —
-    // instead of wrapping into a replay: the stonecrush/shovel lists end mid-motion, so holding the last
-    // entry froze the digger in half a swing, and a duration longer than its list (the mushroom pluck)
-    // would stutter back through the motion.
-    const idx = step < list.length ? step : 0;
+    // One-shot default: past the list's end the sprite returns to the first entry — the tool-ready
+    // stance on every list — instead of wrapping into a replay: the stonecrush/shovel lists end
+    // mid-motion, so holding the last entry froze the digger in half a swing, and a duration longer
+    // than its list (the mushroom pluck) would stutter back through the motion. `loop` wraps instead
+    // (an idle wait cycle on the endless free tick clock).
+    const idx = ref.loop === true ? wrap(step, list.length) : step < list.length ? step : 0;
     return ref.start + (list[idx] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);
