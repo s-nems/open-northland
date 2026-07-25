@@ -6,8 +6,12 @@ import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { layoutBuildingMenu, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
-import { defaultAssistantState, layoutExtrasMenu } from '../src/hud/tool-panel/extras-menu.js';
-import { createExtrasWindow } from '../src/hud/tool-panel/extras-window.js';
+import {
+  type AssistantGrantId,
+  defaultAssistantState,
+  layoutExtrasMenu,
+} from '../src/hud/tool-panel/extras-menu.js';
+import { createExtrasWindow, type ExtrasGrantsSeam } from '../src/hud/tool-panel/extras-window.js';
 import { layoutGoodsMenu, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 import { createGoodsWindow } from '../src/hud/tool-panel/goods-window.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
@@ -341,6 +345,32 @@ describe('placement controller', () => {
 });
 
 describe('extras window controller', () => {
+  /** A stateful stand-in for the sim grant seam: `read()` serves what `set()` stored (as if the
+   *  command already applied), and `writes` records every toggle the window pushed through. */
+  function stubGrantsSeam(initial?: Partial<Record<AssistantGrantId, boolean>>): {
+    seam: ExtrasGrantsSeam;
+    writes: [AssistantGrantId, boolean][];
+  } {
+    const state: Record<AssistantGrantId, boolean> = {
+      giveBoots: true,
+      giveWoodenTools: true,
+      giveIronTools: true,
+      giveMead: true,
+      ...initial,
+    };
+    const writes: [AssistantGrantId, boolean][] = [];
+    return {
+      seam: {
+        read: () => ({ ...state }),
+        set: (id, enabled) => {
+          writes.push([id, enabled]);
+          state[id] = enabled;
+        },
+      },
+      writes,
+    };
+  }
+
   /** The same layout the controller builds internally (same origin formula + default state):
    *  right of the strip, dropping from the extras (chest) button. */
   function expectedLayout(ctx: PanelContext) {
@@ -356,7 +386,7 @@ describe('extras window controller', () => {
 
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
     const { ctx } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
     const geo = expectedLayout(ctx);
 
     expect(extras.isOpen()).toBe(false);
@@ -374,7 +404,8 @@ describe('extras window controller', () => {
 
   it('steppers and switches mutate the drawn state, which survives close/reopen', () => {
     const { ctx, made } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const { seam, writes } = stubGrantsSeam();
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: seam });
     const geo = expectedLayout(ctx);
     extras.toggle();
 
@@ -383,14 +414,16 @@ describe('extras window controller', () => {
     made.length = 0;
     expect(extras.handleClick(plus.x, plus.y)).toBe(true);
     expect(made).toContain('1');
+    expect(writes).toEqual([]); // a counter is UI-only, never a sim write
 
-    // The mead switch flips its face to OFF.
+    // The mead switch flips its face to OFF and writes the toggle through the seam.
     const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
     made.length = 0;
     expect(extras.handleClick(sw.x, sw.y)).toBe(true);
     expect(made).toContain(messages().hud.extras.off);
+    expect(writes).toEqual([['giveMead', false]]);
 
-    // Close and reopen: the session settings persist (counter 1, mead still OFF).
+    // Close and reopen: the counter persists locally, the mead switch reads back from the seam.
     extras.toggle();
     made.length = 0;
     extras.toggle();
@@ -398,9 +431,24 @@ describe('extras window controller', () => {
     expect(made).toContain(messages().hud.extras.off);
   });
 
+  it('reads the switch faces from the sim seam on every open', () => {
+    const { ctx, made } = stubContext();
+    const { seam } = stubGrantsSeam({ giveIronTools: false });
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: seam });
+
+    extras.toggle();
+    expect(made).toContain(messages().hud.extras.off); // the iron-tools switch mirrors the sim
+
+    extras.toggle(); // close
+    seam.set('giveIronTools', true); // the sim state moved while the window was closed
+    made.length = 0;
+    extras.toggle();
+    expect(made).not.toContain(messages().hud.extras.off); // every switch reads back ON
+  });
+
   it('the plans tab replaces the controls with the placeholder; clicks there are inert but consumed', () => {
     const { ctx, made } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
     const geo = expectedLayout(ctx);
     extras.toggle();
 
@@ -419,7 +467,7 @@ describe('extras window controller', () => {
 
   it('does not consume clicks outside the open window', () => {
     const { ctx } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container() });
+    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
     extras.toggle();
     expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(extras.isOpen()).toBe(true);

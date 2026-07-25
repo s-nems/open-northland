@@ -38,6 +38,7 @@ export const GOOD_BREAD = 119;
 export const GOOD_FOOD_SIMPLE = 116;
 export const GOOD_FOOD_EXTRA = 117;
 export const GOOD_SHOES = 130;
+export const GOOD_TOOL_WOODEN = 131;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
 // Weapon goods — the equippable side of the weapons. A settler carrying one in its `Equipment.weapon`
@@ -105,7 +106,7 @@ export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
     uses: SHOE_USES,
   },
   {
-    typeId: 131,
+    typeId: GOOD_TOOL_WOODEN,
     id: 'tool_wooden',
     category: 'tool',
     wears: true,

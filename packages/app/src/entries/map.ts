@@ -30,6 +30,7 @@ import {
 } from '../game/sandbox/index.js';
 import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import { grantAssistantDefaults } from '../view/assistant-grants.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { aiSeatsParam } from '../view/params.js';
@@ -222,6 +223,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   for (const seat of aiSeatsParam(params)) {
     sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
+
+  // The session seat's assistant starts with every chest-window grant ON (a playable-map default;
+  // scenes stay neutral fixtures, like the needs toggle).
+  grantAssistantDefaults(sim, sim.content, localPlayer);
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
   // actually work them, not just see render-only decor.

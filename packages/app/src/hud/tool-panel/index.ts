@@ -9,7 +9,7 @@ import { clientToCanvas } from '../geometry.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
-import { createExtrasWindow } from './extras-window.js';
+import { createExtrasWindow, type ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
@@ -65,6 +65,8 @@ export interface ToolPanelOptions {
   readonly owner: number;
   /** Submit a command into the sim (the one-way seam) — the building menu's `placeBuilding`. */
   readonly enqueue: (command: Command) => void;
+  /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
+  readonly grants: ExtrasGrantsSeam;
   /** Convert a client (CSS) point to a map tile, or `null` off the map — the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`) — gates the placement click, so a
@@ -226,7 +228,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     container: windowContainer,
     onPick: (goodType) => goodsDrop.enter(goodType),
   });
-  const extras = createExtrasWindow({ ctx, container: windowContainer });
+  const extras = createExtrasWindow({ ctx, container: windowContainer, grants: opts.grants });
   const stats = createStatsWindow({ ctx, container: windowContainer });
 
   // --- The game-speed button (its own controller — see speed-button.ts) --------------------------------

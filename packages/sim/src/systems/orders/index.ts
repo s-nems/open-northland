@@ -1,3 +1,4 @@
+export * from './assistant.js';
 export * from './combat.js';
 export * from './equipment.js';
 export * from './family.js';

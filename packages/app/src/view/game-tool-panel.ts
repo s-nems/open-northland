@@ -4,6 +4,7 @@ import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
+import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
@@ -45,6 +46,8 @@ export interface GameToolPanelDeps {
   readonly tribe: number;
   /** The player a placed building is owned by. */
   readonly owner: number;
+  /** The chest window's grant-switch seam for the session seat (view/assistant-grants.ts builds it). */
+  readonly grants: ExtrasGrantsSeam;
   /** UI string language (`pol`/`eng`); defaults to Polish. */
   readonly lang?: string;
   /** Apply a game-speed change to the entry's loop control (drive the fixed-timestep multiplier / pause). */
@@ -145,6 +148,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     tribe: deps.tribe,
     owner: deps.owner,
     enqueue: deps.enqueue,
+    grants: deps.grants,
     screenToTile: clientToTile,
     canPlaceAt: deps.canPlaceAt,
     onSpeedChange: deps.onSpeed,

@@ -186,8 +186,8 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  // One value past the last explicit case (37), so the default arm (setJob) stays reachable.
-  const roll = rng.int(39);
+  // One value past the last explicit case (38), so the default arm (setJob) stays reachable.
+  const roll = rng.int(40);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -497,6 +497,16 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         group: pick(rng, EQUIP_GROUPS),
         slot: rng.int(6) - 1,
+      };
+    case 38:
+      // An assistant-grant flip: valid players (the AssistantGrants carrier created/updated/
+      // destroyed, and the dispatch pre-pass then hands gear out mid-stream) + an out-of-range one
+      // (skipped, still logged); wearable, non-wearable and unknown goods hit every validation path.
+      return {
+        kind: 'setAssistantGrant',
+        player: pick(rng, OWNERS),
+        goodType: pick(rng, EQUIP_ORDER_GOODS),
+        enabled: rng.int(2) === 0,
       };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.

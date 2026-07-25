@@ -24,6 +24,7 @@ import {
   marry,
   moveUnit,
   placeSignpost,
+  setAssistantGrant,
   setCraftGoods,
   setGatherGood,
   setJob,
@@ -133,6 +134,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'unequipGood':
       unequipGood(world, ctx, command);
+      return;
+    case 'setAssistantGrant':
+      setAssistantGrant(world, ctx, command);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

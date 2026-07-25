@@ -1,0 +1,235 @@
+import { describe, expect, it } from 'vitest';
+import {
+  AssistantGrants,
+  Equipment,
+  type EquipmentSlot,
+  EquipOrder,
+  MISC_EQUIP_SLOTS,
+  Owner,
+  Position,
+  Settler,
+  Stockpile,
+  setNeedsEnabled,
+} from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { fx, Simulation } from '../../src/index.js';
+import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/agents/assistant-grants.js';
+import { testContent } from '../fixtures/content.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+
+/**
+ * The assistant's auto-equip: a granted good is fetched by settlers with a matching free slot, one
+ * errand per settler, throttled (never more fetchers than store stock, never more than the in-flight
+ * cap at once). Fixture goods: 8 = shoes / 10 = fur_boots (boots), 11 = tool_wooden (+30%) /
+ * 12 = tool_iron (+60%) (tools), 13 = mead (misc); 1 = wood (not wearable).
+ */
+
+const SHOES = 8;
+const FUR_BOOTS = 10;
+const TOOL_WOODEN = 11;
+const TOOL_IRON = 12;
+const MEAD = 13;
+const WOOD = 1;
+const WOODCUTTER = 1;
+const VIKING = 1;
+const HUMAN_PLAYER = 0;
+const RIVAL_PLAYER = 1;
+
+/** Enough ticks for a stride beat (24) plus a fetch across the small map and the return leg. */
+const ERRAND_TICKS = 600;
+
+function freshSim(): Simulation {
+  const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 6) });
+  setNeedsEnabled(sim.world, false); // isolate the errands from the needs drives
+  return sim;
+}
+
+function ownedSettler(sim: Simulation, x: number, y: number, player = HUMAN_PLAYER): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: WOODCUTTER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map(),
+  });
+  sim.world.add(e, Owner, { player });
+  return e;
+}
+
+/** A loose ground pile holding `amount` of `goodType` at visual cell (x,y). */
+function pileAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Stockpile, { amounts: new Map([[goodType, amount]]) });
+  return e;
+}
+
+function wearBoots(sim: Simulation, e: Entity, goodType: number): void {
+  sim.world.add(e, Equipment, {
+    boots: { goodType, degreeOfUse: fx.fromInt(0) },
+    tool: null,
+    weapon: null,
+    armor: null,
+    misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+  });
+}
+
+function grant(sim: Simulation, goodType: number, enabled = true, player = HUMAN_PLAYER): void {
+  sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled });
+}
+
+/** Step one tick at a time, recording the highest concurrent acquire-stage fetch count seen. */
+function runTrackingFetches(sim: Simulation, ticks: number): number {
+  let peak = 0;
+  for (let i = 0; i < ticks; i++) {
+    sim.run(1);
+    let fetching = 0;
+    for (const e of sim.world.query(EquipOrder)) {
+      const order = sim.world.get(e, EquipOrder);
+      if (order.stage === 'acquire' && order.goodType !== null) fetching++;
+    }
+    peak = Math.max(peak, fetching);
+  }
+  return peak;
+}
+
+describe('setAssistantGrant - the per-player grant list', () => {
+  it('grants accumulate sorted, revoke removes, the empty list drops the carrier', () => {
+    const sim = freshSim();
+    grant(sim, MEAD);
+    grant(sim, SHOES);
+    sim.run(1);
+    expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([SHOES, MEAD]);
+    expect(sim.assistantGrants(RIVAL_PLAYER)).toEqual([]);
+
+    grant(sim, SHOES, false);
+    sim.run(1);
+    expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([MEAD]);
+
+    grant(sim, MEAD, false);
+    sim.run(1);
+    expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]);
+    expect([...sim.world.query(AssistantGrants)]).toHaveLength(0); // the empty carrier is dropped
+  });
+
+  it('refuses a non-wearable good and an out-of-range player', () => {
+    const sim = freshSim();
+    grant(sim, WOOD);
+    sim.enqueue({ kind: 'setAssistantGrant', player: 99, goodType: SHOES, enabled: true });
+    sim.run(1);
+    expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]);
+    expect(sim.assistantGrants(99)).toEqual([]);
+  });
+});
+
+describe('assistant auto-equip - dispatch, reservation, trickle', () => {
+  it('dresses a settler with a free slot from a reachable pile, unprompted', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false); // the errand completed and released
+  });
+
+  it('never sends two settlers after the last unit', () => {
+    const sim = freshSim();
+    const first = ownedSettler(sim, 2, 2);
+    const second = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    const peak = runTrackingFetches(sim, ERRAND_TICKS);
+
+    expect(peak).toBe(1); // one pair, so at most one fetcher underway at any tick
+    const shod = [first, second].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
+    expect(shod).toHaveLength(1);
+  });
+
+  it('rolls a full village out as a trickle, capped fetchers at a time', () => {
+    const sim = freshSim();
+    const settlers = [2, 3, 4].flatMap((y) => [ownedSettler(sim, 2, y), ownedSettler(sim, 4, y)]);
+    pileAt(sim, 12, 2, SHOES, settlers.length);
+    grant(sim, SHOES);
+
+    const peak = runTrackingFetches(sim, 6 * ERRAND_TICKS);
+
+    expect(peak).toBeLessThanOrEqual(ASSISTANT_MAX_IN_FLIGHT);
+    expect(peak).toBeGreaterThan(0);
+    for (const e of settlers) {
+      expect(sim.world.get(e, Equipment).boots?.goodType).toBe(SHOES);
+    }
+  });
+
+  it('fills empty slots only and hands out one draught per settler', () => {
+    const sim = freshSim();
+    const booted = ownedSettler(sim, 2, 2);
+    wearBoots(sim, booted, FUR_BOOTS);
+    pileAt(sim, 12, 2, SHOES, 2);
+    pileAt(sim, 12, 4, MEAD, 3);
+    grant(sim, SHOES);
+    grant(sim, MEAD);
+
+    sim.run(2 * ERRAND_TICKS);
+
+    const eq = sim.world.get(booted, Equipment);
+    expect(eq.boots?.goodType).toBe(FUR_BOOTS); // never swapped by the assistant
+    expect(eq.misc.filter((s) => s?.goodType === MEAD)).toHaveLength(1); // one bottle, not four
+  });
+
+  it('prefers the stronger tool when both are granted and stocked', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    pileAt(sim, 12, 2, TOOL_WOODEN, 1);
+    pileAt(sim, 12, 4, TOOL_IRON, 1);
+    grant(sim, TOOL_WOODEN);
+    grant(sim, TOOL_IRON);
+
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).tool?.goodType).toBe(TOOL_IRON);
+  });
+
+  it('stops dispatching the moment the grant is revoked; an underway errand still finishes', () => {
+    const sim = freshSim();
+    const dressed = ownedSettler(sim, 2, 2);
+    const late = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, SHOES, 2);
+    grant(sim, SHOES);
+
+    // Run until exactly one fetch errand is underway, then revoke the grant mid-walk.
+    let dispatched = 0;
+    for (let i = 0; i < ERRAND_TICKS && dispatched === 0; i++) {
+      sim.run(1);
+      dispatched = [...sim.world.query(EquipOrder)].length;
+    }
+    expect(dispatched).toBe(1);
+    grant(sim, SHOES, false);
+    sim.run(2 * ERRAND_TICKS);
+
+    const shod = [dressed, late].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
+    expect(shod).toHaveLength(1); // the underway fetch completed, nobody new was sent
+  });
+
+  it('ignores settlers of a player with no grants and grants with no stock', () => {
+    const sim = freshSim();
+    const rival = ownedSettler(sim, 2, 2, RIVAL_PLAYER);
+    const poor = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES); // HUMAN_PLAYER only
+    grant(sim, MEAD); // granted but nothing anywhere holds mead
+
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.tryGet(rival, Equipment)?.boots?.goodType).toBeUndefined();
+    expect(sim.world.get(poor, Equipment).boots?.goodType).toBe(SHOES);
+    expect(sim.world.get(poor, Equipment).misc.every((s) => s === null)).toBe(true);
+  });
+});
