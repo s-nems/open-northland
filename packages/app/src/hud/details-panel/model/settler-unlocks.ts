@@ -1,8 +1,8 @@
 import { systems } from '@open-northland/sim';
-import { num } from '../../../game/snapshot.js';
+import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
-import { experienceLabel, experiencePairs } from './settler.js';
+import { experienceLabel } from './settler.js';
 
 /**
  * The Doświadczenie section's unlock forecast — the dimmed rows under the trained specializations
@@ -46,7 +46,7 @@ export function unlockProgressRows(
   if (jobType === undefined || tribe === undefined) return [];
   const tribeType = ctx.tribes.find((t) => t.typeId === tribe);
   if (tribeType === undefined) return [];
-  const points = experiencePairs(comps);
+  const points = settlerExperienceOf(comps);
   const rows: (UnlockProgressRowModel & { targetId: number })[] = [];
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== 'job') continue;

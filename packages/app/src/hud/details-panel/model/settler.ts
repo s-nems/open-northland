@@ -1,5 +1,5 @@
 import { components, fx, systems } from '@open-northland/sim';
-import { num } from '../../../game/snapshot.js';
+import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
 import {
@@ -276,24 +276,9 @@ function experienceBonusPct(
  * gathered; a track-less bucket (fight, scout) shows raw points. Labels via {@link experienceLabel},
  * percents via {@link experienceBonusPct}.
  */
-/** The settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]`
- *  pairs) parsed into a Map — shared by the trained rows and the unlock forecast. */
-export function experiencePairs(comps: Comp): Map<number, number> {
-  const points = new Map<number, number>();
-  const exp = (comps.Settler as Comp | undefined)?.experience;
-  if (!Array.isArray(exp)) return points;
-  for (const pair of exp) {
-    if (!Array.isArray(pair)) continue;
-    const spec = num(pair[0]);
-    const value = num(pair[1]);
-    if (spec !== undefined && value !== undefined) points.set(spec, value);
-  }
-  return points;
-}
-
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const rows: (ExperienceRowModel & { spec: number })[] = [];
-  for (const [spec, points] of experiencePairs(comps)) {
+  for (const [spec, points] of settlerExperienceOf(comps)) {
     if (points <= 0) continue;
     const track = ctx.jobExperience.find((t) => t.typeId === spec);
     const repeats = track !== undefined ? systems.experienceRepeats(points, track) : points;

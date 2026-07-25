@@ -13,6 +13,10 @@ export interface SettlerActionsOptions {
   readonly uiscale: number;
   /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
   readonly professions: readonly PickerEntry[];
+  /** Whether the whole current selection may take `jobType` right now — the picker offers only rows
+   *  this returns true for (the `needforjob` tech tree; the `setJob` command enforces the same gate
+   *  sim-side, so a hidden row could not have been obeyed anyway). */
+  readonly jobUnlocked: (ids: readonly number[], jobType: number) => boolean;
   /** Issue a `setJob` on every selected settler (the one-way command seam). */
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
   /** Arm the erect-signpost click-to-place mode for the selected scout(s) (the scout menu's button). */

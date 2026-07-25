@@ -191,11 +191,6 @@ export const enContent = {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',
     },
-    progression: {
-      title: 'Profession progression off',
-      summary:
-        'An experience-gated workshop staffs from zero: the scene starts with profession progression disabled, so every settler knows every trade and the settler panel promises no unlocks.',
-    },
     family: {
       title: 'Marriage and children',
       summary: 'A couple weds with a kiss; a married wife stocks the home with food and bears a child.',
