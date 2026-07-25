@@ -53,8 +53,9 @@ The document also contains a manifest:
 The remaining arrays are omitted from this example. Read the schema for the current complete list.
 
 `parseContentSet(raw)` performs Zod validation and cross-reference checks. `IR_VERSION` records the
-current schema version. A strict load-time version rejection is not implemented yet, so schema
-validation remains the effective compatibility gate.
+current schema version, and the manifest gate rejects any other stamp - older or newer - before the
+rest of the document is validated. The gate covers the `parseContentSet` seam only; the app's raw
+graphics/atlas view of the same document is a deliberate unchecked cast that falls back per lane.
 
 ## Where content lives in the source tree
 

@@ -16,9 +16,16 @@ import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
 import { GfxPattern, GfxPatternTransition, TrianglePatternType } from '../landscape/terrain.js';
 import { MapInfo } from '../maps/info.js';
 
+/** Current IR schema version, and the only stamp {@link IrManifest} accepts: content from another
+ *  build is rejected at the loader boundary rather than parsed field-by-field. Bump on a breaking shape change. */
+export const IR_VERSION = 1 as const;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.strictObject({
-  version: z.number().int().positive(),
+  version: z.literal(IR_VERSION, {
+    error: (issue) =>
+      `IR version mismatch: content reports ${String(issue.input)}, this build reads ${IR_VERSION}.`,
+  }),
   generatedFrom: z.strictObject({
     game: z.string(),
     mod: z.string().optional(),
@@ -66,6 +73,3 @@ export const ContentSet = z.strictObject({
   sounds: SoundBank.default({ staticGroups: [], ambient: [], jingles: [] }),
 });
 export type ContentSet = z.infer<typeof ContentSet>;
-
-/** Current IR schema version. Bump on breaking schema changes; sim checks the major. */
-export const IR_VERSION = 1 as const;

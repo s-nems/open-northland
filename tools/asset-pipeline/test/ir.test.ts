@@ -60,7 +60,6 @@ describe('buildIr / resolveIniSources', () => {
   it('reads the readable .ini sources and assembles a validated ContentSet', async () => {
     const set = await buildIr({ game, mod: game });
 
-    expect(set.manifest.version).toBe(1);
     expect(set.manifest.generatedFrom).toEqual({ game, mod: game });
     expect(set.goods.map((g) => g.id)).toEqual(['wood']);
     expect(set.goods[0]?.atomics.harvest).toBe(26);
