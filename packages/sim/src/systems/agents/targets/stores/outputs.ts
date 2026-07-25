@@ -47,12 +47,12 @@ export function nearestWorkplaceOutput(
   world: World,
   ctx: SystemContext,
   here: NodeId,
+  /** The carrier's owning player — never hauls another player's workplace output ({@link sameSideAs}). */
+  owner: number | undefined,
   /** The carrier's signpost confinement — an out-of-area workplace is not one it fetches from. */
   gate?: SpatialGate,
   /** The carrier's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
-  /** The carrier's owning player — never hauls another player's workplace output ({@link sameSideAs}). */
-  owner?: number,
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
   // qualify, and the good that qualified the winner is the good it hauls.

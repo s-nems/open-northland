@@ -97,13 +97,13 @@ export function nearestMissingInputSource(
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
+  /** The worker's owning player — never fetches/draws an input from another player's store or utility
+   *  ({@link sameSideAs}). */
+  owner: number | undefined,
   restockToCapacity = false,
   gate?: SpatialGate,
   /** The worker's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
-  /** The worker's owning player — never fetches/draws an input from another player's store or utility
-   *  ({@link sameSideAs}). */
-  owner?: number,
 ): MissingInputSource | null {
   const stock = world.get(workplace, Stockpile).amounts;
   const walls = buildingBlockedCells(world, ctx, terrain);

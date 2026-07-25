@@ -62,7 +62,7 @@ export function planWomanHoard(
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
-  const source = externalFood.nearest(hereNode, limit, unreachableGoalVeto(world, ctx, e), ownerOf(world, e));
+  const source = externalFood.nearest(hereNode, ownerOf(world, e), limit, unreachableGoalVeto(world, ctx, e));
   if (source === null) return false; // nothing to hoard — fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;

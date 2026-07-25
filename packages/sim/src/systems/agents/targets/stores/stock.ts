@@ -46,6 +46,10 @@ export function nearestStoreFor(
   ctx: SystemContext,
   here: NodeId,
   goodType: number,
+  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}).
+   *  Required so no call site can forget the side; pass an explicit `undefined` only for a truly
+   *  neutral scan. */
+  owner: number | undefined,
   /** Skip EVERY store whose building type PRODUCES `goodType` — the haul-OUT mode. A carrier
    *  clearing a producer's output must deliver to STORAGE, never to another producer of the same
    *  good: with two farms and no nearer warehouse, per-entity exclusion of only the carrier's own
@@ -57,8 +61,6 @@ export function nearestStoreFor(
   gate?: SpatialGate,
   /** The hauler's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
-  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}). */
-  owner?: number,
 ): Entity | null {
   return (
     index.nearest(
@@ -196,11 +198,11 @@ export function nearestStoreHolding(
   terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
+  /** The fetcher's owning player — never fetches from another player's store ({@link sameSideAs}). */
+  owner: number | undefined,
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
-  /** The fetcher's owning player — never fetches from another player's store ({@link sameSideAs}). */
-  owner?: number,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
   // accept just excludes sites, stores that don't hold the good, and buried piles. `gate` is the

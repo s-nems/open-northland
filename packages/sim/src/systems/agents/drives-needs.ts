@@ -182,9 +182,9 @@ export function planNeeds(
       world,
       ctx,
       here,
+      ownerOf(world, e),
       gate,
       unreachableGoalVeto(world, ctx, e),
-      ownerOf(world, e),
     );
     if (temple !== null) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>

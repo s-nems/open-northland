@@ -63,9 +63,9 @@ export class ExternalFoodIndex {
    */
   nearest(
     from: { hx: number; hy: number },
+    owner: number | undefined,
     gate: SpatialGate | null,
     avoid?: (cell: NodeId) => boolean,
-    owner?: number,
   ): { store: Entity; goodType: number } | null {
     if (this.candidates === undefined || this.buckets === undefined) {
       this.candidates = canonicalById(this.world.query(Stockpile, Position)).filter(

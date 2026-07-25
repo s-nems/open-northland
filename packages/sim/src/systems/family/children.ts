@@ -268,9 +268,9 @@ function driveOrder(
   const limit = terrain !== undefined ? navigationLimitFor(world, terrain, woman) : null;
   const source = externalFood.nearest(
     hereNode,
+    ownerOf(world, woman),
     limit,
     unreachableGoalVeto(world, ctx, woman),
-    ownerOf(world, woman),
   );
   if (source === null) return; // no reachable food outside homes — she waits (the order stands)
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
