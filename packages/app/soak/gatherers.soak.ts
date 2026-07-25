@@ -26,8 +26,19 @@ import { intEnv } from './knobs.js';
  * `ON_SOAK_STALL_TICKS`.
  */
 
-const { Carrying, CurrentAtomic, GatherSelection, Owner, Position, Resource, Settler, Stranded, WorkFlag } =
-  components;
+const {
+  Carrying,
+  CurrentAtomic,
+  GatherSelection,
+  Owner,
+  PathRequest,
+  Position,
+  Resource,
+  Settler,
+  Stranded,
+  SupplyRun,
+  WorkFlag,
+} = components;
 
 /** The reported session: every seat under AI, matching `ai=0,1,2,3,4,5`. */
 const AI_SEATS = [0, 1, 2, 3, 4, 5];
@@ -91,6 +102,34 @@ interface StallProbe {
   readonly nearestManhattan: number | null;
 }
 
+/** Per-tick tally of route-failure EPISODES (a {@link PathRequest} flipping to `failed`, counted once
+ *  per flip, not per parked tick) plus how many parked settlers entered the park holding a live
+ *  {@link SupplyRun} errand. */
+class RouteFailureTally {
+  episodes = 0;
+  strandedWithSupplyRun = 0;
+  private readonly failedLast = new Set<number>();
+  private readonly strandedLast = new Set<number>();
+
+  observe(sim: Simulation): void {
+    const failedNow = new Set<number>();
+    for (const e of sim.world.query(PathRequest)) {
+      if (!sim.world.get(e, PathRequest).failed) continue;
+      failedNow.add(e);
+      if (!this.failedLast.has(e)) this.episodes++;
+    }
+    this.failedLast.clear();
+    for (const e of failedNow) this.failedLast.add(e);
+    const strandedNow = new Set<number>();
+    for (const e of sim.world.query(Stranded)) {
+      strandedNow.add(e);
+      if (!this.strandedLast.has(e) && sim.world.has(e, SupplyRun)) this.strandedWithSupplyRun++;
+    }
+    this.strandedLast.clear();
+    for (const e of strandedNow) this.strandedLast.add(e);
+  }
+}
+
 function probeStall(sim: Simulation, gatherer: Entity, goodType: number): StallProbe | null {
   const flag = sim.world.tryGet(gatherer, WorkFlag);
   if (flag === undefined) return null;
@@ -129,8 +168,10 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(mapId())))('gatherer idle-l
     expect(harvestJobs.size).toBeGreaterThan(0);
 
     const tracker = new StallTracker(stallTicks);
+    const failures = new RouteFailureTally();
     for (let i = 0; i < ticks; i++) {
       sim.step();
+      failures.observe(sim);
       if (sim.tick % sampleEveryTicks === 0) tracker.observe(sim.tick, sampleGatherers(sim, harvestJobs));
     }
     const stalls = tracker.finish();
@@ -145,6 +186,9 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(mapId())))('gatherer idle-l
         goodName,
         jobName,
       )}\n`,
+    );
+    console.log(
+      `route failures: ${failures.episodes} episode(s); parked settlers holding a SupplyRun: ${failures.strandedWithSupplyRun} episode(s)\n`,
     );
     // Probe the still-flagged stalled collectors. Iterating the live query (rather than the report)
     // is what keeps the branded `Entity` — the pure tracker knows entities only as plain numbers.

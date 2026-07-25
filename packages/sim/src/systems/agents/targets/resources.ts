@@ -2,7 +2,7 @@ import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import { buildingBlockedCells, dynamicBlockOverlay } from '../../footprint/index.js';
+import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
@@ -40,24 +40,20 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * what its workplace stores); omitted = every good the job may harvest.
  *
  * The reachability gate below rejects both a target in a different static component (the far bank of a river)
- * and one whose resolved work cell is a dynamically blocked goal — buried under a building — since `findPath`
- * rejects a blocked goal. This is what stops a gatherer stranding on a footprint-empty clay/mud deposit a
+ * and one whose resolved work cell is a dynamically blocked goal - buried under a building, or a hemmed-in
+ * deposit's stance falling back to its own resource-blocked anchor - since `findPath` rejects a blocked
+ * goal. This is what stops a gatherer stranding on a footprint-empty clay/mud deposit a
  * house was legally placed over (those deposits reserve no build-block). What then happens to the deposit
  * depends on how its work cell resolves ({@link resourceWorkCell}): when a work cell lands ON the buried
  * anchor (the sandbox's anchor-inclusive clay areas) the deposit is skipped and left un-mined; a real
  * extracted record whose full-state work areas sit beside the anchor resolves to an adjacent cell instead, so
  * an edge-exposed deposit stays mineable from its open side. The strand is prevented either way; the
  * un-mined-vs-side-mined split is a named approximation tracked in
- * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. Separately, the check is per-goal, so a work
- * cell that is itself clear yet ringed by blockers (a sealed pocket with no route in) can still win the pick
- * and fail its path — route-level dynamic reachability is a follow-up
- * (`docs/tickets/sim/dynamic-route-reachability.md`). {@link unreachableGoals} blunts that case rather than
- * closing it: a goal this settler's route just failed on is skipped, so the pick falls through to the next
- * node instead of re-choosing the doomed one every retry. Two limits keep that a blunting rather than a
- * fix: where enclosed nodes outnumber routable ones and sit nearer — measured on dense iron/stone fields —
- * the bounded memo cycles; and the memo keys the failed CELL, while a multi-work-cell deposit re-resolves
- * against the settler's moved position, so the same deposit can win again through a neighbouring cell.
- * Both are what the ticket's route-aware pick is for.
+ * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. A work cell that is itself clear yet
+ * sealed inside blocker walls is vetoed by the route-region memo ({@link routeRegions}), whole pocket
+ * at a time, however many nodes it holds. {@link unreachableGoals} stays as the time-bounded blunting
+ * for the cases that memo's `unroutable` contract declines to prove (unit-body walls, over-cap
+ * pockets, split open regions).
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
@@ -129,15 +125,18 @@ export function nearestHarvestableFor(
       scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
     }
   }
-  // The memoized building walk-block set the reachability gate probes below — resolved once per scan (after
-  // the dormancy early-return, so a settler with no harvestable atomic never pays for it). Only the building
-  // layer is needed: `resourceWorkCell` already resolves a work cell clear of resource footprints, so a
-  // building placed over the deposit is the sole extra blocker the pick must still rule out. Reading the
-  // shared memo (not composing a `dynamicBlockOverlay` view) keeps this allocation-free per gatherer per tick.
-  const buildingBlocked = buildingBlockedCells(world, ctx, terrain);
+  // The composed walk-block view the goal gate probes below - resolved once per scan (after the
+  // dormancy early-return, so a settler with no harvestable atomic never pays for it). Both layers
+  // are needed: buildings can bury a deposit's work cell, and a deposit hemmed in by its neighbours'
+  // footprints resolves its stance to its own resource-blocked anchor (resourceStanceCells' last
+  // fallback).
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
   // Cells this settler's own routes just failed to reach — skipped so the re-plan moves on to the next
   // node instead of re-choosing the doomed one it parked on ({@link unreachableGoals}).
   const unreachable = unreachableGoals(world, ctx, plan.entity);
+  // The sealed-pocket veto ({@link routeRegions}) - probed last in the accept, so a candidate rejected
+  // by the cheap gates never costs a region flood.
+  const regions = routeRegions(world, ctx, terrain);
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
@@ -159,15 +158,17 @@ export function nearestHarvestableFor(
     // array read (a build-time flood-fill). Measured from `here`, the settler's actual route start (bridges
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
-    // Dynamic reachability: a work cell buried under a building is a blocked goal `findPath` rejects, so skip
-    // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups). The
-    // settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
-    if (cell !== here && buildingBlocked.has(cell)) return null;
+    // Dynamic reachability: an overlay-blocked work cell is a blocked goal `findPath` rejects, so skip
+    // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups).
+    // The settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
+    if (cell !== here && blocked.has(cell)) return null;
     // Same self-exemption: a deposit under the settler's own feet needs no walk, so a stale memo entry
     // for that cell must not veto it.
     if (cell !== here && isUnreachableGoal(unreachable, cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
+    // A clear cell sealed off from the settler - provably no route, so fall through to reachable work.
+    if (regions.unroutable(here, cell)) return null;
     return { cell, payload: null };
   });
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
