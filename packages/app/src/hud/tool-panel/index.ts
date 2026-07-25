@@ -9,6 +9,7 @@ import { clientToCanvas } from '../geometry.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
+import { createExtrasWindow } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
@@ -225,6 +226,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     container: windowContainer,
     onPick: (goodType) => goodsDrop.enter(goodType),
   });
+  const extras = createExtrasWindow({ ctx, container: windowContainer });
   const stats = createStatsWindow({ ctx, container: windowContainer });
 
   // --- The game-speed button (its own controller — see speed-button.ts) --------------------------------
@@ -250,14 +252,25 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         placement.cancel();
         goodsDrop.cancel();
         goodsWindow.close();
+        extras.close();
         menu.toggle();
         break;
       case 'extras':
-        // The goods drop palette — "put a good on the ground" (`dropGood`). Mutually exclusive with the
-        // build menu / building placement (one held thing at a time).
+        // The chest window — the assistant's counters and grant switches (+ the empty plans tab).
         placement.cancel();
         goodsDrop.cancel();
         menu.close();
+        goodsWindow.close();
+        extras.toggle();
+        break;
+      case 'mission':
+        // Temporary home for the goods drop palette — "put a good on the ground" (`dropGood`) — until
+        // the mission window exists. Mutually exclusive with the build menu / building placement (one
+        // held thing at a time).
+        placement.cancel();
+        goodsDrop.cancel();
+        menu.close();
+        extras.close();
         goodsWindow.toggle();
         break;
       case 'statistics':
@@ -268,7 +281,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         opts.onSystemMenu?.();
         break;
       default:
-        // mission / diplomacy / population / tech_tree — not wired in v1.
+        // diplomacy / population / tech_tree — not wired in v1.
         break;
     }
   };
@@ -282,6 +295,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     if (pointOverToolPanel(layout, x, y)) return true;
     if (menu.claims(x, y)) return true;
     if (goodsWindow.claims(x, y)) return true;
+    if (extras.claims(x, y)) return true;
     if (stats.claims(x, y)) return true;
     // Placement / good-drop claim the whole canvas until placed/cancelled.
     if (placement.isActive() || goodsDrop.isActive()) return true;
@@ -321,6 +335,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       consumed = menu.handleClick(x, y);
     }
     if (!consumed) consumed = goodsWindow.handleClick(x, y);
+    if (!consumed) consumed = extras.handleClick(x, y);
     if (!consumed) consumed = stats.handleClick(x, y);
     if (!consumed) consumed = placement.handleClick(e.clientX, e.clientY);
     if (!consumed) consumed = goodsDrop.handleClick(e.clientX, e.clientY);
@@ -347,7 +362,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    if (menu.handleWheel(x, y, e.deltaY) || stats.claims(x, y)) e.preventDefault();
+    if (menu.handleWheel(x, y, e.deltaY) || extras.claims(x, y) || stats.claims(x, y)) e.preventDefault();
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -379,7 +394,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
-    return menu.claims(x, y) || goodsWindow.claims(x, y) || stats.claims(x, y);
+    return menu.claims(x, y) || goodsWindow.claims(x, y) || extras.claims(x, y) || stats.claims(x, y);
   };
 
   return {
@@ -392,6 +407,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       // reflows on a resize; the goods window (its own factory), stats window + placement banner re-place.
       menu.refresh();
       if (goodsWindow.isOpen()) goodsWindow.place();
+      if (extras.isOpen()) extras.place();
       stats.refresh(hud);
       placement.placeBanner();
       goodsDrop.placeBanner();
