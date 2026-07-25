@@ -4,16 +4,12 @@ import {
   FOG_EXPLORED_ALPHA,
   FOG_UNEXPLORED_ALPHA,
   flatTileColour,
-  fogTileVisible,
-  ONE,
   type SceneTerrain,
-  tileToScreen,
 } from '@open-northland/render';
 import { FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { cellColourResolver } from '../../content/minimap-ground.js';
-import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import { forEachMinimapDot, type MinimapDotSink } from './dots.js';
 import { loadMinimapFrame } from './frame.js';
 import {
   type MinimapLayout,
@@ -46,17 +42,11 @@ const RASTER_OVERSAMPLE = 2;
  *  'full' keying opens the braid's near-black crevices, and without the underlap the world would show
  *  through a gap between braid and window. Must stay under the braid's thickness (16 px top strip). */
 const HOLE_UNDERLAP_NATIVE_PX = 8;
-/** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
-const SETTLER_DOT_PX = 2;
-const BUILDING_DOT_PX = 3;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
 // The fog mask alphas are the render layer's FOG_*_ALPHA constants — the minimap shares the world
 // wash's exact grading, so the two surfaces cannot drift.
-/** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
- *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
-const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 /** The letterbox bars + hole backdrop (matches the frame art's near-black window). */
 const HOLE_COLOUR = 0x000000;
 /** The flat fallback frame (bare checkout — no GUI art): parchment-dark border strokes. */
@@ -290,28 +280,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // change: a per-frame clear+stroke re-tessellates and forces the stage's instruction rebuild even
   // while the camera holds still.
   let lastViewRect: [number, number, number, number] = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+  const stampDotInto: MinimapDotSink = (bx, by, half, colour) =>
+    stampDot(dotsBuffer, dotsPxW, dotsPxH, bx, by, half, colour);
   const drawDots = (snapshot: WorldSnapshot, fog: FogView | null): void => {
     dotsBuffer.fill(0);
-    for (const e of snapshot.entities) {
-      const player = ownerPlayerOf(e);
-      if (player === undefined) continue; // neutral (piles, projectiles…) — the minimap shows forces
-      const settler = isSettler(e);
-      if (!settler && !isBuilding(e)) continue;
-      const pos = positionOf(e);
-      if (pos === undefined) continue;
-      // Fog: a dot only on currently-visible ground (the viewer's own forces always are — they see
-      // their own cell; an enemy in unexplored/grey ground stays off the minimap).
-      if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
-      const s = tileToScreen(pos.x / ONE, pos.y / ONE);
-      // Raster px coords — the buffer is 1:1 with the map picture's logical px.
-      const bx = (s.x - bounds.minX) * layout.scale;
-      const by = (s.y - bounds.minY) * layout.scale;
-      const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
-      const colourSlot = opts.playerColourOf?.(player) ?? player;
-      const colour =
-        PLAYER_SWATCH_COLORS[colourSlot % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
-      stampDot(dotsBuffer, dotsPxW, dotsPxH, bx, by, half, colour);
-    }
+    forEachMinimapDot(snapshot, fog, bounds, layout.scale, opts.playerColourOf, stampDotInto);
     dotsTexture.source.update();
   };
 
