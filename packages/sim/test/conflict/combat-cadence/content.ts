@@ -23,6 +23,7 @@ export const SOLDIER_SPEAR = 33;
 export const SOLDIER_SWORD_SHORT = 34;
 export const SOLDIER_SWORD_LONG = 35;
 export const SOLDIER_SABER = 36;
+export const HERO = 42; // hero band — its swings feed the `hero general` track (70), not soldier's (69)
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
 export const PLATE_CLASS = 4; // armor typeId/material 4
@@ -145,6 +146,7 @@ export function combatCadenceContent(): ContentSet {
       { typeId: 0, id: 'idle' },
       { typeId: WOMAN, id: 'woman' },
       ...soldierJobs.map((typeId) => ({ typeId, id: `soldier_${typeId}` })),
+      { typeId: HERO, id: 'hero' },
     ],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' as const }],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
@@ -211,7 +213,8 @@ export function combatCadenceContent(): ContentSet {
       // The stagger animation: length 50, zero events (purely visual flinch), NOT interruptible.
       { id: 'woman_attacked', name: 'woman_attacked', length: 50, interruptible: false },
     ],
-    // The `soldier general` track (type 69) whose experienceFactor is the per-swing fight-XP rate.
+    // The `soldier general` track (type 69) whose experienceFactor is the per-swing fight-XP rate,
+    // and the `hero general` sibling (70) the hero band accrues instead.
     jobExperience: [
       {
         typeId: 69,
@@ -220,6 +223,7 @@ export function combatCadenceContent(): ContentSet {
         jobType: SOLDIER_UNARMED,
         experienceFactor: 1,
       },
+      { typeId: 70, id: 'hero_general', name: 'hero general', jobType: HERO, experienceFactor: 1 },
     ],
   });
 }

@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
-import { SCOUT_JOB } from '../readviews/stances.js';
+import { isHeroBandJob, isSoldierBandJob, SCOUT_JOB } from '../readviews/stances.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -176,8 +176,14 @@ export const FIGHT_EXPERIENCE_TYPE = {
 /** The `humanjobexperiencetypes` track whose `experienceFactor` sets the per-swing fight-XP rate — the
  *  `soldier general` track (`type 69`, factor 1 in the base data). The fight buckets
  *  ({@link FIGHT_EXPERIENCE_TYPE}) have no record of their own, so a fight swing accrues this track's factor
- *  into the weapon's bucket. */
-const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
+ *  into the weapon's bucket. Soldier-band fighters also accrue the track itself — the `needforjob` gates for
+ *  the base soldier classes read it (viking `needforjob 31/32/34/40 5 69`). */
+export const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
+
+/** The `hero general` track (`type 70`, factor 1 in the base data) — the hero-band sibling of
+ *  {@link SOLDIER_GENERAL_EXPERIENCE_TYPE}: the hero-variant `needforjob` gates (42..47) read it. Only job 42
+ *  owns the track in content, so the whole hero band accrues it by band membership, not `generalTrackFor`. */
+export const HERO_GENERAL_EXPERIENCE_TYPE = 70;
 
 /**
  * The fight-XP bucket a weapon of coarse class `weaponMainType` ({@link WEAPON_MAIN_TYPE}) accrues into —
@@ -210,8 +216,13 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
  * a `(job, good)` specialization, a fight swing trains the weapon class, so better soldier classes unlock
  * through the same accrued-XP gate.
  *
- * No-ops when: the weapon has no `mainType` (an unarmed/mainType-less combatant), the weapon class has no
- * fight track (saber), the attacker is gone, or content carries no `soldier general` track (rate 0).
+ * A fighter-band attacker additionally accrues its band's general track (soldier→69, hero→70) — the
+ * `needforjob` gates for the base soldier classes and hero variants read those tracks, and the band grant
+ * stays independent of the bucket so a saber fighter (no weapon bucket) still feeds its class gates.
+ *
+ * No-ops when: the weapon has no `mainType` (an unarmed/mainType-less combatant), or the attacker is gone.
+ * The bucket half is skipped for a weapon class with no fight track (saber) or when content carries no
+ * `soldier general` track (rate 0); the band half is skipped for civilians and absent tracks.
  *
  * Approximated: the accrual trigger (per-damaging-swing) has no readable oracle — the original may accrue
  * per swing or per kill; per-damaging-swing is the deterministic reading. The XP→level→stat curve
@@ -224,13 +235,19 @@ export function grantFightExperience(
   weaponMainType: number | undefined,
 ): void {
   if (weaponMainType === undefined) return; // an unarmed / mainType-less weapon trains no fight class
-  const bucket = fightExperienceTypeFor(weaponMainType);
-  if (bucket === undefined) return; // a weapon class with no fight track (saber)
-  const rate = fightExperienceRate(ctx);
-  if (rate <= 0) return; // no `soldier general` track in content — nothing to accrue
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return; // attacker gone
-  accrueExperience(s, bucket, rate);
+  const bucket = fightExperienceTypeFor(weaponMainType);
+  const rate = fightExperienceRate(ctx);
+  if (bucket !== undefined && rate > 0) accrueExperience(s, bucket, rate);
+  const bandTrackId = isSoldierBandJob(s.jobType)
+    ? SOLDIER_GENERAL_EXPERIENCE_TYPE
+    : isHeroBandJob(s.jobType)
+      ? HERO_GENERAL_EXPERIENCE_TYPE
+      : undefined;
+  if (bandTrackId === undefined) return; // a civilian swing trains only the weapon bucket
+  const band = contentIndex(ctx.content).jobExperience.get(bandTrackId);
+  if (band !== undefined) accrueExperience(s, bandTrackId, band.experienceFactor);
 }
 
 /** The per-swing fight-XP rate — the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`

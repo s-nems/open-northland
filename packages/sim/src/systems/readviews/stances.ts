@@ -70,11 +70,20 @@ const HERO_JOB_MAX = 47;
  * their wandering.
  */
 export function isFighterJob(jobType: number | null): boolean {
-  if (jobType === null) return false;
-  return (
-    (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) ||
-    (jobType >= HERO_JOB_MIN && jobType <= HERO_JOB_MAX)
-  );
+  return isSoldierBandJob(jobType) || isHeroBandJob(jobType);
+}
+
+/** Whether `jobType` sits in the soldier band ({@link SOLDIER_JOB_MIN}..{@link SOLDIER_JOB_MAX}) — the
+ *  classes whose fight XP also feeds the `soldier general` track (only job 31 owns a general track, so
+ *  the whole band accrues it). */
+export function isSoldierBandJob(jobType: number | null): boolean {
+  return jobType !== null && jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX;
+}
+
+/** Whether `jobType` sits in the hero band ({@link HERO_JOB_MIN}..{@link HERO_JOB_MAX}) — the classes
+ *  whose fight XP also feeds the `hero general` track (only job 42 owns a general track). */
+export function isHeroBandJob(jobType: number | null): boolean {
+  return jobType !== null && jobType >= HERO_JOB_MIN && jobType <= HERO_JOB_MAX;
 }
 
 /**

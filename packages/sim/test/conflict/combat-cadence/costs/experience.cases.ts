@@ -6,6 +6,8 @@ import {
   combatSystem,
   FIGHT_EXPERIENCE_TYPE,
   FIGHT_MASTERY_HITS,
+  HERO_GENERAL_EXPERIENCE_TYPE,
+  SOLDIER_GENERAL_EXPERIENCE_TYPE,
   WEAPON_MAIN_TYPE,
 } from '../../../../src/systems/index.js';
 import {
@@ -13,12 +15,14 @@ import {
   ctxOf,
   fighterAt,
   grass,
+  HERO,
   IRON_SPEAR_DAMAGE,
   OTHER,
   SOLDIER_SPEAR,
   SOLDIER_UNARMED,
   startSwing,
   VIKING,
+  WOMAN,
 } from '../support.js';
 
 describe('atomicSystem — a damaging swing accrues fight XP into the weapon-class bucket', () => {
@@ -33,6 +37,7 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     const xp = sim.world.get(attacker, Settler).experience;
     expect(xp.get(FIGHT_EXPERIENCE_TYPE.SPEAR)).toBe(1); // soldier-general factor 1 per swing
     expect(xp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBeUndefined(); // only the spear bucket
+    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(1); // and the band's general track (69)
   });
 
   it('maps each weapon class to its fight bucket (sword → SWORD, fist → FIST)', () => {
@@ -48,7 +53,7 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     check(WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST);
   });
 
-  it('trains nothing on a 0-damage swing, and nothing for a class with no fight track (saber)', () => {
+  it('trains nothing on a 0-damage swing; a saber hit trains only the band track (no bucket)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -57,10 +62,33 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(attacker, Settler).experience.size).toBe(0);
 
-    // A saber (no JOB_EXPERIENCE_TYPE_FIGHT_SABER in the data) trains no fight bucket even when it hits.
+    // A saber (no JOB_EXPERIENCE_TYPE_FIGHT_SABER in the data) trains no fight BUCKET even when it
+    // hits — but a soldier-band swing still feeds the class-gate track (69).
     startSwing(sim, attacker, { target, damage: 400, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SABER }, 2);
     atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(attacker, Settler).experience.size).toBe(0);
+    const xp = sim.world.get(attacker, Settler).experience;
+    expect(xp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBe(1);
+    expect(xp.size).toBe(1); // no weapon bucket alongside it
+  });
+
+  it('routes the band track by job band: hero swings feed 70, civilian swings feed no band track', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(4, 1) });
+    const target = fighterAt(sim, 2, 0, OTHER, null, { hitpoints: 10_000 });
+
+    const hero = fighterAt(sim, 0, 0, VIKING, HERO);
+    startSwing(sim, hero, { target, damage: 400, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SWORD }, 2);
+    atomicSystem(sim.world, ctxOf(sim));
+    const heroXp = sim.world.get(hero, Settler).experience;
+    expect(heroXp.get(FIGHT_EXPERIENCE_TYPE.SWORD)).toBe(1);
+    expect(heroXp.get(HERO_GENERAL_EXPERIENCE_TYPE)).toBe(1); // the hero band's own track
+    expect(heroXp.get(SOLDIER_GENERAL_EXPERIENCE_TYPE)).toBeUndefined(); // never the soldier one
+
+    const civilian = fighterAt(sim, 1, 0, VIKING, WOMAN);
+    startSwing(sim, civilian, { target, damage: 100, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.UNARMED }, 2);
+    atomicSystem(sim.world, ctxOf(sim));
+    const civXp = sim.world.get(civilian, Settler).experience;
+    expect(civXp.get(FIGHT_EXPERIENCE_TYPE.FIST)).toBe(1); // the weapon bucket still trains
+    expect(civXp.size).toBe(1); // but no band track for a non-fighter
   });
 });
 
