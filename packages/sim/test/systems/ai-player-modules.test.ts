@@ -37,6 +37,7 @@ import {
 } from '../../src/systems/ai-player/index.js';
 import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { stampResourceFootprintData } from '../../src/systems/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -179,6 +180,20 @@ function doorHqContent(): ContentSet {
 
 function plantPostAtHq(sim: Simulation): void {
   plantPost(sim, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
+}
+
+/** A standing wall Resource whose footprint walk-blocks exactly `cells` — anchored on remote open
+ *  ground so the anchor's own node (which a Resource blocks for placement) seals nothing nearby. */
+function wallOver(sim: Simulation, cells: readonly { x: number; y: number }[]): void {
+  const anchor = { x: 2, y: 2 };
+  const wall = sim.world.create();
+  sim.world.add(wall, Position, positionOfNode(anchor.x, anchor.y));
+  sim.world.add(wall, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: WOOD_HARVEST });
+  stampResourceFootprintData(sim.world, wall, {
+    walk: cells.map((c) => ({ dx: c.x - anchor.x, dy: c.y - anchor.y })),
+    build: [],
+    work: [],
+  });
 }
 
 describe('workforce module (collectResources)', () => {
@@ -720,6 +735,76 @@ describe('signpost-coverage module (guideBuild)', () => {
     const doorway = interactionNode(sim.world, ctx, entityOfBuilding(sim, HQ_TYPE));
     expect(doorway).toEqual({ x: HQ_X + HQ_DOOR.dx, y: HQ_Y + HQ_DOOR.dy });
     expect({ x: order.x, y: order.y }).toEqual({ x: (doorway?.x ?? 0) - 2, y: doorway?.y });
+  });
+
+  it('skips a legal spot sealed inside a walk-block pocket instead of re-aiming at it every decision', () => {
+    // The overlay-sealed-target loop: the spot beside the door is clear ground, but a blocker ring
+    // seals it into a one-node pocket. The walk there fails, playerOrderSystem sheds the failed order
+    // before the stranded pacing can note it, and the module re-picks the same spot every decision.
+    // The chooser must refuse the provably sealed spot up front and settle nearby instead.
+    const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    // Seal the centre spot (doorway - 2, proven by the door test above) inside a ring of its eight
+    // lattice neighbours, leaving the spot itself clear ground both overlays accept.
+    const sealed = { x: HQ_X + HQ_DOOR.dx - 2, y: HQ_Y + HQ_DOOR.dy };
+    wallOver(
+      sim,
+      [
+        { dx: 1, dy: 0 },
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 },
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: 2 },
+        { dx: 1, dy: -2 },
+        { dx: -1, dy: 2 },
+        { dx: -1, dy: -2 },
+      ].map((o) => ({ x: sealed.x + o.dx, y: sealed.y + o.dy })),
+    );
+
+    const ctx = { ...ctxOf(sim), content: doorHqContent() };
+    const order = [...signpostCoverageModule.run(sim.world, ctx, SEAT)][0];
+    if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
+    expect({ x: order.x, y: order.y }).not.toEqual(sealed);
+    // Still the centre target: the pick settles on reachable ground within the same tolerance.
+    expect(withinNodeRadius(order.x, order.y, sealed.x, sealed.y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(
+      true,
+    );
+  });
+
+  it('fails open to the unvetoed search when the door itself is sealed in a pocket', () => {
+    // The inversion hazard: the veto judges spots from the HQ door, so a door sealed inside its own
+    // pocket would read every open-ground spot as unroutable and the module would stop erecting
+    // entirely. A pocketed reference must disable the veto, not invert it.
+    const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    // Wall the door's seven open lattice neighbours (the eighth, east, is the HQ body): the door
+    // becomes a one-node pocket.
+    const door = { x: HQ_X + HQ_DOOR.dx, y: HQ_Y + HQ_DOOR.dy };
+    wallOver(
+      sim,
+      [
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 },
+        { dx: 0, dy: -1 },
+        { dx: 1, dy: 2 },
+        { dx: 1, dy: -2 },
+        { dx: -1, dy: 2 },
+        { dx: -1, dy: -2 },
+      ].map((o) => ({ x: door.x + o.dx, y: door.y + o.dy })),
+    );
+
+    const ctx = { ...ctxOf(sim), content: doorHqContent() };
+    const order = [...signpostCoverageModule.run(sim.world, ctx, SEAT)][0];
+    if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
+    expect(withinNodeRadius(order.x, order.y, door.x - 2, door.y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(
+      true,
+    );
   });
 
   it('extends the lattice only where the settlement builds (the field grows with the buildings)', () => {

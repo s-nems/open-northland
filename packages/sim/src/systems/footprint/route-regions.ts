@@ -94,6 +94,21 @@ export class RouteRegions {
     return a !== b;
   }
 
+  /**
+   * Whether `node` provably sits in a sealed pocket. False for a blocked or unwalkable node and for
+   * everything the capped flood cannot prove - the same fail-open contract as {@link unroutable}.
+   * For a pick whose `from` is a proxy for the walker rather than its actual cell: a pocketed proxy
+   * inverts {@link unroutable} (every open spot reads unroutable), so such a pick must disable its
+   * veto instead.
+   */
+  pocketed(node: NodeId): boolean {
+    const cache = this.cache;
+    this.refresh(cache);
+    const { terrain, blocked } = cache;
+    if (!terrain.isWalkable(node) || blocked.has(node)) return false;
+    return this.regionOf(node) !== OPEN_REGION;
+  }
+
   /** Re-key the labels against the overlay inputs, invalidating every label when any moved. Ran per
    *  verdict (three generation reads), so a held instance can never serve a stale epoch. */
   private refresh(cache: RouteRegionCache): void {
