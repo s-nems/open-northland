@@ -1,5 +1,6 @@
 import {
   type Camera,
+  type DrawItem,
   type ElevationField,
   type EntityBounds,
   TILE_HALF_H,
@@ -41,6 +42,12 @@ export interface Pickable {
    * the deliberately generous box (a small sprite needs the slack to stay clickable).
    */
   readonly pixelHit?: ((wx: number, wy: number) => boolean | undefined) | undefined;
+}
+
+/** Whether a drawn item is something the cursor can be over: a fog ghost is a remembered static rather
+ *  than the live entity, and a portrait-only item was force-drawn through the frame's culls. */
+export function isHitTarget(item: DrawItem): boolean {
+  return item.ghost !== true && item.portraitOnly !== true;
 }
 
 /** A half-cell node coordinate (integer col,row on the `2W×2H` lattice), the target of a move order. */

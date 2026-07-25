@@ -281,9 +281,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: issueCommand,
+    drawnItems: () => renderer.drawnItems(),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
-    fogVisible: fogGates.visibleTile, // enemy right-click targets are fog-culled like the drawn scene
     claimPointer: (x: number, y: number) =>
       toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
     // The Magazyn stock-row name tooltip. Its own instance (not the ground one below): the two hover

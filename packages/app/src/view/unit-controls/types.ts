@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import type {
   BuildingHighlightItem,
   Camera,
+  DrawItem,
   ElevationField,
   EntityBounds,
   SpriteSheet,
@@ -31,10 +32,13 @@ export interface UnitControlsOptions {
    *  choices); absent = identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: Command) => void;
+  /** The renderer's culled, depth-sorted draw list for the last drawn frame (empty before the first) —
+   *  what a click hit-tests against, so selection and attack targeting inherit the frame's viewport and
+   *  fog culls instead of re-deriving them from the snapshot. */
+  readonly drawnItems: () => readonly DrawItem[];
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;
-  readonly fogVisible?: (tileX: number, tileY: number) => boolean;
   readonly tooltip?: {
     show(clientX: number, clientY: number, text: string): void;
     hide(): void;

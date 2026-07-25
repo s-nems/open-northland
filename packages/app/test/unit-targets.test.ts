@@ -1,0 +1,125 @@
+import { buildSpriteScene, type DrawItem, ONE } from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
+import { isSettler, ownerPlayerOf } from '../src/game/snapshot.js';
+import { createSceneSim, SCENES } from '../src/scenes/index.js';
+import { createUnitTargets, type UnitTargets } from '../src/view/unit-controls/unit-targets.js';
+
+/**
+ * A click may only reach what the renderer's frame actually drew, while an ORDER must reach the whole
+ * selection — including units the camera panned away from and one standing inside a building. The siege
+ * scene supplies both sides: a human warband facing a red base of enemy buildings and defenders.
+ */
+describe('unit-controls targets over the renderer frame', () => {
+  let snapshot: WorldSnapshot;
+  let fullScene: DrawItem[];
+
+  beforeEach(() => {
+    const scene = SCENES.find((s) => s.id === 'siege');
+    if (scene === undefined) throw new Error('siege scene missing');
+    const sim = createSceneSim(scene);
+    sim.run(2); // drain the scene's spawn/placement commands
+    snapshot = sim.snapshot();
+    fullScene = buildSpriteScene(snapshot);
+  });
+
+  const targetsOver = (drawn: readonly DrawItem[]): UnitTargets =>
+    createUnitTargets({
+      snapshot: () => snapshot,
+      humanPlayer: HUMAN_PLAYER,
+      observer: false,
+      drawnItems: () => drawn,
+      boundsOf: undefined,
+      pixelHitOf: undefined,
+    });
+
+  const ownerOf = (ref: number): number | undefined => {
+    const entity = snapshot.entities.find((e) => e.id === ref);
+    return entity === undefined ? undefined : ownerPlayerOf(entity);
+  };
+
+  const firstDrawn = (kind: DrawItem['kind'], player: number): DrawItem => {
+    const item = fullScene.find((it) => it.kind === kind && ownerOf(it.ref) === player);
+    if (item === undefined) throw new Error(`siege scene drew no ${kind} for player ${player}`);
+    return item;
+  };
+
+  it('splits the drawn frame into our units and the enemy, with nothing in both', () => {
+    const targets = targetsOver(fullScene);
+    const owned = targets.owned().map((t) => t.ref);
+    const enemies = targets.enemies().map((t) => t.ref);
+
+    expect(owned.length).toBeGreaterThan(0);
+    expect(enemies.length).toBeGreaterThan(0);
+    for (const ref of owned) expect(ownerOf(ref)).toBe(HUMAN_PLAYER);
+    for (const ref of enemies) expect(ownerOf(ref)).toBe(ENEMY_PLAYER);
+    expect(owned.filter((ref) => enemies.includes(ref))).toEqual([]);
+  });
+
+  it('reaches only what the frame drew — a culled unit is not clickable', () => {
+    const dropped = firstDrawn('settler', HUMAN_PLAYER);
+    const owned = targetsOver(fullScene.filter((it) => it !== dropped))
+      .owned()
+      .map((t) => t.ref);
+
+    expect(owned).not.toContain(dropped.ref);
+    expect(owned.length).toBe(targetsOver(fullScene).owned().length - 1);
+  });
+
+  it('never targets a fog ghost or the force-drawn portrait subject', () => {
+    // A remembered enemy structure the fog has swallowed, and our own selected settler force-drawn for
+    // the details-panel portrait: both are in the draw list, neither is under the cursor.
+    const enemyBuilding = firstDrawn('building', ENEMY_PLAYER);
+    const ownSettler = firstDrawn('settler', HUMAN_PLAYER);
+    const targets = targetsOver(
+      fullScene.map((it) => {
+        if (it === enemyBuilding) return { ...it, ghost: true };
+        if (it === ownSettler) return { ...it, portraitOnly: true };
+        return it;
+      }),
+    );
+
+    expect(targets.enemies().map((t) => t.ref)).not.toContain(enemyBuilding.ref);
+    expect(targets.owned().map((t) => t.ref)).not.toContain(ownSettler.ref);
+  });
+
+  it('still issues orders to a selection the camera panned away from, front to back', () => {
+    // Expected from the SNAPSHOT, not the projection — an order set derived from the draw list would
+    // agree with itself about a settler both of them omit.
+    const ourSettlers = snapshot.entities
+      .filter((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER)
+      .map((e) => e.id);
+    const enemySettler = firstDrawn('settler', ENEMY_PLAYER);
+    expect(ourSettlers.length).toBeGreaterThan(0);
+
+    // An empty frame: everything selected is off screen, and every one of ours must still take the order.
+    const targets = targetsOver([]);
+    const commanded = targets.ownedSettlersIn(new Set([...ourSettlers, enemySettler.ref]));
+    expect([...commanded.map((t) => t.ref)].sort((a, b) => a - b)).toEqual(
+      [...ourSettlers].sort((a, b) => a - b),
+    );
+    // …and in the drawn scene's own total order, which decides the formation slot each one is paired to.
+    expect(commanded).toEqual([...commanded].sort((a, b) => a.y - b.y || a.x - b.x || a.ref - b.ref));
+    expect(targets.owned()).toEqual([]); // the hit-test set stays screen-bounded
+  });
+
+  it('orders a settler the frame never draws, such as one standing inside a building', () => {
+    // Indoor settlers (the `Resting` marker, or mid-exchange in a store) are deliberately not drawn, so
+    // the frame cannot supply them — the order set reads the snapshot instead and still reaches them.
+    const indoor = {
+      id: 90_001,
+      components: {
+        Settler: {},
+        Owner: { player: HUMAN_PLAYER },
+        Position: { x: 5 * ONE, y: 7 * ONE },
+        Resting: {},
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, indoor] };
+    expect(buildSpriteScene(snapshot).some((it) => it.ref === indoor.id)).toBe(false);
+
+    const commanded = targetsOver([]).ownedSettlersIn(new Set([indoor.id]));
+    expect(commanded.map((t) => t.ref)).toEqual([indoor.id]);
+  });
+});
