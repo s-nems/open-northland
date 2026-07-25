@@ -9,7 +9,7 @@ import { EAT_ATOMIC_ID, eatDuration, startAtomic } from './actions.js';
 // The auto-drink half of the needs drives: a pressing settler carrying a matching draught (mead, a
 // potion) drinks it IN PLACE instead of walking to food or a bed (manual: a settler "will
 // automatically take it when his stomach starts to rumble"). The healing draught is deliberately NOT
-// here - it is the death-save in systems/equipment/effects.ts (user rule 2026-07-24).
+// here - it is the death-save (see tryDeathSaveDraught).
 
 /** The two bar needs a drive-drunk draught can answer (health is the death-save's). */
 export type DraughtNeed = 'hunger' | 'fatigue';
@@ -36,8 +36,7 @@ export function draughtSlotFor(
     const restore = goods.get(held.goodType)?.equip?.restorePct;
     if (restore?.[need] === undefined) continue;
     const dedicated =
-      (need === 'hunger' ? restore.fatigue : restore.hunger) === undefined &&
-      restore.healthMax === undefined;
+      (need === 'hunger' ? restore.fatigue : restore.hunger) === undefined && restore.healthMax === undefined;
     if (dedicated) return slot;
     if (broad === null) broad = slot;
   }

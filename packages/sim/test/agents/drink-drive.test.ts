@@ -23,7 +23,7 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
  * The AUTO-DRINK drives + the healing draught's death-save. A pressing settler with a matching misc
  * draught drinks it IN PLACE (the drink replaces the walk to food/bed - manual: "will automatically
  * take it when his stomach starts to rumble"); a lethal blow or starvation bite on a healing-draught
- * bearer spends a sip instead of killing (user rule 2026-07-24). Fixture draughts (2 sips each):
+ * bearer spends a sip instead of killing. Fixture draughts (2 sips each):
  * mead 13 (hunger+fatigue 40/40), potion_food_small 14 (+50 hunger), potion_stamina_small 15
  * (+50 fatigue), potion_heal_small 16 (50% of max HP). Eat atomic 10 ("viking_eat", 5 ticks).
  */

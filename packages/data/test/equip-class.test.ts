@@ -34,4 +34,9 @@ describe('EquipClass', () => {
     expect(() => EquipClass.parse({ category: 'tool', uses: 0 })).toThrow();
     expect(() => EquipClass.parse({ category: 'boots', speedBonusPct: -40 })).toThrow();
   });
+
+  it('rejects a wearing item without rated uses (it would never break)', () => {
+    expect(() => EquipClass.parse({ category: 'boots', wears: true })).toThrow(/rate its uses/);
+    expect(EquipClass.parse({ category: 'boots', wears: true, uses: 1 }).uses).toBe(1);
+  });
 });

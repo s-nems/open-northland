@@ -138,9 +138,10 @@ export function resolveCombatHit(
   // the drain so an overkill still counts as a damaging blow.
   const dealtDamage = damage > 0;
   const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
-  if (health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target)) {
-    // The healing draught's death-save (user rule 2026-07-24): the killing blow spends one sip and
-    // the bearer stands at the sip's restore instead of dying. The blow still counted (XP, anger).
+  // A KILLING blow (hitpoints > 0: a target already at 0, e.g. a debug kill awaiting cleanup, is not
+  // revived) may be answered by the healing draught's death-save; the blow still counted (XP, anger).
+  if (health.hitpoints > 0 && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target)) {
+    // saved - tryDeathSaveDraught reset the pool
   } else {
     // The outer max floors the pool itself (a hit never drives it below 0).
     health.hitpoints = Math.max(0, health.hitpoints - dealt);
