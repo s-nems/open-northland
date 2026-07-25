@@ -25,7 +25,7 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
 }
 
 describe('assistant state', () => {
-  it('defaults to zero counters and every grant ON (user rule 2026-07-25)', () => {
+  it('defaults to zero counters and every grant ON', () => {
     const s = defaultAssistantState();
     expect(s.counters).toEqual({ extraWomen: 0, extraMen: 0, trainSoldiers: 0 });
     expect(s.grants).toEqual({

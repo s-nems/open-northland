@@ -22,7 +22,8 @@ future change (scrolling, new tab, style tweak) must be made twice or the strip 
   `held-item-banner.ts` show the package's existing pattern for this.
 - Resolve the scale question once in the shared code: decide fractional-everywhere or
   integer-snap-everywhere against the original's behavior or the atlas metrics, comment the basis,
-  and make all `opts.scale`/`uiscale` consumers agree - the rest of the strip and the action ring
+  and make all `opts.scale`/`uiscale` consumers agree - the rest of the strip, the extras menu
+  (`hud/tool-panel/extras-menu.ts`, fractional like the build menu), and the action ring
   (`action-ring/settler-actions.ts` consumes `uiscale` fractionally), not just these two windows.
 - Non-goal: changing menu content, ordering, or window behavior beyond the unified scale.
 

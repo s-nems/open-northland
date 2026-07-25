@@ -2,10 +2,15 @@ import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The extras ("chest") window model — the assistant/plans tabs, the assistant's counter and grant
- * controls, their layout and hit-test (pure, no Pixi/DOM). The original's chest button opens this
- * window; v1 is UI-only — the counters and grants hold state the later auto-equip/population wiring
- * will read, nothing consumes them yet.
+ * The extras ("chest") window model: the assistant/plans tabs, the assistant's counter and grant
+ * controls, their layout and hit-test (pure, no Pixi/DOM). UI-only: nothing consumes this state yet
+ * (the sim's auto-drink runs regardless of the mead switch until the grant wiring lands).
+ *
+ * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
+ * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500
+ * "Okno Dodatków", 501 "Papiery", 502-510 the grant commands "Zgromadź Buty!" etc.). The tab pair,
+ * the wording used here, the counter set and the geometry are a project reconstruction (named
+ * deviation): labels follow the feature spec, not the decoded table.
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
@@ -25,7 +30,8 @@ export interface AssistantState {
 export const COUNTER_MIN = 0;
 export const COUNTER_MAX = 99;
 
-/** All grants default ON (user rule 2026-07-25): the assistant hands out gear unless switched off. */
+/** All grants default ON: the assistant hands out gear unless switched off - a project decision
+ *  (the original's decoded "Zgromadź X!" command labels suggest player-armed toggles). */
 export function defaultAssistantState(): AssistantState {
   return {
     counters: { extraWomen: 0, extraMen: 0, trainSoldiers: 0 },
@@ -53,7 +59,7 @@ const ROW_H = 15;
 const MENU_CLOSE = 13;
 /** Gap between the tab strip and the first row, and between the counter and grant blocks. */
 const BLOCK_GAP = 8;
-/** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at font10. */
+/** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at the HUD text size. */
 const MENU_WIDTH = 250;
 /** The −/+ stepper squares and the value cell between them. */
 const STEPPER = 12;
@@ -114,12 +120,12 @@ const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 
 
 /**
  * Resolve the window to screen rects: the two tabs + close X on top, then (assistant tab) the three
- * counter rows and, after a block gap, the four grant rows — controls right-aligned on a shared column.
- * Purely geometric — text fits each rect at render time.
+ * counter rows and, after a block gap, the four grant rows - controls right-aligned on a shared column.
+ * Purely geometric - text fits each rect at render time.
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Fractional scale (the building menu's convention) so the geometry agrees with the text runs,
-  // which draw at the same fractional uiscale — the long grant labels must not overrun the switches.
+  // which draw at the same fractional uiscale - the long grant labels must not overrun the switches.
   const s = Math.max(1, opts.scale);
   const { originX, originY, tab, state } = opts;
   const labels = messages().hud.extras;
