@@ -1,5 +1,5 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, type Sprite } from 'pixi.js';
 import {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
@@ -15,6 +15,7 @@ import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 import { type ResolvedLayer, resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
+import { mintLayerSprite } from './layer-sprite.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
@@ -111,9 +112,7 @@ export class CollapseLayer {
     let baseY = -Infinity;
     for (const layer of layers) {
       if (layer.shadow === true) continue;
-      const spr = new Sprite(this.textures.get(layer.source, layer.frame));
-      spr.position.set(layer.frame.offsetX * layer.scale, layer.frame.offsetY * layer.scale);
-      spr.scale.set(layer.scale);
+      const spr = mintLayerSprite(this.textures, layer);
       (spr as CollapseSprite).collapseLayer = layer;
       node.addChild(spr);
       minX = Math.min(minX, layer.frame.offsetX * layer.scale);
