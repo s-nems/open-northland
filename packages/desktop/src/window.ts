@@ -1,8 +1,8 @@
 import { BrowserWindow, dialog, Menu, shell } from 'electron';
 import type { ContentStatus } from './content-state.js';
 import { type Locale, messages } from './i18n/index.js';
-import { gameUrlForLocale, isGameUrl, SETUP_URL } from './protocol.js';
-import { isAppUrl } from './protocol-routing.js';
+import { gameUrlForLocale, SETUP_URL } from './protocol.js';
+import { isAppUrl, isInGameSession } from './protocol-routing.js';
 
 /**
  * The shell's single window and its native menu. The menu owns the shell-level actions (reinstall
@@ -33,9 +33,9 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
   return win;
 }
 
-/** Swap to the setup page; a running game session (there is no saving yet) needs a confirmation. */
+/** Swap to the setup page; a live session needs a confirmation first. */
 async function openSetupPage(win: BrowserWindow): Promise<void> {
-  if (isGameUrl(win.webContents.getURL())) {
+  if (isInGameSession(win.webContents.getURL())) {
     const dialogs = messages().dialogs;
     const choice = await dialog.showMessageBox(win, {
       type: 'question',

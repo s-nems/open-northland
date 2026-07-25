@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAppUrl, routePathOf } from '../src/protocol-routing.js';
+import { isAppUrl, isInGameSession, routePathOf } from '../src/protocol-routing.js';
 
 /**
  * The host-folding rule (`src/protocol-routing.ts`): Pixi workers mis-join root-relative asset URLs on a
@@ -47,5 +47,24 @@ describe('isAppUrl', () => {
   it('requires the full scheme separator, not the scheme spelling alone', () => {
     expect(isAppUrl('app:/game')).toBe(false);
     expect(isAppUrl('application://game/index.html')).toBe(false);
+  });
+});
+
+/** The test behind the leave-game confirmation (`src/window.ts`). */
+describe('isInGameSession', () => {
+  it('sees a session in the world-selecting entries', () => {
+    expect(isInGameSession('app://game/index.html?lang=pol&map=campaign01')).toBe(true);
+    expect(isInGameSession('app://game/index.html?lang=eng&scene=first-hut')).toBe(true);
+  });
+
+  it('sees no session in the main menu, whose URL always carries the installer language', () => {
+    expect(isInGameSession('app://game/index.html?lang=pol')).toBe(false);
+    expect(isInGameSession('app://game/index.html')).toBe(false);
+  });
+
+  it('sees no session on the setup page or off the app scheme', () => {
+    expect(isInGameSession('app://setup/setup.html')).toBe(false);
+    expect(isInGameSession('https://example.com/index.html?map=campaign01')).toBe(false);
+    expect(isInGameSession('not a url')).toBe(false);
   });
 });

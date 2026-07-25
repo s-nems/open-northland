@@ -2,7 +2,7 @@ import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/content-resolver';
 import { net, protocol } from 'electron';
-import { APP_ORIGIN_PREFIX, APP_SCHEME, routePathOf } from './protocol-routing.js';
+import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } from './protocol-routing.js';
 
 /**
  * The `app://` scheme the shell serves the game from — the packaged equivalent of the Vite dev
@@ -13,8 +13,8 @@ import { APP_ORIGIN_PREFIX, APP_SCHEME, routePathOf } from './protocol-routing.j
 
 import type { Locale } from './i18n/index.js';
 
-export const GAME_URL = `${APP_ORIGIN_PREFIX}game/index.html`;
-export const SETUP_URL = `${APP_ORIGIN_PREFIX}setup/setup.html`;
+export const GAME_URL = `${APP_ORIGIN_PREFIX}${GAME_HOST}/index.html`;
+export const SETUP_URL = `${APP_ORIGIN_PREFIX}${SETUP_HOST}/setup.html`;
 
 /**
  * The game URL carrying the installer's language into the web app via its `?lang=` seam (the game's
@@ -22,11 +22,6 @@ export const SETUP_URL = `${APP_ORIGIN_PREFIX}setup/setup.html`;
  */
 export function gameUrlForLocale(locale: Locale): string {
   return `${GAME_URL}?lang=${locale}`;
-}
-
-/** Whether a loaded URL is the game page, tolerant of the `?lang=` query {@link gameUrlForLocale} adds. */
-export function isGameUrl(url: string): boolean {
-  return url === GAME_URL || url.startsWith(`${GAME_URL}?`);
 }
 
 const STATIC_TYPES: Readonly<Record<string, string>> = {
@@ -104,14 +99,14 @@ export function handleAppProtocol(roots: AppProtocolRoots): void {
     }
 
     // Static files exist only on the two real page hosts; a folded host that missed the routes is a 404.
-    if (url.host !== 'game' && url.host !== 'setup') return notFound();
+    if (url.host !== GAME_HOST && url.host !== SETUP_HOST) return notFound();
     let pathname: string;
     try {
       pathname = decodeURIComponent(url.pathname);
     } catch {
       return notFound();
     }
-    const root = url.host === 'setup' ? roots.setupRoot : roots.appRoot;
+    const root = url.host === SETUP_HOST ? roots.setupRoot : roots.appRoot;
     const file = resolveFileUnderRoot(root, pathname.replace(/^\/+/, '') || DIRECTORY_INDEX);
     if (file === undefined) return notFound();
     const contentType = STATIC_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
