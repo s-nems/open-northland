@@ -40,6 +40,36 @@ describe('SelectionLayer elevation lift', () => {
   });
 });
 
+describe('SelectionLayer id resolution', () => {
+  it('rings every selected id wherever it sits among unselected entities, and only those', () => {
+    const layer = new SelectionLayer();
+    const crowd = [1, 2, 3, 4, 5, 6, 7].map((id) => settler(id, id, 1));
+    layer.draw({ snapshot: snapshotOf(crowd) }, new Set([1, 4, 7]));
+    expect(layer.container.children.length).toBe(3);
+    const drawnX = layer.container.children.map((c) => c.position.x).sort((a, b) => a - b);
+    expect(drawnX).toEqual([1, 4, 7].map((id) => tileToScreen(id, 1).x).sort((a, b) => a - b));
+  });
+
+  it('retires the ring of a selected id that left the snapshot', () => {
+    const layer = new SelectionLayer();
+    const selection = new Set([1, 2]);
+    layer.draw({ snapshot: snapshotOf([settler(1, 1, 1), settler(2, 2, 1)]) }, selection);
+    expect(layer.container.children.length).toBe(2);
+    // Entity 2 died; the app still holds it selected until its next selection pass.
+    layer.draw({ snapshot: snapshotOf([settler(1, 1, 1)]) }, selection);
+    expect(layer.container.children.length).toBe(1);
+    expect(layer.container.children[0]?.position.x).toBe(tileToScreen(1, 1).x);
+  });
+
+  it('rings the flag pool from its own id set, independent of the selection', () => {
+    const layer = new SelectionLayer();
+    const snapshot = snapshotOf([settler(1, 1, 1), entity(2, 3, 1, { DeliveryFlag: {} })]);
+    layer.draw({ snapshot }, new Set([1]), new Set([2]));
+    expect(layer.container.children.length).toBe(2);
+    expect(layer.container.children.map((c) => c.position.x)).toContain(tileToScreen(3, 1).x);
+  });
+});
+
 describe('SelectionLayer ring sizing', () => {
   it('gives a building a larger ring than a settler, classified from its marker', () => {
     const layer = new SelectionLayer();

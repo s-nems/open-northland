@@ -1,6 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
+import { entityById } from '../../data/scene/snapshot-index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
@@ -17,8 +18,8 @@ import { retireUndrawn } from './retained-pool.js';
  * Retained, like the sprite pool: a ring's ellipse geometry is built once per entity and only its
  * container position is moved each frame — steady-state work is a handful of transform writes, no
  * geometry churn. A ring pool keyed by entity id (ids are monotonic, a stable key); a
- * deselected/departed id's ring is destroyed. The per-frame snapshot scan is gated on a non-empty
- * selection.
+ * deselected/departed id's ring is destroyed. Per-frame cost follows the selection, not the map: each id
+ * is resolved through `entityById` rather than by scanning the snapshot.
  *
  * A ring is sized to its target: a settler gets a small feet ellipse; a building gets a ground ellipse
  * sized to its actual sprite footprint (the pool's per-entity {@link EntityBounds}, passed in) so a big
@@ -82,7 +83,7 @@ export class SelectionLayer {
    * under every `selected` entity, and an amber ring under every `flagged` id (the work flags of the
    * selected gatherers). Each pool get-or-creates a ring per id (sized from {@link EntityBounds} via
    * `frame.drawn` for buildings) and moves it to the entity's feet, then retires rings for ids no longer
-   * present. An emptied set retires its pool and does no scan.
+   * present. An emptied set retires its pool and does nothing else.
    */
   draw(frame: SelectionFrame, selected: ReadonlySet<number>, flagged: ReadonlySet<number> = NO_IDS): void {
     this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame);
@@ -99,27 +100,26 @@ export class SelectionLayer {
     frame: SelectionFrame,
   ): void {
     seen.clear();
-    if (ids.size > 0) {
-      for (const ent of frame.snapshot.entities) {
-        if (!ids.has(ent.id)) continue;
-        const pos = readPosition(ent.components);
-        if (pos === null) continue;
-        const s = feetAnchor(frame.drawn, ent.id, pos, frame.elevation);
-        let ring = pool.get(ent.id);
-        if (ring === undefined) {
-          // Kind + size are fixed while present, so the ring geometry is authored once here.
-          const isBuilding = classify(ent.components) === 'building';
-          ring = makeRing(
-            ringSpec(isBuilding, isBuilding ? frame.drawn?.boundsOf(ent.id) : undefined, s.x),
-            color,
-            width,
-          );
-          this.container.addChild(ring);
-          pool.set(ent.id, ring);
-        }
-        ring.position.set(s.x, s.y);
-        seen.add(ent.id);
+    for (const id of ids) {
+      const ent = entityById(frame.snapshot, id);
+      if (ent === undefined) continue;
+      const pos = readPosition(ent.components);
+      if (pos === null) continue;
+      const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
+      let ring = pool.get(id);
+      if (ring === undefined) {
+        // Kind + size are fixed while present, so the ring geometry is authored once here.
+        const isBuilding = classify(ent.components) === 'building';
+        ring = makeRing(
+          ringSpec(isBuilding, isBuilding ? frame.drawn?.boundsOf(id) : undefined, s.x),
+          color,
+          width,
+        );
+        this.container.addChild(ring);
+        pool.set(id, ring);
       }
+      ring.position.set(s.x, s.y);
+      seen.add(id);
     }
     // Retire rings not drawn this frame (deselected, or the entity died / left the snapshot).
     retireUndrawn(pool, seen, (ring) => ring.destroy());

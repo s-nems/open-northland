@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ONE } from '../../src/data/projection/index.js';
-import { targetPositionsOf } from '../../src/data/scene/snapshot-index.js';
+import { entityById, targetPositionsOf } from '../../src/data/scene/snapshot-index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /** The combat attack atomic (id 81) — the same numeric contract `snapshot-index.ts` transcribes. */
@@ -52,5 +52,34 @@ describe('targetPositionsOf', () => {
       entity(2, 2, 1, { Settler: { tribe: 1 } }),
     ]);
     expect(targetPositionsOf(snap)).toBe(targetPositionsOf(snap));
+  });
+});
+
+describe('entityById', () => {
+  // Ids are sparse and non-contiguous (entities die), so the binary search cannot assume id === index.
+  const snap = snapshotOf([
+    entity(2, 2, 1, { Settler: { tribe: 0 } }),
+    entity(5, 5, 3, { Building: {} }),
+    entity(9, 9, 4, { Settler: { tribe: 1 } }),
+    entity(40, 1, 7, { Resource: { level: 3 } }),
+  ]);
+
+  it('resolves the same entity the full scan would have found, at every position in the array', () => {
+    // The lookup must agree with the scan it replaced for every live id, not just the ones a
+    // hand-picked probe happens to land on.
+    for (const scanned of snap.entities) {
+      expect(entityById(snap, scanned.id)).toBe(scanned);
+    }
+  });
+
+  it('resolves a building by id, components intact for the classify seam', () => {
+    expect(entityById(snap, 5)?.components).toHaveProperty('Building');
+  });
+
+  it('returns undefined for an id no longer in the snapshot, below/inside/above the live range', () => {
+    expect(entityById(snap, 1)).toBeUndefined(); // below the first live id
+    expect(entityById(snap, 7)).toBeUndefined(); // died mid-range
+    expect(entityById(snap, 99)).toBeUndefined(); // past the end
+    expect(entityById(snapshotOf([]), 1)).toBeUndefined();
   });
 });

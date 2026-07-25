@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import {
   readActingAtomic,
   readAtomicTargetEntity,
@@ -13,7 +13,8 @@ import {
  * position index (to face a mid-swing actor / aim a projectile). Both are pure functions of the frozen
  * snapshot, memoized on its object identity — `collectSpriteScene` runs per frame while the snapshot
  * changes per tick, so each scan happens once per tick, not once per frame. Plus the atomic-id contract
- * that decides which actors face their target.
+ * that decides which actors face their target, and {@link entityById} for a consumer that already holds
+ * the ids it cares about.
  */
 
 /**
@@ -135,4 +136,25 @@ export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, 
   }
   targetPosBySnapshot.set(snapshot, index);
   return index;
+}
+
+/**
+ * The snapshot entity with `id`, or `undefined` once it has left the snapshot (died, despawned).
+ * Binary-searched: a `takeSnapshot` result holds one entity per alive id in canonical ascending-id
+ * order (`inspect/snapshot.ts`), so its `entities` array is already the index. A narrowed view that
+ * re-orders `entities` breaks that precondition and must not be passed here.
+ */
+export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot | undefined {
+  const entities = snapshot.entities;
+  let lo = 0;
+  let hi = entities.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const found = entities[mid];
+    if (found === undefined) break; // unreachable: mid is always within bounds
+    if (found.id === id) return found;
+    if (found.id < id) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return undefined;
 }
