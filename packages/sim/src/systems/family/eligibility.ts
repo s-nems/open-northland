@@ -43,17 +43,21 @@ export function isAdultSettler(world: World, e: Entity): boolean {
   return settler !== undefined && !isNonWorkingAge(settler.jobType);
 }
 
-/** Whether `e` may enter a marriage right now: a living adult settler, unmarried, not mid-wedding, and
- *  not away on a mission ({@link isOnMission}). A widowed parent counts as married until the couple's
- *  child grows up or dies, when the widowing rule (`family/widowhood.ts`) removes the dead-spouse
- *  Marriage, so the raising carve-out is the one stale-marriage state this predicate still rejects. */
+/** Whether `e` currently counts as married: a {@link Marriage} to a living spouse, or a widowed
+ *  parent still raising the couple's minor child. The widowing rule (`family/widowhood.ts`) removes
+ *  the dead-spouse Marriage once that child grows up or dies, so the raising carve-out is the one
+ *  stale-marriage state left to reject. */
+export function isMarried(world: World, e: Entity): boolean {
+  const marriage = world.tryGet(e, Marriage);
+  return marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage));
+}
+
+/** Whether `e` may enter a marriage right now: a living adult settler, unmarried
+ *  ({@link isMarried}), not mid-wedding, and not away on a mission ({@link isOnMission}). */
 export function mayMarry(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
   if (world.has(e, Wedding)) return false;
-  const marriage = world.tryGet(e, Marriage);
-  if (marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage))) {
-    return false;
-  }
+  if (isMarried(world, e)) return false;
   return !isOnMission(content, world.get(e, Settler).jobType);
 }
 

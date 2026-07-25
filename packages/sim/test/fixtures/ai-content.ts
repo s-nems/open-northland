@@ -4,13 +4,17 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * A synthetic content set for the strategic AI-player tests, using the REAL stable content ids
  * (`headquarters`, `home_level_00`, `work_farm_00`, harvest-good slugs) so the default modules and
  * `DEFAULT_BUILD_ORDER` resolve against it unmodified; entries of the default order that are absent
- * here (pottery, mason, hive, brewery, animal farm, sewery, joinery, smithy) exercise the
+ * here (pottery, mason, hive, animal farm, sewery, smithy, armory) exercise the
  * skip-missing-content path. The home chain (00→01→02) backs the upgrade entries, the
  * mill/bakery/well trio backs the chain-affinity entries, the bakery chain (00→01) backs the
- * upgrade tail and its two-baker cap, and the iron good — gated by the viking `needforgood` row
- * over the collector XP tracks — backs the gated collector entry and its experience rule. Numeric
- * ids follow the original's job/good bands where they exist (woman 5,
- * civilist 6, builder 7, collector 8, farmer 18, miller 19, baker 20, carrier 24, scout 27).
+ * upgrade tail and its two-baker target, and the iron good — gated by the viking `needforgood` row
+ * over the collector XP tracks — backs the gated collector entry and its experience rule. The
+ * brewery/joinery/barracks/storage/tower rows back the 2026-07-25 tail: the joinery's two recipes
+ * drive the craft restriction, the barracks' carrier slots the recruit phase, the storages the
+ * carrier staffing and the outskirts affinity, and the tower pair the coverage entry (the
+ * kind-'tower' wall row proves the id allowlist). Numeric ids follow the original's job/good bands
+ * where they exist (woman 5, civilist 6, builder 7, collector 8, joiner 16, farmer 18, miller 19,
+ * baker 20, brewer 21, carrier 24, scout 27, soldier_bow_short 40 — the fighter band).
  */
 export function aiContent(): ContentSet {
   return parseContentSet({
@@ -37,6 +41,9 @@ export function aiContent(): ContentSet {
       },
       // Iron backs the build order's gated `collector` entry — same trivial pickup as clay.
       { typeId: 5, id: 'iron', weight: 1, atomics: { harvest: 26 }, gathering: { bioLandscape: false } },
+      // The joinery's two products — the craft restriction keeps its joiners on tool_iron only.
+      { typeId: 6, id: 'tool_wooden', weight: 1 },
+      { typeId: 7, id: 'tool_iron', weight: 1 },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -50,11 +57,15 @@ export function aiContent(): ContentSet {
       { typeId: 7, id: 'builder', allowedAtomics: [39] },
       // The collector harvests all four collected goods (wood 24, stone 25, iron 26, mud 32).
       { typeId: 8, id: 'collector', allowedAtomics: [24, 25, 26, 32] },
+      { typeId: 16, id: 'joiner' },
       { typeId: 18, id: 'farmer', allowedAtomics: [29] },
       { typeId: 19, id: 'miller' },
       { typeId: 20, id: 'baker' },
+      { typeId: 21, id: 'brewer' },
       { typeId: 24, id: 'carrier' },
       { typeId: 27, id: 'scout', allowedAtomics: [43] },
+      // A fighter-band garrison trade (31..41) — tower slots name it; staffing must never fill it.
+      { typeId: 40, id: 'soldier_bow_short' },
     ],
     buildings: [
       {
@@ -148,8 +159,8 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // The upgraded bakery: two baker slots — the one building whose operator cap is raised to two
-      // (`OPERATORS_PER_TRADE_BY_BUILDING_ID`), still carrier-staffed.
+      // The upgraded bakery: two baker slots — a building whose operator target is raised to two
+      // (`STAFFING_BY_BUILDING_ID`), still carrier-staffed.
       {
         typeId: 9,
         id: 'work_bakery_01',
@@ -160,6 +171,97 @@ export function aiContent(): ContentSet {
         ],
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      {
+        typeId: 10,
+        id: 'work_brewery',
+        kind: 'workplace',
+        workers: [
+          { jobType: 21, count: 2 },
+          { jobType: 24, count: 1 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      // The joinery makes wooden tools from wood and iron tools from wood+iron — the two recipes
+      // the craft restriction chooses between.
+      {
+        typeId: 11,
+        id: 'work_joinery_01',
+        kind: 'workplace',
+        workers: [
+          { jobType: 16, count: 2 },
+          { jobType: 24, count: 1 },
+        ],
+        recipes: [
+          { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 6, amount: 1 }], ticks: 180 },
+          {
+            inputs: [
+              { goodType: 1, amount: 1 },
+              { goodType: 5, amount: 1 },
+            ],
+            outputs: [{ goodType: 7, amount: 1 }],
+            ticks: 180,
+          },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [
+          { goodType: 1, capacity: 5, initial: 0 },
+          { goodType: 5, capacity: 5, initial: 0 },
+          { goodType: 6, capacity: 5, initial: 0 },
+          { goodType: 7, capacity: 5, initial: 0 },
+        ],
+      },
+      // The barracks: carrier slots only (the real shape) — the recruit phase's posts.
+      {
+        typeId: 12,
+        id: 'barracks',
+        kind: 'training',
+        workers: [{ jobType: 24, count: 4 }],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      // Storages share the HQ's worker shape — carriers staffed 1..3, harvest slots left open.
+      {
+        typeId: 13,
+        id: 'stock_00',
+        kind: 'storage',
+        workers: [
+          { jobType: 24, count: 3 },
+          { jobType: 8, count: 3 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 45, initial: 0 }],
+      },
+      {
+        typeId: 14,
+        id: 'stock_02',
+        kind: 'storage',
+        workers: [
+          { jobType: 24, count: 3 },
+          { jobType: 8, count: 3 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 120, initial: 0 }],
+      },
+      // The level-2 tower (garrison slots are fighter-band — never staffed) and the defence WALL,
+      // which shares kind 'tower' but must never count as a covering tower (the id allowlist).
+      {
+        typeId: 15,
+        id: 'tower_01',
+        kind: 'tower',
+        workers: [
+          { jobType: 40, count: 4 },
+          { jobType: 24, count: 4 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      {
+        typeId: 16,
+        id: 'work_pottery_02',
+        kind: 'tower',
+        construction: [{ goodType: 1, amount: 2 }],
       },
     ],
     // The collector's per-good XP tracks (real track ids 4/5 back iron's `needforgood` below; the

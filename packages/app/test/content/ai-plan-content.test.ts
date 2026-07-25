@@ -2,16 +2,22 @@ import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
-const { CARRIER_STAFFED_BUILDING_IDS, DEFAULT_BUILD_ORDER, OPERATORS_PER_TRADE_BY_BUILDING_ID } = systems;
+const {
+  COLLECTOR_TARGET_BY_GOOD_ID,
+  CRAFT_RESTRICTIONS_BY_BUILDING_ID,
+  DEFAULT_BUILD_ORDER,
+  STAFFING_BY_BUILDING_ID,
+  TOWER_CONTENT_IDS,
+} = systems;
 
 /**
  * Pin the AI opening plan's content bindings against the real extracted content. The sim silently
  * `skip`s a plan entry whose id is unknown, so a typo amputates the AI's plan with no test failure
  * and no symptom beyond "the AI never builds X" — this suite is the tripwire: every id in
- * `DEFAULT_BUILD_ORDER` and the staffing tables must resolve, every direct-place tier must carry a
+ * `DEFAULT_BUILD_ORDER` and the workforce tables must resolve, every direct-place tier must carry a
  * construction bill (a bill-less site would finish instantly), every upgrade target must be reachable
- * over the `upgradeTarget` chain, and the per-building operator override must fit real worker slots
- * (the staffing cap is `min(slot.count, override)`, so a stale override silently degrades).
+ * over the `upgradeTarget` chain, and the per-building staffing targets must fit real worker slots
+ * (the staffing cap is `min(slot.count, target)`, so a stale target silently degrades).
  */
 describe.runIf(hasRealIr())('AI opening plan against real content', () => {
   it('every plan id resolves, direct places carry bills, upgrade targets are chained', async () => {
@@ -31,8 +37,9 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const building = buildingById.get(entry.building);
       expect(building, `building ${entry.building}`).toBeDefined();
       if (building === undefined) continue;
-      if (entry.kind === 'place') {
-        // A place entry raises a real construction site — an empty bill would finish instantly.
+      if (entry.kind === 'place' || entry.kind === 'towerCoverage') {
+        // A place (or coverage-placed tower) entry raises a real construction site — an empty bill
+        // would finish instantly.
         expect(building.construction.length, `construction bill of ${entry.building}`).toBeGreaterThan(0);
       } else {
         // An upgrade entry names its TARGET tier — some lower tier must chain into it.
@@ -51,27 +58,52 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     }
   });
 
-  it('the staffing tables name real buildings with matching worker slots', async () => {
+  it('the workforce tables name real buildings, goods, and matching worker slots', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
     const carrierJob = content.jobs.find((j) => j.id === 'carrier')?.typeId;
     expect(carrierJob).toBeDefined();
 
-    for (const id of CARRIER_STAFFED_BUILDING_IDS) {
+    for (const [id, staffing] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
-      expect(building, `carrier-staffed ${id}`).toBeDefined();
+      expect(building, `staffing override ${id}`).toBeDefined();
+      // The staffing cap is min(slot.count, target) — a real slot must offer the target's seats.
+      const operatorTarget = staffing.operatorTarget ?? 0;
+      if (operatorTarget > 0) {
+        const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorTarget);
+        expect(fits, `an operator slot of ${id} offering ${operatorTarget} seats`).toBe(true);
+      }
+      const carrierTarget = staffing.carrierTarget ?? 0;
+      if (carrierTarget > 0) {
+        const fits = building?.workers.some((w) => w.jobType === carrierJob && w.count >= carrierTarget);
+        expect(fits, `a carrier slot of ${id} offering ${carrierTarget} seats`).toBe(true);
+      }
+    }
+    for (const goodId of Object.keys(COLLECTOR_TARGET_BY_GOOD_ID)) {
       expect(
-        building?.workers.some((w) => w.jobType === carrierJob),
-        `carrier slot of ${id}`,
+        content.goods.some((g) => g.id === goodId),
+        `collector good ${goodId}`,
       ).toBe(true);
     }
-    for (const [id, cap] of Object.entries(OPERATORS_PER_TRADE_BY_BUILDING_ID)) {
+    // The tower allowlist: a stale id here would leave built towers uncounted as coverage centres,
+    // so the coverage entry would re-arm and place towers forever.
+    for (const towerId of TOWER_CONTENT_IDS) {
+      const building = buildingById.get(towerId);
+      expect(building, `tower id ${towerId}`).toBeDefined();
+      expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
+    }
+    for (const [id, goods] of Object.entries(CRAFT_RESTRICTIONS_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
-      expect(building, `operator override ${id}`).toBeDefined();
-      // The staffing cap is min(slot.count, override) — a real slot must offer the override's seats.
-      const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= cap);
-      expect(fits, `an operator slot of ${id} offering ${cap} seats`).toBe(true);
+      expect(building, `craft restriction ${id}`).toBeDefined();
+      const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
+      for (const goodId of goods) {
+        const good = content.goods.find((g) => g.id === goodId);
+        expect(good, `craft good ${goodId}`).toBeDefined();
+        // The restriction must name a product the workplace actually makes — an unmakeable-only
+        // list issues no command and the workshop silently keeps crafting everything.
+        expect(good !== undefined && produced.has(good.typeId), `${id} produces ${goodId}`).toBe(true);
+      }
     }
   });
 });
