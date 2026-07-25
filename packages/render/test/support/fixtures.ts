@@ -58,7 +58,8 @@ export function entity(
   return { id, components: { Position: { x: tileX * ONE, y: tileY * ONE }, ...marker } };
 }
 
-/** A minimal snapshot around hand-built entities. */
+/** A minimal snapshot around hand-built entities, canonicalized to the ascending-id order `takeSnapshot`
+ *  guarantees, so a fixture cannot hand a reader a shape the sim never produces. */
 export function snapshotOf(entities: WorldSnapshot['entities'], tick = 1): WorldSnapshot {
-  return { tick, entities, events: [] };
+  return { tick, entities: [...entities].sort((a, b) => a.id - b.id), events: [] };
 }
