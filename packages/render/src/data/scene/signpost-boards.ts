@@ -1,4 +1,4 @@
-import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { type Fixed, nodeOfPosition, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { tileToScreen } from '../projection/index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
@@ -6,8 +6,8 @@ import { readPosition } from './snapshot-readers/index.js';
  * The signpost DIRECTION-BOARD prepass: which angular board frames each signpost shows — one board per
  * connected in-range same-player neighbour, pointing at it (observed original: the boards indicate that
  * — and where — the network continues; several neighbours nail several boards). Connectivity is the
- * sim's own circle-overlap rule (`systems.withinNodeRadius` on the posts' half-cell nodes — posts sit on
- * node anchors, so the rounding is exact), so the drawn boards can never disagree with the confinement;
+ * sim's own circle-overlap rule (`systems.withinNodeRadius` over nodes taken through the same
+ * `nodeOfPosition` seam the sim's network build uses), so the drawn boards can never disagree with it;
  * angles are measured in projected screen space so a board visually points along the on-screen line to
  * its neighbour.
  */
@@ -20,7 +20,7 @@ interface Post {
   /** Tile-space position (floats — render-side only). */
   readonly x: number;
   readonly y: number;
-  /** Half-cell node coords (posts anchor exactly on nodes — the sim's connectivity lattice). */
+  /** Half-cell node coords — the sim's connectivity lattice. */
   readonly hx: number;
   readonly hy: number;
   readonly player: number;
@@ -45,12 +45,14 @@ export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, r
     const owner = entity.components.Owner as { player?: unknown } | undefined;
     const p = readPosition(entity.components);
     if (p === null || typeof owner?.player !== 'number') continue;
+    // Snapshot Positions are raw Fixed ints, validated as numbers by the reader.
+    const { hx, hy } = nodeOfPosition(p.x as Fixed, p.y as Fixed);
     posts.push({
       id: entity.id,
       x: p.x / ONE,
       y: p.y / ONE,
-      hx: Math.round((p.x / ONE) * 2),
-      hy: Math.round((p.y / ONE) * 2),
+      hx,
+      hy,
       player: owner.player,
       navRadius: signpost.navRadius,
     });
