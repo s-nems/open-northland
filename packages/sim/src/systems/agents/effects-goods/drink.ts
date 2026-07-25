@@ -31,6 +31,6 @@ export function drinkDraught(world: World, ctx: SystemContext, settler: Entity, 
       );
     }
   }
-  world.touch(settler); // needs/health written in place (the sip below may whiff on an unrated good)
+  world.touch(settler); // log the in-place needs/health write (the direct-field-write convention)
   applyEquipWear(world, settler, 'misc', slot, wearStepOf(ctx, held.goodType));
 }

@@ -4,6 +4,7 @@
 export {
   bootsSpeedBonus,
   draughtRestores,
+  isCraftingOperator,
   toolProductionBonus,
   tryDeathSaveDraught,
 } from './effects.js';

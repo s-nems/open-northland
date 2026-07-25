@@ -113,12 +113,7 @@ function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapo
   });
 }
 
-const equip = (
-  entity: Entity,
-  goodType: number,
-  group: EquipCategory = 'boots',
-  slot = 0,
-): Command => ({
+const equip = (entity: Entity, goodType: number, group: EquipCategory = 'boots', slot = 0): Command => ({
   kind: 'equipGood',
   entity,
   group,

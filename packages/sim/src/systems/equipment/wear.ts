@@ -7,8 +7,8 @@ import type { SystemContext } from '../context.js';
 
 // Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one walked
 // waypoint for boots, one production cycle for tools, one sip for consumables) and BREAKS at ONE -
-// the slot clears and the unit leaves the economy (the manual's "slowly used up ... need renewing";
-// step magnitudes are project balance, user rule 2026-07-24).
+// the slot clears and the unit leaves the economy. Provenance of the ratings lives on the schema's
+// `uses` field and the catalog constants.
 
 /** One use's wear step for `goodType`: `divCeil(ONE, uses)`, so an item never outlives its rating
  *  (truncation would give a 5-use bottle a 6th sip). ZERO for a non-wearing or unrated good. */
@@ -38,7 +38,7 @@ export function applyEquipWear(
   if (worn === null || worn.degreeOfUse >= ONE) return;
   const used = fx.add(worn.degreeOfUse, step);
   writeEquipSlot(eq, group, slot, used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used });
-  world.touch(entity); // in-place component write - the panel's snapshot clone must drop its copy
+  world.touch(entity); // log the in-place write (the direct-field-write convention; cheap Set.add)
 }
 
 /** One walked waypoint's boots wear (the movement system's per-arrival hook). */

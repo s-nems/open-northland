@@ -36,11 +36,8 @@ export type AtomicEffect =
        *  the food (conserved up to that consumption). */
       readonly from: Entity | null;
     }
-  /** The settler drinks the draught in misc equipment slot `slot` (mead/potion - always the misc row),
-   *  in place, on the eat animation: applies ALL the good's content restores (hunger/fatigue bars,
-   *  health as a percent of max) and advances the bottle one sip; the last sip vanishes it. A slot
-   *  emptied/spent since the drive chose it whiffs - the bottle is the sole source, so nothing
-   *  restores from a bare slot (conservation). See effects-goods/drink.ts. */
+  /** The settler drinks the draught in misc equipment slot `slot`, in place, on the eat animation -
+   *  the full contract (restores, sip wear, whiff-on-raced-slot conservation) is `drinkDraught`'s. */
   | { readonly kind: 'drink'; readonly slot: number }
   /** The settler sleeps to restore rest: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion (no
    *  goods consumed — unlike `eat`, resting is free). The partial-refill counterpart to the NeedsSystem's

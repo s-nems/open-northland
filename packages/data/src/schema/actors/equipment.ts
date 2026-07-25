@@ -13,8 +13,7 @@ export const EquipCategory = z.enum(EQUIP_CATEGORIES);
 export type EquipCategory = z.infer<typeof EquipCategory>;
 
 /** What one sip of a drinkable equipment good restores, in whole percent of each bar (`healthMax` =
- *  percent of the bearer's max hitpoints, capped at max). Magnitudes are project balance (user rule
- *  2026-07-24) - the engine's values are unreadable; the manual gives only the qualitative effect. */
+ *  percent of the bearer's max hitpoints, capped at max). Provenance: the module doc below. */
 export const EquipRestorePct = z.strictObject({
   hunger: z.number().int().min(1).max(100).optional(),
   fatigue: z.number().int().min(1).max(100).optional(),
@@ -28,26 +27,32 @@ export type EquipRestorePct = z.infer<typeof EquipRestorePct>;
  * ("Partly used items (potions, shoes, ...) you drop are lost"), while "unused items such as weapons,
  * armour and amulets can be used again" (amulets: "their power is never diminished"). Effect and wear
  * MAGNITUDES are engine-hardcoded (no numeric field exists in any readable `.ini` - verified), so the
- * optional numbers below are project balance (user rule 2026-07-24), except potion `uses`, which the
+ * optional numbers below are project balance (user rules 2026-07-24), except potion `uses`, which the
  * manual pins ("Small potions can be used twice, large ones can be used five times"). Integer percents
- * keep the schema→fixed-point conversion exact.
+ * convert to fixed point by one deterministic truncating division (at most an ulp low).
  */
-export const EquipClass = z.strictObject({
-  category: EquipCategory,
-  /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
-   *  (weapons/armour/amulets). */
-  wears: z.boolean().default(false),
-  /** Walk-gait bonus while worn, whole percent (boots +40). */
-  speedBonusPct: z.number().int().positive().optional(),
-  /** ADDITIVE per-cycle production credit, whole percent of the recipe outputs (wooden tool 30,
-   *  iron 60) - added to the operator's experience bonus fraction, never multiplied. */
-  productionBonusPct: z.number().int().positive().optional(),
-  /** Rated uses before a wearing item breaks: one use = one walked waypoint (boots), one completed
-   *  production cycle (tools), or one sip (consumables). */
-  uses: z.number().int().positive().optional(),
-  /** What one sip restores - present only on drinkable goods (mead, potions). */
-  restorePct: EquipRestorePct.optional(),
-});
+export const EquipClass = z
+  .strictObject({
+    category: EquipCategory,
+    /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
+     *  (weapons/armour/amulets). */
+    wears: z.boolean().default(false),
+    /** Walk-gait bonus while worn, whole percent (boots +40). */
+    speedBonusPct: z.number().int().positive().optional(),
+    /** ADDITIVE per-cycle production credit, whole percent of the recipe outputs (wooden tool 30,
+     *  iron 60) - added to the operator's experience bonus fraction, never multiplied. */
+    productionBonusPct: z.number().int().positive().optional(),
+    /** Rated uses before a wearing item breaks: one use = one walked waypoint (boots), one completed
+     *  production cycle (tools), or one sip (consumables). */
+    uses: z.number().int().positive().optional(),
+    /** What one sip restores - present only on drinkable goods (mead, potions). */
+    restorePct: EquipRestorePct.optional(),
+  })
+  // A wearing item without rated uses would never break (wear steps are ONE/uses) - an unlimited
+  // free consumable is always a content mistake, so the schema refuses the shape.
+  .refine((e) => !e.wears || e.uses !== undefined, {
+    message: 'a wearing equip good must rate its uses',
+  });
 export type EquipClass = z.infer<typeof EquipClass>;
 
 export const WeaponType = z.strictObject({

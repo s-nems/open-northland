@@ -1,4 +1,4 @@
-import { Equipment, Health, Settler } from '../../components/index.js';
+import { Equipment, type EquipmentSlot, Health, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -7,15 +7,14 @@ import { isCarrierJob } from '../stores/index.js';
 import { applyEquipWear, wearStepOf } from './wear.js';
 
 // The worn-equipment effect reads: what a worn good currently grants its bearer, resolved from the
-// content equip axis (`EquipClass` - category, wear, and the integer-percent effect fields). Every
-// magnitude is content data (user-rule balance; the engine's values are unreadable) - no id-specific
+// content equip axis (`EquipClass` owns the fields and the balance provenance) - no id-specific
 // rules here. A spent unit (degreeOfUse >= ONE) grants nothing.
 
-/** An integer percent as a Fixed fraction - exact (100 divides ONE's scale). */
+/** An integer percent as a Fixed fraction - one deterministic truncating division (at most an ulp low). */
 const pctFraction = (pct: number): Fixed => fx.div(fx.fromInt(pct), fx.fromInt(100));
 
 /** The content equip axis of the good in a live (non-spent) slot, or undefined. */
-function liveEquipOf(ctx: SystemContext, slot: { goodType: number; degreeOfUse: Fixed } | null) {
+function liveEquipOf(ctx: SystemContext, slot: EquipmentSlot | null) {
   if (slot === null || slot.degreeOfUse >= ONE) return undefined;
   return contentIndex(ctx.content).goods.get(slot.goodType)?.equip;
 }
@@ -27,15 +26,18 @@ export function bootsSpeedBonus(world: World, ctx: SystemContext, e: Entity): Fi
   return pct === undefined ? ZERO : pctFraction(pct);
 }
 
-/**
- * A production operator's ADDITIVE per-cycle tool credit in [0, ONE] - added to the experience bonus
- * fraction, never multiplied (user rule 2026-07-24). ZERO for a carrier operator (a carrier-run
- * utility's delivery work is not crafting - mirrors the XP exclusion in
- * {@link import('../progression/index.js').operatorProductionBonus}), no/spent tool, or an unrated good.
- */
-export function toolProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
+/** Whether `operator` crafts for itself: a non-carrier with a trade. The tool credit's and tool wear's
+ *  shared gate (a carrier-run utility's delivery work is not crafting - the same exclusion the XP
+ *  bonus applies in {@link import('../progression/index.js').operatorProductionBonus}). */
+export function isCraftingOperator(world: World, ctx: SystemContext, operator: Entity): boolean {
   const s = world.tryGet(operator, Settler);
-  if (s === undefined || s.jobType === null || isCarrierJob(ctx, s.jobType)) return ZERO;
+  return s !== undefined && s.jobType !== null && !isCarrierJob(ctx, s.jobType);
+}
+
+/** A crafting operator's ADDITIVE per-cycle tool credit in [0, ONE] (see the schema's
+ *  `productionBonusPct`). ZERO for a carrier operator, a no/spent tool, or an unrated good. */
+export function toolProductionBonus(world: World, ctx: SystemContext, operator: Entity): Fixed {
+  if (!isCraftingOperator(world, ctx, operator)) return ZERO;
   const tool = world.tryGet(operator, Equipment)?.tool ?? null;
   const pct = liveEquipOf(ctx, tool)?.productionBonusPct;
   return pct === undefined ? ZERO : pctFraction(pct);
@@ -57,11 +59,11 @@ export function draughtRestores(
 }
 
 /**
- * The healing draught's DEATH-SAVE (user rule 2026-07-24: it protects at the moment of death and
- * regenerates then): called where a lethal blow/bite is about to land, it drinks one sip of the
- * lowest-indexed live healing draught and sets the bearer to its restore percent of max hitpoints
- * (floored at 1) instead of dying. Instant - death is instant, so no atomic plays. Returns false
- * when no draught is held (the caller kills as before).
+ * The healing draught's DEATH-SAVE (design rule: it protects at the moment of death and regenerates
+ * then): called where a lethal blow/bite is about to land, it drinks one sip of the lowest-indexed
+ * live healing draught and sets the bearer to its restore percent of max hitpoints (floored at 1)
+ * instead of dying. Instant - death is instant, so no atomic plays. Returns false when no draught is
+ * held (the caller kills as before).
  */
 export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity): boolean {
   const eq = world.tryGet(e, Equipment);
@@ -73,7 +75,7 @@ export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity)
     const pct = liveEquipOf(ctx, held)?.restorePct?.healthMax;
     if (pct === undefined) continue;
     health.hitpoints = Math.max(1, Math.trunc((health.max * pct) / 100));
-    world.touch(e); // Health written in place (the wear below may whiff on an unrated good)
+    world.touch(e); // log the in-place Health write (the direct-field-write convention)
     applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));
     return true;
   }

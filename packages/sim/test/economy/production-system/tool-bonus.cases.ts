@@ -15,9 +15,9 @@ import { experienceBonus, productionSystem, recipesByProductOf } from '../../../
 import { testContent } from '../../fixtures/content.js';
 import { CYCLE_TICKS, ctxOf, PLANK, sawmill, spawnSettler, WOOD } from './support.js';
 
-// The worn tool's ADDITIVE per-cycle credit (user rule 2026-07-24: added to the experience bonus
-// fraction, never multiplied) + its one wear step per completed cycle. Fixture: tool_wooden 11
-// (+30%), tool_iron 12 (+60%), both rated 100 cycles; carrier job 24.
+// The worn tool's ADDITIVE per-cycle credit (a sum with the experience bonus fraction, never a
+// product) + its one wear step per completed cycle. Fixture: tool_wooden 11 (+30%), tool_iron 12
+// (+60%), both rated 100 cycles; carrier job 24.
 
 const TOOL_WOODEN = 11;
 const TOOL_IRON = 12;

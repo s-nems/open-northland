@@ -61,24 +61,27 @@ export type EquipGoodSpec = EquipClass & {
   readonly id: string;
 };
 
+// The balance magnitudes below are user rules (2026-07-24) except where marked manual-pinned; no
+// readable source carries any of them (the engine hardcodes its values - see the EquipClass doc).
+
 /** Rated waypoint-arrivals for a pair of shoes: ~1% per 30 walked cells at ~2 route waypoints per
- *  cell (user rule 2026-07-24 for the rate class; the exact figure is a named approximation -
- *  anisotropic by heading mix, and no readable source carries a wear rate). */
+ *  cell (named approximation - anisotropic by heading mix). */
 const SHOE_USES = 6000;
-/** Rated production cycles for a tool (~1% per completed cycle - user rule 2026-07-24). */
+/** Rated production cycles for a tool (~1% per completed cycle). */
 const TOOL_USES = 100;
 /** Sips in a small bottle (mead, small potions) and a big one - manual-pinned ("Small potions can
  *  be used twice, large ones can be used five times"; mead sized like a small bottle). */
 const SMALL_BOTTLE_USES = 2;
 const BIG_BOTTLE_USES = 5;
-/** One sip's restore percents (user rules 2026-07-23/24): mead +40 hunger AND +40 fatigue (matches
- *  one meal - EAT_HUNGER_RESTORE is 40%); a potion +50 of its one bar (heal: percent of max HP). */
+/** One sip's restore percents: mead +40 hunger AND +40 fatigue (matches one meal -
+ *  EAT_HUNGER_RESTORE is 40%); a potion +50 of its one bar (heal: percent of max HP). */
 const MEAD_RESTORE = { hunger: 40, fatigue: 40 } as const;
 const POTION_RESTORE_PCT = 50;
-/** Boots walk-gait bonus, percent (user rule 2026-07-24). */
+/** Boots walk-gait bonus, percent. The manual also promises shoes slow hunger/fatigue ("uses up
+ *  less energy"); that half is deliberately DROPPED - boots are speed-only here (named deviation). */
 const SHOE_SPEED_BONUS_PCT = 40;
-/** ADDITIVE per-cycle production credit, percent of the recipe outputs (user rule 2026-07-24:
- *  added to the experience bonus, never multiplied). */
+/** ADDITIVE per-cycle production credit, percent of the recipe outputs - added to the experience
+ *  bonus, never multiplied. */
 const WOODEN_TOOL_BONUS_PCT = 30;
 const IRON_TOOL_BONUS_PCT = 60;
 

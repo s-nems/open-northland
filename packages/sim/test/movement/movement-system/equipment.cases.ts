@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Equipment, type EquipmentSlot, MISC_EQUIP_SLOTS } from '../../../src/components/index.js';
-import { fx, ONE, Simulation } from '../../../src/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
+import { fx, ONE, Simulation } from '../../../src/index.js';
 import { wearStepOf } from '../../../src/systems/equipment/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
