@@ -82,7 +82,23 @@ export interface SettlerCharacter {
  * the sheet-global `bindings.settler` + `source`/`overlays` pair, which stays the fallback for a sheet
  * without characters (the synthetic atlas).
  */
-export type SettlerCharacterSet = ByJobTable<SettlerCharacter>;
+export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
+  /**
+   * The wildlife species looks, keyed by the item's animal `Settler.tribe`
+   * ({@link import('../data/scene/draw-item.js').DrawItem.tribe}), the render-side
+   * `animals/jobgraphics.ini` join (species body recolour + its own `cr_ani` sequences; animals never
+   * carry heads). A tribe in {@link SettlerCharacterSet.animals.tribes} resolves ONLY here: bound
+   * draws its species look, unbound draws nothing, never the human civilian default (the data-pinned
+   * invisible stance; e.g. butterflies, whose `cr_ani_body_01` ships no readable sequences). The
+   * species atlases are baked recolours with no indexed variant, so an animal always draws plain,
+   * outside the paletted-LUT path.
+   */
+  readonly animals?: {
+    readonly byTribe: Readonly<Record<number, SettlerCharacter>>;
+    /** Every animal-record tribe, bound or not: the "never the human default" membership test. */
+    readonly tribes: ReadonlySet<number>;
+  };
+}
 
 /**
  * A loaded bob atlas ready for the GPU: the atlas image as a Pixi {@link TextureSource} plus the pure

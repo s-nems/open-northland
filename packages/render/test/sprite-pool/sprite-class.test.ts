@@ -3,9 +3,10 @@ import { Container, Sprite } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
+import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
-import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
+import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
@@ -62,5 +63,39 @@ describe('SpritePool — the sprite-class decision without a LUT', () => {
     const bounds = pool.boundsOf(1);
     if (bounds === undefined) throw new Error('a drawn settler must stamp bounds');
     expect(bounds.maxY - bounds.minY).toBe(32); // the body frame's rect, feet-anchored
+  });
+});
+
+describe('LayerBinder — an animal settler is never paletted, even with the LUT loaded', () => {
+  // The species atlases are baked recolours: reading them through the player-colour LUT would treat
+  // pixel colours as palette indices. The class is decided once at creation, so the guard lives there.
+  const ANIMAL_TRIBE = 8;
+  const palettedSheet: SpriteSheet = {
+    ...sheet,
+    characters: {
+      byJob: {},
+      default: { body: { source, atlas }, binding: { idle: BODY_BOB } },
+      animals: {
+        byTribe: { [ANIMAL_TRIBE]: { body: { source, atlas }, binding: { idle: BODY_BOB } } },
+        tribes: new Set([ANIMAL_TRIBE]),
+      },
+    },
+    palette: { source, colours: 16 },
+  };
+  const item = (tribe: number): DrawItem => ({ kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe });
+
+  it('creates a human settler paletted and an animal settler plain', () => {
+    const binder = new LayerBinder(new TextureCache(), palettedSheet);
+    expect(binder.create('settler', item(0)).paletted).toBe(true);
+    expect(binder.create('settler', item(ANIMAL_TRIBE)).paletted).toBe(false);
+  });
+
+  it('binds a drawn animal through plain Sprites end-to-end while the LUT is loaded', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), palettedSheet);
+    pool.reconcile(poolFrame(snapshotOf([entity(1, 0, 0, { Settler: { tribe: ANIMAL_TRIBE } })])));
+    const container = layer.children[0] as Container;
+    expect(container.children.length).toBeGreaterThan(0);
+    for (const spr of container.children) expect(spr).toBeInstanceOf(Sprite);
   });
 });

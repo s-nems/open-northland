@@ -203,5 +203,10 @@ export const enContent = {
       summary:
         'Idle settlers pair up and chat to refill their company need — soldiers never join — while hungry and sleepy settlers show thought bubbles.',
     },
+    wildlife: {
+      title: 'Wildlife herds',
+      summary:
+        'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
+    },
   },
 } as const;

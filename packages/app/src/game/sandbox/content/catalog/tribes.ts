@@ -43,6 +43,7 @@ import {
   WOMAN_TALK_ANIMATION,
 } from '../../work-animations.js';
 import type { SandboxContentExtras } from '../types.js';
+import { SANDBOX_ANIMAL_TRIBES } from './animals.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
 /** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) — the hearts phase's duration key. The
@@ -110,6 +111,11 @@ export function buildSandboxTribes(
     // (see tech-graph.ts): a gated workshop stays locked until the tribe has its gatherer.
     jobEnables: SANDBOX_JOB_ENABLES,
   });
+  // The standing wildlife tribes (the sandbox `animaltypes` records' owners). No tech graph and no
+  // hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.
+  for (const tribe of SANDBOX_ANIMAL_TRIBES) {
+    tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id });
+  }
   for (const tribe of extras.tribes ?? []) {
     if (!tribes.has(tribe.typeId)) {
       // Extra tribes (enemy raiders, wildlife) carry no tech graph — an empty edge list gates nothing, so their

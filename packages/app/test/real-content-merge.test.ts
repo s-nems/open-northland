@@ -145,9 +145,10 @@ describe('mergeRealContent', () => {
 
   it('sets the clean-room settler HP on a playable tribe that ships without one, never on an animal tribe', () => {
     // Real ir.json ships human tribes with no `hitpoints`; the overlay fills each PLAYABLE tribe (one with a
-    // `jobEnables` tech-graph) and leaves an animal/monster tribe (none) at its own pool.
+    // `jobEnables` tech-graph) and leaves an animal/monster tribe (none) at its own pool. The sandbox
+    // ships both kinds: the viking plus the standing wildlife tribes (bears/stags/wolves).
     const base = rawRealLike();
-    const zeroed = base.tribes.map((t) => ({ ...t, hitpoints: 0 })); // all sandbox tribes are playable
+    const zeroed = base.tribes.map((t) => ({ ...t, hitpoints: 0 }));
     const firstTribe = base.tribes[0];
     if (firstTribe === undefined) throw new Error('fixture: no tribes');
     const animal = {
@@ -161,7 +162,10 @@ describe('mergeRealContent', () => {
 
     const { content } = mergeRealContent(raw);
     for (const t of zeroed) {
-      expect(content.tribes.find((x) => x.typeId === t.typeId)?.hitpoints).toBe(HUMAN_HITPOINTS);
+      const playable = (t.jobEnables?.length ?? 0) > 0;
+      expect(content.tribes.find((x) => x.typeId === t.typeId)?.hitpoints).toBe(
+        playable ? HUMAN_HITPOINTS : 0,
+      );
     }
     expect(content.tribes.find((t) => t.typeId === animal.typeId)?.hitpoints).toBe(0);
   });

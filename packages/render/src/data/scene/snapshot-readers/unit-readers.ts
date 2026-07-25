@@ -105,6 +105,14 @@ export function readJobType(components: Readonly<Record<string, unknown>>): numb
 }
 
 /**
+ * A settler's `Settler.tribe`, the wildlife species join key
+ * ({@link import('../draw-item.js').DrawItem.tribe}), or `undefined` for a malformed component.
+ */
+export function readSettlerTribe(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readNumField(components, 'Settler', 'tribe');
+}
+
+/**
  * The `typeId` of the good in a settler's `Equipment.weapon` slot ({@link import('../draw-item.js').DrawItem.weaponGood}),
  * so the drawn warrior weapon follows the equipment slot. `undefined` when the settler has no `Equipment`
  * component or its weapon slot is empty/malformed (the binding then falls back to the `jobType` look).

@@ -1,5 +1,6 @@
 import type { EquipCategory } from '@open-northland/data';
 import { PRIMARY_TRIBE } from '../rules.js';
+import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
 import {
   EQUIP_GOODS,
   JOB_ARCHER,
@@ -58,6 +59,15 @@ const SPEAR_DAMAGE = 3800; // iron_spear
 const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
+// The animal natural weapons, transcribed from the mod `weapons.ini` (`bearfist` / `wolvefist`,
+// `damagevalue 0`), both weapon type 1 — the pair key is `(tribeType, typeId)`, so the shared typeId
+// never collides across tribes. The source rows carry `jobtype 49` (one bearfist twin 34) and
+// `goodtype 0`; the sandbox jobs table does not model the animal pseudo-jobs and the jobless-animal
+// binding reads the tribe's first weapon row regardless, so the rows ship job-less, and the good ref
+// is dropped (transcribing `goodtype 0` would wrongly count good 0 among the military goods).
+const ANIMAL_FIST_TYPE = 1;
+const BEAR_FIST_DAMAGE = 800;
+const WOLF_FIST_DAMAGE = 350;
 
 // vs-BUILDING damage — the weapon's HOUSE column (`weapons.ini` `damagevalue 7`,
 // {@link import('@open-northland/sim').ARMOR_MATERIAL} `HOUSE`), what a warrior does to a structure.
@@ -143,6 +153,25 @@ export function sandboxWeapons() {
       minRange: 4,
       maxRange: 23,
       damage: { '0': LONG_BOW_DAMAGE, '7': LONG_BOW_VS_BUILDING },
+    },
+    // The wildlife tribes' natural weapons (`weapons.ini` `bearfist`/`wolvefist`, bare-target column),
+    // one row per animal tribe so a jobless animal binds its combat identity (the first-weapon-row
+    // read, content-index.ts): without one, an aggressive wolf disengages instead of hunting.
+    {
+      typeId: ANIMAL_FIST_TYPE,
+      id: 'bearfist',
+      tribeType: ANIMAL_TRIBE_BEARS,
+      minRange: 1,
+      maxRange: 1,
+      damage: { '0': BEAR_FIST_DAMAGE },
+    },
+    {
+      typeId: ANIMAL_FIST_TYPE,
+      id: 'wolvefist',
+      tribeType: ANIMAL_TRIBE_WOLVES,
+      minRange: 1,
+      maxRange: 1,
+      damage: { '0': WOLF_FIST_DAMAGE },
     },
   ];
 }

@@ -4,6 +4,7 @@ import {
   INDEXED_CHARACTER_PALETTE,
   PLAYER_COLOR_COUNT,
 } from '../../catalog/roster.js';
+import { loadAnimalCharacters } from '../animal-gfx/index.js';
 import {
   BUILDING_FAMILIES,
   BUILDING_SCALE,
@@ -144,8 +145,17 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : DEFAULT_CHARACTER_PALETTE;
   // Per-job characters (the `[jobbasegraphics]` join): built after the hard-required layers above so a
   // missing extra body degrades per look, never failing the sheet. `undefined` (no IR sequences / no
-  // civilian look) keeps the legacy single-body settler path.
-  const characters = await loadCharacters(ir, goods, characterPalette);
+  // civilian look) keeps the legacy single-body settler path. The wildlife species looks load
+  // alongside and ride the same table; without the human characters they have no resolution path, so
+  // they attach only when the character set built.
+  const [humanCharacters, animalCharacters] = await Promise.all([
+    loadCharacters(ir, goods, characterPalette),
+    loadAnimalCharacters(ir),
+  ]);
+  const characters =
+    humanCharacters !== undefined && animalCharacters !== undefined
+      ? { ...humanCharacters, animals: animalCharacters }
+      : humanCharacters;
   // BUILDING_FAMILIES is the single source of truth for the named building families: each entry's atlas is
   // loaded here and only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall

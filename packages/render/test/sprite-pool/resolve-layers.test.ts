@@ -89,6 +89,59 @@ describe('resolveLayers — construction reveal: per-pixel with time data, crop 
   });
 });
 
+describe('resolveLayers — wildlife species resolution', () => {
+  const animalSource = {} as TextureSource;
+  const humanSource = {} as TextureSource;
+  const ANIMAL_BOB = 5;
+  const HUMAN_BOB = 7;
+  const animalAtlas: SpriteAtlas = { width: 64, height: 10, frames: new Map([frame(ANIMAL_BOB)]) };
+  const animalShadow = { source: shadowSource, atlas: animalAtlas };
+  const humanAtlas: SpriteAtlas = { width: 64, height: 10, frames: new Map([frame(HUMAN_BOB)]) };
+  const BOUND_TRIBE = 8;
+  const UNBOUND_TRIBE = 35;
+  const HUMAN_TRIBE = 1;
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: { settler: 1, resource: 1, building: 1 },
+    characters: {
+      byJob: {},
+      default: { body: { source: humanSource, atlas: humanAtlas }, binding: { idle: HUMAN_BOB } },
+      animals: {
+        byTribe: {
+          [BOUND_TRIBE]: {
+            body: { source: animalSource, atlas: animalAtlas, shadow: animalShadow },
+            binding: { idle: ANIMAL_BOB },
+          },
+        },
+        tribes: new Set([BOUND_TRIBE, UNBOUND_TRIBE]),
+      },
+    },
+  };
+  const settler = (tribe: number): DrawItem => ({ kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe });
+
+  it('draws a bound animal tribe as shadow + species body on the plain path (no atlasW/H)', () => {
+    const layers = resolveLayers(sheet, settler(BOUND_TRIBE), 0) ?? [];
+    expect(
+      layers.map((l) => [l.frame.x, l.source === shadowSource, l.shadow ?? false, l.atlasW ?? null]),
+    ).toEqual([
+      [ANIMAL_BOB, true, true, null],
+      [ANIMAL_BOB, false, false, null],
+    ]);
+  });
+
+  it('draws a listed-but-unbound animal tribe as nothing, never the human default', () => {
+    expect(resolveLayers(sheet, settler(UNBOUND_TRIBE), 0)).toEqual([]);
+  });
+
+  it('keeps a human tribe on the character path, atlas size riding for the paletted mesh', () => {
+    const layers = resolveLayers(sheet, settler(HUMAN_TRIBE), 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === humanSource, l.atlasW])).toEqual([
+      [HUMAN_BOB, true, 64],
+    ]);
+  });
+});
+
 describe('resolveLayers — cast shadows draw under the body from the atlas shadow twin', () => {
   const atlas: SpriteAtlas = {
     width: 100,
