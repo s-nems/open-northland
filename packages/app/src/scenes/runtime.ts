@@ -32,6 +32,9 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
   // Signpost confinement is on in every playable world (rationale on the slice's
   // `enableSignpostNavigation`); scenes enqueue it here, map worlds in the slice builders.
   sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  // Profession progression (omitted = gated, the sim default), enqueued here so the headless twin and
+  // browser run share it; the browser `?progression=` flag enqueues its override after this one (FIFO).
+  if (scene.progression === false) sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
   // The scene's fog-of-war mode (omitted = no fog, the sim default), enqueued here so the headless twin
   // and browser run share it; the browser `?fog=` flag enqueues its override after this one (FIFO).
   if (scene.fog !== undefined && scene.fog !== 'off') {

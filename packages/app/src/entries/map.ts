@@ -36,6 +36,7 @@ import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
+  applyProgressionOverride,
   createWorldRenderer,
   haltOnMissingContent,
   loadLocalizedRealContent,
@@ -212,6 +213,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   applyFogOverride(sim, params);
+  // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
+  applyProgressionOverride(sim, params);
 
   // `?ai=<seat>[,…]` flags seats for the strategic AI player — emitted by the menu roster's AI
   // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat

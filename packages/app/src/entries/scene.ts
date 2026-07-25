@@ -11,6 +11,7 @@ import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
+  applyProgressionOverride,
   createWorldRenderer,
   haltOnMissingContent,
   loadLocalizedRealContent,
@@ -96,6 +97,8 @@ export async function renderSceneMode(
   // `?fog=off|reveal|recon` overrides the scene's own fog mode — a named divergence from the headless
   // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different fog rule.
   applyFogOverride(sim, params);
+  // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
+  applyProgressionOverride(sim, params);
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);

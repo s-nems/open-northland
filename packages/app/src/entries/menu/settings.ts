@@ -3,6 +3,7 @@ import { type CarriedParam, carriedParams, formatSearch } from '../../view/param
 
 export const MENU_SPEEDS = ['0.25', '0.5', '1', '2', '3', '4', '6', '8'] as const;
 export const MENU_FOG_MODES = ['off', 'reveal', 'recon'] as const;
+export const MENU_PROGRESSION_MODES = ['on', 'off'] as const;
 
 interface SettingOption {
   readonly value: string;
@@ -36,6 +37,11 @@ function settingModel(): readonly MenuSetting[] {
       param: 'fog',
       fallback: 'reveal',
       options: MENU_FOG_MODES.map((value) => ({ value, ...copy.fogModes[value] })),
+    },
+    {
+      param: 'progression',
+      fallback: 'on',
+      options: MENU_PROGRESSION_MODES.map((value) => ({ value, label: copy.progressionModes[value] })),
     },
     {
       param: 'debug',

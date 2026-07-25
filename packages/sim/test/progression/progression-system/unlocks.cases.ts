@@ -92,7 +92,9 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // The fixture also carries a `train` requirement on PLANK with amount 999 — if it were treated as
     // an accrued-XP threshold, 300 XP could never clear it. settlerMeetsNeed must skip it.
-    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(
+      true,
+    );
   });
 
   it('is met for a target with no need requirement at all', () => {
