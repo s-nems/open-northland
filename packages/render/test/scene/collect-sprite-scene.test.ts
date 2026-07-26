@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../../src/data/scene/index.js';
-import { ONE, tileToScreen } from '../../src/index.js';
+import { buildSpriteScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /** Unit tests for {@link collectSpriteScene} — the single-pass draw list + pre-cull liveness set the
@@ -130,6 +130,49 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     expect(drawn.map((d) => d.ref).sort((a, b) => a - b)).toEqual([1, 2]);
     expect(drawn.every((d) => d.state === 'idle')).toBe(true);
     expect(drawn.every((d) => d.atomicId === undefined && d.elapsed === undefined)).toBe(true);
+    // Tagged frozen, so the caller reads indoor state off the item instead of differencing two builds.
+    expect(drawn.every((d) => d.frozen === true)).toBe(true);
+  });
+
+  // The details panel's worker field wants a handful of KNOWN settlers drawn exactly as the map draws
+  // them. Narrowing the SNAPSHOT to those settlers is what it must not do: the whole-snapshot pre-scans
+  // then see no buildings (nothing reads as indoor) and no action targets (nothing faces its work).
+  // `onlyRefs` narrows the emitted items instead, leaving both pre-scans reading the whole world. It is a
+  // `buildSpriteScene` option only: it also narrows `liveRefs`, which the reconcile below reads as deaths.
+  describe('onlyRefs narrows the emit while the pre-scans still read the whole snapshot', () => {
+    /** The store, the settler lifting goods out of it, and an unrelated settler outside. */
+    const storeScene = snapshotOf([
+      entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+      entity(1, 2, 2, {
+        Settler: { tribe: 0 },
+        CurrentAtomic: { effect: { kind: 'pickup', from: 10, goodType: 1, amount: 1 } },
+      }),
+      entity(2, 3, 3, { Settler: { tribe: 0 } }),
+    ]);
+
+    it('resolves the store worker as indoor — the store is not among the emitted refs', () => {
+      const items = buildSpriteScene(storeScene, { keepIndoorSettlers: true, onlyRefs: new Set([1]) });
+      expect(items.map((d) => d.ref)).toEqual([1]); // neither the store nor the outsider
+      expect(items[0]?.frozen).toBe(true);
+    });
+
+    it('faces a harvester at the node it works — the node is not among the emitted refs', () => {
+      // The woodcutter at odd row (1,1) chops the tree one column EAST (2,1) → block 4; its lingering
+      // path points west (block 1), so a stale-facing regression reads 1 here.
+      const items = buildSpriteScene(
+        snapshotOf([
+          entity(1, 1, 1, {
+            Settler: { tribe: 0 },
+            CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
+            PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+          }),
+          entity(2, 2, 1, { Resource: { goodType: 1, remaining: 3 } }),
+        ]),
+        { onlyRefs: new Set([1]) },
+      );
+      expect(items.map((d) => d.ref)).toEqual([1]);
+      expect(items[0]?.facing).toBe(4);
+    });
   });
 
   // The details-panel portrait's subject is force-drawn through the cull so its live cutout never blanks.

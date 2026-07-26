@@ -18,13 +18,10 @@ one concept, currently living under the same name in two packages.
 
 - Give the lookup one home and delete the duplicate. `packages/sim/src/inspect/snapshot.ts` owns the
   ascending-order invariant and both packages depend on sim, so that is the natural owner.
-- Two preconditions must be fixed first, or the shared binary search silently returns `undefined`:
-  - `packages/app/src/hud/details-panel/worker-sprites.ts` builds a narrowed
-    `{ ...snapshot, entities: workerEntities }` whose entities come from `worker-selection.ts` in
-    family-group order, not ascending id.
-  - `packages/app/test/support/snapshot.ts` `snapshotOf` does not canonicalize; e.g.
-    `packages/app/test/house-highlight.test.ts` builds ids `[1, 10, 2, 3]`. Sort there the way
-    `packages/render/test/support/fixtures.ts` does.
+- One precondition must be fixed first, or the shared binary search silently returns `undefined`:
+  `packages/app/test/support/snapshot.ts` `snapshotOf` does not canonicalize; e.g.
+  `packages/app/test/house-highlight.test.ts` builds ids `[1, 10, 2, 3]`. Sort there the way
+  `packages/render/test/support/fixtures.ts` does.
 - Non-goal: changing what any panel or highlight resolves.
 
 ## Verify

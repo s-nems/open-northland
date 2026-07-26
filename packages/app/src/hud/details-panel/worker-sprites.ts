@@ -16,7 +16,7 @@ import {
   Texture,
 } from 'pixi.js';
 import type { Rect } from '../geometry.js';
-import { boundWorkers, groupedEntities } from './worker-selection.js';
+import { boundWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
  * The animated worker sprites drawn in the details panel's "Pracownicy" field — the settlers bound to
@@ -53,7 +53,9 @@ interface WorkerHit {
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
-  /** One display object per (workerId, layerIndex), reused across frames and hidden when unused. */
+  /** One display object per (panel slot, layerIndex) — reused across frames AND across whichever worker
+   *  occupies the slot, hidden when unused. Keyed by slot, not by entity, so a session spent clicking
+   *  through buildings cannot grow this map past the field's slot count × the deepest layer stack. */
   private readonly sprites = new Map<string, PalettedSprite | Sprite>();
   /** Cached plain textures (the no-LUT fallback) keyed by atlas frame identity, so the fallback path
    *  doesn't mint a Texture every frame. */
@@ -96,38 +98,28 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const grouped = groups !== undefined ? groupedEntities(snapshot, groups) : undefined;
-    const workerEntities = grouped?.entities ?? boundWorkers(snapshot, buildingId, siteCrew);
-    if (workerEntities.length === 0) {
+    const grouped = groups !== undefined ? groupedWorkers(snapshot, groups) : undefined;
+    const workers = grouped?.ids ?? boundWorkers(snapshot, buildingId, siteCrew);
+    if (workers.length === 0) {
       this.hideRest();
       this.container.visible = false;
       return;
     }
-    const workers = workerEntities.map((e) => e.id);
     // Per-slot extra left gap (in slot widths): a family-grouped field inserts a breather where a new
     // group starts; the flat worker field has none.
     const gapBefore = grouped?.gaps;
 
-    // Resolve each worker's draw item the same way the map does — same frame, same facing (forcing a fixed
-    // facing makes them animate walking the wrong way) — but project only these ≤8 bound settlers, not
-    // the whole map: this overlay runs every frame while a building panel is open, so a full
-    // `buildSpriteScene(snapshot)` (an O(entities) project + sort, per render/AGENTS) just to look up 8 ids
-    // would duplicate the renderer's own scene build for the entire map every frame. Feeding the builder a
-    // snapshot narrowed to the bound workers keeps the identical projection while the cost tracks the panel.
-    //
-    // We build the narrowed scene twice: the plain build animates the workers currently out working, and the
-    // `keepIndoorSettlers` build adds a standing pose for any worker who has stepped inside the building —
-    // the map suppresses those (sim `Resting` / mid-store-exchange), so they'd otherwise vanish from the
-    // panel. A worker absent from the plain build but present in the indoor one is inside → drawn frozen.
-    // Both builds are O(≤8), negligible beside the renderer's own per-map scene build.
-    const active = new Map<number, DrawItem>();
-    const withIndoor = new Map<number, DrawItem>();
-    const workerScene: WorldSnapshot = { ...snapshot, entities: workerEntities };
-    const sceneOpts = { playerColourOf: this.playerColourOf };
-    for (const it of buildSpriteScene(workerScene, sceneOpts))
-      if (it.kind === 'settler') active.set(it.ref, it);
-    for (const it of buildSpriteScene(workerScene, { ...sceneOpts, keepIndoorSettlers: true }))
-      if (it.kind === 'settler') withIndoor.set(it.ref, it);
+    // One scene build against the WHOLE snapshot, so each worker resolves against the same reads the map
+    // uses: `onlyRefs` narrows the emit to these ≤8 settlers without starving the builder's
+    // whole-snapshot pre-scans, which decide indoor state and target-derived facing. `keepIndoorSettlers`
+    // adds the workers the map suppresses (sim `Resting` / mid-store-exchange), each tagged `frozen`.
+    const scene = buildSpriteScene(snapshot, {
+      playerColourOf: this.playerColourOf,
+      keepIndoorSettlers: true,
+      onlyRefs: new Set(workers),
+    });
+    const items = new Map<number, DrawItem>();
+    for (const it of scene) if (it.kind === 'settler') items.set(it.ref, it);
 
     const inner: Rect = {
       x: field.x + FIELD_PAD,
@@ -144,11 +136,10 @@ export class WorkerSpriteOverlay {
     // CHAR_FILL of the field height — so a baby beside its parents reads baby-sized instead of each
     // body being blown up to the same height.
     const resolved = workers.map((id) => {
-      const activeItem = active.get(id);
-      const item = activeItem ?? withIndoor.get(id);
+      const item = items.get(id);
       if (item === undefined) return null;
-      // A worker inside the building (absent from the plain build) stands frozen; an active one animates.
-      const clock = activeItem !== undefined ? snapshot.tick : INDOOR_POSE_TICK;
+      // A worker inside the building stands frozen; one out working animates on the sim tick.
+      const clock = item.frozen === true ? INDOOR_POSE_TICK : snapshot.tick;
       // Size the worker off its NEUTRAL standing frame (INDOOR_POSE_TICK), not the live animation frame:
       // each walk-cycle frame is a differently-trimmed pixel rect (arms/legs extended → taller bbox), so
       // normalising the current frame's height would rescale the whole body every step — the "camera bob"
@@ -173,8 +164,7 @@ export class WorkerSpriteOverlay {
       const feetX = cellX + slotW / 2;
       for (let li = 0; li < r.layers.length; li++) {
         const layer = r.layers[li];
-        if (layer !== undefined)
-          this.drawLayer(`${r.id}:${li}`, layer, feetX, feetY, zoom, r.item.player ?? 0);
+        if (layer !== undefined) this.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, r.item.player ?? 0);
       }
       this.hits.push({ id: r.id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });

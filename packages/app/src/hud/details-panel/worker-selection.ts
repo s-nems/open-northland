@@ -7,47 +7,43 @@ export const MAX_WORKERS = 8;
  *  members of one family stand close, the next family starts after this breather. */
 export const FAMILY_GAP_FRAC = 0.45;
 
-/** A snapshot entity, as `buildSpriteScene` consumes it — the narrowed scene reuses these objects. */
-type WorkerEntity = WorldSnapshot['entities'][number];
-
-/** The entities of a grouped id list (a home's residents), flattened in group order and capped like
+/** The settler ids of a grouped id list (a home's residents), flattened in group order and capped like
  *  the worker scan, plus each drawn slot's leading gap ({@link FAMILY_GAP_FRAC} where a new family
- *  starts). One entity pass builds the id→entity map; missing ids (a member died between frames)
- *  are skipped. */
-export function groupedEntities(
+ *  starts). One entity pass resolves which listed ids are live settlers; the rest (a member died between
+ *  frames, or was never one) are skipped. */
+export function groupedWorkers(
   snapshot: WorldSnapshot,
   groups: readonly (readonly number[])[],
-): { entities: WorkerEntity[]; gaps: number[] } {
+): { ids: number[]; gaps: number[] } {
   const wanted = new Set<number>();
   for (const group of groups) for (const id of group) wanted.add(id);
-  const byId = new Map<number, WorkerEntity>();
+  const settlers = new Set<number>();
   for (const e of snapshot.entities) {
-    if (wanted.has(e.id) && isSettler(e)) byId.set(e.id, e);
+    if (wanted.has(e.id) && isSettler(e)) settlers.add(e.id);
   }
-  const entities: WorkerEntity[] = [];
+  const ids: number[] = [];
   const gaps: number[] = [];
   for (const group of groups) {
     let firstOfGroup = true;
     for (const id of group) {
-      if (entities.length >= MAX_WORKERS) return { entities, gaps };
-      const e = byId.get(id);
-      if (e === undefined) continue;
-      gaps.push(firstOfGroup && entities.length > 0 ? FAMILY_GAP_FRAC : 0);
-      entities.push(e);
+      if (ids.length >= MAX_WORKERS) return { ids, gaps };
+      if (!settlers.has(id)) continue;
+      gaps.push(firstOfGroup && ids.length > 0 ? FAMILY_GAP_FRAC : 0);
+      ids.push(id);
       firstOfGroup = false;
     }
   }
-  return { entities, gaps };
+  return { ids, gaps };
 }
 
-/** The (snapshot-ordered, capped) settler entities bound to `buildingId` — one O(entities) scan, whose
- *  result also narrows the overlay's sprite-scene build. With `siteCrew` (a construction site — builders
- *  are never JobAssignment-bound to it) a settler counts by its persistent crew membership
- *  (`SiteAssignment` — hammering, waiting for material, or detoured, it stays listed), and a plain
- *  hauler shows transiently while depositing there (`CurrentAtomic.targetEntity`) or on a supply
- *  errand for it (`SupplyRun`). A view read, so snapshot order is fine. */
-export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): WorkerEntity[] {
-  const out: WorkerEntity[] = [];
+/** The (snapshot-ordered, capped) settler ids bound to `buildingId` — one O(entities) scan. With
+ *  `siteCrew` (a construction site — builders are never JobAssignment-bound to it) a settler counts by
+ *  its persistent crew membership (`SiteAssignment` — hammering, waiting for material, or detoured, it
+ *  stays listed), and a plain hauler shows transiently while depositing there
+ *  (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). A view read, so snapshot
+ *  order is fine. */
+export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
+  const out: number[] = [];
   for (const e of snapshot.entities) {
     if (out.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
@@ -60,7 +56,7 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
       (num(crew?.site) === buildingId ||
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
-    if (num(assignment?.workplace) === buildingId || working) out.push(e);
+    if (num(assignment?.workplace) === buildingId || working) out.push(e.id);
   }
   return out;
 }
