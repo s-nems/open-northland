@@ -39,31 +39,50 @@ export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefine
   return x !== undefined && y !== undefined ? { x: x as Fixed, y: y as Fixed } : undefined;
 }
 
-/** Whether profession progression gates trades — the `ProgressionRules` singleton in the snapshot;
- *  an absent singleton means the sim default (enabled), mirroring the sim-side reader. */
-export function professionProgressionEnabledIn(snapshot: WorldSnapshot): boolean {
+/**
+ * Whether the experience tech tree gates this settler's trades and wares — the app mirror of the sim's
+ * `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated
+ * (the toggle is a human-player setting). The two world-wide facts behind it are resolved once per
+ * snapshot ({@link progressionGateFacts}), so a per-settler loop (the picker over a marquee selection)
+ * costs one entity scan, not one per settler.
+ */
+export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  const { progressionEnabled, aiSeats } = progressionGateFacts(snapshot);
+  if (!progressionEnabled) return false;
+  const owner = ownerPlayerOf(e);
+  return owner === undefined || !aiSeats.has(owner);
+}
+
+/** {@link progressionGateFacts} keyed by snapshot: a snapshot is a frozen per-frame value, so an entry
+ *  lives exactly as long as the frame it describes. */
+const GATE_FACTS = new WeakMap<WorldSnapshot, ProgressionGateFacts>();
+
+interface ProgressionGateFacts {
+  /** The `ProgressionRules` singleton's toggle; an absent singleton means the sim default (enabled). */
+  readonly progressionEnabled: boolean;
+  /** The player slots driven by the strategic AI (their `AiPlayer` carriers). */
+  readonly aiSeats: ReadonlySet<number>;
+}
+
+/** The world-wide half of {@link progressionGatesSettler}, in one pass over the snapshot. */
+function progressionGateFacts(snapshot: WorldSnapshot): ProgressionGateFacts {
+  const cached = GATE_FACTS.get(snapshot);
+  if (cached !== undefined) return cached;
+  const aiSeats = new Set<number>();
+  let progressionEnabled = true;
+  let ruled = false;
   for (const e of snapshot.entities) {
     const rules = e.components.ProgressionRules as { professionProgressionEnabled?: unknown } | undefined;
-    if (rules !== undefined) return rules.professionProgressionEnabled !== false;
+    if (rules !== undefined && !ruled) {
+      progressionEnabled = rules.professionProgressionEnabled !== false; // first carrier wins
+      ruled = true;
+    }
+    const seat = num((e.components.AiPlayer as { player?: unknown } | undefined)?.player);
+    if (seat !== undefined) aiSeats.add(seat);
   }
-  return true;
-}
-
-/** Whether `player`'s seat is AI-driven — an `AiPlayer` carrier for it in the snapshot. */
-export function isAiPlayerIn(snapshot: WorldSnapshot, player: number): boolean {
-  return snapshot.entities.some((e) => {
-    const ai = e.components.AiPlayer as { player?: unknown } | undefined;
-    return ai !== undefined && num(ai.player) === player;
-  });
-}
-
-/** Whether the experience tech tree gates this settler's trades and wares — the app mirror of the sim's
- *  `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated
- *  (the toggle is a human-player setting). Read once per model build; the menus filter off it. */
-export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
-  if (!professionProgressionEnabledIn(snapshot)) return false;
-  const owner = ownerPlayerOf(e);
-  return owner === undefined || !isAiPlayerIn(snapshot, owner);
+  const facts: ProgressionGateFacts = { progressionEnabled, aiSeats };
+  GATE_FACTS.set(snapshot, facts);
+  return facts;
 }
 
 /** A settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]` pairs)

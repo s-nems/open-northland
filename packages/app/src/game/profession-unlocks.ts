@@ -71,7 +71,8 @@ function meetsNeedRows(
 /**
  * Whether EVERY settler in `settlerIds` may take `jobType` — the multi-selection picker rule (a row is
  * offered only when the order would apply to the whole selection; the sim would silently skip the
- * unqualified anyway). Reads the progression flag once off the snapshot.
+ * unqualified anyway). Whether the tree gates a settler is per settler (an AI-owned one is exempt), but
+ * its world-wide inputs are resolved once per snapshot — see {@link progressionGatesSettler}.
  */
 export function jobUnlockedForSelection(
   content: UnlockContent,
@@ -84,7 +85,6 @@ export function jobUnlockedForSelection(
     if (ent === undefined) continue; // gone mid-frame — the sim will skip it too
     const settler = ent.components.Settler as { tribe?: unknown } | undefined;
     const experience = settlerExperienceOf(ent.components);
-    // Per settler, not per selection: an AI-owned unit is never gated (progressionGatesSettler).
     const gated = progressionGatesSettler(snapshot, ent);
     if (!jobUnlockedFor(content, gated, num(settler?.tribe), experience, jobType)) return false;
   }
