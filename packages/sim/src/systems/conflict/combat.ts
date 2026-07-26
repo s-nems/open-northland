@@ -105,12 +105,9 @@ export const combatSystem: System = (world, ctx) => {
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
   // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
   // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
-  // Wildlife is classified out of the coarse counts (`wildClassOf`): passive-now animals are discounted
-  // for every gated seeker (no gated seeker can validly target them; hunters are never gated), and
-  // hostile ones additionally for the animal seekers' civ estimate (a wolf pack must not defeat its own
-  // members' early-out) — a map's hundreds of herd members must not turn every civilian's flee scan and
-  // every soldier's sight scan back on. Pure reads only — the lapsed-Anger reap stays with the attacker
-  // pass (hostileAnimalNow).
+  // Wildlife classes for the presence grid's discounts — the why-this-is-safe superset argument lives
+  // on {@link HostilePresence}. Pure reads only: the lapsed-Anger reap stays with the attacker pass
+  // (hostileAnimalNow).
   const wildClassOf = (t: Entity): 'passive' | 'hostile' | null => {
     if (world.has(t, Owner)) return null;
     const s = world.tryGet(t, Settler);
@@ -313,10 +310,10 @@ function engageCombatant(
     // and swinging there would freeze it off any node centre, reading as a glide. Gated, the walker finishes
     // its braked last leg onto the slot's centre first; clearing the nav state is then stale-goal hygiene.
     clearNavState(world, e);
-    // The Engagement marker (economy-skip + chase throttle) is owned-only: an unowned combatant swings in
-    // place with no advance drive, so stamping it there would give it a spurious economy-skip and perturb
-    // its hash. It only matters in the idle tick between swings (mid-swing, `CurrentAtomic` already gates
-    // the unit off the economy), where it keeps an owned unit engaged instead of re-tasked.
+    // The in-band Engagement refresh (economy-skip + chase throttle) is owned-only: it matters in the
+    // idle tick between swings (mid-swing, `CurrentAtomic` already gates the unit off the economy),
+    // where it keeps an owned unit engaged instead of re-tasked. An advancing animal picks its
+    // Engagement up from chase(); stamping a swinging unowned civ would only perturb its hash.
     if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
     // Fight experience with this weapon class raises the swing's damage (up to +50% at combat mastery).
     const damage = withFightDamageBonus(

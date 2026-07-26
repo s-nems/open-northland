@@ -184,7 +184,8 @@ export interface ContentIr {
     footprint?: BuildingFootprint;
   }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
-  readonly tribes?: readonly { typeId?: number; id?: string }[];
+  /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
+  readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   /** The `animaltypes.ini` records, read only for tribe membership: which tribes ARE animals (the
    *  species-look and authored-placement joins key on `tribeType`; behaviour fields stay sim-side). */
   readonly animals?: readonly { tribeType?: number }[];

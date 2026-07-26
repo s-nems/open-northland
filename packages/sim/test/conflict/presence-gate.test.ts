@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Engagement, Fleeing, MoveGoal, Owner } from '../../src/components/index.js';
+import { Anger, CurrentAtomic, Engagement, Fleeing, MoveGoal, Owner } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
-import { BEAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
+import { BEAR, BOAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
 import { combatantAtNode, ctxOf, P0, P1 } from './stances/support.js';
 
 /**
@@ -73,6 +73,52 @@ describe('combat presence gate — conservative boundaries', () => {
 
     // isHuntTarget is owner-blind, so same-player prey is valid — the presence gate must not skip it.
     expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
+  it('a gated soldier still engages a PROVOKED getAngry animal (angry classifies hostile, never passive)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const fighter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.ATTACK);
+    const boar = fighterAtNode(sim, 46, 40, BOAR, null); // passive-but-provokable, 6 nodes off
+    sim.world.add(boar, Anger, { until: 100 }); // provoked: a live anger timer — a valid civ target
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(fighter, Engagement)).toBe(true); // the discount must not hide an angry animal
+  });
+
+  it('a gated soldier ignores passive-only wildlife (the discount holds — no wake, no target)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const fighter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.ATTACK);
+    fighterAtNode(sim, 46, 40, COW, null); // catchable, fully passive — not a soldier's target
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(fighter, Engagement)).toBe(false);
+    expect(sim.world.has(fighter, CurrentAtomic)).toBe(false);
+  });
+
+  it('an ATTACK-stance hunter still finds passive prey (hunters are ungated in every stance)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    // ATTACK routes the hunter through generalAccept, whose mayHunt arm admits the discounted cow —
+    // the presence gate must not skip the scan (spec.player is null for a hunter in ANY stance).
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.ATTACK, { jobType: HUNTER });
+    const cow = fighterAtNode(sim, 46, 40, COW, null); // in the test_spear band [3, 17]
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
+  it('a FLEE-stance hunter still reacts to prey in sight (the flee gate shares the hunter exemption)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.FLEE, { jobType: HUNTER });
+    fighterAtNode(sim, 46, 40, COW, null); // discounted by the grid; the fleer's accept admits it
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The fleer's threat filter is isValidTarget from its own perspective, so prey reads as a threat
+    // (a pre-existing quirk the exemption preserves) — the early-out must not swallow it.
+    expect(sim.world.has(hunter, Fleeing)).toBe(true);
   });
 
   it('a civilian flees a threat exactly at the sight radius, and ignores one past it', () => {

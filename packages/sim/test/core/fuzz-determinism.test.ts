@@ -129,8 +129,9 @@ function fuzzContent() {
 const WOMAN_TYPE = 7;
 /** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / woman / unknown. */
 const JOB_TYPES = [0, 1, 2, 15, 27, 36, WOMAN_TYPE, INVALID_TYPE] as const;
-/** Herd tribes: bear pack / bee / boar / cow / deer, plus two non-animals (viking, unknown) — skipped. */
-const HERD_TRIBES = [10, 11, 12, 13, 14, VIKING, INVALID_TYPE] as const;
+/** Herd tribes: bear pack / bee / boar / cow / deer, the hitpoints-0 decorative butterfly (spawns
+ *  nothing), plus two non-animals (viking, unknown) — skipped. */
+const HERD_TRIBES = [10, 11, 12, 13, 14, 15, VIKING, INVALID_TYPE] as const;
 /** The viking woodcutter's weapon (test_axe) and leather armor — the combatant-spawn extras. */
 const AXE = 7;
 const LEATHER = 1;
@@ -285,7 +286,15 @@ function nextCommand(rng: Rng): Command {
       };
     }
     case 2:
-      return { kind: 'spawnAnimalHerd', tribe: pick(rng, HERD_TRIBES), x, y };
+      // Occasionally the count override (a map's one-record spawn), including the 0/negative shapes
+      // the clamp must floor to one creature — both must hash and replay identically.
+      return {
+        kind: 'spawnAnimalHerd',
+        tribe: pick(rng, HERD_TRIBES),
+        x,
+        y,
+        ...(rng.int(3) === 0 ? { count: pick(rng, [0, 1, 2, -5] as const) } : {}),
+      };
     case 3:
       // The fixture ships no vehicles, so EVERY placeBoat is the skipped-but-logged path — replay
       // must reproduce the same state through a log full of no-op commands.

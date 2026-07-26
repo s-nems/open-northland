@@ -15,12 +15,7 @@ import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
-import {
-  ANIMAL_AGGRO_RADIUS_NODES,
-  isHuntTarget,
-  isValidTarget,
-  SIGHT_RADIUS_NODES,
-} from './targeting.js';
+import { ANIMAL_AGGRO_RADIUS_NODES, isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
 // military stance, and the near/far reach band + DEFEND anchor leash the chase respects. Internal to
@@ -109,9 +104,8 @@ export function engageSpec(
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
-  // A hunter is NEVER presence-gated (in any stance): its accept admits passive catchable prey via
-  // mayHunt, which the presence grid discounts as "passive wildlife" — the gate's "other" class is no
-  // superset of a prey filter. Hunters are a handful per map; the ungated scan costs nothing at scale.
+  // A hunter is NEVER presence-gated, in any stance: its prey filter admits the passive wildlife the
+  // grid discounts (see {@link HostilePresence}). Hunters are a handful per map — the scan is cheap.
   const player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer?.player ?? null);
 
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
@@ -144,7 +138,11 @@ export function engageSpec(
   return {
     accept: generalAccept,
     minDist,
-    searchRadius: owned ? sight : animalSeeker ? ANIMAL_AGGRO_RADIUS_NODES : weapon.maxRange,
+    searchRadius: owned
+      ? sight
+      : animalSeeker
+        ? Math.max(weapon.maxRange, ANIMAL_AGGRO_RADIUS_NODES)
+        : weapon.maxRange,
     player,
     animalSeeker,
     defend: null,
@@ -161,11 +159,10 @@ interface EngageSpec {
   readonly searchRadius: number;
   /** The seeker's player for the {@link HostilePresence} early-out; null when the seeker must never
    *  skip the search — an unowned one (its valid targets can share its "unowned" presence class) or
-   *  an IGNORE hunter (its owner-blind prey filter admits the seeker's own player's animals). */
+   *  a hunter in any stance (its owner-blind prey filter admits discounted passive wildlife). */
   readonly player: number | null;
-  /** A hostile wild animal seeking — gates on the presence grid's civilization estimate instead
-   *  ({@link HostilePresence.civsWithin}): its accept admits ONLY civilization settlers, so packmates
-   *  and grazing herds must not defeat its idle early-out. */
+  /** A hostile wild animal seeking — gates on {@link HostilePresence.civsWithin} instead (its accept
+   *  admits only civilization settlers). */
   readonly animalSeeker?: boolean;
   /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number } | null;
@@ -225,8 +222,7 @@ export function resolveTarget(
   // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant/building can be
   // in the search band, both ring searches would return null — skip them (the standing-army flat cost).
   if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
-  // The animal seeker's twin: "no civilization settler within the ambush radius" proves both ring
-  // searches empty (its accept admits only civs — packmates and grazing herds are discounted).
+  // The animal seeker's twin (see {@link HostilePresence}): no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
   // Tier 1: units + HQ + towers (everything the stance admits that is NOT a low-priority building). A
   // nearer plain building never preempts a unit or high-value structure in sight.
