@@ -49,6 +49,23 @@ export function professionProgressionEnabledIn(snapshot: WorldSnapshot): boolean
   return true;
 }
 
+/** Whether `player`'s seat is AI-driven — an `AiPlayer` carrier for it in the snapshot. */
+export function isAiPlayerIn(snapshot: WorldSnapshot, player: number): boolean {
+  return snapshot.entities.some((e) => {
+    const ai = e.components.AiPlayer as { player?: unknown } | undefined;
+    return ai !== undefined && num(ai.player) === player;
+  });
+}
+
+/** Whether the experience tech tree gates this settler's trades and wares — the app mirror of the sim's
+ *  `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated
+ *  (the toggle is a human-player setting). Read once per model build; the menus filter off it. */
+export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  if (!professionProgressionEnabledIn(snapshot)) return false;
+  const owner = ownerPlayerOf(e);
+  return owner === undefined || !isAiPlayerIn(snapshot, owner);
+}
+
 /** A settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]` pairs)
  *  parsed into a Map — shared by the panel's experience rows, its unlock forecast, and the profession
  *  picker's qualification filter. Empty for a non-settler or a malformed field. */

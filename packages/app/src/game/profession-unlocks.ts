@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { systems, type WorldSnapshot } from '@open-northland/sim';
-import { entityById, num, professionProgressionEnabledIn, settlerExperienceOf } from './snapshot.js';
+import { entityById, num, progressionGatesSettler, settlerExperienceOf } from './snapshot.js';
 
 /**
  * The profession picker's qualification filter — the app-side mirror of the sim's `settlerMeetsNeed`
@@ -79,13 +79,14 @@ export function jobUnlockedForSelection(
   settlerIds: readonly number[],
   jobType: number,
 ): boolean {
-  const enabled = professionProgressionEnabledIn(snapshot);
   for (const id of settlerIds) {
     const ent = entityById(snapshot, id);
     if (ent === undefined) continue; // gone mid-frame — the sim will skip it too
     const settler = ent.components.Settler as { tribe?: unknown } | undefined;
     const experience = settlerExperienceOf(ent.components);
-    if (!jobUnlockedFor(content, enabled, num(settler?.tribe), experience, jobType)) return false;
+    // Per settler, not per selection: an AI-owned unit is never gated (progressionGatesSettler).
+    const gated = progressionGatesSettler(snapshot, ent);
+    if (!jobUnlockedFor(content, gated, num(settler?.tribe), experience, jobType)) return false;
   }
   return true;
 }

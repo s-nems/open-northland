@@ -113,18 +113,19 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
     expect(assignmentPriorityFor(REAL_JOB.hunter, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
   });
 
-  it('keeps a gatherer current trade — a collector on a workshop with a collector slot gets that slot first', () => {
-    // A real pottery offers collector + potter + carrier. A settler who is already a collector prefers that
-    // gatherer slot (its current trade — the building becomes its delivery target), then the default
-    // craft → carrier fallback. Gatherers ARE hand-assignable now, but only as the settler's current trade.
+  it('offers a collector the workshop TRADE first, its gatherer slot second', () => {
+    // A real pottery offers collector + potter + carrier. Aiming a collector at a workshop means "become
+    // its tradesman" in the original, so the potter slot leads; the sim's `needforjob` gate decides
+    // whether this collector earned it, and its own gatherer slot is the next fallback (the building
+    // becomes its delivery target), with the carrier last.
     const POTTERY_SLOTS = [
       { jobType: REAL_JOB.collector, count: 1 },
       { jobType: REAL_JOB.potter, count: 1 },
       { jobType: REAL_JOB.carrier, count: 1 },
     ];
     expect(assignmentPriorityFor(REAL_JOB.collector, POTTERY_SLOTS)).toEqual([
-      REAL_JOB.collector,
       REAL_JOB.potter,
+      REAL_JOB.collector,
       REAL_JOB.carrier,
     ]);
   });

@@ -12,7 +12,7 @@ import {
   isSignpost,
   num,
   ownerPlayerOf,
-  professionProgressionEnabledIn,
+  progressionGatesSettler,
   residenceHomeOf,
   surnameSourceOf,
 } from '../../../game/snapshot.js';
@@ -201,6 +201,9 @@ export function buildUnitPanelModel(
     // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
     // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
     const young = comps.Age !== undefined;
+    // Whether the experience tree gates THIS settler (an AI-owned unit is never gated) — read once for
+    // the work menus and the unlock forecast.
+    const progressionGated = progressionGatesSettler(snapshot, ent);
     // A child's age in years, read off the sim's measured tick↔year rate (adulthood at 12 years ends the
     // Age component, so this only ever renders 0..11). Appended to the meta.
     const ageTicks = num((comps.Age as { ticks?: unknown } | undefined)?.ticks);
@@ -236,9 +239,9 @@ export function buildUnitPanelModel(
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),
-      work: settlerWork(ctx, snapshot, comps),
+      work: settlerWork(ctx, snapshot, comps, progressionGated),
       experience: experienceRows(ctx, comps),
-      upcomingUnlocks: unlockProgressRows(ctx, comps, professionProgressionEnabledIn(snapshot)),
+      upcomingUnlocks: unlockProgressRows(ctx, comps, progressionGated),
       equipmentRows: equipmentRows(ctx, comps),
     };
   }

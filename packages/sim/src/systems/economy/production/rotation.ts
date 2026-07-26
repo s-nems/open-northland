@@ -1,8 +1,8 @@
 import type { Recipe } from '@open-northland/data';
-import { CraftSelection, Settler } from '../../../components/index.js';
+import { CraftSelection } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { settlerMeetsNeed } from '../../progression/index.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { beginCycle, canStartCycle } from './cycles.js';
 
 // The per-operator product-ROTATION policy: which of its workplace's products a starting operator picks next.
@@ -30,8 +30,8 @@ export function startCycleFor(
   recipes: ReadonlyMap<number, Recipe>,
 ): void {
   let selection = world.tryGet(operator, CraftSelection);
-  const s = world.get(operator, Settler);
-  const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, s.tribe, 'good', good, s.experience);
+  const subject = needSubjectOf(world, operator);
+  const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
   const picked =
     selection !== undefined && selection.goods.length > 0
       ? selection.goods.filter((g) => recipes.has(g) && earned(g))

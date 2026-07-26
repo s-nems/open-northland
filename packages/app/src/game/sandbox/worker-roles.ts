@@ -77,11 +77,11 @@ function gathererSlots(slots: readonly { readonly jobType: number }[] | undefine
  *
  * The priority mirrors the player's intent, most-preferred first, and the sim still gates every candidate,
  * so a full/unoffered/gated trade falls through:
- *  - **A gatherer** (collector/hunter/fisher current trade) prefers the building's own gatherer slots — its
- *    exact slot when the building offers it, then the building's other gatherer slots — before the default
- *    craftsman→carrier fallback. This is how a hunter right-clicked onto a warehouse (or a smith with a
- *    collector slot) is bound as a gatherer whose delivery target becomes the building. A building with no
- *    gatherer slot leaves the gatherer with the default order (craft → carrier).
+ *  - **A gatherer** (collector/hunter/fisher current trade) keeps the building's CRAFT slots first: aiming a
+ *    gatherer at a workshop means "become its tradesman" in the original, and the sim's `needforjob` gate is
+ *    what decides — a collector that earned the potter's repeats becomes a potter, one that hasn't falls
+ *    through. Its own gatherer slots come next (its exact slot first), so a hunter right-clicked onto a
+ *    warehouse is still bound as a gatherer delivering there, with the carrier slot last.
  *  - **A craftsman/carrier** current trade is promoted only when the building actually offers it.
  *  - **Idle/absent** has no trade to keep, so the default {@link assignmentPriority} stands (gatherers
  *    excluded — a plain settler on a warehouse becomes a carrier, not a gatherer).
@@ -94,10 +94,12 @@ export function assignmentPriorityFor(
   if (currentJob === undefined || currentJob === JOB_IDLE) return base;
   if (workerRoleOf(currentJob) === 'gatherer') {
     const gatherers = gathererSlots(slots);
-    if (gatherers.length === 0) return base; // no gatherer slot here — fall to craft/carrier
+    if (gatherers.length === 0) return base; // no gatherer slot here — craft, else carrier
     const offeredExactly = gatherers.includes(currentJob);
     const ordered = offeredExactly ? [currentJob, ...gatherers.filter((j) => j !== currentJob)] : gatherers;
-    return [...ordered, ...base];
+    // Craft slots keep the lead; the gatherer's own slots sit between them and the carrier fallback.
+    const crafts = base.filter((jobType) => workerRoleOf(jobType) === 'craftsman');
+    return [...crafts, ...ordered, ...base.filter((jobType) => !crafts.includes(jobType))];
   }
   const offered = (slots ?? []).some((slot) => slot.jobType === currentJob);
   if (!offered || base[0] === currentJob) return base;
