@@ -33,12 +33,13 @@ describe('trackFor — (job, good) specialization lookup', () => {
 });
 
 describe('grantWorkExperience — accrual on a completed work atomic', () => {
-  it('trains both the good-specific and the job-general track, each at its own factor', () => {
+  it('trains ONLY the good-specific track when one matches (one XP row per worked resource)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     grantWorkExperience(sim.world, ctxOf(sim), e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(10); // specific factor 10
-    expect(sim.world.get(e, Settler).experience.get(GENERAL_TRACK)).toBe(1); // general factor 1
+    expect(sim.world.get(e, Settler).experience.has(GENERAL_TRACK)).toBe(false); // no side accrual
+    expect(sim.world.get(e, Settler).experience.size).toBe(1);
   });
 
   it('accumulates across repeated work (repetition builds expertise)', () => {
@@ -49,10 +50,9 @@ describe('grantWorkExperience — accrual on a completed work atomic', () => {
     grantWorkExperience(sim.world, ctx, e, WOOD, 1);
     grantWorkExperience(sim.world, ctx, e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(30); // 3 × 10
-    expect(sim.world.get(e, Settler).experience.get(GENERAL_TRACK)).toBe(3); // 3 × 1
   });
 
-  it('grants the general track once (not twice) when a good has no specific track', () => {
+  it('falls back to the general track when the good has no specific track', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     grantWorkExperience(sim.world, ctxOf(sim), e, 2 /* plank: no specific track */, 1);
@@ -81,7 +81,6 @@ describe('grantWorkExperience — accrual on a completed work atomic', () => {
     grantWorkExperience(sim.world, ctx, e, WOOD, 5); // a felled trunk trains its whole yield at once
     grantWorkExperience(sim.world, ctx, e, WOOD, 0); // a mid-job chop trains nothing
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(50); // 5 units × factor 10
-    expect(sim.world.get(e, Settler).experience.get(GENERAL_TRACK)).toBe(5); // 5 units × factor 1
   });
 });
 

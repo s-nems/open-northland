@@ -8,7 +8,7 @@ import { experienceLabel } from './settler.js';
  * The Doświadczenie section's unlock forecast — the dimmed rows under the trained specializations
  * showing repeats-progress toward the `needforjob` gates the settler's CURRENT job is working toward
  * ("Stolarz: 4/10 (Drewno)"). Split from `settler.ts` (its own concern on top of an already-full
- * model file); the repeats arithmetic reads the sim's shared `repeatsForExpType`, so the forecast can
+ * model file); the repeats arithmetic reads the sim's shared `requirementRepeats`, so the forecast can
  * never disagree with the gate it predicts (`settlerMeetsNeed`).
  */
 
@@ -55,10 +55,7 @@ export function unlockProgressRows(
     const tracks = req.experienceTypes.map((t) => ctx.jobExperience.find((d) => d.typeId === t));
     const reachable = tracks.findIndex((t) => t?.jobType === jobType);
     if (reachable < 0) continue;
-    let current = 0;
-    for (const [i, expType] of req.experienceTypes.entries()) {
-      current += systems.repeatsForExpType(tracks[i], points.get(expType) ?? 0);
-    }
+    const current = systems.requirementRepeats(ctx.jobExperience, points, req.experienceTypes);
     if (current >= req.amount) continue; // already unlocked — nothing left to show
     // The row names the track this settler actually trains toward, not blindly the line's first.
     const trackType = req.experienceTypes[reachable];

@@ -4,7 +4,7 @@ import { entityById, num, professionProgressionEnabledIn, settlerExperienceOf } 
 
 /**
  * The profession picker's qualification filter — the app-side mirror of the sim's `settlerMeetsNeed`
- * `need-job` reading (the same rows, the same `repeatsForExpType` arithmetic), computed off the
+ * `need-job` reading (the same rows, the same `requirementRepeats` arithmetic), computed off the
  * snapshot because the picker cannot reach into live sim state. The `setJob` command enforces the
  * identical gate sim-side, so a filtered-out row could not have been obeyed anyway; this filter is the
  * player-facing half ("the rest is discovered through the tree").
@@ -62,11 +62,7 @@ function meetsNeedRows(
   if (tribeType === undefined) return true; // no requirement table — nothing thresholds it
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
-    let repeats = 0;
-    for (const expType of req.experienceTypes) {
-      const track = content.jobExperience.find((t) => t.typeId === expType);
-      repeats += systems.repeatsForExpType(track, experience.get(expType) ?? 0);
-    }
+    const repeats = systems.requirementRepeats(content.jobExperience, experience, req.experienceTypes);
     if (repeats < req.amount) return false;
   }
   return true;

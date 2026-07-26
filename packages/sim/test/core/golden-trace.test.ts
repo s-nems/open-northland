@@ -205,11 +205,12 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // per-animation lengths) AND the hash's coverage of string state (an `AtomicEffect`'s `kind`,
     // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
     // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery,
-    // work feeding the good-specific AND job-general tracks) AND the fractional experience-bonus
-    // output (ProductionBonus) with the extra goods it yields, AND the carpenter spawning with the
-    // `needforgood PLANK` threshold pre-earned (the per-operator craft gate landed; the seeded XP
-    // rides in `Settler.experience`, leaving the trace and `produced` untouched).
-    expect(run.hash).toBe('7663da56');
+    // work feeding ONLY the matched track — general-keyed gates read the whole-trade sum instead)
+    // AND the fractional experience-bonus output (ProductionBonus) with the extra goods it yields,
+    // AND the carpenter spawning with the `needforgood PLANK` threshold pre-earned (the per-operator
+    // craft gate landed; the seeded XP rides in `Settler.experience`, leaving the trace and
+    // `produced` untouched).
+    expect(run.hash).toBe('3d25b360');
   });
 
   it('matches the golden atomic-action trace', () => {

@@ -230,7 +230,8 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
   it('clears a GENERAL-keyed gate through specific-good work (the miller←farmer-general chain)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Real content keys some job gates on a GENERAL track (`needforjob miller 10 farmer-general`)
-    // while the prerequisite job only ever works specific goods — the dual accrual must feed it.
+    // while the prerequisite job only ever works specific goods — the gate must count the trade's
+    // total repeats (`requirementRepeats`), since work accrues only the matched specific track.
     const tribe = sim.content.tribes[0];
     if (tribe === undefined) throw new Error('fixture has no tribe');
     tribe.jobRequirements.push({
@@ -249,7 +250,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
 
     jobSystem(sim.world, ctxOf(sim));
 
-    // The general track accrued alongside the wood track (5 repeats at factor 1) clears the gate.
+    // The five wood-specific repeats count toward the GENERAL-keyed gate (the whole-trade sum).
     expect(sim.world.get(veteran, Settler).jobType).toBe(CARPENTER);
     expect(sim.world.get(fresh, Settler).jobType).toBeNull(); // one slot, and fresh never qualified
   });

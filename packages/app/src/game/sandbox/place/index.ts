@@ -10,8 +10,8 @@
  *
  * Split by concern: buildings + their staffing ({@link import('./buildings.js')}), settler spawns
  * ({@link import('./settlers.js')}), resource nodes / bushes / drops / gathering camps
- * ({@link import('./resources.js')}), and the gather-mastery XP derivation
- * ({@link import('./mastery.js')}, also read by the decoded-map entry).
+ * ({@link import('./resources.js')}), and the scene-only gather-mastery XP stamp
+ * ({@link import('./mastery.js')}).
  */
 export {
   buildingDef,
@@ -22,7 +22,7 @@ export {
   staffableCrewFor,
   staffBuildingFully,
 } from './buildings.js';
-export { gatherMasteryExperience, gatherMasteryExperienceFor } from './mastery.js';
+export { gatherMasteryExperience } from './mastery.js';
 export {
   BUSH_FRUITS_GFX,
   dropSandboxGood,

@@ -61,11 +61,12 @@ export function trackFor(
  * user-specified). `experienceFactor` is the original's per-track accrual rate (raw integer, 1..250 in
  * the base data); the non-linear XP→level curve (`baseRepeatCounter`) is a later balance slice.
  *
- * Work trains BOTH the `(job, good)` specialization and the job-general track: the `needfor*` table
- * keys gates on either kind (the carpenter gate reads collector-WOOD, the miller gate reads
- * farmer-GENERAL), so a specific-only accrual would leave every general-keyed profession permanently
- * locked. Each track accrues at its own factor; the bonus reads stay single-track (`workSpeedBonus`
- * on the specific, `operatorProductionBonus` on the general), so no bonus double-counts a grant.
+ * Work trains ONLY the matched track — one XP row per worked resource, so digging stone never
+ * advances the clay specialization (design rule, user-specified, 2026-07-25). The `needfor*` gates
+ * keyed to a job-GENERAL track (the miller gate reads farmer-general) stay reachable because
+ * {@link requirementRepeats} counts a general expType as the job's total repeats across all its
+ * tracks; the general track itself accrues only where it is the direct target (production batches,
+ * carrier deliveries, or the {@link trackFor} fallback for a good with no specific track).
  */
 export function grantWorkExperience(
   world: World,
@@ -80,9 +81,6 @@ export function grantWorkExperience(
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return; // this (job, good) pairing trains no specialization
   accrueExperience(s, track.typeId, track.experienceFactor * units);
-  const general = generalTrackFor(ctx, s.jobType);
-  if (general === undefined || general.typeId === track.typeId) return; // no second track to train
-  accrueExperience(s, general.typeId, general.experienceFactor * units);
 }
 
 /** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
