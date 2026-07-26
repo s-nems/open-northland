@@ -118,7 +118,9 @@ describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
     expect(bankedGood(sim, wood.typeId), 'no wood ever banked — the cycle stalled').toBeGreaterThan(0);
     // After this long with one gatherer and a near flag, at most the one active carry lies loose.
     expect(looseGood(sim, wood.typeId)).toBeLessThanOrEqual(gathering.yieldPerNode);
-  });
+    // A per-tick-invariant run over real content takes seconds even idle; the budget is a hang-guard
+    // sized for a CPU-contended full parallel run (the 5s default timed out under machine load).
+  }, 120_000);
 
   it('is deterministic on real content: two same-seed runs end byte-identical', async () => {
     const { merge } = await loadContentUnderTest();
@@ -129,5 +131,5 @@ describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
       b.step();
     }
     expect(a.hashState()).toBe(b.hashState());
-  });
+  }, 120_000);
 });
