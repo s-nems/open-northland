@@ -1,9 +1,8 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
 import {
   buildingTypeOf,
   builtFractionOf,
-  entityById,
   familiesByHome,
   type HomeFamily,
   isAdult,

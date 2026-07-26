@@ -1,6 +1,5 @@
-import { systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
-  entityById,
   isSettler,
   num,
   positionOf,
@@ -43,16 +42,10 @@ export function isMarrying(e: SnapshotEntity): boolean {
  * until the next wedding overwrites it — a destroyed spouse is simply absent from the snapshot).
  */
 export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
-  return boundByMarriage(e, (id) => entityById(snapshot, id));
-}
-
-/** {@link isBoundByMarriage} over an arbitrary id→entity lookup, so a caller resolving many settlers
- *  ({@link hasEligiblePartner}) can index the snapshot once instead of re-scanning it per spouse. */
-function boundByMarriage(e: SnapshotEntity, lookup: (id: number) => SnapshotEntity | undefined): boolean {
   const marriage = marriageOf(e);
   if (marriage === undefined) return false;
-  if (lookup(marriage.spouse) !== undefined) return true;
-  const child = marriage.child !== null ? lookup(marriage.child) : undefined;
+  if (entityById(snapshot, marriage.spouse) !== undefined) return true;
+  const child = marriage.child !== null ? entityById(snapshot, marriage.child) : undefined;
   return child !== undefined && !isAdult(child);
 }
 
@@ -68,21 +61,13 @@ function boundByMarriage(e: SnapshotEntity, lookup: (id: number) => SnapshotEnti
 export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
-  // Built on the first candidate that actually carries a `Marriage`: only those resolve a spouse/child, so
-  // the common case (an unmarried first candidate) allocates nothing, while the worst case (no partner
-  // anywhere) still visits every settler with O(1) lookups instead of a quadratic scan.
-  let byId: Map<number, SnapshotEntity> | null = null;
-  const lookup = (id: number): SnapshotEntity | undefined => {
-    byId ??= new Map(snapshot.entities.map((e) => [e.id, e]));
-    return byId.get(id);
-  };
   return snapshot.entities.some(
     (e) =>
       e.id !== seeker.id &&
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&
-      !boundByMarriage(e, lookup) &&
+      !isBoundByMarriage(snapshot, e) &&
       !isMarrying(e) &&
       positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&

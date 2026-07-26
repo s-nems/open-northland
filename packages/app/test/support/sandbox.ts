@@ -22,9 +22,10 @@ export function sandboxCtx(): UnitPanelModelContext {
   return ctxOf(createSceneSim(sandboxScene));
 }
 
-/** A hand-built snapshot for the pure HUD model/layout tests: the given entities at `tick`, no events. */
+/** A hand-built snapshot for the pure HUD model/layout tests: the given entities at `tick`, no events,
+ *  canonicalized to the ascending-id order `takeSnapshot` guarantees and `entityById` binary-searches. */
 export function snapshotOf(entities: readonly EntitySnapshot[], tick = 0): WorldSnapshot {
-  return { tick, events: [], entities };
+  return { tick, events: [], entities: [...entities].sort((a, b) => a.id - b.id) };
 }
 
 /** A human-owned viking building entity: the `Building` + `Owner` preamble the panel tests all repeat.

@@ -33,7 +33,12 @@ export {
   type HashTraceEntry,
   type HashTraceOptions,
 } from './inspect/hashtrace.js';
-export { type EntitySnapshot, takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
+export {
+  type EntitySnapshot,
+  entityById,
+  takeSnapshot,
+  type WorldSnapshot,
+} from './inspect/snapshot.js';
 export {
   type ChangedEntity,
   type ComponentChange,

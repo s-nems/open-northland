@@ -1,15 +1,14 @@
 import { type ContentSet, indexById } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
-import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
-import { assignmentPriorityFor } from '../../game/sandbox/index.js';
 import {
-  buildingTypeOf,
+  type Command,
+  type Entity,
   entityById,
-  isBuilding,
-  isSettler,
-  positionOf,
-  settlerJobType,
-} from '../../game/snapshot.js';
+  nodeOfPosition,
+  type WorldSnapshot,
+} from '@open-northland/sim';
+import { assignmentPriorityFor } from '../../game/sandbox/index.js';
+import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargets } from './unit-targets.js';

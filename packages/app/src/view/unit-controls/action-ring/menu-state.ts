@@ -1,8 +1,7 @@
-import { systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../game/sandbox/index.js';
 import {
   childOrderOf,
-  entityById,
   hasEligiblePartner,
   isAdult,
   isBoundByMarriage,

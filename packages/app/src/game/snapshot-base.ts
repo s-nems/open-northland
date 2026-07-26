@@ -12,11 +12,6 @@ import type { Fixed, WorldSnapshot } from '@open-northland/sim';
 /** One serialized entity of a snapshot. */
 export type SnapshotEntity = WorldSnapshot['entities'][number];
 
-/** The entity with `id`, or undefined (linear — panels only resolve the selected few). */
-export function entityById(snapshot: WorldSnapshot, id: number): SnapshotEntity | undefined {
-  return snapshot.entities.find((e) => e.id === id);
-}
-
 /** Narrow an unknown component field to a number, else undefined. */
 export function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined;

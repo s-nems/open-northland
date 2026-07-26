@@ -14,9 +14,12 @@ export interface Ent {
   readonly components: Record<string, unknown>;
 }
 
-/** Wrap hand-built entities as a `WorldSnapshot` (the cast skips the sim's private snapshot shape). */
+/** Wrap hand-built entities as a `WorldSnapshot`, canonicalized to the ascending-id order
+ *  `takeSnapshot` guarantees and `entityById` binary-searches. The cast skips the sim's private
+ *  snapshot shape. */
 export function snapshotOf(entities: readonly Ent[], tick = 0): WorldSnapshot {
-  return { tick, entities, events: [] } as unknown as WorldSnapshot;
+  const canonical = [...entities].sort((a, b) => a.id - b.id);
+  return { tick, entities: canonical, events: [] } as unknown as WorldSnapshot;
 }
 
 /** An empty tick-0 snapshot — the "no entities" case (a bare scene assembly). */
