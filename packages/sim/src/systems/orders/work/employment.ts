@@ -125,9 +125,9 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
  * twin of the JobSystem's automatic assignment): resolve the building's open worker job in the command's
  * `jobPriority` preference order ({@link openWorkerJobFromList} — a same-tribe/same-owner, tech-enabled
  * building with an understaffed slot), re-idle the settler as that job, and bind it to the chosen building
- * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback).
- * Unlike the automatic scan, this path relaxes the per-slot tech/XP gate — the player staffs a built workshop
- * with its own trade — a deliberate deviation named in {@link openWorkerJobFromList}.
+ * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback):
+ * a settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot, while the
+ * tribe-tech gate is relaxed for the player — see {@link openWorkerJobFromList}.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a target {@link isTradeAssignable}
  * rejects, a dead/stale/non-building target, or a building that offers this settler no open worker job right
