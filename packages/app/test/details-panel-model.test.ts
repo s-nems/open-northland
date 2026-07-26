@@ -15,6 +15,7 @@ import {
   GOOD_PLANK,
   GOOD_SHOES,
   GOOD_STONE,
+  GOOD_TOOL_WOODEN,
   GOOD_WHEAT,
   GOOD_WOOD,
   JOB_BABY_MALE,
@@ -552,7 +553,8 @@ describe('selection details panel model', () => {
     expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
     expect(misc.filter((sl) => !sl.occupied)).toHaveLength(1);
 
-    // The soldier additionally carries the Broń + Zbroja rows, combat gear first.
+    // The soldier additionally carries the Broń + Zbroja rows, combat gear first - and no Narzędzia
+    // row: a fighter keeps no tool (the sim sheds one on enlisting), so the slot is not offered.
     const soldier = snapshot.entities.find(hasWeaponSlot);
     if (soldier === undefined) throw new Error('equipment scene did not place the equipped soldier');
     const solModel = buildUnitPanelModel(snapshot, new Set([soldier.id]), ctx);
@@ -561,11 +563,30 @@ describe('selection details panel model', () => {
       HUMANWINDOW.weapon,
       HUMANWINDOW.armor,
       HUMANWINDOW.boots,
-      HUMANWINDOW.tools,
       HUMANWINDOW.misc,
     ]);
     expect(rowOf(solModel, HUMANWINDOW.weapon)?.slots[0]?.goodId).toBe('sword_shord');
     expect(rowOf(solModel, HUMANWINDOW.armor)?.slots[0]?.goodId).toBe('armor_chain');
+
+    // A stray worn tool on a fighter (a scene/spawn fixture - normal play never produces one) still
+    // shows its row, so the unit stays visible and can be taken off.
+    const strayTool = {
+      ...soldier,
+      components: {
+        ...soldier.components,
+        Equipment: {
+          ...(soldier.components.Equipment as Record<string, unknown>),
+          tool: { goodType: GOOD_TOOL_WOODEN, degreeOfUse: 0 },
+        },
+      },
+    };
+    const straySnapshot = {
+      ...snapshot,
+      entities: snapshot.entities.map((e) => (e.id === soldier.id ? strayTool : e)),
+    };
+    const strayModel = buildUnitPanelModel(straySnapshot, new Set([soldier.id]), ctx);
+    if (strayModel.kind !== 'settler') throw new Error('expected a settler model');
+    expect(strayModel.equipmentRows.map((r) => r.group)).toContain('tool');
   });
 
   it('shows empty equipment rows for a settler with no Equipment component', () => {

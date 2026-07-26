@@ -32,6 +32,9 @@ const TOOL_IRON = 12;
 const MEAD = 13;
 const WOOD = 1;
 const WOODCUTTER = 1;
+/** The fixture job inside the pinned soldier band (31..41) - fighter-classified by `isFighterJob`
+ *  (see the fixture's own note on job 36). */
+const FIGHTER_JOB = 36;
 const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
@@ -261,6 +264,24 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(live, Equipment).boots?.goodType).toBe(SHOES);
+  });
+
+  it('never grants a tool to a fighter - its other grants still apply', () => {
+    const sim = freshSim();
+    const fighter = ownedSettler(sim, 2, 2);
+    sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
+    const civilian = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, TOOL_IRON, 2);
+    pileAt(sim, 12, 4, SHOES, 2);
+    grant(sim, TOOL_IRON);
+    grant(sim, SHOES);
+
+    sim.run(2 * ERRAND_TICKS);
+
+    const eq = sim.world.get(fighter, Equipment);
+    expect(eq.tool).toBeNull(); // the tool grant skipped the fighter...
+    expect(eq.boots?.goodType).toBe(SHOES); // ...while its boots grant still landed
+    expect(sim.world.get(civilian, Equipment).tool?.goodType).toBe(TOOL_IRON); // fighter-keyed skip
   });
 
   it('ignores settlers of a player with no grants and grants with no stock', () => {

@@ -34,19 +34,23 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  * the stow store STILL WEARING the good and takes it off there (in place only when destroying it or
  * dropping it on the ground). A part-used unit is destroyed instead of stowed - fungible store stock
  * would regenerate it to fresh. Fixture: good 8 = shoes (boots, wears), 9 = sword / 17 = long_sword
- * (permanent weapons), 10 = fur_boots (boots); building 22 = armoury (the only store with gear
- * slots); tribe 1 = viking, job 1 = woodcutter.
+ * (permanent weapons), 10 = fur_boots (boots), 11 = tool_wooden (tool); building 22 = armoury (the
+ * only store with gear slots); tribe 1 = viking, job 1 = woodcutter.
  */
 
 const SHOES = 8;
 const SWORD = 9;
 const FUR_BOOTS = 10;
+const TOOL_WOODEN = 11;
 const LONG_SWORD = 17;
 const WOOD = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const ARMOURY = 22;
+/** The fixture job inside the pinned soldier band (31..41) - fighter-classified by `isFighterJob`
+ *  and `setJob`-assignable (see the fixture's own note on job 36). */
+const FIGHTER_JOB = 36;
 
 /** Enough ticks for a fetch across the small map plus the stow and return legs. */
 const ERRAND_TICKS = 600;
@@ -95,7 +99,11 @@ type WornSpec = number | { goodType: number; usedPct: number };
 
 const FULL_LIFE_PCT = 100;
 
-function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapon', WornSpec>>): void {
+function wear(
+  sim: Simulation,
+  e: Entity,
+  slots: Partial<Record<'boots' | 'tool' | 'weapon', WornSpec>>,
+): void {
   const slot = (spec: WornSpec | undefined): EquipmentSlot | null => {
     if (spec === undefined) return null;
     if (typeof spec === 'number') return { goodType: spec, degreeOfUse: fx.fromInt(0) };
@@ -106,11 +114,21 @@ function wear(sim: Simulation, e: Entity, slots: Partial<Record<'boots' | 'weapo
   };
   sim.world.add(e, Equipment, {
     boots: slot(slots.boots),
-    tool: null,
+    tool: slot(slots.tool),
     weapon: slot(slots.weapon),
     armor: null,
     misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
   });
+}
+
+/** Total units of `goodType` sitting outside any building store (loose ground piles). */
+function groundUnits(sim: Simulation, goodType: number): number {
+  let sum = 0;
+  for (const p of sim.world.query(Stockpile, Position)) {
+    if (sim.world.has(p, Building)) continue;
+    sum += sim.world.get(p, Stockpile).amounts.get(goodType) ?? 0;
+  }
+  return sum;
 }
 
 const equip = (entity: Entity, goodType: number, group: EquipCategory = 'boots', slot = 0): Command => ({
@@ -315,6 +333,86 @@ describe('order validation (recoverable no-ops)', () => {
   });
 });
 
+describe('enlisting - a fighter trade keeps no tool', () => {
+  it('sets a fresh tool down at the settler feet instead of keeping or vanishing it', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 2);
+    wear(sim, e, { tool: TOOL_WOODEN });
+
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.step();
+    expect(sim.world.get(e, Equipment).tool).toBeNull(); // the slot empties the moment it enlists
+
+    sim.run(30); // the drop atomic sets the freed unit down
+    expect(sim.world.has(e, Carrying)).toBe(false);
+    expect(groundUnits(sim, TOOL_WOODEN)).toBe(1); // conserved on the ground
+  });
+
+  it('destroys a part-used tool - fungible stock would regenerate it to fresh', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 2);
+    wear(sim, e, { tool: { goodType: TOOL_WOODEN, usedPct: 40 } });
+
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.run(30);
+
+    expect(sim.world.get(e, Equipment).tool).toBeNull();
+    expect(sim.world.has(e, Carrying)).toBe(false);
+    expect(groundUnits(sim, TOOL_WOODEN)).toBe(0);
+  });
+
+  it('calls off a tool-fetch errand in flight', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 2, 2);
+    pileAt(sim, 12, 2, TOOL_WOODEN, 1);
+    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.step();
+    expect(sim.world.has(e, EquipOrder)).toBe(true);
+
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.step();
+    expect(sim.world.has(e, EquipOrder)).toBe(false); // the fetch died with the civilian trade
+
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.tryGet(e, Equipment)?.tool ?? null).toBeNull();
+    expect(groundUnits(sim, TOOL_WOODEN)).toBe(1); // the unit stayed in its pile
+  });
+
+  it('sets a fresh tool down beside a foreign heap when its hands are full', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 2);
+    wear(sim, e, { tool: TOOL_WOODEN });
+    sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 }); // hands hold another good
+    const feet = sim.world.get(e, Position);
+    pileAt(sim, 3, 2, SWORD, 1); // and the tile it stands on already holds a third good
+
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.run(30);
+
+    expect(sim.world.get(e, Equipment).tool).toBeNull();
+    expect(groundUnits(sim, TOOL_WOODEN)).toBe(1); // conserved, not swallowed by the refusing heap
+    expect(groundUnits(sim, SWORD)).toBe(1); // and the heap already there is untouched
+    expect(groundUnits(sim, WOOD)).toBe(1); // the carried load still reached the ground too
+    expect(sim.world.get(e, Position)).toEqual(feet); // shed where it stood
+  });
+
+  it('refuses a tool equip order on a fighter but still accepts its boots order', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 2, 2);
+    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    pileAt(sim, 12, 2, TOOL_WOODEN, 1);
+    pileAt(sim, 12, 4, SHOES, 1);
+
+    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.step();
+    expect(sim.world.has(e, EquipOrder)).toBe(false); // recoverable no-op, like every bad order
+
+    sim.enqueue(equip(e, SHOES));
+    sim.step();
+    expect(sim.world.has(e, EquipOrder)).toBe(true); // boots stay orderable on a fighter
+  });
+});
+
 describe('errand interactions with combat and player orders', () => {
   it('a DEFEND guard with a stale Engagement completes the errand and re-holds its anchor', () => {
     const sim = freshSim();
@@ -364,5 +462,18 @@ describe('equipPickList - the pick-menu read view', () => {
     expect(sim.equipPickList(settler, 'boots')).toEqual([{ goodType: SHOES, available: 5 }]);
     expect(sim.equipPickList(settler, 'weapon')).toEqual([{ goodType: SWORD, available: 1 }]);
     expect(sim.equipPickList(settler, 'misc')).toEqual([]);
+  });
+
+  it('offers a fighter no tools at all - the menu must not list what no click can wear', () => {
+    const sim = freshSim();
+    const civilian = ownedSettler(sim, 2, 2);
+    const fighter = ownedSettler(sim, 3, 2);
+    sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
+    pileAt(sim, 8, 2, TOOL_WOODEN, 2);
+    pileAt(sim, 8, 4, SHOES, 1);
+
+    expect(sim.equipPickList(civilian, 'tool')).toEqual([{ goodType: TOOL_WOODEN, available: 2 }]);
+    expect(sim.equipPickList(fighter, 'tool')).toEqual([]);
+    expect(sim.equipPickList(fighter, 'boots')).toEqual([{ goodType: SHOES, available: 1 }]);
   });
 });

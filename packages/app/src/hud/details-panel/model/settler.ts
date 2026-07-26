@@ -162,11 +162,14 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
  * {@link components.MISC_EQUIP_SLOTS} consumable slots) - combat gear first (user order 2026-07-23).
  * Reads the sim `Equipment` component; a settler without one shows every base slot empty. The
  * Broń/Zbroja rows are the original's soldier-only equip slots (`tribetypes` `allowequip`) - surfaced
- * here off the combat components the sim already stamps.
+ * here off the combat components the sim already stamps. A fighter trade keeps no tool (the sim's rule -
+ * `shedToolOnEnlist`), so its Narzędzia row is dropped; a stray worn unit (a scene/spawn fixture) still
+ * shows so it can be taken off.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;
   const eq = comps.Equipment as RawEquipment | undefined;
+  const s = (comps.Settler ?? {}) as Comp;
   const rows: EquipRow[] = [];
   const soldier = 'Weapon' in comps || eq?.weapon != null || eq?.armor != null;
   if (soldier) {
@@ -183,10 +186,20 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
       slots: [slotModel(ctx, eq?.armor)],
     });
   }
-  rows.push(
-    { titleId: HUMANWINDOW.boots, fallback: slots.boots, group: 'boots', slots: [slotModel(ctx, eq?.boots)] },
-    { titleId: HUMANWINDOW.tools, fallback: slots.tools, group: 'tool', slots: [slotModel(ctx, eq?.tool)] },
-  );
+  rows.push({
+    titleId: HUMANWINDOW.boots,
+    fallback: slots.boots,
+    group: 'boots',
+    slots: [slotModel(ctx, eq?.boots)],
+  });
+  if (!systems.isFighterJob(num(s.jobType) ?? null) || eq?.tool != null) {
+    rows.push({
+      titleId: HUMANWINDOW.tools,
+      fallback: slots.tools,
+      group: 'tool',
+      slots: [slotModel(ctx, eq?.tool)],
+    });
+  }
   const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
   const miscSlots: EquipSlotModel[] = [];
   for (let i = 0; i < components.MISC_EQUIP_SLOTS; i++) miscSlots.push(slotModel(ctx, misc[i] ?? null));
