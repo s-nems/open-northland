@@ -74,6 +74,7 @@ export function requirementRepeats(
   experience: ReadonlyMap<number, number>,
   expTypes: readonly number[],
 ): number {
+  const { byId, byJob } = trackTables(tracks);
   let repeats = 0;
   const counted = new Set<number>();
   const count = (track: HumanJobExperienceType): void => {
@@ -82,12 +83,40 @@ export function requirementRepeats(
     repeats += experienceRepeats(experience.get(track.typeId) ?? 0, track);
   };
   for (const expType of expTypes) {
-    const named = tracks.find((t) => t.typeId === expType);
+    const named = byId.get(expType);
     if (named === undefined) repeats += experience.get(expType) ?? 0;
     else if (named.goodType !== undefined) count(named);
-    else for (const t of tracks) if (t.jobType === named.jobType) count(t);
+    else for (const t of byJob.get(named.jobType) ?? []) count(t);
   }
   return repeats;
+}
+
+/** The by-id and by-owning-job track lookups {@link requirementRepeats} reads, memoized per content
+ *  array: the gate runs per candidate job/resource per tick, so it must not rescan the ~78-row catalog
+ *  (the content-index doctrine in `core/content-index.ts`, applied to the one table this reading needs;
+ *  keyed on the array so the app mirror shares the memo). First-wins per id, like the index's `byKey`. */
+const TRACK_TABLES = new WeakMap<
+  readonly HumanJobExperienceType[],
+  {
+    byId: ReadonlyMap<number, HumanJobExperienceType>;
+    byJob: ReadonlyMap<number, readonly HumanJobExperienceType[]>;
+  }
+>();
+
+function trackTables(tracks: readonly HumanJobExperienceType[]) {
+  const cached = TRACK_TABLES.get(tracks);
+  if (cached !== undefined) return cached;
+  const byId = new Map<number, HumanJobExperienceType>();
+  const byJob = new Map<number, HumanJobExperienceType[]>();
+  for (const t of tracks) {
+    if (!byId.has(t.typeId)) byId.set(t.typeId, t);
+    const owned = byJob.get(t.jobType);
+    if (owned === undefined) byJob.set(t.jobType, [t]);
+    else owned.push(t);
+  }
+  const tables = { byId, byJob };
+  TRACK_TABLES.set(tracks, tables);
+  return tables;
 }
 
 /** The raw XP worth `repeats` on an optional track — {@link experienceRepeats}' inverse, for seeding
