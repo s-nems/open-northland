@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Carrying, CurrentAtomic, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { carriedGoodForm } from '../../src/systems/agents/economy/routing.js';
+import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
 import { aiSystem, stockCapacity } from '../../src/systems/index.js';
 import { exportedGoodForm } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -109,6 +110,19 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
       if (load.goodType === BREAD || load.goodType === FOOD_SIMPLE) inFlight += load.amount;
     }
     expect((shelf.get(BREAD) ?? 0) + (larder.get(FOOD_SIMPLE) ?? 0) + inFlight).toBe(5 + produced);
+  });
+
+  it("the family's food search sees the kitchen's loaves, not a warehouse's", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const kitchen = buildingAt(sim, KITCHEN, 5, 0, [[BREAD, 3]]);
+    // A loaf that never came out of its kitchen stays a loaf, so the warehouse at her feet is no food
+    // source and she walks past it to the shelf that is (the meat-heap scoping, from the family side).
+    buildingAt(sim, HEADQUARTERS, 0, 0, [[BREAD, 3]]);
+    const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain);
+
+    // The reported bug: hearts over the home while the settlement's only food sat on the bakery shelf
+    // as bread, leaving her nowhere to fetch from. She asks for the good to LIFT — the raw loaf.
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, null)).toEqual({ store: kitchen, goodType: BREAD });
   });
 
   it('the baker walking away from the kitchen is holding food, not bread', () => {
