@@ -2,7 +2,7 @@ import { components, type Entity, halfCellMapFromCells, systems } from '@open-no
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../src/game/rules.js';
-import { GATHERERS, gatherMasteryExperienceFor, resourceSpecFor } from '../../src/game/sandbox/index.js';
+import { GATHERERS, resourceSpecFor } from '../../src/game/sandbox/index.js';
 import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
@@ -10,7 +10,6 @@ const { GroundDrop, Resource, Settler, Stockpile } = components;
 
 /** The real viking ids the decoded-map flow resolves (jobtypes.ini / goods.ini). */
 const VIKING = 1;
-const JOB_CIVILIST = 6;
 const JOB_COLLECTOR = 8;
 const GOOD_IRON = 6;
 
@@ -25,15 +24,13 @@ function grassMap(cells: number) {
 }
 
 /**
- * The decoded-map twin of the sandbox veteran-collector rule (`sandbox-gather-gates.test.ts`): real
- * content gates iron/gold behind clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5), and a
- * map's authored humans are the settlers the player later converts to collectors — profession changes
- * keep `Settler.experience`, so the mastery stamp at authored spawn is what lets an ex-civilian dig
- * iron. Without it (the 2026-07-16 forteca regression) a converted collector pinned to an iron camp
- * failed `settlerMeetsNeed` forever and stood idle beside its deposit.
+ * Decoded-map apprenticeship rule: authored humans spawn with NO experience, so real content's
+ * `needforgood` gates (iron/gold behind clay/stone-digging repeats, `needforgood 6/7 10` over
+ * tracks 4+5) hold until the settler earns them in play — the scene-only veteran stamp
+ * (`gatherMasteryExperience`) deliberately does NOT apply here.
  */
 describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates', () => {
-  it('an authored civilian converted to a collector digs iron at its flag', async () => {
+  it('a fresh authored collector cannot dig iron until it earns the clay/stone repeats', async () => {
     const { merge } = await loadContentUnderTest();
     const map = grassMap(MAP_CELLS);
     // One authored human, the shape a decoded map's `sethuman` resolves to (job by name).
@@ -50,25 +47,13 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
     expect(sim).not.toBeNull();
     if (sim === null) return;
 
-    // The authored spawn carries the mastery stamp that clears the iron/gold `needforgood` gates.
-    const mastery = gatherMasteryExperienceFor(merge.content, VIKING);
-    expect(mastery.length).toBeGreaterThan(0); // real content does gate gatherables
     const settlers = [...sim.world.query(Settler)];
     expect(settlers.length).toBe(1); // the one authored human
     const collector = settlers[0] as Entity;
-    const xp = sim.world.get(collector, Settler).experience;
-    for (const [track, points] of mastery) {
-      expect(xp.get(track) ?? 0).toBeGreaterThanOrEqual(points);
-    }
-
-    // End to end through the profession picker: convert away and back (experience survives setJob),
-    // plant iron beside the unit, flag it there, and prove the deposit is actually mined.
-    sim.enqueue({ kind: 'setJob', entity: collector, jobType: JOB_CIVILIST });
-    sim.step();
-    expect(sim.world.get(collector, Settler).jobType).toBe(JOB_CIVILIST); // the conversion really applied
-    sim.enqueue({ kind: 'setJob', entity: collector, jobType: JOB_COLLECTOR });
-    sim.step();
     expect(sim.world.get(collector, Settler).jobType).toBe(JOB_COLLECTOR);
+    expect(sim.world.get(collector, Settler).experience.size).toBe(0); // spawns fresh, no veteran stamp
+
+    // Plant iron beside the unit and flag it there — the gate must keep the deposit untouched.
     const ironSpec = GATHERERS.find((g) => g.good === GOOD_IRON);
     expect(ironSpec).toBeDefined();
     if (ironSpec === undefined) return;
@@ -78,12 +63,33 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
       resourceSpecFor(ironSpec, 24 * 2, 20 * 2),
     );
     expect(node).not.toBeNull();
+    if (node === null) return;
     sim.enqueue({ kind: 'setWorkFlag', entity: collector, x: 22 * 2, y: 22 * 2 });
+    const before = sim.world.get(node, Resource).remaining;
+    sim.run(800);
+    expect(sim.world.get(node, Resource).remaining).toBe(before); // gated: a fresh collector digs no iron
 
-    const before = node !== null ? sim.world.get(node, Resource).remaining : 0;
+    // Earn the gate the way play would (clay/stone repeats), seeded directly onto the settler: the
+    // viking `needforgood` row for iron sums repeats across its named tracks, so its first track
+    // (collector mud) at the full amount clears it.
+    const tribeType = merge.content.tribes.find((t) => t.typeId === VIKING);
+    const ironNeed = tribeType?.jobRequirements.find(
+      (r) => r.requirement === 'need' && r.target === 'good' && r.targetId === GOOD_IRON,
+    );
+    expect(ironNeed).toBeDefined(); // real content does gate iron
+    if (ironNeed === undefined) return;
+    const trackId = ironNeed.experienceTypes[0];
+    expect(trackId).toBeDefined();
+    if (trackId === undefined) return;
+    const track = merge.content.jobExperience.find((t) => t.typeId === trackId);
+    sim.world
+      .get(collector, Settler)
+      .experience.set(trackId, systems.rawXpForRepeats(track, ironNeed.amount));
+
     sim.run(2500);
-    const after = node !== null && sim.world.isAlive(node) ? sim.world.get(node, Resource).remaining : 0;
-    expect(after).toBeLessThan(before); // the converted collector cleared the XP gate and mined
+    // Earned: the deposit is mined (a fully exhausted node dies, so a dead node counts as zero).
+    const after = sim.world.isAlive(node) ? sim.world.get(node, Resource).remaining : 0;
+    expect(after).toBeLessThan(before);
     // And the dug ore reached the flag side (banked as a loose heap, not left as its raw drop).
     let banked = 0;
     for (const e of sim.world.query(Stockpile)) {

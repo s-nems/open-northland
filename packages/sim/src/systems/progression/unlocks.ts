@@ -5,7 +5,7 @@ import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob } from '../readviews/stances.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
-import { repeatsForExpType } from './bonus.js';
+import { requirementRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
  *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md; when it lands,
@@ -116,14 +116,13 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
  * `humanjobexperiencetypes` track typeId).
  *
  * A `needfor*` requirement demands `amount` experience measured in REPEATS of its `experienceTypes`
- * track(s) — completed works, not raw XP ("the carpenter needs 10 gathered logs"). Each track's
- * contribution reads through {@link repeatsForExpType} (raw XP ÷ factor; a track-less expType counts
- * raw), truncated per track before summing — split partial credit across a two-track line never rounds
- * up. The repeats scale is what makes the data's flat 5..30 amounts commensurable across tracks whose
- * factors span 1..250 (source basis: the factor-invariant amounts themselves; approximation — the
- * original's threshold unit is not readable). A requirement with no `experienceTypes` (none in the real
- * data, but the schema permits it) is vacuously met. Only `requirement === 'need'` is interpreted here —
- * `train` requirements are a schooling cost paid at a training house, not an already-accrued threshold.
+ * track(s) — completed works, not raw XP ("the carpenter needs 10 gathered logs"). The repeats scale
+ * is what makes the data's flat 5..30 amounts commensurable across tracks whose factors span 1..250
+ * (source basis: the factor-invariant amounts themselves). {@link requirementRepeats} owns the whole
+ * reading, including the general-track widening and the per-track truncation. A requirement with no
+ * `experienceTypes` (none in the real data, but the schema permits it) is vacuously met. Only
+ * `requirement === 'need'` is interpreted here — `train` requirements are a schooling cost paid at a
+ * training house, not an already-accrued threshold.
  *
  * source-basis (approximated): whether a two-`expType` line means "sum both" or "either alone" has no
  * readable oracle, since the original's threshold rides the same below-the-`.ini` XP logic the per-animation
@@ -137,11 +136,7 @@ export function experienceRequirementMet(
 ): boolean {
   if (requirement.requirement !== 'need') return true; // not an accrued-XP threshold (train = schooling)
   if (requirement.experienceTypes.length === 0) return true; // no track to measure against
-  const tracks = contentIndex(ctx.content).jobExperience;
-  let repeats = 0;
-  for (const expType of requirement.experienceTypes) {
-    repeats += repeatsForExpType(tracks.get(expType), experience.get(expType) ?? 0);
-  }
+  const repeats = requirementRepeats(ctx.content.jobExperience, experience, requirement.experienceTypes);
   return repeats >= requirement.amount;
 }
 

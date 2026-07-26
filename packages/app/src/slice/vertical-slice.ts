@@ -16,7 +16,6 @@ import {
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
   GOOD_WOOD,
-  gatherMasteryExperienceFor,
   JOB_CARRIER,
   JOB_COLLECTOR,
   resolveWorldContent,
@@ -146,16 +145,11 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
     } else {
       // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
       // equipment slot, so an existing soldier's Broń row + drawn weapon match — like an admin spawn.
+      // Authored humans spawn with NO experience: a map's starting population earns the `needfor*`
+      // gates like everyone else (dig clay/stone before iron — the original's apprenticeship).
+      // `sethuman`'s undecoded trailing columns (tools/asset-pipeline maps decoder) may carry the
+      // original per-human stats and would be the source to pin if a map does seed veterans.
       const equipment = weaponEquipmentFor(p.jobType, sim.content.goods);
-      // Every authored human spawns with the gather-mastery XP (the sandbox veteran rule applied to
-      // decoded maps): real content's `needforgood` gates iron/gold behind clay/stone-digging XP, and a
-      // map settler converted to a collector and pinned to an iron camp would otherwise never qualify.
-      // Granted to every human, not just collectors, because profession changes keep `experience`.
-      // Named approximation: it skips the original's dig-clay-first apprenticeship for the authored
-      // starting population only — children born later still earn the gate. `sethuman`'s undecoded
-      // trailing columns (tools/asset-pipeline maps decoder) may carry the original per-human stats
-      // and would be the real source to pin.
-      const mastery = gatherMasteryExperienceFor(sim.content, p.tribe);
       sim.enqueue({
         kind: 'spawnSettler',
         jobType: p.jobType,
@@ -164,7 +158,6 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
         tribe: p.tribe,
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
-        ...(mastery.length > 0 ? { experience: mastery } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
       });
     }

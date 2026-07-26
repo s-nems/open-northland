@@ -57,17 +57,41 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
 }
 
 /**
- * Repeats a raw XP total represents on an OPTIONAL track — the one reading of the `needfor*` repeats
- * scale, shared by the sim gate (`experienceRequirementMet`), the panel's unlock forecast, and the
- * sandbox mastery seeding, so the three can't drift. A track-less expType (the fight/TRAINING/scout
- * buckets) accrues at rate 1, so its raw XP already is the repeat count.
+ * The repeats a settler's XP contributes toward one `needfor*` requirement, summed over its
+ * `expTypes` — the single reading of the requirement scale, shared by the sim gate
+ * (`experienceRequirementMet`) and the app's unlock forecast and menu filters, so they can't drift.
+ * Per expType: a track-less one (the fight/TRAINING/scout buckets) accrues at rate 1, so its raw XP
+ * already is the repeat count; a good-SPECIFIC track counts its own repeats (raw XP ÷ factor, so
+ * factors spanning 1..250 stay commensurable); a job-GENERAL track counts every track its job owns,
+ * because work accrues only the matched track ({@link trackFor}) while gates key on the trade's
+ * overall practice (the miller gate reads farmer-general; fieldwork fills farmer-wheat). Each track
+ * counts at most once, so a row naming a general track beside one of its own specifics still gates on
+ * the settler's real practice. Approximated: the original's threshold arithmetic rides below-the-`.ini`
+ * XP logic and is not readable.
  */
-export function repeatsForExpType(track: HumanJobExperienceType | undefined, xp: number): number {
-  return track === undefined ? xp : experienceRepeats(xp, track);
+export function requirementRepeats(
+  tracks: readonly HumanJobExperienceType[],
+  experience: ReadonlyMap<number, number>,
+  expTypes: readonly number[],
+): number {
+  let repeats = 0;
+  const counted = new Set<number>();
+  const count = (track: HumanJobExperienceType): void => {
+    if (counted.has(track.typeId)) return;
+    counted.add(track.typeId);
+    repeats += experienceRepeats(experience.get(track.typeId) ?? 0, track);
+  };
+  for (const expType of expTypes) {
+    const named = tracks.find((t) => t.typeId === expType);
+    if (named === undefined) repeats += experience.get(expType) ?? 0;
+    else if (named.goodType !== undefined) count(named);
+    else for (const t of tracks) if (t.jobType === named.jobType) count(t);
+  }
+  return repeats;
 }
 
-/** The raw XP worth `repeats` on an optional track — {@link repeatsForExpType}'s inverse, for seeding
- *  a veteran that must clear a repeats threshold (the sandbox gather-mastery stamp). */
+/** The raw XP worth `repeats` on an optional track — {@link experienceRepeats}' inverse, for seeding
+ *  a veteran that must clear a repeats threshold (the sandbox-scene gather-mastery stamp). */
 export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repeats: number): number {
   return repeats * (track?.experienceFactor ?? 1);
 }
