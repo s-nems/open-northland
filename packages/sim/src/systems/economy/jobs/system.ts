@@ -3,6 +3,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { System, SystemContext } from '../../context.js';
 import { type InteractionNode, interactionNode } from '../../footprint/index.js';
+import { isAnimalTribe } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
@@ -64,6 +65,12 @@ export const jobSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   for (const e of canonicalById(unboundSettlers(world))) {
     const settler = world.get(e, Settler);
+
+    // Wildlife never takes a trade: an animal is a permanently idle `jobType: null` Settler, so
+    // without this skip every creature on a map re-scans every workplace's openness each tick
+    // (O(animals × buildings) — the RTS-scale budget). No opening could ever match anyway (an animal
+    // tribe tech-enables nothing).
+    if (isAnimalTribe(ctx.content, settler.tribe)) continue;
 
     // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs
     // it — employment would immediately send it walking beyond its allowed area. The adopt pass needs no

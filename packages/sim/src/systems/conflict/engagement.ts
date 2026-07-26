@@ -101,7 +101,10 @@ export function engageSpec(
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
-  const player = viewer?.player ?? null;
+  // A hunter is NEVER presence-gated (in any stance): its accept admits passive catchable prey via
+  // mayHunt, which the presence grid discounts as "passive wildlife" — the gate's "other" class is no
+  // superset of a prey filter. Hunters are a handful per map; the ungated scan costs nothing at scale.
+  const player = attacker.jobType === HUNTER_JOB ? null : (viewer?.player ?? null);
 
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
@@ -123,10 +126,7 @@ export function engageSpec(
     isHunterJob(ctx.content, attacker.jobType)
   ) {
     const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
-    // player: null — never presence-gate a hunter: isHuntTarget is owner-blind (own-player-owned prey
-    // is valid), so the gate's "not mine" class is no superset of this filter. Hunters are a
-    // handful per map; the ungated scan costs nothing at scale.
-    return { accept, minDist, searchRadius: sight, player: null, defend: null };
+    return { accept, minDist, searchRadius: sight, player, defend: null }; // player is null (hunter)
   }
 
   return {
