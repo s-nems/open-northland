@@ -108,7 +108,9 @@ export function seedAnimalHerds(
  * The animal tribes to seed, in canonical ascending-`tribeType` order: every recorded animal tribe in
  * `content.animals`, or — when `requested` is given — the subset of `requested` that has an animal
  * record (a `tribeType` with no record is silently dropped, since a civilization can't be wildlife).
- * Deduplicated (the source array may repeat a `tribeType`; `animalRecord` returns the first match).
+ * A `hitpoints 0` decorative record (the real butterflies/bees/mosquitos) is dropped too — its spawn
+ * command places nothing, so seeding it would only pad the command log. Deduplicated (the source array
+ * may repeat a `tribeType`; `animalRecord` returns the first match).
  */
 function resolveAnimalTribes(content: ContentSet, requested?: readonly number[]): number[] {
   const ids = requested ?? content.animals.map((a) => a.tribeType).filter((t) => Number.isInteger(t));
@@ -116,7 +118,9 @@ function resolveAnimalTribes(content: ContentSet, requested?: readonly number[])
   const out: number[] = [];
   for (const t of ids) {
     if (seen.has(t)) continue;
-    if (animalRecord(content, t) === null) continue; // not a recorded animal tribe — skip
+    const record = animalRecord(content, t);
+    if (record === null) continue; // not a recorded animal tribe — skip
+    if (record.hitpointsAdult <= 0) continue; // decorative swarm — its spawn places nothing
     seen.add(t);
     out.push(t);
   }

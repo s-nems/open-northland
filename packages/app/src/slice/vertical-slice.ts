@@ -130,6 +130,11 @@ function newSliceSim(seed: number, map: TerrainMap, content: ContentSet): Simula
  */
 function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
+    if (p.kind === 'animal') {
+      // One authored setanimal = one creature at its half-cell (never a maximumgroupsize herd).
+      sim.enqueue({ kind: 'spawnAnimalHerd', tribe: p.tribe, x: p.x, y: p.y, count: 1 });
+      continue;
+    }
     const own = p.owner !== undefined ? { owner: p.owner } : {};
     if (p.kind === 'building') {
       sim.enqueue({
@@ -307,12 +312,16 @@ export function runAuthoredSlice(
   rows: AuthoredJoinRows,
   options: WorldContentOptions = {},
 ): Simulation | null {
-  const { placements, skipped, droppedGoods, droppedPicks } = resolveAuthoredPlacements(entities, rows, map);
+  const { placements, skipped, droppedGoods, droppedPicks, skippedAnimals } = resolveAuthoredPlacements(
+    entities,
+    rows,
+    map,
+  );
   if (placements.length === 0) return null;
-  if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || entities.animals.length > 0) {
+  if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || skippedAnimals > 0) {
     diag.warn(
       'content',
-      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, dropped ${droppedGoods} unresolvable authored building goods and ${droppedPicks} unresolvable produced-good picks, deferred ${entities.animals.length} animals`,
+      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds and ${skippedAnimals} unresolvable animals, dropped ${droppedGoods} unresolvable authored building goods and ${droppedPicks} unresolvable produced-good picks`,
     );
   }
 

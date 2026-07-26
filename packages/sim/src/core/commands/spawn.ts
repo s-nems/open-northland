@@ -95,4 +95,8 @@ export type SpawnCommand =
       readonly tribe: number;
       readonly x: number;
       readonly y: number;
+      /** Herd-size override: spawn exactly `max(1, count)` creatures instead of the record's
+       *  `maximumgroupsize` — a decoded map's `setanimal` places ONE animal at its authored
+       *  half-cell. Omit for the data-pinned herd size. */
+      readonly count?: number;
     };
