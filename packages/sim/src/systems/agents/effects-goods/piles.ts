@@ -126,6 +126,29 @@ export function stackOntoTile(
 }
 
 /**
+ * Set `amount` of `good` down on the tile at exactly `(x, y)` without ever losing a unit: stack onto the
+ * tile's own heap when it takes them ({@link stackOntoTile}), else start a second owned heap beside it -
+ * the tile's heap refuses when it is full, holds another good, or belongs to a rival. Two heaps on one
+ * tile is a supported state (they render as one pile and each is pickable), so this trades a cosmetic
+ * overlap for goods conservation. The set-down step for a good that leaves an equipment slot with no
+ * carrier to hold it (see {@link import('../../orders/work/employment.js')}).
+ */
+export function placeUnitsOnTile(
+  world: World,
+  x: Fixed,
+  y: Fixed,
+  good: number,
+  amount: number,
+  owner: number | undefined,
+): void {
+  if (stackOntoTile(world, x, y, good, amount, owner) > 0) return;
+  const pile = world.create();
+  world.add(pile, Position, { x, y });
+  world.add(pile, Stockpile, { amounts: new Map([[good, Math.min(MAX_GROUND_STACK, amount)]]) });
+  stampOwner(world, pile, owner);
+}
+
+/**
  * Reap a loose ground pile once a pickup or an eaten bite has emptied it, so a long game doesn't accrete a
  * dead heap per felled tree or delivered load. A loose pile is any positioned {@link Stockpile} that is not a persistent store — a
  * {@link Building} warehouse and a {@link Vehicle} hull both keep their empty stock and are left alone. This

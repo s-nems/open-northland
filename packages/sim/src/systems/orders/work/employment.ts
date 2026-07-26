@@ -9,11 +9,13 @@ import {
   DeferredOrder,
   Engagement,
   Equipment,
+  EquipOrder,
   Fleeing,
   GatherSelection,
   JobAssignment,
   ownerOf,
   PlayerOrder,
+  Position,
   Settler,
   SiteAssignment,
   SupplyRun,
@@ -24,7 +26,9 @@ import {
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { jobCanBuild, startDrop } from '../../agents/actions.js';
+import { addCarry, isUsed, placeUnitsOnTile } from '../../agents/effects-goods/index.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
@@ -82,6 +86,7 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   // uninterruptible-atomic class, tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
+  if (isFighterJob(jobType)) shedToolOnEnlist(world, e); // before the drop below, so a shed unit joins it
   // A profession change makes a hands-full settler set its load down first: it replaces the cancelled action
   // with the drop atomic, so the old trade's haul lands on the ground here rather than being carried on to a
   // store under the new trade (the requested "drop when you change job" behavior).
@@ -117,6 +122,35 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   // applies on the re-binding path; here the settler goes unemployed until the JobSystem re-posts it).
   world.remove(e, GatherSelection);
   world.remove(e, CraftSelection);
+}
+
+/**
+ * A fighter keeps no tool - it aids only production work (user rule 2026-07-25) - so entering a
+ * soldier/hero trade empties the slot and calls off a tool-slot equip errand in flight (an errand for
+ * another slot survives, as on any job change). A fresh unit joins free or same-good hands, which the
+ * caller's drop step then sets down at the feet; with a foreign load in hand it goes straight to the
+ * ground there. A part-used unit is destroyed instead, the take-off regeneration rule
+ * (agents/effects-goods/equip.ts). Only a positionless settler loses one (no tile to set it on).
+ */
+function shedToolOnEnlist(world: World, e: Entity): void {
+  const order = world.tryGet(e, EquipOrder);
+  if (order !== undefined && order.group === 'tool') world.remove(e, EquipOrder);
+  const equipment = world.tryGet(e, Equipment);
+  const tool = equipment?.tool;
+  if (equipment === undefined || tool == null) return;
+  equipment.tool = null;
+  world.touch(e);
+  if (isUsed(tool)) return;
+  const held = world.tryGet(e, Carrying);
+  if (held === undefined || held.goodType === tool.goodType) {
+    addCarry(world, e, tool.goodType, 1);
+    return;
+  }
+  const pos = world.tryGet(e, Position);
+  if (pos === undefined) return;
+  const node = nodeOfPosition(pos.x, pos.y);
+  const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice tile, so drops stack
+  placeUnitsOnTile(world, at.x, at.y, tool.goodType, 1, ownerOf(world, e));
 }
 
 /**

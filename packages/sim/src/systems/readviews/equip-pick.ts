@@ -1,9 +1,10 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import { Position, Stockpile, UnderConstruction } from '../../components/index.js';
+import { Position, Settler, Stockpile, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { isFighterJob } from './stances.js';
 
 /** One equip pick-menu row: an equippable good for the slot and how many units the settler can reach. */
 export interface EquipPickEntry {
@@ -23,6 +24,9 @@ export interface EquipPickEntry {
  * gate tests the store's own node (not its interaction cell), and the buried-under-a-building filter
  * is skipped - a menu row may thus rarely name a unit the fetch then fails to reach, which the errand
  * already survives (it returns empty-handed).
+ *
+ * A fighter's tool menu is empty: `equipGood` refuses a tool on a soldier/hero (orders/equipment.ts),
+ * so the menu must not offer what no click can wear.
  */
 export function equipPickList(
   world: World,
@@ -31,6 +35,7 @@ export function equipPickList(
   entity: Entity,
   group: EquipCategory,
 ): EquipPickEntry[] {
+  if (group === 'tool' && isFighterJob(world.tryGet(entity, Settler)?.jobType ?? null)) return [];
   const available = new Map<number, number>(); // insertion = content order, the menu's row order
   for (const good of content.goods) {
     if (good.equip?.category === group) available.set(good.typeId, 0);

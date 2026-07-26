@@ -141,12 +141,16 @@ const COMBATANT_HITPOINTS = 500;
 const SHOES_GOOD = 30;
 const MEAD_GOOD = 43;
 const MAX_USE_PCT = 100;
+/** The fixture's wooden tool - the good a fighter may not wear, worn by some spawn rolls so the
+ *  enlist shed (join-the-hands, ground drop, part-used destroy) runs mid-stream. */
+const TOOL_GOOD = 11;
 /** Equip-order slot groups: the five valid categories the `equipGood`/`unequipGood` rolls draw from. */
 const EQUIP_GROUPS = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
-/** Equip-order goods: the fixture's equippables (shoes/sword/fur_boots), a non-equippable (wood), an
- *  id outside the fixture (SHOES_GOOD is the ORIGINAL's 30, unknown here) and a wild invalid one -
- *  the accept + every skip path of the `equipGood` validation. */
-const EQUIP_ORDER_GOODS = [8, 9, 10, RESOURCE_GOOD, SHOES_GOOD, INVALID_TYPE] as const;
+/** Equip-order goods: the fixture's equippables (shoes/sword/fur_boots/wooden tool), a non-equippable
+ *  (wood), an id outside the fixture (SHOES_GOOD is the ORIGINAL's 30, unknown here) and a wild invalid
+ *  one - the accept + every skip path of the `equipGood` validation, the tool including the
+ *  fighter-refusal and the shed-on-enlist branches. */
+const EQUIP_ORDER_GOODS = [8, 9, 10, TOOL_GOOD, RESOURCE_GOOD, SHOES_GOOD, INVALID_TYPE] as const;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
@@ -278,6 +282,7 @@ function nextCommand(rng: Rng): Command {
           ? {
               equipment: {
                 boots: { goodType: SHOES_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
+                tool: { goodType: TOOL_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
                 misc: [{ goodType: MEAD_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) }, null],
               },
             }

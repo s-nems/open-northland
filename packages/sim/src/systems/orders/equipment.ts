@@ -19,6 +19,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { isFighterJob } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
@@ -27,7 +28,8 @@ import { isOrderableSettler } from './guards.js';
  * elsewhere: wearing a weapon/armour good moves the equipment INVENTORY axis only (the combat
  * `Weapon`/`Armor` wiring is the `Equipment` component doc's deferred half), and the original's
  * soldier-only `allowequip` gate is enforced by the panel's row model, not yet here - a raw command
- * can dress a civilian in a display-only weapon.
+ * can dress a civilian in a display-only weapon. The tool axis is stricter: `equipGood` refuses one to
+ * a fighter (the rule lives on `shedToolOnEnlist`, work/employment.ts).
  */
 
 /** Whether (`group`, `slot`) addresses a real equipment slot (the misc row indexed, 0 elsewhere). */
@@ -89,6 +91,7 @@ export function equipGood(
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
+  if (command.group === 'tool' && isFighterJob(world.get(e, Settler).jobType)) return; // module note
   stampEquipOrder(world, terrain, e, {
     group: command.group,
     slot: command.slot,

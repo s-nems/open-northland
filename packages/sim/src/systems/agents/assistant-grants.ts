@@ -19,6 +19,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import { isFighterJob } from '../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import type { PlannerPass } from './planner-pass.js';
@@ -85,17 +86,22 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     const tally = tallyFor(inFlight, owner);
     if (tally.total >= ASSISTANT_MAX_IN_FLIGHT) continue;
     if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
-    if (world.get(e, Settler).jobType === null) continue; // the ladder never plans a jobless settler
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null) continue; // the ladder never plans a jobless settler
     // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would
     // dump the carried load where the settler stands (a manual order may do that - the assistant
     // has no such urgency). A later beat catches the settler with free hands.
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
+    const fighter = isFighterJob(jobType);
 
     const eq = world.tryGet(e, Equipment);
     // The settler's confinement/veto are computed once, and only when a grant actually has a free
     // slot and spare stock - a fully dressed settler's beat stays a few map reads.
     let limit: NavigationLimit | null | undefined;
     for (const spec of wanted) {
+      // A tool grant never targets a fighter (the rule lives on `shedToolOnEnlist`,
+      // orders/work/employment.ts); its boots and misc grants still apply.
+      if (fighter && spec.category === 'tool') continue;
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
       const underway = tally.byGood.get(spec.goodType) ?? 0;
