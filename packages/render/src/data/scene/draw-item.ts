@@ -225,8 +225,8 @@ export interface DrawItem {
    */
   readonly portraitOnly?: boolean;
   /**
-   * Freeze this settler's animation clock to a fixed standing frame (the portrait subject while it is
-   * inside a building): a motionless pose rather than the breathing idle loop. Omitted (falsy) for a
+   * Freeze this settler's animation clock to a fixed standing frame: a motionless pose rather than the
+   * breathing idle loop. Set on every settler drawn while inside a building. Omitted (falsy) for a
    * normally-animating item.
    */
   readonly frozen?: boolean;

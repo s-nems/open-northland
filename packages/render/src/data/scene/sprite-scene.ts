@@ -73,6 +73,8 @@ export interface SpriteSceneOptions {
    * workplace between chores (the sim `Resting` marker) — forced to the `idle` standing pose. The map
    * hides these (observed original: off-duty workers wait in the house, not lined up at the door); the
    * details panel's worker field sets this so a bound worker who stepped inside still shows there.
+   * Each kept settler is tagged {@link DrawItem.frozen}. Approximation: the observation covers hiding
+   * the settler on the MAP; how the original's building window presents one indoors is unverified.
    */
   readonly keepIndoorSettlers?: boolean;
   /**
@@ -92,13 +94,29 @@ export interface SpriteSceneOptions {
 }
 
 /**
+ * The extra input only the draw-list entry point accepts. `onlyRefs` skips every unlisted entity before it
+ * is classified, which also keeps it out of {@link SpriteScene.liveRefs} — safe here because
+ * {@link buildSpriteScene} discards that set, and unavailable to {@link collectSpriteScene} (the retained
+ * pool's reconcile) which would read a narrowed set as "everything else died" and destroy the map's sprites.
+ */
+export interface DrawListOptions extends SpriteSceneOptions {
+  /**
+   * Emit draw items for these entities only. Every pre-scan still reads the whole snapshot, so indoor
+   * state and target-derived facing resolve exactly as on the map; that is why a caller wanting a few
+   * known entities passes this instead of a snapshot narrowed to them, which starves those pre-scans.
+   * Absent = every entity.
+   */
+  readonly onlyRefs?: ReadonlySet<number> | undefined;
+}
+
+/**
  * The depth-sorted sprite draw list alone (no terrain) — the per-frame half the retained
  * {@link import('../../gpu/world-renderer/index.js').WorldRenderer} consumes. Terrain is static and built once
  * (`setTerrain`), so only moving/animated entities flow through here. An item is kept iff its screen anchor
  * is inside the already margin-inflated `viewport` box.
  */
-export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): DrawItem[] {
-  return collectSpriteScene(snapshot, opts).items;
+export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions = {}): DrawItem[] {
+  return collectScene(snapshot, opts).items;
 }
 
 /**
@@ -112,10 +130,15 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
  * {@link SpriteSceneOptions}.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
+  return collectScene(snapshot, opts);
+}
+
+function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteScene {
   const {
     viewport,
     elevation,
     staticRefs,
+    onlyRefs,
     fogVisible,
     ghosts,
     keepIndoorSettlers,
@@ -129,7 +152,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
   const posByRef = targetPositionsOf(snapshot);
   const enterableStores = enterableStoresOf(snapshot);
   for (const entity of snapshot.entities) {
-    // Drawn by the retained static layer instead (a virgin map resource); skip before classifying.
+    // Both skips come before classifying: a decoded map carries 40k+ placements, and neither a statically
+    // drawn one nor an unlisted one is worth a classify + position read.
+    if (onlyRefs !== undefined && !onlyRefs.has(entity.id)) continue;
+    // Drawn by the retained static layer instead (a virgin map resource).
     if (staticRefs?.has(entity.id)) continue;
     const components = entity.components;
     const kind = classify(components);
@@ -226,9 +252,11 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
     // The portrait subject that only survived a cull (off-screen/fogged/indoor) is drawn for the panel
-    // cutout but hidden on the main map; an indoor one also freezes to a motionless standing pose.
+    // cutout but hidden on the main map.
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
-    if (isPortrait && indoorSettler) item.frozen = true;
+    // Only `keepIndoorSettlers` or `portraitRef` gets an indoor settler this far, and both draw it holding
+    // a motionless standing pose: it is not out working, and the atomic it left running would animate.
+    if (indoorSettler) item.frozen = true;
     // Owner slot → team-colour slot (a map roster's colour choice); identity when unmapped.
     if (playerColourOf !== undefined && item.player !== undefined) {
       item.player = playerColourOf(item.player);

@@ -14,9 +14,9 @@ export interface Ent {
   readonly components: Record<string, unknown>;
 }
 
-/** Wrap hand-built entities as a tick-0 `WorldSnapshot` (the cast skips the sim's private snapshot shape). */
-export function snapshotOf(entities: readonly Ent[]): WorldSnapshot {
-  return { tick: 0, entities, events: [] } as unknown as WorldSnapshot;
+/** Wrap hand-built entities as a `WorldSnapshot` (the cast skips the sim's private snapshot shape). */
+export function snapshotOf(entities: readonly Ent[], tick = 0): WorldSnapshot {
+  return { tick, entities, events: [] } as unknown as WorldSnapshot;
 }
 
 /** An empty tick-0 snapshot — the "no entities" case (a bare scene assembly). */
