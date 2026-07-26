@@ -104,7 +104,19 @@ export const combatSystem: System = (world, ctx) => {
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
   // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
   // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
-  const presence = new HostilePresence(world, targets, undefined, nodesOf);
+  // Passive-now wildlife is discounted (`passiveNow`): a gated seeker can never validly target a
+  // non-hostile unowned animal (hunters are never gated), so a map's hundreds of grazing herd members
+  // must not turn every civilian's flee scan and every soldier's sight scan back on. Pure reads only —
+  // the lapsed-Anger reap stays with the attacker pass (hostileAnimalNow).
+  const passiveAnimalNow = (t: Entity): boolean => {
+    if (world.has(t, Owner)) return false;
+    const s = world.tryGet(t, Settler);
+    if (s === undefined || !isAnimalTribe(ctx.content, s.tribe)) return false;
+    if (isAggressiveAnimal(ctx.content, s.tribe)) return false;
+    const anger = world.tryGet(t, Anger);
+    return anger === undefined || ctx.tick >= anger.until;
+  };
+  const presence = new HostilePresence(world, targets, undefined, nodesOf, passiveAnimalNow);
 
   // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
   // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is

@@ -11,6 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { startDrop } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
+import { HUNTER_JOB } from '../readviews/index.js';
 import {
   COMPASS_DIRECTIONS,
   clearNavState,
@@ -107,8 +108,12 @@ export function fleeDrive(
   // hostile on its very tile too (entities share tiles freely), not just one a step away. The coarse
   // presence early-out (perf-only, conservative — see HostilePresence) spares every calm civilian on a
   // peaceful two-player map its per-tick full-sight ring scan; only owned units carry the FLEE stance.
+  // A FLEE-stance hunter is exempt from the early-out (the engageSpec hunter rule's twin): its accept
+  // admits passive catchable prey via mayHunt, which the presence grid discounts.
   const threat =
-    viewer !== undefined && !presence.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
+    viewer !== undefined &&
+    attacker.jobType !== HUNTER_JOB &&
+    !presence.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
       : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
   const fleeing = world.tryGet(e, Fleeing);

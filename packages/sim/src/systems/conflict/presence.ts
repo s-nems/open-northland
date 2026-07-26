@@ -8,10 +8,12 @@ import { forEachIndexNode, type IndexNodeVisitor } from '../spatial.js';
  */
 const PRESENCE_CELL_NODES = 32;
 
-/** Combatant counts on one coarse cell: everyone, plus the owned share per player. Unowned
- *  combatants (wildlife, scenario civs) count only in `total`, so they always read as "other". */
+/** Combatant counts on one coarse cell: everyone, the owned share per player, and the passive-now
+ *  wildlife share (see {@link HostilePresence}'s constructor `passiveNow`). Other unowned combatants
+ *  (scenario civs, hostile animals) count only in `total`, so they always read as "other". */
 interface PresenceCell {
   total: number;
+  passive: number;
   readonly byPlayer: Map<number, number>;
 }
 
@@ -19,13 +21,17 @@ interface PresenceCell {
  * A per-tick coarse count grid over the combatants — the CombatSystem's idle early-out (golden
  * rule 6): an owned seeker asks "could any combatant I don't own be within my search radius?" in
  * O(coarse cells) before paying the full ring search. Perf-only and conservative — the query
- * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and "not mine"
- * ⊇ every gated accept filter, because those all route hostility through the owner-first
- * `mayTarget` relation), so a `false` proves the ring search would find nothing and skipping it
- * cannot change a winner. Seekers whose filter breaks that superset are ungated via a null
- * `EngageSpec.player`: unowned ones (valid targets can share the "unowned" class) and IGNORE
- * hunters (owner-blind prey filter). Rebuilt each combat tick from the same combatant list as
- * the ring-search index; derived state, never hashed.
+ * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and "not mine
+ * minus passive wildlife" ⊇ every gated accept filter, because those all route hostility through
+ * the owner-first `mayTarget` relation, whose neutral axis admits an unowned animal only when
+ * hostile-now or as hunter prey), so a `false` proves the ring search would find nothing and
+ * skipping it cannot change a winner. Seekers whose filter breaks that superset are ungated via a
+ * null `EngageSpec.player` (or the flee drive's own hunter exemption): unowned ones (valid targets
+ * can share the "unowned" class) and hunters (owner-blind prey filter admits passive catchable
+ * animals). The passive share may only shrink within the tick (Anger is stamped by the earlier
+ * atomic damage pass and only reaped here), so the build-time count stays conservative. Rebuilt
+ * each combat tick from the same combatant list as the ring-search index; derived state, never
+ * hashed.
  */
 export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */
@@ -41,17 +47,24 @@ export class HostilePresence {
   private readonly tally: IndexNodeVisitor = (e, x, y) => {
     const cell = this.cellAt(Math.floor(x / PRESENCE_CELL_NODES), Math.floor(y / PRESENCE_CELL_NODES));
     cell.total++;
+    if (this.passiveNow?.(e) === true) cell.passive++;
     const owner = this.world.tryGet(e, Owner);
     if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
   };
+
+  private readonly passiveNow: ((e: Entity) => boolean) | undefined;
 
   constructor(
     world: World,
     combatants: Iterable<Entity>,
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
+    /** Classifies a combatant as passive-now wildlife (unowned, non-hostile animal) — discounted from
+     *  `othersWithin` so a map full of grazing herds cannot defeat every gated seeker's early-out. */
+    passiveNow?: (e: Entity) => boolean,
   ) {
     this.world = world;
+    this.passiveNow = passiveNow;
     for (const e of combatants) forEachIndexNode(world, e, nodeOf, nodesOf, this.tally);
   }
 
@@ -70,7 +83,7 @@ export class HostilePresence {
       if (column === undefined) continue;
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = column.get(cy);
-        if (cell !== undefined && cell.total > (cell.byPlayer.get(player) ?? 0)) return true;
+        if (cell !== undefined && cell.total - cell.passive > (cell.byPlayer.get(player) ?? 0)) return true;
       }
     }
     return false;
@@ -84,7 +97,7 @@ export class HostilePresence {
     }
     let cell = column.get(cy);
     if (cell === undefined) {
-      cell = { total: 0, byPlayer: new Map<number, number>() };
+      cell = { total: 0, passive: 0, byPlayer: new Map<number, number>() };
       column.set(cy, cell);
     }
     return cell;
