@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Carrying,
@@ -73,13 +74,16 @@ function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
  */
 export class GossipCandidates {
   private buckets: NodeBuckets | null = null;
-  constructor(private readonly world: World) {}
+  constructor(
+    private readonly world: World,
+    private readonly content: ContentSet,
+  ) {}
 
   ensure(): NodeBuckets {
     if (this.buckets === null) {
       const eligible = canonicalById(this.world.query(Settler, Position)).filter((e) => {
         const s = this.world.get(e, Settler);
-        return s.jobType !== null && !isFighterJob(s.jobType) && !this.world.has(e, Age);
+        return s.jobType !== null && !isFighterJob(this.content, s.jobType) && !this.world.has(e, Age);
       });
       this.buckets = new NodeBuckets(this.world, eligible);
     }
@@ -151,7 +155,7 @@ export function planGossipSeek(
   candidates: GossipCandidates,
 ): boolean {
   if (settler.enjoyment < CHAT_SEEK_THRESHOLD) return false;
-  if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
+  if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (chatCooldownActive(world, ctx.tick, e)) return false;
   // Owner-gated like deStackIdle: only player-owned settlers gossip, so unowned golden/economy fixtures
   // stay byte-identical; partners must share the owner (nobody chats up the enemy).
@@ -187,7 +191,7 @@ export function planGossipIdle(
   hy: number,
   candidates: GossipCandidates,
 ): boolean {
-  if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
+  if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (chatCooldownActive(world, ctx.tick, e)) return false;
   // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek. The gate sits before the
   // wander roll below, so unowned golden fixtures consume no RNG and stay byte-identical.

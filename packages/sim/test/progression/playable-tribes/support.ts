@@ -22,6 +22,7 @@ export function tribeContent(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: 5, id: 'civilist' }, // the enabling job both tech edges hang off
+      { typeId: 15, id: 'hunter' }, // the predation trade `mayHunt` gates on
     ],
     buildings: [
       { typeId: 1, id: 'headquarters', kind: 'storage' },

@@ -95,14 +95,14 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
-  stampDefaultStance(world, e, jobType);
+  stampDefaultStance(world, ctx.content, e, jobType);
   // Leaving the fighter trades disarms the settler: the arms are the soldier's role kit, and the render
   // draws the armed look from the equipped weapon good over the job — a kept weapon would freeze an
   // ex-soldier in the warrior skin. Both axes go: the Equipment display slots and the combat Weapon/Armor.
   // Named approximation: the weapon/armor goods VANISH from the economy rather than dropping or returning
   // to a store (the original's fate for a converted soldier's kit is unobserved) — recovering them is
   // docs/tickets/sim/disarm-equipment-fate.md.
-  if (!isFighterJob(jobType)) {
+  if (!isFighterJob(ctx.content, jobType)) {
     world.remove(e, Weapon);
     world.remove(e, Armor);
     const equipment = world.tryGet(e, Equipment);
@@ -145,7 +145,7 @@ export function assignWorker(
   // move order (moveUnit) — the player extends the network first, then staffs the far building.
   const terrain = ctx.terrain;
   if (terrain !== undefined) {
-    const limit = navigationLimitFor(world, terrain, e);
+    const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null) {
       const inode = interactionNode(world, ctx, b);
       if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;

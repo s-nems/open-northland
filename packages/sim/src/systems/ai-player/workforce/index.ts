@@ -1,9 +1,8 @@
 import { CurrentAtomic, ErectSignpostOrder, PlayerOrder } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
-import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { SCOUT_JOB } from '../../readviews/stances.js';
+import { scoutJobType } from '../../readviews/index.js';
 import type { BuildOrderEntry } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
 import { headquartersOf } from '../shared.js';
@@ -71,15 +70,15 @@ function allocateScout(
   builderJob: number | null,
 ): Command[] {
   const commands: Command[] = [];
-  const scoutWanted =
-    contentIndex(ctx.content).commandJobs.get(SCOUT_JOB) !== undefined &&
-    nextSignpostTarget(world, ctx, player) !== null;
-  if (scoutWanted && scouts.length === 0) {
+  const scoutJob = scoutJobType(ctx.content);
+  // The trade to keep one settler in, or null when the content declares no scout or no post is missing.
+  const keepScoutAs = scoutJob !== null && nextSignpostTarget(world, ctx, player) !== null ? scoutJob : null;
+  if (keepScoutAs !== null && scouts.length === 0) {
     const spare = force.take();
-    if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: SCOUT_JOB });
+    if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: keepScoutAs });
   }
   for (const [i, scout] of scouts.entries()) {
-    if (scoutWanted && i === 0) continue; // the working scout — keep
+    if (keepScoutAs !== null && i === 0) continue; // the working scout — keep
     if (world.has(scout, CurrentAtomic)) continue;
     if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue;
     if (builderJob !== null) commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });

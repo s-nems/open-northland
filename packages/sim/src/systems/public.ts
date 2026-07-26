@@ -46,7 +46,18 @@ export {
 export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
 export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
 export { IDLE_JOB } from './readviews/hud.js';
-export { isFighterJob, MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
+// The content-derived job roles — the profession picker and the action ring offer exactly what the
+// matching commands accept, off the same roles.
+export {
+  isFighterJob,
+  isFighterJobRow,
+  isHeroJob,
+  isHunterJob,
+  isScoutJob,
+  isSoldierJob,
+  scoutJobType,
+} from './readviews/jobs.js';
+export { MILITARY_MODE } from './readviews/stances.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,

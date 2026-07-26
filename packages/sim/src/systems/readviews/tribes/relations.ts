@@ -1,23 +1,15 @@
 import type { ContentSet } from '@open-northland/data';
+import { isHunterJob } from '../jobs.js';
 import { animalCannotBeAttacked, isAggressiveAnimal, isCatchableAnimal } from './animals.js';
 import { isAnimalTribe } from './civilizations.js';
 
 /**
- * The data-pinned hunter trade — `jobtypes.ini` `type 15` / `logicdefines.inc` `JOB_TYPE_HUMAN_HUNTER 15`,
- * the civilization job that hunts game. A combatant of this job may strike {@link isCatchableAnimal} prey
- * ({@link mayHunt}); every tribe's hunter binds the same attack atomic (`setatomic 15 81 "..._hunter_attack"`,
- * verified in `DataCnmd/tribetypes12/tribetypes.ini`), so a hunter's strike reuses the combat `attack` atomic
- * + weapon/hit path. Kept next to the `mayHunt` relation it gates.
- */
-export const HUNTER_JOB = 15;
-
-/**
  * The predation relation — may a civilization combatant whose job is `attackerJobType` hunt the animal of
  * `targetTribe`? The prey side of the hunter mechanic, separate from the hostility relation {@link mayAttack}:
- * hunting is gated by the attacker's job (only a {@link HUNTER_JOB} hunter hunts), not by tribe-vs-tribe
+ * hunting is gated by the attacker's job (only an {@link isHunterJob} hunter hunts), not by tribe-vs-tribe
  * hostility. The rules:
  *
- *  - The attacker must be a hunter (`attackerJobType === HUNTER_JOB`).
+ *  - The attacker must be a hunter ({@link isHunterJob}).
  *  - The target must be a {@link isCatchableAnimal} animal — huntable livestock per `animaltypes.ini`
  *    `catchable`. Wild-only fauna, a civilization, and an unknown tribe are not huntable prey.
  *  - A `cannotbeattacked` animal is still exempt (decorative bees) — the same target exemption
@@ -26,12 +18,12 @@ export const HUNTER_JOB = 15;
  * Hunting is one direction only; a `catchable` `getAngry` prey struck by a hunter is provoked into fighting
  * back through the combat `Anger` path (the AtomicSystem's `attack` effect), not through this relation.
  *
- * Source basis: the prey set is the verbatim `catchable` param and the hunter trade is the pinned
- * `JOB_TYPE_HUMAN_HUNTER 15`; which prey a hunter picks and the absence of a walk-to-prey/harvest-cadaver
- * follow-up are approximated (source basis "Hunter strike on catchable prey").
+ * Source basis: the prey set is the verbatim `catchable` param and the hunter trade is read off the content's
+ * job table; which prey a hunter picks and the absence of a walk-to-prey/harvest-cadaver follow-up are
+ * approximated (source basis "Hunter strike on catchable prey").
  */
 export function mayHunt(content: ContentSet, attackerJobType: number | null, targetTribe: number): boolean {
-  if (attackerJobType !== HUNTER_JOB) return false; // only a hunter hunts
+  if (!isHunterJob(content, attackerJobType)) return false; // only a hunter hunts
   if (!isCatchableAnimal(content, targetTribe)) return false; // only catchable prey is huntable
   if (animalCannotBeAttacked(content, targetTribe)) return false; // decorative fauna stay exempt
   return true;

@@ -14,8 +14,9 @@ import { ctxOf } from './support.js';
 
 const HUMAN_PLAYER = 0;
 const AI_PLAYER = 1;
-/** In the `jobtypes.ini` soldier band (31..41) — gated by barracks training, never by work XP. */
-const SOLDIER_JOB = 33;
+/** The fixture's `soldier_unarmed` — a job the content classifies as a fighter, so it is gated by
+ *  barracks training and never by work XP. */
+const SOLDIER_JOB = 31;
 
 /** Flag `player`'s seat AI-driven, the state the `setPlayerAi` command lands (no tick needed). */
 function makeAiSeat(sim: Simulation, player: number): void {
@@ -209,6 +210,6 @@ describe('jobEnables tech-graph under the profession-progression toggle', () => 
     setProfessionProgression(sim.world, false);
     expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(true); // civilian job: free start
     expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(true); // goods: free start
-    expect(jobEnabled(sim.world, ctx, 1, SOLDIER_JOB)).toBe(false); // fighter band: still gated
+    expect(jobEnabled(sim.world, ctx, 1, SOLDIER_JOB)).toBe(false); // a fighter: still gated
   });
 });

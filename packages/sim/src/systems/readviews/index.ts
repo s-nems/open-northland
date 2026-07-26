@@ -75,7 +75,17 @@ export {
   tribePopulationByJob,
   tribeStocks,
 } from './hud.js';
-export { isSeaJob, seaJobs } from './jobs.js';
+export {
+  isFighterJob,
+  isFighterJobRow,
+  isHeroJob,
+  isHunterJob,
+  isScoutJob,
+  isSeaJob,
+  isSoldierJob,
+  scoutJobType,
+  seaJobs,
+} from './jobs.js';
 export {
   isLandLayerType,
   isUniversalLayerType,
@@ -85,14 +95,7 @@ export {
   waterLayerLandscape,
 } from './landscape.js';
 
-export {
-  defaultStanceForJob,
-  isFighterJob,
-  isMilitaryMode,
-  MILITARY_MODE,
-  type MilitaryMode,
-  SCOUT_JOB,
-} from './stances.js';
+export { defaultStanceForJob, isMilitaryMode, MILITARY_MODE, type MilitaryMode } from './stances.js';
 export {
   angryGameTimeOf,
   animalBabyHitpoints,
@@ -100,7 +103,6 @@ export {
   animalHitpoints,
   animalRecord,
   cadaverYieldOf,
-  HUNTER_JOB,
   herdParams,
   ignoresHousesAnimal,
   isAggressiveAnimal,

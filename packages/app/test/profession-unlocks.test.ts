@@ -7,7 +7,7 @@ import { snapshotOf } from './support/sandbox.js';
 describe('jobUnlockedFor', () => {
   const COLLECTOR = 8;
   const CARPENTER = 9;
-  const SOLDIER = 33; // fighter band 31..41
+  const SOLDIER = 33; // a `soldier_*` trade — the fighter carve-out's target
   const WOOD_TRACK = 3;
   const SWORD_GOOD = 52; // a needforgood-gated ware
   const PLAIN_GOOD = 5; // no requirement row
@@ -47,6 +47,18 @@ describe('jobUnlockedFor', () => {
     jobExperience: [
       { typeId: WOOD_TRACK, id: 'collector_wood', jobType: COLLECTOR, goodType: 5, experienceFactor: 10 },
     ],
+    // The fighter carve-out reads its role off the job id slug, so the rows carry the real vocabulary.
+    jobs: [
+      { typeId: COLLECTOR, id: 'collector', allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] },
+      { typeId: CARPENTER, id: 'joiner', allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] },
+      {
+        typeId: SOLDIER,
+        id: 'soldier_spear_iron',
+        allowedAtomics: [],
+        baseAtomics: [],
+        forbiddenAtomics: [],
+      },
+    ],
   };
 
   it('offers ungated trades freely and gated ones only at the repeats threshold', () => {
@@ -55,7 +67,7 @@ describe('jobUnlockedFor', () => {
     expect(jobUnlockedFor(content, true, 1, new Map([[WOOD_TRACK, 100]]), CARPENTER)).toBe(true); // 10 repeats
   });
 
-  it('frees civilian trades while progression is off, but never the fighter band', () => {
+  it('frees civilian trades while progression is off, but never the fighter trades', () => {
     expect(jobUnlockedFor(content, false, 1, new Map(), CARPENTER)).toBe(true);
     expect(jobUnlockedFor(content, false, 1, new Map(), SOLDIER)).toBe(false); // barracks territory
   });

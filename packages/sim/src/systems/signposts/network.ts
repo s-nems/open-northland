@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   LOCAL_NAV_RADIUS_NODES,
   Owner,
@@ -10,7 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
+import { isFighterJob, isScoutJob } from '../readviews/index.js';
 
 /**
  * The per-player SIGNPOST NETWORK — which signposts exist, where, and which belong to one connected
@@ -153,13 +154,18 @@ export type NavigationLimit = SpatialGate;
  * job — the scout and every fighter roam globally (source basis: observed original behaviour; the
  * user-specified rule set).
  */
-export function navigationLimitFor(world: World, terrain: TerrainGraph, e: Entity): NavigationLimit | null {
+export function navigationLimitFor(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  e: Entity,
+): NavigationLimit | null {
   if (!signpostNavigationEnabled(world)) return null;
   const settler = world.tryGet(e, Settler);
   const owner = world.tryGet(e, Owner);
   const p = world.tryGet(e, Position);
   if (settler === undefined || owner === undefined || p === undefined) return null;
-  if (settler.jobType === SCOUT_JOB || isFighterJob(settler.jobType)) return null;
+  if (isScoutJob(content, settler.jobType) || isFighterJob(content, settler.jobType)) return null;
   const here = nodeOfPosition(p.x, p.y);
   const posts = signpostNetwork(world).get(owner.player) ?? [];
   // Reachable groups: a group counts iff some member's nav circle intersects the local circle.

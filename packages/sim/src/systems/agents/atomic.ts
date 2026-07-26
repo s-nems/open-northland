@@ -284,7 +284,7 @@ function applyEffect(
       if (terrain !== undefined && player !== undefined) {
         const post = erectSignpost(world, ctx, terrain, terrain.nodeAt(effect.x, effect.y), player);
         // A post that actually stood trains the scout's signpost craft; a whiff trains nothing.
-        if (post !== null) grantScoutExperience(world, settler);
+        if (post !== null) grantScoutExperience(world, ctx.content, settler);
       }
       return;
     }

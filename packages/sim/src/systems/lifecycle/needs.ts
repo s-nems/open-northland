@@ -158,7 +158,7 @@ export const needsSystem: System = (world, ctx) => {
     settler.fatigue = risenFatigue > ONE ? ONE : risenFatigue;
     // Enjoyment (company) rises only for non-fighters; a soldier's/hero's stays put. Piety never rises here
     // (forging weapons/armor is its only source — chargeMilitaryPiety).
-    if (!isFighterJob(settler.jobType)) {
+    if (!isFighterJob(ctx.content, settler.jobType)) {
       const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
       settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
     }

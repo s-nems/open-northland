@@ -25,9 +25,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
 
   // 1. Weddings: one marry order per single woman, capped by the single-men count so the command
   // log doesn't fill with orders that would only auto-cancel.
-  const singleWomen = women.filter((e) => mayMarry(world, e));
+  const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
   const singleMen = settlers.filter(
-    (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, e),
+    (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
   );
   for (let i = 0; i < Math.min(singleWomen.length, singleMen.length); i++) {
     const woman = singleWomen[i];

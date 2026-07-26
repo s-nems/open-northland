@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Building,
   FOG_MODE,
@@ -12,8 +13,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
-import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
-import { HUNTER_JOB } from '../readviews/tribes/index.js';
+import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { cellOfNode } from './gates.js';
 import { FOG_STATE } from './state.js';
 
@@ -39,14 +39,14 @@ export const SOLDIER_VISION_NODES = 16;
 export const SCOUT_VISION_NODES = 26;
 
 /**
- * The vision radius (nodes) of a settler of `jobType` — a data-shaped classification over the pinned
- * job-id bands (the defaultStanceForJob style): scouts widest, soldiers/heroes wide, hunters a bit
- * over civilians, every other trade (and a jobless settler/child) the civilian floor.
+ * The vision radius (nodes) of a settler of `jobType` — a lookup over the content-derived job roles (the
+ * defaultStanceForJob style): scouts widest, soldiers/heroes wide, hunters a bit over civilians, every
+ * other trade (and a jobless settler/child) the civilian floor.
  */
-export function visionRadiusForJob(jobType: number | null): number {
-  if (jobType === SCOUT_JOB) return SCOUT_VISION_NODES;
-  if (isFighterJob(jobType)) return SOLDIER_VISION_NODES;
-  if (jobType === HUNTER_JOB) return HUNTER_VISION_NODES;
+export function visionRadiusForJob(content: ContentSet, jobType: number | null): number {
+  if (isScoutJob(content, jobType)) return SCOUT_VISION_NODES;
+  if (isFighterJob(content, jobType)) return SOLDIER_VISION_NODES;
+  if (isHunterJob(content, jobType)) return HUNTER_VISION_NODES;
   return CIVILIAN_VISION_NODES;
 }
 
@@ -101,7 +101,7 @@ export const visionSystem: System = (world, ctx) => {
   // Stamp pass: every owned eye writes VISIBLE over its vision ellipse (order-independent writes),
   // and its touched rect feeds the player's may-hold-VISIBLE box for the next downgrade.
   for (const e of world.query(Owner, Position)) {
-    const radius = visionRadiusOf(world, e);
+    const radius = visionRadiusOf(world, ctx.content, e);
     if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
@@ -121,12 +121,12 @@ export const visionSystem: System = (world, ctx) => {
  *  radius, boat hulls see like a civilian, a signpost watches its whole navigation circle (a standing
  *  eye, so its area stays visible in RECON — our design: the user-specified permanent recon reveal).
  *  Owned markers (flags) and piles see nothing. */
-function visionRadiusOf(world: World, e: Entity): number | null {
+function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) {
-    const base = visionRadiusForJob(settler.jobType);
+    const base = visionRadiusForJob(content, settler.jobType);
     // A seasoned scout sees a bit farther — its signpost craft widens the ellipse (scoutVisionBonusNodes).
-    return settler.jobType === SCOUT_JOB
+    return isScoutJob(content, settler.jobType)
       ? base + scoutVisionBonusNodes(settler.experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0)
       : base;
   }

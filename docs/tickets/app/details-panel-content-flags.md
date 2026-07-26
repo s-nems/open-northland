@@ -19,8 +19,9 @@ and the carrier-specific behavior silently disappear, no error, no test failure.
   reuse the sim's carrier-job derivation if one is exposed through readviews), defaulted in the
   committed fallback catalog; the panel model reads the flags and the slug comparisons are
   deleted.
-- Coordinate with [job-roles-in-content-index](../sim/job-roles-in-content-index.md) for the
-  carrier flag; the building flag is independent.
+- Follow the job-role seam the sim already uses for fighter/scout/hunter (`core/content-index/jobs.ts`
+  derives the sets, `systems/readviews/jobs.ts` exposes the predicates) for the carrier flag; the
+  building flag is independent.
 
 ## Verify
 

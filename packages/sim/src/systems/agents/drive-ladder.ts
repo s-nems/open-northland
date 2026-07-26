@@ -67,7 +67,7 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): 
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-    const limit = navigationLimitFor(world, terrain, e);
+    const limit = navigationLimitFor(world, ctx.content, terrain, e);
     const load = world.tryGet(e, Carrying);
     if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
       return;
@@ -89,7 +89,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   const load = world.tryGet(e, Carrying);
   // The settler's signpost confinement (or null when unlimited) — computed once, shared by the needs
   // drives here and the economy PlannerContext below.
-  const limit = navigationLimitFor(world, terrain, e);
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
     // A needs drive pulled the settler away: shed a lingering waiting-inside marker so the walk to

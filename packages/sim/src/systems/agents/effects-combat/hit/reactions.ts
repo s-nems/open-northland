@@ -4,9 +4,9 @@ import type { SystemContext } from '../../../context.js';
 import {
   angryGameTimeOf,
   cadaverYieldOf,
-  HUNTER_JOB,
   isAggressiveAnimal,
   isCatchableAnimal,
+  isHunterJob,
   isProvokableAnimal,
   MEAT_GOOD,
 } from '../../../readviews/index.js';
@@ -16,7 +16,7 @@ import { addCarry } from '../../effects-goods/index.js';
  * The hunter's `harvest_cadaver` payoff — when a **hunter**'s lethal blow fells **catchable prey**, the
  * slayer gains the kill's meat onto its back. Models the original's `viking_hunter_attack` →
  * `viking_hunter_harvest_cadaver` (`setatomic 15 33 …`) chain *in place on the killing blow*: a hunter
- * ({@link HUNTER_JOB}) who drains a {@link isCatchableAnimal} prey animal to 0 gains
+ * ({@link isHunterJob}) who drains a {@link isCatchableAnimal} prey animal to 0 gains
  * {@link cadaverYieldOf} units (the prey's `maximumcadaversize`) of {@link MEAT_GOOD} via the same
  * {@link addCarry} carriers use — goods are conserved (the meat is created by the kill, exactly as the
  * original's harvest atomic yields it; the corpse leaves the field when `cleanupSystem` reaps it).
@@ -35,7 +35,7 @@ import { addCarry } from '../../effects-goods/index.js';
  */
 export function harvestCadaver(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const hunter = world.tryGet(attacker, Settler);
-  if (hunter === undefined || hunter.jobType !== HUNTER_JOB) return; // only a hunter harvests a cadaver
+  if (hunter === undefined || !isHunterJob(ctx.content, hunter.jobType)) return; // hunters only
   const prey = world.tryGet(target, Settler);
   if (prey === undefined || !isCatchableAnimal(ctx.content, prey.tribe)) return; // only catchable prey
   const cadaverYield = cadaverYieldOf(ctx.content, prey.tribe);

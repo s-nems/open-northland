@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   isSettler,
@@ -58,7 +59,11 @@ export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): b
  * under `setSignpostNavigation` an out-of-area-only match still lights the button and the click
  * cancels — ticketed with the other confinement cues (docs/tickets/app/assign-builder-refusal-cue.md).
  */
-export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
+export function hasEligiblePartner(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  seeker: SnapshotEntity,
+): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
   return snapshot.entities.some(
@@ -71,7 +76,7 @@ export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEnti
       !isMarrying(e) &&
       positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&
-      !systems.isOnMission(settlerJobType(e) ?? null),
+      !systems.isOnMission(content, settlerJobType(e) ?? null),
   );
 }
 

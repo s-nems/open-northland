@@ -12,7 +12,7 @@ import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { SCOUT_JOB } from '../readviews/index.js';
+import { isScoutJob } from '../readviews/index.js';
 import { canPlaceSignpost } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
@@ -42,7 +42,7 @@ export function placeSignpost(
   if (terrain === undefined) return; // mapless sim: no cells to erect on
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
-  if (world.get(e, Settler).jobType !== SCOUT_JOB) return; // only the scout erects signposts
+  if (!isScoutJob(ctx.content, world.get(e, Settler).jobType)) return; // only scouts erect signposts
   const goal = terrain.nodeAtClamped(command.x, command.y);
   const player = world.get(e, Owner).player;
   if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return;
@@ -78,7 +78,7 @@ export const signpostOrderSystem: System = (world, ctx) => {
   for (const e of canonicalById(world.query(Settler, ErectSignpostOrder))) {
     const settler = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
-    if (settler.jobType !== SCOUT_JOB || owner === undefined) {
+    if (!isScoutJob(ctx.content, settler.jobType) || owner === undefined) {
       world.remove(e, ErectSignpostOrder); // re-professioned or unowned mid-walk — the intent dies
       continue;
     }

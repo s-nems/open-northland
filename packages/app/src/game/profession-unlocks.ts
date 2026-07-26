@@ -15,12 +15,21 @@ import { num, progressionGatesSettler, settlerExperienceOf } from './snapshot.js
 export interface UnlockContent {
   readonly tribes: readonly ContentSet['tribes'][number][];
   readonly jobExperience: readonly ContentSet['jobExperience'][number][];
+  /** The job rows the fighter carve-out reads its role off ({@link isFighterTarget}). */
+  readonly jobs: readonly ContentSet['jobs'][number][];
+}
+
+/** Whether a `need-job` target is a fighter trade — barracks territory, never freed by the progression
+ *  toggle and never shown as an XP promise. The sim's role rule against the rows the caller holds. */
+export function isFighterTarget(content: UnlockContent, jobType: number): boolean {
+  const job = content.jobs.find((j) => j.typeId === jobType);
+  return job !== undefined && systems.isFighterJobRow(job);
 }
 
 /**
  * Whether a settler with `tribe`/`experience` may take `jobType` right now: every `need-job` row for
- * the target is met in repeats, or profession progression is off (civilian jobs free; fighter-band
- * jobs stay barracks-gated — the sim's exact carve-out).
+ * the target is met in repeats, or profession progression is off (civilian jobs free; fighter jobs stay
+ * barracks-gated — the sim's exact carve-out).
  */
 export function jobUnlockedFor(
   content: UnlockContent,
@@ -29,7 +38,7 @@ export function jobUnlockedFor(
   experience: ReadonlyMap<number, number>,
   jobType: number,
 ): boolean {
-  if (!progressionEnabled && !systems.isFighterJob(jobType)) return true; // free start
+  if (!progressionEnabled && !isFighterTarget(content, jobType)) return true; // free start
   return meetsNeedRows(content, tribe, 'job', jobType, experience);
 }
 

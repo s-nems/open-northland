@@ -47,7 +47,7 @@ function content(): ContentSet {
     ],
     jobs: [
       { typeId: IDLE, id: 'idle' },
-      { typeId: ARCHER, id: 'archer' },
+      { typeId: ARCHER, id: 'soldier_bow_short' },
     ],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],

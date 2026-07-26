@@ -98,6 +98,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     canvas,
     uiscale: opts.uiscale ?? 1,
     professions: opts.professions,
+    content: opts.content,
     jobUnlocked: (ids, jobType) => jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });

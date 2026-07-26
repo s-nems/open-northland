@@ -26,12 +26,12 @@ import { isOrderableSettler } from './guards.js';
  */
 export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
   const e = command.entity;
-  if (!isOrderableSettler(world, e) || !mayMarry(world, e)) return;
+  if (!isOrderableSettler(world, e) || !mayMarry(world, ctx.content, e)) return;
   // Signpost confinement: the partner search only sees candidates inside the issuer's allowed area
   // (local circle + reachable guidepost network) — the same rule as every other target search.
   const terrain = ctx.terrain;
-  const limit = terrain !== undefined ? navigationLimitFor(world, terrain, e) : null;
-  const partner = findPartnerFor(world, e, terrain, limit);
+  const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, e) : null;
+  const partner = findPartnerFor(world, ctx.content, e, terrain, limit);
   if (partner === null) return; // nobody to marry — the order cancels itself
   startWedding(world, e, partner);
 }
@@ -57,7 +57,7 @@ export function assignHouse(
   // assignWorker/move order — the player extends the network first, then houses the far family.
   const terrain = ctx.terrain;
   if (terrain !== undefined) {
-    const limit = navigationLimitFor(world, terrain, e);
+    const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (limit !== null) {
       const inode = interactionNode(world, ctx, house);
       if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;

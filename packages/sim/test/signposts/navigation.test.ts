@@ -25,7 +25,7 @@ import { stampPost } from './support.js';
  */
 
 const SCOUT = 27;
-const SOLDIER = 31; // a fighter-band job — exempt from confinement
+const SOLDIER = 31; // a fighter trade — exempt from confinement
 const P0 = 0;
 
 function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Entity {
@@ -111,7 +111,7 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
     expect(ordered(sim, u)).toBe(false);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
-    const limit = navigationLimitFor(sim.world, terrain, u);
+    const limit = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(limit).not.toBeNull();
     expect(limit?.allowsNode(terrain.nodeAt(120, 4))).toBe(false);
   });

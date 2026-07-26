@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import type { Camera } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
@@ -13,6 +14,9 @@ export interface SettlerActionsOptions {
   readonly uiscale: number;
   /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
   readonly professions: readonly PickerEntry[];
+  /** The running content — the ring reads the sim's job roles off it, so the marry and erect-signpost
+   *  buttons offer exactly what the matching command accepts. */
+  readonly content: ContentSet;
   /** Whether the whole current selection may take `jobType` right now — the picker offers only rows
    *  this returns true for (the `needforjob` tech tree; the `setJob` command enforces the same gate
    *  sim-side, so a hidden row could not have been obeyed anyway). */

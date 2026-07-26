@@ -12,6 +12,10 @@ several character bindings with bare numeric ids. The declaration is single; the
 - Keep the sandbox ids module for sandbox-derived ids only and remove its catalog re-export.
 - Replace character binding literals with the catalog constants. Do not change any numeric id or
   worker-slot table.
+- `catalog/professions.ts` `isSoldierJob` still reads the raw 31..41 band for the shared "Żołnierz"
+  label, and `professionDefForJob` applies it to real-content job ids. The sim classifies that role from
+  content now (`systems.isSoldierJob`); decide whether the label should follow or the band stays catalog
+  policy.
 
 ## Verify
 

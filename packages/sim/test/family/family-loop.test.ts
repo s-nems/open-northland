@@ -269,10 +269,10 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // still moves as one household, and the widow may not remarry yet.
     expect(sim.world.has(woman(), Marriage)).toBe(true);
     expect(familyOf(sim.world, woman())).toEqual([woman(), child]);
-    expect(mayMarry(sim.world, woman())).toBe(false);
+    expect(mayMarry(sim.world, sim.content, woman())).toBe(false);
     // The child growing up dissolves the stale dead-spouse union: the widow is free again.
     sim.world.remove(child, Age);
-    expect(mayMarry(sim.world, woman())).toBe(true);
+    expect(mayMarry(sim.world, sim.content, woman())).toBe(true);
   });
 
   it("a widower's home slot frees when his wife dies (a lone man is evicted)", () => {
@@ -390,7 +390,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // Same expiry, opposite sex: the stale union dissolves (she may remarry) but homes anchor on
     // women, so the widow keeps her slot and refills it by remarrying.
     expect(sim.world.has(woman(), Marriage)).toBe(false);
-    expect(mayMarry(sim.world, woman())).toBe(true);
+    expect(mayMarry(sim.world, sim.content, woman())).toBe(true);
     expect(sim.world.get(woman(), Residence).home).toBe(home());
     expect(familiesOf(sim.world, home())).toHaveLength(1);
   });

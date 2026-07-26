@@ -84,7 +84,7 @@ export function drainPathRequests(
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       const base = dynamicOnly();
-      units ??= unitWalkBlocks(world, terrain);
+      units ??= unitWalkBlocks(world, ctx.content, terrain);
       const layers: Array<ReadonlySet<NodeId>> = [base, units.field];
       for (const [p, town] of units.townByPlayer) {
         if (p === player) continue; // a player's own town garrison never blocks its own routing
@@ -101,7 +101,7 @@ export function drainPathRequests(
     const req = world.get(e, PathRequest);
     if (req.failed) continue; // already-failed requests aren't retried
 
-    const collides = hasBodyCollision(world, e);
+    const collides = hasBodyCollision(world, ctx.content, e);
     const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
     let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
     if (path === null && collides && isValidNodeId(terrain, req.goal)) {
