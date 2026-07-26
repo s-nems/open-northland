@@ -108,8 +108,8 @@ export function fleeDrive(
   // hostile on its very tile too (entities share tiles freely), not just one a step away. The coarse
   // presence early-out (perf-only, conservative — see HostilePresence) spares every calm civilian on a
   // peaceful two-player map its per-tick full-sight ring scan; only owned units carry the FLEE stance.
-  // A FLEE-stance hunter is exempt from the early-out (the engageSpec hunter rule's twin): its accept
-  // admits passive catchable prey via mayHunt, which the presence grid discounts.
+  // A FLEE-stance hunter is exempt from the early-out — the engageSpec hunter rule's twin (see
+  // {@link HostilePresence}).
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&

@@ -9,11 +9,16 @@ import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../../readviews/index.js';
 import { COMPASS_DIRECTIONS } from '../../spatial.js';
 
+/** Upper bound on one spawn command's herd size — the real `maximumgroupsize` values are 2..6, so any
+ *  count near this cap is corrupted input, not content. */
+const HERD_COUNT_CAP = 100;
+
 /**
  * Spawn a herd of an animal tribe around a birth point — put a group of creatures on the map, consuming the
  * {@link herdParams}/{@link animalHitpoints} read views.
  *
- * The herd is `max(1, maximumgroupsize)` creatures (a 0/solitary group still yields one), each a
+ * The herd is `max(1, maximumgroupsize)` creatures — or exactly the command's clamped `count` override
+ * (one authored map record = one creature) — each a
  * {@link Settler} of the animal `tribe` (animals reuse the same entity/AI model as a settler) at
  * `jobType: null` carrying a {@link Health} pool stamped from its `hitpoints_adult` ({@link animalHitpoints}).
  * The creatures are scattered around (x,y) within `maximumdistancetobirthpoint` by a deterministic offset
@@ -65,8 +70,9 @@ export function spawnAnimalHerd(
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
 
   // The command's count override wins (one authored map record = one creature at its half-cell);
-  // else the record's group size. A 0/solitary group still yields one creature.
-  const count = Math.max(1, command.count ?? herd.maxGroupSize);
+  // else the record's group size. A 0/solitary group still yields one creature; the floor + cap keep a
+  // malformed external count (fractional, negative, absurd) from minting a map of creatures in one tick.
+  const count = Math.min(HERD_COUNT_CAP, Math.max(1, Math.floor(command.count ?? herd.maxGroupSize)));
   const range = Math.max(0, herd.birthPointRange);
   const members: Entity[] = [];
   // One claim set across the herd: each member records its final node, so neither a push nor a

@@ -207,6 +207,9 @@ export function resolveAuthoredPlacements(
     });
   }
   let skippedAnimals = 0;
+  // Approximation (named): a `setanimal` also authors an age column (adult/baby — the bridge map has
+  // 33 baby records) that the maps decoder drops, so every authored animal spawns adult with
+  // `hitpoints_adult`. Threading age through to `hitpoints_baby` is a later slice.
   for (const a of entities.animals) {
     const tribe = speciesByKey.get(normalizeRoleKey(a.species));
     if (tribe === undefined || !inBounds(a.hx, a.hy)) {
