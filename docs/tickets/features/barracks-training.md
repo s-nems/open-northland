@@ -17,6 +17,9 @@ Decisions (user, 2026-07-25):
   unlocks fighter-band jobs (soldier 31..41 / hero 42..47) — those unlock only through barracks
   training, so the toggle's carve-out must survive this slice.
 - XP accrual keeps running while the toggle is off (bonuses still pay off); only the gates lift.
+- An AI seat never pays the experience tree at all (`experienceGatesApply`, user 2026-07-26: the
+  toggle is a human-player setting), but the fighter carve-out holds for AI seats too — so when
+  training lands, the AI must be taught to use the barracks, not exempted from it.
 
 **Source basis (extracted):** training atomics `viking_soldier_train` length 28 → `event 2 30 −1`
 (spend a coin) + `event 22 29 +25` (TRAINING XP, bucket 77); `_exercise` → `+1`; atomic actions
