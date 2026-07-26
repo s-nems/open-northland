@@ -21,19 +21,20 @@ import { buildingSpotAccept } from './placement.js';
 // exists yet (docs/tickets/features/tower-defence-mode.md), so the circle is purely a planning
 // heuristic the future garrison fire will inherit.
 
-/** The assumed defence-circle radius of a tower and the HQ, in world-metric nodes. Source: the
- *  house bow's range 0–29 (weapons.ini type 20, recorded in the tower-defence-mode ticket);
- *  user-approved 2026-07-25. */
-export const TOWER_DEFENCE_RADIUS_NODES = 29;
+/** The planning radius of a tower's and the HQ's assumed defence circle, in world-metric nodes. Under
+ *  the house bow's own range 0–29 (weapons.ini type 20, recorded in the tower-defence-mode ticket):
+ *  towers ringed at full bow range stood too far out to read as part of the settlement, so the
+ *  planning circle is tightened (user decision 2026-07-26). */
+export const TOWER_DEFENCE_RADIUS_NODES = 22;
 
 /** The content ids that count as covering towers — an id allowlist, deliberately NOT
  *  `kind === 'tower'`: `work_pottery_02` shares the kind but is the defence wall. */
 export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 
 /** How far past the covering target the spot search's seed is pushed away from the settlement
- *  centroid — half the defence radius, so the seed itself still covers the target while ties break
- *  toward the outskirts (named approximation, user plan 2026-07-25). */
-export const TOWER_OUTSKIRTS_PUSH_NODES = 14;
+ *  centroid — enough to bias the pick outward, short enough that the tower lands just beyond the
+ *  last building rather than out in the field (named approximation, user decision 2026-07-26). */
+export const TOWER_OUTSKIRTS_PUSH_NODES = 6;
 
 /**
  * The first owned building (canonical ascending id) outside every coverage circle, or null when the
@@ -73,9 +74,9 @@ export function firstUncoveredBuilding(
  * seed (the target anchor pushed {@link TOWER_OUTSKIRTS_PUSH_NODES} away from the settlement
  * centroid) that actually covers the target ({@link TOWER_DEFENCE_RADIUS_NODES}, world metric) and
  * stays inside the Manhattan near-HQ disc — the accept combines both metrics, like the signpost
- * lattice documents its Manhattan over-bound. Ring budget is the shared `placementSpot` bound
- * (a covering node can sit up to ~⌈29·34/19⌉ rows from the target — the anisotropic pitch — so the
- * 29-node circle needs the full fan). Null stalls the entry.
+ * lattice documents its Manhattan over-bound. Ring budget is the shared `placementSpot` bound: the
+ * world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice
+ * the radius in rows from the target and the circle needs the full fan. Null stalls the entry.
  */
 export function towerPlacementSpot(
   world: World,

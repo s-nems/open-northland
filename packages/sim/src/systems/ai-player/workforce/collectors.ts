@@ -177,6 +177,16 @@ function meetsNeed(world: World, ctx: SystemContext, e: Entity, goodType: number
   return settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'good', goodType);
 }
 
+/** Whether ANY accrued-XP threshold gates the good for this tribe — a gated good needs a veteran, an
+ *  ungated one accepts any fresh hire. */
+function needGated(ctx: SystemContext, tribe: number, goodType: number): boolean {
+  const tribeType = contentIndex(ctx.content).tribes.get(tribe);
+  if (tribeType === undefined) return false;
+  return tribeType.jobRequirements.some(
+    (r) => r.requirement === 'need' && r.target === 'good' && r.targetId === goodType,
+  );
+}
+
 /** The three commands posting `spare` as a flag gatherer of `w` at `spot`, recorded into the
  *  decision's `holders` list so later phases count the hire before its commands apply. */
 function postCollector(
@@ -211,17 +221,7 @@ export function allocateCollectors(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const commands: Command[] = [];
-  const index = contentIndex(ctx.content);
 
-  // Whether ANY accrued-XP threshold gates the good for this tribe — a gated good needs a veteran, an
-  // ungated one accepts any fresh hire.
-  const needGated = (tribe: number, goodType: number): boolean => {
-    const tribeType = index.tribes.get(tribe);
-    if (tribeType === undefined) return false;
-    return tribeType.jobRequirements.some(
-      (r) => r.requirement === 'need' && r.target === 'good' && r.targetId === goodType,
-    );
-  };
   // The infrequent flag upkeep: on every FLAG_RELOCATE_EVERY_DECISIONS-th decision, a flag whose nearest
   // live resource has drifted out of the 2–3-tile band is re-planted beside it — a live-but-receding
   // patch otherwise keeps the flag parked at its original spot.
@@ -274,7 +274,7 @@ export function allocateCollectors(
       const veteran = otherHolders[0];
       if (veteran === undefined) continue;
       const s = world.get(veteran, Settler);
-      if (needGated(s.tribe, other.good.typeId)) continue; // its own post needs a veteran too — keep it
+      if (needGated(ctx, s.tribe, other.good.typeId)) continue; // its own post needs a veteran too — keep it
       if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
       if (s.jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
       commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
@@ -292,7 +292,7 @@ export function allocateCollectors(
  * Best-effort top-ups to each good's target — the ladder runs them after minimum staffing and the
  * builder reserve (user plan 2026-07-25: minimums everywhere beat second workers anywhere).
  * Only tops up goods that already hold their first post (phase 1's concern, veteran steal included);
- * a top-up that finds no qualified spare simply waits.
+ * a top-up that finds neither a qualified spare nor a spare veteran simply waits.
  */
 export function topUpCollectors(
   world: World,
@@ -312,12 +312,43 @@ export function topUpCollectors(
     while (holders.length > 0 && holders.length < w.target) {
       const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId);
       if (spot === null) break;
-      const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
+      const spare =
+        force.take((e) => meetsNeed(world, ctx, e, w.good.typeId)) ??
+        takeSurplusVeteran(world, ctx, w, wanted, collectorsByGood);
       if (spare === null) break;
       postCollector(spare, w, spot, holders, collectorsByGood, commands);
     }
   }
   return commands;
+}
+
+/**
+ * A veteran another good can spare for `w`'s top-up, removed from that good's holder list, or null.
+ * An XP-gated good (iron in the base data: 10 clay/stone-track XP) has no eligible fresh hire at all,
+ * so its second post can only come from a man who has already dug — but never at the price of another
+ * good's FIRST post: only a good above its own first holder, whose own posts an unqualified man could
+ * refill, gives one up. The donor drops to its first post and the plan-order loop rehires it from the
+ * pool on a later decision.
+ */
+function takeSurplusVeteran(
+  world: World,
+  ctx: SystemContext,
+  w: WantedGood,
+  wanted: readonly WantedGood[],
+  collectorsByGood: Map<number, Entity[]>,
+): Entity | null {
+  for (const other of wanted) {
+    if (other === w) continue;
+    const holders = collectorsByGood.get(other.good.typeId) ?? [];
+    if (holders.length < 2) continue; // its own first post — not spare
+    const veteran = holders[holders.length - 1];
+    if (veteran === undefined) continue;
+    if (needGated(ctx, world.get(veteran, Settler).tribe, other.good.typeId)) continue; // needs a veteran too
+    if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
+    holders.pop();
+    return veteran;
+  }
+  return null;
 }
 
 /**

@@ -21,13 +21,17 @@ export type BuildOrderEntry =
    *  tier above it on the `upgradeTarget` chain count (a `home`-kind id counts every home tier) —
    *  an upgraded building must not trigger a replacement. `near` pulls the spot toward its
    *  anchors; `ground: 'plantable'` restricts the footprint to sowable ground (a hard rule — no
-   *  legal spot stalls the list, user decision 2026-07-18). */
+   *  legal spot stalls the list, user decision 2026-07-18); `apart` keeps the spot clear of the
+   *  seat's other buildings of the same KIND, so goods-collection points spread over the settlement
+   *  instead of clustering (the warehouse rule, user decision 2026-07-26 — a preference, not a hard
+   *  rule: with no spaced spot the entry still builds). */
   | {
       readonly kind: 'place';
       readonly building: string;
       readonly count: number;
       readonly near?: readonly PlacementAffinity[];
       readonly ground?: 'plantable';
+      readonly apart?: boolean;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at (or above) the
    *  target tier named by the stable content id. */
@@ -56,12 +60,15 @@ export type BuildOrderEntry =
  * home upgrades then consume; the barracks faces the map centre; the bakery upgrade
  * gains a second baker (`STAFFING_BY_BUILDING_ID`).
  *
- * The late-game tail (user plan 2026-07-25) opens with the perpetual tower-coverage entry, then
- * doubles the food/tool economy directly at the level-2 tiers (the same `jobEnablesHouse` evidence
- * as above covers `work_bakery_01`, `work_armory_01`, `work_smithy_01`, `tower_01`, and `stock_02`),
- * grows the housing to five top-tier homes ("level 5" is the player label of `home_level_04` — no
- * higher tier exists), and ends with two outskirts warehouses. The tower entry interleaves by
- * design: an outskirts warehouse landing uncovered re-arms it, a tower goes up, the list resumes.
+ * The late-game tail (user plan 2026-07-25, revised 2026-07-26) opens with the perpetual
+ * tower-coverage entry, then doubles the food/tool economy directly at the level-2 tiers (the same
+ * `jobEnablesHouse` evidence as above covers `work_bakery_01`, `work_armory_01`, `work_smithy_01`,
+ * `tower_01`, `stock_02` — and `home_level_04`, whose own bill is two ornaments). The fourth home
+ * onward is therefore placed straight at the top tier ("level 5" is the player label of
+ * `home_level_04`) rather than grown; only the opening three walk the upgrade chain. It ends with
+ * two warehouses on the outskirts, spread apart (`apart`) because a warehouse is a goods-collection
+ * point like the HQ. The tower entry interleaves by design: a warehouse landing uncovered re-arms
+ * it, a tower goes up, the list resumes.
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
@@ -132,9 +139,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
     ],
   },
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
-  { kind: 'place', building: 'home_level_00', count: 5 },
-  { kind: 'upgrade', building: 'home_level_04', count: 5 },
-  { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }] },
+  { kind: 'place', building: 'home_level_04', count: 5 },
+  { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
 ];
 
 /** Concurrent construction sites per seat — upgrades included (user rule, 2026-07-18: exactly one

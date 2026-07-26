@@ -31,7 +31,7 @@ export {
 } from './collectors.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { builderJobOf } from './pool.js';
-export { recruitPercent } from './recruits.js';
+export { RECRUIT_JOB_ID, recruitPercent } from './recruits.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
 /**

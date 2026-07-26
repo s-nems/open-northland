@@ -3,6 +3,7 @@ import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { withinNodeRadius } from '../../../nav/node-metric.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
@@ -181,12 +182,40 @@ export function buildingSpotAccept(
   };
 }
 
+/** How far an `apart` placement keeps from the seat's other buildings of the same kind, in
+ *  world-metric nodes — far enough that two warehouses serve different corners of a settlement
+ *  bounded by the {@link BUILD_SEARCH_MAX_RADIUS_NODES} disc (named approximation, user decision
+ *  2026-07-26). */
+export const KIND_SPACING_NODES = 20;
+
+/** The anchors an `apart` entry keeps its distance from: the seat's buildings of the same KIND as the
+ *  placed type (a warehouse spreads away from the HQ and from every other warehouse). */
+function kindSpacingAnchors(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  type: BuildingType,
+): HalfCellNode[] {
+  const index = contentIndex(ctx.content);
+  const anchors: HalfCellNode[] = [];
+  for (const e of owned) {
+    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== type.kind) continue;
+    const node = anchorNodeOf(world, e);
+    if (node !== null) anchors.push(node);
+  }
+  return anchors;
+}
+
 /**
  * The spot a `place` entry builds on: the legal anchor closest to the entry's {@link searchCentre},
  * restricted to the near-HQ disc, on buildable (and, when required, plantable) ground, off every
  * existing building's anchor, and accepted by the shared placement probe. Ring order is canonical,
  * so the winner is deterministic; the search is bounded by twice the HQ radius (a centre inside the
  * disc reaches every disc node within that), never the whole map. Null stalls the entry.
+ *
+ * An `apart` entry runs the same search twice: first refusing anything within
+ * {@link KIND_SPACING_NODES} of a same-kind building, then — only if that found nothing — without the
+ * spacing, so the preference never becomes a stall.
  */
 export function placementSpot(
   world: World,
@@ -199,12 +228,16 @@ export function placementSpot(
 ): HalfCellNode | null {
   const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
   const centre = searchCentre(world, ctx, terrain, owned, hq, type, entry);
-  return firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-    // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
-    // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
-    if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
-    if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes — bounds come first
-    if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
-    return accept(x, y);
-  });
+  const search = (spacing: readonly HalfCellNode[]): HalfCellNode | null =>
+    firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
+      // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
+      // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
+      if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
+      if (spacing.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
+      if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes — bounds come first
+      if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
+      return accept(x, y);
+    });
+  if (entry.apart !== true) return search([]);
+  return search(kindSpacingAnchors(world, ctx, owned, type)) ?? search([]);
 }
