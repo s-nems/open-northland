@@ -18,6 +18,7 @@ import { testContent } from '../fixtures/content.js';
 
 const BEAR = 10; // aggressive herd animal: group 3, searchForLeader, range 2, hitpointsAdult 15000; moveSpeed 8 + runSpeed 4
 const BEE = 11; // solitary decorative animal: no group size, searchForLeader false, hitpointsAdult 200
+const BUTTERFLY = 15; // hitpoints-0 decorative record — a swarm effect, never a living creature
 const VIKING = 1; // a civilization — no animaltypes record (bad input for spawnAnimalHerd)
 
 function fresh(seed = 1): Simulation {
@@ -107,6 +108,23 @@ describe('spawnAnimalHerd command', () => {
     }
   });
 
+  it('count 1 overrides maximumGroupSize: exactly one creature, on the birth node (the map setanimal shape)', () => {
+    const sim = fresh();
+    const n = cellAnchorNode(5, 5);
+    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: n.hx, y: n.hy, count: 1 });
+    sim.step();
+
+    const herd = creatures(sim);
+    expect(herd).toHaveLength(1); // count wins over the record's maximumGroupSize 3
+    const lone = herd[0];
+    if (lone === undefined) throw new Error('one creature expected');
+    // Member 0 sits on the birth point itself (no scatter for the sole creature).
+    const p = sim.world.get(lone, Position);
+    expect(nodeOfPosition(p.x, p.y)).toEqual({ hx: n.hx, hy: n.hy });
+    // A sole searchForLeader creature still records itself as leader (harmless self-reference).
+    expect(sim.world.get(lone, HerdMember).leader).toBe(lone);
+  });
+
   it('a solitary animal (searchForLeader false) spawns one creature with NO HerdMember', () => {
     const sim = fresh();
     spawnHerdAt(sim, BEE, 2, 3);
@@ -121,6 +139,13 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.has(bee, MoveSpeed)).toBe(false); // no movespeed in its record -> walks the default
     const p = sim.world.get(bee, Position);
     expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth node (tile (2,3)'s anchor)
+  });
+
+  it('spawns nothing for a hitpoints-0 decorative record (the real butterflies/bees shape)', () => {
+    const sim = fresh();
+    spawnHerdAt(sim, BUTTERFLY, 5, 5);
+    sim.step();
+    expect(creatures(sim)).toHaveLength(0); // a swarm effect, not a creature — no born-dead churn
   });
 
   it('skips a non-animal tribe (a civilization — no animaltypes record), still logging the command', () => {

@@ -7,12 +7,13 @@ import { authoredMap } from './support/slice-maps.js';
 
 describe('resolveAuthoredPlacements', () => {
   it('joins by name, passes half-cells verbatim, and stamps the 0-based players as owners', () => {
-    const { placements, skipped, droppedGoods } = resolveAuthoredPlacements(
+    const { placements, skipped, droppedGoods, skippedAnimals } = resolveAuthoredPlacements(
       AUTHORED_ENTITIES,
       AUTHORED_ROWS,
       authoredMap(),
     );
     expect(droppedGoods).toBe(1); // mystery_good
+    expect(skippedAnimals).toBe(1); // the fixture deer: no animals lane in these rows
     expect(placements).toEqual([
       {
         kind: 'building',
@@ -55,6 +56,40 @@ describe('resolveAuthoredPlacements', () => {
     const { placements, skipped } = resolveAuthoredPlacements(freehandHumans, freehandRows, authoredMap());
     expect(placements.map((p) => (p.kind === 'human' ? p.jobType : -1))).toEqual([7, 14, 46]);
     expect(skipped).toBe(0);
+  });
+
+  it('joins setanimal species to animal tribes (id OR name, animals row required), one placement each', () => {
+    const rows: AuthoredJoinRows = {
+      ...AUTHORED_ROWS,
+      tribes: [
+        { typeId: 1, id: 'viking' }, // civilization — no animals row, never a species key
+        { typeId: 10, id: 'cattle', name: 'cattle' },
+        { typeId: 16, id: 'hares', name: 'hares' },
+        { typeId: 18, id: 'evil_hares', name: 'evil hares' },
+        { typeId: 12, id: 'deers', name: 'deers' }, // tribe row without an animals row
+      ],
+      animals: [{ tribeType: 10 }, { tribeType: 16 }, { tribeType: 18 }],
+    };
+    const entities = {
+      buildings: [],
+      humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5 }],
+      animals: [
+        { species: 'hares', hx: 1, hy: 1 },
+        { species: 'evil hares', hx: 2, hy: 1 }, // joins via the display NAME (id is evil_hares)
+        { species: 'cattle ', hx: 3, hy: 1 }, // the trailing-space variant maps really author
+        { species: 'deers', hx: 4, hy: 1 }, // no animals row → the sim would drop it: skip + count
+        { species: 'gryphons', hx: 5, hy: 1 }, // unknown species → skip + count
+        { species: 'hares', hx: 99, hy: 1 }, // out of bounds → skip + count
+      ],
+    };
+    const { placements, skippedAnimals } = resolveAuthoredPlacements(entities, rows, authoredMap());
+    expect(placements).toEqual([
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 },
+      { kind: 'animal', tribe: 16, x: 1, y: 1 },
+      { kind: 'animal', tribe: 18, x: 2, y: 1 },
+      { kind: 'animal', tribe: 10, x: 3, y: 1 },
+    ]);
+    expect(skippedAnimals).toBe(3);
   });
 
   it("resolves a gatherer's authored setproducedgood, dropping an unknown pick without its settler", () => {

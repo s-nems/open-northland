@@ -112,6 +112,11 @@ export const societyContent = {
       id: 'test_deer',
       atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'deer_attack' }],
     },
+    {
+      // The DECORATIVE swarm tribe (typeId 15): carries the `hitpoints 0` butterfly record below.
+      typeId: 15,
+      id: 'test_butterfly',
+    },
   ],
   // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
   // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
@@ -142,6 +147,9 @@ export const societyContent = {
     // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) — the spawn places
     // exactly one and adds no HerdMember.
     { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
+    // The butterfly is a DECORATIVE `hitpoints 0` record (the real butterflies/bees/mosquitos shape):
+    // a swarm effect, not a creature — spawnAnimalHerd spawns nothing for it.
+    { id: 'butterfly', tribeType: 15, hitpointsAdult: 0, maximumGroupSize: 2 },
     // The boar is PASSIVE but PROVOKABLE: `getAngry` (NOT `aggressive`) with an `angryGameTime` of 10
     // — struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture.
     {

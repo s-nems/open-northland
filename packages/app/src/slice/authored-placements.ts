@@ -22,8 +22,11 @@ export interface AuthoredJoinRows {
   }[];
   readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
-  readonly tribes?: readonly { typeId?: number; id?: string }[];
+  readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
+  /** The `animaltypes` rows — a species places only when its tribe has one (else the sim would drop
+   *  the spawn silently: no herd params to read). */
+  readonly animals?: readonly { tribeType?: number }[];
 }
 
 /**
@@ -62,6 +65,15 @@ export type AuthoredPlacement =
       /** The authored produced good (`setproducedgood`), resolved to a good typeId. Only a
        *  flag-harvestable pick reaches a gatherer's flag; the sim drops the rest (`stampGatherGood`). */
       gatherGood?: number;
+    }
+  | {
+      /** One `setanimal` record = one creature at its authored half-cell (spawned `count: 1`, never
+       *  a whole `maximumgroupsize` herd — that would multiply the map's population and trample the
+       *  authored positions). Always unowned. */
+      kind: 'animal';
+      tribe: number;
+      x: number;
+      y: number;
     };
 
 /**
@@ -71,14 +83,23 @@ export type AuthoredPlacement =
  * string → `tribes` typeId, its `producedGood` name → a `goods` typeId), and the two player
  * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
  * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
- * authored building keeps its exact anchor. Unresolvable or out-of-bounds records are dropped and counted;
- * `setanimal` records are not placed yet (herd-vs-individual semantics, source basis).
+ * authored building keeps its exact anchor. A `setanimal`'s species string joins the `tribes` rows by
+ * normalized `id` OR `name` (maps author variants like `'cattle '` / `'evil hares'`) and requires an
+ * `animals` row for that tribe. Unresolvable or out-of-bounds records are dropped and counted
+ * (animals on their own counter — a whole species missing its art/params reads differently from a
+ * one-off bad record).
  */
 export function resolveAuthoredPlacements(
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
   map: TerrainMap,
-): { placements: AuthoredPlacement[]; skipped: number; droppedGoods: number; droppedPicks: number } {
+): {
+  placements: AuthoredPlacement[];
+  skipped: number;
+  droppedGoods: number;
+  droppedPicks: number;
+  skippedAnimals: number;
+} {
   const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
   for (const b of rows.buildingBobs ?? []) {
     if (b.editName === undefined || b.typeId === undefined) continue;
@@ -98,6 +119,21 @@ export function resolveAuthoredPlacements(
   for (const t of rows.tribes ?? []) {
     if (t.id !== undefined && t.typeId !== undefined && !tribeByName.has(t.id))
       tribeByName.set(t.id, t.typeId);
+  }
+  // The species join: normalized tribe id AND name both key the tribe (`setanimal` authors the
+  // display name — `evil hares` is tribe `evil_hares`), gated on an `animals` row existing.
+  const animalTribes = new Set<number>();
+  for (const a of rows.animals ?? []) {
+    if (a.tribeType !== undefined) animalTribes.add(a.tribeType);
+  }
+  const speciesByKey = new Map<string, number>();
+  for (const t of rows.tribes ?? []) {
+    if (t.typeId === undefined || !animalTribes.has(t.typeId)) continue;
+    for (const name of [t.id, t.name]) {
+      if (name === undefined) continue;
+      const key = normalizeRoleKey(name);
+      if (!speciesByKey.has(key)) speciesByKey.set(key, t.typeId);
+    }
   }
   const goodByName = new Map<string, number>();
   const goodTypeIds = new Set<number>();
@@ -170,5 +206,14 @@ export function resolveAuthoredPlacements(
       ...(gatherGood !== undefined ? { gatherGood } : {}),
     });
   }
-  return { placements, skipped, droppedGoods, droppedPicks };
+  let skippedAnimals = 0;
+  for (const a of entities.animals) {
+    const tribe = speciesByKey.get(normalizeRoleKey(a.species));
+    if (tribe === undefined || !inBounds(a.hx, a.hy)) {
+      skippedAnimals++;
+      continue;
+    }
+    placements.push({ kind: 'animal', tribe, x: a.hx, y: a.hy });
+  }
+  return { placements, skipped, droppedGoods, droppedPicks, skippedAnimals };
 }

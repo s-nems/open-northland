@@ -52,6 +52,11 @@ export function spawnAnimalHerd(
   const herd = herdParams(ctx.content, command.tribe);
   if (herd === null) return; // not an animal tribe (a civilization / unknown) — bad input, skip
   const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
+  // A `hitpoints 0` record (the real butterflies/bees/mosquitos) is a decorative swarm the original
+  // draws as an ambient effect, not a creature. Our model mints living Settlers with a Health pool, so
+  // such a spawn would be born dead and reaped the same tick — spawn nothing instead (named
+  // approximation: no swarm-effect layer exists yet).
+  if (hitpoints <= 0) return;
 
   // The animal's data-pinned pace: `movespeed` N → ONE/N tile/tick (see the movespeed note above). A record
   // omitting it (walkSpeed 0) stamps no MoveSpeed and walks at the universal settler default.
@@ -59,7 +64,9 @@ export function spawnAnimalHerd(
   const walkSpeed = locomotion?.walkSpeed ?? 0;
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
 
-  const count = Math.max(1, herd.maxGroupSize); // a 0/solitary group still yields one creature
+  // The command's count override wins (one authored map record = one creature at its half-cell);
+  // else the record's group size. A 0/solitary group still yields one creature.
+  const count = Math.max(1, command.count ?? herd.maxGroupSize);
   const range = Math.max(0, herd.birthPointRange);
   const members: Entity[] = [];
   // One claim set across the herd: each member records its final node, so neither a push nor a

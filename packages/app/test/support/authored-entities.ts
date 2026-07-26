@@ -51,5 +51,6 @@ export const AUTHORED_ENTITIES: NonNullable<TerrainMapFile['entities']> = {
     { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5 },
     { tribe: 'viking', role: 'mystery_role', player: 0, hx: 3, hy: 5 }, // unknown role → skipped
   ],
-  animals: [{ species: 'deer', hx: 1, hy: 1 }], // deferred (herd semantics) — never a placement
+  // Unresolvable with these rows (no `animals` lane) → counted in `skippedAnimals`, never placed.
+  animals: [{ species: 'deer', hx: 1, hy: 1 }],
 };

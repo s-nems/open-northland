@@ -53,7 +53,8 @@ describe('seedAnimalHerds (map populator)', () => {
     const content = testContent();
     const cmds = seedAnimalHerds(content, grass(10, 1));
     const tribes = new Set(cmds.map((c) => (c.kind === 'spawnAnimalHerd' ? c.tribe : -1)));
-    // The recorded animals (BEAR/BEE/BOAR/COW/DEER); the VIKING civilization is never seeded.
+    // The recorded LIVING animals (BEAR/BEE/BOAR/COW/DEER); the VIKING civilization is never seeded,
+    // and neither is the fixture's hitpoints-0 decorative butterfly (its spawn would place nothing).
     expect([...tribes].sort((a, b) => a - b)).toEqual([BEAR, BEE, BOAR, COW, DEER]);
   });
 
