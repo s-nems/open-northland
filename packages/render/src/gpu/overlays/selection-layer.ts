@@ -1,7 +1,6 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
-import { entityById } from '../../data/scene/snapshot-index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';

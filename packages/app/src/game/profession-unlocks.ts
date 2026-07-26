@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
-import { systems, type WorldSnapshot } from '@open-northland/sim';
-import { entityById, num, progressionGatesSettler, settlerExperienceOf } from './snapshot.js';
+import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { num, progressionGatesSettler, settlerExperienceOf } from './snapshot.js';
 
 /**
  * The profession picker's qualification filter — the app-side mirror of the sim's `settlerMeetsNeed`

@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type entityById, num } from '../../../game/snapshot.js';
+import { num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
 import {
@@ -80,7 +80,7 @@ export function productionModel(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
-  ent: NonNullable<ReturnType<typeof entityById>>,
+  ent: SnapshotEntity,
 ): ProductionModel | null {
   // A farm produces a field-farmed good — checked before the recipes, mirroring the sim: farmWorkGood
   // ignores recipe presence and ai.ts ranks the farmer rung above the producer rung precisely because

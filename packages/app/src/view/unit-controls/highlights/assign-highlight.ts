@@ -1,10 +1,9 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import type { WorldSnapshot } from '@open-northland/sim';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
   buildingTribeOf,
   buildingTypeOf,
-  entityById,
   isBuilding,
   isSettler,
   ownerPlayerOf,

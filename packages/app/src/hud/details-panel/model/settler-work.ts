@@ -1,6 +1,6 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
-import { entityById, num, settlerExperienceOf } from '../../../game/snapshot.js';
+import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   buildingDef,

@@ -114,6 +114,27 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
 }
 
 /**
+ * The snapshot entity with `id`, or `undefined` once it has left the snapshot (died, despawned).
+ * Binary-searched: {@link takeSnapshot} emits one entity per alive id in canonical ascending-id order,
+ * so `entities` is already the index. A narrowed view that re-orders `entities` breaks that
+ * precondition and must not be passed here.
+ */
+export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot | undefined {
+  const entities = snapshot.entities;
+  let lo = 0;
+  let hi = entities.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const found = entities[mid];
+    if (found === undefined) break; // unreachable: mid is always within bounds
+    if (found.id === id) return found;
+    if (found.id < id) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return undefined;
+}
+
+/**
  * The plain shape {@link clonePlain} produces from `T`: every `Map<K, V>` becomes a sorted `[K, PlainOf<V>]`
  * pair array (keys pass through, values recurse), arrays and objects recurse, scalars pass through. This
  * mirrors the runtime transform, so a caller sees the real snapshot shape instead of a `T` the clone never

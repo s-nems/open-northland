@@ -1,5 +1,5 @@
 import { constructionBillForType, type Fixed, fx } from '@open-northland/sim';
-import { type entityById, num } from '../../../game/snapshot.js';
+import { num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { pctRatio } from './bars.js';
 import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
@@ -146,7 +146,7 @@ function upgradeTargetBill(
 export function constructionModel(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
-  ent: NonNullable<ReturnType<typeof entityById>>,
+  ent: SnapshotEntity,
 ): ConstructionModel | null {
   if (ent.components.UnderConstruction === undefined) return null;
   const live = liveAmounts(ent.components.Stockpile);
