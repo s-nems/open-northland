@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Anger, CurrentAtomic, Health } from '../../../src/components/index.js';
+import { Anger, CurrentAtomic, Engagement, Health, MoveGoal } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { atomicSystem, combatSystem } from '../../../src/systems/index.js';
@@ -184,6 +184,55 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+  });
+});
+
+describe('combatSystem — hostile-animal advance (the ambush lunge)', () => {
+  it('an aggressive animal beyond weapon reach but inside its aggro radius chases the civ', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes — beyond test_bearfist reach 2, inside aggro 8
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // out of reach — no swing yet
+    expect(sim.world.has(bear, Engagement)).toBe(true); // …but the chase drive is on
+    expect(sim.world.has(bear, MoveGoal)).toBe(true); // walking at the victim
+  });
+
+  it('an aggressive animal leaves a civ beyond its aggro radius alone (no map-wide hunt)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    fighterAt(sim, 5, 0, VIKING, WOODCUTTER); // 10 nodes — past ANIMAL_AGGRO_RADIUS_NODES (8)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(bear, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(bear, Engagement)).toBe(false);
+    expect(sim.world.has(bear, MoveGoal)).toBe(false);
+  });
+
+  it('a passive animal never advances (only a hostile one ambushes)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const cow = fighterAt(sim, 0, 0, COW, null); // catchable, fully passive
+    fighterAt(sim, 3, 0, VIKING, WOODCUTTER);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(cow, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(cow, MoveGoal)).toBe(false);
+  });
+
+  it('the chase closes the loop: the ambushing animal reaches its victim and draws blood', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    const viking = fighterAt(sim, 3, 0, VIKING, WOODCUTTER);
+
+    // Full ticks (pathfinding + movement + combat + atomic): the bear walks its ~2-cell approach at the
+    // default pace (18 ticks/cell) and lands at least one test_bearfist hit.
+    for (let i = 0; i < 120 && sim.world.get(viking, Health).hitpoints >= 1000; i++) sim.step();
+
+    expect(sim.world.get(viking, Health).hitpoints).toBeLessThan(1000);
   });
 });
 

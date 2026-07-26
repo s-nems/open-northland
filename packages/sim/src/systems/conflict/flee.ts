@@ -11,7 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { startDrop } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
-import { HUNTER_JOB } from '../readviews/index.js';
+import { isHunterJob } from '../readviews/index.js';
 import {
   COMPASS_DIRECTIONS,
   clearNavState,
@@ -112,7 +112,7 @@ export function fleeDrive(
   // admits passive catchable prey via mayHunt, which the presence grid discounts.
   const threat =
     viewer !== undefined &&
-    attacker.jobType !== HUNTER_JOB &&
+    !isHunterJob(ctx.content, attacker.jobType) &&
     !presence.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
       : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);

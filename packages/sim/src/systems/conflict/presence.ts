@@ -8,12 +8,13 @@ import { forEachIndexNode, type IndexNodeVisitor } from '../spatial.js';
  */
 const PRESENCE_CELL_NODES = 32;
 
-/** Combatant counts on one coarse cell: everyone, the owned share per player, and the passive-now
- *  wildlife share (see {@link HostilePresence}'s constructor `passiveNow`). Other unowned combatants
- *  (scenario civs, hostile animals) count only in `total`, so they always read as "other". */
+/** Combatant counts on one coarse cell: everyone, the owned share per player, and the wildlife shares
+ *  (see {@link HostilePresence}'s constructor `wildClassOf`). An unowned scenario civ counts only in
+ *  `total`, so it always reads as "other" AND as a civilization. */
 interface PresenceCell {
   total: number;
   passive: number;
+  hostileAnimal: number;
   readonly byPlayer: Map<number, number>;
 }
 
@@ -47,24 +48,28 @@ export class HostilePresence {
   private readonly tally: IndexNodeVisitor = (e, x, y) => {
     const cell = this.cellAt(Math.floor(x / PRESENCE_CELL_NODES), Math.floor(y / PRESENCE_CELL_NODES));
     cell.total++;
-    if (this.passiveNow?.(e) === true) cell.passive++;
+    const wild = this.wildClassOf?.(e) ?? null;
+    if (wild === 'passive') cell.passive++;
+    else if (wild === 'hostile') cell.hostileAnimal++;
     const owner = this.world.tryGet(e, Owner);
     if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
   };
 
-  private readonly passiveNow: ((e: Entity) => boolean) | undefined;
+  private readonly wildClassOf: ((e: Entity) => 'passive' | 'hostile' | null) | undefined;
 
   constructor(
     world: World,
     combatants: Iterable<Entity>,
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
-    /** Classifies a combatant as passive-now wildlife (unowned, non-hostile animal) — discounted from
-     *  `othersWithin` so a map full of grazing herds cannot defeat every gated seeker's early-out. */
-    passiveNow?: (e: Entity) => boolean,
+    /** Classifies an unowned animal combatant: `'passive'` (non-hostile-now — discounted from
+     *  `othersWithin`, so a map of grazing herds cannot defeat every gated seeker's early-out) or
+     *  `'hostile'` (aggressive/angry — additionally discounted from `civsWithin`, so a wolf pack
+     *  cannot defeat its own members' early-out); `null` for everything else. */
+    wildClassOf?: (e: Entity) => 'passive' | 'hostile' | null,
   ) {
     this.world = world;
-    this.passiveNow = passiveNow;
+    this.wildClassOf = wildClassOf;
     for (const e of combatants) forEachIndexNode(world, e, nodeOf, nodesOf, this.tally);
   }
 
@@ -89,6 +94,28 @@ export class HostilePresence {
     return false;
   }
 
+  /**
+   * Whether any CIVILIZATION combatant (owned or unowned — everything that is not classified wildlife)
+   * might lie within Manhattan `radius` of node (hx, hy) — the hostile-animal seeker's early-out twin of
+   * {@link othersWithin} (a wild animal's only valid targets are civilization settlers). Same
+   * conservative Chebyshev-box over-approximation; `false` proves the ring search would find nothing.
+   */
+  civsWithin(hx: number, hy: number, radius: number): boolean {
+    const cx0 = Math.floor((hx - radius) / PRESENCE_CELL_NODES);
+    const cx1 = Math.floor((hx + radius) / PRESENCE_CELL_NODES);
+    const cy0 = Math.floor((hy - radius) / PRESENCE_CELL_NODES);
+    const cy1 = Math.floor((hy + radius) / PRESENCE_CELL_NODES);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const column = this.byCx.get(cx);
+      if (column === undefined) continue;
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const cell = column.get(cy);
+        if (cell !== undefined && cell.total - cell.passive - cell.hostileAnimal > 0) return true;
+      }
+    }
+    return false;
+  }
+
   private cellAt(cx: number, cy: number): PresenceCell {
     let column = this.byCx.get(cx);
     if (column === undefined) {
@@ -97,7 +124,7 @@ export class HostilePresence {
     }
     let cell = column.get(cy);
     if (cell === undefined) {
-      cell = { total: 0, passive: 0, byPlayer: new Map<number, number>() };
+      cell = { total: 0, passive: 0, hostileAnimal: 0, byPlayer: new Map<number, number>() };
       column.set(cy, cell);
     }
     return cell;
