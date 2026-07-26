@@ -2,7 +2,7 @@ import { Building, JobAssignment, ownerOf, ownersCompatible, Settler } from '../
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../../progression/index.js';
+import { buildingEnabled, jobEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
 import { buildingWorkerJobs, canonicalBuildingWorkerJobs } from '../../stores/index.js';
 
 /** Bound-settler headcount per (building, jobType) — see the jobSystem tally comment. */
@@ -38,15 +38,12 @@ export type OpeningsMode =
   | { readonly kind: 'automatic'; readonly staffing: StaffingTally }
   | { readonly kind: 'playerDirected' };
 
-/** The settler-side context every openness probe reads: who is asking, on whose behalf, with what accrued
- *  experience, under which {@link OpeningsMode}. One object because these always travel together. */
-export interface OpeningsQuery {
+/** The settler-side context every openness probe reads: who is asking ({@link NeedSubject} — the same
+ *  tribe/owner/experience triple the `needfor*` gate judges) under which {@link OpeningsMode}. One object
+ *  because these always travel together. */
+export interface OpeningsQuery extends NeedSubject {
   readonly world: World;
   readonly ctx: SystemContext;
-  readonly tribe: number;
-  /** The issuing player, or undefined for a neutral settler — another player's workplace never employs it. */
-  readonly owner: number | undefined;
-  readonly experience: ReadonlyMap<number, number>;
   readonly mode: OpeningsMode;
   /** The settler's signpost confinement over a candidate building — an out-of-area workplace never employs
    *  it (see the jobSystem's area gate). Omitted when the settler is unlimited. */
@@ -143,7 +140,7 @@ function resolveOpenWorkerJob(
     if (!jobUnderstaffed(query, building, jobType)) continue;
     // A player-directed assignment skips only the TRIBE-tech gate — see openWorkerJobFromList.
     if (mode.kind === 'automatic' && !jobEnabled(world, ctx, tribe, jobType)) continue; // jobEnablesJob
-    if (!settlerMeetsNeed(world, ctx, tribe, 'job', jobType, query.experience)) continue; // XP gate (needforjob)
+    if (!settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue; // XP gate (needforjob)
     return jobType;
   }
   return null;

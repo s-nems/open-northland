@@ -82,4 +82,22 @@ describe('jobUnlockedFor', () => {
     ]);
     expect(jobUnlockedForSelection(content, freeStart, [1], CARPENTER)).toBe(true);
   });
+
+  it('never gates an AI seat’s settler, whatever the toggle says', () => {
+    const AI_SEAT = 2;
+    const owned = (id: number, player: number) => ({
+      id,
+      components: {
+        Settler: { tribe: 1, jobType: COLLECTOR, experience: [] },
+        Owner: { player },
+      },
+    });
+    const snapshot = snapshotOf([
+      owned(1, 0), // the human's fresh collector
+      owned(2, AI_SEAT), // a bot's fresh collector
+      { id: 98, components: { AiPlayer: { player: AI_SEAT, modules: {} } } },
+    ]);
+    expect(jobUnlockedForSelection(content, snapshot, [1], CARPENTER)).toBe(false); // human earns it
+    expect(jobUnlockedForSelection(content, snapshot, [2], CARPENTER)).toBe(true); // the bot does not
+  });
 });

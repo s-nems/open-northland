@@ -3,7 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
-import { settlerMeetsNeed } from '../../progression/index.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
@@ -137,6 +137,8 @@ export function nearestHarvestableFor(
   // The sealed-pocket veto ({@link routeRegions}) - probed last in the accept, so a candidate rejected
   // by the cheap gates never costs a region flood.
   const regions = routeRegions(world, ctx, terrain);
+  // Who the `needforgood` gate below judges — resolved once per scan, not per candidate node.
+  const subject = needSubjectOf(world, plan.entity);
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
@@ -148,7 +150,7 @@ export function nearestHarvestableFor(
     if (!world.has(e, Position)) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
-    if (!settlerMeetsNeed(world, ctx, settler.tribe, 'good', res.goodType, settler.experience)) return null;
+    if (!settlerMeetsNeed(world, ctx, subject, 'good', res.goodType)) return null;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
     // Reachability gate: a resource walled off from the settler by static terrain — the far bank of a river
     // with no land crossing — sits in a different connected component, so `findPath` would reject the route

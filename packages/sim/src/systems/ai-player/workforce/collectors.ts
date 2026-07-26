@@ -9,7 +9,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/flags.js';
 import { workFlagPlacementBlocks } from '../../footprint/index.js';
-import { settlerMeetsNeed } from '../../progression/index.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { resourcesNearNode } from '../../resource-index.js';
 import { type BuildOrderEntry, collectorGoodsWanted } from '../build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS, anchorNodeOf, firstRingNode, nearestLiveResource } from '../shared.js';
@@ -136,10 +136,8 @@ export function allocateCollectors(
   // Whether this settler's accrued XP clears the good's `needforgood` thresholds — the same gate the
   // harvest pick applies (`nearestHarvestableFor`), so the allocator never posts a collector its own
   // target scan would refuse (iron/gold demand clay/stone-track XP in the base data).
-  const meetsNeed = (e: Entity, goodType: number): boolean => {
-    const s = world.get(e, Settler);
-    return settlerMeetsNeed(world, ctx, s.tribe, 'good', goodType, s.experience);
-  };
+  const meetsNeed = (e: Entity, goodType: number): boolean =>
+    settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'good', goodType);
   // Whether ANY accrued-XP threshold gates the good for this tribe — a gated good needs a veteran, an
   // ungated one accepts any fresh hire.
   const needGated = (tribe: number, goodType: number): boolean => {

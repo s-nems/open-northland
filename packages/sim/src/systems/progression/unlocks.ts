@@ -1,7 +1,7 @@
 import type { JobRequirement, JobRequirementTarget, VehicleType } from '@open-northland/data';
-import { professionProgressionEnabled, Settler } from '../../components/index.js';
+import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob } from '../readviews/stances.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
@@ -141,24 +141,53 @@ export function experienceRequirementMet(
 }
 
 /**
+ * Who is asking a `needfor*` gate: the settler's tribe (whose requirement table applies), its owning
+ * player (an AI seat is never gated) and its accrued XP. One object because the three always travel
+ * together, and three bare positional numbers/maps invite mix-ups at the call sites.
+ */
+export interface NeedSubject {
+  readonly tribe: number;
+  /** The owning player, or `undefined` for a neutral settler (which the gates do apply to). */
+  readonly owner: number | undefined;
+  readonly experience: ReadonlyMap<number, number>;
+}
+
+/** The {@link NeedSubject} of a live settler entity — the shared read at every gate call site. */
+export function needSubjectOf(world: World, settler: Entity): NeedSubject {
+  const s = world.get(settler, Settler);
+  return { tribe: s.tribe, owner: ownerOf(world, settler), experience: s.experience };
+}
+
+/**
+ * Whether the experience tech tree gates `owner`'s settlers at all. An AI seat never pays it: the
+ * progression toggle is a human-player setting and must not handicap the bots, whatever the game is
+ * set to (design rule, user-specified). A human (or neutral) seat follows `ProgressionRules`.
+ */
+export function experienceGatesApply(world: World, owner: number | undefined): boolean {
+  if (owner !== undefined && isAiPlayer(world, owner)) return false;
+  return professionProgressionEnabled(world);
+}
+
+/**
  * Does a settler meet all the `needfor*` XP thresholds gating a `(target, targetId)` for its tribe?
  *
  * The sibling of {@link tribeUnlockEnabled} on the threshold axis: where `jobEnables*` gates a target on a
  * job being present in the tribe, `needfor*` gates it on this settler having accrued enough XP. A target with
  * no `need` requirement is unthresholded; one with several must clear every one (a master baker needs both
  * bread- and flour-track XP). A tribe absent from content thresholds nothing, consistent with the
- * `jobEnables` gate. While profession progression is off (`ProgressionRules`), every civilian target is
- * unthresholded; fighter-band jobs stay gated for the barracks-training path.
+ * `jobEnables` gate. Where the tree does not apply ({@link experienceGatesApply}: an AI seat, or the
+ * progression toggle off) every civilian target is unthresholded; fighter-band jobs stay gated either
+ * way, for the barracks-training path.
  */
 export function settlerMeetsNeed(
   world: World,
   ctx: SystemContext,
-  tribe: number,
+  subject: NeedSubject,
   target: JobRequirementTarget,
   targetId: number,
-  experience: ReadonlyMap<number, number>,
 ): boolean {
-  if (!professionProgressionEnabled(world) && !(target === 'job' && isFighterJob(targetId))) return true;
+  const { tribe, owner, experience } = subject;
+  if (!experienceGatesApply(world, owner) && !(target === 'job' && isFighterJob(targetId))) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
   for (const req of tribeType.jobRequirements) {

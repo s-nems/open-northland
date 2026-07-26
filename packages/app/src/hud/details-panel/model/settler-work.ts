@@ -1,11 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
-import {
-  entityById,
-  num,
-  professionProgressionEnabledIn,
-  settlerExperienceOf,
-} from '../../../game/snapshot.js';
+import { entityById, num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   buildingDef,
@@ -54,6 +49,7 @@ export function settlerWork(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   comps: Comp,
+  progressionGated: boolean,
 ): SettlerWorkModel {
   const carry = comps.Carrying as { goodType?: unknown; amount?: unknown } | undefined;
   const carried =
@@ -64,10 +60,9 @@ export function settlerWork(
   const jobType = num(settlerComp?.jobType);
   // The settler's earned-goods filter (`needforgood`, mirrored sim-side by the rotation/harvest gates):
   // both product menus offer only what this settler may actually make or dig right now.
-  const progressionOn = professionProgressionEnabledIn(snapshot);
   const experience = settlerExperienceOf(comps);
   const earned = (goodType: number): boolean =>
-    goodUnlockedFor(ctx, progressionOn, num(settlerComp?.tribe), experience, goodType);
+    goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType);
   const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
   if (workFlag !== undefined) {
     const selectedGood = num(workFlag.goodType) ?? null;

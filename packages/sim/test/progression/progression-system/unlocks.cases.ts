@@ -1,15 +1,37 @@
 import type { JobRequirement } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { setProfessionProgression } from '../../../src/components/index.js';
+import { AiPlayer, aiModuleEnables, setProfessionProgression } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import {
   experienceRequirementMet,
   goodEnabled,
   jobEnabled,
+  type NeedSubject,
   settlerMeetsNeed,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from './support.js';
+
+const HUMAN_PLAYER = 0;
+const AI_PLAYER = 1;
+/** In the `jobtypes.ini` soldier band (31..41) — gated by barracks training, never by work XP. */
+const SOLDIER_JOB = 33;
+
+/** Flag `player`'s seat AI-driven, the state the `setPlayerAi` command lands (no tick needed). */
+function makeAiSeat(sim: Simulation, player: number): void {
+  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables() });
+}
+
+/** Gate {@link SOLDIER_JOB} behind fight XP — the fixture tribe carries no fighter requirement. */
+function gateSoldierJob(sim: Simulation): void {
+  sim.content.tribes[0]?.jobRequirements.push({
+    requirement: 'need',
+    target: 'job',
+    targetId: SOLDIER_JOB,
+    amount: 10,
+    experienceTypes: [72],
+  });
+}
 
 describe('experienceRequirementMet — a single needfor XP threshold', () => {
   // Track 1 (woodcutter wood) accrues at factor 10, so the amount-30 threshold needs 300 raw XP:
@@ -108,50 +130,66 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
   // The fixture gates PLANK behind 30 repeats of track 1 (factor 10) — 300 raw XP.
   const WOOD_TRACK = 1;
   const PLANK = 2;
+  const VIKING = 1;
+
+  /** A human-owned subject of {@link VIKING} carrying `xp` raw points on the wood track. */
+  const human = (xp?: number): NeedSubject => ({
+    tribe: VIKING,
+    owner: HUMAN_PLAYER,
+    experience: xp === undefined ? new Map() : new Map([[WOOD_TRACK, xp]]),
+  });
 
   it('gates a good below its accrued-XP threshold and clears it at/above', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 299]]))).toBe(false);
-    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctx, human(299), 'good', PLANK)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, human(300), 'good', PLANK)).toBe(true);
   });
 
   it('ignores the train requirement on the same target (only need thresholds apply)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // The fixture also carries a `train` requirement on PLANK with amount 999 — if it were treated as
     // an accrued-XP threshold, 300 XP could never clear it. settlerMeetsNeed must skip it.
-    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', PLANK, new Map([[WOOD_TRACK, 300]]))).toBe(
-      true,
-    );
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), human(300), 'good', PLANK)).toBe(true);
   });
 
   it('is met for a target with no need requirement at all', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Good 1 (wood) carries no `needfor` requirement in the fixture → any settler clears it.
-    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 1, 'good', 1, new Map())).toBe(true);
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), human(), 'good', 1)).toBe(true);
   });
 
   it('thresholds nothing for a tribe absent from content', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    expect(settlerMeetsNeed(sim.world, ctxOf(sim), 999, 'good', PLANK, new Map())).toBe(true);
+    const stranger: NeedSubject = { ...human(), tribe: 999 };
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), stranger, 'good', PLANK)).toBe(true);
   });
 
   it('unthresholds civilian targets while profession progression is off, but not fighter jobs', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    const SOLDIER_JOB = 33; // soldier band 31..41 — stays gated for barracks training
-    sim.content.tribes[0]?.jobRequirements.push({
-      requirement: 'need',
-      target: 'job',
-      targetId: SOLDIER_JOB,
-      amount: 10,
-      experienceTypes: [72],
-    });
+    gateSoldierJob(sim);
     setProfessionProgression(sim.world, false);
-    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map())).toBe(true); // free start
-    expect(settlerMeetsNeed(sim.world, ctx, 1, 'job', SOLDIER_JOB, new Map())).toBe(false); // carve-out
+    expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(true); // free start
+    expect(settlerMeetsNeed(sim.world, ctx, human(), 'job', SOLDIER_JOB)).toBe(false); // carve-out
     setProfessionProgression(sim.world, true); // re-enabling restores the civilian threshold
-    expect(settlerMeetsNeed(sim.world, ctx, 1, 'good', PLANK, new Map())).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
+  });
+
+  it('never gates an AI seat, whatever the toggle says (bots skip the tech tree)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const ctx = ctxOf(sim);
+    gateSoldierJob(sim);
+    makeAiSeat(sim, AI_PLAYER);
+    const bot: NeedSubject = { tribe: VIKING, owner: AI_PLAYER, experience: new Map() };
+
+    // Progression ON (the default): the human is gated at 0 XP, the AI seat is not.
+    expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, bot, 'good', PLANK)).toBe(true);
+    // The fighter carve-out is the toggle's, so it holds for the AI too (barracks training, not XP).
+    expect(settlerMeetsNeed(sim.world, ctx, bot, 'job', SOLDIER_JOB)).toBe(false);
+    // A neutral (unowned) settler has no seat to exempt — it stays gated.
+    expect(settlerMeetsNeed(sim.world, ctx, { ...human(), owner: undefined }, 'good', PLANK)).toBe(false);
   });
 });
 
@@ -159,7 +197,6 @@ describe('jobEnables tech-graph under the profession-progression toggle', () => 
   it('bypasses the presence graph for civilian jobs and goods while off, fighters stay gated', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    const SOLDIER_JOB = 33;
     // Gate the carpenter job and a soldier job on a (nonexistent) living woodcutter.
     sim.content.tribes[0]?.jobEnables.push(
       { jobType: 1, kind: 'job', targetId: 2 },

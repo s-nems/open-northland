@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiPlayer,
+  aiModuleEnables,
   Building,
   JobAssignment,
   Owner,
@@ -275,6 +277,31 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(idle, Settler).jobType).toBe(CARPENTER); // free start: both gates bypassed
+  });
+
+  it('staffs an AI seat’s gated job from zero XP even with progression ON (bots skip the tree)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    tribe.jobRequirements.push({
+      requirement: 'need',
+      target: 'job',
+      targetId: CARPENTER,
+      amount: 30,
+      experienceTypes: [WOOD_TRACK],
+    });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    const AI_SEAT = 3;
+    sim.world.add(sim.world.create(), AiPlayer, { player: AI_SEAT, modules: aiModuleEnables() });
+    const bot = settler(sim, null);
+    sim.world.add(bot, Owner, { player: AI_SEAT });
+    const human = settler(sim, null);
+    sim.world.add(human, Owner, { player: 0 });
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(bot, Settler).jobType).toBe(CARPENTER); // the AI seat is never gated
+    expect(sim.world.get(human, Settler).jobType).toBeNull(); // the human still earns the trade
   });
 });
 

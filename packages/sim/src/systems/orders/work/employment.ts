@@ -29,7 +29,7 @@ import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
-import { settlerMeetsNeed } from '../../progression/index.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial.js';
@@ -57,8 +57,7 @@ export function setJob(
   const e = command.entity;
   if (!isTradeAssignable(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
-  const s = world.get(e, Settler);
-  if (!settlerMeetsNeed(world, ctx, s.tribe, 'job', command.jobType, s.experience)) return; // unearned trade
+  if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', command.jobType)) return; // unearned trade
   // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 
