@@ -384,10 +384,10 @@ function resolveCharacterLayers(
   tick: number,
   gaitClock: number,
 ): ResolvedLayer[] | null {
-  // A wildlife entity resolves ONLY through the species table ({@link SettlerCharacterSet.animals}):
-  // bound draws its species body over its cast shadow on the plain-sprite path (no atlasW/H), listed
-  // but unbound draws nothing. A BOUND tribe whose resolved bob has no frame is a real gap, so it
-  // falls to the placeholder like a human miss, never silently invisible.
+  // A wildlife entity resolves ONLY through the species table - the binding contract (bound draws
+  // the species look, listed-but-unbound draws nothing) lives on {@link SettlerCharacterSet.animals}.
+  // One local fact: a BOUND tribe whose resolved bob has no frame is a real gap, so it falls to the
+  // placeholder like a human miss, never silently invisible.
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) {
     const animal = characters.animals.byTribe[item.tribe];
     if (animal === undefined) return [];

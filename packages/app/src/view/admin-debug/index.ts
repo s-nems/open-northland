@@ -81,8 +81,8 @@ export interface AdminDebugDeps {
    *  as a loose ground pile. Driven from the live content so the palette always matches whatever the view
    *  runs (sandbox or the real extracted goods) and every entry clears the sim's `dropGood` content guard. */
   readonly goods: readonly GoodEntry[];
-  /** Every living animal species the running content records (`sim.content.animals` joined to its
-   *  tribe slug), each spawnable as its data-pinned herd. Empty/absent hides the wildlife section. */
+  /** The wildlife palette entries (`runtime/debug-mounts.ts` owns the live-content sourcing), each
+   *  spawnable as its data-pinned herd. Empty/absent hides the wildlife section. */
   readonly animals?: readonly AnimalEntry[];
   /** The sim's live needs-rule state — drawn on the "Potrzeby" toggle button so it reflects the entry's
    *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */

@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
-import { isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
+import { isAnimalTribe, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -218,7 +218,9 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
  * `needforjob` gates for the base soldier classes and hero variants read those tracks, and the role grant
  * stays independent of the bucket so a saber fighter (no weapon bucket) still feeds its class gates.
  *
- * No-ops when: the weapon has no `mainType` (an unarmed/mainType-less combatant), or the attacker is gone.
+ * No-ops when: the weapon has no `mainType` (an unarmed/mainType-less combatant), the attacker is gone,
+ * or the attacker is wildlife (an animal-tribe Settler - progression is a civilization mechanic, so a
+ * wolf's bite stays flat instead of leveling its natural weapon toward the +50% mastery bonus).
  * The bucket half is skipped for a weapon class with no fight track (saber) or when content carries no
  * `soldier general` track (rate 0); the band half is skipped for civilians and absent tracks.
  *
@@ -235,6 +237,7 @@ export function grantFightExperience(
   if (weaponMainType === undefined) return; // an unarmed / mainType-less weapon trains no fight class
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return; // attacker gone
+  if (isAnimalTribe(ctx.content, s.tribe)) return; // wildlife never levels - see the no-op list above
   const bucket = fightExperienceTypeFor(weaponMainType);
   const rate = fightExperienceRate(ctx);
   if (bucket !== undefined && rate > 0) accrueExperience(s, bucket, rate);

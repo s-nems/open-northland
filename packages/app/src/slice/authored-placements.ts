@@ -24,9 +24,11 @@ export interface AuthoredJoinRows {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
-  /** The `animaltypes` rows — a species places only when its tribe has one (else the sim would drop
-   *  the spawn silently: no herd params to read). */
-  readonly animals?: readonly { tribeType?: number }[];
+  /** The `animaltypes` rows — a species places only when its tribe has a LIVING record
+   *  (`hitpointsAdult` > 0): with no record the sim drops the spawn silently (no herd params), and a
+   *  decorative hitpoints-0 swarm (butterflies/bees) spawns nothing, so skipping it here keeps the
+   *  placed count and the replay command log honest. */
+  readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
 }
 
 /**
@@ -84,8 +86,8 @@ export type AuthoredPlacement =
  * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
  * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
  * authored building keeps its exact anchor. A `setanimal`'s species string joins the `tribes` rows by
- * normalized `id` OR `name` (maps author variants like `'cattle '` / `'evil hares'`) and requires an
- * `animals` row for that tribe. Unresolvable or out-of-bounds records are dropped and counted
+ * normalized `id` OR `name` (maps author variants like `'cattle '` / `'evil hares'`) and requires a
+ * living `animals` row for that tribe. Unresolvable, decorative, or out-of-bounds records are dropped and counted
  * (animals on their own counter — a whole species missing its art/params reads differently from a
  * one-off bad record).
  */
@@ -121,10 +123,11 @@ export function resolveAuthoredPlacements(
       tribeByName.set(t.id, t.typeId);
   }
   // The species join: normalized tribe id AND name both key the tribe (`setanimal` authors the
-  // display name — `evil hares` is tribe `evil_hares`), gated on an `animals` row existing.
+  // display name — `evil hares` is tribe `evil_hares`), gated on a living `animals` row (see the
+  // AuthoredJoinRows note - a hitpoints-0 swarm is skipped, not placed).
   const animalTribes = new Set<number>();
   for (const a of rows.animals ?? []) {
-    if (a.tribeType !== undefined) animalTribes.add(a.tribeType);
+    if (a.tribeType !== undefined && (a.hitpointsAdult ?? 0) > 0) animalTribes.add(a.tribeType);
   }
   const speciesByKey = new Map<string, number>();
   for (const t of rows.tribes ?? []) {

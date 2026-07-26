@@ -16,6 +16,7 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 export const VIKING = 1;
 export const SAXON = 2;
 export const OTHER = 99; // a tribe with NO content record — a valid PvP enemy (not an animal), never fights back
+export const WOLF_TRIBE = 20; // an animal tribe (carries an `animals` row) - its swings must train nothing
 
 export const WOMAN = 5;
 export const SOLDIER_UNARMED = 31;
@@ -170,7 +171,9 @@ export function combatCadenceContent(): ContentSet {
         atomicBindings: bindings,
         jobEnables: [{ jobType: SOLDIER_SPEAR, kind: 'house', targetId: 1 }],
       },
+      { typeId: WOLF_TRIBE, id: 'wolves' },
     ],
+    animals: [{ id: 'wolf', tribeType: WOLF_TRIBE, hitpointsAdult: 500, maximumGroupSize: 3 }],
     atomicAnimations: [
       // The ATTACK event frame (type 25) is the exact frame the extracted IR carries for each weapon.
       {

@@ -1,6 +1,7 @@
 import type { ElevationField, WorldRenderer } from '@open-northland/render';
 import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -71,13 +72,17 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     // extracted goods on a scene/map) — the one source, so every listed good actually drops.
     goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // The wildlife palette: every LIVING recorded species (a hitpoints-0 record is a decorative swarm
-    // whose spawn places nothing), labelled by its tribe slug, in canonical tribe order. Deduplicated
-    // FIRST-wins (the real animaltypes author elephants twice), matching the sim's `animalRecord` read
-    // so the listed entry is the record the spawn will actually consume.
+    // whose spawn places nothing) that also has a body in the render roster - a species without a
+    // `jobgraphics` record (horses, elephants) would spawn a living but INVISIBLE herd, an admin
+    // trap. Labelled by tribe slug, in canonical tribe order, deduplicated FIRST-wins (the real
+    // animaltypes author elephants twice), matching the sim's `animalRecord` read so the listed
+    // entry is the record the spawn will actually consume.
     animals: sim.content.animals
       .filter(
         (a, i) =>
-          a.hitpointsAdult > 0 && sim.content.animals.findIndex((b) => b.tribeType === a.tribeType) === i,
+          a.hitpointsAdult > 0 &&
+          ANIMAL_PALETTE_BY_TRIBE.has(a.tribeType) &&
+          sim.content.animals.findIndex((b) => b.tribeType === a.tribeType) === i,
       )
       .map((a) => ({
         tribe: a.tribeType,

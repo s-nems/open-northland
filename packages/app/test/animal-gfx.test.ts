@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ATTACK_ATOMIC } from '../src/catalog/atomics.js';
-import { ADULT_ANIMAL_JOB, animalBinding, animalWalkSeqName } from '../src/content/animal-gfx/index.js';
+import { ADULT_ANIMAL_JOB, animalBinding, animalWalkSeqName } from '../src/content/animal-gfx/bindings.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
 
 /**

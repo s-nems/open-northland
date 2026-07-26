@@ -22,6 +22,7 @@ import {
   SOLDIER_UNARMED,
   startSwing,
   VIKING,
+  WOLF_TRIBE,
   WOMAN,
 } from '../support.js';
 
@@ -89,6 +90,18 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     const civXp = sim.world.get(civilian, Settler).experience;
     expect(civXp.get(FIGHT_EXPERIENCE_TYPE.FIST)).toBe(1); // the weapon bucket still trains
     expect(civXp.size).toBe(1); // but no band track for a non-fighter
+  });
+
+  it('a wild-animal bite trains nothing - progression is a civilization mechanic', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    // A jobless animal-tribe attacker whose natural weapon carries the real `maintype 1` (bearfist/
+    // wolvefist): without the wildlife gate every landed bite would accrue FIST XP and feed the +50%
+    // mastery damage bonus.
+    const wolf = fighterAt(sim, 0, 0, WOLF_TRIBE, null);
+    const target = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
+    startSwing(sim, wolf, { target, damage: 100, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.UNARMED }, 2);
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(wolf, Settler).experience.size).toBe(0);
   });
 });
 

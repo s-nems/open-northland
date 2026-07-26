@@ -104,8 +104,7 @@ export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
 ];
 
 /** One spawnable animal species: its tribe + a label slug (the tribe's content id, e.g. `wolves`).
- *  Driven from the LIVE content's `animals` records like the goods palette, so the palette always
- *  matches what the running world can actually spawn (sandbox: three species; a real map: all). */
+ *  Built from the running content by the debug mount (`runtime/debug-mounts.ts` owns the sourcing). */
 export interface AnimalEntry {
   readonly tribe: number;
   readonly id: string;

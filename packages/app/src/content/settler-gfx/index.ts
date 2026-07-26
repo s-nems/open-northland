@@ -27,13 +27,7 @@ export {
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';
-export {
-  directionalAnimFromSeq,
-  eightDirAnim,
-  frameListsByFacing,
-  type GoodRef,
-  singleDirAnim,
-} from './seq-anim.js';
+export { directionalAnimFromSeq, eightDirAnim, frameListsByFacing, type GoodRef } from './seq-anim.js';
 export {
   HAMMER_TICKS_PER_FRAME,
   HARVEST_TICKS,
