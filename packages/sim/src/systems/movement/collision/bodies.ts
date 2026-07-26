@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import { Building, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
@@ -46,10 +47,10 @@ const CALM_ZONE_RADIUS_NODES = 8;
  * straight through bodies, so detouring it (or re-aiming its goal off an occupied node — an economy walk's
  * target must stay exact for the node-coincidence checks) would be wrong both ways.
  */
-export function hasBodyCollision(world: World, e: Entity): boolean {
+export function hasBodyCollision(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.has(e, Owner)) return false;
   const settler = world.tryGet(e, Settler);
-  return settler !== undefined && isFighterJob(settler.jobType);
+  return settler !== undefined && isFighterJob(content, settler.jobType);
 }
 
 /**
@@ -171,11 +172,12 @@ export interface UnitWalkBlocks {
  *  walk-overlay stampers and the combat slot filter derive their standing-body sets from. */
 function eachStandingFighter(
   world: World,
+  content: ContentSet,
   terrain: TerrainGraph,
   visit: (e: Entity, node: NodeId, player: number) => void,
 ): void {
   for (const e of world.query(Settler, Position)) {
-    if (!hasBodyCollision(world, e) || !isStanding(world, e)) continue;
+    if (!hasBodyCollision(world, content, e) || !isStanding(world, e)) continue;
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     if (!terrain.inBounds(n.hx, n.hy)) continue;
@@ -188,17 +190,21 @@ function eachStandingFighter(
  * approach cell someone already stands on is a taken slot even inside a town garrison). Derived per tick,
  * membership-only, never hashed.
  */
-export function standingFighterNodes(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
+export function standingFighterNodes(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): ReadonlySet<NodeId> {
   const nodes = new Set<NodeId>();
-  eachStandingFighter(world, terrain, (_e, node) => nodes.add(node));
+  eachStandingFighter(world, content, terrain, (_e, node) => nodes.add(node));
   return nodes;
 }
 
-export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlocks {
+export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {
   const zones = calmZonesByPlayer(world, terrain);
   const field = new Set<NodeId>();
   const townByPlayer = new Map<number, Set<NodeId>>();
-  eachStandingFighter(world, terrain, (_e, node, player) => {
+  eachStandingFighter(world, content, terrain, (_e, node, player) => {
     if (zones.get(player)?.has(node)) {
       let town = townByPlayer.get(player);
       if (town === undefined) {

@@ -199,18 +199,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
-    // Intentional mechanic changes baked into this hash: the needs retune (seeded random starting
-    // needs, retuned drains, piety only from forging) AND per-product production (cycles carry their
-    // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
-    // per-animation lengths) AND the hash's coverage of string state (an `AtomicEffect`'s `kind`,
-    // `ChildOrder.child`), whose mixing also length-frames component names and object keys, AND
-    // work/carry XP on `Settler.experience` (per extracted resource unit and per landed delivery,
-    // work feeding ONLY the matched track — general-keyed gates read the whole-trade sum instead)
-    // AND the fractional experience-bonus output (ProductionBonus) with the extra goods it yields,
-    // AND the carpenter spawning with the `needforgood PLANK` threshold pre-earned (the per-operator
-    // craft gate landed; the seeded XP rides in `Settler.experience`, leaving the trace and
-    // `produced` untouched).
-    expect(run.hash).toBe('3d25b360');
+    // The hash covers every component on every entity, so it moves on any intentional mechanic change;
+    // each move is named in its own completing commit (`git log -S` this literal for the history).
+    expect(run.hash).toBe('c556c610');
   });
 
   it('matches the golden atomic-action trace', () => {

@@ -11,14 +11,16 @@ import { cell, combatant, ctxOf, grassMap, P0, VIKING, WOODCUTTER } from './supp
 
 describe('stance defaults — the job → military-mode lookup', () => {
   it('classifies the roster: soldiers/heroes ATTACK, scout/hunter IGNORE, everyone else FLEE', () => {
-    expect(defaultStanceForJob(31)).toBe(MILITARY_MODE.ATTACK); // first soldier
-    expect(defaultStanceForJob(41)).toBe(MILITARY_MODE.ATTACK); // last soldier
-    expect(defaultStanceForJob(45)).toBe(MILITARY_MODE.ATTACK); // a hero
-    expect(defaultStanceForJob(27)).toBe(MILITARY_MODE.IGNORE); // scout
-    expect(defaultStanceForJob(15)).toBe(MILITARY_MODE.IGNORE); // hunter (toward humans)
-    expect(defaultStanceForJob(1)).toBe(MILITARY_MODE.FLEE); // woodcutter (civilian)
-    expect(defaultStanceForJob(0)).toBe(MILITARY_MODE.FLEE); // idle
-    expect(defaultStanceForJob(null)).toBe(MILITARY_MODE.FLEE); // jobless / child
+    const content = testContent();
+    expect(defaultStanceForJob(content, 31)).toBe(MILITARY_MODE.ATTACK); // soldier_unarmed
+    expect(defaultStanceForJob(content, 45)).toBe(MILITARY_MODE.ATTACK); // hero_saber
+    expect(defaultStanceForJob(content, 27)).toBe(MILITARY_MODE.IGNORE); // scout
+    expect(defaultStanceForJob(content, 15)).toBe(MILITARY_MODE.IGNORE); // hunter (toward humans)
+    expect(defaultStanceForJob(content, 1)).toBe(MILITARY_MODE.FLEE); // woodcutter (civilian)
+    expect(defaultStanceForJob(content, 0)).toBe(MILITARY_MODE.FLEE); // idle
+    expect(defaultStanceForJob(content, null)).toBe(MILITARY_MODE.FLEE); // jobless / child
+    // A job id this content declares no record for is a civilian, not a fighter by numeric band.
+    expect(defaultStanceForJob(content, 41)).toBe(MILITARY_MODE.FLEE);
   });
 
   it('stamps the job default on an OWNED settler at spawn — and NONE on an unowned one', () => {

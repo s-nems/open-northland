@@ -136,7 +136,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   // An owned settler also gets its job's default military stance (soldiers→ATTACK, scout/hunter→IGNORE, other
   // civilians→FLEE); the player overrides with `setStance`. Owned-only (gated on Owner), so an unowned/golden
   // settler carries no Stance.
-  if (world.has(e, Owner)) stampDefaultStance(world, e, spec.jobType);
+  if (world.has(e, Owner)) stampDefaultStance(world, content, e, spec.jobType);
   return e;
 }
 

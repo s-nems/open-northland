@@ -20,6 +20,7 @@ import { atomicBindingTables, harvestCapableJobs, jobAtomicSets } from './conten
 import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
+import { jobRoleSets } from './content-index/jobs.js';
 import {
   canonicalWorkerJobLists,
   inputlessProducerTypes,
@@ -153,6 +154,11 @@ export interface ContentIndex {
    *  that coincides with a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's harvest 31)
    *  must not make that job a gatherer. See {@link import('../systems/economy/flags.js').jobCanHarvest}. */
   readonly harvestJobs: ReadonlySet<number>;
+  /** The trades of each {@link jobRoleSets} role, by job typeId. */
+  readonly soldierJobs: ReadonlySet<number>;
+  readonly heroJobs: ReadonlySet<number>;
+  readonly scoutJobs: ReadonlySet<number>;
+  readonly hunterJobs: ReadonlySet<number>;
   /**
    * Per building type: the FROM-SCRATCH construction bill — what a newly-placed site of this type must
    * be delivered and hammer in. For a leveled type this is the merged sum of every chain tier's own
@@ -194,10 +200,12 @@ export function contentIndex(content: ContentSet): ContentIndex {
 
 function buildIndex(content: ContentSet): ContentIndex {
   const workerJobs = workerJobSets(content);
+  const jobs = byKey(content.jobs, (j) => j.typeId);
+  const roles = jobRoleSets(jobs);
   return {
     buildings: byKey(content.buildings, (b) => b.typeId),
     goods: byKey(content.goods, (g) => g.typeId),
-    jobs: byKey(content.jobs, (j) => j.typeId),
+    jobs,
     tribes: byKey(content.tribes, (t) => t.typeId),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
     commandBuildings: indexById(content.buildings),
@@ -220,6 +228,10 @@ function buildIndex(content: ContentSet): ContentIndex {
     atomicsByJob: jobAtomicSets(content),
     constructionBillByBuilding: constructionBills(content),
     harvestJobs: harvestCapableJobs(content),
+    soldierJobs: roles.soldier,
+    heroJobs: roles.hero,
+    scoutJobs: roles.scout,
+    hunterJobs: roles.hunter,
     maxResourceWorkOffset: maxWorkCellOffset(content),
     // A weapon row's tribeType/jobType are optional in the schema; a row missing the key could never
     // match the numeric comparison the old scans made, so it is simply absent from that table.

@@ -17,10 +17,10 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { withFightDamageBonus } from '../progression/index.js';
 import {
-  HUNTER_JOB,
   isAggressiveAnimal,
   isAnimalTribe,
   isCatchableAnimal,
+  isHunterJob,
   MILITARY_MODE,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
@@ -161,7 +161,7 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
     } else {
       hasCiv = true;
       civTribes.add(s.tribe);
-      if (s.jobType === HUNTER_JOB) hasHunter = true;
+      if (isHunterJob(ctx.content, s.jobType)) hasHunter = true;
     }
   }
   if (owners.size >= 2) return true; // two players → possible pvp
@@ -230,7 +230,7 @@ function engageCombatant(
   }
   // An unowned combatant carries no Stance — modelled as a `null` mode. Derived once here and handed whole
   // to engageSpec/chase, which only ever read the three together.
-  const mode = owned ? stanceMode(world, e, attacker.jobType) : null;
+  const mode = owned ? stanceMode(world, ctx.content, e, attacker.jobType) : null;
   const stance: CombatantStance = { owned, ordered, mode };
 
   // A unit that has stopped fleeing (stance changed, or an order took over) sheds the flee state + its run
@@ -252,7 +252,7 @@ function engageCombatant(
   // The passive NONE is normalized to IGNORE by {@link stanceMode}. A hunter is exempt: its catchable-prey
   // predation is an economic drive independent of the military mode, so it falls through to the engage path
   // (with a predation-only target filter, {@link engageSpec}).
-  if (mode === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
+  if (mode === MILITARY_MODE.IGNORE && !ordered && !isHunterJob(ctx.content, attacker.jobType)) {
     disengage(world, e);
     return;
   }

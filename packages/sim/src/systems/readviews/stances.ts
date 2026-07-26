@@ -1,8 +1,9 @@
 // Pure, terminal read views for military stances — the `MILITARY_MODE` enum the CombatSystem's stance-gated
-// engagement reads, plus the job → default stance lookup stamped at spawn / job-change. Kept beside the other
-// data-defined taxonomies (`classes/` and `tribes/`).
+// engagement reads, plus the job role → default stance lookup stamped at spawn / job-change. Kept beside the
+// other data-defined taxonomies (`classes/`, `jobs.ts` and `tribes/`).
 
-import { HUNTER_JOB } from './tribes/index.js';
+import type { ContentSet } from '@open-northland/data';
+import { isFighterJob, isHunterJob, isScoutJob } from './jobs.js';
 
 /**
  * The original's military behavior modes — `logicdefines.inc` ~l.1107
@@ -42,72 +43,26 @@ export function isMilitaryMode(mode: number): mode is MilitaryMode {
 }
 
 /**
- * The scout trade — `jobtypes.ini` `type 27` / `logicdefines.inc` `JOB_TYPE_HUMAN_SCOUT 27`, a non-combat
- * explorer. Its default stance is {@link MILITARY_MODE.IGNORE} (it wanders without picking fights). Exported
- * for the VisionSystem's per-job vision table (the scout is the widest eye).
- */
-export const SCOUT_JOB = 27;
-
-/** The soldier job-id band — `jobtypes.ini` soldiers 31..41 (unarmed / wooden+iron spear / short+long sword /
- *  short+long saber / small+big axe / short+long bow); every one defaults to {@link MILITARY_MODE.ATTACK}. An
- *  inclusive `[lo, hi]` band (a contiguous id range in the original data). */
-const SOLDIER_JOB_MIN = 31;
-const SOLDIER_JOB_MAX = 41;
-
-/** The hero job-id band — `jobtypes.ini` heroes 42..47; like soldiers they default to
- *  {@link MILITARY_MODE.ATTACK}. Kept separate from the soldier band so the table stays legible if the two
- *  ever diverge. */
-const HERO_JOB_MIN = 42;
-const HERO_JOB_MAX = 47;
-
-/**
- * Whether `jobType` is a fighter — a soldier ({@link SOLDIER_JOB_MIN}..{@link SOLDIER_JOB_MAX}) or hero
- * ({@link HERO_JOB_MIN}..{@link HERO_JOB_MAX}) trade, the units whose whole role is combat. The shared
- * classification behind two consumers: the default-stance table below (fighters auto-engage) and the
- * SeparationSystem's collision roster (only fighters have body collision — workers keep the original's
- * pass-through, so economy flows that legally converge on one node can never jam). Scouts and hunters are not
- * fighters: they carry weapons, but their role is exploration/predation and body collision would only obstruct
- * their wandering.
- */
-export function isFighterJob(jobType: number | null): boolean {
-  return isSoldierBandJob(jobType) || isHeroBandJob(jobType);
-}
-
-/** Whether `jobType` sits in the soldier band ({@link SOLDIER_JOB_MIN}..{@link SOLDIER_JOB_MAX}) —
- *  the fight-XP band routing's soldier half (see `progression/experience.ts`). */
-export function isSoldierBandJob(jobType: number | null): boolean {
-  return jobType !== null && jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX;
-}
-
-/** Whether `jobType` sits in the hero band ({@link HERO_JOB_MIN}..{@link HERO_JOB_MAX}) — the
- *  fight-XP band routing's hero half (see `progression/experience.ts`). */
-export function isHeroBandJob(jobType: number | null): boolean {
-  return jobType !== null && jobType >= HERO_JOB_MIN && jobType <= HERO_JOB_MAX;
-}
-
-/**
  * The default military stance a settler of `jobType` starts in — stamped on every owned settler at spawn and
- * re-stamped on a profession change (the `setStance` command overrides it afterwards). A data-shaped lookup
- * keyed on the pinned job-id bands:
+ * re-stamped on a profession change (the `setStance` command overrides it afterwards). A lookup over the
+ * content-derived job roles (`readviews/jobs.ts`):
  *
- *  - **soldiers** ({@link SOLDIER_JOB_MIN}..{@link SOLDIER_JOB_MAX}) + **heroes**
- *    ({@link HERO_JOB_MIN}..{@link HERO_JOB_MAX}) → {@link MILITARY_MODE.ATTACK} (fighters engage on sight);
- *  - **scout** ({@link SCOUT_JOB}) → {@link MILITARY_MODE.IGNORE} (explores without fighting);
- *  - **hunter** (`HUNTER_JOB` 15) → {@link MILITARY_MODE.IGNORE} toward humans — it does not auto-fight enemy
- *    players, but its animal-hunting predation drive is separate and stays (the CombatSystem exempts a
+ *  - **soldiers + heroes** ({@link isFighterJob}) → {@link MILITARY_MODE.ATTACK} (fighters engage on sight);
+ *  - **scout** ({@link isScoutJob}) → {@link MILITARY_MODE.IGNORE} (explores without fighting);
+ *  - **hunter** ({@link isHunterJob}) → {@link MILITARY_MODE.IGNORE} toward humans — it does not auto-fight
+ *    enemy players, but its animal-hunting predation drive is separate and stays (the CombatSystem exempts a
  *    hunter's catchable-prey acquisition from the IGNORE gate);
  *  - **every other civilian job** (and a jobless/idle settler, `jobType` 0 or null) → {@link MILITARY_MODE.FLEE}
  *    (civilians run from danger).
  *
  * Source basis: the mode ids are data-pinned; the assignment of a mode to a job is the user's observation of
  * the original (observed-approximation) — the readable data carries no per-job military-mode field — so the
- * whole table is a calibration-pending default (source basis "Combat stance defaults"). A total function of the
- * integer job id (`HUNTER_JOB` pinned in `tribes/relations.ts`, imported to keep the single hunter-id source).
+ * whole table is a calibration-pending default (source basis "Combat stance defaults").
  */
-export function defaultStanceForJob(jobType: number | null): MilitaryMode {
+export function defaultStanceForJob(content: ContentSet, jobType: number | null): MilitaryMode {
   if (jobType === null) return MILITARY_MODE.FLEE; // a jobless settler / child is a civilian → flee
-  if (isFighterJob(jobType)) return MILITARY_MODE.ATTACK; // soldiers + heroes engage on sight
-  if (jobType === SCOUT_JOB) return MILITARY_MODE.IGNORE; // the scout explores, never picks fights
-  if (jobType === HUNTER_JOB) return MILITARY_MODE.IGNORE; // ignores humans; its animal hunt drive stays
+  if (isFighterJob(content, jobType)) return MILITARY_MODE.ATTACK; // soldiers + heroes engage on sight
+  if (isScoutJob(content, jobType)) return MILITARY_MODE.IGNORE; // the scout explores, never picks fights
+  if (isHunterJob(content, jobType)) return MILITARY_MODE.IGNORE; // ignores humans; its hunt drive stays
   return MILITARY_MODE.FLEE; // every other civilian job runs from danger
 }

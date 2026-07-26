@@ -68,7 +68,7 @@ export const jobSystem: System = (world, ctx) => {
     // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs
     // it — employment would immediately send it walking beyond its allowed area. The adopt pass needs no
     // gate (the building is under the settler's feet — inside its local circle by definition).
-    const limit = terrain === undefined ? null : navigationLimitFor(world, terrain, e);
+    const limit = terrain === undefined ? null : navigationLimitFor(world, ctx.content, terrain, e);
     const withinArea =
       limit === null || terrain === undefined
         ? undefined

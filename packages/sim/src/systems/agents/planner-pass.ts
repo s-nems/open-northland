@@ -49,7 +49,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     seatClaims: new Map(),
     inbound: collectInboundSupply(world),
     harvestClaims: collectHarvestClaims(world),
-    gossipCandidates: new GossipCandidates(world),
+    gossipCandidates: new GossipCandidates(world, ctx.content),
     siteLeads: new SiteLeads(world),
   };
 }

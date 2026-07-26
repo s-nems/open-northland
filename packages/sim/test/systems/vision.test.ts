@@ -17,7 +17,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { SCOUT_EXPERIENCE_TYPE } from '../../src/systems/progression/index.js';
-import { MILITARY_MODE, type MilitaryMode, SCOUT_JOB } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
   CIVILIAN_VISION_NODES,
@@ -41,6 +41,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
 const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
+const SCOUT_JOB = 27; // fixture job 27 `scout` — the widest eye
 const P0 = 0;
 const P1 = 1;
 
@@ -92,12 +93,13 @@ function rawState(sim: Simulation, player: number, x: number, y: number): number
 
 describe('vision radii — the per-job classification', () => {
   it('orders the eyes: scout > soldier > building > hunter > civilian', () => {
-    expect(visionRadiusForJob(SCOUT_JOB)).toBe(SCOUT_VISION_NODES);
-    expect(visionRadiusForJob(31)).toBe(SOLDIER_VISION_NODES); // first soldier
-    expect(visionRadiusForJob(45)).toBe(SOLDIER_VISION_NODES); // a hero
-    expect(visionRadiusForJob(15)).toBe(HUNTER_VISION_NODES); // hunter
-    expect(visionRadiusForJob(WOODCUTTER)).toBe(CIVILIAN_VISION_NODES);
-    expect(visionRadiusForJob(null)).toBe(CIVILIAN_VISION_NODES); // jobless / child
+    const content = testContent();
+    expect(visionRadiusForJob(content, SCOUT_JOB)).toBe(SCOUT_VISION_NODES);
+    expect(visionRadiusForJob(content, 31)).toBe(SOLDIER_VISION_NODES); // first soldier
+    expect(visionRadiusForJob(content, 45)).toBe(SOLDIER_VISION_NODES); // a hero
+    expect(visionRadiusForJob(content, 15)).toBe(HUNTER_VISION_NODES); // hunter
+    expect(visionRadiusForJob(content, WOODCUTTER)).toBe(CIVILIAN_VISION_NODES);
+    expect(visionRadiusForJob(content, null)).toBe(CIVILIAN_VISION_NODES); // jobless / child
     expect(SCOUT_VISION_NODES).toBeGreaterThan(SOLDIER_VISION_NODES);
     expect(SOLDIER_VISION_NODES).toBeGreaterThan(HUNTER_VISION_NODES);
     expect(HUNTER_VISION_NODES).toBeGreaterThan(CIVILIAN_VISION_NODES);

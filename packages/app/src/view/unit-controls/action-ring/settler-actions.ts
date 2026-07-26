@@ -211,7 +211,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     // approximation of an anchor the original never had to choose.)
     anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y) };
     layout = layoutActionRing(
-      menuForSettler(menuStateFor(snapshot, centre.ids, centre.jobType)),
+      menuForSettler(menuStateFor(opts.content, snapshot, centre.ids, centre.jobType)),
       anchor.x,
       anchor.y,
       scale,

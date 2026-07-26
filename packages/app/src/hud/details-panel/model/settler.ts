@@ -1,4 +1,5 @@
 import { components, fx, systems } from '@open-northland/sim';
+import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
@@ -239,7 +240,7 @@ export function experienceLabel(
   }
   const weaponKey = WEAPON_XP_KEY.get(spec);
   if (weaponKey !== undefined) return messages().hud.weaponXp[weaponKey];
-  if (spec === systems.SCOUT_EXPERIENCE_TYPE) return jobDisplayName(ctx, systems.SCOUT_JOB);
+  if (spec === systems.SCOUT_EXPERIENCE_TYPE) return jobDisplayName(ctx, JOB_SCOUT);
   return formatMessage(messages().hud.specialization, { id: spec });
 }
 

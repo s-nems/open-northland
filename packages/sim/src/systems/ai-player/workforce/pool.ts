@@ -5,8 +5,7 @@ import { jobAtomics } from '../../agents/targets/index.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/flags.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-import { isFighterJob } from '../../readviews/index.js';
-import { SCOUT_JOB } from '../../readviews/stances.js';
+import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { ownedSettlers } from '../shared.js';
 import type { WantedGood } from './collectors.js';
 
@@ -47,9 +46,9 @@ export function classifyWorkforce(
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
     const job = world.get(e, Settler).jobType;
-    if (isFighterJob(job)) continue;
+    if (isFighterJob(ctx.content, job)) continue;
     if (world.has(e, JobAssignment)) continue; // staffing a building — keep the post
-    if (job === SCOUT_JOB) {
+    if (isScoutJob(ctx.content, job)) {
       scouts.push(e);
       continue;
     }

@@ -31,9 +31,10 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 // only when none of those remains in sight (user rule).
 
 const VIKING = 1;
-// Fighter-band job ids (`jobtypes.ini` soldiers 31..41): body collision and the ATTACK default apply only
-// inside the band (`readviews/stances.ts` isFighterJob), so the test warriors must live there — out-of-band
-// ids would make them collisionless ghosts that stack on one melee slot.
+// The soldier trades (`jobtypes.ini` 31 / 40): body collision and the ATTACK default apply only to a job the
+// content classifies as a fighter (`readviews/jobs.ts` isFighterJob, keyed on the `soldier_*` slug), so the
+// test warriors must carry that slug — a civilian one would make them collisionless ghosts that stack on one
+// melee slot.
 const SOLDIER = 31;
 const ARCHER = 40;
 const P1 = 1; // the attacking player
@@ -59,8 +60,8 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [
       { typeId: 0, id: 'idle' },
-      { typeId: SOLDIER, id: 'soldier' },
-      { typeId: ARCHER, id: 'archer' },
+      { typeId: SOLDIER, id: 'soldier_unarmed' },
+      { typeId: ARCHER, id: 'soldier_bow_short' },
     ],
     buildings: [
       { typeId: HEADQUARTERS, id: 'headquarters', kind: 'storage', hitpoints: 1000 },

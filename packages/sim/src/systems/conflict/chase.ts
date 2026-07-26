@@ -103,7 +103,7 @@ export function chase(
   // The unit's own live goal is NOT a taken slot to itself — a cadence repath may re-choose (and keep) it.
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   const isTaken = (cell: NodeId): boolean => {
-    slots.standing ??= standingFighterNodes(world, terrain);
+    slots.standing ??= standingFighterNodes(world, ctx.content, terrain);
     if (slots.standing.has(cell) || slots.claimed.has(cell)) return true;
     slots.enRoute ??= enRouteChaseGoals(world);
     return slots.enRoute.has(cell) && cell !== ownGoal;

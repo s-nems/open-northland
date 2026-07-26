@@ -1,5 +1,5 @@
+import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { JOB_SCOUT } from '../../../game/sandbox/index.js';
 import {
   childOrderOf,
   hasEligiblePartner,
@@ -21,11 +21,12 @@ import { DEFAULT_MENU_STATE, type SettlerMenuState } from '../../../hud/action-r
  * selection keeps the button (the erect order takes several scouts).
  */
 export const menuStateFor = (
+  content: ContentSet,
   snapshot: WorldSnapshot,
   ids: readonly number[],
   uniformJobType: number | undefined,
 ): SettlerMenuState => {
-  const erectSignpost = uniformJobType === JOB_SCOUT;
+  const erectSignpost = systems.isScoutJob(content, uniformJobType ?? null);
   if (ids.length !== 1 || ids[0] === undefined) return { ...DEFAULT_MENU_STATE, erectSignpost };
   const e = entityById(snapshot, ids[0]);
   if (e === undefined || !isSettler(e)) return { ...DEFAULT_MENU_STATE, erectSignpost };
@@ -34,7 +35,7 @@ export const menuStateFor = (
   if (!isAdult(e)) return { ...DEFAULT_MENU_STATE, canChangeJob: false, erectSignpost };
   const married = marriageOf(e);
   const spouseAlive = married !== undefined && entityById(snapshot, married.spouse) !== undefined;
-  const onMission = systems.isOnMission(settlerJobType(e) ?? null);
+  const onMission = systems.isOnMission(content, settlerJobType(e) ?? null);
   // The one-child limit: a living, still-growing child blocks a fresh order (a grown or dead child
   // frees it — the sim command re-validates either way; this only decides button visibility).
   const child = married?.child ?? null;
@@ -45,7 +46,10 @@ export const menuStateFor = (
     // Marry only lights up when somebody eligible exists — otherwise the click would silently cancel.
     // isBoundByMarriage mirrors the widowing rule: a widow is free again once her child grows up.
     canMarry:
-      !isBoundByMarriage(snapshot, e) && !isMarrying(e) && !onMission && hasEligiblePartner(snapshot, e),
+      !isBoundByMarriage(snapshot, e) &&
+      !isMarrying(e) &&
+      !onMission &&
+      hasEligiblePartner(content, snapshot, e),
     canAssignHouse: true,
     // Ordering a child needs a LIVING spouse (a widow's stale marriage doesn't light the button).
     canOrderChild: spouseAlive && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,

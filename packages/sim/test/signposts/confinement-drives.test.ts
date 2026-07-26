@@ -32,8 +32,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2; // the sawmill's worker job
-const CARRIER = 24; // the original's real carrier id — 36 (the golden fixture's) sits inside the
-// soldier band 31..41 and would be confinement-EXEMPT as a fighter, defeating these tests
+const CARRIER = 24; // the original's real carrier id (the golden fixture also declares one at 36)
 const HEADQUARTERS = 1; // passive store: food + plank slots, a carrier transport slot
 const SAWMILL = 2; // workplace: recipe wood→plank, one carpenter slot
 const TEMPLE_TYPE = 3;

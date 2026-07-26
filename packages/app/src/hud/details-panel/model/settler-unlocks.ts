@@ -1,4 +1,5 @@
 import { systems } from '@open-northland/sim';
+import { isFighterTarget } from '../../../game/profession-unlocks.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
@@ -50,7 +51,7 @@ export function unlockProgressRows(
   const rows: (UnlockProgressRowModel & { targetId: number })[] = [];
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== 'job') continue;
-    if (systems.isFighterJob(req.targetId)) continue; // barracks territory, never an XP promise
+    if (isFighterTarget(ctx, req.targetId)) continue; // barracks territory, never an XP promise
     // "Reachable": at least one required track is one this settler's current job accrues.
     const tracks = req.experienceTypes.map((t) => ctx.jobExperience.find((d) => d.typeId === t));
     const reachable = tracks.findIndex((t) => t?.jobType === jobType);

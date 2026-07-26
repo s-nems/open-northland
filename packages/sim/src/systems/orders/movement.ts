@@ -97,7 +97,7 @@ export function moveUnit(
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way — the order
   // is refused and the unit stays put (source basis: observed original guidepost behaviour). Scouts and
   // fighters are exempt (navigationLimitFor returns null for them, and whenever confinement is off).
-  const limit = navigationLimitFor(world, terrain, e);
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
   if (limit !== null && !limit.allowsNode(goal)) return;
   // A non-interruptible atomic (a mid-swing harvest, a half-eaten meal) parks the whole order instead of
   // being discarded. Gated after the refusals above, so a refused click neither parks nor displaces one.

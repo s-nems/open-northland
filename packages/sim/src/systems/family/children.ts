@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Carrying,
@@ -192,7 +193,7 @@ function driveOrder(
   const home = world.tryGet(woman, Residence)?.home;
   const homeType = home !== undefined ? builtHomeType(world, ctx, home) : undefined;
   const together = home !== undefined && world.tryGet(husband, Residence)?.home === home;
-  const husbandAway = isOnMission(world.get(husband, Settler).jobType);
+  const husbandAway = isOnMission(ctx.content, world.get(husband, Settler).jobType);
   // No capacity gate: `homeSize` caps FAMILIES (see familiesOf) and the newborn joins its parents'
   // existing household, so a couple with a home always has room for its child.
   const active = home !== undefined && homeType !== undefined && together && !husbandAway;
@@ -265,7 +266,7 @@ function driveOrder(
   }
   // Signpost confinement: she only sees sources inside her local circle + reachable guidepost network
   // (null when navigation is off/unlimited — the pre-signpost behaviour, byte-identical).
-  const limit = terrain !== undefined ? navigationLimitFor(world, terrain, woman) : null;
+  const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, woman) : null;
   const source = externalFood.nearest(
     hereNode,
     ownerOf(world, woman),
@@ -336,7 +337,7 @@ function birth(
   home: Entity,
   sex: 'female' | 'male',
 ): void {
-  const baby = spawnNewborn(world, mother, home, sex);
+  const baby = spawnNewborn(world, ctx.content, mother, home, sex);
   world.get(mother, Marriage).child = baby;
   world.get(father, Marriage).child = baby;
   world.remove(mother, ChildOrder);
@@ -350,7 +351,13 @@ function birth(
  *  `createSettler` call - a newborn rolls no RNG (needs start at 0), takes its sex from the parents (not a
  *  job slug), and uses the default hitpoint pool (no per-age pool is readable - approximated). It emits
  *  nothing; the `settlerBorn` seam stays in {@link birth}, and the stamp order is hash-significant. */
-function spawnNewborn(world: World, mother: Entity, home: Entity, sex: 'female' | 'male'): Entity {
+function spawnNewborn(
+  world: World,
+  content: ContentSet,
+  mother: Entity,
+  home: Entity,
+  sex: 'female' | 'male',
+): Entity {
   const p = world.get(mother, Position); // she stands at the door she entered by — the baby appears there
   const baby = world.create();
   world.add(baby, Position, { x: p.x, y: p.y });
@@ -369,7 +376,7 @@ function spawnNewborn(world: World, mother: Entity, home: Entity, sex: 'female' 
   const owner = world.tryGet(mother, Owner)?.player;
   if (owner !== undefined) {
     world.add(baby, Owner, { player: owner });
-    stampDefaultStance(world, baby, world.get(baby, Settler).jobType);
+    stampDefaultStance(world, content, baby, world.get(baby, Settler).jobType);
   }
   world.add(baby, Residence, { home });
   return baby;

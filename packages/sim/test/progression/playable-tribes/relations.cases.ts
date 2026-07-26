@@ -1,8 +1,11 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { HUNTER_JOB, mayAttack, mayHunt } from '../../../src/systems/index.js';
+import { mayAttack, mayHunt } from '../../../src/systems/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
+
+/** `jobtypes.ini` 15 "hunter" — the trade the fixtures declare with the slug `mayHunt` classifies on. */
+const HUNTER_JOB = 15;
 
 describe('mayAttack (the combat hostility relation)', () => {
   it('is false within a tribe (friendly fire is off)', () => {
@@ -76,7 +79,10 @@ describe('mayHunt (the hunter predation relation)', () => {
     const content = parseContentSet({
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
+      jobs: [
+        { typeId: 0, id: 'idle' },
+        { typeId: HUNTER_JOB, id: 'hunter' },
+      ],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
       tribes: [
         { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },

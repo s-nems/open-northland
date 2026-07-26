@@ -70,7 +70,7 @@ export function setWorkFlag(
   // Signpost confinement: a gatherer can't be sent to work ground it doesn't know the way to. Folded into
   // the snap rather than applied to its winner, so a click near the band edge snaps INWARD to allowed
   // ground instead of being pushed out and then rejected.
-  const limit = navigationLimitFor(world, terrain, e);
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
   // Clamp an off-map click onto the grid (like moveUnit), then snap off any body it landed on. The clicked
   // node is the search's own first candidate, so an unblocked click resolves to itself.
   const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {

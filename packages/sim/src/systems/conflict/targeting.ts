@@ -78,7 +78,7 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
  *  2. Otherwise (at least one side **unowned** — wildlife, an economy fixture, the golden path) the content
  *     relations decide, unchanged: the {@link mayAttack} **tribe hostility** (same-tribe friendly, civ-vs-civ
  *     enemies, civ→aggressive-animal, animals don't war on each other), the {@link mayHunt} **predation**
- *     (a {@link HUNTER_JOB} hunter may strike catchable prey), and the per-entity **provoked-anger** override
+ *     (a hunter may strike catchable prey), and the per-entity **provoked-anger** override
  *     (a struck `getAngry` animal — a live {@link Anger} — makes a civ⇄animal fight valid in both directions).
  *
  * Determinism: a pure read of the two entities' `Owner`, plus `content` + the relevant `Anger` against

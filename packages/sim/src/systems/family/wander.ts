@@ -45,7 +45,7 @@ export function planChildWander(
   if (!terrain.isWalkable(target) || spacing.blockedCells().has(target)) return;
   // Signpost confinement: a stroll spot outside the child's allowed area is skipped like a blocked one
   // (checked after the rolls, so the RNG stream is identical whether or not confinement is on).
-  const limit = navigationLimitFor(world, terrain, e);
+  const limit = navigationLimitFor(world, ctx.content, terrain, e);
   if (limit !== null && !limit.allowsNode(target)) return;
   world.add(e, MoveGoal, { cell: target });
 }

@@ -3,7 +3,7 @@ import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../.
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isFighterJob } from '../readviews/stances.js';
+import { isFighterJob } from '../readviews/index.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { requirementRepeats } from './bonus.js';
 
@@ -54,7 +54,8 @@ export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goo
  * Consumed by the JobSystem's assignment gate ({@link openJobAt}).
  */
 export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobType: number): boolean {
-  if (!professionProgressionEnabled(world) && !isFighterJob(jobType)) return true; // free start, fighters stay gated
+  // free start, fighters stay gated
+  if (!professionProgressionEnabled(world) && !isFighterJob(ctx.content, jobType)) return true;
   return tribeUnlockEnabled(world, ctx, tribe, 'job', jobType);
 }
 
@@ -176,7 +177,7 @@ export function experienceGatesApply(world: World, owner: number | undefined): b
  * no `need` requirement is unthresholded; one with several must clear every one (a master baker needs both
  * bread- and flour-track XP). A tribe absent from content thresholds nothing, consistent with the
  * `jobEnables` gate. Where the tree does not apply ({@link experienceGatesApply}: an AI seat, or the
- * progression toggle off) every civilian target is unthresholded; fighter-band jobs stay gated either
+ * progression toggle off) every civilian target is unthresholded; fighter jobs stay gated either
  * way, for the barracks-training path.
  */
 export function settlerMeetsNeed(
@@ -187,7 +188,9 @@ export function settlerMeetsNeed(
   targetId: number,
 ): boolean {
   const { tribe, owner, experience } = subject;
-  if (!experienceGatesApply(world, owner) && !(target === 'job' && isFighterJob(targetId))) return true;
+  if (!experienceGatesApply(world, owner) && !(target === 'job' && isFighterJob(ctx.content, targetId))) {
+    return true;
+  }
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
   for (const req of tribeType.jobRequirements) {

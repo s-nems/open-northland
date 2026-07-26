@@ -1,9 +1,10 @@
+import type { ContentSet } from '@open-northland/data';
 import { Age, Female, Marriage, Position, Settler, Wedding } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
-import { isFighterJob, SCOUT_JOB } from '../readviews/stances.js';
+import { isFighterJob, isScoutJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import { isMinor } from './households.js';
@@ -25,13 +26,13 @@ export function isFemaleJobId(id: string | undefined): boolean {
 }
 
 /**
- * Whether a settler of `jobType` is away on a mission — a soldier/hero (the fighter band) or the scout.
- * Such a settler neither marries nor comes home to its family (the wife does not wait for it); reverting
- * to any civilian trade restores family life. Source basis: user-specified design over the pinned job-id
- * bands ({@link isFighterJob}/{@link SCOUT_JOB}).
+ * Whether a settler of `jobType` is away on a mission — a fighter (soldier/hero) or the scout. Such a
+ * settler neither marries nor comes home to its family (the wife does not wait for it); reverting to any
+ * civilian trade restores family life. Source basis: user-specified design over the content-derived job
+ * roles ({@link isFighterJob}/{@link isScoutJob}).
  */
-export function isOnMission(jobType: number | null): boolean {
-  return isFighterJob(jobType) || jobType === SCOUT_JOB;
+export function isOnMission(content: ContentSet, jobType: number | null): boolean {
+  return isFighterJob(content, jobType) || isScoutJob(content, jobType);
 }
 
 /** Whether `e` is a grown settler: not carrying an {@link Age} (born-young marker) and not in a
@@ -46,14 +47,14 @@ export function isAdultSettler(world: World, e: Entity): boolean {
  *  not away on a mission ({@link isOnMission}). A widowed parent counts as married until the couple's
  *  child grows up or dies, when the widowing rule (`family/widowhood.ts`) removes the dead-spouse
  *  Marriage, so the raising carve-out is the one stale-marriage state this predicate still rejects. */
-export function mayMarry(world: World, e: Entity): boolean {
+export function mayMarry(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
   if (world.has(e, Wedding)) return false;
   const marriage = world.tryGet(e, Marriage);
   if (marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage))) {
     return false;
   }
-  return !isOnMission(world.get(e, Settler).jobType);
+  return !isOnMission(content, world.get(e, Settler).jobType);
 }
 
 /** Whether the marriage still has a growing child to raise (alive and still a minor). */
@@ -71,6 +72,7 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
  */
 export function findPartnerFor(
   world: World,
+  content: ContentSet,
   seeker: Entity,
   terrain: TerrainGraph | undefined,
   limit: NavigationLimit | null,
@@ -82,7 +84,7 @@ export function findPartnerFor(
   const seekerFemale = world.has(seeker, Female);
   let best: { entity: Entity; dist: number } | null = null;
   for (const e of canonicalById(world.query(Settler, Position))) {
-    if (e === seeker || !mayMarry(world, e)) continue;
+    if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe) continue;
     if (world.has(e, Female) === seekerFemale) continue; // same sex — a couple is a woman and a man
     const p = world.get(e, Position);

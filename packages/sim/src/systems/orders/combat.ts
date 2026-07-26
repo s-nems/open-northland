@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   AttackOrder,
   Building,
@@ -28,8 +29,13 @@ import { isOrderableSettler } from './guards.js';
  * the anchor to null (only `setStance(DEFEND)` sets an anchor). The caller guarantees `e` is owned; the
  * Stance component stays owned-only so no unowned/golden entity ever carries one.
  */
-export function stampDefaultStance(world: World, e: Entity, jobType: number | null): void {
-  world.add(e, Stance, { mode: defaultStanceForJob(jobType), anchorCell: null });
+export function stampDefaultStance(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  jobType: number | null,
+): void {
+  world.add(e, Stance, { mode: defaultStanceForJob(content, jobType), anchorCell: null });
 }
 
 /**

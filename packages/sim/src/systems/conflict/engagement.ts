@@ -1,10 +1,11 @@
+import type { ContentSet } from '@open-northland/data';
 import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
   defaultStanceForJob,
-  HUNTER_JOB,
+  isHunterJob,
   isLowPriorityBuildingTarget,
   MILITARY_MODE,
   type MilitaryMode,
@@ -41,9 +42,14 @@ export const DEFEND_LEASH_NODES = 12;
  * is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes an accidental
  * aggressor.
  */
-export function stanceMode(world: World, e: Entity, jobType: number | null): MilitaryMode {
+export function stanceMode(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  jobType: number | null,
+): MilitaryMode {
   const s = world.tryGet(e, Stance);
-  const mode = s === undefined ? defaultStanceForJob(jobType) : s.mode;
+  const mode = s === undefined ? defaultStanceForJob(content, jobType) : s.mode;
   return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
 }
 
@@ -110,7 +116,12 @@ export function engageSpec(
     };
   }
 
-  if (owned && !ordered && stance.mode === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
+  if (
+    owned &&
+    !ordered &&
+    stance.mode === MILITARY_MODE.IGNORE &&
+    isHunterJob(ctx.content, attacker.jobType)
+  ) {
     const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
     // player: null — never presence-gate a hunter: isHuntTarget is owner-blind (own-player-owned prey
     // is valid), so the gate's "not mine" class is no superset of this filter. Hunters are a

@@ -5,7 +5,7 @@ import type { HalfCellNode } from '../../nav/halfcell.js';
 import { withinNodeRadius } from '../../nav/node-metric.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode, routeRegions } from '../footprint/index.js';
-import { SCOUT_JOB } from '../readviews/stances.js';
+import { isScoutJob } from '../readviews/index.js';
 import { signpostNetwork, signpostProbe } from '../signposts/index.js';
 import type { AiPlayerModule } from './index.js';
 import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings, ownedSettlers } from './shared.js';
@@ -170,7 +170,9 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
 }
 
 function runSignpostCoverage(world: World, ctx: SystemContext, player: number): readonly Command[] {
-  const scout = ownedSettlers(world, player).find((e) => world.get(e, Settler).jobType === SCOUT_JOB);
+  const scout = ownedSettlers(world, player).find((e) =>
+    isScoutJob(ctx.content, world.get(e, Settler).jobType),
+  );
   if (scout === undefined) return [];
   // Busy — leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
   // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a

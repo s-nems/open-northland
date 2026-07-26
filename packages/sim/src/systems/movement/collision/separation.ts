@@ -83,12 +83,12 @@ export const separationSystem: System = (world, ctx) => {
   for (const e of world.query(PathFollow, Position)) {
     if (!hasSoftCollision(world, e)) continue;
     movers.push(e);
-    if (hasBodyCollision(world, e)) firmMovers.add(e);
+    if (hasBodyCollision(world, ctx.content, e)) firmMovers.add(e);
   }
   // An Obstructed counter survives only on a firm walker: arrival/re-route/re-tasking ends the grind, and a
   // profession change away from the fighting trades sheds it with the firm tier.
   for (const e of canonicalById(world.query(Obstructed))) {
-    if (!world.has(e, PathFollow) || !hasBodyCollision(world, e)) world.remove(e, Obstructed);
+    if (!world.has(e, PathFollow) || !hasBodyCollision(world, ctx.content, e)) world.remove(e, Obstructed);
   }
   if (movers.length === 0) return; // dormancy: nobody walking → nothing can overlap anything
   movers.sort((a, b) => a - b);
@@ -99,7 +99,7 @@ export const separationSystem: System = (world, ctx) => {
   const { posts } = scratch;
   if (firmMovers.size > 0) {
     for (const e of world.query(Settler, Position)) {
-      if (hasBodyCollision(world, e) && isStanding(world, e)) posts.push(e);
+      if (hasBodyCollision(world, ctx.content, e) && isStanding(world, e)) posts.push(e);
     }
   }
   const postIndex = new NodeBuckets(world, canonicalById(posts));

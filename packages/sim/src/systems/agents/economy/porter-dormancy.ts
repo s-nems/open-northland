@@ -186,8 +186,8 @@ function verifyDormancy(world: World): string[] {
       here: terrain.nodeAtClamped(hereNode.hx, hereNode.hy),
       targets: shared.targets,
       inbound: shared.inbound,
-      limit: navigationLimitFor(world, terrain, entity),
-      gossipCandidates: new GossipCandidates(world),
+      limit: navigationLimitFor(world, ctx.content, terrain, entity),
+      gossipCandidates: new GossipCandidates(world, ctx.content),
     };
     if (!sameEntry(entry, entryFor(plan))) continue; // the gate would re-scan — nothing elided
     if (porterPickupTarget(plan) !== null) {
