@@ -157,22 +157,25 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
 }
 
 /**
- * The settler's equipment as labeled rows: Broń + Zbroja for a soldier (a unit with a combat `Weapon`
- * component or an equipped weapon/armour slot), then Buty, Narzędzia, and the misc Ekwipunek row (its
- * {@link components.MISC_EQUIP_SLOTS} consumable slots) - combat gear first (user order 2026-07-23).
- * Reads the sim `Equipment` component; a settler without one shows every base slot empty. The
- * Broń/Zbroja rows are the original's soldier-only equip slots (`tribetypes` `allowequip`) - surfaced
- * here off the combat components the sim already stamps. A fighter trade keeps no tool (the sim's rule -
- * `shedToolOnEnlist`), so its Narzędzia row is dropped; a stray worn unit (a scene/spawn fixture) still
- * shows so it can be taken off.
+ * The settler's equipment as labeled rows: Broń + Zbroja for a fighter, then Buty, Narzędzia for a
+ * civilian, and the misc Ekwipunek row (its {@link components.MISC_EQUIP_SLOTS} consumable slots) -
+ * combat gear first (user order 2026-07-23). Reads the sim `Equipment` component; a settler without one
+ * shows every base slot empty.
+ *
+ * Which rows a trade offers follows the JOB, so changing profession swaps the arms rows for the tool row
+ * and back: Broń/Zbroja are the original's soldier-only equip slots (`tribetypes` `allowequip`), and a
+ * fighter keeps no tool (the sim's rule - `shedToolOnEnlist`). Two escapes keep worn gear reachable
+ * rather than stranded: a unit the job would not offer still shows its row while it is worn (so it can
+ * be taken off), and an armed non-fighter (a hunter/scout carrying a combat `Weapon`) keeps its arms
+ * rows.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;
   const eq = comps.Equipment as RawEquipment | undefined;
   const s = (comps.Settler ?? {}) as Comp;
   const rows: EquipRow[] = [];
-  const soldier = 'Weapon' in comps || eq?.weapon != null || eq?.armor != null;
-  if (soldier) {
+  const fighter = systems.isFighterJob(num(s.jobType) ?? null);
+  if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
       titleId: HUMANWINDOW.weapon,
       fallback: slots.weapon,
@@ -192,7 +195,7 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
     group: 'boots',
     slots: [slotModel(ctx, eq?.boots)],
   });
-  if (!systems.isFighterJob(num(s.jobType) ?? null) || eq?.tool != null) {
+  if (!fighter || eq?.tool != null) {
     rows.push({
       titleId: HUMANWINDOW.tools,
       fallback: slots.tools,

@@ -21,6 +21,7 @@ import {
   JOB_BABY_MALE,
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
+  JOB_SOLDIER,
 } from '../src/game/sandbox/ids/index.js';
 import { num } from '../src/game/snapshot.js';
 import {
@@ -587,6 +588,21 @@ describe('selection details panel model', () => {
     const strayModel = buildUnitPanelModel(straySnapshot, new Set([soldier.id]), ctx);
     if (strayModel.kind !== 'settler') throw new Error('expected a settler model');
     expect(strayModel.equipmentRows.map((r) => r.group)).toContain('tool');
+  });
+
+  it('swaps the arms rows for the tool row with the trade, on a settler wearing nothing yet', () => {
+    const rowsFor = (jobType: number): string[] => {
+      const snapshot = snapshotOf([{ id: 1, components: { Settler: { tribe: 1, jobType } } }]);
+      const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+      if (model.kind !== 'settler') throw new Error('expected a settler model');
+      return model.equipmentRows.map((r) => r.group);
+    };
+
+    // A freshly recruited soldier owns no weapon yet - the arms rows must still be there, or there is
+    // no slot to arm him through; his tool row is gone (a fighter keeps none).
+    expect(rowsFor(JOB_SOLDIER)).toEqual(['weapon', 'armor', 'boots', 'misc']);
+    // Back to a trade: the arms rows go, the tool row returns.
+    expect(rowsFor(JOB_COLLECTOR)).toEqual(['boots', 'tool', 'misc']);
   });
 
   it('shows empty equipment rows for a settler with no Equipment component', () => {
