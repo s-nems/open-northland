@@ -11,6 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { carriedGoodForm } from '../agents/economy/routing.js';
 import { interactionCell } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
@@ -25,8 +26,9 @@ import { canonicalById, NodeBuckets } from '../spatial.js';
 const RING_MAX_RADIUS = 48;
 
 /**
- * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding
- * an edible unit EXCEPT a home (a larder feeds only its own residents). Both family food-seekers — the
+ * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding a
+ * unit that reaches her back as an edible ({@link lowestStockedFood}) EXCEPT a home (a larder feeds
+ * only its own residents). Both family food-seekers — the
  * child-order haul stage and the housewife hoard rung — run per woman per tick, so the whole-world
  * `Stockpile+Position` scan lives HERE, once per tick, and each seeker pays a bounded ring search
  * (`NodeBuckets.nearest`); a world with no external food at all answers every seeker in O(1).
@@ -130,10 +132,16 @@ export class ExternalFoodIndex {
   }
 }
 
-/** A store's lowest stocked edible goodType (canonical order), or null when it holds none. */
+/**
+ * The lowest stocked good (canonical order) a family may take away from `store` as food, or null when
+ * it holds none. The test is on the good's CARRIED form ({@link carriedGoodForm}): a dish counts while
+ * it sits in the house that cooks it, because the lift turns it into the edible — the bakery's loaves
+ * are food to a woman fetching them, and a raw loaf resting in a warehouse still is not. The returned
+ * type is the RAW one to lift; the pickup effect performs the same conversion the search assumed.
+ */
 function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(store, Stockpile))) {
-    if (amount > 0 && isFood(ctx, goodType)) return goodType;
+    if (amount > 0 && isFood(ctx, carriedGoodForm(world, ctx, store, goodType))) return goodType;
   }
   return null;
 }
