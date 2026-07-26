@@ -1,26 +1,42 @@
-import { Building, JobAssignment } from '../../../components/index.js';
+import { Building, PlayerOrder, Position } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { type HalfCellNode, nodeOfPosition } from '../../../nav/halfcell.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { isCarrierJob } from '../../stores/index.js';
+import { MILITARY_MODE } from '../../readviews/stances.js';
 import { type BuildOrderEntry, barracksEntryIndex, type EntryStatus } from '../build-order/index.js';
-import { BARRACKS_BUILDING_ID, isBuilt, ownedBuildings } from '../shared.js';
+import { anchorNodeOf, BARRACKS_BUILDING_ID, firstRingNode, isBuilt, ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
 // RECRUITS — the army investment while barracks training is unimplemented (user decision
-// 2026-07-25): surplus men are posted into the barracks' transport (carrier) slots, so they stand
-// at the barracks as CIVILIANS — no soldier setJob, because the sim resolves a weapon from the
-// (tribe, job) binding for free and that would cheat the economy.
+// 2026-07-25, mechanism revised 2026-07-26): the ramp's share of the surplus takes the UNARMED
+// soldier trade and musters at the barracks under a DEFEND stance, so they hold the post instead of
+// charging out bare-handed. The unarmed trade is the honest interim: the sim resolves a weapon from
+// the (tribe, job) binding, so any armed trade would equip an army the economy never paid for.
 // TODO(barracks-training): when barracks recruitment/training lands
-// (docs/tickets/features/barracks-recruitment.md, barracks-training.md), these carrier-slot
-// recruits are the men to train and equip there.
+// (docs/tickets/features/barracks-recruitment.md, barracks-training.md), these mustered men are the
+// ones to train and equip there — the ramp below decides how many, that flow decides what they become.
+
+/** The recruit trade, by stable content id — `jobtypes.ini` type 31, the soldier band's unarmed
+ *  bottom. A content set without it hires nobody. */
+export const RECRUIT_JOB_ID = 'soldier_unarmed';
 
 /** The surplus share sent to the barracks the moment one stands (percent). */
 export const RECRUIT_PERCENT_AT_BARRACKS = 50;
 /** The surplus share once every build-order entry after the barracks is satisfied (percent). */
 export const RECRUIT_PERCENT_FULL = 100;
 const PERCENT_DENOMINATOR = 100;
+
+/** How far from its barracks a mustered recruit may stand before it is sent back — the muster ring
+ *  plus room to step aside (named approximation). */
+const MUSTER_RADIUS_NODES = 10;
+
+/** The recruit trade's typeId in this content set, or null when it declares none. */
+export function recruitJobOf(ctx: SystemContext): number | null {
+  return ctx.content.jobs.find((j) => j.id === RECRUIT_JOB_ID)?.typeId ?? null;
+}
 
 /**
  * The surplus share (percent) the seat invests in recruits — the army ramp: {@link
@@ -43,25 +59,33 @@ export function recruitPercent(order: readonly BuildOrderEntry[], statuses: read
   );
 }
 
-/** The lowest transport (carrier) trade in content, or null when the content has none. */
-function carrierJobOf(ctx: SystemContext): number | null {
-  let best: number | null = null;
-  for (const job of ctx.content.jobs) {
-    if (!isCarrierJob(ctx, job.typeId)) continue;
-    if (best === null || job.typeId < best) best = job.typeId;
-  }
-  return best;
+/** The `n`-th walkable node in canonical ring order around the barracks (the ring itself starts one
+ *  node out, so nobody is sent onto the door tile), or null when the ring holds none. Indexing the
+ *  ring rather than reusing one spot spreads the muster out deterministically. */
+function musterNode(terrain: TerrainGraph, barracks: HalfCellNode, n: number): HalfCellNode | null {
+  let seen = 0;
+  return firstRingNode(barracks.hx, barracks.hy, MUSTER_RADIUS_NODES, (x, y) => {
+    if (!terrain.inBounds(x, y) || !terrain.isWalkable(terrain.nodeAt(x, y))) return false;
+    if (x === barracks.hx && y === barracks.hy) return false;
+    return seen++ === n;
+  });
+}
+
+/** Whether the recruit already stands within {@link MUSTER_RADIUS_NODES} of its barracks. */
+function atMuster(world: World, recruit: Entity, barracks: HalfCellNode): boolean {
+  const p = world.tryGet(recruit, Position);
+  if (p === undefined) return false;
+  const here = nodeOfPosition(p.x, p.y);
+  return Math.abs(here.hx - barracks.hx) + Math.abs(here.hy - barracks.hy) <= MUSTER_RADIUS_NODES;
 }
 
 /**
- * Recruit keeping: `min(carrier capacity, ramp share of the surplus)` recruits stay posted at the
- * seat's built barracks. The surplus is the men this phase may govern — current recruits plus the
+ * Recruit keeping: the ramp share of the surplus takes the unarmed trade and musters at the seat's
+ * first built barracks. The surplus is the men this phase may govern — current recruits plus the
  * still unclaimed pool — so the ramp-down releases as naturally as the ramp-up hires; releases walk
  * the classification order backwards (highest entity id first — a deterministic pick, not a tenure
- * rule) and rejoin the pool as builders. Capacity is the barracks' own carrier slots (4 per
- * barracks in the base data) — the ceiling until real training adds a sink. The JobSystem may fill
- * a barracks slot on its own (a loose carrier reports in); such a man is indistinguishable from a
- * recruit and simply counts toward `desired`.
+ * rule) and rejoin the pool as builders. A recruit that wandered off its post is sent back, which is
+ * also how a recruit inherited from a razed barracks re-forms on the surviving one.
  */
 export function allocateRecruits(
   world: World,
@@ -73,24 +97,20 @@ export function allocateRecruits(
   force: SpareForce,
   builderJob: number | null,
 ): Command[] {
+  const terrain = ctx.terrain;
+  const recruitJob = recruitJobOf(ctx);
+  if (terrain === undefined || recruitJob === null) return [];
   const index = contentIndex(ctx.content);
-  const carrierJob = carrierJobOf(ctx);
-  if (carrierJob === null) return [];
-  const posts: Array<{ building: Entity; capacity: number }> = [];
+  let barracks: HalfCellNode | null = null;
   for (const e of ownedBuildings(world, player)) {
     if (!isBuilt(world, e)) continue;
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type === undefined || type.id !== BARRACKS_BUILDING_ID) continue;
-    let capacity = 0;
-    for (const slot of type.workers) {
-      if (isCarrierJob(ctx, slot.jobType)) capacity += slot.count;
-    }
-    posts.push({ building: e, capacity });
+    if (index.buildings.get(world.get(e, Building).buildingType)?.id !== BARRACKS_BUILDING_ID) continue;
+    barracks = anchorNodeOf(world, e);
+    if (barracks !== null) break; // the muster point: the seat's first built barracks
   }
-  const capacity = posts.reduce((sum, p) => sum + p.capacity, 0);
-  const percent = posts.length === 0 ? 0 : recruitPercent(order, statuses);
+  const percent = barracks === null ? 0 : recruitPercent(order, statuses);
   const surplus = recruits.length + force.remaining().length;
-  const desired = Math.min(capacity, Math.floor((surplus * percent) / PERCENT_DENOMINATOR));
+  const desired = Math.floor((surplus * percent) / PERCENT_DENOMINATOR);
 
   const commands: Command[] = [];
   if (recruits.length > desired) {
@@ -103,27 +123,23 @@ export function allocateRecruits(
     }
     return commands;
   }
-  // Ramp-up: fill barracks in canonical order, respecting each one's remaining slots.
-  const held = new Map<Entity, number>();
-  for (const r of recruits) {
-    const workplace = world.tryGet(r, JobAssignment)?.workplace;
-    if (workplace !== undefined) held.set(workplace, (held.get(workplace) ?? 0) + 1);
+  if (barracks === null) return commands;
+  // Send back whoever drifted (an order in flight is already a walk home — leave it be).
+  for (const [i, recruit] of recruits.entries()) {
+    if (atMuster(world, recruit, barracks) || world.has(recruit, PlayerOrder)) continue;
+    const spot = musterNode(terrain, barracks, i);
+    if (spot !== null) commands.push({ kind: 'moveUnit', entity: recruit, x: spot.hx, y: spot.hy });
   }
-  let need = desired - recruits.length;
-  for (const post of posts) {
-    let free = post.capacity - (held.get(post.building) ?? 0);
-    while (free > 0 && need > 0) {
-      const spare = force.take();
-      if (spare === null) return commands;
-      commands.push({
-        kind: 'assignWorker',
-        entity: spare,
-        building: post.building,
-        jobPriority: [carrierJob],
-      });
-      free--;
-      need--;
-    }
+  for (let posted = recruits.length; posted < desired; posted++) {
+    const spare = force.take();
+    if (spare === null) break;
+    const spot = musterNode(terrain, barracks, posted);
+    if (spot === null) break;
+    // Order matters: the trade change re-stamps the trade's default stance (ATTACK for the soldier
+    // band), and the move re-anchors the DEFEND post onto the muster node it walks to.
+    commands.push({ kind: 'setJob', entity: spare, jobType: recruitJob });
+    commands.push({ kind: 'setStance', entity: spare, mode: MILITARY_MODE.DEFEND });
+    commands.push({ kind: 'moveUnit', entity: spare, x: spot.hx, y: spot.hy });
   }
   return commands;
 }

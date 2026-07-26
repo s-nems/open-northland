@@ -8,10 +8,12 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
 import { farmWorkGood } from '../farming.js';
+import { liveWorkFlag } from '../flags.js';
 import { bindEmployment } from './binding.js';
 import {
   buildStaffingTally,
   incrementStaffing,
+  jobUnderstaffed,
   type OpeningsQuery,
   openJobAt,
   openPostFor,
@@ -29,9 +31,10 @@ import {
  *
  * Two passes per settler, in canonical (ascending entity-id) order — the first open match wins, so the
  * assignment never depends on component-store insertion order (the AGENTS.md rule: a pick must be canonical):
- *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it staffs is
- *     bound to the building under its feet. This makes the binding authoritative for a settler spawned
- *     pre-employed onto its station, with no behavior change. **1b. Report in** — a loose carrier not standing
+ *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it staffs, and
+ *     whose slots still have room, is bound to the building under its feet. This makes the binding
+ *     authoritative for a settler spawned pre-employed onto its station. A gatherer working a patch it was
+ *     pinned to is exempt ({@link pinnedToPatch}). **1b. Report in** — a loose carrier not standing
  *     on a post takes the first open transport slot anywhere (see the pass 1b comment): the haul drive works
  *     only through a binding, so an unposted carrier would otherwise never work.
  *  2. **Assign** — an idle settler (`jobType === null`) is matched to the first open workplace, in canonical
@@ -97,7 +100,7 @@ export const jobSystem: System = (world, ctx) => {
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
-      const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, settler.tribe, settler.jobType);
+      const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, query, settler.jobType);
       if (here !== null) {
         bind(world, ctx, staffing, e, here, settler.jobType);
       } else if (isCarrierJob(ctx, settler.jobType)) {
@@ -120,6 +123,20 @@ export const jobSystem: System = (world, ctx) => {
     }
   }
 };
+
+/**
+ * Whether the settler is a gatherer under a standing gather order — a live work flag PINNED to one good
+ * (`setGatherGood`, or a scene's pinned camp gatherer). Its work is that patch, so the doors it crosses
+ * hauling to and from it are incidental; without this it is conscripted by whatever workshop door it
+ * walks past that happens to employ its trade, and its patch goes unworked.
+ *
+ * An unpinned flag does not count: that is the flag auto-planted under any fresh gatherer
+ * (`plantWorkFlagAtFeet`), including the workshop crews a scene spawns onto their stations, which the
+ * adopt pass still binds.
+ */
+function pinnedToPatch(world: World, settler: Entity): boolean {
+  return liveWorkFlag(world, settler)?.goodType !== undefined;
+}
 
 /** The settlers either pass can act on. Safe to snapshot ahead of the loop: a binding is only ever
  *  stamped on the settler being visited, so no candidate here becomes bound by another's turn. */
@@ -146,25 +163,31 @@ function bind(
 }
 
 /**
- * The workplace a `tribe` settler is standing on that it staffs — used to adopt a pre-employed, unbound
+ * The workplace a settler is standing on that it staffs — used to adopt a pre-employed, unbound
  * settler (bind it to the building under its feet). A candidate is a same-tribe same-tile {@link Building}
  * that works its workers — a `recipe` workplace (a producing workshop, not a passive store/HQ) or a farm
  * (producing a field-farmed good, {@link farmWorkGood}, with no recipe but a field loop) — whose `workers`
- * slots name `jobType`. The first such building in canonical order is the binding. Returns the building or null.
+ * slots name `jobType` AND still have room for one ({@link jobUnderstaffed}). A gatherer pinned to a patch
+ * is never adopted ({@link pinnedToPatch}). The first such building in canonical order is the binding.
+ * Returns the building or null.
  *
- * The `tribe` filter keeps the binding consistent with {@link boundWorkplaceTarget} (the walk drive rejects a
+ * The tribe filter keeps the binding consistent with {@link boundWorkplaceTarget} (the walk drive rejects a
  * cross-tribe binding), so we never adopt a settler onto an other-tribe workshop it happens to stand on. It
  * mirrors the AI staffs-here pin's predicate (recipe + worker-job + same tile), so the building adopted here is
- * the one the AI already holds the settler on.
+ * the one the AI already holds the settler on. The capacity gate is the only openness rule this pass runs:
+ * the tech/XP gates stay off (a map may author a settler onto a station it could not apply for), but a slot
+ * count is an invariant — every other path respects it, and without it a workshop beside a busy walking
+ * route accumulates unbounded staff.
  */
 function workplaceStaffedHereBy(
   buildingsByNode: NodeBuckets,
   world: World,
   ctx: SystemContext,
   settler: Entity,
-  tribe: number,
+  query: OpeningsQuery,
   jobType: number,
 ): Entity | null {
+  if (pinnedToPatch(world, settler)) return null;
   const sp = world.tryGet(settler, Position);
   if (sp === undefined) return null;
   // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket
@@ -172,11 +195,12 @@ function workplaceStaffedHereBy(
   const spNode = nodeOfPosition(sp.x, sp.y);
   for (const b of buildingsByNode.at(spNode.hx, spNode.hy)) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
-    if (building.tribe !== tribe) continue;
+    if (building.tribe !== query.tribe) continue;
     if (!sameSide(world, settler, b)) continue; // another player's workplace (same tribe isn't same side)
     // Only a workplace that WORKS its staff pins them: a recipe workshop, or a farm (field loop).
     if (mergedRecipeOf(world, ctx, b) === undefined && farmWorkGood(world, ctx, b) === null) continue;
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
+    if (!jobUnderstaffed(query, b, jobType)) continue; // its slots for this trade are full
     return b;
   }
   return null;

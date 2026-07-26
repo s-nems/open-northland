@@ -42,6 +42,7 @@ import {
 import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { stampResourceFootprintData } from '../../src/systems/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/stances.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -62,6 +63,8 @@ const FARMER = 18;
 const BAKER = 20;
 const CARRIER = 24;
 const SCOUT = 27;
+/** The unarmed soldier trade the recruit muster posts (`RECRUIT_JOB_ID`). */
+const RECRUIT = 31;
 const WOMAN = 5;
 const HQ_TYPE = 1;
 const HOME_TYPE = 2;
@@ -628,7 +631,15 @@ describe('workforce module — recruits and craft selections', () => {
     return sim;
   }
 
-  it('posts half the surplus into the barracks carrier slots at the 50% ramp stage', () => {
+  const barracksOf = (sim: Simulation): Entity => entityOfBuilding(sim, BARRACKS_TYPE);
+
+  /** The men this decision musters: each takes the unarmed trade, the guard stance, and a walk to
+   *  the barracks. */
+  function mustered(commands: readonly Command[]): Entity[] {
+    return commands.flatMap((c) => (c.kind === 'setJob' && c.jobType === RECRUIT ? [c.entity] : []));
+  }
+
+  it('musters half the surplus as unarmed soldiers at the 50% ramp stage', () => {
     const sim = barracksSim(16);
     // A half-way order: the barracks entry is satisfied, the stock entry after it is not — 50%.
     const halfway = workforceModule([
@@ -636,28 +647,29 @@ describe('workforce module — recruits and craft selections', () => {
       { kind: 'place', building: 'stock_02', count: 2 },
     ]);
     const commands = [...halfway.run(sim.world, ctxOf(sim), SEAT)];
-    const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
-    const recruits = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === barracks);
     // 16 men: scout + HQ carrier + 8 reserve + 2 HQ target carriers = 12 claimed, 4 surplus → 50%
-    // of 4 = 2 recruits, both into carrier slots.
-    expect(recruits.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER]]);
+    // of 4 = 2 recruits. Nobody is posted INTO the barracks — it employs no recruit (user rule
+    // 2026-07-26); they stand beside it under DEFEND.
+    const recruits = mustered(commands);
+    expect(recruits.length).toBe(2);
+    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === barracksOf(sim))).toEqual([]);
+    for (const e of recruits) {
+      expect(commands).toContainEqual({ kind: 'setStance', entity: e, mode: MILITARY_MODE.DEFEND });
+      expect(commands.some((c) => c.kind === 'moveUnit' && c.entity === e)).toBe(true);
+    }
 
-    // Recognized next decision: recruits hold their barracks post, no churn.
+    // Recognized next decision: recruits hold their post, no churn.
     for (const c of commands) sim.enqueue(c);
     sim.step();
-    const next = [...halfway.run(sim.world, ctxOf(sim), SEAT)];
-    expect(next.filter((c) => c.kind === 'assignWorker' && c.building === barracks)).toEqual([]);
+    expect(mustered([...halfway.run(sim.world, ctxOf(sim), SEAT)])).toEqual([]);
   });
 
-  it('posts the whole surplus (up to the slot capacity) once the order is complete', () => {
+  it('musters the whole surplus once the order is complete', () => {
     const sim = barracksSim(18);
     const complete = workforceModule([{ kind: 'place', building: 'barracks', count: 1 }]);
-    const commands = [...complete.run(sim.world, ctxOf(sim), SEAT)];
-    const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
-    const recruits = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === barracks);
     // 18 men: scout + HQ carrier + 8 reserve + 2 HQ target carriers = 12 claimed, 6 surplus → 100%
-    // wants all six, but the barracks offers four carrier slots — the capacity clamp.
-    expect(recruits.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER], [CARRIER], [CARRIER]]);
+    // takes all six. The old barracks-slot ceiling is gone: the ramp is the only limit.
+    expect(mustered([...complete.run(sim.world, ctxOf(sim), SEAT)]).length).toBe(6);
   });
 
   it('releases surplus recruits when the ramp share drops', () => {
@@ -680,9 +692,7 @@ describe('workforce module — recruits and craft selections', () => {
   it('recruits nobody while the seat runs with the military module off', () => {
     const sim = barracksSim(18, { military: false });
     const complete = workforceModule([{ kind: 'place', building: 'barracks', count: 1 }]);
-    const commands = [...complete.run(sim.world, ctxOf(sim), SEAT)];
-    const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
-    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === barracks)).toEqual([]);
+    expect(mustered([...complete.run(sim.world, ctxOf(sim), SEAT)])).toEqual([]);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {
@@ -806,8 +816,9 @@ describe('build-order module (houseBuild)', () => {
 
     // Past the gate: the barracks, the bakery upgrade, then the 2026-07-25 tail — the tower
     // coverage entry rests (everything sits inside the HQ circle on this map), the second bakery
-    // arrives directly at its level-2 tier, the second brewery, two more homes (the five-home
-    // count includes the three upgraded ones), and the two outskirts warehouses end the list.
+    // arrives directly at its level-2 tier, the second brewery, and the two outskirts warehouses
+    // end the list. The five-home entry names `home_level_04`, a tier this content set stops short
+    // of, so it skips here — the direct top-tier placement has its own test below.
     const barracks = nextPlacement(sim);
     if (barracks?.kind !== 'placeBuilding') throw new Error('expected the barracks placement');
     expect(barracks.buildingType).toBe(BARRACKS_TYPE);
@@ -816,14 +827,7 @@ describe('build-order module (houseBuild)', () => {
     if (upgrade?.kind !== 'upgradeBuilding') throw new Error('expected the bakery upgrade');
     expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
     applyAndFinish(sim, upgrade);
-    for (const expected of [
-      BAKERY_TOP_TYPE,
-      BREWERY_TYPE,
-      HOME_TYPE,
-      HOME_TYPE,
-      STOCK_TOP_TYPE,
-      STOCK_TOP_TYPE,
-    ]) {
+    for (const expected of [BAKERY_TOP_TYPE, BREWERY_TYPE, STOCK_TOP_TYPE, STOCK_TOP_TYPE]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);
@@ -856,6 +860,18 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     const upgradeOnly = buildOrderModule([{ kind: 'upgrade', building: 'home_level_02', count: 1 }]);
     expect([...upgradeOnly.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('places a further home straight at the top tier instead of growing it', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    // The tail's housing rule (user decision 2026-07-26): the opening homes walk the upgrade chain,
+    // but every home after them is placed at the top tier outright — its own construction bill.
+    const topHomes = buildOrderModule([{ kind: 'place', building: 'home_level_02', count: 1 }]);
+    const first = [...topHomes.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (first?.kind !== 'placeBuilding') throw new Error('expected the top-tier home placement');
+    expect(first.buildingType).toBe(HOME_TOP_TYPE);
   });
 
   it('counts an upgraded building for its place entry instead of building a duplicate', () => {
@@ -1448,13 +1464,12 @@ describe('the full strategic registry — determinism and replay', () => {
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
-    // TOP-tier homes plus the tail's two level-0 ones, the upgraded bakery AND the direct-placed
-    // second level-2 bakery, two breweries, the joinery, the barracks, and both outskirts
-    // warehouses (every building sits inside the HQ's 29-node circle, so no tower is needed).
+    // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
+    // skip here), the upgraded bakery AND the direct-placed second level-2 bakery, two breweries,
+    // the joinery, the barracks, and both outskirts warehouses (every building sits inside the HQ's
+    // coverage circle, so no tower is needed).
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
-        HOME_TYPE,
-        HOME_TYPE,
         HOME_TOP_TYPE,
         HOME_TOP_TYPE,
         HOME_TOP_TYPE,

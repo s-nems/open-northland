@@ -3,11 +3,13 @@ import {
   AiPlayer,
   aiModuleEnables,
   Building,
+  DeliveryFlag,
   JobAssignment,
   Owner,
   Position,
   Settler,
   setProfessionProgression,
+  WorkFlag,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -33,7 +35,7 @@ const WOODCUTTER = 1; // the HQ's worker job
 const CARRIER = 36; // the HQ's transport-slot job
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
 const GENERAL_TRACK = 2; // the woodcutter-general track (factor 1), fed alongside the wood track
-const WOOD_GOOD = 1; // the harvestable good the woodcutter's specific track trains on
+const WOOD_GOOD = 1; // the woodcutter's specific track trains on it; a pinned gatherer collects it
 const HQ = 1; // building type: 3 woodcutter slots + a transport slot
 const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
@@ -323,5 +325,59 @@ describe('the civilist trade — the Cywil order pins a settler jobless', () => 
 
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: e, jobType: WOODCUTTER });
     expect(sim.world.get(e, Settler).jobType).toBe(WOODCUTTER); // re-traded normally
+  });
+});
+
+/**
+ * The adopt pass (pass 1) binds a pre-employed settler to the workplace under its feet. Its two
+ * limits: the slot count still applies, and a gatherer working a planted flag is passing by, not
+ * reporting for duty. Without them a workshop beside a walking route collects staff without bound
+ * (the reported "30/2 collectors in the pottery") and the flag gatherer it swallows stops gathering.
+ */
+describe('JobSystem — adopting the pre-employed settler standing on a workplace', () => {
+  /** Put `e` at the sawmill's tile — the adopt pass reads the tile under the settler's feet. */
+  function standOnSawmill(sim: Simulation, e: Entity): void {
+    sim.world.get(e, Position).x = fx.fromInt(5);
+    sim.world.get(e, Position).y = fx.fromInt(5);
+  }
+
+  /** Bind `e` to a work flag of its own, optionally pinned to one good (`setGatherGood`). */
+  function flagFor(sim: Simulation, e: Entity, goodType?: number): void {
+    const flag = sim.world.create();
+    sim.world.add(flag, Position, { x: fx.fromInt(9), y: fx.fromInt(9) });
+    sim.world.add(flag, DeliveryFlag, {});
+    sim.world.add(e, WorkFlag, { flag, radius: 8, ...(goodType !== undefined ? { goodType } : {}) });
+  }
+
+  it('adopts only as many as the slot holds', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, SAWMILL, 5, 5); // exactly one carpenter slot
+    const first = settler(sim, CARPENTER);
+    const second = settler(sim, CARPENTER);
+    standOnSawmill(sim, first);
+    standOnSawmill(sim, second);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(first, JobAssignment)).toBe(true);
+    expect(sim.world.has(second, JobAssignment)).toBe(false); // the slot is taken — it stays loose
+  });
+
+  it('leaves a gatherer pinned to a patch alone, but adopts one with a bare flag', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    const pinned = settler(sim, CARPENTER);
+    const unpinned = settler(sim, CARPENTER);
+    standOnSawmill(sim, pinned);
+    standOnSawmill(sim, unpinned);
+    flagFor(sim, pinned, WOOD_GOOD);
+    flagFor(sim, unpinned); // the flag auto-planted under any fresh gatherer — no standing order
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    // The pinned one is out working its patch; the bare-flag one is a crew member on its station,
+    // so the single slot goes to it (and the pinned one does not take it even though it is first).
+    expect(sim.world.has(pinned, JobAssignment)).toBe(false);
+    expect(sim.world.has(unpinned, JobAssignment)).toBe(true);
   });
 });

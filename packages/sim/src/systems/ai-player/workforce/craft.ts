@@ -6,10 +6,12 @@ import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { goodTypeByContentId, ownedSettlers } from '../shared.js';
 
-/** Product restrictions per workplace, by stable content ids (user plan 2026-07-25: the joinery
- *  crafts iron tools only — its wooden tools and furniture are of no interest to the seat). */
+/** Product restrictions per workplace, by stable content ids (user plan 2026-07-25, extended
+ *  2026-07-26: the joinery crafts iron tools only, and the level-2 pottery alternates brick and roof
+ *  tile — the building materials the plan consumes; its crockery is of no interest to the seat). */
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly string[]>> = {
   work_joinery_01: ['tool_iron'],
+  work_pottery_01: ['brick', 'tile'],
 };
 
 /**

@@ -19,6 +19,7 @@ export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
   DEFAULT_COLLECTOR_TARGET,
+  RECRUIT_JOB_ID,
   STAFFING_BY_BUILDING_ID,
 } from './ai-player/workforce/index.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index.js';
