@@ -68,8 +68,9 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *    civ⇄aggressive-animal, hunter→catchable-prey, and a struck `getAngry` animal fighting back.
  *
  * Two reach radii: the weapon's extracted `[minRange, maxRange]` band is where a swing lands, while the
- * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on. An
- * unowned combatant has no advance drive (its search radius is just `maxRange`).
+ * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on. A
+ * hostile wild animal advances too, within its shorter {@link ANIMAL_AGGRO_RADIUS_NODES} ambush radius;
+ * an unowned CIV combatant has no advance drive (its search radius is just `maxRange`).
  */
 export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
@@ -104,19 +105,21 @@ export const combatSystem: System = (world, ctx) => {
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
   // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
   // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
-  // Passive-now wildlife is discounted (`passiveNow`): a gated seeker can never validly target a
-  // non-hostile unowned animal (hunters are never gated), so a map's hundreds of grazing herd members
-  // must not turn every civilian's flee scan and every soldier's sight scan back on. Pure reads only —
-  // the lapsed-Anger reap stays with the attacker pass (hostileAnimalNow).
-  const passiveAnimalNow = (t: Entity): boolean => {
-    if (world.has(t, Owner)) return false;
+  // Wildlife is classified out of the coarse counts (`wildClassOf`): passive-now animals are discounted
+  // for every gated seeker (no gated seeker can validly target them; hunters are never gated), and
+  // hostile ones additionally for the animal seekers' civ estimate (a wolf pack must not defeat its own
+  // members' early-out) — a map's hundreds of herd members must not turn every civilian's flee scan and
+  // every soldier's sight scan back on. Pure reads only — the lapsed-Anger reap stays with the attacker
+  // pass (hostileAnimalNow).
+  const wildClassOf = (t: Entity): 'passive' | 'hostile' | null => {
+    if (world.has(t, Owner)) return null;
     const s = world.tryGet(t, Settler);
-    if (s === undefined || !isAnimalTribe(ctx.content, s.tribe)) return false;
-    if (isAggressiveAnimal(ctx.content, s.tribe)) return false;
+    if (s === undefined || !isAnimalTribe(ctx.content, s.tribe)) return null;
+    if (isAggressiveAnimal(ctx.content, s.tribe)) return 'hostile';
     const anger = world.tryGet(t, Anger);
-    return anger === undefined || ctx.tick >= anger.until;
+    return anger !== undefined && ctx.tick < anger.until ? 'hostile' : 'passive';
   };
-  const presence = new HostilePresence(world, targets, undefined, nodesOf, passiveAnimalNow);
+  const presence = new HostilePresence(world, targets, undefined, nodesOf, wildClassOf);
 
   // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
   // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is
@@ -212,7 +215,8 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
  *  - else resolve a target under the stance's {@link engageSpec} (ATTACK: sight; DEFEND: anchor radius;
  *    IGNORE-hunter: prey) and swing (in reach) / chase (owned, leashed for DEFEND) / return-to-anchor
  *    (DEFEND, none) / disengage (none).
- * Unowned combatants carry no Stance and keep the content-relation behaviour (swing-in-place).
+ * Unowned combatants carry no Stance and keep the content-relation behaviour: a hostile animal ambushes
+ * (advances within its aggro radius), everything else swings in place.
  */
 function engageCombatant(
   world: World,
@@ -324,9 +328,11 @@ function engageCombatant(
     return;
   }
 
-  // Beyond reach: only an owned combatant advances. An unowned one's resolveTarget radius was capped at
-  // maxRange, so its branch here is unreachable — kept explicit rather than assumed away.
-  if (!owned) {
+  // Beyond reach: an owned combatant advances, and so does a hostile wild animal (the wolf's ambush
+  // lunge, the provoked bear's charge — resolveTarget only admits a victim inside its aggro radius). An
+  // unowned scenario CIV keeps the swing-in-place read: its search radius was capped at maxRange, so
+  // its branch here is unreachable — kept explicit rather than assumed away.
+  if (!owned && !isAnimalTribe(ctx.content, attacker.tribe)) {
     disengage(world, e);
     return;
   }

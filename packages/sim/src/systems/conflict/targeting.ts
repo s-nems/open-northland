@@ -26,6 +26,12 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readvi
  */
 export const SIGHT_RADIUS_NODES = 16;
 
+/** How far a hostile wild animal (an aggressive wolf, a provoked bear) spots a civilization victim to
+ *  advance on — the animal twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat
+ *  sight radius"): no readable aggro field exists; half a soldier's sight reads as an ambush radius
+ *  (the wolf lunges when a settler strays close), not a map-wide hunt. */
+export const ANIMAL_AGGRO_RADIUS_NODES = 8;
+
 /** Whether `t` is a live target this attacker may swing at — a positioned, `Health`-bearing enemy
  *  settler OR an enemy building (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget}
  *  hostility relation holds. The shared predicate behind both the attack-order validity check and the
