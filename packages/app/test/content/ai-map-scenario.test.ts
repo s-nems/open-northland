@@ -1,10 +1,11 @@
 import { existsSync } from 'node:fs';
-import { components } from '@open-northland/sim';
+import { components, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
 const { Building, Owner, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
+const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } = systems;
 
 /** The decoded map under test — a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -46,7 +47,8 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     expect(sites).toBe(1); // one site at a time (the concurrent-construction cap)
     // The workforce allocator flagged collectors beside real resources: each owned flag-bound
     // gatherer is pinned to one collected good. How many of the three goods get a collector depends
-    // on what the map actually holds, but a forest map guarantees at least the wood one.
+    // on what the map actually holds, but a forest map guarantees at least the wood one, and no good
+    // may exceed its plan target (`COLLECTOR_TARGET_BY_GOOD_ID`, default 1).
     const pinned: number[] = [];
     for (const e of sim.world.query(Settler, WorkFlag)) {
       if (sim.world.tryGet(e, Owner)?.player !== AI_SEAT) continue;
@@ -54,7 +56,13 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
       if (goodType !== undefined) pinned.push(goodType);
     }
     expect(pinned.length).toBeGreaterThanOrEqual(1);
-    expect(pinned.length).toBeLessThanOrEqual(3);
-    expect(new Set(pinned).size).toBe(pinned.length); // one collector per good, never two
+    const goodIdOf = new Map((ir.goods ?? []).map((g) => [g.typeId, g.id]));
+    for (const goodType of new Set(pinned)) {
+      const goodId = goodIdOf.get(goodType) ?? '';
+      const target = COLLECTOR_TARGET_BY_GOOD_ID[goodId] ?? DEFAULT_COLLECTOR_TARGET;
+      expect(pinned.filter((g) => g === goodType).length, `collectors of ${goodId}`).toBeLessThanOrEqual(
+        target,
+      );
+    }
   });
 });
