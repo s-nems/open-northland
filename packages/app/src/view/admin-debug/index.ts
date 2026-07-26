@@ -24,7 +24,9 @@ import {
 import { type Armed, createAdminLabels, sameArmed } from './labels.js';
 import { createFogSwitcher, createGeometryToggle, createNeedsToggle } from './live-toggles.js';
 import {
+  type AnimalEntry,
   ARMOR_CLASSES,
+  animalSpawnCommand,
   CIVILIAN_PRESETS,
   type GoodEntry,
   goodDropCommand,
@@ -79,6 +81,9 @@ export interface AdminDebugDeps {
    *  as a loose ground pile. Driven from the live content so the palette always matches whatever the view
    *  runs (sandbox or the real extracted goods) and every entry clears the sim's `dropGood` content guard. */
   readonly goods: readonly GoodEntry[];
+  /** Every living animal species the running content records (`sim.content.animals` joined to its
+   *  tribe slug), each spawnable as its data-pinned herd. Empty/absent hides the wildlife section. */
+  readonly animals?: readonly AnimalEntry[];
   /** The sim's live needs-rule state — drawn on the "Potrzeby" toggle button so it reflects the entry's
    *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */
   readonly needsEnabled?: () => boolean;
@@ -231,6 +236,17 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     CIVILIAN_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     false,
   );
+  // Zwierzęta — every living species the running content records; one click drops its data-pinned herd
+  // (unowned, so the player/HP/armor knobs don't apply). The filter narrows a real map's ~30 species.
+  const animals = deps.animals ?? [];
+  if (animals.length > 0) {
+    addPaletteSection(
+      copy.animals,
+      animals.map((entry) => ({ label: labels.animal(entry), armed: { kind: 'animal', entry } })),
+      false,
+      copy.filterAnimals,
+    );
+  }
   addPaletteSection(
     copy.resources,
     RESOURCE_ENTRIES.map((r) => ({ label: labels.good(r), armed: { kind: 'resource', good: r.good } })),
@@ -272,6 +288,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   /** A spawn arm places at a tile; the loose-good/resource/unit variants each map to their command. */
   const spawnAtTile = (col: number, row: number): void => {
     if (armed === null || armed.kind === 'action') return;
+    if (armed.kind === 'animal') {
+      deps.enqueue(animalSpawnCommand(armed.entry.tribe, col, row));
+      return;
+    }
     if (armed.kind === 'resource') {
       const command = resourceCommand(armed.good, col, row);
       if (command !== null) deps.enqueue(command);

@@ -70,6 +70,19 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     // The droppable-goods palette is the running content's own goods (sandbox on a bare checkout, the real
     // extracted goods on a scene/map) — the one source, so every listed good actually drops.
     goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
+    // The wildlife palette: every LIVING recorded species (a hitpoints-0 record is a decorative swarm
+    // whose spawn places nothing), labelled by its tribe slug, deduplicated (the real animaltypes
+    // author elephants twice) and in canonical tribe order.
+    animals: [
+      ...new Map(
+        sim.content.animals
+          .filter((a) => a.hitpointsAdult > 0)
+          .map((a) => [
+            a.tribeType,
+            { tribe: a.tribeType, id: sim.content.tribes.find((t) => t.typeId === a.tribeType)?.id ?? a.id },
+          ]),
+      ).values(),
+    ].sort((a, b) => a.tribe - b.tribe),
     // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
     // sanctioned read accessor (the placementProbe pattern), never the live component stores.
     needsEnabled: () => sim.needsEnabled(),

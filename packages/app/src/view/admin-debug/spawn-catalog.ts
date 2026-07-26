@@ -103,6 +103,20 @@ export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'collector', jobType: JOB_COLLECTOR },
 ];
 
+/** One spawnable animal species: its tribe + a label slug (the tribe's content id, e.g. `wolves`).
+ *  Driven from the LIVE content's `animals` records like the goods palette, so the palette always
+ *  matches what the running world can actually spawn (sandbox: three species; a real map: all). */
+export interface AnimalEntry {
+  readonly tribe: number;
+  readonly id: string;
+}
+
+/** Build the `spawnAnimalHerd` command at a tile — one click drops the species' data-pinned herd
+ *  (group size, leader, scatter all come from its `animaltypes` record; the sim owns those). */
+export function animalSpawnCommand(tribe: number, x: number, y: number): Command {
+  return { kind: 'spawnAnimalHerd', tribe, x, y };
+}
+
 /** One spawnable resource node: its good's typeId + its string id (a short material label). */
 export interface ResourceEntry {
   readonly good: number;
