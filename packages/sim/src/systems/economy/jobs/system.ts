@@ -68,8 +68,9 @@ export const jobSystem: System = (world, ctx) => {
 
     // Wildlife never takes a trade: an animal is a permanently idle `jobType: null` Settler, so
     // without this skip every creature on a map re-scans every workplace's openness each tick
-    // (O(animals × buildings) — the RTS-scale budget). No opening could ever match anyway (an animal
-    // tribe tech-enables nothing).
+    // (O(animals × buildings) — the RTS-scale budget). No opening could ever match anyway: no content
+    // building carries an animal tribe, so the workplace-tribe match blocks (NOT the unlock gate - an
+    // animal tribe's EMPTY tech graph gates nothing, `tribeUnlockEnabled` answers true).
     if (isAnimalTribe(ctx.content, settler.tribe)) continue;
 
     // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs

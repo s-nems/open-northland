@@ -64,7 +64,9 @@ const LONG_BOW_DAMAGE = 700; // long_bow
 // never collides across tribes. The source rows carry `jobtype 49` (one bearfist twin 34) and
 // `goodtype 0`; the sandbox jobs table does not model the animal pseudo-jobs and the jobless-animal
 // binding reads the tribe's first weapon row regardless, so the rows ship job-less, and the good ref
-// is dropped (transcribing `goodtype 0` would wrongly count good 0 among the military goods).
+// is dropped (transcribing `goodtype 0` would wrongly count good 0 among the military goods). The
+// source `maintype 1` is dropped too: a weapon class only feeds fight XP, which wildlife never
+// accrues (`grantFightExperience`'s animal gate), so the column is dead weight on an animal row.
 const ANIMAL_FIST_TYPE = 1;
 const BEAR_FIST_DAMAGE = 800;
 const WOLF_FIST_DAMAGE = 350;

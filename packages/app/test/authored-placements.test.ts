@@ -67,8 +67,14 @@ describe('resolveAuthoredPlacements', () => {
         { typeId: 16, id: 'hares', name: 'hares' },
         { typeId: 18, id: 'evil_hares', name: 'evil hares' },
         { typeId: 12, id: 'deers', name: 'deers' }, // tribe row without an animals row
+        { typeId: 35, id: 'butterflys', name: 'butterflys' }, // decorative swarm (hitpoints 0)
       ],
-      animals: [{ tribeType: 10 }, { tribeType: 16 }, { tribeType: 18 }],
+      animals: [
+        { tribeType: 10, hitpointsAdult: 500 },
+        { tribeType: 16, hitpointsAdult: 200 },
+        { tribeType: 18, hitpointsAdult: 200 },
+        { tribeType: 35, hitpointsAdult: 0 }, // the real butterflies: a swarm the sim never spawns
+      ],
     };
     const entities = {
       buildings: [],
@@ -80,6 +86,7 @@ describe('resolveAuthoredPlacements', () => {
         { species: 'deers', hx: 4, hy: 1 }, // no animals row → the sim would drop it: skip + count
         { species: 'gryphons', hx: 5, hy: 1 }, // unknown species → skip + count
         { species: 'hares', hx: 99, hy: 1 }, // out of bounds → skip + count
+        { species: 'butterflys', hx: 6, hy: 1 }, // hitpoints-0 swarm → spawns nothing: skip + count
       ],
     };
     const { placements, skippedAnimals } = resolveAuthoredPlacements(entities, rows, authoredMap());
@@ -89,7 +96,7 @@ describe('resolveAuthoredPlacements', () => {
       { kind: 'animal', tribe: 18, x: 2, y: 1 },
       { kind: 'animal', tribe: 10, x: 3, y: 1 },
     ]);
-    expect(skippedAnimals).toBe(3);
+    expect(skippedAnimals).toBe(4);
   });
 
   it("resolves a gatherer's authored setproducedgood, dropping an unknown pick without its settler", () => {

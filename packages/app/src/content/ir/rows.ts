@@ -186,9 +186,11 @@ export interface ContentIr {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
-  /** The `animaltypes.ini` records, read only for tribe membership: which tribes ARE animals (the
-   *  species-look and authored-placement joins key on `tribeType`; behaviour fields stay sim-side). */
-  readonly animals?: readonly { tribeType?: number }[];
+  /** The `animaltypes.ini` records, read for tribe membership and spawnability: which tribes ARE
+   *  animals (the species-look and authored-placement joins key on `tribeType`), and whether the
+   *  record is a living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns.
+   *  Behaviour fields stay sim-side. */
+  readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
   /** The decoded sound bank (`@open-northland/audio` builds its index from it). */
   readonly sounds?: SoundBank;
 }
