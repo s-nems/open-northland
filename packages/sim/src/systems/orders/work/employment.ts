@@ -86,7 +86,8 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   // uninterruptible-atomic class, tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
-  if (isFighterJob(jobType)) shedToolOnEnlist(world, e); // before the drop below, so a shed unit joins it
+  // Before the drop below, so a shed unit joins it.
+  if (isFighterJob(ctx.content, jobType)) shedToolOnEnlist(world, e);
   // A profession change makes a hands-full settler set its load down first: it replaces the cancelled action
   // with the drop atomic, so the old trade's haul lands on the ground here rather than being carried on to a
   // store under the new trade (the requested "drop when you change job" behavior).
@@ -104,18 +105,15 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   // Leaving the fighter trades disarms the settler: the arms are the soldier's role kit, and the render
   // draws the armed look from the equipped weapon good over the job — a kept weapon would freeze an
   // ex-soldier in the warrior skin. Both axes go: the Equipment display slots and the combat Weapon/Armor.
-  // Named approximation: the weapon/armor goods VANISH from the economy rather than dropping or returning
-  // to a store (the original's fate for a converted soldier's kit is unobserved) — recovering them is
-  // docs/tickets/sim/disarm-equipment-fate.md.
+  // Deliberately AFTER the load-drop step above: with empty hands the first freed unit is taken up, so
+  // the delivery drive walks it into a store instead of leaving it in the grass. Anything the hands
+  // cannot take (the second unit, or either one when the settler was already loaded) lands at its feet
+  // for a porter.
   if (!isFighterJob(ctx.content, jobType)) {
     world.remove(e, Weapon);
     world.remove(e, Armor);
-    const equipment = world.tryGet(e, Equipment);
-    if (equipment !== undefined && (equipment.weapon !== null || equipment.armor !== null)) {
-      equipment.weapon = null;
-      equipment.armor = null;
-      world.touch(e);
-    }
+    shedSlotGood(world, e, 'weapon');
+    shedSlotGood(world, e, 'armor');
   }
   syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
   // The per-employment picks die with the employment they were made under (the rule {@link bindEmployment}
@@ -126,31 +124,40 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
 
 /**
  * A fighter keeps no tool - it aids only production work (user rule 2026-07-25) - so entering a
- * soldier/hero trade empties the slot and calls off a tool-slot equip errand in flight (an errand for
- * another slot survives, as on any job change). A fresh unit joins free or same-good hands, which the
- * caller's drop step then sets down at the feet; with a foreign load in hand it goes straight to the
- * ground there. A part-used unit is destroyed instead, the take-off regeneration rule
- * (agents/effects-goods/equip.ts). Only a positionless settler loses one (no tile to set it on).
+ * soldier/hero trade empties the slot ({@link shedSlotGood}) and calls off a tool-slot equip errand in
+ * flight (an errand for another slot survives, as on any job change).
  */
 function shedToolOnEnlist(world: World, e: Entity): void {
   const order = world.tryGet(e, EquipOrder);
   if (order !== undefined && order.group === 'tool') world.remove(e, EquipOrder);
+  shedSlotGood(world, e, 'tool');
+}
+
+/**
+ * Empty one equipment slot the settler's NEW trade may not use, without swallowing the good: a fresh
+ * unit joins free or same-good hands, else lands on the settler's own tile; a part-used one - or one on
+ * a positionless settler - is destroyed, the take-off regeneration rule (agents/effects-goods/equip.ts).
+ * Both endings serve the same rule (user, 2026-07-26: a store if the economy can manage it, the ground
+ * otherwise) - a unit left in hand is banked by the delivery drive, a grounded one is collected by a
+ * porter like any loose pile.
+ */
+function shedSlotGood(world: World, e: Entity, group: 'tool' | 'weapon' | 'armor'): void {
   const equipment = world.tryGet(e, Equipment);
-  const tool = equipment?.tool;
-  if (equipment === undefined || tool == null) return;
-  equipment.tool = null;
+  const worn = equipment?.[group];
+  if (equipment === undefined || worn == null) return;
+  equipment[group] = null;
   world.touch(e);
-  if (isUsed(tool)) return;
+  if (isUsed(worn)) return;
   const held = world.tryGet(e, Carrying);
-  if (held === undefined || held.goodType === tool.goodType) {
-    addCarry(world, e, tool.goodType, 1);
+  if (held === undefined || held.goodType === worn.goodType) {
+    addCarry(world, e, worn.goodType, 1);
     return;
   }
   const pos = world.tryGet(e, Position);
   if (pos === undefined) return;
   const node = nodeOfPosition(pos.x, pos.y);
   const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice tile, so drops stack
-  placeUnitsOnTile(world, at.x, at.y, tool.goodType, 1, ownerOf(world, e));
+  placeUnitsOnTile(world, at.x, at.y, worn.goodType, 1, ownerOf(world, e));
 }
 
 /**

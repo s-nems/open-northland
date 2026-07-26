@@ -19,7 +19,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import { isFighterJob } from '../readviews/index.js';
+import { isFighterJob, NO_TRADE_JOB, SCOUT_JOB } from '../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import type { PlannerPass } from './planner-pass.js';
@@ -55,6 +55,17 @@ const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
  *  enough that switching a grant on in a living settlement reads as a steady trickle, large enough
  *  that the queue drains across a few storehouses at once. Our balance. */
 export const ASSISTANT_MAX_IN_FLIGHT = 4;
+
+/**
+ * Whether the assistant hands `jobType` a tool at all: every working trade takes one (gatherer, porter,
+ * farmer, baker...), but a fighter keeps none (`shedToolOnEnlist`, orders/work/employment.ts), and the
+ * scout and a settler still holding no trade are passed over so scarce tools go to the trades that work
+ * with them (user rule 2026-07-26). Only the assistant's hand-out is bound by this - the player may
+ * still equip a scout by hand.
+ */
+function toolHelpsJob(jobType: number): boolean {
+  return !isFighterJob(jobType) && jobType !== SCOUT_JOB && jobType !== NO_TRADE_JOB;
+}
 
 /** One granted good, its slot group pre-resolved from content. */
 interface GrantSpec {
@@ -92,16 +103,14 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // dump the carried load where the settler stands (a manual order may do that - the assistant
     // has no such urgency). A later beat catches the settler with free hands.
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
-    const fighter = isFighterJob(jobType);
+    const toolless = !toolHelpsJob(jobType);
 
     const eq = world.tryGet(e, Equipment);
     // The settler's confinement/veto are computed once, and only when a grant actually has a free
     // slot and spare stock - a fully dressed settler's beat stays a few map reads.
     let limit: NavigationLimit | null | undefined;
     for (const spec of wanted) {
-      // A tool grant never targets a fighter (the rule lives on `shedToolOnEnlist`,
-      // orders/work/employment.ts); its boots and misc grants still apply.
-      if (fighter && spec.category === 'tool') continue;
+      if (toolless && spec.category === 'tool') continue; // its boots and misc grants still apply
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
       const underway = tally.byGood.get(spec.goodType) ?? 0;

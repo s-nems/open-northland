@@ -15,6 +15,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/agents/assistant-grants.js';
+import { NO_TRADE_JOB, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -266,22 +267,28 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(sim.world.get(live, Equipment).boots?.goodType).toBe(SHOES);
   });
 
-  it('never grants a tool to a fighter - its other grants still apply', () => {
+  it('hands tools to the working trades only, and boots to everyone', () => {
     const sim = freshSim();
+    // The three the tool hand-out passes over, and one trade that takes it.
     const fighter = ownedSettler(sim, 2, 2);
     sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
-    const civilian = ownedSettler(sim, 2, 4);
-    pileAt(sim, 12, 2, TOOL_IRON, 2);
-    pileAt(sim, 12, 4, SHOES, 2);
+    const scout = ownedSettler(sim, 2, 3);
+    sim.world.get(scout, Settler).jobType = SCOUT_JOB;
+    const tradeless = ownedSettler(sim, 2, 4);
+    sim.world.get(tradeless, Settler).jobType = NO_TRADE_JOB;
+    const woodcutter = ownedSettler(sim, 2, 5);
+    pileAt(sim, 12, 2, TOOL_IRON, 4);
+    pileAt(sim, 12, 4, SHOES, 4);
     grant(sim, TOOL_IRON);
     grant(sim, SHOES);
 
-    sim.run(2 * ERRAND_TICKS);
+    sim.run(4 * ERRAND_TICKS);
 
-    const eq = sim.world.get(fighter, Equipment);
-    expect(eq.tool).toBeNull(); // the tool grant skipped the fighter...
-    expect(eq.boots?.goodType).toBe(SHOES); // ...while its boots grant still landed
-    expect(sim.world.get(civilian, Equipment).tool?.goodType).toBe(TOOL_IRON); // fighter-keyed skip
+    for (const e of [fighter, scout, tradeless]) {
+      expect(sim.world.get(e, Equipment).tool).toBeNull(); // no tool spent on a trade that won't use it
+      expect(sim.world.get(e, Equipment).boots?.goodType).toBe(SHOES); // the other grants still land
+    }
+    expect(sim.world.get(woodcutter, Equipment).tool?.goodType).toBe(TOOL_IRON);
   });
 
   it('ignores settlers of a player with no grants and grants with no stock', () => {

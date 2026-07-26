@@ -45,6 +45,7 @@ const TOOL_WOODEN = 11;
 const LONG_SWORD = 17;
 const WOOD = 1;
 const WOODCUTTER = 1;
+const CARPENTER = 2;
 const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const ARMOURY = 22;
@@ -394,6 +395,41 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     expect(groundUnits(sim, SWORD)).toBe(1); // and the heap already there is untouched
     expect(groundUnits(sim, WOOD)).toBe(1); // the carried load still reached the ground too
     expect(sim.world.get(e, Position)).toEqual(feet); // shed where it stood
+  });
+
+  it('leaves a disarmed soldier its weapon and armour on the ground, not nowhere', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 2);
+    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    wear(sim, e, { weapon: SWORD });
+    const eq = sim.world.get(e, Equipment);
+    eq.armor = { goodType: FUR_BOOTS, degreeOfUse: fx.fromInt(0) }; // any good stands in for armour here
+
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    sim.run(30); // the hands-first unit rides the drop atomic to the ground
+
+    expect(eq.weapon).toBeNull();
+    expect(eq.armor).toBeNull();
+    expect(sim.world.has(e, Carrying)).toBe(false);
+    expect(groundUnits(sim, SWORD)).toBe(1); // both units survived the conversion
+    expect(groundUnits(sim, FUR_BOOTS)).toBe(1);
+  });
+
+  it('carries the disarmed weapon into a store when one can take it', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 3, 2);
+    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    wear(sim, e, { weapon: SWORD });
+    const store = armouryAt(sim, 9, 2);
+
+    // A workshop trade, not a gatherer: a gatherer's fresh work flag would make its own yard the
+    // delivery sink, so the arms would bank on the ground beside it rather than walk to the store.
+    sim.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(store, Stockpile).amounts.get(SWORD)).toBe(1); // banked, not left in the grass
+    expect(groundUnits(sim, SWORD)).toBe(0);
+    expect(sim.world.has(e, Carrying)).toBe(false);
   });
 
   it('refuses a tool equip order on a fighter but still accepts its boots order', () => {
