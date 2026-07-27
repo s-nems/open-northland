@@ -9,7 +9,7 @@ import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
 import { stockCapacity } from '../../../../stores/index.js';
-import { carriedGoodForm } from '../../../economy/routing.js';
+import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 

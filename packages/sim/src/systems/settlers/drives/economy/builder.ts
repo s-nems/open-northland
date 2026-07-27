@@ -1,23 +1,29 @@
-import { CARRY_CAPACITY, SiteAssignment, UnderConstruction } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
-import { atomicDuration } from '../../readviews/animations.js';
+import { CARRY_CAPACITY, SiteAssignment, UnderConstruction } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
+import { atomicDuration } from '../../../readviews/animations.js';
 import {
   deliveredConstructionFraction,
   neededConstructionGoods,
   stampSupplyRun,
-} from '../../stores/index.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup } from '../atomics/start.js';
-import { claimWorkCell } from '../destack.js';
-import type { PlannerContext } from '../planner/context.js';
-import type { PlannerSpacing } from '../planner/spacing.js';
+} from '../../../stores/index.js';
+import {
+  atOrWalk,
+  BUILD_HOUSE_ATOMIC_ID,
+  jobCanBuild,
+  startAtomic,
+  startPickup,
+} from '../../atomics/start.js';
+import type { PlannerContext } from '../../planner/context.js';
+import type { PlannerSpacing } from '../../planner/spacing.js';
 import {
   interactionCell,
   nearestConstructionSite,
   nearestStoreHolding,
   unreachableSiteStand,
-} from '../targets/index.js';
-import { unreachableGoalVeto } from '../unreachable-goals.js';
+} from '../../targets/index.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
+import { claimWorkCell } from '../spacing.js';
 
 /**
  * BUILD — a builder raises a construction site of its tribe, faithful to the original's "settlers search
@@ -46,7 +52,8 @@ import { unreachableGoalVeto } from '../unreachable-goals.js';
  *
  * The hammer and wait stands go through {@link claimWorkCell}: a crew spreads over the site's legal
  * perimeter instead of stacking on its finished-building interaction cell — body collision can't do it
- * (civilians are deliberate pass-through, and standing units are never displaced; see the destack module doc).
+ * (civilians are deliberate pass-through, and standing units are never displaced; see the spacing module
+ * doc).
  *
  * Sits below the bound-producer loop and above gather/porter/carrier, so a builder builds before it ferries.
  * `jobType` is non-null here.

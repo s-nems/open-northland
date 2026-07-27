@@ -1,8 +1,8 @@
 # A restricted operator is held inside for a work seat its craft selection cannot use
 
-**Area:** sim (settlers/economy) · **Origin:** equipment hand-out investigation, 2026-07-27 · **Priority:** P1
+**Area:** sim (settlers/drives/economy) · **Origin:** equipment hand-out, 2026-07-27 · **Priority:** P1
 
-`workSeatCount` (`systems/settlers/economy/workshop/supply.ts`) counts the further cycles a workplace
+`workSeatCount` (`systems/settlers/drives/economy/workshop/supply.ts`) counts the further cycles a workplace
 could start as the MAX of `startableCycleCount` over **every** recipe the type declares. It never
 consults the operator's `CraftSelection`. `startCycleFor` (`systems/economy/production/rotation.ts`)
 does: a selection naming products the workplace makes filters the pool down to those, and only an
@@ -61,8 +61,9 @@ Also observed, not diagnosed: `leather` is 0 on every seat, so `work_sewery_01` 
 ## Verify
 
 - A real-map run reports non-zero `tool_iron` production and a non-zero worn-tool count on the
-  working trades. `packages/app/soak/late-goods.soak.ts` already boots the same
-  `?map=magiczny_las&ai=0..5` session and is the natural host for the measurement.
+  working trades. No soak harness exists; the nearest host is the flagged real-content run in
+  `packages/app/test/content/ai-map-scenario.test.ts` (same `magiczny_las` + AI seats), which boots
+  120 ticks and would need a longer horizon for this measurement.
 - A focused unit test: a workplace holding only recipe A's inputs, with its operator selected onto B,
   frees that operator instead of holding it inside.
 - `npm test`, `npm run test:content`. Golden state hashes must not move without a named reason.

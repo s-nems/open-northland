@@ -25,7 +25,7 @@ import { isOrderableSettler } from './guards.js';
 
 /**
  * The equip-window order handlers: `equipGood` and `unequipGood` only validate and stamp the
- * {@link EquipOrder} errand (`settlers/equip-order.ts` drives it). The original's soldier-only
+ * {@link EquipOrder} errand (`settlers/drives/equip-order.ts` drives it). The original's soldier-only
  * `allowequip` gate is enforced by the panel's row model, not here - a raw command can still dress a
  * civilian in a display-only weapon.
  */

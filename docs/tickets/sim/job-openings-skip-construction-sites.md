@@ -5,7 +5,7 @@
 Neither the automatic jobSystem nor hand-assignment gates job openings on `UnderConstruction`
 (`systems/economy/jobs/openings.ts` — `openJobAt`/`openPostFor`), so a NEW idle settler can be bound to an
 upgrading (or fresh-site) building's open worker slot and then stand idle at the planner's stand-down gate
-(`settlers/drive-ladder.ts`, below planBuilder) for the whole build instead of taking a productive job
+(`settlers/drives/ladder.ts`, below planBuilder) for the whole build instead of taking a productive job
 elsewhere. Not a deadlock — the binding resumes work the tick the site finishes — but a player-visible
 idle hire.
 

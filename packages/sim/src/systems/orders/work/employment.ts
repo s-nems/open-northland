@@ -78,7 +78,7 @@ export function setJob(
  * leaving one drops it). It does not touch {@link JobAssignment}: the caller owns the binding — {@link setJob}
  * drops it (the JobSystem re-employs), while {@link assignWorker} sets it (bind to the player-chosen building).
  * The single home of the "re-idle to a new trade" reset, so the employment orders and the barracks drill
- * (`settlers/training.ts`) can't drift apart.
+ * (`settlers/drives/training.ts`) can't drift apart.
  * Owned-only: the callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
@@ -220,10 +220,10 @@ export function assignWorker(
  * Assign one owned builder to a specific construction `site` — the original's "put a builder on a foundation"
  * (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the builder drive raises
  * that site over the nearest one and the site's workers window lists the settler until the build finishes
- * ({@link import('../../settlers/economy/index.js').planBuilder} re-stamps or drops the pin). Only the builder
- * trade qualifies — a civilian right-clicked onto a site is a no-op (the app routes normal buildings to
- * `assignWorker` instead). Authoritative like every employment order: it cancels the current action/route/hold
- * so the builder heads for its site this tick.
+ * ({@link import('../../settlers/drives/economy/index.js').planBuilder} re-stamps or drops the pin). Only the
+ * builder trade qualifies — a civilian right-clicked onto a site is a no-op (the app routes normal buildings
+ * to `assignWorker` instead). Authoritative like every employment order: it cancels the current
+ * action/route/hold so the builder heads for its site this tick.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
  * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site

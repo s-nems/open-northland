@@ -21,7 +21,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives-needs.js';
+import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives/needs.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
@@ -31,7 +31,7 @@ import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js
  */
 
 /** Company deficit at or above which a WORKING settler leaves its work to find a chat partner — ¾ of a
- *  full bar, mirroring the eat/sleep/pray triggers (`drives-needs.ts`; the same approximation basis). */
+ *  full bar, mirroring the eat/sleep/pray triggers (`drives/needs.ts`; the same approximation basis). */
 const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
 /** How far (half-cell nodes) a lonely working settler searches for a partner. Design rule: a bounded

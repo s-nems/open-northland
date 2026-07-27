@@ -13,15 +13,15 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isBarracks } from '../readviews/index.js';
+import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/training.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**
  * Send one owned settler to drill at a barracks — see the command doc. The handler validates and stamps
- * the {@link TrainingOrder} errand; the planner's drill rung (`settlers/training.ts`) walks it out.
+ * the {@link TrainingOrder} errand; the planner's drill rung (`settlers/drives/training.ts`) walks it out.
  * Authoritative like the employment orders: the current action, route, player walk and construction-crew
  * membership are dropped so the recruit sets off this tick and its site stops counting it.
  *

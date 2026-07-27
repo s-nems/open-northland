@@ -1,10 +1,10 @@
-import type { SettlerIdentity } from '../../components/index.js';
-import { Equipment } from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
-import { ONE } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
-import { EAT_ATOMIC_ID, eatDuration, startAtomic } from './atomics/start.js';
+import type { SettlerIdentity } from '../../../components/index.js';
+import { Equipment } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
+import { ONE } from '../../../core/fixed.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { SystemContext } from '../../context.js';
+import { EAT_ATOMIC_ID, eatDuration, startAtomic } from '../atomics/start.js';
 
 // The auto-drink half of the needs drives: a pressing settler carrying a matching draught (mead, a
 // potion) drinks it IN PLACE instead of walking to food or a bed (manual: a settler "will

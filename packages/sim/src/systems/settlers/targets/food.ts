@@ -18,7 +18,7 @@ import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { isFood } from '../../readviews/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
 import { closer, manhattan } from '../../spatial/nodes.js';
-import { carriedGoodForm } from '../economy/routing.js';
+import { carriedGoodForm } from '../drives/economy/delivery-targets.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';

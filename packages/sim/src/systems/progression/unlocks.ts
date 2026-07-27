@@ -212,11 +212,11 @@ export function settlerMeetsNeed(
 
 /**
  * Whether a settler has paid a job's barracks schooling — every `trainforjob` row for `targetId` met in
- * TRAINING repeats. The second, alternative path onto a fighter trade: its `needforjob` rows read the
- * band's own fight tracks (viking `needforjob 31 5 69`, a track only job 31 itself accrues), so a
- * civilian could never earn one by working, and the barracks drill is what enlists it
- * (`systems/settlers/training.ts`). Meeting either path unlocks the trade — a veteran keeps qualifying on
- * fight XP alone.
+ * TRAINING repeats. The second, alternative path onto a fighter trade: its `needforjob` rows read the band's
+ * own fight tracks (viking `needforjob 31 5 69`, a track only job 31 itself accrues), so a civilian could
+ * never earn one by working, and the barracks drill is what enlists it
+ * (`systems/settlers/drives/training.ts`). Meeting either path unlocks the trade — a veteran keeps qualifying
+ * on fight XP alone.
  *
  * A target with no `train` row is NOT schooled (false), so this can only widen the gate for the trades
  * the data actually schools. Read for fighter targets only: the civilian trades and goods carry

@@ -133,7 +133,7 @@ export const STARVATION_BITES_TO_DIE = 240;
  * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
  * bind a baby sleep animation with rest events (`setatomic 1/2 8 "viking_baby_*_sleep"`); it is
  * deliberately unwired — the family-care freeze covers rest too. A baby weans into childhood with its
- * birth needs, and from there the child eat/sleep drives take over (`settlers/drive-ladder.ts`). Keyed
+ * birth needs, and from there the child eat/sleep drives take over (`settlers/drives/ladder.ts`). Keyed
  * on Age + stage like the planner's gate, so an adult fixture whose synthetic job id collides with a
  * baby id still lives a full needs life.
  *

@@ -1,9 +1,9 @@
-import { Building, Position, Stockpile } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { farmWorkGood } from '../../economy/fields.js';
-import { mergedRecipeOf, stockCapacity } from '../../stores/index.js';
-import { jobAtomics } from '../targets/index.js';
+import { Building, Position, Stockpile } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { SystemContext } from '../../../context.js';
+import { farmWorkGood } from '../../../economy/fields.js';
+import { mergedRecipeOf, stockCapacity } from '../../../stores/index.js';
+import { jobAtomics } from '../../targets/index.js';
 
 /** Whether a job is the field worker, rather than the carrier, of a farm building. */
 function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {

@@ -1,15 +1,15 @@
-import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
-import type { Entity } from '../../../../ecs/world.js';
-import { shelfBlockedOutput } from '../../../economy/production.js';
-import { planGossipIdle } from '../../../social/index.js';
-import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../stores/index.js';
-import { atOrWalk, startDraw, startPickup } from '../../atomics/start.js';
-import { loiterCell } from '../../destack.js';
-import type { PlannerContext } from '../../planner/context.js';
-import type { PlannerSpacing } from '../../planner/spacing.js';
-import { interactionCell } from '../../targets/index.js';
-import { unreachableGoalVeto } from '../../unreachable-goals.js';
-import { deliverableGoodProbe } from '../routing.js';
+import { CARRY_CAPACITY, Owner, Resting } from '../../../../../components/index.js';
+import type { Entity } from '../../../../../ecs/world.js';
+import { shelfBlockedOutput } from '../../../../economy/production.js';
+import { planGossipIdle } from '../../../../social/index.js';
+import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
+import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
+import type { PlannerContext } from '../../../planner/context.js';
+import type { PlannerSpacing } from '../../../planner/spacing.js';
+import { interactionCell } from '../../../targets/index.js';
+import { unreachableGoalVeto } from '../../../unreachable-goals.js';
+import { loiterCell } from '../../spacing.js';
+import { deliverableGoodProbe } from '../delivery-targets.js';
 import {
   type MissingInputSource,
   nearestMissingInputSource,

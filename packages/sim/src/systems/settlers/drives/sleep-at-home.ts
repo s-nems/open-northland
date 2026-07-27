@@ -1,18 +1,18 @@
-import { CurrentAtomic, Residence, Resting, type SettlerIdentity } from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { builtHomeType } from '../family/households.js';
+import { CurrentAtomic, Residence, Resting, type SettlerIdentity } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { builtHomeType } from '../../family/households.js';
 import {
   atomicAnimationByName,
   atomicDurationForName,
   needAtomicAnimationName,
   needAtomicDuration,
-} from '../readviews/animations.js';
-import type { NavigationLimit } from '../signposts/index.js';
-import { atOrWalk, SLEEP_ATOMIC_ID, startAtomic } from './atomics/start.js';
-import { interactionCell } from './targets/index.js';
-import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
+} from '../../readviews/animations.js';
+import type { NavigationLimit } from '../../signposts/index.js';
+import { atOrWalk, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { interactionCell } from '../targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 // Sleeping at home — a settler with a house walks to its door, goes inside, and comes back out rested;
 // the homeless keep the open-ground rule (./rest-spot.ts).
@@ -73,7 +73,7 @@ export function sleepAtHome(
 
 /**
  * Whether `e` is inside its OWN house mid-sleep — the test that stops the planner shedding the marker
- * that put it there. Every other drive treats a lingering {@link Resting} as stale (`drive-ladder.ts`,
+ * that put it there. Every other drive treats a lingering {@link Resting} as stale (`./ladder.ts`,
  * `planner/replan.ts`), so without this the settler would be turfed out of its own bed the tick it got in.
  *
  * The `at === home` check is load-bearing, not belt-and-braces: the open-ground rung starts an

@@ -67,7 +67,7 @@ export {
   FATIGUE_SLEEP_THRESHOLD,
   HUNGER_BUBBLE_THRESHOLD,
   HUNGER_EAT_THRESHOLD,
-} from './settlers/drives-needs.js';
+} from './settlers/drives/needs.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,

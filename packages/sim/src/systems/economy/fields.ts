@@ -18,10 +18,10 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
 // Field farming — the content resolution, growth system and atomic-effect appliers behind the farm's
 // sow→water→grow→reap loop. The planner half (which field a farmer works next) is the planFarmer drive
-// (`../settlers/farming`); this module owns the field's own lifecycle. Source basis: the loop's vocabulary is
-// readable original data (`goodtypes.ini` wheat atomics 34/35/29 + `isProducedOnMapFlag`, `landscapetypes.ini`
-// wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content `farming` block's observed
-// calibration constants (no readable growth timing or field radius exists).
+// (`../settlers/drives/farming`); this module owns the field's own lifecycle. Source basis: the loop's
+// vocabulary is readable original data (`goodtypes.ini` wheat atomics 34/35/29 + `isProducedOnMapFlag`,
+// `landscapetypes.ini` wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content
+// `farming` block's observed calibration constants (no readable growth timing or field radius exists).
 
 // Watering is the growth fuel: a field grows only while `watered`, and every stage step consumes its watering —
 // the field turns thirsty again and stands until a farmer comes back with the can. So a field needs one sowing

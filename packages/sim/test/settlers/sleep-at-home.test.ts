@@ -12,7 +12,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
-import { isSleepingAtHome } from '../../src/systems/settlers/sleep-at-home.js';
+import { isSleepingAtHome } from '../../src/systems/settlers/drives/sleep-at-home.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';

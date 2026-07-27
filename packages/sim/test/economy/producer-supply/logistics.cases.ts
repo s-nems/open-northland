@@ -11,7 +11,7 @@ import {
 import { Simulation } from '../../../src/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
-import { boundProducerOutputToHaul } from '../../../src/systems/settlers/economy/haul-targets.js';
+import { boundProducerOutputToHaul } from '../../../src/systems/settlers/drives/economy/haul-targets.js';
 import { SinkAvailability } from '../../../src/systems/settlers/targets/stores/sinks.js';
 import { testContent } from '../../fixtures/content.js';
 

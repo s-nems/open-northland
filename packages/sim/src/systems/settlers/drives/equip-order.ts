@@ -7,17 +7,17 @@ import {
   MoveGoal,
   ownerOf,
   type SettlerIdentity,
-} from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { atomicDuration } from '../readviews/animations.js';
-import type { NavigationLimit } from '../signposts/index.js';
-import { isUsed } from './atomics/effects/goods/index.js';
-import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from './atomics/start.js';
-import type { TargetCandidates } from './targets/index.js';
-import { interactionCell, nearestStoreFor, nearestStoreHolding } from './targets/index.js';
-import { unreachableGoalVeto } from './unreachable-goals.js';
+} from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { atomicDuration } from '../../readviews/animations.js';
+import type { NavigationLimit } from '../../signposts/index.js';
+import { isUsed } from '../atomics/effects/goods/index.js';
+import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
+import type { TargetCandidates } from '../targets/index.js';
+import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
 
 /**
  * The planner's EQUIP-ERRAND rung: drive a settler's live {@link EquipOrder} one step forward. Sits

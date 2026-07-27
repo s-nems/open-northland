@@ -114,7 +114,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would
     // dump the carried load where the settler stands (a manual order may do that - the assistant
     // has no such urgency). A later beat catches the settler with free hands; a load picked up after
-    // the dispatch is covered too, because the errand itself yields to it (settlers/equip-order.ts).
+    // the dispatch is covered too, because the errand itself yields to it (settlers/drives/equip-order.ts).
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
     // A guard holds its post: the equip rung outranks the DEFEND hold so the PLAYER can send a guard
     // for gear, which is no reason for the assistant to walk one off its anchor unasked.

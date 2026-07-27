@@ -5,7 +5,7 @@
 `dispatchAssistantGrants` (`systems/settlers/planner/assistant-grants.ts`) throttles a player to
 `ASSISTANT_MAX_IN_FLIGHT` concurrent fetch errands and reserves store stock against the
 `acquire`-stage `EquipOrder`s `collectInFlightFetches` counts. An errand that cannot advance still
-counts: `planEquipOrder` (`settlers/equip-order.ts`) yields an assistant errand while its settler
+counts: `planEquipOrder` (`settlers/drives/equip-order.ts`) yields an assistant errand while its settler
 carries a load — the "never cost a delivery" rule — and never bounds that yield, so a settler that
 stays loaded pins one of the four slots and one reserved unit indefinitely. Four such settlers stop
 the player's hand-out entirely, silently.

@@ -2,7 +2,7 @@ import { Age, Settler } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
-import { planAdult, planChild } from '../drive-ladder.js';
+import { planAdult, planChild } from '../drives/ladder.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
@@ -12,7 +12,7 @@ import { releaseStaleIntent } from './replan.js';
  * PlannerSystem — the settler planner: two layered passes per tick.
  *
  *  1. {@link atomicPlanner} (the *what*): for each idle settler (a job, no atomic running, not
- *     travelling), run the drive ladder (../drive-ladder.ts) and either issue a MoveGoal to walk to
+ *     travelling), run the drive ladder (../drives/ladder.ts) and either issue a MoveGoal to walk to
  *     the chosen target or start the CurrentAtomic the AtomicSystem will execute.
  *  2. {@link navigationPlanner} (the *where*, ./navigation.ts): turn a MoveGoal on a path-less,
  *     request-less entity into a PathRequest; PathfindingSystem routes it, MovementSystem walks it,

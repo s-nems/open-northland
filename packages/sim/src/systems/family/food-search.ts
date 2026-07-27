@@ -13,7 +13,7 @@ import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
-import { carriedGoodForm } from '../settlers/economy/routing.js';
+import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 

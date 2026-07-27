@@ -1,5 +1,5 @@
-import { CurrentAtomic, Settler } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import { CurrentAtomic, Settler } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
 
 /**
  * The per-tick harvest-claim set: resource nodes some settler is working RIGHT NOW (a running

@@ -17,7 +17,7 @@ them (`content-index.ts` `jobExperience`).
 
 The farmer's is modelled via the literal `GoodFarming.workRepeats` in
 `packages/app/src/catalog/farming.ts`, multiplied into the plant/cultivate/harvest durations in
-`packages/sim/src/systems/settlers/farming/planner.ts`. Experience scaling of the stroke count exists
+`packages/sim/src/systems/settlers/drives/farming/drive.ts`. Experience scaling of the stroke count exists
 (`scaledWorkRepeats` there; a named approximation, feat/experience branch) — the remaining question is
 only where the BASE number comes from.
 

@@ -160,13 +160,13 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Send one owned adult settler to drill at a barracks `house` — the right-click that turns a
-       * colonist into a soldier. It stamps a
-       * {@link import('../../components/index.js').TrainingOrder} errand: the settler walks to the door,
-       * stays inside for {@link import('../../systems/settlers/training.js').BARRACKS_DRILL_TICKS} of drill
-       * (banking TRAINING experience per repetition), then steps out enlisted as the base soldier class —
-       * and stays qualified for the soldier trades from then on. A settler that already holds a fighter
-       * trade only drills; its trade is unchanged. A `moveUnit` order calls the errand off.
+       * Send one owned adult settler to drill at a barracks `house` — the right-click that turns a colonist
+       * into a soldier. It stamps a {@link import('../../components/index.js').TrainingOrder} errand: the
+       * settler walks to the door, stays inside for
+       * {@link import('../../systems/settlers/drives/training.js').BARRACKS_DRILL_TICKS} of drill
+       * (banking TRAINING experience per repetition), then steps out enlisted as the base soldier class — and
+       * stays qualified for the soldier trades from then on. A settler that already holds a fighter trade
+       * only drills; its trade is unchanged. A `moveUnit` order calls the errand off.
        *
        * Recoverable bad input (skipped, still logged for faithful replay): a target `isTradeAssignable`
        * rejects (dead/stale, non-settler, neutral, a child, a woman), a dead/stale/non-building/unbuilt

@@ -1,25 +1,25 @@
-import { Position, Stockpile, sameSideAs } from '../../../components/index.js';
-import { coordHash } from '../../../core/coord-hash.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import type { FarmingSpec } from '../../economy/fields.js';
-import { dynamicBlockedCells } from '../../footprint/index.js';
-import { closer, manhattan } from '../../spatial/nodes.js';
-import { lowestStockedGood } from '../../stores/index.js';
-import type { PlannerContext } from '../planner/context.js';
+import { Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import { coordHash } from '../../../../core/coord-hash.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../context.js';
+import type { FarmingSpec } from '../../../economy/fields.js';
+import { dynamicBlockedCells } from '../../../footprint/index.js';
+import { closer, manhattan } from '../../../spatial/nodes.js';
+import { lowestStockedGood } from '../../../stores/index.js';
+import type { PlannerContext } from '../../planner/context.js';
 import {
   interactionCell,
   nearestByCell,
   type TargetCandidates,
   unreachableWorkCell,
   type WorkCellGates,
-} from '../targets/index.js';
+} from '../../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 
 /**
- * The nearest cut-sheaf {@link import('../../components/index.js').GroundDrop} of the farmed good lying
+ * The nearest cut-sheaf {@link import('../../../../components/index.js').GroundDrop} of the farmed good lying
  * within the farm's field radius (measured from the FARM's anchor — a farmer never chases a sheaf
  * across the map), by Manhattan distance from the farmer, ascending-cell-id tie-break, canonical scan.
  * The pile's good is its lowest-id stocked good (an emptied, about-to-reap pile is skipped); a sheaf a
