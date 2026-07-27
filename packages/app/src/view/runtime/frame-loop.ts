@@ -1,4 +1,4 @@
-import type { HudLayout, PlacementGhost } from '@open-northland/render';
+import type { HudLayout } from '@open-northland/render';
 import type { FixedTimestep, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
@@ -16,6 +16,7 @@ import type {
 } from '../projections/index.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
+import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 
 /**
@@ -105,6 +106,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // several ticks between rendered frames, and each step clears the buffer — so an audio trigger on an
   // intermediate tick would otherwise be lost. One persistent scratch array, cleared per frame.
   const frameEvents: SimEvent[] = [];
+  // The two band probes bound once against the live camera + screen: the cursor decision below calls at
+  // most one of them per frame, and binding here keeps the frame from minting a pair of closures.
+  const buildingOverlay = (buildingType: number) =>
+    overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height);
+  const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
   const collect = (): void => {
     sim.step();
     recordDiagHash(sim);
@@ -166,38 +172,21 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved,
     // its fog mask only when the fog generation moved.
     mountedMinimap.update(snap, fogView);
-    // Build mode: dim the ground the held building can't anchor on and float its translucent ghost at
-    // the hovered tile (hidden over rejecting ground — the original's vanishing house cursor). Both
-    // are computed here, in the app, from the sim's placement probe and handed to the renderer as
-    // plain data — the renderer stays a pure projection and never calls back into the sim.
-    const placeType = toolPanel.controller.placementType();
-    // Signpost mode reuses the same wash: while the scout's placement click is pending, dim exactly
-    // where the erect would be refused (spacing circles + occupied ground). Build mode wins if both
-    // are somehow active — the held building is the more specific intent.
-    const signpostFrame =
-      placeType === null && controls.signpostPlacementActive()
-        ? signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height)
-        : null;
-    renderer.updatePlacementOverlay(
-      placeType === null
-        ? signpostFrame
-        : overlayFrame(placeType, cameraCtl.camera(), app.screen.width, app.screen.height),
-    );
-    // (No HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.)
-    const ghostMode = placeType !== null || signpostFrame !== null;
-    const hovered =
-      ghostMode && pointer !== null ? toolPanel.clientToTile(pointer.clientX, pointer.clientY) : null;
-    // The cursor ghost matching the active placement: the held building's translucent sprite, or the
-    // pending signpost's own guidepost post — both hidden over rejecting ground (the original's
-    // vanishing cursor).
-    let ghost: PlacementGhost | null = null;
-    if (hovered !== null && placeType !== null && canPlaceAt(placeType, hovered.col, hovered.row)) {
-      ghost = { kind: 'building', col: hovered.col, row: hovered.row, buildingType: placeType };
-    } else if (hovered !== null && signpostFrame !== null && canPlaceSignpostAt(hovered.col, hovered.row)) {
-      // Owner slot, not a colour: the renderer applies the session colour mapping (updatePlacementGhost).
-      ghost = { kind: 'signpost', col: hovered.col, row: hovered.row, player: localPlayer };
-    }
-    renderer.updatePlacementGhost(ghost);
+    // The held building / pending signpost, decided here from the sim's placement probe and handed to the
+    // renderer as plain data — the renderer stays a pure projection and never calls back into the sim. No
+    // HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.
+    const cursor = placementCursor({
+      placementType: toolPanel.controller.placementType(),
+      signpostActive: controls.signpostPlacementActive(),
+      buildingOverlay,
+      signpostOverlay,
+      tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
+      canPlaceAt,
+      canPlaceSignpostAt,
+      localPlayer,
+    });
+    renderer.updatePlacementOverlay(cursor.overlay);
+    renderer.updatePlacementGhost(cursor.ghost);
     // Tick the unit controls (details panel + action ring) before the renderer's update, so the panel a
     // rebuild bakes and the portrait inset painted over it (a post-main-render screen pass inside
     // renderer.update) both show this frame's state.
