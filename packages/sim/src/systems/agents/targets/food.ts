@@ -97,7 +97,9 @@ function edibleFoodGoodFor(
  */
 function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
-    if (amount <= 0 || !isFood(ctx, carriedGoodForm(world, ctx, entity, goodType))) continue;
+    if (amount <= 0) continue;
+    // An edible is one already; only a dish needs the carried-form question asked of its store.
+    if (!isFood(ctx, goodType) && !isFood(ctx, carriedGoodForm(world, ctx, entity, goodType))) continue;
     return goodType; // this store's lowest-id food good is its candidate
   }
   return null;

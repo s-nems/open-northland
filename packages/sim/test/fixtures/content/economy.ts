@@ -53,9 +53,9 @@ export const economyContent = {
         maxFields: 6,
       },
     },
-    // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it, held by no store, eaten
-    // by nobody — it becomes `food_simple` the moment a carrier lifts it out, exactly like the
-    // original's bread. Nothing in the golden slice produces it.
+    // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it — it becomes
+    // `food_simple` the moment a carrier lifts it out, exactly like the original's bread, and counts
+    // as food only on that kitchen's own shelf. Nothing in the golden slice produces it.
     { typeId: 7, id: 'bread', weight: 1 },
     // Two equippables for the equip-errand tests: a WEARING boots good and a permanent weapon good
     // (the two `equip.wears` shapes the slot mechanics distinguish). Effect/wear numbers mirror the
