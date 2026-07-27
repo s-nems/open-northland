@@ -1,14 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { type BenchReport, formatReport, percentile, summarize } from '../bench/report.js';
+import {
+  assessTrust,
+  type BenchReport,
+  type BenchWindow,
+  formatReport,
+  percentile,
+  summarize,
+  summarizeSegment,
+  systemGrowth,
+} from '../bench/report/index.js';
 
 /**
- * The sim benchmark's pure reporting half (`bench/report.ts`). The bench itself is a tool that only runs
- * on demand (`npm run bench:sim`), but its statistics are ordinary code — so the fold from raw samples to
- * the reported numbers is pinned here, in the normal suite.
+ * The benchmarks' pure reporting half (`bench/report/`). The benchmarks themselves are tools that only
+ * run on demand (`npm run bench:sim`, `npm run bench:map`), but their statistics are ordinary code - so
+ * the fold from raw samples to the reported numbers is pinned here, in the normal suite.
  */
+
+const ENVIRONMENT = {
+  node: 'v22.14.0',
+  platform: 'darwin-arm64',
+  cpuModel: 'Apple M3',
+  cpuCount: 8,
+  loadPerCpu: 0.3,
+  totalMemMb: 16384,
+  peakRssMb: 342,
+  startedAt: '2026-07-27T09:11:00.000Z',
+  wallSeconds: 42,
+  rev: '9ab7c02',
+  dirty: false,
+  knobs: { ON_BENCH_TICKS: '4' },
+  calibrationMs: { beforeMs: 0.84, afterMs: 0.86 },
+};
 
 const META: Parameters<typeof summarize>[2] = {
   world: {
+    kind: 'synthetic',
     settlements: 2,
     fightersPerSide: 100,
     mapCells: { width: 192, height: 140 },
@@ -16,9 +42,25 @@ const META: Parameters<typeof summarize>[2] = {
     settlersAtEnd: 340,
     buildings: 82,
   },
-  ticks: { warmup: 10, measured: 4 },
+  ticks: { warmup: 10, measured: 4, windows: 1 },
+  windows: [],
+  environment: ENVIRONMENT,
+  trust: { trustworthy: true, warnings: [] },
   stateHash: 'abc123',
 };
+
+function windowFixture(index: number, medianMs: number, overrides: Partial<BenchWindow> = {}): BenchWindow {
+  return {
+    index,
+    fromTick: index * 100 + 1,
+    toTick: index * 100 + 100,
+    tickMs: { medianMs, p95Ms: medianMs * 2 },
+    systems: [{ name: 'ai', medianMs, p95Ms: medianMs * 2, sharePct: 100 }],
+    population: { settlers: 100 + index, buildings: 10 + index, resourceNodes: 500 },
+    rssMb: 200 + index,
+    ...overrides,
+  };
+}
 
 describe('percentile', () => {
   it('is nearest-rank: every reported number is an observed sample', () => {
@@ -96,6 +138,76 @@ describe('summarize', () => {
   });
 });
 
+describe('summarizeSegment', () => {
+  it('reports shares within the segment, so one window cannot be read against another', () => {
+    const segment = summarizeSegment(
+      new Map([
+        ['ai', [3]],
+        ['movement', [1]],
+      ]),
+      [5],
+    );
+    expect(segment.systems.map((s) => s.sharePct)).toEqual([75, 25]);
+  });
+});
+
+describe('systemGrowth', () => {
+  it('reports each system first window against last, heaviest last window first', () => {
+    const growth = systemGrowth([windowFixture(0, 1), windowFixture(1, 4)]);
+    expect(growth).toEqual([{ name: 'ai', firstMs: 1, lastMs: 4, factor: 4, lastSharePct: 100 }]);
+  });
+
+  it('reports no factor when the first window measured zero, rather than an infinite one', () => {
+    const growth = systemGrowth([windowFixture(0, 0), windowFixture(1, 4)]);
+    expect(growth[0]?.factor).toBeNull();
+  });
+
+  it('is empty for a single-window run, where growth has no meaning', () => {
+    expect(systemGrowth([windowFixture(0, 1)])).toEqual([]);
+  });
+});
+
+describe('assessTrust', () => {
+  const clean = {
+    loadPerCpu: 0.3,
+    calibration: { beforeMs: 1, afterMs: 1.05 },
+    windows: [windowFixture(0, 1)],
+  };
+
+  it('trusts a quiet box whose speed held across the run', () => {
+    expect(assessTrust(clean)).toEqual({ trustworthy: true, warnings: [] });
+  });
+
+  it('rejects a contended box', () => {
+    const verdict = assessTrust({ ...clean, loadPerCpu: 4 });
+    expect(verdict.trustworthy).toBe(false);
+    expect(verdict.warnings).toHaveLength(1);
+    expect(verdict.warnings[0]).toContain('busy');
+  });
+
+  it('rejects a run whose own calibration drifted, since its windows are then incomparable', () => {
+    const verdict = assessTrust({ ...clean, calibration: { beforeMs: 1, afterMs: 2 } });
+    expect(verdict.trustworthy).toBe(false);
+    expect(verdict.warnings[0]).toContain('drifted');
+  });
+
+  it('rejects a window spiking far above its own median', () => {
+    const spiking = windowFixture(0, 1, { tickMs: { medianMs: 1, p95Ms: 9 } });
+    const verdict = assessTrust({ ...clean, windows: [spiking] });
+    expect(verdict.trustworthy).toBe(false);
+    expect(verdict.warnings[0]).toContain('window 1');
+  });
+
+  it('skips the load check where the OS reports no load average, rather than failing it', () => {
+    expect(assessTrust({ ...clean, loadPerCpu: null }).trustworthy).toBe(true);
+  });
+
+  it('reports every failed check, not just the first', () => {
+    const verdict = assessTrust({ ...clean, loadPerCpu: 4, calibration: { beforeMs: 1, afterMs: 2 } });
+    expect(verdict.warnings).toHaveLength(2);
+  });
+});
+
 describe('formatReport', () => {
   it('renders one row per system plus the world/tick header', () => {
     const text = formatReport(summarize(new Map([['ai', [1.5]]]), [2.25], META));
@@ -112,5 +224,46 @@ describe('formatReport', () => {
     const drifted = { ...META, world: { ...META.world, settlersAtEnd: 210 } };
     const text = formatReport(summarize(new Map([['ai', [1]]]), [1], drifted));
     expect(text).toContain('340→210 settlers');
+  });
+
+  it('names the world each benchmark measured', () => {
+    expect(formatReport(summarize(new Map(), [], META))).toContain('sim benchmark - 2 settlement(s)');
+    const realMap = {
+      ...META,
+      world: { ...META.world, kind: 'realMap', mapId: 'magiczny_las', aiSeats: 6 },
+    } as Parameters<typeof summarize>[2];
+    expect(formatReport(summarize(new Map(), [], realMap))).toContain(
+      'map benchmark - magiczny_las, 6 AI seat(s)',
+    );
+  });
+
+  it('omits the window and growth tables for a single-window run', () => {
+    const text = formatReport(summarize(new Map([['ai', [1]]]), [1], META));
+    expect(text).not.toContain('growth (window');
+    expect(text).not.toContain('buildings   rss MB');
+  });
+
+  it('prints the window and growth tables once there is a curve to show', () => {
+    const windowed = { ...META, windows: [windowFixture(0, 1), windowFixture(1, 4)] };
+    const text = formatReport(summarize(new Map([['ai', [1]]]), [1], windowed));
+    expect(text).toContain('growth (window 1 -> 2)');
+    expect(text).toMatch(/ai\s+1\.000\s+4\.000\s+4\.0x/);
+  });
+
+  it('leads with a banner when the measurement cannot be trusted', () => {
+    const suspect = {
+      ...META,
+      trust: { trustworthy: false, warnings: ['load average was 4.00 per cpu - this box was busy'] },
+    };
+    const text = formatReport(summarize(new Map([['ai', [1]]]), [1], suspect));
+    expect(text.startsWith('!!! UNTRUSTWORTHY MEASUREMENT !!!')).toBe(true);
+    expect(text).toContain('this box was busy');
+    expect(text).toContain('trust: SUSPECT');
+  });
+
+  it('records the machine the numbers came from', () => {
+    const text = formatReport(summarize(new Map([['ai', [1]]]), [1], META));
+    expect(text).toContain('environment: node v22.14.0  darwin-arm64  8 cpu  load/cpu 0.30');
+    expect(text).toContain('rev 9ab7c02 (clean)');
   });
 });

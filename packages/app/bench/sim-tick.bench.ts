@@ -1,25 +1,23 @@
 import { writeFileSync } from 'node:fs';
-import { type Component, components, type Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { type BenchReport, formatReport, summarize } from './report.js';
+import { captureEnvironment } from './environment.js';
+import { intEnv } from './knobs.js';
+import { measureWindows } from './measure.js';
+import { assessTrust, type BenchReport, formatReport, summarize } from './report/index.js';
 import { type BenchWorldOptions, benchWorld } from './world.js';
 
 /**
- * The sim's per-system benchmark — `npm run bench:sim`. It measures what golden rule 6 (AGENTS.md)
- * asserts and no test can: that per-tick cost scales with active work, not entities².
- *
- * It runs the deterministic {@link benchWorld} headless, times every system invocation through
- * `Simulation.setInstrument` (the sim's own seam — the timer lives here, in the app layer, so
- * `performance.now` stays out of `packages/sim/src`), and reports median/p95 ms per system plus the
- * whole-tick cost. See docs/TESTING.md for how it fits the pyramid and how it is kept out of `npm test`.
+ * The sim's per-system benchmark on a synthetic world - `npm run bench:sim`. It measures what golden
+ * rule 6 (AGENTS.md) asserts and no test can: that per-tick cost scales with active work, not
+ * entities². Content is the clean-room sandbox set, so this benchmark runs on any checkout;
+ * `npm run bench:map` measures a real decoded map instead. See docs/TESTING.md for how both fit the
+ * pyramid and how they are kept out of `npm test`.
  *
  * Knobs (env, all optional): `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`,
- * `ON_BENCH_WARMUP`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
+ * `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
 
-const { Building, Settler } = components;
-
-/** Defaults: 4 settlements (~290 working settlers, 164 buildings) on a 196x196 map — RTS scale in a
+/** Defaults: 4 settlements (~290 working settlers, 164 buildings) on a 196x196 map - RTS scale in a
  *  window that finishes in well under a minute. Turn `ON_BENCH_SETTLEMENTS` up for a scaling curve. */
 const DEFAULT_SETTLEMENTS = 4;
 /**
@@ -33,26 +31,15 @@ const DEFAULT_MEASURED_TICKS = 300;
 /** Warmup ticks, excluded from the samples: the settlement's first ticks are atypical (the JobSystem's
  *  adopt pass binds every crew, routes are cold) and JIT tiering has not settled. */
 const DEFAULT_WARMUP_TICKS = 60;
-/** Ticks the determinism check replays — long enough to reach the steady economy (and, when fighters
+/** One window by default: this world is stationary, so its cost has no growth curve to report. */
+const DEFAULT_WINDOWS = 1;
+/** Ticks the determinism check replays - long enough to reach the steady economy (and, when fighters
  *  are on, the first deaths at ~tick 50, so the check covers combat rather than the approach). */
 const DETERMINISM_TICKS = 200;
 
-/** The bench builds and runs whole worlds — far past vitest's 5 s default. */
+/** The bench builds and runs whole worlds - far past vitest's 5 s default. */
 const BENCH_TIMEOUT_MS = 30 * 60_000;
 const DETERMINISM_TIMEOUT_MS = 10 * 60_000;
-
-/** An integer env knob of at least `min`, or `fallback` when unset/blank. Throws on a malformed or
- *  out-of-range value rather than silently benchmarking a different world than the caller asked for. */
-function intEnv(name: string, fallback: number, min: number): number {
-  // Trim first: `Number(' ')` is 0, so a blank-but-not-empty value would pass validation as zero.
-  const raw = process.env[name]?.trim();
-  if (raw === undefined || raw === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < min) {
-    throw new Error(`${name} must be an integer >= ${min}, got '${raw}'`);
-  }
-  return value;
-}
 
 function worldOptions(): BenchWorldOptions {
   return {
@@ -61,53 +48,49 @@ function worldOptions(): BenchWorldOptions {
   };
 }
 
-function count(sim: Simulation, component: Component<unknown>): number {
-  let n = 0;
-  for (const _ of sim.world.query(component)) n++;
-  return n;
-}
-
 /** Run the world for `warmup + measured` ticks, sampling only the measured window. */
-function measure(options: BenchWorldOptions, warmup: number, measured: number): BenchReport {
+function measure(
+  options: BenchWorldOptions,
+  warmupTicks: number,
+  measuredTicks: number,
+  windows: number,
+): BenchReport {
+  const startedAtMs = Date.now();
+  const startMs = performance.now();
   const { sim, terrain } = benchWorld(options);
+  const measurement = measureWindows(sim, { warmupTicks, measuredTicks, windows });
 
-  const perSystem = new Map<string, number[]>();
-  let sampling = false;
-  sim.setInstrument((name, run) => {
-    // Timed tight around `run`; the bookkeeping below lands outside the interval.
-    const start = performance.now();
-    run();
-    const elapsed = performance.now() - start;
-    if (!sampling) return;
-    let samples = perSystem.get(name);
-    if (samples === undefined) {
-      samples = [];
-      perSystem.set(name, samples);
-    }
-    samples.push(elapsed);
-  });
-
-  for (let i = 0; i < warmup; i++) sim.step();
-  const settlersAtStart = count(sim, Settler);
-
-  sampling = true;
-  const tickSamples: number[] = [];
-  for (let i = 0; i < measured; i++) {
-    const start = performance.now();
-    sim.step();
-    tickSamples.push(performance.now() - start);
-  }
-
-  return summarize(perSystem, tickSamples, {
+  return summarize(measurement.perSystem, measurement.tickSamples, {
     world: {
+      kind: 'synthetic',
       settlements: options.settlements,
       fightersPerSide: options.fightersPerSide,
       mapCells: { width: terrain.width, height: terrain.height },
-      settlersAtStart,
-      settlersAtEnd: count(sim, Settler),
-      buildings: count(sim, Building),
+      settlersAtStart: measurement.settlersAtStart,
+      settlersAtEnd: measurement.settlersAtEnd,
+      buildings: measurement.buildings,
     },
-    ticks: { warmup, measured },
+    ticks: { warmup: warmupTicks, measured: measuredTicks, windows: measurement.windows.length },
+    windows: measurement.windows,
+    environment: captureEnvironment({
+      knobs: {
+        ON_BENCH_SETTLEMENTS: `${options.settlements}`,
+        ON_BENCH_FIGHTERS: `${options.fightersPerSide}`,
+        ON_BENCH_TICKS: `${measuredTicks}`,
+        ON_BENCH_WARMUP: `${warmupTicks}`,
+        ON_BENCH_WINDOWS: `${windows}`,
+      },
+      startedAtMs,
+      wallSeconds: (performance.now() - startMs) / 1000,
+      loadPerCpu: measurement.loadPerCpu,
+      peakRssMb: measurement.peakRssMb,
+      calibration: measurement.calibration,
+    }),
+    trust: assessTrust({
+      loadPerCpu: measurement.loadPerCpu,
+      calibration: measurement.calibration,
+      windows: measurement.windows,
+    }),
     stateHash: sim.hashState(),
   });
 }
@@ -119,6 +102,7 @@ describe('sim per-system benchmark', () => {
       options,
       intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
       intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1),
+      intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1),
     );
 
     console.log(`\n${formatReport(report)}\n`);
@@ -128,7 +112,7 @@ describe('sim per-system benchmark', () => {
       console.log(`report written to ${jsonPath}\n`);
     }
 
-    // The run must have profiled a real world — a silently empty one would report a table of zeros.
+    // The run must have profiled a real world - a silently empty one would report a table of zeros.
     expect(report.systems.length).toBeGreaterThan(0);
     expect(report.world.settlersAtStart).toBeGreaterThan(0);
   });
