@@ -1,11 +1,7 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import {
-  BUILDING_HEADQUARTERS,
-  GOOD_SHOES,
-  GOOD_STONE,
-  JOB_COLLECTOR,
-} from '../src/game/sandbox/ids/index.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
+import { BUILDING_HEADQUARTERS, GOOD_SHOES, GOOD_STONE } from '../src/game/sandbox/ids/index.js';
 import {
   hitButton,
   hitCraftChoice,

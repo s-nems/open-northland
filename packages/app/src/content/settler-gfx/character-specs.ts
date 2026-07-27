@@ -17,7 +17,32 @@ import {
   TALK_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
-import { JOB_BABY_FEMALE, JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../../catalog/jobs.js';
+import {
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_BABY_FEMALE,
+  JOB_BABY_MALE,
+  JOB_CHILD_FEMALE,
+  JOB_CHILD_MALE,
+  JOB_CIVILIST,
+  JOB_HERO_AXE,
+  JOB_HERO_SABER,
+  JOB_HERO_SPEAR,
+  JOB_HERO_SWORD,
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
+  JOB_SCOUT,
+  JOB_SOLDIER_AXE_BIG,
+  JOB_SOLDIER_AXE_SMALL,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SABER_LONG,
+  JOB_SOLDIER_SABER_SHORT,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
+  JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
+} from '../../catalog/jobs.js';
 import { CIVILIST_JOB_HEADS, SCOUT_JOB_HEADS } from '../../catalog/roster.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../game/sandbox/ids/weapons.js';
 import {
@@ -117,7 +142,7 @@ export interface CharacterSpec {
 export const CHARACTER_SPECS = {
   civilian: {
     rosterId: 'civilian',
-    logicJob: 6,
+    logicJob: JOB_CIVILIST,
     headBmds: CIVILIST_JOB_HEADS,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
@@ -194,7 +219,7 @@ export const CHARACTER_SPECS = {
     // included, exactly like the builder's action 39.
     rosterId: 'civilian',
     headBmds: SCOUT_JOB_HEADS,
-    logicJob: 6,
+    logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
@@ -222,7 +247,7 @@ export const CHARACTER_SPECS = {
   },
   woman: {
     rosterId: 'woman',
-    logicJob: 5,
+    logicJob: JOB_WOMAN,
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
@@ -255,7 +280,7 @@ export const CHARACTER_SPECS = {
   },
   boy: {
     rosterId: 'boy',
-    logicJob: 4,
+    logicJob: JOB_CHILD_MALE,
     walkSeq: 'human_child_boy_generic_walk',
     waitSeq: 'human_child_boy_generic_wait',
     // The child bodies author their own meal/nap clips (`[bobseq]` `human_child_*_generic_eat`/`_sleep`);
@@ -270,7 +295,7 @@ export const CHARACTER_SPECS = {
   },
   girl: {
     rosterId: 'girl',
-    logicJob: 3,
+    logicJob: JOB_CHILD_FEMALE,
     walkSeq: 'human_child_girl_generic_walk',
     waitSeq: 'human_child_girl_generic_wait_1',
     atomics: {
@@ -281,7 +306,7 @@ export const CHARACTER_SPECS = {
   },
   baby: {
     rosterId: 'baby',
-    logicJob: 2,
+    logicJob: JOB_BABY_MALE,
     // The crawl (104 frames = a clean ×8 13-frame cycle) — the baby's locomotion, so a wandering
     // newborn crawls instead of gliding in its wait pose.
     walkSeq: 'human_child_baby_generic_crouch',
@@ -297,14 +322,14 @@ export const CHARACTER_SPECS = {
   // no `_agressive` gait, so 'warrior' omits `engaged` (it uses its relaxed walk/wait when engaged).
   warrior: {
     rosterId: 'warrior',
-    logicJob: 31,
+    logicJob: JOB_SOLDIER_UNARMED,
     walkSeq: 'human_man_warrior_empty_walk',
     waitSeq: 'human_man_warrior_empty_wait',
     attack: 'human_man_warrior_empty_punch',
   },
   'warrior-spear': {
     rosterId: 'warrior',
-    logicJob: 32,
+    logicJob: JOB_SOLDIER_SPEAR_WOODEN,
     walkSeq: 'human_man_Warrior_spear_walk',
     waitSeq: 'human_man_Warrior_spear_wait',
     attack: 'human_man_Warrior_spear_attack',
@@ -315,7 +340,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-sword': {
     rosterId: 'warrior',
-    logicJob: 34,
+    logicJob: JOB_SOLDIER_SWORD,
     walkSeq: 'human_man_Warrior_Sword_Walk',
     waitSeq: 'human_man_Warrior_Sword_Wait',
     attack: 'human_man_Warrior_Sword_Attack_2',
@@ -326,7 +351,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-broadsword': {
     rosterId: 'warrior',
-    logicJob: 35,
+    logicJob: JOB_SOLDIER_BROADSWORD,
     walkSeq: 'human_man_Warrior_Broadsword_walk',
     waitSeq: 'human_man_Warrior_Broadsword_wait',
     attack: 'human_man_Warrior_Broadsword_attack',
@@ -337,7 +362,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-shortbow': {
     rosterId: 'warrior',
-    logicJob: 40,
+    logicJob: JOB_ARCHER,
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
     attack: 'human_man_Warrior_Shortbow_attack',
@@ -348,7 +373,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-longbow': {
     rosterId: 'warrior',
-    logicJob: 41,
+    logicJob: JOB_ARCHER_LONG,
     walkSeq: 'human_man_Warrior_Longbow_walk',
     waitSeq: 'human_man_Warrior_Longbow_wait',
     attack: 'human_man_Warrior_Longbow_attack',
@@ -383,25 +408,25 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
  * the `civilian` default.
  */
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
-  5: 'woman', // woman
-  27: 'scout', // scout — the generic man body under the hatted scout heads (80..83)
-  31: 'warrior', // soldier_unarmed
-  32: 'warrior-spear', // soldier_spear_wooden
-  33: 'warrior-spear', // soldier_spear_iron
-  34: 'warrior-sword', // soldier_sword_short
-  35: 'warrior-broadsword', // soldier_sword_long
-  36: 'warrior-sword', // soldier_saber_short
-  37: 'warrior-broadsword', // soldier_saber_long
-  38: 'warrior-broadsword', // soldier_axe_small (no authored axe set — closest two-hander)
-  39: 'warrior-broadsword', // soldier_axe_big
-  40: 'warrior-shortbow', // soldier_bow_short
-  41: 'warrior-longbow', // soldier_bow_long
-  42: 'warrior', // hero_unarmed (baseatomics 31)
-  43: 'warrior-spear', // hero_spear_siegfried (baseatomics 33)
-  44: 'warrior-sword', // hero_sword_bjarni (baseatomics 34)
-  45: 'warrior-broadsword', // hero_saber_hatschi (baseatomics 35 — the two-hander class)
-  46: 'warrior-broadsword', // hero_axe (baseatomics 39; no authored axe set — closest two-hander)
-  47: 'warrior-longbow', // heroine_bow_xena (baseatomics 41)
+  [JOB_WOMAN]: 'woman',
+  [JOB_SCOUT]: 'scout', // the generic man body under the hatted scout heads (80..83)
+  [JOB_SOLDIER_UNARMED]: 'warrior',
+  [JOB_SOLDIER_SPEAR_WOODEN]: 'warrior-spear',
+  [JOB_SOLDIER_SPEAR]: 'warrior-spear',
+  [JOB_SOLDIER_SWORD]: 'warrior-sword',
+  [JOB_SOLDIER_BROADSWORD]: 'warrior-broadsword',
+  [JOB_SOLDIER_SABER_SHORT]: 'warrior-sword',
+  [JOB_SOLDIER_SABER_LONG]: 'warrior-broadsword',
+  [JOB_SOLDIER_AXE_SMALL]: 'warrior-broadsword',
+  [JOB_SOLDIER_AXE_BIG]: 'warrior-broadsword',
+  [JOB_ARCHER]: 'warrior-shortbow',
+  [JOB_ARCHER_LONG]: 'warrior-longbow',
+  [JOB_HERO_UNARMED]: 'warrior',
+  [JOB_HERO_SPEAR]: 'warrior-spear',
+  [JOB_HERO_SWORD]: 'warrior-sword',
+  [JOB_HERO_SABER]: 'warrior-broadsword',
+  [JOB_HERO_AXE]: 'warrior-broadsword',
+  [JOB_HEROINE_BOW]: 'warrior-longbow',
 };
 
 /**

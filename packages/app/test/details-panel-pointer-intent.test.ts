@@ -1,12 +1,12 @@
 import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   BUILDING_HEADQUARTERS,
   GOOD_BREAD,
   GOOD_PLANK,
   GOOD_SHOES,
   GOOD_STONE,
-  JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
 import type { UnitPanelModel } from '../src/hud/details-panel/index.js';
 import {

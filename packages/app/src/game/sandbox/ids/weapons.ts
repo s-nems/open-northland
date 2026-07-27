@@ -12,7 +12,7 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
-} from './economy/jobs.js';
+} from '../../../catalog/jobs.js';
 
 // Weapon typeIds ride the real viking `weapons.ini` ids.
 export const WEAPON_FISTS = 1;

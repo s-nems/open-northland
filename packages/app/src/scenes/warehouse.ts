@@ -1,6 +1,7 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
@@ -14,8 +15,6 @@ import {
   GOOD_PLANK,
   GOOD_STONE,
   GOOD_WOOD,
-  JOB_CARRIER,
-  JOB_COLLECTOR,
   placeSandboxBuilding,
   spawnIdleSettler,
   spawnSandboxSettler,

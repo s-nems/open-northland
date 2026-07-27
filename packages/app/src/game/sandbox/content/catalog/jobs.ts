@@ -5,11 +5,7 @@ import {
   PLANT_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
-import { PROFESSIONS } from '../../../../catalog/professions.js';
-import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
-  EXTRACTED_GATHERER_TRADES,
-  GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BABY_FEMALE,
@@ -20,7 +16,6 @@ import {
   JOB_CHILD_MALE,
   JOB_CIVILIST,
   JOB_COLLECTOR,
-  JOB_FARMER_SLOT,
   JOB_IDLE,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
@@ -28,8 +23,10 @@ import {
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
-  rebaseSlotJob,
-} from '../../ids/index.js';
+} from '../../../../catalog/jobs.js';
+import { PROFESSIONS } from '../../../../catalog/professions.js';
+import { messages, professionLabel } from '../../../../i18n/index.js';
+import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_FARMER_SLOT, rebaseSlotJob } from '../../ids/index.js';
 import { BUILDING_WORKER_SLOTS, workerSlotName } from '../../worker-slots.js';
 import type { SandboxContentExtras } from '../types.js';
 

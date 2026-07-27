@@ -2,8 +2,9 @@ import { type ContentSet, indexById } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
+import { rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
 import { isBuilding, isSettler, ownerPlayerOf, settlerJobType } from '../src/game/snapshot.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {

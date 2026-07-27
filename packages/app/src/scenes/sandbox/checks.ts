@@ -2,7 +2,8 @@ import type { Entity, Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
-import { JOB_CARRIER, staffableCrewFor } from '../../game/sandbox/index.js';
+import { JOB_CARRIER } from '../../catalog/jobs.js';
+import { staffableCrewFor } from '../../game/sandbox/index.js';
 import { GATHERER_BY_GOOD, type GatherCamp, MINE_DEPOSIT_SCALE, WAREHOUSE_IDS } from './placements.js';
 
 /** The world queries the sandbox scene's checks are stated in — staffing tallies, camp depletion, and

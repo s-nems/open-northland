@@ -6,8 +6,9 @@ import {
   type Simulation,
   systems,
 } from '@open-northland/sim';
+import { JOB_IDLE } from '../../../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
-import { JOB_IDLE, weaponEquipmentFor } from '../ids/index.js';
+import { weaponEquipmentFor } from '../ids/index.js';
 
 /** Spawn a settler with the given job via the `spawnSettler` command. */
 export function spawnSandboxSettler(

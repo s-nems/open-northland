@@ -1,7 +1,5 @@
 import type { Command } from '@open-northland/sim';
-import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
-  GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
@@ -11,6 +9,10 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+} from '../../catalog/jobs.js';
+import { PRIMARY_TRIBE } from '../../game/rules.js';
+import {
+  GATHERERS,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
   WEAPON_LONG_BOW,

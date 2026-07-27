@@ -66,7 +66,10 @@ export interface ProfessionDef {
   readonly source: string;
 }
 
-/** True for any job in the `jobtypes.ini` soldier band (31..41) — all collapse to the one soldier label. */
+/** True for any job in the `jobtypes.ini` soldier band (31..41) — all collapse to the one soldier label.
+ *  The band stays catalog policy rather than following the sim's content-derived role: this helper takes
+ *  a bare `jobType`, so it must also label the classes the running content may not declare (the sandbox
+ *  set omits 32 and 36..39). */
 export function isSoldierJob(jobType: number): boolean {
   return jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX;
 }

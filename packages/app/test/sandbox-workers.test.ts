@@ -1,11 +1,11 @@
 import { DEFAULT_RECIPE_TICKS } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { JOB_CARRIER } from '../src/catalog/jobs.js';
 import {
   BUILDING_JOINERY,
   BUILDING_MILL,
   GOOD_FLOUR,
   GOOD_WHEAT,
-  JOB_CARRIER,
   JOB_MILLER_SLOT,
   WORKER_SLOT_JOB_BASE,
 } from '../src/game/sandbox/ids/index.js';

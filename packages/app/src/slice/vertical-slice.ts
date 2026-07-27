@@ -10,14 +10,13 @@ import {
 } from '@open-northland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { GRASS } from '../catalog/buildings.js';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../catalog/jobs.js';
 import { diag } from '../diag/index.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
   GOOD_WOOD,
-  JOB_CARRIER,
-  JOB_COLLECTOR,
   resolveWorldContent,
   sandboxWalkableTypeIds,
   type WorldContentOptions,

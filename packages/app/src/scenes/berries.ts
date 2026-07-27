@@ -1,7 +1,8 @@
 import type { CellTerrainMap, Simulation } from '@open-northland/sim';
 import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_COLLECTOR, placeSandboxBerryBush, spawnSettlerDirect } from '../game/sandbox/index.js';
+import { JOB_COLLECTOR } from '../catalog/jobs.js';
+import { placeSandboxBerryBush, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**

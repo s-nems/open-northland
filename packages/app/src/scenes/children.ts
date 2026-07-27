@@ -1,13 +1,8 @@
 import type { Entity, Fixed, Simulation } from '@open-northland/sim';
 import { components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import {
-  JOB_BABY_MALE,
-  JOB_CHILD_FEMALE,
-  JOB_CHILD_MALE,
-  placeSandboxBerryBush,
-  spawnSettlerDirect,
-} from '../game/sandbox/index.js';
+import { JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../catalog/jobs.js';
+import { placeSandboxBerryBush, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**

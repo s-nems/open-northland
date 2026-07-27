@@ -1,5 +1,12 @@
 import type { JobEnables } from '@open-northland/data';
 import {
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_COLLECTOR,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SWORD,
+} from '../../../../catalog/jobs.js';
+import {
   BUILDING_BAKERY,
   BUILDING_FARM,
   BUILDING_HOME_00,
@@ -14,11 +21,6 @@ import {
   GOOD_MUSHROOM,
   GOOD_STONE,
   GOOD_WOOD,
-  JOB_ARCHER,
-  JOB_ARCHER_LONG,
-  JOB_COLLECTOR,
-  JOB_SOLDIER_BROADSWORD,
-  JOB_SOLDIER_SWORD,
 } from '../../ids/index.js';
 
 /**

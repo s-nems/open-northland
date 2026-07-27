@@ -1,12 +1,7 @@
 import type { BuildingType } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
-import {
-  canonicalJobType,
-  EXTRACTED_GATHERER_TRADES,
-  GATHERERS,
-  JOB_CARRIER,
-  JOB_IDLE,
-} from './ids/index.js';
+import { JOB_CARRIER, JOB_IDLE } from '../../catalog/jobs.js';
+import { canonicalJobType, EXTRACTED_GATHERER_TRADES, GATHERERS } from './ids/index.js';
 
 /**
  * The three worker roles the badge colours and the right-click assignment priority distinguish — a
