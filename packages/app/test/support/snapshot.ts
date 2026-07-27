@@ -1,11 +1,9 @@
 import { fx, type WorldSnapshot } from '@open-northland/sim';
 
 /**
- * Shared builders for the synthetic {@link WorldSnapshot}s the pure snapshot→view projections are tested
- * against (door badges, geometry-debug items, map-start focus, the vertical-slice scene assembly). These
- * shape a snapshot by hand — the sim never runs — so a test can pin exactly the entities/components its
- * projection reads. Kept as small composable builders (not one mega-builder) so each test keeps only the
- * components it asserts on.
+ * Shared fixtures for the pure snapshot→view projections: small composable builders that shape a
+ * {@link WorldSnapshot} by hand — the sim never runs — so a test pins exactly the entities and components
+ * its projection reads, plus the counting wrapper a per-frame memo is measured against.
  */
 
 /** A hand-built snapshot entity: an id + its raw component bag (each projection reads the keys it needs). */
@@ -47,4 +45,26 @@ export function settler(id: number, jobType: number, workplace: number | null): 
 /** An adult settler living in home building `home` (a `Residence`) — one household dot on that home. */
 export function resident(id: number, jobType: number, home: number): Ent {
   return { id, components: { Settler: { jobType }, Residence: { home } } };
+}
+
+/**
+ * A snapshot that counts every read of `entities` — the O(N) lane every projection walks, and the seam a
+ * per-frame memo has to stop hitting. Compare counts relatively; the absolute number is an implementation
+ * detail of the projection under test.
+ */
+export function countingSnapshot(source: WorldSnapshot): {
+  snapshot: WorldSnapshot;
+  scans: () => number;
+} {
+  let scans = 0;
+  return {
+    snapshot: {
+      ...source,
+      get entities() {
+        scans++;
+        return source.entities;
+      },
+    },
+    scans: () => scans,
+  };
 }

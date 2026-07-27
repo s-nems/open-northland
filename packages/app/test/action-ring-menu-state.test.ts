@@ -4,7 +4,7 @@ import { JOB_COLLECTOR, JOB_SCOUT, JOB_WOMAN } from '../src/catalog/jobs.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { hasEligiblePartner } from '../src/game/snapshot.js';
 import { menuStateFor } from '../src/view/unit-controls/action-ring/menu-state.js';
-import { type Ent, snapshotOf } from './support/snapshot.js';
+import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * The action ring's erect-signpost button must offer exactly what `placeSignpost` accepts — both read the
@@ -71,34 +71,18 @@ describe('action-ring marry gating', () => {
   });
 });
 
-/** A snapshot that counts every read of `entities` — the seam the memo has to stop hitting. */
-function countingSnapshot(entities: readonly Ent[]): { snapshot: WorldSnapshot; reads: () => number } {
-  const base = snapshotOf(entities);
-  let reads = 0;
-  return {
-    snapshot: {
-      ...base,
-      get entities() {
-        reads++;
-        return base.entities;
-      },
-    },
-    reads: () => reads,
-  };
-}
-
 describe('hasEligiblePartner memo', () => {
   // No woman: the pass runs to the end instead of stopping at a match, the worst case the memo is for.
   const seeker = adult(SEEKER, JOB_COLLECTOR);
   const entities = [seeker, adult(2, JOB_COLLECTOR)];
 
   it('scans a snapshot object once, however many frames read it', () => {
-    const { snapshot, reads } = countingSnapshot(entities);
+    const { snapshot, scans } = countingSnapshot(snapshotOf(entities));
     expect(hasEligiblePartner(content, snapshot, seeker)).toBe(false);
-    const scanned = reads();
+    const scanned = scans();
     expect(scanned).toBeGreaterThan(0);
     expect(hasEligiblePartner(content, snapshot, seeker)).toBe(false);
-    expect(reads()).toBe(scanned);
+    expect(scans()).toBe(scanned);
   });
 
   it('answers the next tick fresh instead of serving the last verdict', () => {

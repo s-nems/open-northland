@@ -16,7 +16,6 @@ import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createActionRingInput } from './input.js';
 import { menuStateFor } from './menu-state.js';
 import { createProfessionPicker } from './profession-picker.js';
-import { selectionCentre } from './selection-centre.js';
 import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js';
 
 /**
@@ -46,9 +45,10 @@ import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js
  * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
  * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
  *
- * The pure pieces live beside this glue: the selection centroid projection ({@link selectionCentre}), the
- * per-settler button derivation ({@link menuStateFor}), and the pointer/keyboard controller
- * ({@link createActionRingInput}). This module owns the mode/anchor state machine that ties them together.
+ * The pure pieces live beside this glue: the selection centroid projection (`selection-centre.ts`, bound
+ * to the live selection and injected), the per-settler button derivation ({@link menuStateFor}), and the
+ * pointer/keyboard controller ({@link createActionRingInput}). This module owns the mode/anchor state
+ * machine that ties them together.
  */
 
 /** Draw the menu above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
@@ -117,7 +117,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   let mode: MenuMode = 'closed';
   let layout: ActionRingLayout = EMPTY_LAYOUT;
   /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
-  let actionTargets: number[] = [];
+  let actionTargets: readonly number[] = [];
   /**
    * Where the menu is pinned, in SCREEN (canvas) px — captured once when it opens and held for the rest of
    * the open session (null = not anchored yet / closed), so neither the settler walking on nor a camera pan
@@ -185,8 +185,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     anchor = atClient === undefined ? null : toCanvas(atClient.x, atClient.y);
   };
 
-  const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
-    const centre = mode === 'closed' ? null : selectionCentre(snapshot, selection);
+  const update = (camera: Camera, snapshot: WorldSnapshot): void => {
+    const centre = mode === 'closed' ? null : opts.selectionCentre(snapshot);
     if (centre === null) {
       // Nothing selected (or menu closed): hide the ring, and close the list if it was open (it has no anchor).
       root.visible = false;

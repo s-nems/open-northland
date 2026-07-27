@@ -12,6 +12,7 @@ import {
   currentTradeSlotAt,
 } from '../src/view/unit-controls/highlights/index.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
+import { countingSnapshot } from './support/snapshot.js';
 
 /**
  * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a
@@ -114,19 +115,6 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
  * once per frame - while still re-colouring as soon as the world changes or another settler is armed.
  */
 describe('pick-mode highlight cost', () => {
-  /** A snapshot whose entity scans are counted (`entities` is the O(N) lane every projection walks). */
-  function countingSnapshot(source: WorldSnapshot): { snapshot: WorldSnapshot; scans: () => number } {
-    let scans = 0;
-    const snapshot: WorldSnapshot = {
-      ...source,
-      get entities() {
-        scans++;
-        return source.entities;
-      },
-    };
-    return { snapshot, scans: () => scans };
-  }
-
   function pickController(snapshot: () => WorldSnapshot, content: ContentSet): PickModeController {
     return createPickModeController({
       snapshot,
