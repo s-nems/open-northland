@@ -37,14 +37,15 @@ import type { PlannerPass } from './planner-pass.js';
 import { anotherSystemOwns } from './replan.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { boundWorkplaceTarget } from './targets/index.js';
+import { planTraining } from './training.js';
 
 // The drive ladder: pick the next atomic for one idle settler, in this fixed priority order (each
 // drive returns `true` when it takes the settler for the tick):
 //
-//   needs (eat > sleep > pray) → the ownership gate → the company (chat-seek) rung → the housewife
-//   hoard → deliver a carried load → bound-farmer field loop → bound-producer / workshop-supplier
-//   loop → build → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack →
-//   idle chat.
+//   needs (eat > sleep > pray) → the ownership gate → the barracks drill → the company (chat-seek)
+//   rung → the housewife hoard → deliver a carried load → bound-farmer field loop → bound-producer /
+//   workshop-supplier loop → build → gather (chop/collect) → porter ferrying → store-carrier haul →
+//   idle de-stack → idle chat.
 //
 // The order is part of the design (and of the goldens): needs sit above the ownership gate so a
 // starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
@@ -107,6 +108,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // purpose (soft overrides: hunger/fatigue/piety still pull the unit away, and a marrying/child-making
   // settler still eats, faithful to the autonomous-settler model).
   if (anotherSystemOwns(world, e)) return;
+  // BARRACKS DRILL: the player sent this settler to be trained, so the errand outranks its trade for as
+  // long as it lasts — the same soft-override tier as the equip errand below, and above it because the
+  // drill ends in a profession change. See ./training.ts.
+  if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;
   // EQUIP ERRAND: a live player equip order outranks the DEFEND hold below, socialising and every
   // economy rung (the player sent the settler for gear), but sits under the needs drives and the
   // ownership gate above, like the other soft overrides. A DEFEND guard walks the errand and re-holds

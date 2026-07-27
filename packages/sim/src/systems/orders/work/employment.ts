@@ -20,6 +20,7 @@ import {
   SiteAssignment,
   SupplyRun,
   sameSide,
+  TrainingOrder,
   UnderConstruction,
   Weapon,
 } from '../../../components/index.js';
@@ -76,11 +77,13 @@ export function setJob(
  * and sync the gatherer work flag to the new trade ({@link syncWorkFlagToJob} — a gatherer trade gets a flag,
  * leaving one drops it). It does not touch {@link JobAssignment}: the caller owns the binding — {@link setJob}
  * drops it (the JobSystem re-employs), while {@link assignWorker} sets it (bind to the player-chosen building).
- * The single home of the "re-idle to a new trade" reset, so the two employment orders can't drift apart.
+ * The single home of the "re-idle to a new trade" reset, so the employment orders and the barracks drill
+ * (`settlers/training.ts`) can't drift apart.
  * Owned-only: the callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
  */
-function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
+export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   world.get(e, Settler).jobType = jobType;
+  world.remove(e, TrainingOrder); // a trade change calls off a drill errand — the settler was re-tasked
   // Cancel whatever it was doing under the old job. setJob vets interruptibility before reaching here
   // (deferOrderDuringAtomic); assignWorker still cancels unconditionally — a remaining member of the
   // uninterruptible-atomic class, tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.

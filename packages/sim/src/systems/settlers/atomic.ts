@@ -36,6 +36,7 @@ import {
   swingWorkUnits,
   unequipWornGood,
 } from './effects-goods/index.js';
+import { serveDrillRepetition } from './training.js';
 
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
@@ -182,7 +183,7 @@ function applyEffect(
   world: World,
   ctx: SystemContext,
   settler: Entity,
-  atomic: { effect: AtomicEffect; workCredit?: Fixed },
+  atomic: { atomicId: number; duration: number; effect: AtomicEffect; workCredit?: Fixed },
 ): number | undefined {
   const effect = atomic.effect;
   switch (effect.kind) {
@@ -266,6 +267,9 @@ function applyEffect(
       // `enjoy` (`event <at> 3 +800`), so it resets `enjoyment` too. Its drive is deferred for the same
       // reason as `enjoy` — no readable building satisfier.
       if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
+      return;
+    case 'exercise':
+      serveDrillRepetition(world, ctx, settler, atomic.atomicId, atomic.duration);
       return;
     case 'move':
     case 'idle':

@@ -69,3 +69,7 @@ export const LISTEN_ATOMIC = 15;
  * action 43 to the shared hammer clip, so the render times it like the builder's swing.
  */
 export const BUILD_GUIDE_ATOMIC = 43;
+
+/** One drill repetition at the barracks (`logicdefines.inc` EXERCISE 89; `tribetypes.ini setatomic 6 89
+ *  "viking_civilist_exercise"` — the sim's `EXERCISE_ATOMIC_ID`). */
+export const EXERCISE_ATOMIC = 89;

@@ -6,8 +6,7 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
  * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`,
  * `HAI_DisableHouseUpgrade`, `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map
  * onto it one-to-one; the behavior INSIDE each module is a named genre-convention approximation
- * (no byte-level evidence of the original's internals exists). `military` currently gates nothing:
- * the seat raises no army until barracks training lands (docs/tickets/features/barracks-training.md).
+ * (no byte-level evidence of the original's internals exists).
  */
 export const AI_MODULE_IDS = [
   'collectResources',
@@ -60,4 +59,11 @@ export function aiPlayerEntity(world: World, player: number): Entity | null {
 /** Whether `player`'s seat is driven by the strategic AI. */
 export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
+}
+
+/** Whether `player`'s seat runs `module` — for a decision taken INSIDE another module's run. A non-AI
+ *  seat runs none. */
+export function aiModuleRuns(world: World, player: number, module: AiModuleId): boolean {
+  const carrier = aiPlayerEntity(world, player);
+  return carrier !== null && world.get(carrier, AiPlayer).modules[module];
 }

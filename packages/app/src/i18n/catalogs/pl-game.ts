@@ -25,6 +25,7 @@ export const plGame = {
     stockAllTab: 'Wszystkie',
     workFlag: 'Flaga robocza',
     specialization: 'Specjalizacja {id}',
+    trainingXp: 'Wyszkolenie',
     unlockProgress: '{job}: {current}/{required} ({track})',
     weaponXp: {
       fist: 'Walka - Pięści',

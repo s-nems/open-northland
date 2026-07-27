@@ -1,9 +1,11 @@
-import type { JobEnables } from '@open-northland/data';
+import type { JobEnables, JobRequirement } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import {
   ATTACK_ATOMIC,
   BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
+  EXERCISE_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
   LISTEN_ATOMIC,
@@ -32,6 +34,7 @@ import {
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,
+  CIVILIST_EXERCISE_ANIMATION,
   CIVILIST_LISTEN_ANIMATION,
   CIVILIST_TALK_ANIMATION,
   FARMER_REAP_ANIMATION,
@@ -56,8 +59,32 @@ export interface SandboxTribe {
   readonly id: string;
   readonly hitpoints?: number;
   readonly jobEnables?: readonly JobEnables[];
+  readonly jobRequirements?: readonly JobRequirement[];
   readonly atomicBindings?: unknown[];
 }
+
+/**
+ * The base soldier class's two gate rows, transcribed from the extracted viking table: `needforjob 31 5
+ * 69` (five repeats of the `soldier general` track) and `trainforjob 31 5 77` (five TRAINING repeats).
+ * How the two combine is the sim's `schoolingMet`. The armed classes' own rows wait on the weapon slice
+ * (docs/tickets/features/barracks-recruitment.md).
+ */
+const SOLDIER_GATE: readonly JobRequirement[] = [
+  {
+    requirement: 'need',
+    target: 'job',
+    targetId: JOB_SOLDIER_UNARMED,
+    amount: 5,
+    experienceTypes: [systems.SOLDIER_GENERAL_EXPERIENCE_TYPE],
+  },
+  {
+    requirement: 'train',
+    target: 'job',
+    targetId: JOB_SOLDIER_UNARMED,
+    amount: 5,
+    experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
+  },
+];
 
 /** Build the primary tribe's atomic bindings plus any caller-declared tribes. */
 export function buildSandboxTribes(
@@ -91,6 +118,9 @@ export function buildSandboxTribes(
       { jobType: JOB_WOMAN, atomicId: LISTEN_ATOMIC, animation: WOMAN_LISTEN_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: TALK_ATOMIC, animation: CIVILIST_TALK_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: LISTEN_ATOMIC, animation: CIVILIST_LISTEN_ANIMATION },
+      // The barracks drill, bound for the civilist like the original's `setatomic 6 89` row; every other
+      // trade sent to be trained resolves it through the sim's civilist fallback.
+      { jobType: JOB_CIVILIST, atomicId: EXERCISE_ATOMIC, animation: CIVILIST_EXERCISE_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_SCOUT, atomicId: BUILD_GUIDE_ATOMIC, animation: BUILD_GUIDE_ANIMATION },
@@ -110,6 +140,7 @@ export function buildSandboxTribes(
     // The collector gates the economy houses + gathered goods, mirroring the extracted viking `jobEnables`
     // (see tech-graph.ts): a gated workshop stays locked until the tribe has its gatherer.
     jobEnables: SANDBOX_JOB_ENABLES,
+    jobRequirements: SOLDIER_GATE,
   });
   // The standing wildlife tribes (the sandbox `animaltypes` records' owners). No tech graph and no
   // hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.

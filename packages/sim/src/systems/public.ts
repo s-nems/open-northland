@@ -35,7 +35,13 @@ export {
   requirementRepeats,
   scoutVisionBonusNodes,
 } from './progression/bonus.js';
-export { FIGHT_EXPERIENCE_TYPE, SCOUT_EXPERIENCE_TYPE } from './progression/experience.js';
+export {
+  FIGHT_EXPERIENCE_TYPE,
+  SCOUT_EXPERIENCE_TYPE,
+  SOLDIER_GENERAL_EXPERIENCE_TYPE,
+  TRAINING_EXPERIENCE_TYPE,
+} from './progression/experience.js';
+export { schoolingMet } from './progression/unlocks.js';
 // The need-atomic clip resolution (the civilist fallback + the at-home twin's name), exported so the
 // real-content suite can pin both joins against the served IR rather than a fixture.
 export {
@@ -43,7 +49,7 @@ export {
   needAtomicAnimationName,
   needAtomicDuration,
 } from './readviews/animations.js';
-export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
+export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';
 export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
 export { IDLE_JOB } from './readviews/hud.js';
 // The content-derived job roles — the profession picker and the action ring offer exactly what the

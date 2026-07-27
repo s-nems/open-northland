@@ -218,5 +218,10 @@ export const enContent = {
       summary:
         'Two collectors trek to a forest - the booted one visibly faster, its boots wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
     },
+    barracks: {
+      title: 'Barracks training',
+      summary:
+        'A colonist sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a colonist for whom the soldier trade stays shut.',
+    },
   },
 } as const;

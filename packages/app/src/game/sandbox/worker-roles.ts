@@ -1,3 +1,5 @@
+import type { BuildingType } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import {
   canonicalJobType,
   EXTRACTED_GATHERER_TRADES,
@@ -27,6 +29,20 @@ const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set([
   ...GATHERERS.map((g) => g.job),
   ...EXTRACTED_GATHERER_TRADES,
 ]);
+
+/**
+ * Whether right-clicking this building with a settler of `currentJob` means "train this one" rather than
+ * "put him to work here". The barracks ({@link systems.isBarracksType}) drills every settler whose trade it
+ * does not already employ: a colonist walks in and comes out a soldier, while a carrier still takes the
+ * post that keeps its weapons stocked (user rule 2026-07-27). Every other building always employs.
+ */
+export function trainsRatherThanEmploys(
+  def: Pick<BuildingType, 'kind' | 'workers'> | undefined,
+  currentJob: number | undefined,
+): boolean {
+  if (def === undefined || !systems.isBarracksType(def)) return false;
+  return currentJob === undefined || !def.workers.some((slot) => slot.jobType === currentJob);
+}
 
 /** Classify a worker job into its {@link WorkerRole}: the carrier ({@link JOB_CARRIER}), a gatherer (in
  *  {@link GATHERER_JOB_TYPES}), or otherwise a craftsman. The job is de-rebased to its raw id first

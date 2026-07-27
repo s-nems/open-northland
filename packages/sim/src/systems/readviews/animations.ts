@@ -44,6 +44,16 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
 
 /**
+ * The `event <at> <type> <value>` type id that grants TRAINING experience — the schooling XP a drill
+ * repetition banks, summed by {@link atomicEventChannelDelta} like a need channel.
+ *
+ * source-basis (extracted): `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_GET_TRAINING`; type 29 appears
+ * on exactly the five tribes' `*_exercise` (+1) and `*_train` (+25) clips and nowhere else in
+ * `atomicanimations`.
+ */
+export const ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE = 29;
+
+/**
  * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job> <atomic>
  * "anim"` binding references ({@link AtomicAnimation.name}, not the lowercased `id`). Returns `undefined`
  * for an unresolved name — expected, since the readable mod set is a subset of the base-game animations — so

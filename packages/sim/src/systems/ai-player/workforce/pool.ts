@@ -1,4 +1,4 @@
-import { Female, JobAssignment, Settler } from '../../../components/index.js';
+import { Female, JobAssignment, Settler, TrainingOrder } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -57,6 +57,7 @@ export function classifyWorkforce(
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (isFighterJob(ctx.content, job)) continue;
+    if (world.has(e, TrainingOrder)) continue; // committed to a barracks drill — no longer spare
     if (world.has(e, JobAssignment)) continue; // staffing a building — keep the post
     if (isScoutJob(ctx.content, job)) {
       scouts.push(e);

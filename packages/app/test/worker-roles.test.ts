@@ -1,6 +1,12 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
-import { assignmentPriority, assignmentPriorityFor, workerRoleOf } from '../src/game/sandbox/worker-roles.js';
+import {
+  assignmentPriority,
+  assignmentPriorityFor,
+  trainsRatherThanEmploys,
+  workerRoleOf,
+} from '../src/game/sandbox/worker-roles.js';
 
 /**
  * The right-click worker-role classification over REAL extracted content (the browser scene/map path),
@@ -153,5 +159,26 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
   it('a plain/idle settler is never offered a gatherer slot (only a gatherer current trade is)', () => {
     // Idle on a warehouse still becomes a carrier — the default excludes gatherers for a non-gatherer.
     expect(assignmentPriorityFor(undefined, WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
+  });
+});
+
+describe('trainsRatherThanEmploys — the barracks right-click split', () => {
+  // The real ir.json barracks: `kind: training`, carrier slots only.
+  const BARRACKS = { kind: BUILDING_KIND.training, workers: [{ jobType: REAL_JOB.carrier, count: 4 }] };
+
+  it('drills every trade the training house does not employ, including a settler with none', () => {
+    expect(trainsRatherThanEmploys(BARRACKS, REAL_JOB.collector)).toBe(true);
+    expect(trainsRatherThanEmploys(BARRACKS, REAL_JOB.miller)).toBe(true);
+    expect(trainsRatherThanEmploys(BARRACKS, undefined)).toBe(true);
+  });
+
+  it('leaves a carrier to the post that keeps the barracks stocked', () => {
+    expect(trainsRatherThanEmploys(BARRACKS, REAL_JOB.carrier)).toBe(false);
+  });
+
+  it('never drills at a building of another kind', () => {
+    const mill = { kind: BUILDING_KIND.workplace, workers: MILL_SLOTS };
+    expect(trainsRatherThanEmploys(mill, REAL_JOB.collector)).toBe(false);
+    expect(trainsRatherThanEmploys(undefined, REAL_JOB.collector)).toBe(false);
   });
 });

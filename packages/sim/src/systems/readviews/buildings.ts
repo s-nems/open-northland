@@ -1,5 +1,5 @@
-import { BUILDING_KIND } from '@open-northland/data';
-import { Building } from '../../components/index.js';
+import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
+import { Building, UnderConstruction } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -31,6 +31,28 @@ export function buildingCombatClass(ctx: SystemContext, buildingType: number): B
 export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t: Entity): boolean {
   const b = world.tryGet(t, Building);
   return b !== undefined && buildingCombatClass(ctx, b.buildingType) === 'other';
+}
+
+/**
+ * Whether a building TYPE is the barracks — the house a settler drills at to become a soldier. The
+ * original's `logicmaintype 4` (LEARN) class holds exactly two houses ({@link BUILDING_KIND.training}),
+ * and the barracks is the one that employs anybody: `logicworker 24 4` (four haulers keeping its arsenal
+ * stocked) against the school's none. A structural signature like {@link isTemple}'s, because the field
+ * that names the difference outright — `logicSchoolSize`, 25 at the barracks against the school's 5 — is
+ * readable but not carried into the IR yet (docs/tickets/features/barracks-training.md).
+ */
+export function isBarracksType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
+  return type.kind === BUILDING_KIND.training && type.workers.length > 0;
+}
+
+/** Whether a STANDING building is a barracks ({@link isBarracksType}); a foundation still under
+ *  construction is not one yet. */
+export function isBarracks(world: World, ctx: SystemContext, building: Entity): boolean {
+  if (!world.isAlive(building) || world.has(building, UnderConstruction)) return false;
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return false;
+  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  return type !== undefined && isBarracksType(type);
 }
 
 /**

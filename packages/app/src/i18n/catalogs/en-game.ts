@@ -25,6 +25,7 @@ export const enGame = {
     stockAllTab: 'All',
     workFlag: 'Work flag',
     specialization: 'Specialization {id}',
+    trainingXp: 'Training',
     unlockProgress: '{job}: {current}/{required} ({track})',
     weaponXp: {
       fist: 'Combat - Fists',

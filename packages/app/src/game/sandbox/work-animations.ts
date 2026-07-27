@@ -66,3 +66,14 @@ export const WOMAN_TALK_PULSE_FRAMES = [20, 40, 60, 80, 95] as const;
 export const CHANGE_SOCIAL_EVENT_TYPE = 3;
 export const TALK_PULSE_VALUE = 800;
 export const LISTEN_QUIET_PULSE_VALUE = 100;
+// The recruit's drill repetition inside the barracks — the transcribed `viking_civilist_exercise`
+// atomicanimation (`length 28`, one `event 22 29 1`: a single TRAINING experience point). The clip is
+// never drawn (the render hides a settler that has gone in), so here it is purely the drill's clock and
+// XP carrier; the sim grants that point on completion, not on the transcribed frame.
+export const CIVILIST_EXERCISE_ANIMATION = 'viking_civilist_exercise';
+export const CIVILIST_EXERCISE_LENGTH = 28;
+export const CIVILIST_EXERCISE_XP_FRAME = 22;
+export const CIVILIST_EXERCISE_XP = 1;
+// The `event <at> <type>` type granting TRAINING experience (`ATOMIC_EVENT_TYPE_GET_TRAINING`,
+// logicdefines.inc l.749) — the schooling the `trainfor*` requirement rows read.
+export const TRAINING_EXPERIENCE_EVENT_TYPE = 29;

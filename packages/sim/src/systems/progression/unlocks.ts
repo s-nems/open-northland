@@ -1,4 +1,9 @@
-import type { JobRequirement, JobRequirementTarget, VehicleType } from '@open-northland/data';
+import type {
+  HumanJobExperienceType,
+  JobRequirement,
+  JobRequirementTarget,
+  VehicleType,
+} from '@open-northland/data';
 import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -122,8 +127,8 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
  * (source basis: the factor-invariant amounts themselves). {@link requirementRepeats} owns the whole
  * reading, including the general-track widening and the per-track truncation. A requirement with no
  * `experienceTypes` (none in the real data, but the schema permits it) is vacuously met. Only
- * `requirement === 'need'` is interpreted here — `train` requirements are a schooling cost paid at a
- * training house, not an already-accrued threshold.
+ * `requirement === 'need'` is interpreted here — a `train` row is read by {@link schoolingMet}, not by
+ * this one.
  *
  * source-basis (approximated): whether a two-`expType` line means "sum both" or "either alone" has no
  * readable oracle, since the original's threshold rides the same below-the-`.ini` XP logic the per-animation
@@ -178,7 +183,7 @@ export function experienceGatesApply(world: World, owner: number | undefined): b
  * bread- and flour-track XP). A tribe absent from content thresholds nothing, consistent with the
  * `jobEnables` gate. Where the tree does not apply ({@link experienceGatesApply}: an AI seat, or the
  * progression toggle off) every civilian target is unthresholded; fighter jobs stay gated either
- * way, for the barracks-training path.
+ * way, on the accrued-XP path below or the barracks schooling {@link schoolingMet} reads.
  */
 export function settlerMeetsNeed(
   world: World,
@@ -188,14 +193,52 @@ export function settlerMeetsNeed(
   targetId: number,
 ): boolean {
   const { tribe, owner, experience } = subject;
-  if (!experienceGatesApply(world, owner) && !(target === 'job' && isFighterJob(ctx.content, targetId))) {
-    return true;
-  }
+  const fighterJob = target === 'job' && isFighterJob(ctx.content, targetId);
+  if (!experienceGatesApply(world, owner) && !fighterJob) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
+  if (
+    fighterJob &&
+    schoolingMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, targetId)
+  ) {
+    return true;
+  }
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
     if (!experienceRequirementMet(ctx, experience, req)) return false;
   }
   return true; // no unmet `need` requirement gates this target
+}
+
+/**
+ * Whether a settler has paid a job's barracks schooling — every `trainforjob` row for `targetId` met in
+ * TRAINING repeats. The second, alternative path onto a fighter trade: its `needforjob` rows read the
+ * band's own fight tracks (viking `needforjob 31 5 69`, a track only job 31 itself accrues), so a
+ * civilian could never earn one by working, and the barracks drill is what enlists it
+ * (`systems/settlers/training.ts`). Meeting either path unlocks the trade — a veteran keeps qualifying on
+ * fight XP alone.
+ *
+ * A target with no `train` row is NOT schooled (false), so this can only widen the gate for the trades
+ * the data actually schools. Read for fighter targets only: the civilian trades and goods carry
+ * `trainfor*` rows too (the school house's rows), and teaching those is a later slice.
+ *
+ * source-basis (readable-semantics inference): the data states both row kinds but not how they combine.
+ * Reading them as alternatives is what makes the table consistent — a civilian can reach no fight track,
+ * so an AND would leave the whole band unreachable and the `trainfor*` rows dead. Refine if the
+ * original's combination rule is ever observed; what that opens up meanwhile is scoped in
+ * `docs/tickets/features/barracks-recruitment.md`.
+ */
+export function schoolingMet(
+  tracks: readonly HumanJobExperienceType[],
+  requirements: readonly JobRequirement[],
+  experience: ReadonlyMap<number, number>,
+  targetId: number,
+): boolean {
+  let schooled = false;
+  for (const req of requirements) {
+    if (req.requirement !== 'train' || req.target !== 'job' || req.targetId !== targetId) continue;
+    if (requirementRepeats(tracks, experience, req.experienceTypes) < req.amount) return false;
+    schooled = true;
+  }
+  return schooled;
 }

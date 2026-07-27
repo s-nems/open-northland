@@ -41,22 +41,29 @@ export function groupedWorkers(
  *  its persistent crew membership (`SiteAssignment` — hammering, waiting for material, or detoured, it
  *  stays listed), and a plain hauler shows transiently while depositing there
  *  (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). A view read, so snapshot
- *  order is fine. */
+ *  order is fine.
+ *
+ *  A recruit on a barracks drill (`TrainingOrder`) is listed too, from the order to the last repetition,
+ *  but after the staff, so a crowded field drops a visitor rather than a working post. It is the only
+ *  sight of him for the half of that the map hides him, standing frozen inside the house. */
 export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
-  const out: number[] = [];
+  const staff: number[] = [];
+  const drilling: number[] = [];
   for (const e of snapshot.entities) {
-    if (out.length >= MAX_WORKERS) break;
+    if (staff.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
     const supply = e.components.SupplyRun as { site?: unknown } | undefined;
     const crew = e.components.SiteAssignment as { site?: unknown } | undefined;
+    const drill = e.components.TrainingOrder as { house?: unknown } | undefined;
     const working =
       siteCrew &&
       (num(crew?.site) === buildingId ||
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
-    if (num(assignment?.workplace) === buildingId || working) out.push(e.id);
+    if (num(assignment?.workplace) === buildingId || working) staff.push(e.id);
+    else if (num(drill?.house) === buildingId && drilling.length < MAX_WORKERS) drilling.push(e.id);
   }
-  return out;
+  return [...staff, ...drilling].slice(0, MAX_WORKERS);
 }

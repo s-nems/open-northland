@@ -78,14 +78,17 @@ export const StrandedField = defineComponent<{
 }>('StrandedField');
 
 /**
- * A settler WAITING INSIDE its workplace — stamped by a drive whose settler is at its building with
- * nothing to do this tick (the farmer between field chores), and removed the moment it replans
- * (replan.ts, beside the FarmTask release), so it exists exactly while the settler idles at the door.
- * PURELY a render fact: the original's off-duty workers wait inside the house, not lined up at the
- * door — the render hides a Resting settler (it "went in") and it steps back out the tick work
- * appears. No sim decision reads it. Inert on every golden that farms nothing.
+ * A settler that has stepped INSIDE a building — stamped by the drive that put it there (the farmer
+ * waiting out a chore at its workplace, a sleeper in its own bed, a recruit drilling at the barracks)
+ * and removed the moment it replans (replan.ts, beside the FarmTask release), so it exists exactly
+ * while the settler is in there.
+ * Mostly a render fact: the original's off-duty workers wait inside the house, not lined up at the
+ * door — the render hides a Resting settler (it "went in") and it steps back out the tick work appears.
+ * Several drives read it as the is-inside test as well, so who may hold it and when is a real contract;
+ * `docs/tickets/sim/share-the-enter-building-step.md` is where it gets one home. Inert on every golden
+ * that farms nothing.
  */
 export const Resting = defineComponent<{
-  /** The workplace the settler waits inside (a completed building — the drive only rests at home). */
+  /** The completed building the settler is inside. */
   at: Entity;
 }>('Resting');

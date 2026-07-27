@@ -7,7 +7,7 @@ import {
   nodeOfPosition,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { assignmentPriorityFor } from '../../game/sandbox/index.js';
+import { assignmentPriorityFor, trainsRatherThanEmploys } from '../../game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
@@ -116,6 +116,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
+        if (trainsRatherThanEmploys(def, currentJob)) {
+          deps.enqueue({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
+          continue;
+        }
         const jobPriority = assignmentPriorityFor(currentJob, slots);
         if (jobPriority.length === 0) continue;
         deps.enqueue({

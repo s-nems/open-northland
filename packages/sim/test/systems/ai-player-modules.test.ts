@@ -1,6 +1,9 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  type AiModuleEnables,
+  AiPlayer,
+  aiModuleEnables,
   Building,
   CurrentAtomic,
   JobAssignment,
@@ -12,6 +15,7 @@ import {
   SIGNPOST_NAV_RADIUS_NODES,
   SIGNPOST_SPACING_RADIUS_NODES,
   Signpost,
+  TrainingOrder,
   UnderConstruction,
   WorkFlag,
 } from '../../src/components/index.js';
@@ -29,6 +33,7 @@ import {
   DEFAULT_BUILD_ORDER,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
+  GARRISON_TARGET,
   populationModule,
   SIGNPOST_TARGET_TOLERANCE_NODES,
   signpostCoverageModule,
@@ -160,6 +165,11 @@ function entityOfBuilding(sim: Simulation, buildingType: number): Entity {
     if (sim.world.get(e, Building).buildingType === buildingType) return e;
   }
   throw new Error(`setup: building ${buildingType} missing`);
+}
+
+/** Flag `player`'s seat AI-driven — the state `setPlayerAi` lands, which the garrison hire reads. */
+function makeAiSeat(sim: Simulation, player: number, modules?: Partial<AiModuleEnables>): void {
+  sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables(modules) });
 }
 
 function plantPost(sim: Simulation, position: { x: number; y: number }): void {
@@ -673,8 +683,8 @@ describe('workforce module — the barracks and craft selections', () => {
     sim.step();
 
     // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
-    // rule 2026-07-26) and mints no soldier: the fighter band is earned at the barracks, and until
-    // training lands (docs/tickets/features/barracks-training.md) the surplus stays civilian.
+    // rule 2026-07-26) and stamps no fighter trade by command: a soldier is made by the drill, never
+    // by `setJob` — and a seat that is not AI-flagged runs no garrison hire at all.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
     const posted = commands.filter((c) => c.kind === 'assignWorker');
@@ -683,6 +693,136 @@ describe('workforce module — the barracks and craft selections', () => {
     expect(posted.every((c) => c.building === entityOfBuilding(sim, HQ_TYPE))).toBe(true);
     expect(posted.filter((c) => c.building === barracks)).toEqual([]);
     expect(commands.filter((c) => c.kind === 'setJob' && isFighterJob(sim.content, c.jobType))).toEqual([]);
+    expect(commands.filter((c) => c.kind === 'trainSoldier')).toEqual([]);
+  });
+
+  it('sends one true-surplus man to the barracks per decision', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 40, BUILDER); // well past every post, reserve and collector tier
+    makeAiSeat(sim, SEAT);
+    sim.step();
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const recruits = commands.filter((c) => c.kind === 'trainSoldier');
+    expect(recruits.length).toBe(1); // the labour force steps down one man at a time
+    expect(recruits[0]?.house).toBe(entityOfBuilding(sim, BARRACKS_TYPE));
+    // The recruit is nobody else's this decision — the allocator hands out each man once.
+    const claimed = recruits[0]?.entity;
+    for (const c of commands) {
+      if (c.kind === 'setJob' || c.kind === 'assignWorker' || c.kind === 'setWorkFlag') {
+        expect(c.entity).not.toBe(claimed);
+      }
+    }
+  });
+
+  it('counts the men already drilling, stops at the target, and obeys the military toggle', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 40, BUILDER);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+
+    // Decision after decision the garrison fills: each recruit keeps its TrainingOrder, so the next
+    // pass counts it and the hires stop exactly at the target.
+    const hired = new Set<Entity>();
+    for (let decision = 0; decision < GARRISON_TARGET + 2; decision++) {
+      for (const c of [...collectModule.run(sim.world, ctxOf(sim), SEAT)]) {
+        if (c.kind === 'trainSoldier') hired.add(c.entity);
+        sim.enqueue(c);
+      }
+      sim.step();
+    }
+    expect(hired.size).toBe(GARRISON_TARGET);
+
+    const off = aiSim();
+    placeHq(off);
+    off.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(off, 40, BUILDER);
+    makeAiSeat(off, SEAT, { military: false });
+    off.step();
+    expect(
+      [...collectModule.run(off.world, ctxOf(off), SEAT)].filter((c) => c.kind === 'trainSoldier'),
+    ).toEqual([]);
+  });
+
+  it('hires nobody when its content schools nobody, and sends a part-drilled man back in', () => {
+    // Content with the drill clip unbound: every term would bank zero TRAINING, so a hire could only
+    // cycle the same man through the barracks for the rest of the game.
+    const unschooled = parseContentSet({
+      ...aiContent(),
+      tribes: aiContent().tribes.map((t) => ({ ...t, atomicBindings: [] })),
+    });
+    const sim = new Simulation({ seed: 1, content: unschooled, map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 40, BUILDER);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content: unschooled };
+    expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'trainSoldier')).toEqual([]);
+
+    // Back on schooling content, a man whose drill was cut short keeps what he served and stays
+    // eligible — writing him off would burn one man out of the pool per interruption.
+    const live = aiSim();
+    placeHq(live);
+    live.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(live, 40, BUILDER);
+    makeAiSeat(live, SEAT);
+    live.step();
+    const first = [...collectModule.run(live.world, ctxOf(live), SEAT)].find(
+      (c) => c.kind === 'trainSoldier',
+    );
+    if (first === undefined) throw new Error('no recruit hired');
+    const recruit = first.entity;
+    live.enqueue(first);
+    live.step();
+    // The player walks him off mid-drill: the order goes, the banked schooling stays.
+    live.enqueue({ kind: 'moveUnit', entity: recruit, x: 2, y: 2 });
+    for (let i = 0; i < 8; i++) live.step();
+    expect(live.world.tryGet(recruit, TrainingOrder)).toBeUndefined();
+    expect(
+      [...collectModule.run(live.world, ctxOf(live), SEAT)].some(
+        (c) => c.kind === 'trainSoldier' && c.entity === recruit,
+      ),
+    ).toBe(true);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {

@@ -1,8 +1,13 @@
 import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
-import { Settler } from '../../components/index.js';
+import { Settler, type SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import {
+  ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE,
+  atomicEventChannelDelta,
+  needAtomicAnimationName,
+} from '../readviews/animations.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
 import { isAnimalTribe, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
@@ -23,8 +28,8 @@ import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
  * events.ts), so the grant lives where the completion is known — AtomicSystem's effect-apply.
  *
  * The gating/tech-graph half ({@link buildingEnabled}, {@link goodEnabled}) is query-shaped instead: it
- * inspects current world state, so each lives here as a pure helper its consumer calls. The `needfor*`/
- * `allow*`/`trainforjob` schooling gates (the XP→level→unlock curve) are a later slice.
+ * inspects current world state, so each lives here as a pure helper its consumer calls (`./unlocks.ts`).
+ * The `allow*` gates and the school's civilian-trade half of `trainfor*` are a later slice.
  *
  * XP is a whole-number counter on the original's integer scale (no fixed-point needed), resolved by a stable
  * `Array.find` over content and hashed in sorted-key order (snapshot.ts).
@@ -150,6 +155,45 @@ export function grantScoutExperience(world: World, content: ContentSet, settler:
   const s = world.tryGet(settler, Settler);
   if (s === undefined || !isScoutJob(content, s.jobType)) return;
   accrueExperience(s, SCOUT_EXPERIENCE_TYPE, 1);
+}
+
+/**
+ * The TRAINING bucket every `trainfor*` requirement row reads — the schooling XP a barracks drill banks
+ * (source basis: each tribe's `trainforjob`/`trainforgood` rows name expType 77 and nothing else does).
+ * Like the fight buckets it backs no `HumanJobExperienceType` record, so it accrues at rate 1 and its raw
+ * XP already is the repeat count a row's `amount` is compared against.
+ *
+ * It accrues permanently here. The original flushes it whenever the trained job or good changes (which
+ * covers retraining onto another soldier class, not only the school's civilian trades); that only starts
+ * to matter once a second training target exists — see docs/tickets/features/barracks-training.md.
+ */
+export const TRAINING_EXPERIENCE_TYPE = 77;
+
+/**
+ * The TRAINING one finished repetition of `atomicId` banks for this settler: the clip its tribe binds and
+ * its own {@link ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE} event total. Today that is always the civilist
+ * exercise clip's `+1` — the soldier's own `train` clip, worth `+25`, is a later slice. Zero for content
+ * that binds no such clip or a clip carrying no such event, which is what "this tribe schools nobody"
+ * looks like from here — the AI's garrison hire reads it so it never drafts a man its data cannot school.
+ */
+export function drillTrainingGain(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
+  const clip = needAtomicAnimationName(content, settler, atomicId);
+  if (clip === undefined) return 0;
+  return Math.max(0, atomicEventChannelDelta(content, clip, ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE));
+}
+
+/** Grant a settler the schooling XP its finished drill repetition is worth ({@link drillTrainingGain});
+ *  a settler gone mid-drill banks nothing. */
+export function grantTrainingExperience(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  atomicId: number,
+): void {
+  const s = world.tryGet(settler, Settler);
+  if (s === undefined) return;
+  const xp = drillTrainingGain(ctx.content, s, atomicId);
+  if (xp > 0) accrueExperience(s, TRAINING_EXPERIENCE_TYPE, xp);
 }
 
 /**

@@ -33,5 +33,7 @@ export const BUILDING_MASON_HUT = 29;
 export const BUILDING_SMITHY = 31;
 /** The druid's hut (`work_druid_00`). */
 export const BUILDING_DRUID_HUT = 35;
+/** The barracks (`houses.ini` logictype 39): where a colonist drills into a soldier. */
+export const BUILDING_BARRACKS = 39;
 /** The watchtower (`tower_00`); `tower_01` (41) is the chain's top. */
 export const BUILDING_WATCHTOWER = 40;

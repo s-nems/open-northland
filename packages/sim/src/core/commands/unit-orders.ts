@@ -160,6 +160,25 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Send one owned adult settler to drill at a barracks `house` — the right-click that turns a
+       * colonist into a soldier. It stamps a
+       * {@link import('../../components/index.js').TrainingOrder} errand: the settler walks to the door,
+       * stays inside for {@link import('../../systems/settlers/training.js').BARRACKS_DRILL_TICKS} of drill
+       * (banking TRAINING experience per repetition), then steps out enlisted as the base soldier class —
+       * and stays qualified for the soldier trades from then on. A settler that already holds a fighter
+       * trade only drills; its trade is unchanged. A `moveUnit` order calls the errand off.
+       *
+       * Recoverable bad input (skipped, still logged for faithful replay): a target `isTradeAssignable`
+       * rejects (dead/stale, non-settler, neutral, a child, a woman), a dead/stale/non-building/unbuilt
+       * target, a barracks of another tribe or side, a building that is not a barracks, a door outside the
+       * settler's signpost area, or a settler already drilling at this same house. See `trainSoldier`.
+       */
+      readonly kind: 'trainSoldier';
+      readonly entity: Entity;
+      readonly house: Entity;
+    }
+  | {
+      /**
        * Order one owned unmarried adult settler to marry: it seeks the nearest eligible partner of its
        * tribe (opposite sex, adult, unmarried, not a soldier/scout — the "on a mission" trades) and the
        * pair walks together and kisses (atomics 20/21), becoming spouses for life. Auto-cancels (a skip,
