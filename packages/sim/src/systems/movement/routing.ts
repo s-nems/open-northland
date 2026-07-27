@@ -13,8 +13,7 @@ import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collisi
 import { turnOntoNextLeg } from './stepping.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
-// A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
-// from the shared leaf.
+// A* core in ../../nav/pathfinding/, which this system consumes.
 
 /**
  * The pathfinder's per-tick work budget, in A*-settled nodes ({@link SearchStats.explored}) — what unit

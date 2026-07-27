@@ -18,7 +18,7 @@ import {
   jobCanHarvestGood,
   liveWorkFlag,
   relocateWorkFlag,
-} from '../../economy/flags.js';
+} from '../../economy/work-flag.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial/nodes.js';

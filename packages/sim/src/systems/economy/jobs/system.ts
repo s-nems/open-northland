@@ -7,8 +7,8 @@ import { isAnimalTribe } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
-import { farmWorkGood } from '../farming.js';
-import { liveWorkFlag } from '../flags.js';
+import { farmWorkGood } from '../fields.js';
+import { liveWorkFlag } from '../work-flag.js';
 import { bindEmployment } from './binding.js';
 import {
   buildStaffingTally,

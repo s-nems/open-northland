@@ -50,8 +50,7 @@ export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
  * A path the entity is following: fixed-point waypoints + current index, plus the follower's live gait state
  * — the movement-inertia fields the MovementSystem ramps each tick. Inertia is a named approximation that
  * departs from the original's observed constant pace (see the inertia note in
- * `systems/movement/movement.ts`); it exists purely
- * for movement feel.
+ * `systems/movement/system.ts`); it exists purely for movement feel.
  *
  * `speed` is the current per-tick world-metric pace: 0 at rest, ramped toward the entity's gait
  * ({@link MoveSpeed} / the universal default), braked into the final waypoint. `hx`/`hy` are the current leg's

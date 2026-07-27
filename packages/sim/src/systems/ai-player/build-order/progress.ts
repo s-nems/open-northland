@@ -4,7 +4,7 @@ import { type ContentIndex, contentIndex } from '../../../core/content-index.js'
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { liveWorkFlag } from '../../economy/flags.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import {
   anchorNodeOf,
   anyLiveResource,

@@ -1,7 +1,7 @@
 import { CraftSelection, GatherSelection, JobAssignment } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { jobCanHarvest, removeWorkFlag } from '../flags.js';
+import { jobCanHarvest, removeWorkFlag } from '../work-flag.js';
 
 /**
  * Bind `e` to `workplace` as `jobType` and retire what the previous employment owned: a gatherer bound to a

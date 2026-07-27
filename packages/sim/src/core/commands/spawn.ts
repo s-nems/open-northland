@@ -65,8 +65,9 @@ export type SpawnCommand =
        * The settler's walk pace as ticks to cross one tile (the animal `movespeed` semantics: a
        * `MoveSpeed{perTick = ONE/moveSpeed}` is stamped, so a larger value walks a slower step). Omit (or a
        * non-positive value) — the default — and the settler carries no `MoveSpeed` and walks at the universal
-       * {@link import('../../systems/movement/movement.js').MOVE_SPEED_PER_TICK}. Used to give a visually slower
-       * pace in acceptance scenes without retuning the global default (see source basis "Settler walk pace").
+       * {@link import('../../systems/movement/system.js').MOVE_SPEED_PER_TICK}. Used to give a visually
+       * slower pace in acceptance scenes without retuning the global default (see source basis
+       * "Settler walk pace").
        */
       readonly moveSpeed?: number;
       /** The player that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit (or an

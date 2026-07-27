@@ -1,7 +1,7 @@
 import { Building, Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { farmWorkGood } from '../../economy/farming.js';
+import { farmWorkGood } from '../../economy/fields.js';
 import { mergedRecipeOf, stockCapacity } from '../../stores/index.js';
 import { jobAtomics } from '../targets/index.js';
 

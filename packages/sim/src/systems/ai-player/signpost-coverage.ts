@@ -176,8 +176,9 @@ function runSignpostCoverage(world: World, ctx: SystemContext, player: number): 
   if (scout === undefined) return [];
   // Busy — leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
   // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a
-  // need drive starts an atomic (movement.ts `playerOrderSystem`, signposts.ts `signpostOrderSystem`),
-  // so an eating scout would otherwise look order-free and be re-ordered every decision beat.
+  // need drive starts an atomic (orders/movement.ts `playerOrderSystem`, orders/signposts.ts
+  // `signpostOrderSystem`), so an eating scout would otherwise look order-free and be re-ordered every
+  // decision beat.
   if (world.has(scout, CurrentAtomic)) return [];
   if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
   const target = nextSignpostTarget(world, ctx, player);

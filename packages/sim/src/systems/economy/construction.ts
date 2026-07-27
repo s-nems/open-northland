@@ -22,7 +22,7 @@ import {
   upgradeTierOf,
 } from '../stores/index.js';
 import { destroyBerryBushesInReserved } from './berries.js';
-import { destroyFieldsUnderBuilding } from './farming.js';
+import { destroyFieldsUnderBuilding } from './fields.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { destroyStumpsInReserved } from './stumps.js';
 

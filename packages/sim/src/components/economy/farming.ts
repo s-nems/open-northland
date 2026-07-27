@@ -11,7 +11,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * growing field yields nothing — the remaining-0 gate is what keeps every generic harvest scan off an
  * unripe field), grows a stage each {@link ticksPerStage} ticks ONLY while `watered` — watering is the growth
  * FUEL, and each stage step consumes it (a named approximation: the engine's watering semantics are
- * not decoded; see systems/economy/farming.ts),
+ * not decoded; see systems/economy/fields.ts),
  * and at the final stage (`stage === stages`) becomes ripe: `Resource.remaining` is set to `yieldUnits`,
  * so the reap swing (the plain `harvest` effect, branched by THIS marker) drops the whole yield as a
  * ground sheaf pile ({@link GroundDrop}, the good's `landscapeToPickup` look) and removes the field.
@@ -34,11 +34,11 @@ export const Crop = defineComponent<{
   growth: number;
   /** THIS field's ticks per growth stage, drawn at sow from the content's nominal rate and its
    *  `growthSpreadPercent` band by a hash of the node — so fields planted together ripen apart
-   *  (systems/economy/farming.ts `stageTicksAt`). */
+   *  (systems/economy/fields.ts `stageTicksAt`). */
   ticksPerStage: number;
   /** Whether the field holds a live watering — the GROWTH FUEL: only a watered field grows, and each
    *  stage step consumes the watering (thirsty again until a farmer returns with the can — see
-   *  systems/economy/farming.ts). */
+   *  systems/economy/fields.ts). */
   watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;

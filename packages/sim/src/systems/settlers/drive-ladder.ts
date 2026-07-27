@@ -11,7 +11,7 @@ import {
 } from '../../components/index.js';
 import type { Entity } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import { jobCanHarvest } from '../economy/flags.js';
+import { jobCanHarvest } from '../economy/work-flag.js';
 import { planWomanHoard } from '../family/hoard.js';
 import { planChildWander } from '../family/wander.js';
 import { isChild } from '../lifecycle/ageclass.js';

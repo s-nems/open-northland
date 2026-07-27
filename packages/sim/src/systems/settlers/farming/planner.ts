@@ -12,7 +12,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
+import { type FarmingSpec, farmWorkGood } from '../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { buildingEnabled, scaledWorkRepeats, workSpeedBonus } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
@@ -26,7 +26,7 @@ import { unreachableGoals } from '../unreachable-goals.js';
 // The farmer drive — the field-cultivation rung of the planner ladder: a worker bound to a farm (a workplace
 // producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing, watering and reaping
 // wheat fields and carries each cut sheaf home. The field lifecycle itself (growth, the sow/water/reap effects)
-// lives in ../economy/farming.ts; this module decides what the farmer does next. Source basis: the actions and
+// lives in ../economy/fields.ts; this module decides what the farmer does next. Source basis: the actions and
 // their animations are the original's own farmer vocabulary (atomics 34/35/29); the loop's ordering is
 // engine-side and not decoded, so the priority below (reap > carry > sow > water > wait) is a named
 // approximation of the observed original.

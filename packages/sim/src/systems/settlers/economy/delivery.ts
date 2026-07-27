@@ -12,7 +12,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import { farmWorkGood } from '../../economy/farming.js';
+import { farmWorkGood } from '../../economy/fields.js';
 import { constructionWorkCell } from '../../footprint/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { clearNavState } from '../../spatial/nodes.js';

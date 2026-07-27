@@ -152,7 +152,8 @@ export interface ContentIndex {
   /** The flag-gathering trades: jobs whose grants (`allowedAtomics` minus `forbiddenAtomics`) include a
    *  non-farmed good's harvest atomic. Excludes the tribe-wide `baseAtomics` on purpose — a base atomic
    *  that coincides with a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's harvest 31)
-   *  must not make that job a gatherer. See {@link import('../systems/economy/flags.js').jobCanHarvest}. */
+   *  must not make that job a gatherer. See
+   *  {@link import('../systems/economy/work-flag.js').jobCanHarvest}. */
   readonly harvestJobs: ReadonlySet<number>;
   /** The trades of each {@link jobRoleSets} role, by job typeId. */
   readonly soldierJobs: ReadonlySet<number>;

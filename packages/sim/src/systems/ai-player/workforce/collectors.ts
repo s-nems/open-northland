@@ -6,7 +6,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { jobCanHarvestGood, liveWorkFlag } from '../../economy/flags.js';
+import { jobCanHarvestGood, liveWorkFlag } from '../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../build-order/index.js';
 import { AI_DECISION_INTERVAL_TICKS, anchorNodeOf, nearestLiveResource } from '../shared.js';
