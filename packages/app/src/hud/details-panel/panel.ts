@@ -14,6 +14,7 @@ import { tooltipTextAt } from './hit-test.js';
 import { type EquipSlotRef, mapLayout, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
+import { createPanelRebuildGate } from './rebuild-gate.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
@@ -23,7 +24,8 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
  * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
  * extracted original art. `model/` decides what is shown, `layout/` where, `sections/`+`chrome.ts` how,
- * `pointer-intent.ts` what a click means — this module owns the Pixi state that wires them to the app.
+ * `pointer-intent.ts` what a click means, `rebuild-gate.ts` when it re-bakes — this module owns the Pixi
+ * state that wires them to the app.
  */
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
@@ -38,13 +40,6 @@ const PANEL_Z = 1002;
 export type PortraitBox = PortraitInsetFrame;
 /** Bevel inset (design px) so the observation window sits inside the portrait box's frame, not over it. */
 const PORTRAIT_BEVEL_INSET = 3;
-
-/**
- * Minimum wall-clock gap between value-driven rebuilds. Live values (production %, need bars, status
- * countdowns) change nearly every sim tick; rebuilding the retained tree 20×/s is pure churn, and 4 Hz
- * is indistinguishable on a ~100-px bar. Selection changes rebuild immediately.
- */
-const VALUE_REBUILD_MIN_MS = 250;
 
 export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly app: Application;
@@ -159,9 +154,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let selectedIds: ReadonlySet<number> = new Set();
   /** Bumped by every rebuild: the model + layout the worker overlay reads change only there. */
   let panelEpoch = 0;
-  let lastModelKey = '';
-  let lastStructureKey = '';
-  let lastRebuildAt = Number.NEGATIVE_INFINITY;
+  const rebuildGate = createPanelRebuildGate({
+    derive: (snapshot) => buildUnitPanelModel(snapshot, selectedIds, ctx),
+    now: () => performance.now(),
+  });
   let view: PanelView = EMPTY_PANEL_VIEW;
   let hover: PanelHover = NO_PANEL_HOVER;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
@@ -190,7 +186,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     root = new Container();
     root.zIndex = PANEL_Z;
     app.stage.addChild(root);
-    lastRebuildAt = performance.now();
+    rebuildGate.rebuilt();
     // Hit layout: the real screen-anchored geometry at the fractional display scale (pointer claims, buttons).
     view = panelViewFor(model, app.screen, scale);
     if (view.kind === 'empty') {
@@ -251,8 +247,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     root.addChild(texture.display);
     baked = texture;
     // A rebuild changes what a held cursor hovers (a draining bar's value, a re-sorted stock row) — the
-    // cursor itself won't move to fire a mousemove, so refresh the tooltip here. Rebuilds are already
-    // rate-limited (VALUE_REBUILD_MIN_MS), so this adds no per-frame work.
+    // cursor itself won't move to fire a mousemove, so refresh the tooltip here. The rebuild gate already
+    // rate-limits rebuilds, so this adds no per-frame work.
     if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
   };
 
@@ -261,45 +257,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (view.kind !== 'empty') rebuild(view.model);
   };
 
-  /**
-   * The model derived for one sim tick, with its value key. `buildUnitPanelModel` is a pure function of the
-   * snapshot + selection, but `tick()` runs every RAF frame (~3 per 20 Hz sim tick) and the build is an
-   * O(entities) pass — so it runs once per tick and the frames in between reuse it (golden rule 6). A new
-   * selection re-derives through `force`; the wall-clock rebuild gate below still runs every frame, so a
-   * rebuild the 4 Hz limit deferred still fires on a later frame of the same tick.
-   *
-   * Keyed on snapshot IDENTITY, not `snapshot.tick`: the sim memoizes `snapshot()` on tick + world
-   * mutation version, so a same-tick world mutation hands out a new object under an unchanged tick — and
-   * while paused the tick never advances to heal a stale model.
-   */
-  let derived: { snapshot: WorldSnapshot; model: UnitPanelModel; json: string } | null = null;
-
-  const modelFor = (snapshot: WorldSnapshot, force: boolean): { model: UnitPanelModel; json: string } => {
-    if (!force && derived !== null && derived.snapshot === snapshot) return derived;
-    const model = buildUnitPanelModel(snapshot, selectedIds, ctx);
-    derived = { snapshot, model, json: JSON.stringify(model) };
-    return derived;
-  };
-
   const updateModel = (snapshot: WorldSnapshot, force = false): void => {
-    const { model, json } = modelFor(snapshot, force);
-    // A whole-model value key (plus the screen size, so a resize re-anchors the panel): the panel is
-    // small, so stringify-compare beats hand-written dirty flags.
-    const key = `${json}|${app.screen.width}x${app.screen.height}`;
-    if (!force && key === lastModelKey) return;
-    // What is selected changed → rebuild now; only live values drifted → rebuild at most 4 Hz.
-    const structureKey =
-      model.kind === 'building' || model.kind === 'settler' || model.kind === 'signpost'
-        ? `${model.kind}:${model.entityId}`
-        : model.kind;
-    const structural = force || structureKey !== lastStructureKey;
-    if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
+    const next = rebuildGate.decide(snapshot, app.screen, force);
+    if (next === null) return;
     // A new selection opens the stock view on "Wszystkie" — never an empty tab, and a general store
     // reads its actual contents immediately.
-    if (structural) activeStockTab = ALL_STOCK_TAB;
-    lastModelKey = key;
-    lastStructureKey = structureKey;
-    rebuild(model);
+    if (next.structural) activeStockTab = ALL_STOCK_TAB;
+    rebuild(next.model);
   };
 
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
