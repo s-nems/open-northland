@@ -43,6 +43,9 @@ import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } fr
 
 const WOOD = 1;
 const FOOD = 3;
+// A dish: the fixture stocks bread only in the kitchen, which is the whole point of the case below.
+const BREAD = 7;
+const KITCHEN = 21;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
@@ -56,6 +59,15 @@ const FED: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
   return needsSettlerAt(sim, x, y, { hunger });
+}
+
+/** A kitchen at (x,y) holding `bread` loaves — a producing house whose dish is food on its own shelf. */
+function kitchenAt(sim: Simulation, x: number, y: number, bread: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType: KITCHEN, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map([[BREAD, bread]]) });
+  return e;
 }
 
 /** A headquarters store at (x,y), optionally pre-stocked with `food` units of food. */
@@ -110,6 +122,33 @@ describe('eatDrive — the planner choosing to eat', () => {
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: null });
+  });
+
+  it('eats the kitchen’s own loaves off its shelf', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 2, 0, HUNGRY);
+    const kitchen = kitchenAt(sim, 2, 0, 4); // same cell
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // A dish is edible in the house that cooks it (`carriedGoodForm`), and the eat effect takes the
+    // RAW loaf off the shelf — the good the store actually holds.
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({
+      kind: 'eat',
+      goodType: BREAD,
+      from: kitchen,
+    });
+  });
+
+  it('walks past a warehouse holding the same loaves — cargo there, not food', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 2, 0, HUNGRY);
+    const warehouse = storeAt(sim, 2, 0); // same cell, loaves only
+    sim.world.get(warehouse, Stockpile).amounts.set(BREAD, 4);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
   });
 
   it('ignores the eat drive below the threshold (a fed settler works normally)', () => {
