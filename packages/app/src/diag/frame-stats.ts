@@ -118,7 +118,8 @@ export class FrameStats {
       this.avgFrameMs = ema(this.avgFrameMs, sample.elapsedMs);
       this.frames++;
       this.windowMs += sample.elapsedMs;
-      this.buckets[bucketOf(sample.elapsedMs)] = (this.buckets[bucketOf(sample.elapsedMs)] ?? 0) + 1;
+      const bucket = bucketOf(sample.elapsedMs);
+      this.buckets[bucket] = (this.buckets[bucket] ?? 0) + 1;
       this.windowMaxMs = Math.max(this.windowMaxMs, sample.elapsedMs);
     }
     this.avgCpuMs = ema(this.avgCpuMs, sample.cpuMs);

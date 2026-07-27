@@ -1,9 +1,8 @@
-import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { captureEnvironment } from './environment.js';
 import { intEnv } from './knobs.js';
 import { measureWindows } from './measure.js';
-import { assessTrust, type BenchReport, formatReport, summarize } from './report/index.js';
+import type { BenchReport } from './report/index.js';
+import { publishReport, reportFrom } from './run.js';
 import { type BenchWorldOptions, benchWorld } from './world.js';
 
 /**
@@ -60,7 +59,8 @@ function measure(
   const { sim, terrain } = benchWorld(options);
   const measurement = measureWindows(sim, { warmupTicks, measuredTicks, windows });
 
-  return summarize(measurement.perSystem, measurement.tickSamples, {
+  return reportFrom({
+    measurement,
     world: {
       kind: 'synthetic',
       settlements: options.settlements,
@@ -70,28 +70,17 @@ function measure(
       settlersAtEnd: measurement.settlersAtEnd,
       buildings: measurement.buildings,
     },
-    ticks: { warmup: warmupTicks, measured: measuredTicks, windows: measurement.windows.length },
-    windows: measurement.windows,
-    environment: captureEnvironment({
-      knobs: {
-        ON_BENCH_SETTLEMENTS: `${options.settlements}`,
-        ON_BENCH_FIGHTERS: `${options.fightersPerSide}`,
-        ON_BENCH_TICKS: `${measuredTicks}`,
-        ON_BENCH_WARMUP: `${warmupTicks}`,
-        ON_BENCH_WINDOWS: `${windows}`,
-      },
-      startedAtMs,
-      wallSeconds: (performance.now() - startMs) / 1000,
-      loadPerCpu: measurement.loadPerCpu,
-      peakRssMb: measurement.peakRssMb,
-      calibration: measurement.calibration,
-    }),
-    trust: assessTrust({
-      loadPerCpu: measurement.loadPerCpu,
-      calibration: measurement.calibration,
-      windows: measurement.windows,
-    }),
+    knobs: {
+      ON_BENCH_SETTLEMENTS: `${options.settlements}`,
+      ON_BENCH_FIGHTERS: `${options.fightersPerSide}`,
+      ON_BENCH_TICKS: `${measuredTicks}`,
+      ON_BENCH_WARMUP: `${warmupTicks}`,
+      ON_BENCH_WINDOWS: `${windows}`,
+    },
+    ticks: { warmup: warmupTicks, measured: measuredTicks },
     stateHash: sim.hashState(),
+    startedAtMs,
+    wallSeconds: (performance.now() - startMs) / 1000,
   });
 }
 
@@ -105,12 +94,7 @@ describe('sim per-system benchmark', () => {
       intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1),
     );
 
-    console.log(`\n${formatReport(report)}\n`);
-    const jsonPath = process.env.ON_BENCH_JSON?.trim();
-    if (jsonPath !== undefined && jsonPath !== '') {
-      writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-      console.log(`report written to ${jsonPath}\n`);
-    }
+    publishReport(report);
 
     // The run must have profiled a real world - a silently empty one would report a table of zeros.
     expect(report.systems.length).toBeGreaterThan(0);

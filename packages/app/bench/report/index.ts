@@ -1,12 +1,13 @@
-export { formatReport } from './format.js';
 export {
-  percentile,
-  type Segment,
-  type SystemGrowth,
-  summarize,
-  summarizeSegment,
-  systemGrowth,
-} from './summarize.js';
+  type Comparison,
+  compareReports,
+  type DeltaRow,
+  type DeltaVerdict,
+  formatComparison,
+} from './compare.js';
+export { formatReport } from './format.js';
+export { readReport } from './read.js';
+export { percentile, type SystemGrowth, summarize, summarizeSegment, systemGrowth } from './summarize.js';
 export { assessTrust, type TrustInputs } from './trust.js';
 export type {
   BenchEnvironment,

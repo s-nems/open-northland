@@ -10,8 +10,9 @@ const MAX_LOAD_PER_CPU = 1.5;
 /** The machine's own speed must hold across the run, or the first and last window medians are not
  *  comparable - which is the central claim of every growth number in the report. */
 const MAX_CALIBRATION_DRIFT = 1.25;
-/** Within one window the world barely changes, so a p95 this far above the median is preemption or
- *  GC, not growth. */
+/** A p95 this far above its own window's median is a stall, not a trend: the world cannot change
+ *  that much inside one window. Whether the cause is preemption, GC or a real pathological tick is
+ *  not something this ratio can tell, so the warning reports the shape and leaves the cause open. */
 const MAX_WINDOW_SPIKE_RATIO = 4;
 
 export interface TrustInputs {
@@ -52,7 +53,7 @@ export function assessTrust(inputs: TrustInputs): BenchTrust {
   if (spike !== undefined) {
     const ratio = spike.tickMs.p95Ms / spike.tickMs.medianMs;
     warnings.push(
-      `window ${spike.index + 1} p95 is ${ratio.toFixed(1)}x its median - preemption or GC, not growth`,
+      `window ${spike.index + 1} p95 is ${ratio.toFixed(1)}x its own median - the run stalled, not grew`,
     );
   }
 

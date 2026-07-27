@@ -104,7 +104,11 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
   const names = [...new Set([...beforeMedians.keys(), ...afterMedians.keys()])];
   const rows = names
     .map((name) => delta(name, beforeMedians.get(name) ?? null, afterMedians.get(name) ?? null, noiseBandPct))
-    .sort((a, b) => (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0));
+    .sort(
+      (a, b) =>
+        (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0) ||
+        (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+    );
   rows.push(delta('tick total', before.tickMs.medianMs, after.tickMs.medianMs, noiseBandPct));
 
   let windowRows: readonly DeltaRow[] = [];
@@ -138,33 +142,6 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
     before,
     after,
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/**
- * Narrow a parsed JSON document to a {@link BenchReport}, naming the offending file when it is not
- * one. Checks the fields the comparison actually reads; a report this tool wrote always passes, and a
- * hand-edited or stale-schema one fails with the path rather than a `undefined is not an object`.
- */
-export function readReport(source: unknown, path: string): BenchReport {
-  const bad = (why: string): never => {
-    throw new Error(`${path} is not a benchmark report: ${why}`);
-  };
-  if (!isRecord(source)) return bad('not an object');
-  const { world, ticks, tickMs, systems, windows, trust, stateHash } = source;
-  if (!isRecord(world) || (world.kind !== 'synthetic' && world.kind !== 'realMap')) {
-    return bad("world.kind must be 'synthetic' or 'realMap'");
-  }
-  if (!isRecord(ticks) || typeof ticks.measured !== 'number') return bad('missing ticks.measured');
-  if (!isRecord(tickMs) || typeof tickMs.medianMs !== 'number') return bad('missing tickMs.medianMs');
-  if (!Array.isArray(systems)) return bad('missing systems[]');
-  if (!Array.isArray(windows)) return bad('missing windows[]');
-  if (!isRecord(trust) || typeof trust.trustworthy !== 'boolean') return bad('missing trust.trustworthy');
-  if (typeof stateHash !== 'string') return bad('missing stateHash');
-  return source as unknown as BenchReport;
 }
 
 function ms(value: number | null): string {
@@ -226,8 +203,7 @@ function growthLine(comparison: Comparison): readonly string[] {
   ];
 }
 
-/** The report leads an untrustworthy run with a banner; a comparison built from one must do the same,
- *  or a SLOWER row gets quoted out of a table whose caveat was a `note:` line above it. */
+/** Both sides' warnings, so a reader sees which run was the questionable one. */
 function banner(comparison: Comparison): readonly string[] {
   if (!comparison.untrusted) return [];
   const side = (label: string, report: BenchReport): readonly string[] =>

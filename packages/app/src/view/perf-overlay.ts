@@ -1,6 +1,6 @@
 import type { FrameStatsReport } from '../diag/frame-stats.js';
+import { heapMb } from '../diag/heap.js';
 import { messages } from '../i18n/index.js';
-import { heapMb } from './runtime/debug-handle.js';
 
 /**
  * The on-canvas debug readout — the human-facing instrument for render-scale + sim work. Pinned top-left

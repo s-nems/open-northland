@@ -12,8 +12,9 @@ import {
   type GeometryDebugOverlay,
 } from '../projections/index.js';
 
-/** The `?debug=` value that turns on the building-geometry diagram. */
-const GEOMETRY_DEBUG_FLAG = 'geometry';
+/** The `?debug=` value that turns on the building-geometry diagram. The main menu offers the same
+ *  toggle, so the name is shared rather than spelled twice. */
+export const GEOMETRY_DEBUG_FLAG = 'geometry';
 
 export interface DebugMountsOptions {
   readonly app: Application;

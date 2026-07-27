@@ -1,5 +1,7 @@
+import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 import { type CarriedParam, carriedParams, formatSearch } from '../../view/params.js';
+import { GEOMETRY_DEBUG_FLAG } from '../../view/runtime/debug-mounts.js';
 
 export const MENU_SPEEDS = ['0.25', '0.5', '1', '2', '3', '4', '6', '8'] as const;
 export const MENU_FOG_MODES = ['off', 'reveal', 'recon'] as const;
@@ -60,7 +62,10 @@ function settingModel(): readonly MenuSetting[] {
 
 function replaceParam(param: CarriedParam, value: string): void {
   const next = new URLSearchParams(window.location.search);
-  if (value === '') next.delete(param);
+  // `?debug=` is a set: this menu offers the geometry diagram only, so it toggles that one flag and
+  // leaves any others (`profile`, `trace`) the URL already carries alone.
+  if (param === 'debug') setDebugFlag(next, GEOMETRY_DEBUG_FLAG, value !== '');
+  else if (value === '') next.delete(param);
   else next.set(param, value);
   window.history.replaceState(null, '', `${window.location.pathname}${formatSearch(next)}`);
 }
@@ -80,7 +85,13 @@ export function bindMenuSettings(root: ParentNode, params: URLSearchParams): voi
       node.textContent = option.label;
       select.append(node);
     }
-    const requested = params.get(setting.param);
+    // The debug select shows one flag of a set, so it reads membership rather than the whole value.
+    const requested =
+      setting.param === 'debug'
+        ? hasDebugFlag(params, GEOMETRY_DEBUG_FLAG)
+          ? GEOMETRY_DEBUG_FLAG
+          : ''
+        : params.get(setting.param);
     select.value = setting.options.some(({ value }) => value === requested)
       ? (requested ?? setting.fallback)
       : setting.fallback;

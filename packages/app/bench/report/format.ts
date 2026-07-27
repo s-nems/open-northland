@@ -1,7 +1,7 @@
 /**
  * The human-readable tables (stdout). The machine-readable twin is the {@link BenchReport} itself.
- * An untrustworthy run leads with a banner rather than a footnote: a warning below a table scrolls
- * off the top of whatever the reader is looking at.
+ * An untrustworthy run leads with a banner rather than a footnote: a warning printed below a table
+ * scrolls off the top of whatever the reader is looking at.
  */
 import { systemGrowth } from './summarize.js';
 import { type Column, table } from './table.js';

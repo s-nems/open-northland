@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { compareReports, formatComparison, readReport } from './report/compare.js';
+import { compareReports, formatComparison, readReport } from './report/index.js';
 
 /**
  * The A/B report comparison - `npm run bench:compare -- before.json after.json`. It lives here rather
@@ -16,8 +16,12 @@ function reportAt(variable: string) {
 
 describe('benchmark comparison', () => {
   it('reports per-system deltas between two runs', () => {
-    const comparison = compareReports(reportAt('ON_BENCH_BEFORE'), reportAt('ON_BENCH_AFTER'));
+    const before = reportAt('ON_BENCH_BEFORE');
+    const comparison = compareReports(before, reportAt('ON_BENCH_AFTER'));
     console.log(`\n${formatComparison(comparison)}\n`);
-    expect(comparison.rows.length).toBeGreaterThan(0);
+    // `tick total` is always appended, so it proves nothing; require a row per system the inputs
+    // actually carried, or the tool would report a clean comparison of two empty reports.
+    expect(comparison.rows).toHaveLength(before.systems.length + 1);
+    expect(before.systems.length).toBeGreaterThan(0);
   });
 });

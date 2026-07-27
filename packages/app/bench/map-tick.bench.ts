@@ -1,11 +1,10 @@
-import { writeFileSync } from 'node:fs';
 import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { realMapWorld } from '../test/content/real-map-world.js';
-import { captureEnvironment } from './environment.js';
 import { intEnv, stringEnv } from './knobs.js';
 import { measureWindows } from './measure.js';
-import { assessTrust, type BenchWindow, formatReport, summarize } from './report/index.js';
+import type { BenchWindow } from './report/index.js';
+import { publishReport, reportFrom } from './run.js';
 
 /**
  * The sim's per-system benchmark on a REAL decoded map - `npm run bench:map`. It profiles the session
@@ -70,7 +69,8 @@ describe('map per-system benchmark', () => {
       onWindow: (window) => console.log(progressLine(window, windows)),
     });
 
-    const report = summarize(measurement.perSystem, measurement.tickSamples, {
+    const report = reportFrom({
+      measurement,
       world: {
         kind: 'realMap',
         mapId,
@@ -80,36 +80,20 @@ describe('map per-system benchmark', () => {
         settlersAtEnd: measurement.settlersAtEnd,
         buildings: measurement.buildings,
       },
-      ticks: { warmup: warmupTicks, measured: measuredTicks, windows: measurement.windows.length },
-      windows: measurement.windows,
-      environment: captureEnvironment({
-        knobs: {
-          ON_BENCH_MAP: mapId,
-          ON_BENCH_SEATS: `${seats}`,
-          ON_BENCH_TICKS: `${measuredTicks}`,
-          ON_BENCH_WARMUP: `${warmupTicks}`,
-          ON_BENCH_WINDOWS: `${windows}`,
-        },
-        startedAtMs,
-        wallSeconds: (performance.now() - startMs) / 1000,
-        loadPerCpu: measurement.loadPerCpu,
-        peakRssMb: measurement.peakRssMb,
-        calibration: measurement.calibration,
-      }),
-      trust: assessTrust({
-        loadPerCpu: measurement.loadPerCpu,
-        calibration: measurement.calibration,
-        windows: measurement.windows,
-      }),
+      knobs: {
+        ON_BENCH_MAP: mapId,
+        ON_BENCH_SEATS: `${seats}`,
+        ON_BENCH_TICKS: `${measuredTicks}`,
+        ON_BENCH_WARMUP: `${warmupTicks}`,
+        ON_BENCH_WINDOWS: `${windows}`,
+      },
+      ticks: { warmup: warmupTicks, measured: measuredTicks },
       stateHash: sim.hashState(),
+      startedAtMs,
+      wallSeconds: (performance.now() - startMs) / 1000,
     });
 
-    console.log(`\n${formatReport(report)}\n`);
-    const jsonPath = process.env.ON_BENCH_JSON?.trim();
-    if (jsonPath !== undefined && jsonPath !== '') {
-      writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
-      console.log(`report written to ${jsonPath}\n`);
-    }
+    publishReport(report);
 
     // The run must have profiled a populated map with work to do. Whether the settlement GREW is
     // reported in the window table rather than asserted: that depends on the tick count, so an

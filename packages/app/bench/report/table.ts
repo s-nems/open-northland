@@ -5,7 +5,7 @@ export interface Column {
   readonly width: number;
 }
 
-export function row(columns: readonly Column[], values: readonly string[]): string {
+function row(columns: readonly Column[], values: readonly string[]): string {
   return columns
     .map((c, i) => {
       const value = values[i] ?? '';
@@ -16,7 +16,7 @@ export function row(columns: readonly Column[], values: readonly string[]): stri
 }
 
 /** The header row plus its rule, sized to the summed absolute column widths. */
-export function header(columns: readonly Column[]): readonly string[] {
+function header(columns: readonly Column[]): readonly string[] {
   return [
     row(
       columns,

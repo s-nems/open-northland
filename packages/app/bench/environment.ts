@@ -1,8 +1,4 @@
-/**
- * Machine and run context for a benchmark report. A measurement taken on a contended or thermally
- * throttled box reads exactly like a real regression, so every report carries the conditions it was
- * taken under and `report/trust.ts` judges them.
- */
+/** Gathers the machine and run context every report carries. `report/trust.ts` judges it. */
 import { execFileSync } from 'node:child_process';
 import { arch, cpus, loadavg, platform, totalmem } from 'node:os';
 import type { BenchEnvironment } from './report/index.js';

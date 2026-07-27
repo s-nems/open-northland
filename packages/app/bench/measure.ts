@@ -143,6 +143,9 @@ export function measureWindows(sim: Simulation, options: MeasureOptions): Measur
     options.onWindow?.(window);
   }
   sampling = false;
+  // Release the seam: a caller that keeps stepping this sim should not keep paying two clock reads
+  // per system per tick for samples nobody collects.
+  sim.setInstrument(null);
 
   return {
     windows,
