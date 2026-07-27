@@ -204,7 +204,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(40);
+  const roll = rng.int(41);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -535,6 +535,15 @@ function nextCommand(rng: Rng): Command {
         kind: 'setJob',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         jobType: pick(rng, JOB_TYPES),
+      };
+    case 40:
+      // A barracks drill order at two random ids: the handler's skip paths (dead/stale issuer, a woman
+      // or child, a house that is not a barracks, another tribe's or side's, a re-issue on the same
+      // house) plus the drill rung itself under a fuzzed stream.
+      return {
+        kind: 'trainSoldier',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

@@ -48,6 +48,26 @@ describe('boundWorkers', () => {
     const kept = boundWorkers(snapshotOf(many), BUILDING, false);
     expect(kept).toEqual(Array.from({ length: MAX_WORKERS }, (_, i) => i + 1));
   });
+
+  it('lists a recruit drilling here after the staff, and not one drilling elsewhere', () => {
+    const snap = snapshotOf([
+      sett(1, { TrainingOrder: { house: BUILDING } }),
+      sett(2, { JobAssignment: { workplace: BUILDING } }),
+      sett(3, { TrainingOrder: { house: OTHER } }),
+    ]);
+    expect(boundWorkers(snap, BUILDING, false)).toEqual([2, 1]);
+  });
+
+  it('drops recruits before working posts when the field is full', () => {
+    const entities = [
+      sett(1, { TrainingOrder: { house: BUILDING } }),
+      ...Array.from({ length: MAX_WORKERS }, (_, i) =>
+        sett(i + 2, { JobAssignment: { workplace: BUILDING } }),
+      ),
+    ];
+    const kept = boundWorkers(snapshotOf(entities), BUILDING, false);
+    expect(kept).toEqual(Array.from({ length: MAX_WORKERS }, (_, i) => i + 2));
+  });
 });
 
 describe('groupedWorkers', () => {

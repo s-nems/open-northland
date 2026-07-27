@@ -9,7 +9,8 @@
 //
 // Split by concern into sibling modules:
 //  - ./hud.ts      — the HUD/goods-graph/housing/population projections over world state + content.
-//  - ./buildings.ts — the data-defined temple (pray-need satisfier) classification.
+//  - ./buildings.ts — the data-defined temple (pray-need satisfier) and barracks (drill house)
+//                    classifications.
 //  - ./food.ts     — the data-defined edible-good (eat-slot) classification and the dish→edible
 //                    conversion a good undergoes when it leaves the kitchen that made it.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
@@ -36,6 +37,8 @@ export {
   type BuildingCombatClass,
   buildingCombatClass,
   HEADQUARTERS_BUILDING_ID,
+  isBarracks,
+  isBarracksType,
   isLowPriorityBuildingTarget,
   isTemple,
 } from './buildings.js';
@@ -77,6 +80,7 @@ export {
   tribeStocks,
 } from './hud.js';
 export {
+  baseSoldierJobType,
   isFighterJob,
   isFighterJobRow,
   isHeroJob,

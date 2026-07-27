@@ -19,3 +19,4 @@ export * from './rules.js';
 export * from './settler.js';
 export * from './signpost.js';
 export * from './social.js';
+export * from './training.js';

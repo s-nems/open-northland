@@ -28,8 +28,8 @@ export function isFighterTarget(content: UnlockContent, jobType: number): boolea
 
 /**
  * Whether a settler with `tribe`/`experience` may take `jobType` right now: every `need-job` row for
- * the target is met in repeats, or profession progression is off (civilian jobs free; fighter jobs stay
- * barracks-gated — the sim's exact carve-out).
+ * the target is met in repeats, or profession progression is off (civilian jobs free; a fighter job stays
+ * gated on the barracks drill either way — the sim's exact carve-out).
  */
 export function jobUnlockedFor(
   content: UnlockContent,
@@ -59,7 +59,8 @@ export function goodUnlockedFor(
   return meetsNeedRows(content, tribe, 'good', goodType, experience);
 }
 
-/** The shared `needfor*` row reading: every `need` row for `(target, targetId)` met in repeats. */
+/** The shared `needfor*` row reading: every `need` row for `(target, targetId)` met in repeats — or, for
+ *  a fighter trade, the barracks schooling paid instead (the sim's alternative path, `schoolingMet`). */
 function meetsNeedRows(
   content: UnlockContent,
   tribe: number | undefined,
@@ -69,6 +70,13 @@ function meetsNeedRows(
 ): boolean {
   const tribeType = content.tribes.find((t) => t.typeId === tribe);
   if (tribeType === undefined) return true; // no requirement table — nothing thresholds it
+  if (
+    target === 'job' &&
+    isFighterTarget(content, targetId) &&
+    systems.schoolingMet(content.jobExperience, tribeType.jobRequirements, experience, targetId)
+  ) {
+    return true;
+  }
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
     const repeats = systems.requirementRepeats(content.jobExperience, experience, req.experienceTypes);

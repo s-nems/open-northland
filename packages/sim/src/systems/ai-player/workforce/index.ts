@@ -17,6 +17,7 @@ import {
 } from './collectors.js';
 import { tuneCraftSelections } from './craft.js';
 import type { TakenFlagNodes } from './flag-spots.js';
+import { trainGarrison } from './garrison.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 
@@ -28,6 +29,7 @@ export {
 } from './collectors.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
+export { GARRISON_TARGET } from './garrison.js';
 export { builderJobOf } from './pool.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
@@ -35,9 +37,9 @@ export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
  * The CollectResources module — the seat's one workforce allocator (user plan 2026-07-17, ladder
  * revision 2026-07-25). Every adult non-fighter man is classified against the live world, and the
  * wanted roles are drawn out of the spare pool in the priority order the returned array spells out:
- * the essentials first, then the tiers the surplus pays for. No second module ever races this one
- * for a person. A transient conflict with the live world self-heals on the next decision because
- * every target is recomputed from state, never remembered.
+ * the essentials first, then the tiers the surplus pays for, and the garrison last of all. No second
+ * module ever races this one for a person. A transient conflict with the live world self-heals on the
+ * next decision because every target is recomputed from state, never remembered.
  */
 function runWorkforce(
   world: World,
@@ -62,6 +64,7 @@ function runWorkforce(
     ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken),
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
     ...allocateGenericCollectors(world, ctx, hq, genericCollectors, force, taken, builderJob),
+    ...trainGarrison(world, ctx, player, force),
     ...tuneCraftSelections(world, ctx, player),
   ];
 }

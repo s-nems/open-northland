@@ -18,6 +18,18 @@ export function isSoldierJob(content: ContentSet, jobType: number | null): boole
   return jobType !== null && contentIndex(content).soldierJobs.has(jobType);
 }
 
+/** The soldier class a barracks drill enlists a trained settler into — the lowest soldier trade the content
+ *  declares, or null when it declares none. An ordering heuristic for "the weaponless base every armed
+ *  class specializes from": it picks `jobtypes.ini` 31 `soldier_unarmed` in every playable tribe, and the
+ *  direct signal (the one soldier class with no `weapons.ini` `jobtype` row) waits on the weapon slice. */
+export function baseSoldierJobType(content: ContentSet): number | null {
+  let lowest: number | null = null;
+  for (const jobType of contentIndex(content).soldierJobs) {
+    if (lowest === null || jobType < lowest) lowest = jobType;
+  }
+  return lowest;
+}
+
 /** Whether `jobType` is a **hero** class — the named mission elites ({@link isSoldierJob}). */
 export function isHeroJob(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).heroJobs.has(jobType);

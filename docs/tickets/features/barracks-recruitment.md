@@ -14,20 +14,30 @@ consume weapon → `Weapon`+job flip; best-available armor) is **observed approx
 original's exact flow is oracle-blocked; name it. No weapon in stock ⇒ typed boundary failure, not
 a silent no-op.
 
-The equip drive is also the only way an AI seat can ever raise a soldier: `setJob` to any fighter
-job runs `settlerMeetsNeed`, whose fighter carve-out survives the AI tree exemption, and the viking
-row `needforjob 31 5 69` reads track 69, which only job 31 itself accrues. A civilian therefore
-cannot be stamped `soldier_unarmed` by command, on any seat. The AI's army ramp waits on this flow
-(verified 2026-07-26 against `content/ir.json`).
+A settler reaches the soldier band through the barracks drill, not through this flow: the drill pays
+the `trainforjob` schooling that `settlerMeetsNeed` accepts beside the unreachable `needforjob 31 5
+69` row, and enlists the recruit as the unarmed base class
+([barracks-training](barracks-training.md)). What is missing here is the WEAPON — the step from
+`soldier_unarmed` to a spear/sword/bow class.
+
+Close this consequence deliberately: because the schooling path admits any fighter target whose
+`trainforjob` row is met, ONE 15 s drill on the real viking clip (7 TRAINING) already qualifies a settler
+for the wooden-spear, short-sword and short-bow classes (`trainforjob 32/34/40 5 77`), and a second
+adds the iron-spear, long-sword and long-bow classes at amount 10. Nothing gives him the weapon, so
+`setJob` to one of those produces an armed class with no arms. It is unreachable through the UI today —
+`app/src/catalog/professions.ts` offers one "Żołnierz" row (job 31) — but the command accepts it. The
+equip drive is what should own that step.
 
 ## Scope
 
 - The equip drive: walk → consume weapon from barracks stock → job/Weapon transform, plus the
   failure path; data-driven off weapons.ini `jobtype`/`goodtype` — no hardcoded weapon table.
-- A `?scene=barracks` acceptance scene: civilian sent to recruit, body/weapon visibly changes.
+- The armed classes' gate rows in the fallback catalog (`sandbox/content/catalog/tribes.ts` carries
+  the base class only, because 32..41 are also tower worker slots the sandbox staffs).
+- Extend the `?scene=barracks` scene: an enlisted soldier takes a weapon, body/weapon visibly changes.
 
-Training/exercise (coin spend, XP buckets, unlock gates) is the separate follow-up:
-[barracks-training](barracks-training.md).
+The remaining schooling work (coin spend, the soldier's own TRAIN clip, the school house) is the
+separate follow-up: [barracks-training](barracks-training.md).
 
 ## Verify
 

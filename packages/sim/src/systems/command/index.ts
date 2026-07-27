@@ -30,6 +30,7 @@ import {
   setJob,
   setStance,
   setWorkFlag,
+  trainSoldier,
   unassignHouse,
   unequipGood,
 } from '../orders/index.js';
@@ -98,6 +99,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignBuilder':
       assignBuilder(world, ctx, command);
+      return;
+    case 'trainSoldier':
+      trainSoldier(world, ctx, command);
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);

@@ -270,12 +270,24 @@ export function aiContent(): ContentSet {
       { typeId: 4, id: 'collector_mud', jobType: 8, goodType: 2, experienceFactor: 100 },
       { typeId: 5, id: 'collector_stone', jobType: 8, goodType: 4, experienceFactor: 100 },
     ],
+    // The civilist's barracks drill: job 6 bound to EXERCISE (atomic 89), whose GET_TRAINING event
+    // (type 29) banks the extracted `+1` per repetition. The seat reads this chain to decide whether its
+    // data can school a soldier at all, so without it no garrison is hired (`workforce/garrison.ts`).
+    atomicAnimations: [
+      {
+        id: 'viking_civilist_exercise',
+        name: 'viking_civilist_exercise',
+        length: 4,
+        events: [{ at: 2, type: 29, value: 1 }],
+      },
+    ],
     // The viking requirement table's iron gate (base data: `needforgood iron 10` measured in the
     // clay+stone collector tracks) — a fresh hire may not mine iron until it has dug clay or stone.
     tribes: [
       {
         typeId: 1,
         id: 'viking',
+        atomicBindings: [{ jobType: 6, atomicId: 89, animation: 'viking_civilist_exercise' }],
         jobRequirements: [
           { requirement: 'need', target: 'good', targetId: 5, amount: 10, experienceTypes: [4, 5] },
         ],

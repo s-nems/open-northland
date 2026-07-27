@@ -219,5 +219,10 @@ export const plContent = {
       summary:
         'Dwaj zbieracze maszerują do lasu - ten w butach wyraźnie szybciej, a buty zużywają się w drodze; młynarz z żelaznym narzędziem miele 5 pszenicy z premią do produkcji, a osadnicy sami piją miód i mikstury, gdy dopada ich głód lub zmęczenie.',
     },
+    barracks: {
+      title: 'Szkolenie w koszarach',
+      summary:
+        'Osadnik wysłany do koszar ćwiczy w środku 15 sekund i wychodzi jako żołnierz bez broni; obok żołnierz, który tylko trenuje, i cywil, dla którego zawód żołnierza pozostaje zamknięty.',
+    },
   },
 } as const;

@@ -14,6 +14,9 @@ still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
 - `setGatherGood` (`systems/orders/work/selection.ts`) cancels a harvest-effect atomic mid-swing on a
   gather-good change; a swing-boundary release (the `DeferredOrder` chain-break in `atomicSystem` is
   the pattern) would preserve the swing without deferring the selection itself.
+- `trainSoldier` (`systems/orders/training.ts`) - the barracks drill order, same shape as the
+  employment twins above; the AI's garrison hire already skips a mid-action man to avoid the stomp
+  (`ai-player/workforce/garrison.ts`), which a gate here would make unnecessary.
 
 ## Verify
 

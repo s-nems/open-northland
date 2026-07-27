@@ -57,6 +57,14 @@ export const SLEEP_ATOMIC_ID = 8;
  */
 export const PRAY_ATOMIC_ID = 12;
 
+/**
+ * The atomic id a settler runs to drill at a barracks — the original's atomic action EXERCISE, bound
+ * `setatomic 6 89 "..._exercise"` for the civilist across tribes. The `exercise` effect banks the clip's
+ * TRAINING experience. Everyone drills on this clip, resolved through {@link needAtomicDuration}'s civilist
+ * fallback; the soldier's own `..._train` (atomic 90) is a later slice.
+ */
+export const EXERCISE_ATOMIC_ID = 89;
+
 /** The atomic id for a carrier picking goods up out of a store — the original's generic pickup=22 (like
  *  {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup). */
 export const PICKUP_ATOMIC_ID = 22;

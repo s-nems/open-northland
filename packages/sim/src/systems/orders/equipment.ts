@@ -12,6 +12,7 @@ import {
   Position,
   Settler,
   Stranded,
+  TrainingOrder,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -65,6 +66,7 @@ function stampEquipOrder(
   world.remove(e, PathRequest);
   world.remove(e, Stranded);
   world.remove(e, PlayerOrder);
+  world.remove(e, TrainingOrder); // and a barracks drill, which outranks this errand and would outlast it
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
   world.add(e, EquipOrder, {

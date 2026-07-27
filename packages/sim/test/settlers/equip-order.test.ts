@@ -15,6 +15,7 @@ import {
   Stance,
   Stockpile,
   setNeedsEnabled,
+  TrainingOrder,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Fixed } from '../../src/core/fixed.js';
@@ -465,6 +466,21 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     sim.run(ERRAND_TICKS);
     expect(sim.world.tryGet(e, Equipment)?.tool ?? null).toBeNull();
     expect(groundUnits(sim, TOOL_WOODEN)).toBe(1); // the unit stayed in its pile
+  });
+
+  it('calls off a barracks drill in flight - the two errands never run at once', () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 2, 2);
+    const house = armouryAt(sim, 12, 2); // any house will do — the order only stores its id
+    pileAt(sim, 12, 2, TOOL_WOODEN, 1);
+    sim.world.add(e, TrainingOrder, { house, drillTicksLeft: 100 });
+
+    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.step();
+    // Without this the drill would outrank the fetch for its whole term, then the fetch would resume
+    // and walk the settler back to a return spot the drill had already invalidated.
+    expect(sim.world.has(e, TrainingOrder)).toBe(false);
+    expect(sim.world.has(e, EquipOrder)).toBe(true);
   });
 
   it('sets a fresh tool down beside a foreign heap when its hands are full', () => {

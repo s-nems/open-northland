@@ -194,6 +194,59 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
   });
 });
 
+describe('settlerMeetsNeed — the barracks schooling path onto a fighter trade', () => {
+  const VIKING = 1;
+  /** The `trainforjob` bucket: a track-less id, so raw XP already is the repeat count. */
+  const TRAINING_TRACK = 77;
+
+  /** Add {@link SOLDIER_JOB}'s schooling row beside the fight-XP gate `gateSoldierJob` adds. */
+  function schoolSoldierJob(sim: Simulation): void {
+    sim.content.tribes[0]?.jobRequirements.push({
+      requirement: 'train',
+      target: 'job',
+      targetId: SOLDIER_JOB,
+      amount: 5,
+      experienceTypes: [TRAINING_TRACK],
+    });
+  }
+
+  const drilled = (repeats: number, owner: number = HUMAN_PLAYER): NeedSubject => ({
+    tribe: VIKING,
+    owner,
+    experience: new Map([[TRAINING_TRACK, repeats]]),
+  });
+
+  it('opens the trade at the schooling threshold, whatever the fight-XP gate says', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const ctx = ctxOf(sim);
+    gateSoldierJob(sim); // needforjob 10 repeats of a track no civilian accrues
+    schoolSoldierJob(sim);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(4), 'job', SOLDIER_JOB)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
+  });
+
+  it('opens it for an AI seat and with progression off — the drill is the one route either way', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const ctx = ctxOf(sim);
+    gateSoldierJob(sim);
+    schoolSoldierJob(sim);
+    makeAiSeat(sim, AI_PLAYER);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(0, AI_PLAYER), 'job', SOLDIER_JOB)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(5, AI_PLAYER), 'job', SOLDIER_JOB)).toBe(true);
+    setProfessionProgression(sim.world, false);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(0), 'job', SOLDIER_JOB)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
+  });
+
+  it('leaves a civilian target alone — its own train rows are the school slice, not this one', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // The fixture gates good 2 behind 30 wood repeats AND carries a train row on it with amount 999.
+    // A schooled reading of that row would still refuse it; a civilian target must not read it at all.
+    const schooled: NeedSubject = { tribe: VIKING, owner: HUMAN_PLAYER, experience: new Map([[1, 300]]) };
+    expect(settlerMeetsNeed(sim.world, ctxOf(sim), schooled, 'good', 2)).toBe(true);
+  });
+});
+
 describe('jobEnables tech-graph under the profession-progression toggle', () => {
   it('bypasses the presence graph for civilian jobs and goods while off, fighters stay gated', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
