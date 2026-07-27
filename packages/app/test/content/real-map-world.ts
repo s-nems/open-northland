@@ -10,14 +10,15 @@ import {
 } from '../../src/game/sandbox/index.js';
 import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
 import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
+import { grantAssistantDefaults } from '../../src/view/assistant-grants.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * The one headless build of a REAL decoded map — the same chain `entries/map.ts` assembles for
  * `?map=<id>&ai=<seats>&fog=<mode>` (real merged content → collision terrain → {@link runAuthoredSlice}
- * → fog → AI seats → map objects). Shared by the real-content scenario tests and the gatherer soak so
- * neither drifts from the browser boot the way two copies would. Only the render half is skipped, and
- * `?speed=` with it — speed multiplies the RAF loop, not the sim.
+ * → fog → AI seats → their assistant grants → map objects). Shared by the real-content scenario tests
+ * and the gatherer soak so neither drifts from the browser boot the way two copies would. Only the
+ * render half is skipped, and `?speed=` with it — speed multiplies the RAF loop, not the sim.
  */
 
 /** The seed the browser's vertical slice runs on (`SLICE_SEED` in `entries/map.ts`). */
@@ -62,6 +63,9 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   if (sim === null) throw new Error(`${options.mapId} resolved no authored placements`);
   if (options.fog !== undefined) sim.enqueue({ kind: 'setFogMode', mode: options.fog });
   for (const seat of options.aiSeats) sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
+  // Each AI seat's assistant, so a soak measures an economy that dresses itself like the browser's.
+  // The entry also grants to the seat the person controls; a headless run has none.
+  grantAssistantDefaults(sim, merge.content, options.aiSeats);
   // The map's own trees/stone/clay as harvestable Resource nodes — the collectors flag themselves beside these.
   spawnMapResources(sim, map.objects, ir);
   if (options.berryBushes === true) spawnMapBerryBushes(sim, map.objects, ir);

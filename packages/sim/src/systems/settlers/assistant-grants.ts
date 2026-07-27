@@ -98,7 +98,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   const grants = collectGrantSpecs(pass);
   if (grants.size === 0) return; // no player granted anything: the pass costs one empty query
   const inFlight = collectInFlightFetches(world);
-  const stockCache = new Map<number, Map<number, number>>();
+  let stock: GrantedStock | undefined; // one store walk for every player and good, built on first need
 
   for (const e of pass.settlers) {
     if ((e + ctx.tick) % ASSISTANT_SCAN_PERIOD_TICKS !== 0) continue;
@@ -130,7 +130,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
       const underway = tally.byGood.get(spec.goodType) ?? 0;
-      if (underway >= availableStock(pass, stockCache, owner, spec.goodType)) continue;
+      stock ??= collectGrantedStock(pass, grants);
+      if (underway >= (stock.get(owner)?.get(spec.goodType) ?? 0)) continue;
       if (limit === undefined) limit = navigationLimitFor(world, ctx.content, terrain, e);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
@@ -234,32 +235,39 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
   return free === -1 ? null : free;
 }
 
+/** Every granting player's total stock of each good it grants: `player -> goodType -> units`. */
+type GrantedStock = ReadonlyMap<number, ReadonlyMap<number, number>>;
+
 /**
- * The player's total store/pile stock of `goodType` (sites excluded - a site is a sink, never a
- * source), cached per tick. The reservation bound, not a reachability promise: it counts stock in
- * other signpost networks and buried piles too (approximation), so it can run loose by a few
- * unreachable units - the per-settler {@link nearestStoreHolding} scan still gates every dispatch.
+ * Total store/pile stock of every granted good, per granting player (sites excluded - a site is a
+ * sink, never a source), in ONE walk of the candidate stores rather than one per player and good:
+ * the owner test is the expensive part and it resolves once per store. An unowned pile counts for
+ * every player ({@link ownersCompatible}), as it did per-player before.
+ *
+ * The reservation bound, not a reachability promise: it counts stock in other signpost networks and
+ * buried piles too (approximation), so it can run loose by a few unreachable units - the per-settler
+ * {@link nearestStoreHolding} scan still gates every dispatch.
  */
-function availableStock(
+function collectGrantedStock(
   pass: PlannerPass,
-  cache: Map<number, Map<number, number>>,
-  player: number,
-  goodType: number,
-): number {
-  let byGood = cache.get(player);
-  if (byGood === undefined) {
-    byGood = new Map();
-    cache.set(player, byGood);
-  }
-  const cached = byGood.get(goodType);
-  if (cached !== undefined) return cached;
+  grants: ReadonlyMap<number, readonly GrantSpec[]>,
+): GrantedStock {
   const { world, targets } = pass;
-  let sum = 0;
+  const byPlayer = new Map<number, Map<number, number>>();
+  for (const [player, specs] of grants) {
+    byPlayer.set(player, new Map(specs.map((spec) => [spec.goodType, 0])));
+  }
   for (const store of targets.stockpiles) {
     if (world.has(store, UnderConstruction)) continue;
-    if (!ownersCompatible(player, ownerOf(world, store))) continue;
-    sum += world.get(store, Stockpile).amounts.get(goodType) ?? 0;
+    const owner = ownerOf(world, store);
+    const amounts = world.get(store, Stockpile).amounts;
+    for (const [player, totals] of byPlayer) {
+      if (!ownersCompatible(player, owner)) continue;
+      for (const [goodType, held] of totals) {
+        const units = amounts.get(goodType);
+        if (units !== undefined) totals.set(goodType, held + units);
+      }
+    }
   }
-  byGood.set(goodType, sum);
-  return sum;
+  return byPlayer;
 }

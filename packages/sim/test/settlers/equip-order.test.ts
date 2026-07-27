@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@open-northland/data';
+import { type ContentSet, type EquipCategory, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
@@ -34,14 +34,16 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  * the stow store STILL WEARING the good and takes it off there (in place only when destroying it or
  * dropping it on the ground). A part-used unit is destroyed instead of stowed - fungible store stock
  * would regenerate it to fresh. Fixture: good 8 = shoes (boots, wears), 9 = sword / 17 = long_sword
- * (permanent weapons), 10 = fur_boots (boots), 11 = tool_wooden (tool); building 22 = armoury (the
- * only store with gear slots); tribe 1 = viking, job 1 = woodcutter.
+ * (permanent weapons), 10 = fur_boots (boots), 11 = tool_wooden (tool), 13 = mead (misc); building
+ * 22 = armoury (the only store with gear slots) and this suite's own brewhouse (the only workplace
+ * that MAKES an equippable); tribe 1 = viking, job 1 = woodcutter.
  */
 
 const SHOES = 8;
 const SWORD = 9;
 const FUR_BOOTS = 10;
 const TOOL_WOODEN = 11;
+const MEAD = 13;
 const LONG_SWORD = 17;
 const WOOD = 1;
 const WOODCUTTER = 1;
@@ -50,6 +52,8 @@ const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
 const ARMOURY = 22;
+/** Appended by this suite alone, out of the 10..19 band the shared fixture reserves for that. */
+const BREWHOUSE = 10;
 /** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
 const FIGHTER_JOB = 31;
 
@@ -92,6 +96,42 @@ function armouryAt(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: ARMOURY, tribe: VIKING, built: fx.fromInt(1), level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map() });
+  return e;
+}
+
+/** The shared fixture plus a brewery-shaped workplace: it declares a recipe that MAKES an equippable
+ *  (mead out of wood) and a shelf for it. The armoury cannot stand in - it declares no recipe, so a
+ *  producer filter growing onto the fetch scan would slip past it. */
+function brewhouseContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: BREWHOUSE,
+        id: 'brewhouse',
+        kind: 'workplace',
+        workers: [{ jobType: CARPENTER, count: 1 }],
+        stock: [
+          { goodType: WOOD, capacity: 10, initial: 0 },
+          { goodType: MEAD, capacity: 10, initial: 0 },
+        ],
+        recipes: [
+          { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: MEAD, amount: 1 }], ticks: 20 },
+        ],
+      },
+    ],
+  });
+}
+
+/** A built brewhouse holding `mead` bottles on its own output shelf. */
+function brewhouseAt(sim: Simulation, x: number, y: number, mead: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType: BREWHOUSE, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map([[MEAD, mead]]) });
+  sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   return e;
 }
 
@@ -248,6 +288,23 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
 
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
     expect(sim.world.tryGet(settler, Equipment)?.boots ?? null).toBeNull();
+  });
+
+  it('fetches straight off the shelf of the workshop that makes the good', () => {
+    // A producer's FINISHED shelf is a fetch source like any other - the brewery case, where a
+    // settler need not wait for a carrier to walk the bottle to a warehouse first. (The input-side
+    // reserve is the opposite rule and belongs to the recipe's own inputs, not its outputs.)
+    const sim = new Simulation({ seed: 1, content: brewhouseContent(), map: grassMap(16, 6) });
+    setNeedsEnabled(sim.world, false);
+    const settler = ownedSettler(sim, 2, 2);
+    const brewhouse = brewhouseAt(sim, 12, 2, 3);
+
+    sim.enqueue(equip(settler, MEAD, 'misc', 0));
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(settler, Equipment).misc[0]?.goodType).toBe(MEAD);
+    expect(sim.world.get(brewhouse, Stockpile).amounts.get(MEAD)).toBe(2);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
   });
 });
 

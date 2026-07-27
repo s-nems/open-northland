@@ -61,7 +61,7 @@ describe('assistantGrantsSeam', () => {
 describe('grantAssistantDefaults', () => {
   it('switches all four grants ON for the seat at world start', () => {
     const sent: Command[] = [];
-    grantAssistantDefaults({ enqueue: (c) => sent.push(c) }, CONTENT, 1);
+    grantAssistantDefaults({ enqueue: (c) => sent.push(c) }, CONTENT, [1]);
     const grants = sent.filter((c) => c.kind === 'setAssistantGrant');
     expect(grants.map((c) => c.goodType).sort((a, b) => a - b)).toEqual([
       SHOES,
@@ -70,5 +70,21 @@ describe('grantAssistantDefaults', () => {
       MEAD,
     ]);
     expect(grants.every((c) => c.enabled && c.player === 1)).toBe(true);
+  });
+
+  it('gives every played seat all four grants, a repeated seat only once', () => {
+    const sent: Command[] = [];
+    grantAssistantDefaults({ enqueue: (c) => sent.push(c) }, CONTENT, [0, 2, 0]);
+    const perSeat = new Map<number, number[]>();
+    for (const c of sent.filter((c) => c.kind === 'setAssistantGrant')) {
+      perSeat.set(
+        c.player,
+        [...(perSeat.get(c.player) ?? []), c.goodType].sort((a, b) => a - b),
+      );
+    }
+    const all = [SHOES, TOOL_WOODEN, TOOL_IRON, MEAD].sort((a, b) => a - b);
+    expect([...perSeat.keys()].sort((a, b) => a - b)).toEqual([0, 2]);
+    expect(perSeat.get(0)).toEqual(all);
+    expect(perSeat.get(2)).toEqual(all);
   });
 });

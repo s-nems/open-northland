@@ -1,5 +1,7 @@
 # Bound the tribeUnlockEnabled settler scan
 
+**Area:** sim (progression) · **Priority:** P2
+
 `tribeUnlockEnabled` (`packages/sim/src/systems/progression/unlocks.ts`) answers "is a settler of an
 enabling job alive?" with a full `world.query(Settler)` scan per call, and its callers probe per
 candidate: `resolveOpenWorkerJob` calls `jobEnabled` per idle settler x workplace x job (fighter jobs
