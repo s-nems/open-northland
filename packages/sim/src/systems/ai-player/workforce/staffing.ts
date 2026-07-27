@@ -32,28 +32,36 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
 };
 
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (user plan
- *  2026-07-25). Applies per building INSTANCE — a second bakery gets the same one-baker minimum and
- *  two-plus-carrier target as the first. The bakery keeps its carrier at the MIN tier (the plan's
- *  original carrier post); the other carriers are target-tier extras. */
+ *  2026-07-25, revised 2026-07-27). Applies per building INSTANCE — a second bakery gets the same
+ *  one-baker minimum and two-plus-carrier target as the first. Every SECOND hand is a target-tier
+ *  extra, including the farm's (user rule 2026-07-27: a farm runs on one farmer until men are
+ *  actually spare — knowingly buying the measured lone-farmer shortfall, where the second farmer is
+ *  worth more than its own output because one man cannot walk the watering circuit in time); the
+ *  bakery's carrier is the one carrier post the minimum still pays for. */
 export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
-  work_farm_00: { operatorMin: 2, operatorTarget: 3 },
+  work_farm_00: { operatorTarget: 3 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // The level-0 bakery has a single baker slot — only its carrier is planned; the two-baker
   // target belongs to the level-2 tier, which actually offers the seats.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   work_bakery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
+  // The seat's only iron-tool shop (see CRAFT_RESTRICTIONS_BY_BUILDING_ID) — its second joiner
+  // doubles tool output once the settlement can spare the man.
+  work_joinery_01: { operatorTarget: 2 },
   work_sewery_01: { operatorTarget: 2 },
   work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
 };
 
-/** The storage plan — the HQ and every warehouse run 1–3 transport carriers (user plan 2026-07-25);
- *  their fisher/hunter/collector slots stay open (the storage-staffs-transport-only rule in
+/** The storage plan — the HQ and every warehouse run up to three transport carriers, all at the
+ *  TARGET tier (user rule 2026-07-27: a warehouse post is a convenience the settlement buys out of
+ *  genuinely spare men, never ahead of production or the builder reserve). Their
+ *  fisher/hunter/collector slots stay open (the storage-staffs-transport-only rule in
  *  {@link staffBuildings} — not every such slot classifies as a harvest trade). */
 const STORAGE_STAFFING: BuildingStaffing = {
   operatorMin: 0,
   operatorTarget: 0,
-  carrierMin: 1,
+  carrierMin: 0,
   carrierTarget: 3,
 };
 

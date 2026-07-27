@@ -15,6 +15,7 @@ import { startableCycleCount } from '../../../economy/production.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { recipesByProductOf, stockCapacity, typeProducesGoodWithoutInputs } from '../../../stores/index.js';
 import { buriedUnderBuilding, type InteractionCellIndex } from '../../targets/index.js';
+import { mayFetchGoodFrom } from '../store-policy.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -115,9 +116,13 @@ export function nearestMissingInputSource(
       here,
       (e) => {
         if (e === workplace || world.has(e, UnderConstruction)) return null; // never self, never a build site
-        // A store that HOLDS the good is a fetch (and beats a mint when it's the nearer of the two); a
-        // buried pile is skipped (an unreachable stand strands the fetcher — the `nearestStoreHolding` guard).
-        if ((world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0) {
+        // A store that HOLDS the good and may be stripped of it (`mayFetchGoodFrom` — never another
+        // workshop's input reserve) is a fetch, and beats a mint when it's the nearer of the two; a buried
+        // pile is skipped (an unreachable stand strands the fetcher — the `nearestStoreHolding` guard).
+        if (
+          (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 &&
+          mayFetchGoodFrom(world, ctx, e, input.goodType)
+        ) {
           return buriedUnderBuilding(world, terrain, walls, e) ? null : FETCH;
         }
         // Else a built utility that MINTS the good from no inputs is a draw (crank it in place for one unit).

@@ -33,7 +33,7 @@ const OUTSKIRTS_PUSH_NODES = 8;
 
 /** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
  *  the live resource of the good nearest the HQ, the map's centre node, or the settlement's
- *  outskirts past its frontier building. Unresolvable anchors are dropped. */
+ *  outskirts past a frontier building. Unresolvable anchors are dropped. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
@@ -41,6 +41,7 @@ function affinityNode(
   owned: readonly Entity[],
   hq: HalfCellNode,
   type: BuildingType,
+  sameKindAnchors: readonly HalfCellNode[],
   affinity: PlacementAffinity,
 ): HalfCellNode | null {
   switch (affinity.kind) {
@@ -62,35 +63,54 @@ function affinityNode(
     case 'mapCentre':
       return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
     case 'outskirts':
-      return outskirtsNode(world, ctx, owned, type);
+      return outskirtsNode(world, ctx, owned, type, sameKindAnchors);
   }
 }
 
-/** The `outskirts` anchor: the frontier building (farthest anchor from the settlement centroid,
- *  strict `>` over the canonical list so ties keep the lowest id) pushed {@link OUTSKIRTS_PUSH_NODES}
- *  further out. Buildings the entry itself counts (the placed type's tier chain) are excluded, so
- *  warehouse #2 spreads away from warehouse #1 instead of anchoring on it. `searchCentre` clamps
- *  the result back into the near-HQ disc, so no new stall surface opens. */
+/** Lattice Manhattan node distance — NOT the anisotropic world metric {@link KIND_SPACING_NODES}'s
+ *  veto measures in. */
+function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
+  return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
+}
+
+/**
+ * The `outskirts` anchor: a frontier building pushed {@link OUTSKIRTS_PUSH_NODES} further out from the
+ * settlement centroid. `clearance` (distance to the nearest same-kind anchor) outranks `reach`
+ * (distance from the centroid), so warehouse #2 anchors past the settlement's least-served side rather
+ * than past the same corner as the HQ and warehouse #1 (user rule 2026-07-27); with no anchors the
+ * score collapses to the plain farthest-from-centroid frontier. Strict `>` over the canonical list
+ * keeps the lowest id on ties, and `searchCentre` clamps the result back into the near-HQ disc.
+ *
+ * Clearance dominating means the elected anchor need not be the settlement's outermost building, so
+ * the minimum separation is upheld by the {@link KIND_SPACING_NODES} veto, not by this ranking. The
+ * HQ is itself a same-kind anchor, which is what keeps a centroid-adjacent candidate scoring low.
+ */
 function outskirtsNode(
   world: World,
   ctx: SystemContext,
   owned: readonly Entity[],
   type: BuildingType,
+  sameKindAnchors: readonly HalfCellNode[],
 ): HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
   if (centroid === null) return null;
   const index = contentIndex(ctx.content);
   const ownChain = tiersAtOrAbove(index, type);
   let frontier: HalfCellNode | null = null;
-  let frontierDist = -1;
+  let bestClearance = -1;
+  let bestReach = -1;
   for (const e of owned) {
-    if (ownChain.has(world.get(e, Building).buildingType)) continue;
+    if (ownChain.has(world.get(e, Building).buildingType)) continue; // never anchor on its own kind
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
-    const dist = Math.abs(node.hx - centroid.hx) + Math.abs(node.hy - centroid.hy);
-    if (dist > frontierDist) {
+    let clearance = Number.POSITIVE_INFINITY;
+    for (const a of sameKindAnchors) clearance = Math.min(clearance, nodeDistance(node, a));
+    if (clearance === Number.POSITIVE_INFINITY) clearance = 0;
+    const reach = nodeDistance(node, centroid);
+    if (clearance > bestClearance || (clearance === bestClearance && reach > bestReach)) {
       frontier = node;
-      frontierDist = dist;
+      bestClearance = clearance;
+      bestReach = reach;
     }
   }
   return frontier === null ? null : outwardNode(centroid, frontier, OUTSKIRTS_PUSH_NODES);
@@ -106,11 +126,12 @@ function searchCentre(
   owned: readonly Entity[],
   hq: HalfCellNode,
   type: BuildingType,
+  sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, owned, hq, type, affinity);
+    const node = affinityNode(world, ctx, terrain, owned, hq, type, sameKindAnchors, affinity);
     if (node !== null) anchors.push(node);
   }
   if (anchors.length === 0) return hq;
@@ -213,9 +234,9 @@ function kindSpacingAnchors(
  * so the winner is deterministic; the search is bounded by twice the HQ radius (a centre inside the
  * disc reaches every disc node within that), never the whole map. Null stalls the entry.
  *
- * An `apart` entry runs the same search twice: first refusing anything within
- * {@link KIND_SPACING_NODES} of a same-kind building, then — only if that found nothing — without the
- * spacing, so the preference never becomes a stall.
+ * An `apart` entry's same-kind anchors do double duty: they steer the `outskirts` affinity to the
+ * settlement's least-served side, and they veto spots within {@link KIND_SPACING_NODES} of one. The
+ * veto runs as a first pass only — a second pass without it keeps the preference from ever stalling.
  */
 export function placementSpot(
   world: World,
@@ -227,17 +248,18 @@ export function placementSpot(
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode | null {
   const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
-  const centre = searchCentre(world, ctx, terrain, owned, hq, type, entry);
-  const search = (spacing: readonly HalfCellNode[]): HalfCellNode | null =>
+  const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
+  const centre = searchCentre(world, ctx, terrain, owned, hq, type, sameKindAnchors, entry);
+  const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
     firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
       // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
       // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
       if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
-      if (spacing.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
+      if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes — bounds come first
       if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
       return accept(x, y);
     });
-  if (entry.apart !== true) return search([]);
-  return search(kindSpacingAnchors(world, ctx, owned, type)) ?? search([]);
+  if (sameKindAnchors.length === 0) return search([]);
+  return search(sameKindAnchors) ?? search([]);
 }
