@@ -6,7 +6,7 @@
  * uniformly slow" (p50 close to p99) from "this machine is loaded or GC is spiking" (p50 fine, p99 far
  * above it), and reading the second as the first is how a measurement session goes wrong.
  */
-import { MS_PER_TICK, TICKS_PER_SECOND } from '@open-northland/sim';
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 
 /** One frame's raw facts, recorded once per RAF by the frame loop. */
 export interface FrameSample {
@@ -16,6 +16,7 @@ export interface FrameSample {
   readonly steps: number;
   /** The fixed timestep's MONOTONIC session total, not a per-frame delta. */
   readonly droppedTicks: number;
+  /** The multiplier ASKED for. What the loop delivered is `recent.deliveredSpeed`. */
   readonly speed: number;
   readonly paused: boolean;
   readonly entities: number;
@@ -36,8 +37,27 @@ export interface FrameEma {
   readonly simMs: number;
   readonly snapMs: number;
   readonly drawMs: number;
-  /** Recent DELIVERED tick-rate multiplier: 1 means 12 ticks/s actually ran. */
+}
+
+/**
+ * The rolling window a live readout should quote. Everything here is measured over the last
+ * {@link RECENT_WINDOW_FRAMES} frames rather than smoothed per frame, because `steps` is an integer:
+ * at 60 fps and x1 the loop runs one tick every fifth frame, so a per-frame ratio only ever reads 0 or
+ * 5 and no amount of smoothing settles it on the 1 the loop is actually delivering.
+ */
+export interface FrameRecent {
+  /** Worst frame in the window, which an average hides. */
+  readonly worstMs: number;
+  /** Ticks the loop discarded in the window. */
+  readonly droppedTicks: number;
+  /** Delivered tick-rate multiplier over the window: 1 means 12 ticks/s actually ran. */
   readonly deliveredSpeed: number;
+  /**
+   * The loop discarded work in this window AND in the one before it, so it is losing ground rather
+   * than recovering from one hitch. Loading a map costs a few ticks on every session; reporting that
+   * as a shortfall would tell every player their machine cannot keep up, seconds after it already has.
+   */
+  readonly sustainedShortfall: boolean;
 }
 
 export interface FrameDistribution {
@@ -51,8 +71,7 @@ export interface FrameStatsReport {
   /** The newest frame, unsmoothed. Null before the first record. */
   readonly last: FrameSample | null;
   readonly ema: FrameEma;
-  /** Worst frame in the current rolling window, which an average hides. */
-  readonly recentWorstMs: number;
+  readonly recent: FrameRecent;
   readonly window: {
     readonly frames: number;
     readonly ms: number;
@@ -67,9 +86,19 @@ export interface FrameStatsReport {
 
 /** Weight of the newest frame in the moving averages (smaller = smoother, slower to react). */
 const SMOOTHING = 0.1;
-/** Frames the worst-frame tracker holds before resetting, so the spike readout reflects the recent
- *  window rather than the whole session. */
-const WORST_WINDOW_FRAMES = 120;
+/** How long the rolling window holds before starting over, so a spike or a stall leaves the readout
+ *  again once it stops happening. Wall time, not a frame count: a frame budget would make the window
+ *  eight seconds long on the struggling machine that most needs a quick answer, and under one on a
+ *  144 Hz display that needs none. */
+const RECENT_WINDOW_MS = 1000;
+
+/**
+ * A frame this long was not a rendered frame: a blocking map load, or a tab the browser stopped
+ * painting. The loop rightly discards the wall-clock it missed, but that is not the sim failing to keep
+ * up. Approximation with room to spare: the worst genuinely slow frame observed on the heaviest map at
+ * x10 was about 80 ms.
+ */
+const STALL_FRAME_MS = 500;
 
 /** Log-spaced frame-time buckets: 1 ms to roughly 7 s at 1.15x growth. Fixed size, so a session of any
  *  length costs the same 64 numbers. Quantiles are bucket upper edges - read them as +/- 15%. */
@@ -98,9 +127,14 @@ export class FrameStats {
   private avgSimMs = 0;
   private avgSnapMs = 0;
   private avgDrawMs = 0;
-  private avgDeliveredSpeed = 0;
-  private worstMs = 0;
-  private worstCount = 0;
+
+  /** Rollover clock: every frame ages the window, so a throttled tab does not freeze it. */
+  private recentWallMs = 0;
+  private recentRunningMs = 0;
+  private recentSteps = 0;
+  private recentWorstMs = 0;
+  private recentDroppedAtStart = 0;
+  private previousWindowDropped = 0;
 
   private frames = 0;
   private windowMs = 0;
@@ -112,7 +146,6 @@ export class FrameStats {
 
   record(sample: FrameSample): void {
     this.last = sample;
-    this.droppedTotal = sample.droppedTicks;
 
     if (sample.elapsedMs > 0) {
       this.avgFrameMs = ema(this.avgFrameMs, sample.elapsedMs);
@@ -126,16 +159,34 @@ export class FrameStats {
     this.avgSimMs = ema(this.avgSimMs, sample.simMs);
     this.avgSnapMs = ema(this.avgSnapMs, sample.snapMs);
     this.avgDrawMs = ema(this.avgDrawMs, sample.drawMs);
-    // A paused loop delivers nothing by design; folding its zeros in would read as a stalled sim.
-    if (!sample.paused && sample.elapsedMs > 0) {
-      this.avgDeliveredSpeed = ema(this.avgDeliveredSpeed, (sample.steps * MS_PER_TICK) / sample.elapsedMs);
-    }
     this.windowSteps += sample.steps;
+    this.recordRecent(sample);
+    // Last: a rolling window opening on this frame must start from the PREVIOUS total, or this frame's
+    // drops fall between the two windows and the readout blinks clean while the loop is still dropping.
+    this.droppedTotal = sample.droppedTicks;
+  }
 
-    if (sample.elapsedMs > this.worstMs) this.worstMs = sample.elapsedMs;
-    if (++this.worstCount >= WORST_WINDOW_FRAMES) {
-      this.worstMs = sample.elapsedMs;
-      this.worstCount = 0;
+  private recordRecent(sample: FrameSample): void {
+    if (this.recentWallMs >= RECENT_WINDOW_MS) {
+      this.previousWindowDropped = this.droppedTotal - this.recentDroppedAtStart;
+      this.recentWallMs = 0;
+      this.recentRunningMs = 0;
+      this.recentSteps = 0;
+      this.recentWorstMs = 0;
+      this.recentDroppedAtStart = this.droppedTotal;
+    }
+    this.recentWallMs += sample.elapsedMs;
+    // Still the worst frame, which is a raw fact about frame time and reported as one.
+    this.recentWorstMs = Math.max(this.recentWorstMs, sample.elapsedMs);
+    if (sample.elapsedMs >= STALL_FRAME_MS) {
+      // This frame's own total, not the previous one: everything discarded up to here is excluded.
+      this.recentDroppedAtStart = sample.droppedTicks;
+      return;
+    }
+    // A paused loop delivers nothing by design; counting its frames would read as a stalled sim.
+    if (!sample.paused) {
+      this.recentRunningMs += sample.elapsedMs;
+      this.recentSteps += sample.steps;
     }
   }
 
@@ -164,6 +215,8 @@ export class FrameStats {
 
   report(): FrameStatsReport {
     const windowSeconds = this.windowMs / 1000;
+    const recentSeconds = this.recentRunningMs / 1000;
+    const recentDropped = this.droppedTotal - this.recentDroppedAtStart;
     return {
       last: this.last,
       ema: {
@@ -172,9 +225,13 @@ export class FrameStats {
         simMs: this.avgSimMs,
         snapMs: this.avgSnapMs,
         drawMs: this.avgDrawMs,
-        deliveredSpeed: this.avgDeliveredSpeed,
       },
-      recentWorstMs: this.worstMs,
+      recent: {
+        worstMs: this.recentWorstMs,
+        droppedTicks: recentDropped,
+        deliveredSpeed: recentSeconds === 0 ? 0 : this.recentSteps / recentSeconds / TICKS_PER_SECOND,
+        sustainedShortfall: recentDropped > 0 && this.previousWindowDropped > 0,
+      },
       window: {
         frames: this.frames,
         ms: this.windowMs,

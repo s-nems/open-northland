@@ -25,8 +25,8 @@ function frameReport(overrides: Partial<FrameStatsReport['window']> = {}): Frame
       snapMs: 3,
       drawMs: 8,
     },
-    ema: { frameMs: 100, cpuMs: 82, simMs: 71, snapMs: 3, drawMs: 8, deliveredSpeed: 4.2 },
-    recentWorstMs: 210,
+    ema: { frameMs: 100, cpuMs: 82, simMs: 71, snapMs: 3, drawMs: 8 },
+    recent: { worstMs: 210, droppedTicks: 96, deliveredSpeed: 4.2, sustainedShortfall: true },
     window: {
       frames: 100,
       ms: 10_000,
