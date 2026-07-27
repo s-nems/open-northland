@@ -1,13 +1,14 @@
 import type { ContentSet, ProductionInput } from '@open-northland/data';
-import { Building, Settler, Stockpile, stockpileEntries } from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
-import { ONE } from '../../core/fixed.js';
-import type { World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
+import { contentIndex } from '../core/content-index.js';
+import { ONE } from '../core/fixed.js';
+import type { World } from '../ecs/world.js';
+import type { SystemContext } from '../systems/context.js';
 
-// Pure, terminal read views for the HUD — derived projections of world state or `content` that the HUD, the
-// renderer, and tests consume but no sim system mutates or feeds back into a decision. See ./index.ts for how
-// read views relate to systems.
+// Pure, terminal read views for the HUD: derived projections of world state or `content` that no sim
+// system reads. Nothing here may feed a decision, so `systems/` must not import this module; that is why
+// it sits in the façade folder and not under `systems/`. Only IDLE_JOB crosses a package boundary
+// (render re-exports it); the rest are test-only.
 //
 // The world-state views below return `Map`s whose *values* are order-independent tallies (addition commutes,
 // so store-traversal order can't change a total) but whose *iteration* order is insertion order; a consumer
@@ -58,10 +59,10 @@ export function tribePopulation(world: World, tribe: number): number {
  * (`jobType === null`) is counted under {@link IDLE_JOB} so it is visible without colliding with any real job
  * id; every other key is a real `JobType.typeId`.
  *
- * The age-classes-vs-trades split the HUD wants is a property of the keys, not of this view: keys 1–4 are the
- * non-working baby/child stages (`isNonWorkingAge` in `systems/ageclass.ts`), key 5 (`woman`) and up are adult
- * roles. A panel partitions the map by classifying each key, exactly as the source models life-stage as a
- * `jobType`; this view stays a single "settlers by job" tally that any grouping can read.
+ * The age-classes-vs-trades split the HUD wants is a property of the keys, not of this view: keys 1–4 are
+ * the non-working baby/child stages (`isNonWorkingAge` in `systems/lifecycle/ageclass.ts`), key 5 (`woman`)
+ * and up are adult roles. A panel partitions the map by classifying each key, exactly as the source models
+ * life-stage as a `jobType`; this view stays a single "settlers by job" tally that any grouping can read.
  */
 export function tribePopulationByJob(world: World, tribe: number): Map<number, number> {
   const counts = new Map<number, number>();

@@ -21,7 +21,7 @@ import { contentIndex } from '../../../core/content-index.js';
  * "for each playable tribe" loop (births, AI, scoring) wants. {@link isPlayableTribe} is the matching
  * membership predicate for a single `tribeType` without materializing the list.
  *
- * source-basis n/a: a pure derived **read view** over the already-extracted tribe IR, like {@link goodsGraph}
+ * source-basis n/a: a pure derived **read view** over the already-extracted tribe IR, like the goods graph
  * — it adds no mechanic (nothing produced/consumed/moved) and invents no classification: the
  * playable-vs-animal split is read straight off whether the source `[tribetype]` block declared a
  * `jobEnables*` tech graph, the faithful param the pipeline pinned (historical plan phase 4 "N data-defined

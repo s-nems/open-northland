@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Residence } from '../../../src/components/family.js';
 import { Building, Stockpile, UnderConstruction, Upgrading } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { constructionSystem, housingCapacity, stockCapacity } from '../../../src/systems/index.js';
+import { housingCapacity } from '../../../src/simulation/hud.js';
+import { constructionSystem, stockCapacity } from '../../../src/systems/index.js';
 
 import {
   ctxOf,

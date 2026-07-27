@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import { fx, Simulation } from '../../src/index.js';
-import { IDLE_JOB, tribePopulationByJob } from '../../src/systems/index.js';
+import { IDLE_JOB, tribePopulationByJob } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**

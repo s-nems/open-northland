@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
-import { housingCapacity } from '../../src/systems/index.js';
+import { housingCapacity } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';

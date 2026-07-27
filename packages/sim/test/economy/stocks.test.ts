@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Stockpile } from '../../src/components/index.js';
 import { ONE, Simulation } from '../../src/index.js';
-import { tribeStocks } from '../../src/systems/index.js';
+import { tribeStocks } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**

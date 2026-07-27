@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Settler } from '../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
-import { housingCapacity, tribePopulation } from '../../src/systems/index.js';
+import { housingCapacity, tribePopulation } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
