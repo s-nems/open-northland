@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { defineComponent } from '../../src/ecs/world.js';
 import { type Command, Simulation, type WorldSnapshot } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -67,6 +68,21 @@ describe('snapshot is transferable (Web-Worker boundary)', () => {
     expect(firstEntity).not.toBe(originalEntity);
     (firstEntity.components as Record<string, unknown>).__injected = 'worker-side mutation';
     expect('__injected' in originalEntity.components).toBe(false);
+  });
+
+  /**
+   * A `Set`-valued component would snapshot to `{}` and pass `structuredClone` above with its state simply
+   * gone, so the clone rejects the shapes it cannot lower instead of emitting a lossy snapshot.
+   */
+  it('throws on a component shape it cannot lower to plain data', () => {
+    const probe = defineComponent<unknown>('UncloneableProbe');
+    const withSet = new Simulation({ seed: 1, content: testContent() });
+    withSet.world.add(withSet.world.create(), probe, { ids: new Set([1, 2]) });
+    expect(() => withSet.snapshot()).toThrow(/uncloneable value shape Set/);
+
+    const withFn = new Simulation({ seed: 1, content: testContent() });
+    withFn.world.add(withFn.world.create(), probe, { onDone: () => undefined });
+    expect(() => withFn.snapshot()).toThrow(/uncloneable value shape function/);
   });
 
   it("a building's Stockpile Map survived as a plain sorted [k,v] array (clone-safe form)", () => {
