@@ -7,10 +7,13 @@ export const JobType = z.strictObject({
   name: z.string().optional(),
   /** Atomic ids this job is permitted to perform (`jobtypes` `allowatomic`), in file order. */
   allowedAtomics: z.array(AtomicId).default([]),
-  /** Always-available base atomics for this job (`jobtypes` `baseatomics`), in file order. */
-  baseAtomics: z.array(AtomicId).default([]),
+  /** The job this one inherits its atomics from (`jobtypes` `baseatomics` — a job `type`, not an
+   *  atomic id, despite the key name); absent on a root job. Cross-checked against the job table at
+   *  load, resolved by `resolveJobAtomics`. */
+  baseJob: TypeId.optional(),
   /** Atomic ids explicitly denied to this job (`jobtypes` `forbidatomic`) — an override that the
-   *  planner must treat as a hard exclusion, distinct from merely "not in allowedAtomics". */
+   *  planner must treat as a hard exclusion, distinct from merely "not in allowedAtomics", and one
+   *  that bites on what {@link baseJob} passes down as much as on this job's own grants. */
   forbiddenAtomics: z.array(AtomicId).default([]),
   source: Provenance.optional(),
 });

@@ -10,11 +10,10 @@ import { buildingWorkerJobs, mergedRecipeOf } from '../../stores/index.js';
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
 /**
- * The set of atomic ids a job may run: its `allowedAtomics` ∪ `baseAtomics`, minus `forbiddenAtomics`
- * (an explicit denial overrides an allow). An unknown jobType yields an empty set (no permissions),
- * so a settler with a job absent from content harvests nothing rather than everything. This is the
- * data-driven permission gate from `jobtypes` — the planner picks atomics the job is allowed, never
- * a hardcoded per-job list.
+ * The set of atomic ids a job may run (`resolveJobAtomics`). An unknown jobType yields an empty set
+ * (no permissions), so a settler with a job absent from content harvests nothing rather than
+ * everything. This is the data-driven permission gate from `jobtypes` — the planner picks atomics the
+ * job is allowed, never a hardcoded per-job list.
  */
 export function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
   return contentIndex(ctx.content).atomicsByJob.get(jobType) ?? EMPTY_ATOMICS;

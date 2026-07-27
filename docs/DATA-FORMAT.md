@@ -37,7 +37,7 @@ The document also contains a manifest:
 ```json
 {
   "manifest": {
-    "version": 1,
+    "version": 2,
     "generatedFrom": {
       "game": "<local game path>",
       "mod": "<optional local mod path>"

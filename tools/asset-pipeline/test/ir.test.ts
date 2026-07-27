@@ -19,9 +19,11 @@ describe('buildIr / resolveIniSources', () => {
       join(game, 'Data', 'logic', 'goodtypes.ini'),
       '[goodtype]\nname "wood"\ntype 7\natomicForHarvesting 26\n',
     );
+    // The carrier's `baseatomics 1` names the [jobtype] above it, so its base-job reference resolves.
     await writeFile(
       join(game, 'Data', 'logic', 'jobtypes.ini'),
-      '[jobtype]\ntype 3\nname "carrier"\nallowatomic 5\nbaseatomics 1\n',
+      '[jobtype]\ntype 1\nname "civilist"\nallowatomic 22\n' +
+        '[jobtype]\ntype 3\nname "carrier"\nallowatomic 5\nbaseatomics 1\n',
     );
     await writeFile(
       join(game, 'Data', 'logic', 'landscapetypes.ini'),
@@ -63,8 +65,8 @@ describe('buildIr / resolveIniSources', () => {
     expect(set.manifest.generatedFrom).toEqual({ game, mod: game });
     expect(set.goods.map((g) => g.id)).toEqual(['wood']);
     expect(set.goods[0]?.atomics.harvest).toBe(26);
-    expect(set.jobs.map((j) => j.id)).toEqual(['carrier']);
-    expect(set.jobs[0]?.allowedAtomics).toEqual([5]);
+    expect(set.jobs.map((j) => j.id)).toEqual(['civilist', 'carrier']);
+    expect(set.jobs[1]).toMatchObject({ allowedAtomics: [5], baseJob: 1 });
     expect(set.weapons.map((w) => w.id)).toEqual(['fist']);
     expect(set.weapons[0]).toMatchObject({ typeId: 2, tribeType: 1, jobType: 3, damage: { '0': 400 } });
     expect(set.weapons[0]?.source?.layer).toBe('mod');
@@ -124,7 +126,7 @@ describe('buildIr / resolveIniSources', () => {
 
     const set = await buildIr({ game, mod: game });
     expect(set.goods).toEqual([]); // missing goods source -> empty, rest still present
-    expect(set.jobs.length).toBe(1);
+    expect(set.jobs.length).toBe(2);
     warn.mockRestore();
   });
 });

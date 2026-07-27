@@ -146,7 +146,7 @@ export function findProps(sec: RuleSection, key: string): RuleProp[] {
 
 /**
  * First value of every property with this key, parsed as base-10 ints (NaN entries dropped). Used
- * for repeated single-value lines (`allowatomic N`, `baseatomics N`), preserving file order.
+ * for repeated single-value lines (`allowatomic N`, `forbidatomic N`), preserving file order.
  */
 export function getIntList(sec: RuleSection, key: string): number[] {
   const out: number[] = [];

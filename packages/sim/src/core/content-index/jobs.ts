@@ -13,7 +13,7 @@ export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter';
  * extracted per-job data — the atomic grants — would trade a job id for an atomic id without isolating the
  * fighters at all. Slug classification is the existing precedent for a trade the data does not flag (`_sea`,
  * `carrier`). Stronger unused signals are inventoried in
- * docs/tickets/pipeline/jobtypes-baseatomics-is-a-base-job.md.
+ * docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md.
  */
 export function jobRoleOfId(id: string): JobRole | null {
   if (id.startsWith('soldier')) return 'soldier';

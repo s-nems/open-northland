@@ -29,6 +29,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkGoodLandscape,
   checkGatheringPipeline,
   checkTerrainPatterns,
+  checkJobs,
   checkJobExperience,
 ];
 
@@ -240,6 +241,31 @@ function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[]
   for (const t of set.terrainPatterns) {
     if (!patternIds.has(t.patternId))
       errors.push(`terrainPattern for typeId ${t.typeId} references unknown patternId ${t.patternId}`);
+  }
+  return errors;
+}
+
+// A job's `baseJob` (`jobtypes` `baseatomics`) is the parent it inherits atomics from, so it must name
+// a job in this table and the chain must terminate: `resolveJobAtomics` tolerates both faults by
+// inheriting nothing, leaving the job quietly short of atomics. Walks the first-wins rows it reads.
+function checkJobs(set: ContentSet, { jobIds }: IdSets): string[] {
+  const errors: string[] = [];
+  const firstRows = new Map<number, ContentSet['jobs'][number]>();
+  for (const j of set.jobs) if (!firstRows.has(j.typeId)) firstRows.set(j.typeId, j);
+  for (const j of firstRows.values()) {
+    if (j.baseJob === undefined) continue;
+    if (!jobIds.has(j.baseJob)) {
+      errors.push(`job "${j.id}" references unknown base jobType ${j.baseJob}`);
+      continue;
+    }
+    const seen = new Set<number>([j.typeId]);
+    for (let at: number | undefined = j.baseJob; at !== undefined; at = firstRows.get(at)?.baseJob) {
+      if (seen.has(at)) {
+        errors.push(`job "${j.id}" sits on a base jobType cycle through ${at}`);
+        break;
+      }
+      seen.add(at);
+    }
   }
   return errors;
 }

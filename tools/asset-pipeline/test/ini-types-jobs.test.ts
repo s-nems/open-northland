@@ -3,7 +3,7 @@ import { extractJobExperience, extractJobs, extractTribes, parseIniSections } fr
 import { JOBTYPES_INI, JOBXP_INI, TRIBETYPES_INI } from './fixtures/ini-sources.js';
 
 describe('extractJobs', () => {
-  it('collects repeated allow/base/forbid atomic lines into ordered arrays', () => {
+  it('collects repeated allow/forbid atomic lines into ordered arrays, and baseatomics as one base job', () => {
     const jobs = extractJobs(parseIniSections(JOBTYPES_INI), { file: 'Data/logic/jobtypes.ini' });
     const src = { file: 'Data/logic/jobtypes.ini', block: 'jobtype', layer: 'base' };
     expect(jobs).toEqual([
@@ -12,7 +12,7 @@ describe('extractJobs', () => {
         id: 'nestward',
         name: 'nestward',
         allowedAtomics: [12, 19],
-        baseAtomics: [3],
+        baseJob: 40,
         forbiddenAtomics: [88],
         source: src,
       },
@@ -22,18 +22,18 @@ describe('extractJobs', () => {
         id: 'reed_moss_picker',
         name: 'reed & moss picker',
         allowedAtomics: [12],
-        baseAtomics: [],
         forbiddenAtomics: [],
         source: src,
       },
     ]);
   });
 
-  it('defaults atomic lists to empty when a job grants none', () => {
+  it('defaults atomic lists to empty and leaves a root job without a base', () => {
     const [job] = extractJobs(parseIniSections('[jobtype]\ntype 2\nname "baby_male"\n'), {
       file: 'f.ini',
     });
-    expect(job).toMatchObject({ allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] });
+    expect(job).toMatchObject({ allowedAtomics: [], forbiddenAtomics: [] });
+    expect(job?.baseJob).toBeUndefined();
   });
 });
 

@@ -1,3 +1,4 @@
+import { resolveJobAtomics } from '@open-northland/data';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
@@ -138,14 +139,12 @@ export function settlerWork(
 type GoodEntry = UnitPanelModelContext['goods'][number];
 
 /** The non-farmed goods `jobType` may harvest (its gather-menu vocabulary), in goods-catalog order —
- *  the job's allowed+base atomics minus its forbidden ones, matched against each good's harvest atomic. */
+ *  the job's resolved atomics matched against each good's harvest atomic. Shares `resolveJobAtomics`
+ *  with the sim's permission gate so the menu cannot offer a good the planner would refuse. */
 function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
   if (jobType === undefined) return [];
-  const job = ctx.jobs.find((candidate) => candidate.typeId === jobType);
-  if (job === undefined) return [];
-  const allowed = new Set(job.allowedAtomics ?? []);
-  for (const atomic of job.baseAtomics ?? []) allowed.add(atomic);
-  for (const atomic of job.forbiddenAtomics ?? []) allowed.delete(atomic);
+  const allowed = resolveJobAtomics(ctx.jobs).get(jobType);
+  if (allowed === undefined) return [];
   return ctx.goods.filter(
     (good) =>
       good.farming === undefined && good.atomics.harvest !== undefined && allowed.has(good.atomics.harvest),

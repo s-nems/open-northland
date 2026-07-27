@@ -99,7 +99,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('each core good is harvestable by some trade GRANT (allowedAtomics), not only a base atomic', async () => {
+  it('each core good is harvestable by some trade GRANT (allowedAtomics), not only by inheritance', async () => {
     const { merge } = await loadContentUnderTest();
     for (const id of CORE_GOOD_IDS) {
       const good = merge.content.goods.find((g) => g.id === id);
@@ -109,8 +109,8 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
       const harvest = good.atomics.harvest;
       expect(harvest, `core good '${id}' carries no harvest atomic`).toBeDefined();
       if (harvest === undefined) continue;
-      // Flag-gathering classifies by trade grants minus hard exclusions (ContentIndex.harvestJobs);
-      // a good only reachable via a tribe-wide baseAtomic would flag non-gatherer trades instead.
+      // Some trade must grant the harvest atomic outright: an inherited-only harvest would hand it to
+      // every job down that base chain, making the gathering trade unidentifiable (ContentIndex.harvestJobs).
       const grantedTo = merge.content.jobs.filter(
         (j) => j.allowedAtomics.includes(harvest) && !j.forbiddenAtomics.includes(harvest),
       );

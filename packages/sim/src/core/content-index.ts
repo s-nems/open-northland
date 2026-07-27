@@ -11,12 +11,13 @@ import {
   type JobType,
   type LandscapeGfx,
   type Recipe,
+  resolveJobAtomics,
   type TribeType,
   type VehicleType,
   type WeaponType,
 } from '@open-northland/data';
 import type { GoodsLine } from '../components/economy/infrastructure.js';
-import { atomicBindingTables, harvestCapableJobs, jobAtomicSets } from './content-index/atomics.js';
+import { atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
 import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
@@ -143,17 +144,11 @@ export interface ContentIndex {
   /** Landscape gfx records by their `index` (the gathering pipeline's join key). Last-wins on a duplicate
    *  index — the semantics of the `new Map(records.map(...))` it replaced. */
   readonly landscapeGfxByIndex: ReadonlyMap<number, LandscapeGfx>;
-  /**
-   * Per job type: the set of atomic ids the job may run — `allowedAtomics` ∪ `baseAtomics` minus
-   * `forbiddenAtomics` (an explicit denial overrides an allow), the `jobtypes` permission gate.
-   * Precomputed so the per-settler planner reads a shared set instead of building one per call.
-   */
+  /** Per job type: the atomic ids the job may run (`resolveJobAtomics`), the `jobtypes` permission gate.
+   *  Precomputed so the per-settler planner reads a shared set instead of building one per call. */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
-  /** The flag-gathering trades: jobs whose grants (`allowedAtomics` minus `forbiddenAtomics`) include a
-   *  non-farmed good's harvest atomic. Excludes the tribe-wide `baseAtomics` on purpose — a base atomic
-   *  that coincides with a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's harvest 31)
-   *  must not make that job a gatherer. See
-   *  {@link import('../systems/economy/work-flag.js').jobCanHarvest}. */
+  /** The flag-gathering trades: jobs whose {@link atomicsByJob} include a non-farmed good's harvest
+   *  atomic. See {@link import('../systems/economy/work-flag.js').jobCanHarvest}. */
   readonly harvestJobs: ReadonlySet<number>;
   /** The trades of each {@link jobRoleSets} role, by job typeId. */
   readonly soldierJobs: ReadonlySet<number>;
@@ -226,7 +221,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     atomicBindingsByTribe: atomicBindingTables(content),
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
-    atomicsByJob: jobAtomicSets(content),
+    atomicsByJob: resolveJobAtomics(content.jobs),
     constructionBillByBuilding: constructionBills(content),
     harvestJobs: harvestCapableJobs(content),
     soldierJobs: roles.soldier,

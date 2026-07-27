@@ -18,7 +18,7 @@ import { MapInfo } from '../maps/info.js';
 
 /** Current IR schema version, and the only stamp {@link IrManifest} accepts: content from another
  *  build is rejected at the loader boundary rather than parsed field-by-field. Bump on a breaking shape change. */
-export const IR_VERSION = 1 as const;
+export const IR_VERSION = 2 as const;
 
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.strictObject({
