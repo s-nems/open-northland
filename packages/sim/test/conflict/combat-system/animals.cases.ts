@@ -316,6 +316,21 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
     expect(sim.world.has(viking, CurrentAtomic)).toBe(false); // a lapsed boar is no longer a target either
   });
 
+  it('a TRAVELLING boar keeps its lapsed timer (the reap sits BELOW the travelling gate)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const boar = fighterAt(sim, 1, 0, BOAR, null, 1000);
+    sim.world.add(boar, Anger, { until: sim.tick }); // expired, exactly as in the case above
+    sim.world.add(boar, MoveGoal, { cell: 4 }); // but walking under another drive (a graze leg)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The travelling gate releases the boar ABOVE the attacker pass, so nothing reads (or reaps) the
+    // timer this tick. Reordering those two gates would silently change when an animal cools off.
+    expect(sim.world.has(boar, Anger)).toBe(true);
+    expect(sim.world.has(viking, CurrentAtomic)).toBe(false); // a lapsed boar is still no target
+  });
+
   it('a re-strike refreshes the anger timer (latest provocation extends hostility)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
