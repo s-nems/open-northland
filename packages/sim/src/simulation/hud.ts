@@ -7,8 +7,7 @@ import type { SystemContext } from '../systems/context.js';
 
 // Pure, terminal read views for the HUD: derived projections of world state or `content` that no sim
 // system reads. Nothing here may feed a decision, so `systems/` must not import this module; that is why
-// it sits in the façade folder and not under `systems/`. Only IDLE_JOB crosses a package boundary
-// (render re-exports it); the rest are test-only.
+// it sits in the façade folder and not under `systems/`.
 //
 // The world-state views below return `Map`s whose *values* are order-independent tallies (addition commutes,
 // so store-traversal order can't change a total) but whose *iteration* order is insertion order; a consumer
