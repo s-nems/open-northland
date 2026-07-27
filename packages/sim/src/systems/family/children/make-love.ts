@@ -1,0 +1,48 @@
+import { ChildOrder, MakingLove, Marriage } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { SystemContext } from '../../context.js';
+import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
+import { atomicAnimationName, atomicDurationForName } from '../../readviews/animations.js';
+import { spawnNewborn } from '../../spawn/index.js';
+import { stepOut } from './indoors.js';
+
+/** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`), used only to resolve the hearts phase's
+ *  duration from the tribe's bound animation. The sandbox catalog transcribes the same id
+ *  (`app/game/sandbox/content/catalog/tribes.ts`); both pin to the decoded define. */
+const MAKE_LOVE_ATOMIC_ID = 78;
+
+/** Hearts-phase length (ticks) when no make_love animation resolves from content: the viking
+ *  `viking_civilist_make_love` `length 200` (`atomicanimations.ini`), pinned as the fallback. */
+const MAKE_LOVE_DURATION_FALLBACK = 200;
+
+/** How long the couple makes love: the longer of the tribe's two bound make_love clips (the man's runs
+ *  200 ticks, the woman's 50), or the pinned fallback when neither resolves. */
+export function makeLoveDuration(ctx: SystemContext, tribe: number): number {
+  const durations = [WOMAN_JOB, CIVILIST_JOB]
+    .map((jobType) => atomicAnimationName(ctx.content, { tribe, jobType }, MAKE_LOVE_ATOMIC_ID))
+    .filter((name): name is string => name !== undefined)
+    .map((name) => atomicDurationForName(ctx.content, name));
+  return durations.length > 0 ? Math.max(...durations) : MAKE_LOVE_DURATION_FALLBACK;
+}
+
+/** The birth: the newborn joins the family, linked to both parents; the family steps back outside and the
+ *  order is done. Emits `settlerBorn` (the original's birth jingle, `DM_MUSIC_TYPE_JINGLE_BIRTH`). Named
+ *  approximation: the give_birth atomic (`logicdefines.inc` 80) is never played, the family simply steps
+ *  out with the newborn, because no birth animation is bound in the sandbox catalog. */
+export function birth(
+  world: World,
+  ctx: SystemContext,
+  mother: Entity,
+  father: Entity,
+  home: Entity,
+  sex: 'female' | 'male',
+): void {
+  const baby = spawnNewborn(world, ctx.content, mother, home, sex);
+  world.get(mother, Marriage).child = baby;
+  world.get(father, Marriage).child = baby;
+  world.remove(mother, ChildOrder);
+  world.remove(home, MakingLove);
+  stepOut(world, mother);
+  stepOut(world, father);
+  ctx.events.emit({ kind: 'settlerBorn', entity: baby });
+}
