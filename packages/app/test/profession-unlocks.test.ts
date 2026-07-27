@@ -50,15 +50,9 @@ describe('jobUnlockedFor', () => {
     ],
     // The fighter carve-out reads its role off the job id slug, so the rows carry the real vocabulary.
     jobs: [
-      { typeId: COLLECTOR, id: 'collector', allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] },
-      { typeId: CARPENTER, id: 'joiner', allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] },
-      {
-        typeId: SOLDIER,
-        id: 'soldier_spear_iron',
-        allowedAtomics: [],
-        baseAtomics: [],
-        forbiddenAtomics: [],
-      },
+      { typeId: COLLECTOR, id: 'collector', allowedAtomics: [], forbiddenAtomics: [] },
+      { typeId: CARPENTER, id: 'joiner', allowedAtomics: [], forbiddenAtomics: [] },
+      { typeId: SOLDIER, id: 'soldier_spear_iron', allowedAtomics: [], forbiddenAtomics: [] },
     ],
   };
 

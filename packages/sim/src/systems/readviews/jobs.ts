@@ -74,7 +74,7 @@ export function scoutJobType(content: ContentSet): number | null {
 /**
  * The id suffix `jobtypes` uses to mark a water-borne specialization of a land trade (`fisher` →
  * `fisher_sea`). The sea variant is a distinct jobtype whose only extracted distinguisher from its land
- * counterpart is this suffix: it carries the same `baseAtomics [6]` and an empty `allowedAtomics`, its
+ * counterpart is this suffix: it carries the same `baseJob` (`civilist`) and an empty `allowedAtomics`, its
  * sea-work atomics being bound per-tribe via `tribetypes` `setatomic`.
  */
 const SEA_JOB_SUFFIX = '_sea';

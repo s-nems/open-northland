@@ -53,13 +53,14 @@ productionInputGoods 20 20 24 24 22
 atomicForProduction 75
 `;
 
-// Mirrors Data/logic/jobtypes.ini: repeated `allowatomic`, a single `baseatomics`, and a
-// `forbidatomic` deny line. The second job carries a `&`/space name to exercise slugging.
+// Mirrors Data/logic/jobtypes.ini: repeated `allowatomic`, a single `baseatomics` parent-job
+// pointer, and a `forbidatomic` deny line. The second job is the base, and carries a `&`/space
+// name to exercise slugging.
 export const JOBTYPES_INI = `<CULTURES_CIF_BEGIN><03FD><000001C0> Don't modify this line!
 [jobtype]
 type 7
 name "nestward"
-baseatomics 3
+baseatomics 40
 allowatomic 12
 allowatomic 19
 forbidatomic 88

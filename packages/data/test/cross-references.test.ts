@@ -256,6 +256,27 @@ describe('validateCrossReferences', () => {
       },
       error: /terrainPattern for typeId 0 references unknown patternId 99/,
     },
+    // jobs
+    {
+      name: 'a job inheriting from an unknown base job',
+      overrides: { jobs: [{ typeId: 1, id: 'chopper', baseJob: UNKNOWN }] },
+      error: /job "chopper" references unknown base jobType 99/,
+    },
+    {
+      name: 'a base-job chain that closes a cycle',
+      overrides: {
+        jobs: [
+          { typeId: 1, id: 'chopper', baseJob: 2 },
+          { typeId: 2, id: 'hauler', baseJob: 1 },
+        ],
+      },
+      error: /job "chopper" sits on a base jobType cycle through 1/,
+    },
+    {
+      name: 'a job naming itself as its base job',
+      overrides: { jobs: [{ typeId: 1, id: 'chopper', baseJob: 1 }] },
+      error: /job "chopper" sits on a base jobType cycle through 1/,
+    },
     // job experience
     {
       name: 'an experience track naming an unknown job',
@@ -276,6 +297,16 @@ describe('validateCrossReferences', () => {
   /** The minimal valid set plus the deliberate carve-outs — these must NOT throw. */
   const ACCEPT_CASES: { name: string; overrides: Record<string, unknown> }[] = [
     { name: 'a minimal internally-consistent set', overrides: {} },
+    {
+      name: 'a base-job chain several deep that terminates',
+      overrides: {
+        jobs: [
+          { typeId: 0, id: 'idle' },
+          { typeId: 1, id: 'chopper', baseJob: 0 },
+          { typeId: 2, id: 'hauler', baseJob: 1 },
+        ],
+      },
+    },
     {
       name: 'a jobEnables vehicle target that resolves against the vehicle table (carve-out)',
       overrides: {

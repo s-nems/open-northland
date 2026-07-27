@@ -1,4 +1,5 @@
 export * from './footprint.js';
+export * from './job-atomics.js';
 export * from './lookup.js';
 export * from './schema/index.js';
 

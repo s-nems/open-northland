@@ -213,11 +213,9 @@ export function removeWorkFlag(world: World, e: Entity): void {
 }
 
 /**
- * Whether a job is a flag-gathering trade — its grants (`allowedAtomics`) include some good's harvest
- * atomic ({@link ContentIndex.harvestJobs}). The gate for `setWorkFlag` and {@link syncWorkFlagToJob}:
- * only a gatherer carries a work flag. Trade grants only, NOT the `jobAtomics` permission union the
- * planner runs on: a tribe-wide `baseAtomics` entry that coincides with a good's harvest atomic (real
- * soldier `baseAtomics=[31]` == herb's harvest 31) must not flag every soldier as a gatherer.
+ * Whether a job is a flag-gathering trade — its atomics include some good's harvest atomic
+ * ({@link ContentIndex.harvestJobs}). The gate for `setWorkFlag` and {@link syncWorkFlagToJob}:
+ * only a gatherer carries a work flag.
  * A field-farmed good (a `farming` block — wheat) is excluded from the harvest set: its harvester is a
  * farmer bound to its farm, banking the crop in the farm's own store (`logicstock 4 25 0`), never a flag
  * gatherer — a flag would hijack every sheaf delivery (`deliveryTargetFor`'s flag rung outranks the store).

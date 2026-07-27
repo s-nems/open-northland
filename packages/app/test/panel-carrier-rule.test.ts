@@ -14,7 +14,6 @@ const job = (typeId: number, id: string): UnitPanelModelContext['jobs'][number] 
   typeId,
   id,
   allowedAtomics: [],
-  baseAtomics: [],
   forbiddenAtomics: [],
 });
 

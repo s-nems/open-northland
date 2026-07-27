@@ -19,7 +19,7 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * it has units remaining, is reachable (same static component as the settler — see the `componentOf` gate
  * below), and its harvest passes both data-driven gates:
  *
- *  - the job's `allowedAtomics` permits the resource good's harvest atomic (a woodcutter harvests trees, not
+ *  - the job's resolved atomics permit the resource good's harvest atomic (a woodcutter harvests trees, not
  *    ore — {@link jobAtomics});
  *  - the settler's accrued XP clears the harvested good's `needforgood` thresholds for its tribe
  *    ({@link settlerMeetsNeed}) — the who-may-do-it progression gate, the per-settler sibling of the

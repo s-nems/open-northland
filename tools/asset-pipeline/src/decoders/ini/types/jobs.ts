@@ -25,8 +25,11 @@ import {
 
 /**
  * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
- * job may perform: `allowatomic` (granted), `baseatomics` (always-available base set) and
- * `forbidatomic` (hard-denied) — all repeated single-value lines kept in file order.
+ * job may perform: `allowatomic` (granted) and `forbidatomic` (hard-denied), repeated single-value
+ * lines kept in file order, plus `baseatomics` — a single parent-job `type` the job inherits its
+ * atomics from, despite the plural key name. Every value in `Data/logic/jobtypes.ini` is a `[jobtype]`
+ * `type`, and every id `soldier_unarmed` forbids is one its base `civilist` grants — a denial list that
+ * would be inert if the field were the job's own atomics.
  */
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
@@ -40,7 +43,7 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
         id: name ? slug(name) : `job_${typeId}`,
         name,
         allowedAtomics: getIntList(sec, 'allowatomic'),
-        baseAtomics: getIntList(sec, 'baseatomics'),
+        baseJob: getInt(sec, 'baseatomics'),
         forbiddenAtomics: getIntList(sec, 'forbidatomic'),
         source: makeSource(src, 'jobtype'),
       }),
