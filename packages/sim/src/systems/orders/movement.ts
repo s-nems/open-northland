@@ -146,7 +146,8 @@ export function moveUnit(
 
 /**
  * PlayerOrderSystem — retires a move order the moment its walk is done and hands the unit back to the
- * autonomous economy. It runs just before {@link aiSystem} so an arriving unit is re-tasked the same tick.
+ * autonomous economy. It runs just before {@link plannerSystem} so an arriving unit is re-tasked the same
+ * tick.
  *
  * Per unit under a {@link PlayerOrder}, in priority order:
  *  1. **Pending drop** (a `pendingGoal` parked on the order): the ordered unit was carrying and is setting its
@@ -158,10 +159,11 @@ export function moveUnit(
  *  3. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
  *     by this order, so only a need could) — drop the order, leave the atomic running.
  *  4. **Travelling** (goal/request/path present): the order's own walk — keep it.
- *  5. **Arrived & idle**: remove the order so {@link aiSystem} re-tasks the unit this tick; no post-arrival
- *     stand.
+ *  5. **Arrived & idle**: remove the order so {@link plannerSystem} re-tasks the unit this tick; no
+ *     post-arrival stand.
  *
- * While the order stands, {@link aiSystem}'s economy branch skips the unit but its needs drives still run.
+ * While the order stands, {@link plannerSystem}'s economy branch skips the unit but its needs drives
+ * still run.
  */
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable
@@ -184,6 +186,6 @@ export const playerOrderSystem: System = (world, ctx) => {
     if (isTravelling(world, e)) {
       continue; // still walking the order out
     }
-    world.remove(e, PlayerOrder); // arrived — economy resumes (aiSystem re-tasks this tick)
+    world.remove(e, PlayerOrder); // arrived — economy resumes (plannerSystem re-tasks this tick)
   }
 };

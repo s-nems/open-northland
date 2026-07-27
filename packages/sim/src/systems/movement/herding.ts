@@ -30,7 +30,7 @@ import { entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
  * means "stay on the leader's cell", the literal reading of the param. Recorded in source basis.
  *
  * Determinism: no RNG, no wall-clock. Followers are visited in deterministic store order (the
- * `aiSystem` pattern), and each follower's decision is a pure function of **its own** components + its
+ * `plannerSystem` pattern), and each follower's decision is a pure function of **its own** components + its
  * leader's cell — no follower's outcome depends on another's, so the store-iteration order can't change
  * the result (the only mutation is adding a `MoveGoal` to the follower itself, never to the iterated
  * `HerdMember` store). The leader's cell and the distance are integer reads; the `MoveGoal` add is a

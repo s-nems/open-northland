@@ -74,11 +74,11 @@ export function sleepAtHome(
 /**
  * Whether `e` is inside its OWN house mid-sleep — the test that stops the planner shedding the marker
  * that put it there. Every other drive treats a lingering {@link Resting} as stale (`drive-ladder.ts`,
- * `replan.ts`), so without this the settler would be turfed out of its own bed the tick it got in.
+ * `planner/replan.ts`), so without this the settler would be turfed out of its own bed the tick it got in.
  *
  * The `at === home` check is load-bearing, not belt-and-braces: the open-ground rung starts an
  * identical `sleep` atomic, and a settler on `FamilyDuty` keeps its `Resting` through a re-plan
- * (`replan.ts`), so testing the atomic alone would hide a settler asleep in a field behind a stale
+ * (`planner/replan.ts`), so testing the atomic alone would hide a settler asleep in a field behind a stale
  * marker pointing at some workplace it waited in earlier.
  */
 export function isSleepingAtHome(world: World, e: Entity): boolean {

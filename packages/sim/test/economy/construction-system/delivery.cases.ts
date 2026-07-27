@@ -12,7 +12,7 @@ import {
 } from '../../../src/components/index.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 
 import {
   builderAt,
@@ -235,7 +235,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     const second = builderAt(sim, 7, 1);
     const third = builderAt(sim, 6, 2);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Exactly one builder peeled off to fetch the wood, and it is not the lead.
     const runners = [lead, second, third].filter((b) => sim.world.has(b, SupplyRun));
@@ -276,7 +276,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     pos.x = at.x;
     pos.y = at.y;
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The fetch was stamped for the site's stone — and the walk goal is the REACHABLE pile's tile,
     // not the nearer buried one.

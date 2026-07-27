@@ -2,7 +2,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import type { PlannerSpacing } from './planner-spacing.js';
+import type { PlannerSpacing } from './planner/spacing.js';
 import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
 
 // Where a tired settler beds down. The original's settlers do not drop asleep on the spot they were

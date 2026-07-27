@@ -21,7 +21,7 @@ import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js'
  * finished output out, and a porter bound to a store collects loose ground piles into it. Fixture: good
  * 1 = wood, good 2 = plank, job 1 = woodcutter (harvest 24), job 2 = carpenter (no atomics — the mill's
  * operator), job 36 = carrier, building 1 = HQ (storage, wood+plank slots), building 2 = sawmill (recipe
- * 1 wood → 1 plank, employs the carpenter). Planner-level checks (one `aiSystem` pass) pin each decision
+ * 1 wood → 1 plank, employs the carpenter). Planner-level checks (one `plannerSystem` pass) pin each decision
  * in isolation; an end-to-end run proves the loop closes.
  */
 

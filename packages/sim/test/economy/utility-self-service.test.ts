@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Carrying, CurrentAtomic, MoveGoal, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { buildingAt, cell, ctxOf, grassMap, settlerAt } from './producer-supply/support.js';
 
@@ -134,7 +134,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     buildingAt(sim, WELL, 3, 0); // the shared utility that mints water from nothing
     const baker = settlerAt(sim, 0, 0, OPERATOR, bakery); // on its bakery, no water anywhere
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No store holds water and the bakery can't bake — the baker heads for the well to draw its own.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 3, 0));
@@ -146,7 +146,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     const well = buildingAt(sim, WELL, 0, 0);
     const baker = settlerAt(sim, 0, 0, OPERATOR, bakery); // standing on the well already
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(baker, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -160,7 +160,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     const hive = buildingAt(sim, HIVE, 0, 0);
     const brewer = settlerAt(sim, 0, 0, OPERATOR, brewery); // on the hive
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(brewer, CurrentAtomic);
     // Honey binds a produce atomic (HONEY_PRODUCE_ATOMIC) but the draw uses the neutral pickup gesture
@@ -175,7 +175,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     const well = buildingAt(sim, WELL, 0, 0);
     const porter = settlerAt(sim, 0, 0, CARRIER, bakery); // the bakery's carrier, on the well
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(porter, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'draw', goodType: WATER, utility: well });
@@ -188,7 +188,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     buildingAt(sim, WELL, 5, 0); // a farther well
     const baker = settlerAt(sim, 0, 0, OPERATOR, bakery);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The nearer source wins — here the stocked warehouse at cell 3, not the farther well at cell 5.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 3, 0));
@@ -201,7 +201,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     buildingAt(sim, WAREHOUSE, 6, 0, [[WATER, 5]]); // a far HQ/warehouse that also holds water
     const baker = settlerAt(sim, 0, 0, OPERATOR, bakery);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The adjacent well wins over the distant stocked warehouse — the baker draws its own water at cell 1
     // instead of trekking to cell 6.
@@ -215,7 +215,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     buildingAt(sim, WAREHOUSE, 6, 0, [[WATER, 5]]); // the settlement's water, far away
     const baker = settlerAt(sim, 0, 0, OPERATOR, bakery);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Proximity alone would send the baker one cell to the brewery; the source rule sends it to the
     // warehouse at cell 6 — water comes from the well or from storage, never out of a rival's vat.
@@ -229,7 +229,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     const well = buildingAt(sim, WELL, 2, 0, [[WATER, 1]]); // a unit the well already minted
     const baker = settlerAt(sim, 2, 0, OPERATOR, bakery); // standing on the well
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The well MAKES water, so its shelf is a source like any warehouse — and picking the standing
     // unit up beats re-cranking the recipe for one.
@@ -281,7 +281,7 @@ describe('utility self-service — MODE 2: a posted utility carrier feeds nearby
     const porter = settlerAt(sim, 5, 0, CARRIER, well); // the well's posted carrier, holding drawn water
     sim.world.add(porter, Carrying, { goodType: WATER, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The water goes to the bakery (cell 2), NOT the nearer warehouse (cell 1) — consumers before storage.
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 2, 0));
@@ -295,7 +295,7 @@ describe('utility self-service — MODE 2: a posted utility carrier feeds nearby
     const porter = settlerAt(sim, 5, 0, CARRIER, well);
     sim.world.add(porter, Carrying, { goodType: WATER, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The bakery can't take it, so the load banks in the warehouse (cell 1) instead.
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 1, 0));

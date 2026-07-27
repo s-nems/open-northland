@@ -37,7 +37,7 @@ export const ANIMAL_WANDER_STEP_NODES = 4;
  * start one while {@link Engagement}, {@link Anger} or an {@link AttackOrder} is live keeps a fight from
  * being walked away from. Residual: an unprovoked predator that has already begun a step stays
  * ambush-blind for its length, and a step the router then refuses parks the creature `Stranded`
- * (`settlers/replan.ts`) for its retry window, the longer blind spell of the two.
+ * (`settlers/planner/replan.ts`) for its retry window, the longer blind spell of the two.
  *
  * source-basis: the territory radius is the verbatim extracted `maximumdistancetostaypoint`, consumed as
  * a node-lattice Manhattan radius like `maximumleaderdistance` (`readviews/tribes/animals.ts`), so a

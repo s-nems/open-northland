@@ -1,18 +1,18 @@
-import { Age, Settler } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
-import type { System, SystemContext } from '../context.js';
+import { Age, Settler } from '../../../components/index.js';
+import type { World } from '../../../ecs/world.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { System, SystemContext } from '../../context.js';
+import { planAdult, planChild } from '../drive-ladder.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
-import { planAdult, planChild } from './drive-ladder.js';
 import { navigationPlanner } from './navigation.js';
-import { beginPlannerPass } from './planner-pass.js';
+import { beginPlannerPass } from './pass.js';
 import { releaseStaleIntent } from './replan.js';
 
 /**
- * AISystem — the settler planner: two layered passes per tick.
+ * PlannerSystem — the settler planner: two layered passes per tick.
  *
  *  1. {@link atomicPlanner} (the *what*): for each idle settler (a job, no atomic running, not
- *     travelling), run the drive ladder (./drive-ladder.ts) and either issue a MoveGoal to walk to
+ *     travelling), run the drive ladder (../drive-ladder.ts) and either issue a MoveGoal to walk to
  *     the chosen target or start the CurrentAtomic the AtomicSystem will execute.
  *  2. {@link navigationPlanner} (the *where*, ./navigation.ts): turn a MoveGoal on a path-less,
  *     request-less entity into a PathRequest; PathfindingSystem routes it, MovementSystem walks it,
@@ -21,7 +21,7 @@ import { releaseStaleIntent } from './replan.js';
  * The atomic planner runs first so a freshly-set goal is picked up by the navigation pass in the same
  * tick (no one-tick stall).
  */
-export const aiSystem: System = (world, ctx) => {
+export const plannerSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
   atomicPlanner(world, ctx, ctx.terrain);
   navigationPlanner(world, ctx.terrain);
@@ -43,7 +43,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
     // Key on Age, not the age-class job ids: only a born-young settler carries one, so a fixture's
     // adult job id colliding with an age-class id can't misroute an adult here (see
-    // ../lifecycle/ageclass.ts).
+    // ../../lifecycle/ageclass.ts).
     if (world.has(e, Age)) {
       planChild(pass, e, settler);
       continue;

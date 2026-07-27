@@ -15,7 +15,7 @@ import {
   startAtomic,
 } from './actions.js';
 import { draughtSlotFor, startDrink } from './drives-drink.js';
-import type { PlannerSpacing } from './planner-spacing.js';
+import type { PlannerSpacing } from './planner/spacing.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';

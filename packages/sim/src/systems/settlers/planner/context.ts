@@ -1,10 +1,10 @@
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import type { NavigationLimit } from '../signposts/index.js';
-import type { GossipCandidates } from '../social/index.js';
-import type { InboundSupplyTally } from '../stores/index.js';
-import type { TargetCandidates } from './targets/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import type { NavigationLimit } from '../../signposts/index.js';
+import type { GossipCandidates } from '../../social/index.js';
+import type { InboundSupplyTally } from '../../stores/index.js';
+import type { TargetCandidates } from '../targets/index.js';
 
 /** The non-null worker state shared by every economy rung for one idle settler. */
 export interface PlannerWorker {
@@ -13,7 +13,8 @@ export interface PlannerWorker {
   readonly experience: ReadonlyMap<number, number>;
   /** The settler's owning player, or `undefined` when neutral (every golden fixture). The SIDE key the
    *  economy gates unbound targeting on — a settler builds/staffs/supplies only its own player's
-   *  buildings, since two players can field the same `tribe` (see {@link import('../../components/ownership.js').ownerOf}). */
+   *  buildings, since two players can field the same `tribe`
+   *  (see {@link import('../../../components/ownership.js').ownerOf}). */
   readonly owner: number | undefined;
 }
 
@@ -31,10 +32,10 @@ export interface PlannerContext extends PlannerWorker {
   readonly here: NodeId;
   readonly targets: TargetCandidates;
   /** Tick-shared tally of units committed to each construction site by live
-   *  {@link import('../../components/settler.js').SupplyRun} errands (see {@link InboundSupplyTally}). */
+   *  {@link import('../../../components/settler.js').SupplyRun} errands (see {@link InboundSupplyTally}). */
   readonly inbound: InboundSupplyTally;
   /** This settler's signpost-navigation confinement, or null when unlimited (confinement off, or an
-   *  exempt job — see {@link import('../signposts/network.js').navigationLimitFor}). Every drive gates its
+   *  exempt job — see {@link import('../../signposts/network.js').navigationLimitFor}). Every drive gates its
    *  searched targets' interaction cells on it (harvest nodes, trunks, stores, sites, piles, needs
    *  satisfiers, delivery sinks); only a settler's BOUND targets (its own workplace/flag/storage binding)
    *  stay ungated, and a load with no in-area sink takes planDelivery's no-sink drop/rest branch. */

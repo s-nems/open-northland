@@ -12,9 +12,9 @@ import {
 } from '../../src/components/index.js';
 import { findPath, positionOfNode } from '../../src/index.js';
 import {
-  aiSystem,
   canPlaceBuilding,
   dynamicBlockedCells,
+  plannerSystem,
   resourceBlockedCells,
   resourceFootprintForGood,
   resourceWorkCell,
@@ -162,7 +162,7 @@ describe('resource footprints', () => {
     const worker = placeWoodcutter(sim, 0, 1);
     const tree = placeResource(sim, WOOD, WOOD_ATOMIC, 2, 1);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
     expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(1, 1));
@@ -170,7 +170,7 @@ describe('resource footprints', () => {
     sim.world.remove(worker, MoveGoal);
     sim.world.remove(worker, PathRequest);
     Object.assign(sim.world.get(worker, Position), positionOfNode(1, 1)); // standing on the work node
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, MoveGoal)).toBe(false);
     expect(sim.world.get(worker, CurrentAtomic).targetEntity).toBe(tree);
@@ -189,7 +189,7 @@ describe('resource footprints', () => {
     sim.step();
     expect(sim.world.isAlive(buried)).toBe(true); // a deposit is a resource, not decor — it survives under the house
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The digger walks to the reachable deposit's anchor (6,1), NOT the buried one's (2,1): the buried pick is
     // skipped, so it never latches onto the impossible route.
@@ -265,7 +265,7 @@ describe('resource footprints', () => {
       terrainOf(sim).nodeAt(2, 1),
     );
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(worker, CurrentAtomic);
     expect(atomic.atomicId).toBe(22);
@@ -284,7 +284,7 @@ describe('resource footprints', () => {
       terrainOf(sim).nodeAt(2, 1),
     );
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(worker, CurrentAtomic);
     expect(atomic.atomicId).toBe(22);

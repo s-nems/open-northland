@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, MoveGoal, PathRequest, PlayerOrder, Stranded } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { orderMove, ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * The planner's stranded-route recovery (see the block in systems/settlers/replan.ts): a failed walk is
- * parked (Stranded — paced, not per-tick), then shed and re-planned; drives with their own failure
+ * The planner's stranded-route recovery (see the block in systems/settlers/planner/replan.ts): a failed walk
+ * is parked (Stranded — paced, not per-tick), then shed and re-planned; drives with their own failure
  * protocol keep their signal; an authoritative order ends the park at once.
  */
 
@@ -25,7 +25,7 @@ function strandOn(s: Simulation, e: Entity, goalTile: number): void {
   s.world.add(e, PathRequest, { start: anchorCell(s, 0, 0), goal, failed: true });
 }
 
-describe('aiSystem — stranded-route recovery (a failed walk no longer freezes a settler)', () => {
+describe('plannerSystem — stranded-route recovery (a failed walk no longer freezes a settler)', () => {
   it('parks the failed route first (no per-tick retry), then sheds it and re-plans', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
@@ -70,7 +70,7 @@ describe('aiSystem — stranded-route recovery (a failed walk no longer freezes 
     s.world.add(e, PlayerOrder, {});
     strandOn(s, e, 3);
 
-    aiSystem(s.world, ctxOf(s));
+    plannerSystem(s.world, ctxOf(s));
 
     expect(s.world.has(e, Stranded)).toBe(false); // not parked —
     expect(s.world.get(e, PathRequest).failed).toBe(true); // the playerOrderSystem reads this itself

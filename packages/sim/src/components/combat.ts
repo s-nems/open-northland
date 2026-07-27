@@ -44,11 +44,11 @@ export const Anger = defineComponent<{ until: number }>('Anger');
 
 /**
  * A combat-engagement marker, present while a unit is swinging at or chasing an enemy and removed once no
- * valid enemy is in reach/sight. The AISystem skips economy planning for an engaged unit but sits below the
- * needs drives, so hunger/fatigue/piety still pull it away. `repathAt` throttles the chase: a chaser re-issues
- * its walk toward a moving enemy only every {@link REPATH_CADENCE} ticks, following its live path between, so
- * a field of chasers never triggers a per-tick full re-path. Optional, on owned combatants only (wildlife
- * fights in place); `repathAt` is a monotonic integer tick.
+ * valid enemy is in reach/sight. The PlannerSystem skips economy planning for an engaged unit but sits below
+ * the needs drives, so hunger/fatigue/piety still pull it away. `repathAt` throttles the chase: a chaser
+ * re-issues its walk toward a moving enemy only every {@link REPATH_CADENCE} ticks, following its live path
+ * between, so a field of chasers never triggers a per-tick full re-path. Optional, on owned combatants only
+ * (wildlife fights in place); `repathAt` is a monotonic integer tick.
  */
 export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
 
@@ -74,7 +74,7 @@ export const Stance = defineComponent<{ mode: MilitaryMode; anchorCell: NodeId |
 /**
  * A {@link Stance} `FLEE` combatant's active run-away state — distinct from the persistent mode: a FLEE unit
  * with no threat in sight carries no `Fleeing`. The unit moves at its normal pace (there is no run/sprint
- * gait); the drive only steers, and the AISystem skips need-scheduling while it is present. `repathAt`
+ * gait); the drive only steers, and the PlannerSystem skips need-scheduling while it is present. `repathAt`
  * throttles the flee-destination recompute ({@link Engagement}'s throttle); `calmUntil` is the cool-down
  * clock: null while a threat is in sight, set to `tick + cool-down` when the last threat leaves, and reset to
  * null if a threat reappears; reaching it ends the drive. Both ticks are monotonic integers.

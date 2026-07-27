@@ -13,7 +13,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
-import { aiSystem, atomicSystem } from '../../src/systems/index.js';
+import { atomicSystem, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -245,7 +245,7 @@ describe('felling — the planner fell-vs-collect split', () => {
     placeFellableTree(sim, 6, 0);
     const cutter = makeWoodcutter(sim, 2, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // It started a pickup of the trunk it stands on — not a MoveGoal toward the far tree.
     expect(sim.world.has(cutter, MoveGoal)).toBe(false);
@@ -259,7 +259,7 @@ describe('felling — the planner fell-vs-collect split', () => {
     const tree = placeFellableTree(sim, 3, 0);
     const cutter = makeWoodcutter(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(cutter, CurrentAtomic);
     expect(atomic.atomicId).toBe(HARVEST_ATOMIC);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Carrying, MoveGoal } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -24,7 +24,7 @@ describe('gatherer flag-drop — deliver harvested goods to a bound store', () =
     const cutter = settlerAt(sim, 3, 0, WOODCUTTER, flag);
     sim.world.add(cutter, Carrying, { goodType: WOOD, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(cell(sim, 6, 0)); // the flag, not the nearer HQ
   });
@@ -35,7 +35,7 @@ describe('gatherer flag-drop — deliver harvested goods to a bound store', () =
     const cutter = settlerAt(sim, 0, 0, WOODCUTTER); // no JobAssignment
     sim.world.add(cutter, Carrying, { goodType: WOOD, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(cell(sim, 4, 0));
   });

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Unit + integration tests for the AISystem's navigation-planner slice — the seam that turns a
+ * Unit + integration tests for the PlannerSystem's navigation-planner slice — the seam that turns a
  * {@link MoveGoal} on a path-less, request-less entity into a {@link PathRequest}, and removes the
  * goal once the entity has arrived. This closes the intent→request→path→move loop end to end with
  * the real PathfindingSystem + MovementSystem inside a normal `step()`. The fixture's landscape has
@@ -38,13 +38,13 @@ function pos(sim: Simulation, e: Entity): { x: number; y: number } {
   return { x: fx.toFloat(p.x), y: fx.toFloat(p.y) };
 }
 
-describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
+describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => {
   it('issues a PathRequest from the entity cell to the goal cell when idle', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const goal = anchorCell(sim, 3, 0);
     const e = travellerAt(sim, 0, 0, goal);
 
-    // AISystem runs (issues the request) then PathfindingSystem resolves it within the same step.
+    // PlannerSystem runs (issues the request) then PathfindingSystem resolves it within the same step.
     sim.step();
 
     // The goal is still in flight (the entity hasn't arrived), and a path is now being followed.
@@ -59,7 +59,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 3, 0));
     // Pre-seed a live request so the planner sees the entity as already travelling.
     sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: false });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     // Still the pre-seeded request (start 0, goal 1) — the planner did not overwrite/duplicate it.
     expect(sim.world.get(e, PathRequest).goal).toBe(1);
   });
@@ -77,7 +77,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
       hx: fx.fromInt(0),
       hy: fx.fromInt(0),
     });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
   });
 
@@ -91,7 +91,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
       hx: fx.fromInt(0),
       hy: fx.fromInt(0),
     });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     // A fresh request is issued right away; the stale path keeps the walker moving until the
     // routing splice replaces it (carrying its momentum through the turn — movement inertia).
     expect(sim.world.has(e, PathRequest)).toBe(true);
@@ -106,7 +106,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
     // anchor), truncation says (5,0) behind. Routing from behind made a redirected walker visibly
     // backtrack through that node.
     sim.world.get(e, Position).x = fx.fromFloat(2.8);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, PathRequest).start).toBe(anchorCell(sim, 3, 0));
   });
 
@@ -129,7 +129,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
     // the water flank (2,1); the walkable (2,2) must win instead.
     sim.world.get(e, Position).x = fx.fromFloat(0.5);
     sim.world.get(e, Position).y = fx.fromFloat(0.7);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.nodeAt(2, 2) as number);
     expect(sim.world.get(e, PathRequest).failed).toBe(false);
   });
@@ -149,7 +149,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
   it('removes a goal the entity already stands on (nothing to do)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 2, 0, anchorCell(sim, 2, 0)); // start === goal node
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, PathRequest)).toBe(false);
   });
@@ -157,7 +157,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
   it('drops an off-map goal rather than issuing dead requests forever', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(2, 2) });
     const e = travellerAt(sim, 0, 0, 999); // goal cell id is off the 4-cell grid
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, PathRequest)).toBe(false);
   });
@@ -174,7 +174,7 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
   });
 });
 
-describe('aiSystem — end-to-end: goal to arrival through the real schedule', () => {
+describe('plannerSystem — end-to-end: goal to arrival through the real schedule', () => {
   it('walks a settler to its goal cell and clears the goal on arrival', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const goal = anchorCell(sim, 3, 0);
@@ -208,7 +208,7 @@ describe('aiSystem — end-to-end: goal to arrival through the real schedule', (
   });
 });
 
-describe('aiSystem — determinism', () => {
+describe('plannerSystem — determinism', () => {
   it('two same-seed sims with the same goal reach the same state hash', () => {
     const runOne = (): string => {
       const s = new Simulation({ seed: 7, content: testContent(), map: grassMap(5, 1) });
@@ -220,4 +220,4 @@ describe('aiSystem — determinism', () => {
   });
 });
 
-/** A SystemContext for invoking aiSystem directly with the sim's live terrain. */
+/** A SystemContext for invoking plannerSystem directly with the sim's live terrain. */

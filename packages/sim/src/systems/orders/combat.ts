@@ -81,7 +81,7 @@ export function setStance(
  * target (source basis — the soft-override philosophy of {@link moveUnit}: the economy leaves an
  * engaged unit alone, but needs still preempt). Like a move order it is authoritative — it cancels the
  * unit's current action/route/hold so it obeys at once — and it also stamps the {@link Engagement} marker
- * up front so the AISystem skips economy planning for the unit from the very next tick (before the
+ * up front so the PlannerSystem skips economy planning for the unit from the very next tick (before the
  * CombatSystem's own pass re-stamps it), avoiding a one-tick economy leak.
  *
  * The target may be an enemy unit OR an enemy building (the siege order — a right-clicked structure):
@@ -117,7 +117,7 @@ export function attackUnit(
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode — stop running, fight
   world.add(e, AttackOrder, { target });
-  // Stamp Engagement up front so aiSystem skips economy for this unit on the same tick the order lands;
+  // Stamp Engagement up front so plannerSystem skips economy for this unit on the same tick the order lands;
   // repathAt = tick means the CombatSystem re-paths the chase on its first pass.
   world.add(e, Engagement, { repathAt: ctx.tick });
 }

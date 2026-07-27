@@ -12,10 +12,10 @@ import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';
 
 /**
- * DeferredOrderSystem — re-dispatches each order parked behind a non-interruptible atomic
- * ({@link DeferredOrder}, stamped by {@link import('./guards.js').deferOrderDuringAtomic}) once that atomic
- * is gone. Scheduled directly after the atomicSystem so a completing swing frees the settler and its parked
- * order takes effect the same tick, before any drive could see the gap and re-task it (the aiSystem already
+ * DeferredOrderSystem — re-dispatches each order parked behind a non-interruptible atomic ({@link
+ * DeferredOrder}, stamped by {@link import('./guards.js').deferOrderDuringAtomic}) once that atomic is gone.
+ * Scheduled directly after the atomicSystem so a completing swing frees the settler and its parked order
+ * takes effect the same tick, before any drive could see the gap and re-task it (the plannerSystem already
  * ran this tick).
  *
  * The command replays through its ordinary handler, which re-validates against the current world — a target

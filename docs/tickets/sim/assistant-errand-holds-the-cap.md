@@ -2,7 +2,7 @@
 
 **Area:** sim · **Origin:** equipment hand-out investigation, 2026-07-27 · **Priority:** P3
 
-`dispatchAssistantGrants` (`systems/settlers/assistant-grants.ts`) throttles a player to
+`dispatchAssistantGrants` (`systems/settlers/planner/assistant-grants.ts`) throttles a player to
 `ASSISTANT_MAX_IN_FLIGHT` concurrent fetch errands and reserves store stock against the
 `acquire`-stage `EquipOrder`s `collectInFlightFetches` counts. An errand that cannot advance still
 counts: `planEquipOrder` (`settlers/equip-order.ts`) yields an assistant errand while its settler

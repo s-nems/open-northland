@@ -19,7 +19,7 @@ import { atomicDuration } from '../../readviews/animations.js';
 import { closer, manhattan } from '../../spatial/nodes.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
-import type { PlannerContext } from '../planner-context.js';
+import type { PlannerContext } from '../planner/context.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../targets/index.js';
 import { unreachableGoals } from '../unreachable-goals.js';
 
@@ -248,7 +248,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   }
 
   // e. Nothing to tend this tick — walk home and wait inside the farm (re-stamped every idle tick, so the
-  // marker holds without flicker; the replan sweep (replan.ts) clears it the moment work appears).
+  // marker holds without flicker; the replan sweep (planner/replan.ts) clears it the moment work appears).
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () =>
     world.add(e, Resting, { at: farm }),
   );

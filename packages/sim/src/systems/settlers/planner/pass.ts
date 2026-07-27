@@ -1,16 +1,16 @@
-import { Position, Settler } from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { ExternalFoodIndex } from '../family/food-search.js';
-import { GossipCandidates } from '../social/index.js';
-import { canonicalById } from '../spatial/nodes.js';
-import { collectInboundSupply, type InboundSupplyTally } from '../stores/index.js';
-import { collectHarvestClaims, type HarvestClaims } from './economy/harvest-claims.js';
-import { SiteLeads, type WorkSeatClaims } from './economy/index.js';
-import { collectFarmClaims, type FarmClaims } from './farming/index.js';
-import { PlannerSpacing } from './planner-spacing.js';
-import { collectTargets, hasHaulableOutput, type TargetCandidates } from './targets/index.js';
+import { Position, Settler } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { ExternalFoodIndex } from '../../family/food-search.js';
+import { GossipCandidates } from '../../social/index.js';
+import { canonicalById } from '../../spatial/nodes.js';
+import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
+import { collectHarvestClaims, type HarvestClaims } from '../economy/harvest-claims.js';
+import { SiteLeads, type WorkSeatClaims } from '../economy/index.js';
+import { collectFarmClaims, type FarmClaims } from '../farming/index.js';
+import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
+import { PlannerSpacing } from './spacing.js';
 
 /**
  * The state one atomic-planner pass shares across every settler it plans this tick: the world/tick

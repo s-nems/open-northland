@@ -10,7 +10,7 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { aiSystem, MAX_GROUND_STACK, stockCapacity } from '../../../src/systems/index.js';
+import { MAX_GROUND_STACK, plannerSystem, stockCapacity } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -44,7 +44,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // the warehouse holding the wood
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill); // on its mill, but the mill has no wood
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Can't produce (no wood), nothing to haul out — so it heads for the store that holds the input.
     expect(sim.world.has(smith, MoveGoal)).toBe(true);
@@ -64,7 +64,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     sim.world.add(enemyStore, Owner, { player: 1 });
     sim.world.add(myStore, Owner, { player: 0 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Proximity alone would send it to the enemy warehouse (cell 2); the same-side gate sends it to
     // its own side's wood (cell 7).
@@ -82,7 +82,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 6, 0, [[WOOD, 3]]); // the common stock, far away
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 6, 0));
     expect(sim.world.get(rival, Stockpile).amounts.get(WOOD)).toBe(2);
@@ -97,7 +97,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 6, 0, [[WOOD, 3]]);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
@@ -112,7 +112,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     siteAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 2]]); // a half-built store holding delivered wood
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No source to fetch from → the operator waits inside its mill, never walks to the site.
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
@@ -125,7 +125,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 3]]);
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill); // standing on the warehouse (the source)
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(smith, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -140,7 +140,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     const smith = settlerAt(sim, 2, 0, CARPENTER, mill);
     sim.world.add(smith, Carrying, { goodType: WOOD, amount: 1 }); // already carrying a fetched input
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The carried input routes to the bound workshop (cell 5), NOT the nearer HQ at cell 1.
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
@@ -153,7 +153,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // wood is available elsewhere…
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // …but the mill is producing, so the operator holds the tile (worker-presence gate) rather than
     // leaving to fetch more.
@@ -167,7 +167,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // A craftsman on its producing station steps inside (observed original behaviour: the miller works
     // in the mill, not standing at the door) — the render hides a Resting settler.
@@ -184,7 +184,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]);
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Heads for the input source — never a pickup of the finished plank out of its own mill.
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
@@ -199,7 +199,7 @@ describe('producer self-service — hauling the finished output', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0); // a store that can take the plank
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(smith, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -215,7 +215,7 @@ describe('producer self-service — hauling the finished output', () => {
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
     const porter = settlerAt(sim, 3, 0, CARRIER, mill); // standing on the source already
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(porter, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -233,7 +233,7 @@ describe('producer self-service — hauling the finished output', () => {
     buildingAt(sim, HEADQUARTERS, 3, 0); // the sink that can take the plank
     const porter = settlerAt(sim, 0, 0, CARRIER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(porter, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -250,7 +250,7 @@ describe('producer self-service — hauling the finished output', () => {
     settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
@@ -267,7 +267,7 @@ describe('producer self-service — hauling the finished output', () => {
     settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, Resting)).toBe(false); // no longer waits inside for the carrier
     const atomic = sim.world.get(smith, CurrentAtomic);
@@ -303,7 +303,7 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     const first = settlerAt(sim, 0, 0, CARPENTER, mill);
     const second = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
     expect(sim.world.has(first, MoveGoal)).toBe(false);
@@ -316,7 +316,7 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     const first = settlerAt(sim, 0, 0, CARPENTER, mill);
     const second = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
     expect(sim.world.tryGet(second, Resting)).toEqual({ at: mill });
@@ -332,7 +332,7 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     const first = settlerAt(sim, 0, 0, CARPENTER, mill);
     const second = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
     const atomic = sim.world.get(second, CurrentAtomic);
@@ -356,7 +356,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, CARRIER, mill);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, Resting)).toBe(false);
     const atomic = sim.world.get(smith, CurrentAtomic);
@@ -377,7 +377,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, MoveGoal)).toBe(false); // never walks off to the HQ for wheat
     expect(sim.world.get(smith, CurrentAtomic).effect).toEqual({
@@ -401,7 +401,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
     expect(sim.world.tryGet(smith, Resting)).toEqual({ at: shop }); // inside, holding a seat
@@ -417,7 +417,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0)); // off to the HQ for wood
   });
@@ -434,7 +434,7 @@ describe('producer unblocks its own full output slot', () => {
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
     expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
@@ -477,7 +477,7 @@ describe('producer works ONLY its own workplace’s goods (its own building’s 
     pileAt(sim, 2, 0, [[WOOD, 3]]);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 2, 0)); // heads for the loose wood
   });
@@ -492,7 +492,7 @@ describe('producer works ONLY its own workplace’s goods (its own building’s 
     pileAt(sim, 2, 0, [[PLANK, 3]]);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(smith, MoveGoal)).toBe(false);
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
@@ -507,7 +507,7 @@ describe('producer loiter — an idle owned worker waits BESIDE the door, not in
     const worker = settlerAt(sim, 3, 0, CARPENTER, mill);
     sim.world.add(worker, Owner, { player: 0 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The user-facing "bored by the door" look: it steps OFF the door to loiter beside it (a MoveGoal to a
     // non-door cell) and never stamps the wait-inside Resting marker.
@@ -522,7 +522,7 @@ describe('producer loiter — an idle owned worker waits BESIDE the door, not in
     const mill = buildingAt(sim, SAWMILL, 3, 0);
     const worker = settlerAt(sim, 3, 0, CARPENTER, mill); // no Owner
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.tryGet(worker, Resting)).toEqual({ at: mill }); // waits inside on the door, unchanged
   });

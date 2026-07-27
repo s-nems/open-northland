@@ -15,13 +15,13 @@ export * from './signpost-coverage.js';
 export * from './workforce/index.js';
 
 /**
- * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military),
- * distinct from the settler micro-planner in `settlers/ai.ts`. Each AI-flagged seat (the `AiPlayer`
- * component the `setPlayerAi` command sets) runs its enabled modules on a coarse staggered cadence
- * and enqueues the same `Command` union a human issues; CommandSystem applies them next tick through
- * the one mutation seam, so AI orders hash, log, and replay exactly like player input (replay
- * discards the re-emitted copies — see `stepReplaying`). Modules are pure functions of world state +
- * the seeded RNG, never wall-clock or app-side reads.
+ * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military), distinct
+ * from the settler micro-planner in `settlers/planner/system.ts`. Each AI-flagged seat (the `AiPlayer`
+ * component the `setPlayerAi` command sets) runs its enabled modules on a coarse staggered cadence and
+ * enqueues the same `Command` union a human issues; CommandSystem applies them next tick through the one
+ * mutation seam, so AI orders hash, log, and replay exactly like player input (replay discards the re-emitted
+ * copies — see `stepReplaying`). Modules are pure functions of world state + the seeded RNG, never wall-clock
+ * or app-side reads.
  */
 
 /** One strategic concern of the AI player (see {@link AiModuleId} — the HAI toggle decomposition).

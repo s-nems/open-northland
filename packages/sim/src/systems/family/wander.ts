@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import type { PlannerSpacing } from '../settlers/planner-spacing.js';
+import type { PlannerSpacing } from '../settlers/planner/spacing.js';
 import { navigationLimitFor } from '../signposts/index.js';
 
 /**

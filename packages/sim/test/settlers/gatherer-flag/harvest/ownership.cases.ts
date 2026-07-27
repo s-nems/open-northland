@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, GroundDrop, HarvestedBy } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
-import { aiSystem } from '../../../../src/systems/index.js';
+import { plannerSystem } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
@@ -57,7 +57,7 @@ describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
     const loose = makeLooseTrunk(sim, 0, 0, TREE_WOOD_YIELD); // not this gatherer's — leave it alone
     const tree = placeFellableTree(sim, 0, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(gatherer, CurrentAtomic);
     expect(atomic.effect.kind).toBe('harvest'); // it chose to CHOP, not to pick up the loose trunk

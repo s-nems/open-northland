@@ -2,7 +2,7 @@ import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { nearestCell } from '../footprint/geometry.js';
-import type { PlannerSpacing } from './planner-spacing.js';
+import type { PlannerSpacing } from './planner/spacing.js';
 
 // The spacing drives — the two consumers of the planner-tick occupancy state:
 //  - idle spacing ({@link deStackIdle}): the last resort for a unit with nothing to do — step off a tile

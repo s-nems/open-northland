@@ -15,7 +15,6 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, halfCellMapFromCells, type NodeId, ONE, Simulation } from '../../src/index.js';
 import {
-  aiSystem,
   atomicSystem,
   BABY_FEMALE,
   CHILD_AGE_TICKS,
@@ -23,6 +22,7 @@ import {
   CHILD_MALE,
   EAT_HUNGER_RESTORE,
   HUNGER_RISE_PER_TICK,
+  plannerSystem,
 } from '../../src/systems/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
@@ -87,7 +87,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     const settler = settlerAt(sim, 2, 0, HUNGRY);
     const store = storeAt(sim, 2, 0, 3); // same cell, holds food
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -104,7 +104,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     storeAt(sim, 4, 0, 2); // distance 4
     storeAt(sim, 2, 0, 2); // distance 2 — should win
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
@@ -116,7 +116,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     sim.world.add(settler, Carrying, { goodType: FOOD, amount: 2 });
     storeAt(sim, 4, 0, 5); // a store exists, but the settler should eat its carry first
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -129,7 +129,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     const settler = settlerAt(sim, 2, 0, HUNGRY);
     const kitchen = kitchenAt(sim, 2, 0, 4); // same cell
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // A dish is edible in the house that cooks it (`carriedGoodForm`), and the eat effect takes the
     // RAW loaf off the shelf — the good the store actually holds.
@@ -146,7 +146,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     const warehouse = storeAt(sim, 2, 0); // same cell, loaves only
     sim.world.get(warehouse, Stockpile).amounts.set(BREAD, 4);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
   });
@@ -160,7 +160,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Headed for the wood, not the larder — the eat drive did not fire.
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
@@ -174,7 +174,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
@@ -341,7 +341,7 @@ describe('eat drive — unreachable larders (the componentOf gate + the failed-g
     storeAt(sim, 1, 0, 5); // nearer, but on the far bank — unreachable for good
     storeAt(sim, 6, 0, 5); // farther, on the settler's own bank
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Straight to the reachable larder: the cross-water one never wins the pick, so the settler
     // never parks on a doomed route while its hunger keeps climbing.
@@ -380,7 +380,7 @@ describe('eat drive — unreachable larders (the componentOf gate + the failed-g
     for (let x = 12; x < 78; x++) storeAt(sim, x, 0);
     noteUnreachableGoal(sim.world, ctxOf(sim), settler, nodeAtCell(sim, 2, 0));
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 10, 0));
   });
@@ -411,7 +411,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
     const child = youngAt(sim, 2, 0, CHILD_FEMALE, CHILD_AGE_TICKS);
     const store = storeAt(sim, 2, 0, 3);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(child, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
@@ -423,7 +423,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
     const child = youngAt(sim, 0, 0, CHILD_MALE, CHILD_AGE_TICKS);
     storeAt(sim, 3, 0, 2);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(child, CurrentAtomic)).toBe(false);
     expect(sim.world.get(child, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
@@ -434,7 +434,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
     const baby = youngAt(sim, 2, 0, BABY_FEMALE, 0);
     storeAt(sim, 2, 0, 3); // food right under it, still ignored
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(baby, CurrentAtomic)).toBe(false);
   });
@@ -443,7 +443,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const child = youngAt(sim, 2, 0, CHILD_MALE, CHILD_AGE_TICKS, { fatigue: HUNGRY });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(child, MoveGoal)).toBe(false); // sleep is in place — no walk
     expect(sim.world.get(child, CurrentAtomic).atomicId).toBe(SLEEP_ATOMIC);

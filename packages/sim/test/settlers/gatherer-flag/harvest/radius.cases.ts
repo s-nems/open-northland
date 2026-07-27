@@ -9,7 +9,7 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
-import { aiSystem, setGatherGood } from '../../../../src/systems/index.js';
+import { plannerSystem, setGatherGood } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
@@ -34,7 +34,7 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     bindToFlag(sim, gatherer, 1, 0, WIDE_RADIUS);
     const tree = placeFellableTree(sim, 3, 0); // dist from flag@1 = 2·|1−3| = 4 ≤ radius
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(gatherer, CurrentAtomic);
     expect(atomic.atomicId).toBe(HARVEST_ATOMIC);
@@ -60,12 +60,12 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: 4 });
     expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(4);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     const filtered = sim.world.get(gatherer, CurrentAtomic);
     expect(filtered.effect.kind === 'harvest' && filtered.effect.resource).toBe(stone);
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: null });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     const all = sim.world.get(gatherer, CurrentAtomic);
     expect(all.effect.kind === 'harvest' && all.effect.resource).toBe(wood);
   });
@@ -105,7 +105,7 @@ describe('flag-bound gatherer — never targets a tree it cannot reach (mosty na
     const acrossRiver = placeFellableTree(sim, 6, 1); // nearest to the flag, but on the far bank
     const reachable = placeFellableTree(sim, 1, 1); // farther from the flag, same bank as the gatherer
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(gatherer, CurrentAtomic); // chose to CHOP this tick (no MoveGoal stall)
     expect(atomic.atomicId).toBe(HARVEST_ATOMIC);

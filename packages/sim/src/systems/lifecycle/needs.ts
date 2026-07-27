@@ -137,14 +137,14 @@ export const STARVATION_BITES_TO_DIE = 240;
  * on Age + stage like the planner's gate, so an adult fixture whose synthetic job id collides with a
  * baby id still lives a full needs life.
  *
- * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
- * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
- * CleanupSystem then reaps it like any other death). A JOBLESS settler is exempt: the eat drive lives in
- * the job planner, which skips it before any needs drive runs (`settlers/ai.ts`), so nothing could feed it.
- * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
- * food is truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a
- * child's 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold.
- * Lengthening childhood or raising the rise rate makes it live again.
+ * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the {@link
+ * STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the CleanupSystem
+ * then reaps it like any other death). A JOBLESS settler is exempt: the eat drive lives in the job planner,
+ * which skips it before any needs drive runs (`settlers/planner/system.ts`), so nothing could feed it. A
+ * CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when food is
+ * truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a child's
+ * 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold. Lengthening
+ * childhood or raising the rise rate makes it live again.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
  * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.

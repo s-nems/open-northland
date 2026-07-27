@@ -82,10 +82,10 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
 ): ProductionModel | null {
-  // A farm produces a field-farmed good — checked before the recipes, mirroring the sim: farmWorkGood
-  // ignores recipe presence and ai.ts ranks the farmer rung above the producer rung precisely because
-  // real extracted content synthesizes abstract recipes from `logicproduction` for every producer.
-  // Wherever the sim farms, the panel must show live field state, never a dead recipe bar.
+  // A farm produces a field-farmed good — checked before the recipes, mirroring the sim: farmWorkGood ignores
+  // recipe presence and planner/system.ts ranks the farmer rung above the producer rung precisely because
+  // real extracted content synthesizes abstract recipes from `logicproduction` for every producer. Wherever
+  // the sim farms, the panel must show live field state, never a dead recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCounts(snapshot, ent.id);

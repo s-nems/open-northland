@@ -118,7 +118,7 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   [MUSHROOM_HARVEST_ATOMIC]: MUSHROOM_PLUCK_FRAMES * MUSHROOM_PLUCKS_PER_PICK + MUSHROOM_PLUCK_BREATHER_TICKS,
 };
 /**
- * The other atomic ids the sim issues, transcribed from the sim's planners (`ai.ts` eat 10 / sleep 8 /
+ * The other atomic ids the sim issues, transcribed from the sim's `settlers/actions.ts` (eat 10 / sleep 8 /
  * pray 12 — themselves pinned to the original's `setatomic` table). Kept here rather than imported from sim
  * because they are the animation table's `byAtomic` keys — the same numeric contract the original's
  * `tribetypes` uses. The store-exchange pair (22/23) lives in the shared `catalog/atomics.ts` instead.

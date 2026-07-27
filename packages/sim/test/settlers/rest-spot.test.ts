@@ -4,7 +4,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, type NodeId, Simulation } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
 import { planNeeds } from '../../src/systems/settlers/drives-needs.js';
-import { PlannerSpacing } from '../../src/systems/settlers/planner-spacing.js';
+import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { restingCell } from '../../src/systems/settlers/rest-spot.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { NodeBuckets } from '../../src/systems/spatial/nodes.js';

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, CurrentAtomic, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { aiSystem, atomicSystem } from '../../src/systems/index.js';
+import { atomicSystem, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import {
   cellOf,
@@ -60,7 +60,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     // A tree to harvest exists, but the devout settler heads for the temple instead.
     treeAt(sim, 2, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Not on the temple yet: a MoveGoal to it, no atomic started.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
@@ -76,7 +76,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     const settler = settlerAt(sim, 3, 0, DEVOUT);
     templeAt(sim, 3, 0); // settler is already on the temple cell
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false); // already here — no walk
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -91,7 +91,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     templeAt(sim, 4, 0);
     treeAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Headed for the wood, not the temple — the pray drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
@@ -103,7 +103,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     const settler = settlerAt(sim, 0, 0, DEVOUT);
     treeAt(sim, 3, 0); // wood but no temple anywhere
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No temple to pray at: the settler works (heads for the tree) instead of stalling.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
@@ -116,7 +116,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     const settler = settlerAt(sim, 3, 0, DEVOUT, DEVOUT);
     templeAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(8); // SLEEP — survival needs outrank devotion

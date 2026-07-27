@@ -10,7 +10,7 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../../src/index.js';
-import { aiSystem, stampResourceFootprint } from '../../../../src/systems/index.js';
+import { plannerSystem, stampResourceFootprint } from '../../../../src/systems/index.js';
 import { grassCellMap } from '../../../fixtures/terrain.js';
 import {
   content,
@@ -61,7 +61,7 @@ describe('flag-bound gatherer — a drop on a blocked cell is left for later, no
     sim.world.add(hut, Building, { buildingType: TEST_HUT, tribe: VIKING, built: ONE, level: 0 });
     placeFootprintedTree(sim, 3, 1); // work cells (2,1)/(4,1) — reachable digging instead
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The doomed drop is skipped: the walk goal is the tree's near work cell, not the blocked drop.
     expect(sim.world.get(gatherer, MoveGoal).cell).toBe(terrain.nodeAt(2, 1));
@@ -75,7 +75,7 @@ describe('flag-bound gatherer — a drop on a blocked cell is left for later, no
     sim.world.add(drop, HarvestedBy, { by: gatherer });
     placeFootprintedTree(sim, 3, 1);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No block over the drop: finishing the own drop outranks a fresh harvest (rung 1 before rung 2).
     expect(sim.world.get(gatherer, MoveGoal).cell).toBe(terrain.nodeAt(5, 1));

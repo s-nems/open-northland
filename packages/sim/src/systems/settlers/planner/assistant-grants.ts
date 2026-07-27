@@ -15,19 +15,19 @@ import {
   Stockpile,
   SupplyRun,
   UnderConstruction,
-} from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
-import { CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
-import { isFighterJob, isScoutJob, MILITARY_MODE } from '../readviews/index.js';
-import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
-import { canonicalById } from '../spatial/nodes.js';
-import type { PlannerPass } from './planner-pass.js';
+} from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
+import type { World } from '../../../ecs/world.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
+import { isFighterJob, isScoutJob, MILITARY_MODE } from '../../readviews/index.js';
+import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
+import { canonicalById } from '../../spatial/nodes.js';
+import { nearestStoreHolding } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
+import type { PlannerPass } from './pass.js';
 import { anotherSystemOwns } from './replan.js';
-import { nearestStoreHolding } from './targets/index.js';
-import { unreachableGoalVeto } from './unreachable-goals.js';
 
 /**
  * The assistant's auto-equip pass: for every player with {@link AssistantGrants}, send settlers with
