@@ -30,7 +30,9 @@ legal wording is in `docs/LEGAL.md`.
    mechanic, constant, timing, or visual choice comes from extracted data, readable semantics,
    byte-level evidence, a published standard, observation, or an approximation.
 6. **Treat scale as a budget.** Per-tick simulation work scales with active work, not entity pairs.
-   Per-frame rendering and audio work scales with the visible screen, not the map.
+   Per-frame rendering and audio work scales with the visible screen, not the map. Measure that claim
+   instead of asserting it: `docs/DEVELOPMENT.md` says which tool answers which question, and what
+   voids a measurement.
 7. **Keep durable context small.** Current tasks live in `docs/tickets/`. Stable rules live in an
    `AGENTS.md`. Completed investigation belongs in Git history.
 

@@ -66,6 +66,10 @@ map.dat
 # `npm run shot` writes its verification PNG beside the app package (--out defaults to cwd).
 /packages/app/shot.png
 
+# Benchmark reports. Absolute timings only mean something against another run on the same machine,
+# so a baseline belongs to a checkout, never to the repository.
+/bench-out/
+
 
 # Logs
 *.log

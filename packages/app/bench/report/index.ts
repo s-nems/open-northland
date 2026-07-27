@@ -4,6 +4,7 @@ export {
   type DeltaRow,
   type DeltaVerdict,
   formatComparison,
+  worldIdentity,
 } from './compare.js';
 export { formatReport } from './format.js';
 export { readReport } from './read.js';

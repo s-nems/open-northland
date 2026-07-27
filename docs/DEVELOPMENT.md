@@ -76,7 +76,7 @@ gives a baseline the per-frame step cap cannot distort, and pausing isolates the
 frame. Read `sampling.hidden` before trusting any timing: a background tab throttles its frame loop
 and every millisecond becomes fiction.
 
-## Screenshots and performance
+## Screenshots
 
 Create a deterministic screenshot:
 
@@ -87,6 +87,18 @@ npm run shot -- --seed 7 --ticks 20 --out shot.png
 Useful options are `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, and `--no-hud`.
 Screenshots still need human review.
 
+## Measuring performance
+
+| question | reach for |
+| --- | --- |
+| what does the sim spend a tick on, and does it grow as the settlement develops? | `npm run bench:map` |
+| does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
+| did my change make it slower? | `npm run bench:compare` |
+| what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
+
+Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
+rather than weak: re-run on an idle box instead of reading them.
+
 Run the synthetic simulation benchmark with `npm run bench:sim`. Its main controls are
 `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
 and `ON_BENCH_JSON`.
@@ -96,7 +108,10 @@ Run the real-map benchmark with `npm run bench:map`. It needs generated content 
 `ON_BENCH_JSON`. `ON_CONTENT_DIR` points it at a content directory outside the checkout. The default
 run is 20k ticks; `ON_BENCH_TICKS=50000` covers a full AI build-out.
 
-Compare two saved reports with `npm run bench:compare -- before.json after.json`.
+Every run keeps its report under `bench-out/` (untracked), so a baseline exists without having been
+planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same
+world; `npm run bench:compare -- before.json after.json` names two explicitly, and `ON_BENCH_JSON`
+overrides where a run writes.
 
 ## Desktop packaging
 

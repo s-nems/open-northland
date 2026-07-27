@@ -1,24 +1,32 @@
 #!/usr/bin/env node
 // Argv wrapper for the benchmark A/B (docs/TESTING.md "Benchmarks and long runs"):
-//   npm run bench:compare -- before.json after.json
-// The comparison itself is typed TS under packages/app/bench so the report shapes live in one place.
+//   npm run bench:compare                              the two most recent runs of one world
+//   npm run bench:compare -- before.json after.json    two named reports
+// The comparison itself is typed TS under packages/app/bench so the report shapes live in one place;
+// with no arguments the pair is resolved there too, against the same guards the comparison raises on.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { repoRoot } from './content-dir.mjs';
 
-const [before, after] = process.argv.slice(2);
-if (before === undefined || after === undefined) {
-  console.error('usage: npm run bench:compare -- <before.json> <after.json>');
+const args = process.argv.slice(2);
+if (args.length !== 0 && args.length !== 2) {
+  console.error('usage: npm run bench:compare [-- <before.json> <after.json>]');
+  console.error('With no arguments it compares the two most recent reports under bench-out/.');
   process.exit(1);
 }
 
-const paths = [before, after].map((p) => resolve(process.cwd(), p));
-const missing = paths.filter((p) => !existsSync(p));
-if (missing.length > 0) {
-  console.error(`bench:compare cannot read: ${missing.join(', ')}`);
-  console.error('Write a report with: ON_BENCH_JSON=<path> npm run bench:map');
-  process.exit(1);
+const named = {};
+if (args.length === 2) {
+  const paths = args.map((p) => resolve(process.cwd(), p));
+  const missing = paths.filter((p) => !existsSync(p));
+  if (missing.length > 0) {
+    console.error(`bench:compare cannot read: ${missing.join(', ')}`);
+    console.error('Every benchmark run already keeps its report under bench-out/.');
+    process.exit(1);
+  }
+  named.ON_BENCH_BEFORE = paths[0];
+  named.ON_BENCH_AFTER = paths[1];
 }
 
 const result = spawnSync(
@@ -27,7 +35,7 @@ const result = spawnSync(
   {
     stdio: 'inherit',
     cwd: repoRoot,
-    env: { ...process.env, ON_BENCH_BEFORE: paths[0], ON_BENCH_AFTER: paths[1] },
+    env: { ...process.env, ...named },
   },
 );
 process.exit(result.status ?? 1);
