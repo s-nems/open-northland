@@ -1,7 +1,7 @@
 import { MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
 import type { Entity } from '../../ecs/world.js';
-import { worldDistance } from '../../nav/metric.js';
+import { worldDistance } from '../../nav/world-metric.js';
 import type { System } from '../context.js';
 import { bootsSpeedBonus, wearWornBoots } from '../equipment/index.js';
 import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
@@ -16,7 +16,7 @@ export const WALK_TICKS_PER_CELL = 18;
 
 /**
  * How far an entity following a {@link PathFollow} advances per tick at full walking gait, in world-metric
- * units (`nav/metric.ts`: one unit = one full 68 px cell width) — the cruise pace the inertia ramp
+ * units (`nav/world-metric.ts`: one unit = one full 68 px cell width) — the cruise pace the inertia ramp
  * accelerates toward ({@link ACCEL_TICKS}).
  *
  * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the

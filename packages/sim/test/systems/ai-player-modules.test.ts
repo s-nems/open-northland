@@ -24,7 +24,7 @@ import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import type { TerrainMap } from '../../src/index.js';
 import { EventBuffer, fx, positionOfNode, Rng, replay, Simulation } from '../../src/index.js';
-import { withinNodeRadius } from '../../src/nav/node-metric.js';
+import { withinNodeRadius } from '../../src/nav/node-circle.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   BUILDER_CAP,

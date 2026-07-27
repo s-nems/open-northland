@@ -1,4 +1,5 @@
-import type { BlockOverlay, NodeId, TerrainGraph } from './terrain/index.js';
+import type { BlockOverlay } from './block-overlay.js';
+import type { NodeId, TerrainGraph } from './terrain/index.js';
 
 /**
  * How far (in nodes) {@link nearestUnblockedNode} searches for a free node around a blocked/unwalkable

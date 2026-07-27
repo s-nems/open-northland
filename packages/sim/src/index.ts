@@ -45,6 +45,7 @@ export {
   diffSnapshots,
   type SnapshotDiff,
 } from './inspect/snapshot-diff.js';
+export type { BlockOverlay } from './nav/block-overlay.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,
@@ -52,10 +53,8 @@ export {
   nodeOfPosition,
   positionOfNode,
 } from './nav/halfcell.js';
-export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
 export { findPath, type SearchStats } from './nav/pathfinding/index.js';
 export {
-  type BlockOverlay,
   buildTerrainGraph,
   type CellTerrainMap,
   halfCellMapFromCells,
@@ -64,6 +63,7 @@ export {
   TerrainGraph,
   type TerrainMap,
 } from './nav/terrain/index.js';
+export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/world-metric.js';
 export { type DivergenceReport, localizeDivergence } from './replay/localize-divergence.js';
 export {
   type RebaseInputs,

@@ -1,6 +1,6 @@
-export * from './distance.js';
 export { TerrainGraph } from './graph.js';
+export { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
+export * from './lattice-distance.js';
 export * from './map.js';
-export { type NodeTypeProps, resolveTypeProps } from './node-types.js';
+export type { NodeId } from './node-id.js';
 export { type Step, StepBuffer } from './step-buffer.js';
-export * from './types.js';

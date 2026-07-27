@@ -9,8 +9,9 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { FOOTPRINT_EVICT_SEARCH_CAP } from '../movement/evict.js';

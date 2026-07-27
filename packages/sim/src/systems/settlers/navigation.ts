@@ -2,8 +2,8 @@ import { MoveGoal, PathFollow, PathRequest, Position } from '../../components/in
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import { worldDistance, worldX } from '../../nav/metric.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { worldDistance, worldX } from '../../nav/world-metric.js';
 import { isValidNodeId } from '../spatial.js';
 
 const TWO: Fixed = fx.fromInt(2);

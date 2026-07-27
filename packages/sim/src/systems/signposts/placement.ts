@@ -8,7 +8,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
-import { withinNodeRadius } from '../../nav/node-metric.js';
+import { withinNodeRadius } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { canPlaceWorkFlag, workFlagBlockerVersion, workFlagPlacementBlocks } from '../footprint/index.js';

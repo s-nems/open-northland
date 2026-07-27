@@ -2,8 +2,8 @@ import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../compo
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import { worldDistance } from '../../../nav/metric.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
+import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';

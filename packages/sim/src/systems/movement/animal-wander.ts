@@ -9,7 +9,7 @@ import {
   StayPoint,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { BlockOverlay } from '../../nav/terrain/index.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { stayPointRangeOf } from '../readviews/index.js';

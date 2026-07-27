@@ -7,8 +7,9 @@ import {
   stockpileEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
   ANCHOR_ONLY,

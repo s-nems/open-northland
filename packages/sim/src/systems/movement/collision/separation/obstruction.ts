@@ -1,7 +1,7 @@
 import { Obstructed, PathFollow, Position } from '../../../../components/index.js';
 import { type Fixed, fx } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { worldDistance } from '../../../../nav/metric.js';
+import { worldDistance } from '../../../../nav/world-metric.js';
 import { clearNavState } from '../../../spatial.js';
 import { MOVE_SPEED_PER_TICK } from '../../movement.js';
 

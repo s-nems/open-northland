@@ -6,7 +6,7 @@
 import type { ContentSet, LandscapeType } from '@open-northland/data';
 
 import { TerrainGraph } from './graph.js';
-import { type NodeTypeProps, resolveTypeProps } from './node-types.js';
+import { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
 
 /**
  * A terrain map at HALF-CELL resolution: dimensions + a row-major landscape-typeId grid — the
@@ -76,8 +76,8 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
  * tick are pure array reads.
  */
 export function buildTerrainGraph(content: ContentSet, map: TerrainMap): TerrainGraph {
-  const props = new Map<number, NodeTypeProps>();
-  for (const t of content.landscape) props.set(t.typeId, resolveTypeProps(t));
+  const props = new Map<number, LandscapeProps>();
+  for (const t of content.landscape) props.set(t.typeId, resolveLandscapeProps(t));
 
   const typeIds = Int32Array.from(map.typeIds);
   // Surface a content gap loudly rather than silently treating cells as blocking — a typeId in the

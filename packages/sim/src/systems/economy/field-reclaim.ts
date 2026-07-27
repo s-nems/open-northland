@@ -1,7 +1,8 @@
 import { Crop, StrandedField } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import {
   dynamicBlockOverlay,

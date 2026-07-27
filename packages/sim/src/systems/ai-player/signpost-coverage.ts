@@ -2,7 +2,7 @@ import { CurrentAtomic, ErectSignpostOrder, PlayerOrder, Settler } from '../../c
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
-import { withinNodeRadius } from '../../nav/node-metric.js';
+import { withinNodeRadius } from '../../nav/node-circle.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode, routeRegions } from '../footprint/index.js';
 import { isScoutJob } from '../readviews/index.js';
@@ -31,7 +31,7 @@ export const SIGNPOST_LATTICE_SPACING_NODES = 22;
 export const SIGNPOST_TARGET_TOLERANCE_NODES = 8;
 
 // Hex-lattice basis in node offsets: axial (q, r) ↦ (22q + 11r, 34r). The node lattice is anisotropic
-// (34 px E/W, 19 px N/S — `nav/node-metric.ts`), so the r step's world-metric height 22·√3/2 ≈ 19.05
+// (34 px E/W, 19 px N/S — `nav/node-circle.ts`), so the r step's world-metric height 22·√3/2 ≈ 19.05
 // spans 19.05·34/19 ≈ 34 rows; every neighbour pair then sits ~22 world units apart. Integer
 // literals, precomputed — the sim allows no trig.
 const LATTICE_Q_DX = SIGNPOST_LATTICE_SPACING_NODES;
