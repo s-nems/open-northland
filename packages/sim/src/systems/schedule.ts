@@ -13,6 +13,7 @@ import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs.js';
+import { animalWanderSystem } from './movement/animal-wander.js';
 import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
@@ -35,6 +36,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'needs', system: needsSystem },
   { name: 'job', system: jobSystem },
   { name: 'herding', system: herdingSystem },
+  // After herding, so cohesion outranks grazing: a follower the herd drive just recalled is already
+  // travelling when the wander pass reaches it.
+  { name: 'animalWander', system: animalWanderSystem },
   { name: 'playerOrder', system: playerOrderSystem },
   // After playerOrderSystem retires the walk and before aiSystem could re-task the scout: an arrived
   // erect order starts its hammer swing this same tick.

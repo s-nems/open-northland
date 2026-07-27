@@ -125,8 +125,9 @@ export const societyContent = {
   // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
   animals: [
     // The bear also carries herd params so the spawnAnimalHerd command has a real group to place: a
-    // pack of 3 that follows a leader (searchForLeader), ranging up to 2 tiles from its birth point,
-    // and roaming up to 3 tiles from its leader (maximumLeaderDistance — the herdingSystem cohesion radius).
+    // pack of 3 that follows a leader (searchForLeader). All three distances are half-cell nodes: 2 from
+    // its birth point, 3 from its leader (maximumLeaderDistance, the herdingSystem cohesion radius), and
+    // 6 from its own stay point (maximumDistanceToStayPoint, the animalWanderSystem territory leash).
     // `moveSpeed 8` (the real cow/boar value) gives it a data-pinned walking pace: it walks ONE/8
     // tile/tick (the MoveSpeed stamp), exercising the per-entity movement pace. `runSpeed 4` mirrors
     // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim —
@@ -141,6 +142,7 @@ export const societyContent = {
       searchForLeader: true,
       maximumLeaderDistance: 3,
       maximumDistanceToBirthPoint: 2,
+      maximumDistanceToStayPoint: 6,
       moveSpeed: 8,
       runSpeed: 4,
     },

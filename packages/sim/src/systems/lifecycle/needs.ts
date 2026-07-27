@@ -5,7 +5,7 @@ import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { tryDeathSaveDraught } from '../equipment/index.js';
-import { isFighterJob } from '../readviews/index.js';
+import { isAnimalTribe, isFighterJob } from '../readviews/index.js';
 import { isBaby } from './ageclass.js';
 
 // Need rise rates, in fixed-point [0,ONE] units per tick.
@@ -122,6 +122,12 @@ export const STARVATION_BITES_TO_DIE = 240;
  * drive). Every named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat,
  * sleep, and pray *drives* exist so far.
  *
+ * WILDLIFE ({@link isAnimalTribe}) is skipped whole: an animal neither eats nor sleeps on our model, so a
+ * rising bar could only pin at `ONE` forever, latching the HUD's famine bubble over every creature on the
+ * map and making a hunted kill read as a starvation death (the CleanupSystem's cause heuristic). Named
+ * approximation: the original tracks no need bars for animals. Keyed on the tribe's empty tech graph, so a
+ * jobless CIVILIZATION settler (its workplace demolished) still lives a full needs life.
+ *
  * A BABY ({@link Age} carrier in a baby stage) is skipped whole: it is cared for — its family keeps it
  * fed and rested, so no need accumulates and it never starves (named approximation: the original's
  * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
@@ -133,11 +139,8 @@ export const STARVATION_BITES_TO_DIE = 240;
  *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
- * CleanupSystem then reaps it like any other death). Exempt, because nothing can feed them today and
- * starving them would only depopulate the map — a named approximation each:
- *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
- *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
- *    lives in the job planner, which skips a jobless settler before any needs drive runs (`settlers/ai.ts`).
+ * CleanupSystem then reaps it like any other death). A JOBLESS settler is exempt: the eat drive lives in
+ * the job planner, which skips it before any needs drive runs (`settlers/ai.ts`), so nothing could feed it.
  * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
  * food is truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a
  * child's 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold.
@@ -151,7 +154,8 @@ export const needsSystem: System = (world, ctx) => {
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
   for (const e of world.query(Settler)) {
     const settler = world.get(e, Settler);
-    // A cared-for baby accumulates nothing and never starves (see the header) — skipped whole.
+    // Wildlife and a cared-for baby accumulate nothing (see the header).
+    if (isAnimalTribe(ctx.content, settler.tribe)) continue;
     if (world.has(e, Age) && isBaby(settler.jobType)) continue;
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;

@@ -1,4 +1,4 @@
-import { Health, HerdMember, MoveSpeed, Position, Settler } from '../../../components/index.js';
+import { Health, HerdMember, MoveSpeed, Position, Settler, StayPoint } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { fx, ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -7,7 +7,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../../readviews/index.js';
-import { COMPASS_DIRECTIONS } from '../../spatial.js';
+import { COMPASS_DIRECTIONS, entityNode } from '../../spatial.js';
 
 /** Upper bound on one spawn command's herd size — the real `maximumgroupsize` values are 2..6, so any
  *  count near this cap is corrupted input, not content. */
@@ -27,7 +27,8 @@ const HERD_COUNT_CAP = 100;
  * When the animal's `searchforleader` is set the herd gets a leader — its lowest-id member, which every
  * member (including the leader, self-referentially) records via a {@link HerdMember} — the relation the
  * follow-the-leader drive (`herdingSystem`) reads to keep a strayed follower within `maximumleaderdistance`; a
- * solitary animal carries no `HerdMember`.
+ * solitary animal carries no `HerdMember`. On a map (not a mapless sim) every member also records its settled
+ * node as a {@link StayPoint}, the territory anchor the grazing drive leashes it to.
  *
  * A `tribe` with no `animaltypes` record (a civilization, or an unknown tribe) is bad input — no herd params to
  * read — so the command is skipped (still logged for faithful replay).
@@ -98,6 +99,11 @@ export function spawnAnimalHerd(
     // spawn push a commanded settler gets: no drive ever re-tasks an idle animal off a blocked cell
     // (herding only recalls a strayed follower).
     evictSettlerFromBlockedSpawn(world, ctx, e, claimed);
+    // The settled node becomes the creature's territory anchor, the point the grazing drive keeps it
+    // near. Read after the push, so a creature moved off blocked ground anchors where it stands.
+    if (ctx.terrain !== undefined) {
+      world.add(e, StayPoint, { cell: entityNode(world, ctx.terrain, e) });
+    }
     members.push(e);
     ctx.events.emit({ kind: 'settlerBorn', entity: e });
   }

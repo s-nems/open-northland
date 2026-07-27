@@ -38,6 +38,16 @@ export function angryGameTimeOf(content: ContentSet, tribeType: number): number 
 }
 
 /**
+ * The territory radius (half-cell node Manhattan, like {@link HerdParams.leaderDistance}) an animal of
+ * `tribeType` may range from its stay point: its `animaltypes.ini` `maximumdistancetostaypoint`, or 0
+ * when the tribe has no animal record. The scalar twin of {@link herdParams} for the grazing drive,
+ * which reads this for every creature every tick and must not mint an object to do it.
+ */
+export function stayPointRangeOf(content: ContentSet, tribeType: number): number {
+  return animalRecord(content, tribeType)?.maximumDistanceToStayPoint ?? 0;
+}
+
+/**
  * Whether `tribeType`'s `animaltypes.ini` record sets `cannotbeattacked` — decorative fauna (bees,
  * butterflies) a civilization can never target, even if flagged aggressive.
  */
