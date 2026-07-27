@@ -1,8 +1,16 @@
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@open-northland/render';
+import {
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  tileToScreen,
+} from '@open-northland/render';
+import { FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_COLOR_COUNT, PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
   FRAME_NATIVE,
+  fillFogAlpha,
   minimapLayout,
   minimapToWorld,
   pointOverMinimap,
@@ -228,5 +236,37 @@ describe('stampDot', () => {
     stampDot(rgba, W, H, -5, -5, 1, 0xffffff);
     stampDot(rgba, W, H, W + 5, H + 5, 1, 0xffffff);
     expect(rgba.every((b) => b === 0)).toBe(true);
+  });
+});
+
+describe('fillFogAlpha', () => {
+  /** A 3×2 grid: the three states across the top row, all-visible below — so a row-major write is
+   *  distinguishable from a transposed or wrongly strided one. */
+  const GRID = {
+    cellsWide: 3,
+    cellsHigh: 2,
+    stateAt: (c: number, r: number): number =>
+      r > 0
+        ? FOG_STATE.VISIBLE
+        : ([FOG_STATE.VISIBLE, FOG_STATE.EXPLORED, FOG_STATE.UNEXPLORED][c] ?? FOG_STATE.UNEXPLORED),
+  };
+  const alphaLane = (rgba: Uint8Array): number[] =>
+    Array.from({ length: rgba.length / 4 }, (_, i) => rgba[i * 4 + 3] ?? 0);
+
+  it('grades the alpha lane by fog state, row-major, and leaves the mask black', () => {
+    const rgba = new Uint8Array(GRID.cellsWide * GRID.cellsHigh * 4);
+    fillFogAlpha(GRID, rgba);
+
+    expect(alphaLane(rgba)).toEqual([0, FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, 0, 0, 0]);
+    // Only the alpha lane is written — the colour lanes stay the buffer's black.
+    expect([rgba[0], rgba[1], rgba[2], rgba[4], rgba[8]]).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it('clears a cell that turned visible again on the next fill', () => {
+    const rgba = new Uint8Array(4);
+    fillFogAlpha({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.UNEXPLORED }, rgba);
+    expect(rgba[3]).toBe(FOG_UNEXPLORED_ALPHA);
+    fillFogAlpha({ cellsWide: 1, cellsHigh: 1, stateAt: () => FOG_STATE.VISIBLE }, rgba);
+    expect(rgba[3]).toBe(0);
   });
 });
