@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
-import { startableCycleCount } from '../../../../economy/production.js';
+import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
 import { buildingBlockedCells } from '../../../../footprint/index.js';
 import {
   recipesByProductOf,
@@ -35,27 +35,33 @@ import { mayFetchGoodFrom } from '../store-policy.js';
 // (ascending entity-id, Manhattan + cell-id tie-break) so the winner never depends on store history.
 
 /**
- * How many WORK SEATS the workplace offers this tick — the number of operators whose staying on the
- * station would actually run a batch: the cycles already grinding (each needs one present operator to
- * advance — see the ProductionSystem's FIFO rule) plus the further cycles the current stock could
- * start ({@link startableCycleCount}: inputs on hand, output room, tech gate). This is the producer's
- * "should I stay put?" gate, per worker instead of per building: the planner hands out seats in its
- * deterministic settler order, and a worker who finds them all taken is SURPLUS — its batch is done
- * or can't start, so it is freed to fetch inputs / haul output instead of idling inside while a
- * colleague's batch finishes (the "drugi młynarz czeka w środku" bug). An unbuilt/gone workplace
- * offers no seats. Reuses the ProductionSystem's own per-product start gate, so the planner and the
- * producer never disagree about whether a cycle can run. The further-seat estimate is the MAX over
- * the type's per-product recipes (named approximation: two spare operators choosing DIFFERENT
- * startable products the same tick would fill two seats where this counts one — the short-changed
- * worker fetches/loiters one tick and reclaims its seat next tick once the batch count has grown).
+ * How many WORK SEATS the workplace offers `operator` this tick: the number of operators whose staying
+ * on the station would actually run a batch. The cycles already grinding (each needs one present
+ * operator to advance, see the ProductionSystem's FIFO rule, and any present operator may advance any
+ * batch), plus the further cycles THIS operator could start: {@link startableCycleCount} (inputs on
+ * hand, output room, tech gate) over the products its own rotation would pick ({@link craftablePool}).
+ * Both halves of the ProductionSystem's start gate, so a FURTHER seat is never offered for a cycle this
+ * worker's craft selection or XP would refuse to begin. It is the producer's "should I stay put?" gate,
+ * per worker instead of per building: the planner hands out seats in its deterministic settler order,
+ * and a worker who finds them all taken is SURPLUS (its batch is done or can't start), so it is freed
+ * to fetch inputs / haul output instead of idling inside while a colleague's batch finishes (the
+ * "drugi młynarz czeka w środku" bug). An unbuilt/gone workplace offers no seats. The further-seat
+ * estimate is the MAX over that pool (named approximation: two spare operators whose pools name
+ * DIFFERENT startable products would fill two seats where this counts one, and the short-changed
+ * worker fetches or loiters meanwhile, reclaiming a seat once the batch count has grown). Per-operator
+ * totals share the one per-workplace claim counter, so the worker denied is whichever the canonical
+ * settler order reaches once the claims cover its own total.
  */
-export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity): number {
+export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity, operator: Entity): number {
   const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
   const b = world.tryGet(workplace, Building);
   if (b === undefined || b.built < ONE) return running; // a construction site never starts a cycle
   const recipes = recipesByProductOf(world, ctx, workplace);
+  if (recipes === undefined) return running;
   let startable = 0;
-  for (const recipe of recipes?.values() ?? []) {
+  for (const good of craftablePool(world, ctx, operator, recipes)) {
+    const recipe = recipes.get(good);
+    if (recipe === undefined) continue;
     startable = Math.max(startable, startableCycleCount(world, ctx, workplace, recipe));
   }
   return running + startable;

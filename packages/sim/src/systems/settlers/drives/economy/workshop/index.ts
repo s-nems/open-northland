@@ -30,7 +30,9 @@ export type WorkSeatClaims = Map<Entity, number>;
  * `jobtypes.ini` carries `baseatomics 6` (the civilist block), which grants the pickup/pileup atomics
  * 22/23, so the baker holds them exactly as the carrier does. What is NOT decoded is trip scheduling —
  * who goes first when both a craftsman and a bound carrier could make the run — so the rung order here
- * (seat, then blocked shelf, then input, then output) stays a named approximation.
+ * (seat, then blocked shelf, then input, then output) stays a named approximation. So does sending a
+ * craftsman whose ware the shelf cannot start out for its input at all ({@link workSeatCount}); nothing
+ * decoded says whether the original's restricted craftsman leaves or waits inside.
  */
 export function planProducer(
   plan: PlannerContext,
@@ -43,7 +45,7 @@ export function planProducer(
   if (recipe === undefined) return;
 
   const claimed = seatClaims.get(workplace) ?? 0;
-  if (claimed < workSeatCount(world, ctx, workplace)) {
+  if (claimed < workSeatCount(world, ctx, workplace, plan.entity)) {
     seatClaims.set(workplace, claimed + 1);
     holdInsideWorkplace(plan, workplace);
     return;
