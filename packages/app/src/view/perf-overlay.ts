@@ -1,14 +1,14 @@
-import type { FrameStatsReport } from '../diag/frame-stats.js';
+import type { FrameRecent, FrameStatsReport } from '../diag/frame-stats.js';
 import { heapMb } from '../diag/heap.js';
 import { messages } from '../i18n/index.js';
 
 /**
  * The on-canvas debug readout — the human-facing instrument for render-scale + sim work. Pinned top-left
  * (beside the tool-panel strip; the build menu drops below it so the two never collide), lightly
- * translucent. Two lines: sim state (tick / speed / steps / entity·drawn·pooled counts — a spiking
- * `steps` means the sim is falling behind wall-clock, `drawn ≪ entities` means culling is biting) and
- * perf (smoothed FPS, the CPU `sim`/`snap`/`draw` split, GPU/compositor remainder, worst recent frame,
- * Chrome-only JS heap).
+ * translucent. Two lines: sim state (tick / speed / steps / dropped ticks / entity·drawn·pooled counts —
+ * a spiking `steps` means the sim is falling behind wall-clock, `drawn ≪ entities` means culling is
+ * biting) and perf (smoothed FPS, the CPU `sim`/`snap`/`draw` split, GPU/compositor remainder, worst
+ * recent frame, Chrome-only JS heap).
  *
  * Formatting only: the fold lives in `diag/frame-stats.ts`, which is where it can be tested. The
  * `sim`/`snap`/`draw` split is the breakdown `packages/render/AGENTS.md` says to measure before blaming
@@ -41,20 +41,23 @@ function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
 
-/** Relative shortfall below which requested and delivered speed are treated as the same number. Frame
- *  timing jitters either side of the request even when the loop is comfortably keeping up. */
-const SPEED_SHORTFALL_TOLERANCE = 0.05;
+/** Delivered speed is a two-second average, good to about a tenth; more digits would overstate it. */
+function formatDelivered(speed: number): string {
+  return `×${speed.toFixed(1)}`;
+}
 
 /**
- * `×2` while the loop keeps up, `×10→×4.2` once it cannot. A healthy session reads exactly as it did
- * before this split existed; the arrow only appears when the requested speed is not being delivered.
+ * `×2` while the loop keeps up, `×10→×4.2` once it cannot. Gated on a sustained shortfall, because
+ * discarded ticks are the only thing that can make delivered fall short - without a drop the
+ * accumulator carries every fraction into the next frame and delivered converges on requested exactly.
+ * A healthy session reads exactly as it did before this split existed.
  */
-function formatDeliveredSpeed(requested: number, delivered: number): string {
-  // No sample yet (the opening frames, or a paused loop): report what was asked for, not a zero.
-  if (delivered <= 0) return formatSpeed(requested);
-  const shortfall = requested > 0 ? (requested - delivered) / requested : 0;
-  if (shortfall <= SPEED_SHORTFALL_TOLERANCE) return formatSpeed(requested);
-  return `${formatSpeed(requested)}→${formatSpeed(Number(delivered.toFixed(1)))}`;
+function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
+  const label = formatSpeed(requested);
+  if (!recent.sustainedShortfall) return label;
+  const delivered = formatDelivered(recent.deliveredSpeed);
+  // An arrow with identical sides claims a shortfall it cannot show; say nothing instead.
+  return delivered === formatDelivered(requested) ? label : `${label}→${delivered}`;
 }
 
 /**
@@ -73,11 +76,12 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
       const last = report.last;
       if (last === null) return;
       const copy = messages().performance;
-      const { ema } = report;
+      const { ema, recent } = report;
 
-      const rate = last.paused ? copy.paused : formatDeliveredSpeed(last.speed, ema.deliveredSpeed);
-      // Shown only once the loop has actually discarded work, so a healthy session reads as before.
-      const dropped = last.droppedTicks > 0 ? `  ${copy.dropped} ${last.droppedTicks}` : '';
+      const rate = last.paused ? copy.paused : formatDeliveredSpeed(last.speed, recent);
+      // The rolling window's count, not the session total: a stall the machine has recovered from must
+      // leave the readout again rather than pinning a number there for the rest of the session.
+      const dropped = recent.sustainedShortfall ? `  ${copy.dropped} ${recent.droppedTicks}` : '';
       const simState = `${copy.tick} ${last.tick}  ${rate}  ${copy.steps} ${last.steps}${dropped}   ${copy.entities} ${last.entities}  ${copy.drawn} ${last.drawn}  ${copy.pooled} ${last.pooled}`;
 
       const fps = ema.frameMs > 0 ? Math.round(1000 / ema.frameMs) : 0;
@@ -86,7 +90,7 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
       const split = ` (${copy.sim} ${ema.simMs.toFixed(1)} ${copy.snapshot} ${ema.snapMs.toFixed(1)} ${copy.draw} ${ema.drawMs.toFixed(1)})`;
       let perf =
         `${copy.fps} ${fps}  ${copy.cpu} ${ema.cpuMs.toFixed(1)}${split}` +
-        `  ${copy.gpu} ${gpu.toFixed(1)}  ${copy.worst} ${report.recentWorstMs.toFixed(0)}ms`;
+        `  ${copy.gpu} ${gpu.toFixed(1)}  ${copy.worst} ${recent.worstMs.toFixed(0)}ms`;
       const heap = heapMb();
       if (heap !== null) perf += `  ${copy.heap} ${heap}MB`;
 

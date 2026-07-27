@@ -47,7 +47,8 @@ export interface PerfReport {
   readonly throughput: {
     /** What `?speed=` or the speed button asked for. */
     readonly requestedSpeed: number;
-    /** What the loop delivered over the window, and recently. Below the request once the cap bites. */
+    /** What the loop delivered over the window, and over the last rolling window. Below the request
+     *  once the per-frame step cap bites. */
     readonly deliveredSpeed: number;
     readonly recentDeliveredSpeed: number;
     readonly ticksPerSecond: number;
@@ -129,7 +130,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
     throughput: {
       requestedSpeed: inputs.requestedSpeed,
       deliveredSpeed: frame.window.deliveredSpeed,
-      recentDeliveredSpeed: frame.ema.deliveredSpeed,
+      recentDeliveredSpeed: frame.recent.deliveredSpeed,
       ticksPerSecond: frame.window.deliveredSpeed * TICKS_PER_SECOND,
       droppedTicks: frame.window.droppedTicks,
       droppedTicksTotal: inputs.droppedTicksTotal,
@@ -143,7 +144,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
       snapMs: frame.ema.snapMs,
       drawMs: frame.ema.drawMs,
       gpuMs: Math.max(0, meanMs - frame.ema.cpuMs),
-      recentWorstMs: frame.recentWorstMs,
+      recentWorstMs: frame.recent.worstMs,
       p50Ms: frame.window.frameMs.p50Ms,
       p95Ms: frame.window.frameMs.p95Ms,
       p99Ms: frame.window.frameMs.p99Ms,
