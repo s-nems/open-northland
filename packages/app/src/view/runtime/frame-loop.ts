@@ -1,5 +1,5 @@
 import type { HudLayout, PlacementGhost } from '@open-northland/render';
-import { FixedTimestep, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import { type FixedTimestep, MS_PER_TICK, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import {
   emitPerfMeasure,
@@ -34,6 +34,8 @@ export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   /** The live playback control the tool panel's speed button + the `P` pause key drive. */
   readonly control: LoopSpeedControl;
+  /** Constructed by the mount so its dropped-tick counter outlives any one frame. */
+  readonly timestep: FixedTimestep;
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
@@ -72,6 +74,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const {
     deps,
     control,
+    timestep,
     fogGates,
     toolPanel,
     minimap: mountedMinimap,
@@ -94,7 +97,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // death-stinger filter below all read it.
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
-  const timestep = new FixedTimestep();
   // `?debug=perf`: emit the frame phases as User Timing measures (the per-system slices come from
   // the sim instrument installed by game-view) so one DevTools recording shows the whole anatomy.
   const perfMarks = deps.params.get('debug') === PERF_MARKS_DEBUG_FLAG;
@@ -281,6 +283,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       tick: snap.tick,
       steps,
       speed: control.speed,
+      // What the loop actually ran, against what `?speed=` asked for. The cap silently discards the
+      // rest, so without this the readout would keep reporting a multiplier nothing delivered.
+      deliveredSpeed: elapsed > 0 ? (steps * MS_PER_TICK) / elapsed : 0,
+      droppedTicks: timestep.droppedTicks,
       paused: control.paused,
       entities: snap.entities.length,
       cpuMs,

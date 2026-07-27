@@ -22,6 +22,11 @@ export interface PerfInfo {
   readonly steps: number;
   /** Wall-clock tick-rate multiplier from the game-speed control (×1/×2/×3, or a fractional `?speed=`). */
   readonly speed: number;
+  /** The multiplier the loop actually ran this frame. Below {@link speed} once the fixed timestep's
+   *  per-frame cap bites, which it does on a heavy world long before a high `?speed=` is reachable. */
+  readonly deliveredSpeed: number;
+  /** Ticks the cap has discarded this session. Non-zero means the requested speed is not being met. */
+  readonly droppedTicks: number;
   /** Whether the loop is paused (freezes the tick + steps). */
   readonly paused: boolean;
   /** Total drawable entities in the snapshot this frame (pre-cull). */
@@ -74,6 +79,22 @@ function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
 
+/** Relative shortfall below which requested and delivered speed are treated as the same number. Frame
+ *  timing jitters either side of the request even when the loop is comfortably keeping up. */
+const SPEED_SHORTFALL_TOLERANCE = 0.05;
+
+/**
+ * `×2` while the loop keeps up, `×10→×4.2` once it cannot. A healthy session reads exactly as it did
+ * before this split existed; the arrow only appears when the requested speed is not being delivered.
+ */
+function formatDeliveredSpeed(requested: number, delivered: number): string {
+  // No sample yet (the opening frames, or a paused loop): report what was asked for, not a zero.
+  if (delivered <= 0) return formatSpeed(requested);
+  const shortfall = requested > 0 ? (requested - delivered) / requested : 0;
+  if (shortfall <= SPEED_SHORTFALL_TOLERANCE) return formatSpeed(requested);
+  return `${formatSpeed(requested)}→${formatSpeed(Number(delivered.toFixed(1)))}`;
+}
+
 /**
  * The JS heap in whole MB, or `null` where the browser doesn't expose it. `performance.memory` is a
  * non-standard Chrome-only field (undefined in Firefox/Safari and headless software-GL runs), so it is
@@ -102,6 +123,7 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
   let avgSim = 0;
   let avgSnap = 0;
   let avgDraw = 0;
+  let avgDelivered = 0;
   // Worst (longest) frame in the current window — catches periodic GC/compositor spikes an average hides.
   let worstMs = 0;
   let worstCount = 0;
@@ -119,8 +141,11 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
       }
 
       const copy = messages().performance;
-      const rate = info.paused ? copy.paused : formatSpeed(info.speed);
-      const simState = `${copy.tick} ${info.tick}  ${rate}  ${copy.steps} ${info.steps}   ${copy.entities} ${info.entities}  ${copy.drawn} ${info.drawn}  ${copy.pooled} ${info.pooled}`;
+      if (!info.paused) avgDelivered = ema(avgDelivered, info.deliveredSpeed);
+      const rate = info.paused ? copy.paused : formatDeliveredSpeed(info.speed, avgDelivered);
+      // Shown only once the loop has actually discarded work, so a healthy session reads as before.
+      const dropped = info.droppedTicks > 0 ? `  ${copy.dropped} ${info.droppedTicks}` : '';
+      const simState = `${copy.tick} ${info.tick}  ${rate}  ${copy.steps} ${info.steps}${dropped}   ${copy.entities} ${info.entities}  ${copy.drawn} ${info.drawn}  ${copy.pooled} ${info.pooled}`;
 
       let perf = `${copy.fps} ${fps}`;
       if (info.cpuMs !== undefined) {

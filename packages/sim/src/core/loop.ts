@@ -12,10 +12,25 @@ export const MS_PER_TICK = 1000 / TICKS_PER_SECOND;
 
 export class FixedTimestep {
   private accumulatorMs = 0;
+  private dropped = 0;
   private readonly maxStepsPerFrame: number;
 
   constructor(maxStepsPerFrame = 5) {
     this.maxStepsPerFrame = maxStepsPerFrame;
+  }
+
+  /**
+   * Ticks the cap has discarded since construction. Dropping the backlog is what stops a death
+   * spiral, but an unreported drop makes a requested playback speed a lie: `?speed=10` cannot be
+   * delivered below `speed * TICKS_PER_SECOND / maxSteps` fps, and without this counter nothing says so.
+   */
+  get droppedTicks(): number {
+    return this.dropped;
+  }
+
+  /** The per-frame step cap that produces those drops. */
+  get maxSteps(): number {
+    return this.maxStepsPerFrame;
   }
 
   /**
@@ -30,8 +45,10 @@ export class FixedTimestep {
       this.accumulatorMs -= MS_PER_TICK;
       steps++;
     }
-    // If we hit the cap, drop backlog rather than spiral.
+    // If we hit the cap, drop backlog rather than spiral. Rounded, not floored: repeated subtraction
+    // leaves the accumulator a hair under a whole multiple, which would under-report every frame.
     if (steps === this.maxStepsPerFrame && this.accumulatorMs > MS_PER_TICK) {
+      this.dropped += Math.round(this.accumulatorMs / MS_PER_TICK);
       this.accumulatorMs = 0;
     }
     return this.accumulatorMs / MS_PER_TICK;
