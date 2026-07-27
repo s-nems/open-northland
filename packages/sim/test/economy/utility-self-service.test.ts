@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Carrying, CurrentAtomic, MoveGoal } from '../../src/components/index.js';
+import { Carrying, CurrentAtomic, MoveGoal, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -96,6 +96,8 @@ function utilityContent(): ContentSet {
           { inputs: [{ goodType: WATER, amount: 1 }], outputs: [{ goodType: BREAD, amount: 1 }], ticks: 6 },
         ],
       },
+      // The brewery: honey AND water → ale, so it competes with the bakery for the settlement's water
+      // (honey leads the input list, so a brewer short of both still draws honey first).
       {
         typeId: BREWERY,
         id: 'brewery',
@@ -106,11 +108,19 @@ function utilityContent(): ContentSet {
         ],
         stock: [
           { goodType: HONEY, capacity: 10, initial: 0 },
+          { goodType: WATER, capacity: 10, initial: 0 },
           { goodType: ALE, capacity: 10, initial: 0 },
         ],
         produces: [ALE],
         recipes: [
-          { inputs: [{ goodType: HONEY, amount: 1 }], outputs: [{ goodType: ALE, amount: 1 }], ticks: 6 },
+          {
+            inputs: [
+              { goodType: HONEY, amount: 1 },
+              { goodType: WATER, amount: 1 },
+            ],
+            outputs: [{ goodType: ALE, amount: 1 }],
+            ticks: 6,
+          },
         ],
       },
     ],
@@ -196,6 +206,39 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     // The adjacent well wins over the distant stocked warehouse — the baker draws its own water at cell 1
     // instead of trekking to cell 6.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 1, 0));
+  });
+
+  it('leaves the brewery’s water reserve alone and fetches from storage instead', () => {
+    const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(8, 1) });
+    const bakery = buildingAt(sim, BAKERY, 0, 0);
+    const brewery = buildingAt(sim, BREWERY, 1, 0, [[WATER, 5]]); // a rival consumer's own water, next door
+    buildingAt(sim, WAREHOUSE, 6, 0, [[WATER, 5]]); // the settlement's water, far away
+    const baker = settlerAt(sim, 0, 0, OPERATOR, bakery);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Proximity alone would send the baker one cell to the brewery; the source rule sends it to the
+    // warehouse at cell 6 — water comes from the well or from storage, never out of a rival's vat.
+    expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 6, 0));
+    expect(sim.world.get(brewery, Stockpile).amounts.get(WATER)).toBe(5);
+  });
+
+  it('still lifts a standing unit off a producer’s OWN shelf (the well’s minted water)', () => {
+    const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(8, 1) });
+    const bakery = buildingAt(sim, BAKERY, 0, 0);
+    const well = buildingAt(sim, WELL, 2, 0, [[WATER, 1]]); // a unit the well already minted
+    const baker = settlerAt(sim, 2, 0, OPERATOR, bakery); // standing on the well
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The well MAKES water, so its shelf is a source like any warehouse — and picking the standing
+    // unit up beats re-cranking the recipe for one.
+    expect(sim.world.get(baker, CurrentAtomic).effect).toEqual({
+      kind: 'pickup',
+      goodType: WATER,
+      amount: 1,
+      from: well,
+    });
   });
 
   it('end to end: an UNSTAFFED well feeds the bakery — bread is baked with nobody posted at the well', () => {

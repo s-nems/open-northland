@@ -8,8 +8,8 @@
 /** Where a placement should gravitate, on top of the always-on near-HQ rule: toward the seat's
  *  first building of a stable content id, toward the nearest live resource of a good, toward
  *  the map's centre (the barracks rule — face the contested middle, not the town's back), or
- *  toward the settlement's outskirts (past the building farthest from the centroid — the
- *  warehouse rule, user plan 2026-07-25; see `placement.ts`). */
+ *  toward the settlement's outskirts (past a frontier building — the warehouse rule, user plan
+ *  2026-07-25; `placement.ts` owns which frontier). */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }

@@ -72,18 +72,34 @@ describe('producer self-service — fetching a missing recipe input', () => {
     expect(sim.world.get(enemyStore, Stockpile).amounts.get(WOOD)).toBe(3); // enemy store untouched
   });
 
-  it('fetches a missing input from another WORKPLACE’s store (the farm next door), like from a warehouse', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    // The input source scan accepts ANY positioned stockpile that holds the good — a warehouse, a
-    // flag pile, or another workplace's own store. Here the good sits in a FARM building's store
-    // (nothing lies on the ground): the miller walks there for it all the same.
+  it('never raids another workshop’s input reserve — a rival consumer’s store is not a warehouse', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    // The nearest wood sits inside a twin mill, which CONSUMES wood: that stock is the neighbour's
+    // reserve, and stripping it would starve one shop to feed the other. The miller walks past it to
+    // the settlement's warehouse instead.
     const mill = buildingAt(sim, SAWMILL, 0, 0); // needs wood for its recipe
-    buildingAt(sim, FARM, 3, 0, [[WOOD, 2]]); // the neighbouring workplace holding the input
+    const rival = buildingAt(sim, TWIN_MILL, 2, 0, [[WOOD, 2]]); // a rival consumer's reserve, next door
+    buildingAt(sim, HEADQUARTERS, 6, 0, [[WOOD, 3]]); // the common stock, far away
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
     aiSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 6, 0));
+    expect(sim.world.get(rival, Stockpile).amounts.get(WOOD)).toBe(2);
+  });
+
+  it('still lifts a good no recipe of the holder consumes (an orphan stock slot is not a sink)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    // The FARM produces wheat and consumes nothing, so wood parked in it is nobody's reserve — the
+    // rule protects recipe INPUTS, not every good sitting in a producing building.
+    const mill = buildingAt(sim, SAWMILL, 0, 0);
+    buildingAt(sim, FARM, 2, 0, [[WOOD, 2]]);
+    buildingAt(sim, HEADQUARTERS, 6, 0, [[WOOD, 3]]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
 
   it('never strips a neighbouring construction site of its delivered build material', () => {

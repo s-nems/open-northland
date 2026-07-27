@@ -221,7 +221,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // Storages share the HQ's worker shape — carriers staffed 1..3, harvest slots left open.
+      // Storages share the HQ's worker shape — up to three target-tier carriers, harvest slots open.
       {
         typeId: 13,
         id: 'stock_00',
