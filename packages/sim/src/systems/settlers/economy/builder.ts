@@ -7,7 +7,7 @@ import {
   neededConstructionGoods,
   stampSupplyRun,
 } from '../../stores/index.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup } from '../actions.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup } from '../atomics/start.js';
 import { claimWorkCell } from '../destack.js';
 import type { PlannerContext } from '../planner/context.js';
 import type { PlannerSpacing } from '../planner/spacing.js';

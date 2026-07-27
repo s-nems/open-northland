@@ -3,13 +3,13 @@ import * as components from '../../src/components/index.js';
 import { type Entity, World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { dropOrStackGood } from '../../src/systems/settlers/effects-goods/index.js';
+import { dropOrStackGood } from '../../src/systems/settlers/atomics/effects/goods/index.js';
 import { stockpilesAtNode } from '../../src/systems/spatial/stockpiles.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
  * The stockpile NODE index (`systems/spatial/stockpiles.ts`) — the golden-rule-6 fix that turns the
- * per-drop tile lookup in `effects-goods/piles.ts` from a scan over every alive entity (~17k on a
+ * per-drop tile lookup in `atomics/effects/goods/piles.ts` from a scan over every alive entity (~17k on a
  * decoded map) into an O(1) bucket read. Pinned here: buckets hold every stockpile on the node
  * ascending-id (the canonical first-wins order `dropOrStackGood`/`stackOntoTile` pick through,
  * including the candidates they reject and skip), the index refreshes on the Stockpile store

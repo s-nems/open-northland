@@ -1,9 +1,9 @@
-import { Equipment, Health, Settler } from '../../../components/index.js';
-import { ONE } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { applyEquipWear, draughtRestores, wearStepOf } from '../../equipment/index.js';
-import { relieveNeed } from '../../lifecycle/needs.js';
+import { Equipment, Health, Settler } from '../../../../../components/index.js';
+import { ONE } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
+import { applyEquipWear, draughtRestores, wearStepOf } from '../../../../equipment/index.js';
+import { relieveNeed } from '../../../../lifecycle/needs.js';
 
 /**
  * Apply one completed `drink`: re-read misc[`slot`] - a slot emptied or spent since the drive chose

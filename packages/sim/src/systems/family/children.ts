@@ -33,7 +33,7 @@ import { BABY_FEMALE, BABY_MALE, CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ag
 import { stampDefaultStance } from '../orders/index.js';
 import { atomicAnimationName, atomicDurationForName } from '../readviews/animations.js';
 import { isFood } from '../readviews/index.js';
-import { atOrWalk, startDrop } from '../settlers/actions.js';
+import { atOrWalk, startDrop } from '../settlers/atomics/start.js';
 import { anyNeedPressing } from '../settlers/drives-needs.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';

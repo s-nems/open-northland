@@ -52,8 +52,8 @@ export function rollInitialNeed(rng: Rng): Fixed {
  * spells of work instead of clearing the bar in one sitting.
  *
  * Source basis: the original's eat clips carry `event 30 2 +4000` on the CHANGE_ENERGY channel
- * (`logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_ENERGY = 2`) against the ~10000-unit reserve
- * span {@link import('../settlers/effects-combat/need-cost.js')} scales against, and observation of the
+ * (`logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_ENERGY = 2`) against the ~10000-unit reserve span
+ * {@link import('../settlers/atomics/effects/combat/need-cost.js')} scales against, and observation of the
  * running original puts one meal at 40% of the bar. The data's at-home and candy clips carry a larger
  * `+6000`; a single flat restore per meal is the approximation until the per-clip vocabulary is wired.
  */

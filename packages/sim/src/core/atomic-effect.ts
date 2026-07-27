@@ -22,11 +22,11 @@ export type AtomicEffect =
   | { readonly kind: 'produce'; readonly recipeOutput: number }
   /** A consumer worker draws one unit of `goodType` from an input-less shared utility (`utility` — a well
    *  for water, a hive for honey): on completion one unit appears on its back
-   *  ({@link import('../systems/settlers/effects-goods/index.js').drawUtilityGood}). The utility mints from no
-   *  inputs, so the draw creates the unit — the consumer-side twin of the ProductionSystem depositing an
-   *  input-less recipe's output when the utility is staffed (goods conserved up to that by-definition
-   *  creation). `utility` is an inspection record; a utility gone since the planner chose it still yields
-   *  (the extraction happened, like `eat`'s emptied store). */
+   *  ({@link import('../systems/settlers/atomics/effects/goods/index.js').drawUtilityGood}). The utility
+   *  mints from no inputs, so the draw creates the unit — the consumer-side twin of the ProductionSystem
+   *  depositing an input-less recipe's output when the utility is staffed (goods conserved up to that
+   *  by-definition creation). `utility` is an inspection record; a utility gone since the planner chose it
+   *  still yields (the extraction happened, like `eat`'s emptied store). */
   | { readonly kind: 'draw'; readonly goodType: number; readonly utility: Entity }
   | {
       readonly kind: 'eat';
@@ -126,15 +126,16 @@ export type AtomicEffect =
   /** The settler sets its carried load down on the ground before an interrupt takes over (a profession
    *  change, or fleeing an enemy): on completion the whole {@link import('../components/settler.js').Carrying}
    *  load is placed on the settler's own tile, spilling any remainder over the `MAX_GROUND_STACK` cap to the
-   *  nearest free walkable hexes ({@link import('../systems/settlers/effects-goods/index.js').dropCarriedLoad}).
-   *  No good is lost — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the
-   *  settler at apply time. */
+   *  nearest free walkable hexes
+   *  ({@link import('../systems/settlers/atomics/effects/goods/index.js').dropCarriedLoad}). No good is lost
+   *  — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the settler at
+   *  apply time. */
   | { readonly kind: 'drop' }
   /** The settler lifts one unit of `goodType` out of the store/pile `from` STRAIGHT into its equipment
    *  slot (`group`, `slot`) - the equip errand's acquire step, a `pickup` whose unit lands on the body
    *  (fresh) instead of the back. A fresh swapped-out good moves onto the back for stowing; a part-used
-   *  one is destroyed (the take-off rule, `effects-goods/equip.ts`). Otherwise goods are conserved: the
-   *  source loses exactly the worn unit, and a source gone/emptied mid-swing whiffs (the planner
+   *  one is destroyed (the take-off rule, `atomics/effects/goods/equip.ts`). Otherwise goods are conserved:
+   *  the source loses exactly the worn unit, and a source gone/emptied mid-swing whiffs (the planner
    *  re-searches). */
   | {
       readonly kind: 'equip';
@@ -146,7 +147,7 @@ export type AtomicEffect =
   /** The settler takes the good in equipment slot (`group`, `slot`) off - run AT the stow store (`sink`),
    *  so the item stays visibly worn for the walk there. A fresh unit deposits straight into `sink`
    *  (overflow onto the back for the stow leg); a part-used one is destroyed in place with `sink` null
-   *  (the take-off rule, `effects-goods/equip.ts`), as when no store can take the unit (the stow leg
+   *  (the take-off rule, `atomics/effects/goods/equip.ts`), as when no store can take the unit (the stow leg
    *  drops it on the ground). An already-empty slot whiffs. */
   | {
       readonly kind: 'unequip';

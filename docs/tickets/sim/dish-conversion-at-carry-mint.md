@@ -6,9 +6,11 @@
 `pickupFromStore` applies it. That covers goods lifted out of a STORE, but not the two seams that mint a
 good straight onto a settler's back:
 
-- `effects-goods/harvest.ts` — a hunter's cadaver yield. The decoded IR gives good 21 (`meat`) a harvest
-  atomic (33), so this fires in real content.
-- `effects-combat/hit/reactions.ts` — the same meat constant on a kill reaction.
+- `atomics/effects/goods/harvest.ts`: the bare-node pluck, which `addCarry`s the node's own `goodType`
+  onto the back with no ground stage between.
+- `atomics/effects/combat/hit/reactions.ts`: `harvestCadaver` awards `MEAT_GOOD` (21) in place on a
+  hunter's killing blow, gated on `isHunterJob` + catchable prey + a positive `maximumcadaversize`. Every
+  decoded animal record carries one, so this fires in real content.
 
 So a hunter carries RAW meat, and `planDelivery` routes the raw form. `work_animal_farm` is the only
 holder of good 21 in the decoded IR, so that load reaches the animal farm or is shed at the hunter's
@@ -19,8 +21,9 @@ exception.
 
 ## Scope
 
-- Decide the seam: apply `exportedGoodForm` where the carry is minted (`addCarry` callers in
-  `effects-goods/`), or once in `planDelivery` before routing. One place, not three.
+- Decide the seam: apply `exportedGoodForm` where the carry is minted (every `addCarry` caller, across
+  both `atomics/effects/goods/` and `atomics/effects/combat/`), or once in `planDelivery` before routing.
+  One place, not three.
 - A hunter's kill then banks as `food_simple` on the first trip instead of after a ground-heap round trip.
 - Check the original first: `goodtypes.ini` gives meat `landscapeToHarvest`/`landscapeToPickup` 80 and
   `landscapeToStore` 44 — three distinct landscape stages — which may mean the original really does carry

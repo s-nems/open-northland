@@ -1,10 +1,10 @@
 # Retire the legacy unstamped strikes component shape
 
-**Area:** sim (footprint, settlers/effects-goods) · **Priority:** P3
+**Area:** sim (footprint, settlers/atomics/effects/goods) · **Priority:** P3
 
 The strikes mechanic is implemented twice to keep old state hashes alive. `footprint/resources.ts`
 stamps `strikesPerUnit`/`strikes` only when supplied ("legacy 1-strike hash shape"),
-`effects-goods/harvest.ts` branches on `strikesPerUnit > 1` with an else branch that exists purely
+`atomics/effects/goods/harvest.ts` branches on `strikesPerUnit > 1` with an else branch that exists purely
 so the unstamped component shape survives being worked, and `footprint/placement/blockers.ts`
 keeps a "legacy anchor-only resource" same-tile rule. The only real producer,
 `packages/app/src/game/sandbox/place/resources.ts`, throws unless `strikesPerUnit` is positive, so

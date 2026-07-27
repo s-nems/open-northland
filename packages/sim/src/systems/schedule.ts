@@ -19,7 +19,7 @@ import { herdingSystem } from './movement/herding.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { movementSystem } from './movement/system.js';
 import { deferredOrderSystem, playerOrderSystem, signpostOrderSystem } from './orders/index.js';
-import { atomicSystem } from './settlers/atomic.js';
+import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
 import { visionSystem } from './vision/index.js';

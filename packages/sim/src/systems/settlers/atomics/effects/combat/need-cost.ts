@@ -1,9 +1,9 @@
-import { Settler } from '../../../components/index.js';
-import { type Fixed, fx, ONE } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { atomicAnimationName } from '../../readviews/animations.js';
-import { ATOMIC_EVENT_CHANNEL, atomicEventChannelDelta } from '../../readviews/index.js';
+import { Settler } from '../../../../../components/index.js';
+import { type Fixed, fx, ONE } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
+import { atomicAnimationName } from '../../../../readviews/animations.js';
+import { ATOMIC_EVENT_CHANNEL, atomicEventChannelDelta } from '../../../../readviews/index.js';
 
 /**
  * The original's per-need **reserve span** the raw `event <at> <channel> <delta>` need tuples move

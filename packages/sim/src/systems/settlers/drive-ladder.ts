@@ -51,7 +51,7 @@ import { planTraining } from './training.js';
 // starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
 // a gatherer works its own trade before ferrying others' goods. The atomic id and its duration come
 // from content, not code (the drives resolve them through the tribe's `setatomic` binding — see
-// ./actions.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
+// ./atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
 // scanned in canonical (ascending entity-id) order with a deterministic distance+cell tie-break, so
 // the choice never depends on store insertion history.
 

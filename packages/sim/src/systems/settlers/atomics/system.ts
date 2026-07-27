@@ -1,25 +1,26 @@
-import { CurrentAtomic, DeferredOrder, ownerOf, Settler } from '../../components/index.js';
-import type { AtomicEffect } from '../../core/atomic-effect.js';
-import { assertNever } from '../../core/brand.js';
-import { type Fixed, fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { System, SystemContext } from '../context.js';
-import { advanceConstructionLabor } from '../economy/construction.js';
-import { applySow, applyWater } from '../economy/fields.js';
-import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../lifecycle/needs.js';
-import { grantCarryExperience, grantScoutExperience, grantWorkExperience } from '../progression/index.js';
+import { CurrentAtomic, DeferredOrder, ownerOf, Settler } from '../../../components/index.js';
+import type { AtomicEffect } from '../../../core/atomic-effect.js';
+import { assertNever } from '../../../core/brand.js';
+import { type Fixed, fx } from '../../../core/fixed.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { System, SystemContext } from '../../context.js';
+import { advanceConstructionLabor } from '../../economy/construction.js';
+import { applySow, applyWater } from '../../economy/fields.js';
+import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../../lifecycle/needs.js';
+import { grantCarryExperience, grantScoutExperience, grantWorkExperience } from '../../progression/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
   atomicEventFrame,
-} from '../readviews/animations.js';
-import { erectSignpost } from '../signposts/index.js';
+} from '../../readviews/animations.js';
+import { erectSignpost } from '../../signposts/index.js';
+import { serveDrillRepetition } from '../training.js';
 import {
   applyPendingStaggers,
   type PendingStagger,
   paySwingNeedCost,
   resolveAttackHit,
-} from './effects-combat/index.js';
+} from './effects/combat/index.js';
 import {
   beginRestTail,
   consumeFood,
@@ -35,8 +36,7 @@ import {
   pileupIntoStore,
   swingWorkUnits,
   unequipWornGood,
-} from './effects-goods/index.js';
-import { serveDrillRepetition } from './training.js';
+} from './effects/goods/index.js';
 
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a

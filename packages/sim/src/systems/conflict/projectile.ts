@@ -7,7 +7,7 @@ import {
   applyPendingStaggers,
   type PendingStagger,
   resolveCombatHit,
-} from '../settlers/effects-combat/index.js';
+} from '../settlers/atomics/effects/combat/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 
 /**

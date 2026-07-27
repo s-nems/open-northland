@@ -1,7 +1,7 @@
 import { MoveGoal, PathRequest } from '../components/index.js';
 import type { Component, Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
-import { startAtomic } from './settlers/actions.js';
+import { startAtomic } from './settlers/atomics/start.js';
 import { canonicalById, clearNavState, isTravelling } from './spatial/nodes.js';
 
 // The shared skeleton for "two settlers meet and perform a mirrored ritual", used by the wedding pass

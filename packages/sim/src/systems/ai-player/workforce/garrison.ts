@@ -12,7 +12,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { drillTrainingGain } from '../../progression/index.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
-import { EXERCISE_ATOMIC_ID } from '../../settlers/actions.js';
+import { EXERCISE_ATOMIC_ID } from '../../settlers/atomics/start.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { drillDoorOpen } from '../../settlers/training.js';
 import { navigationLimitFor } from '../../signposts/index.js';

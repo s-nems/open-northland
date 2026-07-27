@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
-import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startPickup } from '../settlers/actions.js';
+import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startPickup } from '../settlers/atomics/start.js';
 import { interactionCell } from '../settlers/targets/index.js';
 
 // The two food-haul steps a woman's drives are built from — carry a held unit into her home larder, or

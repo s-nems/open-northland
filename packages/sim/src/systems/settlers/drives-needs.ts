@@ -13,7 +13,7 @@ import {
   PRAY_ATOMIC_ID,
   SLEEP_ATOMIC_ID,
   startAtomic,
-} from './actions.js';
+} from './atomics/start.js';
 import { draughtSlotFor, startDrink } from './drives-drink.js';
 import type { PlannerSpacing } from './planner/spacing.js';
 import { restingCell } from './rest-spot.js';

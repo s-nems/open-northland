@@ -18,8 +18,8 @@ import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '
 import { combatSystem } from '../../src/systems/index.js';
 import { MOVE_SPEED_PER_TICK } from '../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
-import { DROP_ATOMIC_ID } from '../../src/systems/settlers/actions.js';
-import { dropCarriedLoad } from '../../src/systems/settlers/effects-goods/index.js';
+import { dropCarriedLoad } from '../../src/systems/settlers/atomics/effects/goods/index.js';
+import { DROP_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { combatant } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';

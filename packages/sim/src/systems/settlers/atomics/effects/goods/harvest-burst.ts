@@ -1,8 +1,8 @@
-import { type CurrentAtomic, Felling, MineDeposit, Resource } from '../../../components/index.js';
-import { type Fixed, fx, ONE, ZERO } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { workSpeedBonus } from '../../progression/bonus.js';
+import { type CurrentAtomic, Felling, MineDeposit, Resource } from '../../../../../components/index.js';
+import { type Fixed, fx, ONE, ZERO } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
+import { workSpeedBonus } from '../../../../progression/bonus.js';
 
 /**
  * Consecutive work swings a gatherer lands before standing its inter-swing breather.

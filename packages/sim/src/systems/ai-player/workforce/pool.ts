@@ -5,7 +5,7 @@ import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isScoutJob } from '../../readviews/index.js';
-import { jobCanBuild } from '../../settlers/actions.js';
+import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../shared.js';
 import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors.js';

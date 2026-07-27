@@ -6,7 +6,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { createResourceNode } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
-import { dropOrStackGood } from '../settlers/effects-goods/index.js';
+import { dropOrStackGood } from '../settlers/atomics/effects/goods/index.js';
 
 // The map-editing commands — put a standing resource / a loose good pile on the map, or take a building /
 // signpost off it. The runtime analogue of the scene-setup `place*` helpers, behind the HUD tools and the

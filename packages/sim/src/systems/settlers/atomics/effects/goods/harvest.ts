@@ -9,11 +9,11 @@ import {
   Stump,
   stampOwner,
   WorkFlag,
-} from '../../../components/index.js';
-import { eventAt } from '../../../core/events.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { unstampResourceFootprint } from '../../footprint/index.js';
+} from '../../../../../components/index.js';
+import { eventAt } from '../../../../../core/events.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
+import { unstampResourceFootprint } from '../../../../footprint/index.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 

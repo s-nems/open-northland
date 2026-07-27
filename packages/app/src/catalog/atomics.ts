@@ -28,7 +28,7 @@ export const CULTIVATE_ATOMIC = 35;
 /**
  * The store-exchange pair every trade shares (`tribetypes.ini setatomic <job> 22/23
  * "viking_<class>_pickup"/"_pileup"`; the sim's `PICKUP/PILEUP_ATOMIC_ID`,
- * `packages/sim/src/systems/settlers/actions.ts`): lift a load (22) and pile it into a store (23).
+ * `packages/sim/src/systems/settlers/atomics/start.ts`): lift a load (22) and pile it into a store (23).
  */
 export const STORE_PICKUP_ATOMIC = 22;
 export const STORE_PILEUP_ATOMIC = 23;
@@ -42,8 +42,8 @@ export const ATTACK_ATOMIC = 81;
 
 /**
  * The build-house swing (`tribetypes.ini setatomic 7 39 "viking_builder_build_house"`; the sim's
- * `BUILD_HOUSE_ATOMIC_ID`, `packages/sim/src/systems/settlers/actions.ts`). Its swing animation is 15 frames
- * long (`atomicanimations.ini`, extracted).
+ * `BUILD_HOUSE_ATOMIC_ID`, `packages/sim/src/systems/settlers/atomics/start.ts`). Its swing animation is 15
+ * frames long (`atomicanimations.ini`, extracted).
  */
 export const BUILD_HOUSE_ATOMIC = 39;
 
