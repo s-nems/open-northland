@@ -1,8 +1,8 @@
 # Finish the producer input-reserve rule: the other fetch rungs, and the way back out
 
-**Area:** sim (settlers/economy) · **Priority:** P2
+**Area:** sim (settlers/drives/economy) · **Priority:** P2
 
-`mayFetchGoodFrom` (`systems/settlers/economy/store-policy.ts`) stops a consumer from lifting a good
+`mayFetchGoodFrom` (`systems/settlers/drives/economy/store-policy.ts`) stops a consumer from lifting a good
 that the holder's own recipe consumes. Only `nearestMissingInputSource` consults it, and nothing
 balances an input slot once it is full, so two halves of the rule are still missing.
 
@@ -12,7 +12,7 @@ balances an input slot once it is full, so two halves of the rule are still miss
 that holds the good, so three rungs still strip protected reserves:
 
 - `economy/builder.ts` — a builder fetching construction material;
-- `settlers/equip-order.ts` — an equip errand;
+- `settlers/drives/equip-order.ts` — an equip errand;
 - `settlers/planner/assistant-grants.ts` — a granted item.
 
 Real content pays every construction bill in wood/stone/brick, and `work_joinery_01`,

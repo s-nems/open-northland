@@ -7,29 +7,29 @@ import {
   Position,
   Resting,
   UnderConstruction,
-} from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import { type FarmingSpec, farmWorkGood } from '../../economy/fields.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { buildingEnabled, scaledWorkRepeats, workSpeedBonus } from '../../progression/index.js';
-import { atomicDuration } from '../../readviews/animations.js';
-import { closer, manhattan } from '../../spatial/nodes.js';
-import { buildingWorkerJobs } from '../../stores/index.js';
-import { atOrWalk, startAtomic, startPickup } from '../atomics/start.js';
-import type { PlannerContext } from '../planner/context.js';
-import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../targets/index.js';
-import { unreachableGoals } from '../unreachable-goals.js';
+} from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../context.js';
+import { type FarmingSpec, farmWorkGood } from '../../../economy/fields.js';
+import { dynamicBlockOverlay } from '../../../footprint/index.js';
+import { buildingEnabled, scaledWorkRepeats, workSpeedBonus } from '../../../progression/index.js';
+import { atomicDuration } from '../../../readviews/animations.js';
+import { closer, manhattan } from '../../../spatial/nodes.js';
+import { buildingWorkerJobs } from '../../../stores/index.js';
+import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
+import type { PlannerContext } from '../../planner/context.js';
+import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
+import { unreachableGoals } from '../../unreachable-goals.js';
 
 // The farmer drive — the field-cultivation rung of the planner ladder: a worker bound to a farm (a workplace
 // producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing, watering and reaping
 // wheat fields and carries each cut sheaf home. The field lifecycle itself (growth, the sow/water/reap effects)
-// lives in ../economy/fields.ts; this module decides what the farmer does next. Source basis: the actions and
-// their animations are the original's own farmer vocabulary (atomics 34/35/29); the loop's ordering is
-// engine-side and not decoded, so the priority below (reap > carry > sow > water > wait) is a named
-// approximation of the observed original.
+// lives in ../../../economy/fields.ts; this module decides what the farmer does next. Source basis: the
+// actions and their animations are the original's own farmer vocabulary (atomics 34/35/29); the loop's
+// ordering is engine-side and not decoded, so the priority below (reap > carry > sow > water > wait) is a
+// named approximation of the observed original.
 
 import type { FarmClaims } from './claims.js';
 import { nearestFarmSheaf, nextSowNode } from './targets.js';
@@ -73,9 +73,9 @@ function boundFarmTarget(
  *
  *  a. **Reap** a ripe field of this farm (the scythe swing — the good's harvest atomic; the cut wheat drops as
  *     a ground sheaf where the field stood).
- *  b. **Carry a sheaf home** — pick up a cut-wheat {@link import('../../components/index.js').GroundDrop} lying
- *     within the farm's field radius (the delivery rung then routes the load into the farm's own store — the
- *     bound storage sink).
+ *  b. **Carry a sheaf home** — pick up a cut-wheat
+ *     {@link import('../../../../components/index.js').GroundDrop} lying within the farm's field radius (the
+ *     delivery rung then routes the load into the farm's own store — the bound storage sink).
  *  c. **Sow** a new field while the farm holds fewer than `maxFields` — a flat per-farm plot size, unchanged
  *     by crew size (observed) — walk to the next free node of the jittered field lattice around the farm and
  *     run the plant atomic. Sowing beats
@@ -126,12 +126,12 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   };
 
   // The reachability layers every field/sheaf pick is filtered through. A field sits on open ground a
-  // building can later cover, and it is worked from its own node (`FIELD_FOOTPRINT`), so a walled-in field
-  // is a goal `findPath` always rejects. Without this the nearest-first pick re-chooses that same doomed
-  // field every replan and the farmer never advances past it. The static component check catches the far
-  // bank of a river; walls are a DYNAMIC overlay and never split a component, so a field ringed by
-  // buildings is caught by the overlay or failed-route memo instead; the FieldReclaimSystem
-  // (../../economy/field-reclaim.ts) reclaims the plot slot a field that stays sealed would otherwise hold.
+  // building can later cover, and it is worked from its own node (`FIELD_FOOTPRINT`), so a walled-in field is
+  // a goal `findPath` always rejects. Without this the nearest-first pick re-chooses that same doomed field
+  // every replan and the farmer never advances past it. The static component check catches the far bank of a
+  // river; walls are a DYNAMIC overlay and never split a component, so a field ringed by buildings is caught
+  // by the overlay or failed-route memo instead; the FieldReclaimSystem (../../../economy/field-reclaim.ts)
+  // reclaims the plot slot a field that stays sealed would otherwise hold.
   const gates: WorkCellGates = {
     terrain,
     blocked: dynamicBlockOverlay(world, ctx, terrain),

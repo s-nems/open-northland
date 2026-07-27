@@ -2,11 +2,11 @@
 
 **Area:** sim + app · **Priority:** P2
 
-The drill itself landed (`systems/settlers/training.ts`, `?scene=barracks`): a settler sent to a barracks
-walks in, runs the civilist EXERCISE clip for 15 s of game time banking its `+1` TRAINING experience per
-completed repetition, and steps back out enlisted as the base soldier class. The `trainforjob` rows now
-open a fighter trade beside the unreachable `needforjob` rows (`schoolingMet`, `progression/unlocks.ts`),
-and an AI seat hires a garrison out of its true surplus (`ai-player/workforce/garrison.ts`). Still open:
+The drill itself landed (`systems/settlers/drives/training.ts`, `?scene=barracks`): a settler sent to a
+barracks walks in, runs the civilist EXERCISE clip for 15 s of game time banking its `+1` TRAINING experience
+per completed repetition, and steps back out enlisted as the base soldier class. The `trainforjob` rows now
+open a fighter trade beside the unreachable `needforjob` rows (`schoolingMet`, `progression/unlocks.ts`), and
+an AI seat hires a garrison out of its true surplus (`ai-player/workforce/garrison.ts`). Still open:
 
 - **The coin spend and the soldier's own TRAIN clip.** `<tribe>_soldier_train` (atomic 90, length 28)
   carries `event 2 30 −1` (`ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_GOLD`) beside `event 22 29 +25`; the

@@ -13,8 +13,8 @@ import type { SystemContext } from '../../context.js';
 import { drillTrainingGain } from '../../progression/index.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
 import { EXERCISE_ATOMIC_ID } from '../../settlers/atomics/start.js';
+import { drillDoorOpen } from '../../settlers/drives/training.js';
 import { interactionCell } from '../../settlers/targets/index.js';
-import { drillDoorOpen } from '../../settlers/training.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
@@ -28,7 +28,7 @@ export const GARRISON_TARGET = 6;
 
 /**
  * The garrison hire: send a true surplus man to the barracks, where the drill enlists him
- * (`settlers/training.ts`) — the seat's only route to a soldier (`schoolingMet`).
+ * (`settlers/drives/training.ts`) — the seat's only route to a soldier (`schoolingMet`).
  *
  * Runs last in the workforce ladder, so a recruit is a man no collector post, no building slot, no builder
  * reserve and no flag wanted. One man per decision, so the labour force steps down gradually instead of

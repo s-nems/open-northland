@@ -83,7 +83,7 @@ function staffingOf(type: BuildingType): BuildingStaffing | null {
  * {@link BuildingStaffing} tier, where "operator" is a non-carrier, non-gatherer slot. Gatherer
  * slots are never staffed, so a carrier-only workplace (the well, the hive) gets no permanent
  * worker: it is a shared utility a consumer self-serves (a baker cranks the well for its own water,
- * see settlers/economy/workshop).
+ * see settlers/drives/economy/workshop).
  * Within a tier, every WORKPLACE fills before any storage (the plan lists warehouse carriers below
  * workshop staffing), each kind in canonical building order; both tiers advance ONE shared
  * {@link StaffingTally} per decision (commands apply next tick, so the target pass must see the min

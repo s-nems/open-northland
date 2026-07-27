@@ -1,12 +1,12 @@
-import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { buildingBlockedCells } from '../../footprint/index.js';
-import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
-import type { PlannerContext } from '../planner/context.js';
-import { buriedUnderBuilding, interactionCell, nearestByCell } from '../targets/index.js';
-import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import { deliverableGoodProbe } from './routing.js';
+import { Building, JobAssignment, Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { SystemContext } from '../../../context.js';
+import { buildingBlockedCells } from '../../../footprint/index.js';
+import { buildingProduces, lowestStockedGood } from '../../../stores/index.js';
+import type { PlannerContext } from '../../planner/context.js';
+import { buriedUnderBuilding, interactionCell, nearestByCell } from '../../targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
+import { deliverableGoodProbe } from './delivery-targets.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**

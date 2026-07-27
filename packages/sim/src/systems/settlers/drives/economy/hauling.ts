@@ -1,12 +1,12 @@
-import { JobAssignment } from '../../../components/index.js';
-import { isCarrierJob } from '../../stores/index.js';
-import { walkPickupBatch } from '../atomics/start.js';
-import type { PlannerContext } from '../planner/context.js';
-import { nearestWorkplaceOutput } from '../targets/index.js';
-import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { JobAssignment } from '../../../../components/index.js';
+import { isCarrierJob } from '../../../stores/index.js';
+import { walkPickupBatch } from '../../atomics/start.js';
+import type { PlannerContext } from '../../planner/context.js';
+import { nearestWorkplaceOutput } from '../../targets/index.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
+import { deliverableGoodProbe } from './delivery-targets.js';
 import { isPorterBoundToStore, porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
-import { deliverableGoodProbe } from './routing.js';
 
 /**
  * PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier

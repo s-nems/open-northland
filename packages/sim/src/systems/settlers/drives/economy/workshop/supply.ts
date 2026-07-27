@@ -5,16 +5,20 @@ import {
   Stockpile,
   sameSideAs,
   UnderConstruction,
-} from '../../../../components/index.js';
-import { ONE } from '../../../../core/fixed.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { SpatialGate } from '../../../../nav/node-circle.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import type { SystemContext } from '../../../context.js';
-import { startableCycleCount } from '../../../economy/production.js';
-import { buildingBlockedCells } from '../../../footprint/index.js';
-import { recipesByProductOf, stockCapacity, typeProducesGoodWithoutInputs } from '../../../stores/index.js';
-import { buriedUnderBuilding, type InteractionCellIndex } from '../../targets/index.js';
+} from '../../../../../components/index.js';
+import { ONE } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SpatialGate } from '../../../../../nav/node-circle.js';
+import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../../context.js';
+import { startableCycleCount } from '../../../../economy/production.js';
+import { buildingBlockedCells } from '../../../../footprint/index.js';
+import {
+  recipesByProductOf,
+  stockCapacity,
+  typeProducesGoodWithoutInputs,
+} from '../../../../stores/index.js';
+import { buriedUnderBuilding, type InteractionCellIndex } from '../../../targets/index.js';
 import { mayFetchGoodFrom } from '../store-policy.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→

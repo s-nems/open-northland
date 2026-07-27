@@ -125,7 +125,7 @@ describe('idle-spacing (de-stack) drive', () => {
 // Builder WORK SLOTS (claimWorkCell): a crew on one construction site spreads over its perimeter
 // instead of stacking on its one interaction cell. Body collision can never provide this — civilians
 // are deliberate pass-through and the SeparationSystem displaces only WALKING movers — so the planner
-// hands each builder a distinct stand cell (see systems/settlers/destack.ts).
+// hands each builder a distinct stand cell (see systems/settlers/drives/spacing.ts).
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
 const STONE = 2;

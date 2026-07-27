@@ -6,9 +6,9 @@ Five functions now run structurally identical breadth-first ring searches over
 `terrain.walkableNeighbours` — same `seen`/`frontier`/`visited` loop, same visit cap, same
 `spacing.claimed` + `occupancy.at(x, y)` accept test:
 
-- `nearestFreeCell` — `systems/settlers/destack.ts`
+- `nearestFreeCell` — `systems/settlers/drives/spacing.ts`
 - `nearestFreeCellOutside` — `systems/movement/evict.ts`
-- `restingCell` — `systems/settlers/rest-spot.ts` (the third caller, added on the needs-pacing branch)
+- `restingCell` — `systems/settlers/drives/rest-spot.ts` (the third caller, added on the needs-pacing branch)
 - `nearestPileLanding` — `systems/economy/goods-evict.ts`, a near-verbatim clone of
   `nearestFreeCellOutside` in another domain; it even borrows `FOOTPRINT_EVICT_SEARCH_CAP` by
   cross-domain import from `movement/evict.ts`
@@ -28,7 +28,7 @@ real caller; this is the third.
 Two smaller things to fold in while there:
 
 - `REST_SPOT_SEARCH_CAP` (`rest-spot.ts`) is `192`, the same value as `SPACING_SEARCH_CAP`
-  (`destack.ts`), and its comment says it matches the de-stack search. Reuse the constant instead of
+  (`drives/spacing.ts`), and its comment says it matches the de-stack search. Reuse the constant instead of
   restating the number.
 - The accept predicates themselves overlap — see
   [spacing-drives-avoid-doors-and-nooks](spacing-drives-avoid-doors-and-nooks.md), which asks for the
@@ -42,4 +42,4 @@ means the refactor changed behaviour.
 ## Verify
 
 - `npm test` with **no** golden movement (this is a pure refactor).
-- The existing `destack`, `evict` and `rest-spot` suites all still pass unchanged.
+- The existing `spacing`, `evict` and `rest-spot` suites all still pass unchanged.

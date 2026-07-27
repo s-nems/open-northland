@@ -14,7 +14,7 @@ import {
   atomicEventFrame,
 } from '../../readviews/animations.js';
 import { erectSignpost } from '../../signposts/index.js';
-import { serveDrillRepetition } from '../training.js';
+import { serveDrillRepetition } from '../drives/training.js';
 import {
   applyPendingStaggers,
   type PendingStagger,

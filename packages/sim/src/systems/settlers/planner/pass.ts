@@ -6,9 +6,9 @@ import { ExternalFoodIndex } from '../../family/food-search.js';
 import { GossipCandidates } from '../../social/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../../stores/index.js';
-import { collectHarvestClaims, type HarvestClaims } from '../economy/harvest-claims.js';
-import { SiteLeads, type WorkSeatClaims } from '../economy/index.js';
-import { collectFarmClaims, type FarmClaims } from '../farming/index.js';
+import { collectHarvestClaims, type HarvestClaims } from '../drives/economy/harvest-claims.js';
+import { SiteLeads, type WorkSeatClaims } from '../drives/economy/index.js';
+import { collectFarmClaims, type FarmClaims } from '../drives/farming/index.js';
 import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../targets/index.js';
 import { PlannerSpacing } from './spacing.js';
 

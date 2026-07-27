@@ -1,11 +1,11 @@
-import { ownerOf, type SettlerIdentity } from '../../components/index.js';
-import { type Fixed, fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { needAtomicDuration } from '../readviews/animations.js';
-import { isFood } from '../readviews/index.js';
-import type { NavigationLimit } from '../signposts/index.js';
+import { ownerOf, type SettlerIdentity } from '../../../components/index.js';
+import { type Fixed, fx } from '../../../core/fixed.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { needAtomicDuration } from '../../readviews/animations.js';
+import { isFood } from '../../readviews/index.js';
+import type { NavigationLimit } from '../../signposts/index.js';
 import {
   atOrWalk,
   EAT_ATOMIC_ID,
@@ -13,13 +13,13 @@ import {
   PRAY_ATOMIC_ID,
   SLEEP_ATOMIC_ID,
   startAtomic,
-} from './atomics/start.js';
-import { draughtSlotFor, startDrink } from './drives-drink.js';
-import type { PlannerSpacing } from './planner/spacing.js';
+} from '../atomics/start.js';
+import type { PlannerSpacing } from '../planner/spacing.js';
+import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
+import { unreachableGoalVeto } from '../unreachable-goals.js';
+import { draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
-import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
-import { unreachableGoalVeto } from './unreachable-goals.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the

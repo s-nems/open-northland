@@ -4,19 +4,19 @@ import {
   Settler,
   type SettlerIdentity,
   TrainingOrder,
-} from '../../components/index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { reidleAsJob } from '../orders/work/index.js';
-import { grantTrainingExperience, needSubjectOf, settlerMeetsNeed } from '../progression/index.js';
-import { needAtomicDuration } from '../readviews/animations.js';
-import { baseSoldierJobType, isBarracks, isFighterJob } from '../readviews/index.js';
-import type { NavigationLimit } from '../signposts/index.js';
-import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from './atomics/start.js';
-import { interactionCell } from './targets/index.js';
-import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
+} from '../../../components/index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { reidleAsJob } from '../../orders/work/index.js';
+import { grantTrainingExperience, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { needAtomicDuration } from '../../readviews/animations.js';
+import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
+import type { NavigationLimit } from '../../signposts/index.js';
+import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { interactionCell } from '../targets/index.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 /**
  * How long a recruit stays inside the barracks before it comes back out a soldier — 15 s of game time
@@ -27,7 +27,7 @@ import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
 export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
 
 /**
- * The planner's BARRACKS-DRILL rung (called from `drive-ladder.ts`, which states where it sits): drive a
+ * The planner's BARRACKS-DRILL rung (called from `./ladder.ts`, which states where it sits): drive a
  * settler's live {@link TrainingOrder} one step forward.
  *
  * The settler walks to the barracks door, steps inside ({@link Resting}) and runs the exercise atomic one

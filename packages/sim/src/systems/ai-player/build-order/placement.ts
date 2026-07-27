@@ -158,7 +158,7 @@ function searchCentre(
  *  cell (the anchor node itself for footprint-less synthetic content) must be sowable ground.
  *  Named approximation: "the farm stands on grass" is encoded as its reserved zone on `plantable`
  *  terrain (the original's `biocanplanton` class) — the surrounding field ring is not pre-checked;
- *  sowing already skips barren nodes (`settlers/farming/targets.ts`). */
+ *  sowing already skips barren nodes (`settlers/drives/farming/targets.ts`). */
 function groundAccepted(
   ctx: SystemContext,
   terrain: TerrainGraph,

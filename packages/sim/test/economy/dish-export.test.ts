@@ -4,7 +4,7 @@ import { Simulation } from '../../src/index.js';
 import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
 import { plannerSystem, stockCapacity } from '../../src/systems/index.js';
 import { exportedGoodForm } from '../../src/systems/readviews/index.js';
-import { carriedGoodForm } from '../../src/systems/settlers/economy/routing.js';
+import { carriedGoodForm } from '../../src/systems/settlers/drives/economy/delivery-targets.js';
 import { testContent } from '../fixtures/content.js';
 import {
   BREAD,

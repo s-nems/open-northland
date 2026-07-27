@@ -1,18 +1,24 @@
-import { GatherSelection, JobAssignment, Position, Resource, WorkFlag } from '../../../components/index.js';
-import type { Entity } from '../../../ecs/world.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
-import { atomicDuration } from '../../readviews/animations.js';
-import { workplaceStoredGoods } from '../../stores/index.js';
-import { atOrWalk, startAtomic, walkPickupBatch } from '../atomics/start.js';
-import type { PlannerContext } from '../planner/context.js';
+import {
+  GatherSelection,
+  JobAssignment,
+  Position,
+  Resource,
+  WorkFlag,
+} from '../../../../components/index.js';
+import type { Entity } from '../../../../ecs/world.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
+import { atomicDuration } from '../../../readviews/animations.js';
+import { workplaceStoredGoods } from '../../../stores/index.js';
+import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
+import type { PlannerContext } from '../../planner/context.js';
 import {
   interactionCell,
   nearestCollectablePileFor,
   nearestHarvestableFor,
   nearestOwnDropFor,
-} from '../targets/index.js';
+} from '../../targets/index.js';
+import { deliveryTargetFor } from './delivery-targets.js';
 import type { HarvestClaims } from './harvest-claims.js';
-import { deliveryTargetFor } from './routing.js';
 
 /**
  * HARVEST / COLLECT — the gatherer drive, in two shapes:

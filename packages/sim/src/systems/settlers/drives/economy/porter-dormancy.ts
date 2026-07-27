@@ -15,17 +15,17 @@ import {
   UnderConstruction,
   UnreachableGoals,
   WorkFlag,
-} from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import { navigationLimitFor } from '../../signposts/index.js';
-import { GossipCandidates } from '../../social/index.js';
-import { collectInboundSupply } from '../../stores/index.js';
-import type { PlannerContext } from '../planner/context.js';
-import { collectTargets } from '../targets/index.js';
-import { unreachableGoals } from '../unreachable-goals.js';
+} from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../context.js';
+import { navigationLimitFor } from '../../../signposts/index.js';
+import { GossipCandidates } from '../../../social/index.js';
+import { collectInboundSupply } from '../../../stores/index.js';
+import type { PlannerContext } from '../../planner/context.js';
+import { collectTargets } from '../../targets/index.js';
+import { unreachableGoals } from '../../unreachable-goals.js';
 import { porterPickupTarget } from './haul-targets.js';
 
 /**

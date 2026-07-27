@@ -10,12 +10,12 @@ import {
   sameSideAs,
   UnderConstruction,
   WorkFlag,
-} from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SpatialGate } from '../../../nav/node-circle.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import { exportedGoodForm } from '../../readviews/index.js';
+} from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { SpatialGate } from '../../../../nav/node-circle.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
+import type { SystemContext } from '../../../context.js';
+import { exportedGoodForm } from '../../../readviews/index.js';
 import {
   buildingProduces,
   type InboundSupplyTally,
@@ -23,16 +23,16 @@ import {
   mergedRecipeOf,
   producesGoodWithoutInputs,
   stockCapacity,
-} from '../../stores/index.js';
-import type { PlannerContext } from '../planner/context.js';
+} from '../../../stores/index.js';
+import type { PlannerContext } from '../../planner/context.js';
 import {
   boundWorkplaceTarget,
   type InteractionCellIndex,
   nearestStoreFor,
   QUALIFIES,
   unreachableSiteStand,
-} from '../targets/index.js';
-import { unreachableGoalVeto } from '../unreachable-goals.js';
+} from '../../targets/index.js';
+import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**

@@ -8,19 +8,21 @@ import {
   type Settler,
   Stance,
   UnderConstruction,
-} from '../../components/index.js';
-import type { Entity } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
-import { jobCanHarvest } from '../economy/work-flag.js';
-import { planWomanHoard } from '../family/hoard.js';
-import { planChildWander } from '../family/wander.js';
-import { isChild } from '../lifecycle/ageclass.js';
-import { MILITARY_MODE } from '../readviews/index.js';
-import { navigationLimitFor } from '../signposts/index.js';
-import { planGossipIdle, planGossipSeek } from '../social/index.js';
-import { isCarrierJob } from '../stores/index.js';
-import { deStackIdle } from './destack.js';
-import { anyNeedPressing, planNeeds } from './drives-needs.js';
+} from '../../../components/index.js';
+import type { Entity } from '../../../ecs/world.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { jobCanHarvest } from '../../economy/work-flag.js';
+import { planWomanHoard } from '../../family/hoard.js';
+import { planChildWander } from '../../family/wander.js';
+import { isChild } from '../../lifecycle/ageclass.js';
+import { MILITARY_MODE } from '../../readviews/index.js';
+import { navigationLimitFor } from '../../signposts/index.js';
+import { planGossipIdle, planGossipSeek } from '../../social/index.js';
+import { isCarrierJob } from '../../stores/index.js';
+import type { PlannerContext } from '../planner/context.js';
+import type { PlannerPass } from '../planner/pass.js';
+import { anotherSystemOwns } from '../planner/replan.js';
+import { boundWorkplaceTarget } from '../targets/index.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -32,11 +34,9 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
-import type { PlannerContext } from './planner/context.js';
-import type { PlannerPass } from './planner/pass.js';
-import { anotherSystemOwns } from './planner/replan.js';
+import { anyNeedPressing, planNeeds } from './needs.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
-import { boundWorkplaceTarget } from './targets/index.js';
+import { deStackIdle } from './spacing.js';
 import { planTraining } from './training.js';
 
 // The drive ladder: pick the next atomic for one idle settler, in this fixed priority order (each
@@ -51,7 +51,7 @@ import { planTraining } from './training.js';
 // starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
 // a gatherer works its own trade before ferrying others' goods. The atomic id and its duration come
 // from content, not code (the drives resolve them through the tribe's `setatomic` binding — see
-// ./atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
+// ../atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
 // scanned in canonical (ascending entity-id) order with a deterministic distance+cell tie-break, so
 // the choice never depends on store insertion history.
 
@@ -124,7 +124,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler (deficit at the seek threshold) leaves its work to find a
   // partner — above the economy rungs on purpose, the "worker downs tools to socialize" beat
-  // (see ../social/gossip/).
+  // (see ../../social/gossip/).
   if (planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates)) {
     return;
   }
@@ -212,7 +212,7 @@ function planEconomy(
   if (planPorter(plan)) return;
 
   // A settler the haul rung also refuses is genuinely idle: step off a shared tile first so an idle
-  // crowd spreads out (./destack.ts), then chat with a nearby idle neighbour (../social/gossip/).
+  // crowd spreads out (./spacing.ts), then chat with a nearby idle neighbour (../../social/gossip/).
   if (!planCarrierHaul(plan, pass.anyHaulable)) {
     if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
       planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);

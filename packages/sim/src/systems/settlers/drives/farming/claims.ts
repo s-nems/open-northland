@@ -1,6 +1,6 @@
-import { FarmTask } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
+import { FarmTask } from '../../../../components/index.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
 
 /** Tick-shared field claims and lazily built sow-search state: nodes held by live in-flight tasks
  *  plus the picks made earlier in this planner pass, so two farmers never shadow each other to the
