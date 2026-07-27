@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@open-northland/data';
+import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
   Age,
   AssistantGrants,
@@ -21,7 +21,7 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
-import { isFighterJob, MILITARY_MODE, SCOUT_JOB } from '../readviews/index.js';
+import { isFighterJob, isScoutJob, MILITARY_MODE } from '../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import type { PlannerPass } from './planner-pass.js';
@@ -70,8 +70,13 @@ export const ASSISTANT_MAX_IN_FLIGHT = 4;
  * than a trade, and neither ever operates a workplace, so a tool would only idle in the slot. Only the
  * assistant's hand-out is bound by this - the player may still equip a scout by hand.
  */
-function toolHelpsJob(jobType: number): boolean {
-  return !isFighterJob(jobType) && jobType !== SCOUT_JOB && jobType !== CIVILIST_JOB && jobType !== WOMAN_JOB;
+function toolHelpsJob(content: ContentSet, jobType: number): boolean {
+  return (
+    !isFighterJob(content, jobType) &&
+    !isScoutJob(content, jobType) &&
+    jobType !== CIVILIST_JOB &&
+    jobType !== WOMAN_JOB
+  );
 }
 
 /** One granted good, its slot group pre-resolved from content. */
@@ -114,7 +119,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // A guard holds its post: the equip rung outranks the DEFEND hold so the PLAYER can send a guard
     // for gear, which is no reason for the assistant to walk one off its anchor unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
-    const toolless = !toolHelpsJob(jobType);
+    const toolless = !toolHelpsJob(ctx.content, jobType);
 
     const eq = world.tryGet(e, Equipment);
     // The settler's confinement/veto are computed once, and only when a grant actually has a free
@@ -126,7 +131,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       if (slot === null) continue;
       const underway = tally.byGood.get(spec.goodType) ?? 0;
       if (underway >= availableStock(pass, stockCache, owner, spec.goodType)) continue;
-      if (limit === undefined) limit = navigationLimitFor(world, terrain, e);
+      if (limit === undefined) limit = navigationLimitFor(world, ctx.content, terrain, e);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
       const here = terrain.nodeAtClamped(n.hx, n.hy);

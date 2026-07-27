@@ -50,9 +50,8 @@ const VIKING = 1;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
 const ARMOURY = 22;
-/** The fixture job inside the pinned soldier band (31..41) - fighter-classified by `isFighterJob`
- *  and `setJob`-assignable (see the fixture's own note on job 36). */
-const FIGHTER_JOB = 36;
+/** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
+const FIGHTER_JOB = 31;
 
 /** Enough ticks for a fetch across the small map plus the stow and return legs. */
 const ERRAND_TICKS = 600;
