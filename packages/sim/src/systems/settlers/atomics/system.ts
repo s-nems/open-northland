@@ -1,112 +1,63 @@
-import { CurrentAtomic, DeferredOrder, ownerOf, Settler } from '../../../components/index.js';
-import type { AtomicEffect } from '../../../core/atomic-effect.js';
-import { assertNever } from '../../../core/brand.js';
-import { type Fixed, fx } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { System, SystemContext } from '../../context.js';
-import { advanceConstructionLabor } from '../../economy/construction.js';
-import { applySow, applyWater } from '../../economy/fields.js';
-import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../../lifecycle/needs.js';
-import { grantCarryExperience, grantScoutExperience, grantWorkExperience } from '../../progression/index.js';
-import {
-  ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
-  atomicAnimationName,
-  atomicEventFrame,
-} from '../../readviews/animations.js';
-import { erectSignpost } from '../../signposts/index.js';
-import { serveDrillRepetition } from '../drives/training.js';
+import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
+import { fx } from '../../../core/fixed.js';
+import type { System } from '../../context.js';
+import { applyEffect } from './effects/apply.js';
 import {
   applyPendingStaggers,
   type PendingStagger,
   paySwingNeedCost,
   resolveAttackHit,
 } from './effects/combat/index.js';
-import {
-  beginRestTail,
-  consumeFood,
-  continuesHarvest,
-  drawUtilityGood,
-  drinkDraught,
-  dropCarriedLoad,
-  endRestTail,
-  equipFromStore,
-  forageBerry,
-  harvestFromNode,
-  pickupFromStore,
-  pileupIntoStore,
-  swingWorkUnits,
-  unequipWornGood,
-} from './effects/goods/index.js';
+import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
+import { atomicSoundFrame } from './sound-cue.js';
 
 /**
- * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
- * settler is running and, on completion, apply its typed {@link AtomicEffect}.
+ * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a settler is
+ * running and, on completion, apply its typed effect ({@link applyEffect}), emit `atomicCompleted` for
+ * render/audio, and remove the component — the planner reads an entity with no CurrentAtomic as ready for
+ * its next.
  *
- * Each tick, for every entity with a CurrentAtomic, the integer `elapsed` counter advances; a `duration` of
- * D ticks completes on the D-th tick (a 0/1-tick animation completes the first tick — `duration` is clamped
- * to at least 1). Timing is the exact integer compare `elapsed >= duration`, not an accumulated fixed-point
- * step: `ONE / duration` truncates, so summing it `duration` times would fall short of ONE and the atomic
- * would hang. `progress` (0..ONE) is recomputed each tick as a derived display value for render
- * interpolation only. When the atomic completes the executor applies the effect, emits an `atomicCompleted`
- * event for render/audio, and removes the component — the planner reads an entity with no CurrentAtomic as
- * ready for its next.
- *
- * `applyEffect` is an exhaustive switch over the {@link AtomicEffect} union (`assertNever` makes a
- * new variant a compile error here), so behavior is the typed effect, not an opaque atomicId. The
- * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `produce`
- * belongs to ProductionSystem and only signals completion here for now.
- *
- * `attack` is the exception to "apply on completion": a swing lands its blow mid-animation at the
- * ATTACK-event frame (`resolveAttackHit` — drains the target's {@link Health}, trains the weapon's fight XP,
- * staggers a struck civilian), and the attacker pays the swing's need cost on completion
- * (`paySwingNeedCost`). A survivor is re-targeted next idle tick, so swings repeat at the animation's
- * cadence. Targeting/who-attacks-whom lives in the CombatSystem.
+ * A `duration` of D ticks completes on the D-th tick (a 0/1-tick animation completes the first tick —
+ * `duration` is clamped to at least 1). Timing is the exact integer compare `elapsed >= duration`, not an
+ * accumulated fixed-point step: `ONE / duration` truncates, so summing it `duration` times would fall short
+ * of ONE and the atomic would hang. `progress` (0..ONE) is a derived display value for render interpolation
+ * only, recomputed each tick and clamped so it never exceeds ONE.
  */
 export const atomicSystem: System = (world, ctx) => {
-  // A landed hit may stagger its victim (give it the `82` ATTACKED atomic). That `world.add` is collected
-  // here and applied only after the loop: adding a `CurrentAtomic` to the store being iterated would let a
-  // victim later in iteration advance its own fresh stagger this same tick (Map iteration visits a key
-  // inserted during iteration). Deferring the add makes the flinch provably begin advancing the next tick,
-  // independent of `CurrentAtomic` insertion order, and lets the loop iterate the store's live view
-  // (self-removal on completion is the only in-loop store mutation, which Map iteration allows). The
-  // eligibility check (binding + interruptibility) is still made at hit time (in `collectStagger`), so a
-  // victim mid-uninterruptible-swing is never flinched.
+  // Staggers from landed hits are collected, not added, while this loop iterates the CurrentAtomic store
+  // (see `applyPendingStaggers` for the ordering hazard the deferral removes). Self-removal on completion
+  // is then the loop's only change to that store's MEMBERSHIP — the per-tick writes are all in place —
+  // which Map iteration allows.
   const pendingStaggers: PendingStagger[] = [];
   for (const e of world.query(CurrentAtomic)) {
     const atomic = world.get(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
     atomic.elapsed += 1;
-    // Derived 0..ONE display value (render interpolation); clamped so it never exceeds ONE.
     atomic.progress = fx.div(fx.fromInt(Math.min(atomic.elapsed, duration)), fx.fromInt(duration));
 
-    // An attack lands its blow MID-animation at the ATTACK-event frame (`hitAt`), not at completion —
-    // a spear thrust connects partway through its swing, the follow-through then playing out to
-    // `duration`. When the animation carries no ATTACK event (`hitAt` absent) the hit falls back to the
-    // completion frame. `elapsed` steps through every integer, so it equals the (clamped) frame exactly
-    // once — the swing lands a single blow.
+    // An attack lands its blow MID-animation at the ATTACK-event frame (`hitAt`) — a spear thrust connects
+    // partway through its swing, the follow-through then playing out to `duration`. `elapsed` steps through
+    // every integer, so it equals the clamped frame exactly once: the swing lands a single blow. Who swings
+    // at whom is the CombatSystem's; this is only the landing.
     if (atomic.effect.kind === 'attack') {
-      const hitFrame = Math.min(Math.max(1, atomic.effect.hitAt ?? duration), duration);
+      const hitFrame = eventFrameWithin(atomic.effect.hitAt ?? duration, duration);
       if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
     }
 
-    // A construction swing plays its authored hammer knock MID-animation at the PLAY_SOUND_FX frame,
-    // so the sound lands on the visual strike instead of trailing to swing completion. This emits a
-    // sound-only event (no state mutation — resolved from content, so it moves no golden); audio drives
-    // the per-swing hammer off it. Only `construct` carries the cue today; other atomics still sound at
-    // completion (`atomicCompleted`).
+    // Only `construct` carries a mid-animation sound cue today (the builder's hammer knock on the visual
+    // strike); every other atomic sounds at completion. Sound-only — no state mutation, so no golden moves.
     if (atomic.effect.kind === 'construct') {
       const soundFrame = atomicSoundFrame(world, ctx, e, atomic.atomicId);
-      if (soundFrame !== undefined && atomic.elapsed === Math.min(Math.max(1, soundFrame), duration)) {
+      if (soundFrame !== undefined && atomic.elapsed === eventFrameWithin(soundFrame, duration)) {
         ctx.events.emit({ kind: 'atomicSound', entity: e, atomicId: atomic.atomicId });
       }
     }
 
     if (atomic.elapsed < duration) continue; // still running
 
-    // A finished REST TAIL: its harvest already applied and announced itself when the swing finished
-    // (below, last time around). Chain STRAIGHT into the next swing while the job still stands (a
-    // competitor may have finished the node mid-rest) — re-arming the SAME atomic keeps the settler
-    // continuously acting, so the render never flicks through an idle pose between swings.
+    // A finished REST TAIL: its harvest applied and announced itself when the swing finished (below, last
+    // time around), so it chains straight into the next swing — re-checked, since a competitor may have
+    // finished the node mid-rest.
     if (atomic.restTail === true) {
       if (
         atomic.effect.kind === 'harvest' &&
@@ -122,24 +73,17 @@ export const atomicSystem: System = (world, ctx) => {
       continue;
     }
 
-    // Completed this tick: apply the effect, notify render/audio, and free the settler.
     const extracted = applyEffect(world, ctx, e, atomic);
-    // An attacker pays the swing's NEED cost on completion — the attack animation's REST/HUNGER channel
-    // drains (`event <at> {1,2} <delta>`), resolved through the atomic's own id (so it stays scoped to
-    // combat and reads the exact animation that just played). Done here, not in `applyEffect`, because
-    // it needs the atomic id to resolve that animation.
+    // The attacker pays the swing's need cost here rather than in `applyEffect`: it resolves the animation
+    // that just played through the atomic's own id, which the effect does not carry.
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
-    // A multi-swing harvest job never releases the settler between swings, since the one-tick planner gap
-    // draws an idle-pose flick mid-work: a swing on the burst boundary holds the same atomic open as the
-    // breather tail (`beginRestTail` — the render holds the ready pose), any other still-in-progress swing
-    // re-arms immediately, and only the swing that EXTRACTS (fells / chips unit(s) loose / depletes) hands
-    // the settler back to the planner (it routes the pickup/carry) — gated on the extraction result, not
-    // the node's counters, since a trained swing can free a unit while banking a strike remainder.
-    // Mutating in place (never remove+add) keeps this iteration-safe. A parked order (DeferredOrder)
-    // breaks the chain instead: "non-interruptible" protects the swing in flight, not the whole job, so
-    // the settler is released at this swing boundary and the deferredOrderSystem (scheduled next)
-    // applies the order.
+    // A multi-swing harvest job holds the settler across swings (see `continuesHarvest`): the swing on a
+    // burst boundary stays open as the breather tail, any other in-progress swing re-arms in place (never
+    // remove+add, which keeps this iteration safe), and only the swing that EXTRACTS hands the settler back
+    // to the planner. A parked order breaks the chain instead: "non-interruptible" protects the swing in
+    // flight, not the whole job, so the settler is released at this boundary and the deferredOrderSystem
+    // (scheduled next) applies the order.
     if (atomic.effect.kind === 'harvest' && (extracted ?? 0) === 0 && !world.has(e, DeferredOrder)) {
       if (beginRestTail(world, atomic, atomic.effect.resource)) continue;
       if (continuesHarvest(world, atomic.effect.resource)) {
@@ -151,192 +95,11 @@ export const atomicSystem: System = (world, ctx) => {
     world.remove(e, CurrentAtomic);
   }
 
-  // Apply the collected flinches now — the `CurrentAtomic` store is no longer being iterated (see
-  // `applyPendingStaggers` for why the add is deferred).
   applyPendingStaggers(world, pendingStaggers);
 };
 
-/**
- * The tick within a settler's atomic animation at which it plays its PLAY_SOUND_FX cue (the frame the
- * original triggers the action's sound — the hammer knock on the builder's visual strike), or undefined
- * when the animation carries no such event. Resolved from content: the settler's tribe binds the atomic to
- * an animation whose `event <at> 34` gives the frame ({@link ATOMIC_EVENT_TYPE_PLAY_SOUND_FX}). The
- * {@link contentIndex} maps it resolves through are memoized, so the per-tick lookup over the few active
- * construction swings is O(1) each.
- */
-function atomicSoundFrame(world: World, ctx: SystemContext, e: Entity, atomicId: number): number | undefined {
-  const settler = world.tryGet(e, Settler);
-  if (settler === undefined) return undefined;
-  const anim = atomicAnimationName(ctx.content, settler, atomicId);
-  return anim === undefined
-    ? undefined
-    : atomicEventFrame(ctx.content, anim, ATOMIC_EVENT_TYPE_PLAY_SOUND_FX);
-}
-
-/**
- * Apply a completed atomic's effect (reading it off the live `atomic` component, whose bookkeeping
- * fields the harvest work credit mutates in place). Exhaustive over {@link AtomicEffect}: adding a
- * variant is a compile error until it is handled here (`assertNever`). Returns the units a `harvest`
- * swing extracted (the executor's release signal — see the harvest-chain branch), undefined otherwise.
- */
-function applyEffect(
-  world: World,
-  ctx: SystemContext,
-  settler: Entity,
-  atomic: { atomicId: number; duration: number; effect: AtomicEffect; workCredit?: Fixed },
-): number | undefined {
-  const effect = atomic.effect;
-  switch (effect.kind) {
-    case 'harvest': {
-      // Three harvest shapes, keyed by the node's own markers (data, not a goodType check): a FELLABLE
-      // node ({@link Felling}, a tree) is chopped down over several swings and drops its whole yield as a
-      // ground trunk; a MINED node ({@link MineDeposit}, an ore deposit) drops one unit at its cell as an
-      // ore pile per swing and shrinks by level; a bare node (a mushroom) yields one unit onto the back.
-      // A mined/bare node is REMOVED once drained. See {@link harvestFromNode}. Goods are conserved every
-      // shape (nothing teleports; a drained node conjures nothing).
-      // XP scales with the units the swing actually extracted, not with swings: a mid-job chop or
-      // strike trains nothing, the felling/reaping swing trains the whole yield (see grantWorkExperience).
-      const units = harvestFromNode(
-        world,
-        ctx,
-        settler,
-        effect.resource,
-        effect.goodType,
-        swingWorkUnits(world, ctx, settler, atomic, effect.goodType),
-      );
-      grantWorkExperience(world, ctx, settler, effect.goodType, units);
-      return units;
-    }
-    case 'pickup':
-      pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
-      return;
-    case 'draw':
-      // A consumer cranked an input-less utility (the well, the hive) for one unit of its good, now on
-      // its back — the utility mints from no inputs, so the draw creates the unit (see the effect's
-      // conservation note). The delivery rung then carries it home to the consuming workplace.
-      drawUtilityGood(world, settler, effect.goodType);
-      return;
-    case 'pileup':
-      // Only a delivery that actually landed trains the transport trade (see grantCarryExperience).
-      if (pileupIntoStore(world, ctx, settler, effect.store) > 0) {
-        grantCarryExperience(world, ctx, settler);
-      }
-      return;
-    case 'eat':
-      // Eating consumes one unit of food (from a store the eater stands on, or its own carried load)
-      // and takes EAT_HUNGER_RESTORE off hunger — one meal is a partial refill, so a settler comes back
-      // for another. Goods are conserved up to that consumption — the food is destroyed, never
-      // conjured: if the source has nothing left (it emptied between the planner choosing it and the
-      // swing completing) no unit is removed, but the meal still counts (the bite was taken).
-      consumeFood(world, settler, effect.from, effect.goodType);
-      relieveHunger(world, settler);
-      return;
-    case 'forage':
-      // Foraging a wild berry bush: eat its ripe fruit (the bush flips ripe→bare + schedules its regrow,
-      // and emits `berryForaged` for the render handover) — the wild-food twin of `eat`, worth the same
-      // EAT_HUNGER_RESTORE, but no stored/carried good is consumed and no job/tool is needed. A bush bare/
-      // gone since the planner chose it grants no food but still feeds the eater, like `eat`.
-      forageBerry(world, ctx, effect.bush);
-      relieveHunger(world, settler);
-      return;
-    case 'drink':
-      drinkDraught(world, ctx, settler, effect.slot);
-      return;
-    case 'sleep': {
-      // Resting takes SLEEP_FATIGUE_RESTORE off fatigue (no goods consumed — sleeping is free, unlike
-      // eating). Like a meal it is a partial refill, so a settler run to the top of its bar beds down
-      // more than once; it pairs with the NeedsSystem's per-tick fatigue rise to close the loop.
-      const s = world.tryGet(settler, Settler);
-      if (s !== undefined) s.fatigue = relieveNeed(s.fatigue, SLEEP_FATIGUE_RESTORE);
-      return;
-    }
-    case 'pray':
-      // Praying clears piety (no goods consumed — like sleeping, devotion is free). Pairs with the
-      // NeedsSystem's per-tick piety rise to close the rise→pray→reset loop. The walk to a temple is
-      // the planner's job (a target-bound need); by the time this fires the settler is standing on one.
-      if (world.has(settler, Settler)) world.get(settler, Settler).piety = fx.fromInt(0);
-      return;
-    case 'enjoy':
-      // Recreation clears enjoyment (free, like sleeping/praying), closing the NeedsSystem's
-      // rise→enjoy→reset loop. The satisfier drive is deferred — `enjoy` has no readable building
-      // satisfier — so no planner branch chooses it yet.
-      if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
-      return;
-    case 'make_love':
-      // The make_love atomic (id 78) is not a separate need: its animation restores the same channel 3 as
-      // `enjoy` (`event <at> 3 +800`), so it resets `enjoyment` too. Its drive is deferred for the same
-      // reason as `enjoy` — no readable building satisfier.
-      if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
-      return;
-    case 'exercise':
-      serveDrillRepetition(world, ctx, settler, atomic.atomicId, atomic.duration);
-      return;
-    case 'move':
-    case 'idle':
-      // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The
-      // atomic just completing is the signal; no extra state change.
-      return;
-    case 'attack':
-      // The blow already landed mid-animation at the ATTACK-event frame (the loop's `resolveAttackHit`),
-      // so nothing applies on completion. The swing's need-drain is paid in the loop right after this call
-      // (`paySwingNeedCost`) — it lives there because it needs the atomic's id to resolve the animation
-      // that just played.
-      return;
-    case 'produce':
-      // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
-      // enough for now; the heavy mutation lands when that system exists.
-      return;
-    case 'erectSignpost': {
-      // The scout's completed build-guide swing raises the signpost at the target node — instant and
-      // free (one strike). Re-validated inside erectSignpost: a spot taken mid-swing whiffs (no post).
-      const terrain = ctx.terrain;
-      const player = ownerOf(world, settler);
-      if (terrain !== undefined && player !== undefined) {
-        const post = erectSignpost(world, ctx, terrain, terrain.nodeAt(effect.x, effect.y), player);
-        // A post that actually stood trains the scout's signpost craft; a whiff trains nothing.
-        if (post !== null) grantScoutExperience(world, ctx.content, settler);
-      }
-      return;
-    }
-    case 'construct':
-      // A builder's completed build swing is one hammer STRIKE — advance the site's construction `labor` a
-      // small step (several strikes per unit, scaled to size); the ConstructionSystem reflects it into
-      // `built`/`Health` and finishes the build once labor + material are both complete. No goods move here
-      // (materials are consumed into the structure at completion).
-      advanceConstructionLabor(world, ctx, effect.site);
-      return;
-    case 'sow':
-      // A farmer's sowing swing plants a Crop field at the target node (unless it was taken mid-swing —
-      // the raced-target no-op). Growing it is the CropGrowthSystem's job; reaping rides `harvest`.
-      applySow(world, ctx, effect);
-      return;
-    case 'water':
-      // A farmer's watering (cultivate) marks the field watered — which opens its growth (the gate).
-      applyWater(world, effect.crop);
-      return;
-    case 'drop':
-      // Set the carried load on the ground so the interrupting action proceeds empty-handed (see
-      // dropCarriedLoad for the own-tile-then-spill placement). A settler carrying nothing is a no-op.
-      dropCarriedLoad(world, ctx.terrain, settler);
-      return;
-    case 'equip':
-      // The equip errand's acquire step: one unit leaves the source store straight onto the body, a
-      // swapped-out good onto the back. Advances the errand's stage (see equipFromStore).
-      equipFromStore(world, settler, effect.from, effect.goodType, effect.group, effect.slot);
-      return;
-    case 'unequip':
-      // The take-off gesture, run at the stow store (or in place when destroying/ground-dropping): a
-      // fresh unit deposits into the sink, a part-used one is destroyed. See unequipWornGood.
-      unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
-      return;
-    default:
-      assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
-  }
-}
-
-/** Credit one meal to the eater's hunger bar ({@link EAT_HUNGER_RESTORE}) — shared by `eat` and `forage`,
- *  which the original feeds identically. No-op on an entity that is no longer a {@link Settler}. */
-function relieveHunger(world: World, settler: Entity): void {
-  const s = world.tryGet(settler, Settler);
-  if (s !== undefined) s.hunger = relieveNeed(s.hunger, EAT_HUNGER_RESTORE);
+/** Clamp an animation's event frame into the `[1, duration]` ticks the atomic actually runs, so a cue the
+ *  data puts past the (possibly clamped) animation length still fires exactly once, on its last tick. */
+function eventFrameWithin(frame: number, duration: number): number {
+  return Math.min(Math.max(1, frame), duration);
 }
