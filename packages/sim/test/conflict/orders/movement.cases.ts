@@ -12,7 +12,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
-import { worldDistance } from '../../../src/nav/metric.js';
+import { worldDistance } from '../../../src/nav/world-metric.js';
 import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
 import {
   HEADQUARTERS,

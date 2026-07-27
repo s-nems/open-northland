@@ -12,7 +12,7 @@
  * Position enters and leaves that grid. Pure fixed-point — quarters of ONE are exact.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { staggerShift, worldX } from './metric.js';
+import { staggerShift, worldX } from './world-metric.js';
 
 const TWO: Fixed = fx.fromInt(2);
 

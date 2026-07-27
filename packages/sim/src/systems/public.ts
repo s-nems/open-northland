@@ -1,7 +1,7 @@
 // Cross-package simulation surface used by app/render. Per-tick systems and implementation helpers
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
-export { withinNodeRadius } from '../nav/node-metric.js';
+export { withinNodeRadius } from '../nav/node-circle.js';
 // The AI opening plan's content bindings — exported so the real-content suite can pin every id in
 // the plan against the served IR (an unknown id silently skips its entry in the sim).
 export {

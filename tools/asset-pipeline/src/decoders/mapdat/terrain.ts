@@ -66,7 +66,7 @@ export interface MapDatTerrainMap {
 /**
  * Collapses an unpacked `lmlt` layer (the `2W × 2H` half-cell landscape-object lane) plus the `lsiz`
  * dimensions into a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }`
- * shape the sim's `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`.
+ * shape the sim's `buildTerrainGraph` (`packages/sim/src/nav/terrain/map.ts`) consumes as a `TerrainMap`.
  * Each cell's type is the {@link reduceHalfCellsToCell} dominant of its 2×2 half-cell block
  * ({@link LMLT_EMPTY} = no object → {@link VOID_TYPE_ID}). Returns a plain value (not a sim type) so the
  * build tool never imports from `sim`; the sim validates the typeIds against its IR table.

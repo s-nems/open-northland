@@ -1,6 +1,6 @@
 import { type Fixed, fx } from '../../../../core/fixed.js';
 import { positionXOfWorld } from '../../../../nav/halfcell.js';
-import { ROW_STEP, worldX } from '../../../../nav/metric.js';
+import { ROW_STEP, worldX } from '../../../../nav/world-metric.js';
 
 /** A point in the lattice's world axes, where separation measures on-screen distance. */
 interface SeparationPoint {

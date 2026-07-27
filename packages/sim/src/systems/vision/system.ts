@@ -50,9 +50,9 @@ export function visionRadiusForJob(content: ContentSet, jobType: number | null):
   return CIVILIAN_VISION_NODES;
 }
 
-/** The world-metric weights of the vision ellipse: one cell column is 68 px wide, one cell row 38 px deep, one
- *  node (the radius unit) 34 px — the measured projection pitch (`nav/metric.ts`, source basis "projection").
- *  Integer, so the ellipse test is exact integer arithmetic. */
+/** The world-metric weights of the vision ellipse: one cell column is 68 px wide, one cell row 38 px
+ *  deep, one node (the radius unit) 34 px — the measured projection pitch (`nav/world-metric.ts`,
+ *  source basis "projection"). Integer, so the ellipse test is exact integer arithmetic. */
 const CELL_STEP_PX = 68;
 const ROW_STEP_PX = 38;
 const NODE_STEP_PX = 34;

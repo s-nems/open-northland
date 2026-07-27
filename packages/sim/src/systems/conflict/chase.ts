@@ -1,6 +1,7 @@
 import { AttackOrder, Engagement, EquipOrder, MoveGoal, PathRequest } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { nearestCell } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';

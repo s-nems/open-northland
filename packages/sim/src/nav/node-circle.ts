@@ -11,11 +11,11 @@ import type { NodeId } from './terrain/index.js';
  */
 
 /** One node's E/W pitch in native px (half the 68 px column step) — the radius unit. The same measured
- *  pitch `metric.ts` mints as {@link import('./metric.js').HALF_COLUMN}, in integer px instead of
- *  column units; re-calibrating the projection moves both. */
+ *  pitch {@link import('./world-metric.js').HALF_COLUMN} mints, in integer px instead of column units;
+ *  re-calibrating the projection moves both. */
 const NODE_STEP_PX = 34;
-/** One node's N/S pitch in native px (half the 38 px row step) — {@link import('./metric.js').HALF_ROW}
- *  (19/68 column units) in integer px. */
+/** One node's N/S pitch in native px (half the 38 px row step) — the integer-px form of
+ *  {@link import('./world-metric.js').HALF_ROW} (19/68 column units). */
 const HALF_ROW_PX = 19;
 
 /** An axis-aligned box on the node lattice (inclusive bounds) — the coarse extent of a node-circle union. */

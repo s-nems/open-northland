@@ -1,7 +1,7 @@
 import { type Fixed, fx, ZERO } from '../../core/fixed.js';
-import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../metric.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 import type { TerrainGraph } from './graph.js';
-import type { NodeId } from './types.js';
+import type { NodeId } from './node-id.js';
 
 /**
  * The fixed-point half-cell lattice step distance between two nodes — the admissible, consistent A*

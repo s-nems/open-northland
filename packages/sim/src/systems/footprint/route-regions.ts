@@ -1,8 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
 import { Building, ResourceFootprint } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
-import { LayeredBlocks } from '../../nav/block-overlay.js';
-import { type BlockOverlay, type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
+import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
+import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';

@@ -25,9 +25,10 @@ import {
  * `allowedonland`/`allowedonwater`/`allowedoneverything` placement-layer flags (`1`/`0` ints). These
  * are the cell-graph's per-type valency + placement source, not a render-triangle property. There is
  * no per-type movement-cost/weight field in this table — the engine gates movement by walkability +
- * valency, so the graph uses a uniform unit walk cost (see packages/sim/src/terrain.ts). `walkable`/
- * `buildable` keep their schema defaults — they're a later derivation (not cleanly from these flags,
- * which mark placement layer, not traversal). The raw `name` + the `transition` tuples are captured
+ * valency, so the graph uses a uniform unit walk cost (see
+ * packages/sim/src/nav/terrain/landscape-props.ts). `walkable`/`buildable` keep their schema
+ * defaults, a later derivation (not cleanly from these flags, which mark placement layer, not
+ * traversal). The raw `name` + the `transition` tuples are captured
  * verbatim (the tuple field-semantics are not decoded — see docs/SOURCES.md); `debugcolor`/
  * `playeridallowed` (editor concerns) are still skipped.
  */

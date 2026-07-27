@@ -2,7 +2,7 @@ import type { LandscapeType } from '@open-northland/data';
 import { type Fixed, ONE } from '../../core/fixed.js';
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
-export interface NodeTypeProps {
+export interface LandscapeProps {
   readonly walkable: boolean;
   /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
    *  real map's margin band around a tree/rock is walkable ground you may not build on, while water
@@ -17,14 +17,14 @@ export interface NodeTypeProps {
 }
 
 /** Default props for a landscape typeId not present in the content table (treated as blocking). */
-export const UNKNOWN_NODE_TYPE: NodeTypeProps = {
+export const UNKNOWN_LANDSCAPE_PROPS: LandscapeProps = {
   walkable: false,
   buildable: false,
   plantable: false,
   walkCost: ONE,
 };
 
-export function resolveTypeProps(t: LandscapeType): NodeTypeProps {
+export function resolveLandscapeProps(t: LandscapeType): LandscapeProps {
   return {
     walkable: t.walkable,
     buildable: t.buildable,

@@ -1,7 +1,7 @@
 import { Resource } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-metric.js';
+import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementBlocks } from '../../footprint/index.js';

@@ -1,9 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { LayeredBlocks } from '../../nav/block-overlay.js';
+import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';

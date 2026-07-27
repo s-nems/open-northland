@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../../nav/node-metric.js';
+import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
 

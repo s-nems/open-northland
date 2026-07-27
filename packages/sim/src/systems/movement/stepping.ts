@@ -1,11 +1,11 @@
 import { type Fixed, fx, ULP, ZERO } from '../../core/fixed.js';
-import { ROW_STEP, worldDistance, worldX } from '../../nav/metric.js';
+import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 
 /**
  * Advance `p` STRAIGHT toward `target` by at most `speed` along the line between them, snapping onto
  * `target` (and returning `true`) once within one step — the arrival signal the caller advances the
  * path on. The step length is measured in the WORLD METRIC of the staggered lattice
- * (`nav/metric.ts` {@link worldDistance}: a row step is half a column sideways + 19/34 down), so a
+ * (`nav/world-metric.ts` {@link worldDistance}: a row step is half a column sideways + 19/34 down), so a
  * walk covers the same ON-SCREEN distance per tick in every direction — an E/W leg (a full 68 px
  * column) takes the configured walk-cycle duration at the default cruise pace, a row-crossing
  * lattice leg (a 51 px edge, ¾ the length) proportionally fewer. Measuring in raw grid units

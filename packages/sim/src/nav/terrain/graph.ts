@@ -27,11 +27,12 @@
  * across runs. All costs are `Fixed`.
  */
 import { type Fixed, fx } from '../../core/fixed.js';
-import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../metric.js';
+import type { BlockOverlay } from '../block-overlay.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 
-import { type NodeTypeProps, UNKNOWN_NODE_TYPE } from './node-types.js';
+import { type LandscapeProps, UNKNOWN_LANDSCAPE_PROPS } from './landscape-props.js';
+import type { NodeId } from './node-id.js';
 import { type Step, StepBuffer } from './step-buffer.js';
-import type { BlockOverlay, NodeId } from './types.js';
 
 /** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
  *  determinism. */
@@ -75,13 +76,17 @@ export class TerrainGraph {
   /** Row-major landscape typeId per node (length === width*height). */
   private readonly typeIds: Int32Array;
   /** typeId -> resolved sim props, frozen at build time. */
-  private readonly props: ReadonlyMap<number, NodeTypeProps>;
+  private readonly props: ReadonlyMap<number, LandscapeProps>;
   /** Static-connectivity label per node (-1 = unwalkable), from a build-time flood fill over
    *  {@link steps}. See {@link componentOf}. */
   private readonly components: Int32Array;
-  /** The fill target backing the allocating {@link steps}; its contents never outlive that call. */
 
-  constructor(width: number, height: number, typeIds: Int32Array, props: ReadonlyMap<number, NodeTypeProps>) {
+  constructor(
+    width: number,
+    height: number,
+    typeIds: Int32Array,
+    props: ReadonlyMap<number, LandscapeProps>,
+  ) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
     if (typeIds.length !== width * height) {
       throw new Error(
@@ -159,8 +164,8 @@ export class TerrainGraph {
     return this.checkedSlot(this.typeIds, node);
   }
 
-  private propsOf(node: NodeId): NodeTypeProps {
-    return this.props.get(this.typeAt(node)) ?? UNKNOWN_NODE_TYPE;
+  private propsOf(node: NodeId): LandscapeProps {
+    return this.props.get(this.typeAt(node)) ?? UNKNOWN_LANDSCAPE_PROPS;
   }
 
   /** True if a unit may stand on / walk through this node. */

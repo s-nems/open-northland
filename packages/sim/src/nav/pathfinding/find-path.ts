@@ -24,7 +24,8 @@
  * records for its discovered nodes only — never an O(mapArea) backing store per call.
  */
 import { fx } from '../../core/fixed.js';
-import { type BlockOverlay, latticeDistanceTo, type NodeId, type TerrainGraph } from '../terrain/index.js';
+import type { BlockOverlay } from '../block-overlay.js';
+import { latticeDistanceTo, type NodeId, type TerrainGraph } from '../terrain/index.js';
 import { siftDown, siftUp } from './heap.js';
 import { MAX_QUERY_GENERATION, type NodeRecord, scratchFor } from './scratch.js';
 

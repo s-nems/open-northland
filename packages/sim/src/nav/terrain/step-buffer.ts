@@ -1,5 +1,5 @@
 import type { Fixed } from '../../core/fixed.js';
-import type { NodeId } from './types.js';
+import type { NodeId } from './node-id.js';
 
 /** One emitted lattice edge: the destination node and the fixed-point cost of stepping onto it. */
 export interface Step {
