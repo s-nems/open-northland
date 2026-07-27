@@ -12,8 +12,9 @@ import type { BenchReport, BenchWorld, SystemStat } from './types.js';
  * Two runs of the same code on an idle box differ by a few percent; nothing inside the band is a
  * change. A run either side already flagged untrustworthy gets a much wider band, not a hidden table.
  *
- * Approximation: the default has not been calibrated against a pair of runs on a quiet machine. Widen
- * it if a same-code A/B still reports rows outside it on a box `trust` calls clean.
+ * Approximation: not calibrated on a quiet machine. One same-code pair taken under load 1.6-2.8 per
+ * cpu spread to 9%, so the default is the right order of magnitude at worst. Widen it if a same-code
+ * A/B still reports rows outside it on a box `trust` calls clean.
  */
 const DEFAULT_NOISE_BAND_PCT = 8;
 const UNTRUSTED_NOISE_BAND_PCT = 20;
@@ -46,7 +47,7 @@ export interface Comparison {
   readonly after: BenchReport;
 }
 
-function worldIdentity(world: BenchWorld): string {
+export function worldIdentity(world: BenchWorld): string {
   const size = `${world.mapCells.width}x${world.mapCells.height}`;
   switch (world.kind) {
     case 'synthetic':
