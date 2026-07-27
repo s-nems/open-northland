@@ -1,110 +1,54 @@
 /**
- * A tiny, explicit ECS. Deliberately not a library: we need full control over iteration order (for
- * determinism) and legibility.
- *
- * Rules (see docs/ECS.md):
- *  - Entities are integer ids from a monotonic counter — never recycled. Id reuse would make iteration order
- *    history-dependent in confusing ways.
- *  - Components are plain data registered via defineComponent.
- *  - Queries iterate in deterministic insertion order of the driving store (no per-call sort — a perf trap at
- *    thousands of entities). Order is reproducible across identical runs. For a canonical order
- *    (snapshots/hashes) sort ids explicitly.
- *  - Components carry no behavior; Systems (plain functions) carry all behavior.
+ * A tiny, explicit ECS. Deliberately not a library: iteration order is a determinism contract here (see
+ * docs/ECS.md). Entity ids come from a monotonic counter and are never recycled, because id reuse would make
+ * iteration order history-dependent. Components are plain data keys; systems (plain functions) carry all
+ * behavior.
  */
 
-import type { Brand } from '../core/brand.js';
+import type { Component, Entity } from './component.js';
+import { MembershipJournals } from './membership-journal.js';
+import { QueryIterator } from './query-iterator.js';
+import { TouchedLog } from './touched-log.js';
 
-/** A branded entity id — a raw number can't be passed where an Entity is expected. */
-export type Entity = Brand<number, 'Entity'>;
+export type { Component, Entity } from './component.js';
+export { defineComponent } from './component.js';
 
-export interface Component<T> {
-  readonly name: string;
-  /**
-   * Phantom type brand: `T` never exists at runtime (a component value is just `{ name }`), but
-   * carrying it in the type keeps `Component<A>` unassignable where a `Component<B>` is expected. The
-   * entity→value store lives on the {@link World}, not here — a component is a pure key, so `new World()`
-   * is a complete reset with no shared state to leak between sims.
-   */
-  readonly __value?: T;
-}
-
-export function defineComponent<T>(name: string): Component<T> {
-  return { name };
-}
-
-/**
- * The membership ops recorded for one journaled component store: entry `i` of `entities` is the entity
- * whose add/remove/destroy bumped the store generation to `base + i + 1`. An incremental index replays
- * the span since its own generation instead of rebuilding (see {@link World.membershipDeltasSince}).
- */
-interface MembershipJournal {
-  base: number;
-  entities: Entity[];
-}
+/** Re-derives one incrementally-maintained cache from authoritative state and returns a message per
+ *  mismatch (empty = coherent). Must be pure over current state. */
+export type CacheVerifier = () => string[];
 
 export class World {
   private nextId = 1;
   private readonly alive = new Set<Entity>();
-  /**
-   * The per-component entity→value stores, owned by this World and created on first {@link add}. Holding
-   * them here (not on the shared {@link Component} key) is what makes `new World()` a complete reset — no
-   * cross-sim leak, no clear-the-stores ritual. Map insertion order is registration order.
-   */
+  /** The per-component entity→value stores, created on first {@link add}. Each store's insertion order is the
+   *  query iteration order. */
   private readonly stores = new Map<Component<unknown>, Map<Entity, unknown>>();
-  /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
+  /** Components in first-registration order: stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
-  /** Per-component mutation generation, used by derived caches that depend on a component store. */
+  /** Per-component membership (add/remove/destroy) generation, used by derived caches that depend on a
+   *  component store. */
   private readonly componentGenerations = new Map<Component<unknown>, number>();
-  /** Per-component in-place value-write generation (see {@link touchComponent}) — separate from the
-   *  membership generations above so spatial indexes keyed on add/remove stay unaffected. */
+  /** Per-component in-place value-write generation (see {@link touchComponent}), separate from the membership
+   *  generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations = new Map<Component<unknown>, number>();
-  /** Membership journals for the components an incremental index opted into (see {@link journalMembership});
-   *  untracked components pay nothing. */
-  private readonly membershipJournals = new Map<Component<unknown>, MembershipJournal>();
-  /** Journal length past which the oldest span is dropped (`base` advances): a consumer further behind
-   *  rebuilds from scratch instead of replaying — the incremental-index fallback bound. Generous versus
-   *  real churn (an index catches up within the same dispatch loop, typically a handful of ops behind).
-   *  Public so the fallback tests derive their churn counts from it instead of hardcoding the cap. */
-  static readonly MEMBERSHIP_JOURNAL_LIMIT = 1024;
-  /**
-   * Optional cache verifiers registered by derived-cache owners. They run under `verifyCaches()` so a
-   * stale cache is caught by the normal invariant path instead of surfacing as a distant golden drift.
-   */
-  private readonly cacheVerifiers = new Map<string, () => string[]>();
-  /**
-   * Memoized ascending-id list from {@link canonicalEntities}, rebuilt lazily and invalidated only when
-   * the alive set changes ({@link create}/{@link destroy}). Without it, a system that scans the world
-   * per entity (job assignment, AI target-finding) re-`[...alive].sort()`s every call — `O(n)` sorts of
-   * an `O(n)` list = the quadratic stall that pinned a few-thousand-unit crowd at ~1 fps. Membership is
-   * unaffected by component add/remove, so only birth/death dirties it.
-   */
+  private readonly journals = new MembershipJournals();
+  private readonly touched = new TouchedLog();
+  /** Derived-cache verifiers by name, run in first-registration order; registering a name again replaces the
+   *  verifier but keeps its position. */
+  private readonly cacheVerifiers = new Map<string, CacheVerifier>();
+  /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create}/
+   *  {@link destroy} since component add/remove cannot change membership. Without it a system that scans the
+   *  world per entity re-sorts the whole alive set per call: the quadratic stall that pinned a few-thousand
+   *  unit crowd at ~1 fps. */
   private canonicalCache: readonly Entity[] | null = null;
-  /**
-   * Entities whose components changed since the last {@link drainTouched} — the invalidation feed for
-   * identity-keyed read caches (the snapshot's per-entity clone cache). `add`/`remove`/`destroy` log
-   * automatically; a system that mutates a component value in place on a cache-eligible entity must call
-   * {@link touch} itself (the snapshot cache's verifier catches a missed call under invariant-checked runs).
-   * Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
-   */
-  private readonly touched = new Set<Entity>();
-  /** Monotonic counter of all entity mutations (create/add/remove/destroy/touch) — the snapshot memo's
-   *  freshness key. Unlike "is the touched log empty" it cannot be falsified by another consumer draining
-   *  the log between two same-tick snapshots. */
-  private mutations = 0;
-  /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less headless run) —
-   *  the next {@link drainTouched} reports it so the consumer discards its whole cache. */
-  private touchedOverflow = false;
-  /** Touched-log size past which it is dropped wholesale rather than grown forever — only reachable
-   *  when nothing snapshots (a headless benchmark); one full cache rebuild is the entire cost. */
-  private static readonly TOUCHED_OVERFLOW_LIMIT = 65536;
 
   create(): Entity {
     const id = this.nextId++ as Entity;
     this.alive.add(id);
     this.canonicalCache = null;
-    // A snapshot emits one entry per alive id, so a bare `create()` with no components still changes the
-    // snapshot — it must bump the version or the per-tick memo serves a view missing the new entity.
-    this.logTouched(id);
+    // A snapshot emits one entry per alive id, so even a component-less `create` must bump the version, or
+    // the per-tick memo serves a view missing the new entity.
+    this.touched.record(id);
     return id;
   }
 
@@ -114,7 +58,7 @@ export class World {
     }
     this.alive.delete(entity);
     this.canonicalCache = null;
-    this.logTouched(entity);
+    this.touched.record(entity);
   }
 
   isAlive(entity: Entity): boolean {
@@ -122,27 +66,25 @@ export class World {
   }
 
   add<T>(entity: Entity, component: Component<T>, value: T): T {
-    const store = this.storeFor(component);
+    const store = this.storeOrCreate(component);
     store.set(entity, value);
     this.bumpComponentGeneration(component as Component<unknown>, entity);
-    this.logTouched(entity);
+    this.touched.record(entity);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
     if (this.storeOf(component)?.delete(entity)) {
       this.bumpComponentGeneration(component as Component<unknown>, entity);
-      this.logTouched(entity);
+      this.touched.record(entity);
     }
   }
 
-  /** This World's store for `component`, or `undefined` if nothing was ever {@link add}ed to it. */
   private storeOf<T>(component: Component<T>): Map<Entity, T> | undefined {
     return this.stores.get(component as Component<unknown>) as Map<Entity, T> | undefined;
   }
 
-  /** This World's store for `component`, creating (and registering) it on first use. */
-  private storeFor<T>(component: Component<T>): Map<Entity, T> {
+  private storeOrCreate<T>(component: Component<T>): Map<Entity, T> {
     let store = this.storeOf(component);
     if (store === undefined) {
       store = new Map<Entity, T>();
@@ -153,63 +95,35 @@ export class World {
   }
 
   /**
-   * Log an in-place component-value mutation on `entity` so identity-keyed read caches (the snapshot's
-   * per-entity clone cache) drop their stale copy. `add`/`remove`/`destroy` log automatically — call this
-   * only where a system writes a field of a stored value directly (e.g. the harvest effect decrementing
-   * `Resource.remaining`). Read-path only; no sim decision ever consults the log.
+   * Log an in-place component-value mutation on `entity` so identity-keyed read caches drop their stale copy.
+   * `add`/`remove`/`destroy` log automatically; call this only where a system writes a field of a stored value
+   * directly (e.g. the harvest effect decrementing `Resource.remaining`).
    */
   touch(entity: Entity): void {
-    this.logTouched(entity);
+    this.touched.record(entity);
   }
 
   /**
-   * Log an in-place value write in `component`'s store: bumps the component's VALUE generation
-   * ({@link componentValueGeneration}) so value-sensitive derived caches invalidate. A separate channel
-   * from {@link componentGeneration} (membership: add/remove only), so membership-keyed spatial indexes
-   * don't rebuild on every value write. Does not log the entity for the snapshot clone cache — a write
+   * Log an in-place value write in `component`'s store, bumping the component's VALUE generation so
+   * value-sensitive derived caches invalidate. Does not log the entity for the snapshot clone cache: a write
    * that must also reach the snapshot pairs this with {@link touch}.
    */
   touchComponent(component: Component<unknown>): void {
     this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
   }
 
-  /** The in-place value-write generation for one component store (see {@link touchComponent}). */
   componentValueGeneration(component: Component<unknown>): number {
     return this.componentValueGenerations.get(component) ?? 0;
   }
 
-  /**
-   * Monotonic version of all entity mutations (every `create`/`add`/`remove`/`destroy`/`touch`) — the "may
-   * the previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A counter, not the
-   * touched log's emptiness: any consumer may drain the log without falsifying another consumer's staleness
-   * probe.
-   */
+  /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`touch`): the "may the
+   *  previous snapshot be reused?" key for `Simulation.snapshot`'s per-tick memo. */
   get mutationVersion(): number {
-    return this.mutations;
+    return this.touched.mutationCount;
   }
 
-  /**
-   * Hand every logged-touched entity to `consume` and clear the log (the snapshot clone cache evicts each
-   * touched entity's cached clone). Returns `true` when the log overflowed since the last drain (dropped
-   * wholesale — a long snapshot-less run): the consumer must then discard its entire cache, because the
-   * individual evictions were lost.
-   */
   drainTouched(consume: (entity: Entity) => void): boolean {
-    for (const e of this.touched) consume(e);
-    this.touched.clear();
-    const overflowed = this.touchedOverflow;
-    this.touchedOverflow = false;
-    return overflowed;
-  }
-
-  private logTouched(entity: Entity): void {
-    this.mutations++;
-    if (this.touched.size >= World.TOUCHED_OVERFLOW_LIMIT) {
-      // A snapshot-less headless run: drop the log instead of leaking it; the next drain rebuilds the cache.
-      this.touched.clear();
-      this.touchedOverflow = true;
-    }
-    this.touched.add(entity);
+    return this.touched.drain(consume);
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {
@@ -228,20 +142,14 @@ export class World {
     return this.storeOf(component)?.get(entity);
   }
 
-  /**
-   * Iterate entities that have all of the given components, in deterministic insertion order of the smallest
-   * store. O(min store size). No sorting in the hot path. Returns a reused-result {@link QueryIterator}, not a
-   * generator; iteration order and membership are identical to the former generator body.
-   */
+  /** Iterate entities that have all of the given components, in the insertion order of the smallest store.
+   *  O(min store size), no sorting in the hot path. For a canonical order use {@link canonicalEntities}. */
   query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
     return new QueryIterator(this.stores, required);
   }
 
-  /**
-   * The lowest-id entity carrying `component`, or null — the world-rules singleton read
-   * (`components/rules.ts`), called from hot per-candidate gates. No {@link QueryIterator}; a missing
-   * or empty store (every rule at its default) answers without allocating anything.
-   */
+  /** The lowest-id entity carrying `component`, or null. The world-rules singleton read called from hot
+   *  per-candidate gates: a missing or empty store answers without allocating an iterator. */
   lowestEntityWith(component: Component<unknown>): Entity | null {
     const store = this.stores.get(component);
     if (store === undefined || store.size === 0) return null;
@@ -253,63 +161,64 @@ export class World {
   }
 
   /**
-   * Ascending-sorted alive entity ids — the canonical order for snapshots, golden hashes, and any
-   * system that must *pick* an entity deterministically. Memoized per alive-set generation (see
-   * {@link canonicalCache}); the result is shared + read-only — never mutate it (sort/reverse a copy).
+   * Ascending-sorted alive entity ids: the canonical order for snapshots, golden hashes, and any system that
+   * must *pick* an entity deterministically. Shared and frozen, so a consumer that sorts or reverses it in
+   * place throws at the mutation site instead of silently corrupting the order every other consumer reads.
    */
   canonicalEntities(): readonly Entity[] {
     if (this.canonicalCache === null) {
-      // Frozen so a consumer that mutates the shared array (.sort()/.reverse() in place — the documented
-      // never-do) throws at the mutation site instead of silently corrupting the canonical order every other
-      // consumer reads (a nondeterminism that would only surface as a distant golden/desync failure).
       this.canonicalCache = Object.freeze([...this.alive].sort((a, b) => a - b));
     }
     return this.canonicalCache;
   }
 
-  /** The mutation generation for one component store. A cache can memoize against this value. */
+  /** The membership generation for one component store. A cache can memoize against this value. */
   componentGeneration(component: Component<unknown>): number {
     return this.componentGenerations.get(component) ?? 0;
   }
 
-  /** Register or replace a named derived-cache verifier. The verifier must be pure over current state. */
-  registerCacheVerifier(name: string, verifier: () => string[]): void {
+  registerCacheVerifier(name: string, verifier: CacheVerifier): void {
     this.cacheVerifiers.set(name, verifier);
   }
 
   /**
    * Recompute every incrementally-maintained cache from scratch and report mismatches with the live copy
-   * (empty = coherent). Incremental caches are the classic lockstep-desync source: a derived value must be
-   * re-derivable from authoritative state at any time, so a missed invalidation shows up here, at the tick it
-   * happens, not as an unexplained golden/hash divergence later. Wired into the core invariants
-   * (`harness/invariants.ts`), so every invariant-checked scenario/golden/fuzz run validates it each tick.
-   * Derived-cache owners register verifiers via {@link registerCacheVerifier} when they first build a cache.
+   * (empty = coherent). Incremental caches are the classic lockstep-desync source, so a missed invalidation
+   * shows up here, at the tick it happens, not as an unexplained hash divergence later: `harness/invariants.ts`
+   * runs it every tick of an invariant-checked scenario/golden/fuzz run. The World's own memo is checked
+   * first and unconditionally, so no registered name can shadow it.
    */
   verifyCaches(): string[] {
+    const out = this.verifyCanonicalCache();
+    for (const verify of this.cacheVerifiers.values()) out.push(...verify());
+    return out;
+  }
+
+  private verifyCanonicalCache(): string[] {
+    const cached = this.canonicalCache;
+    if (cached === null) return [];
     const out: string[] = [];
     const fresh = [...this.alive].sort((a, b) => a - b);
-    if (this.canonicalCache !== null && this.canonicalCache.length !== fresh.length) {
+    if (cached.length !== fresh.length) {
       out.push(
-        `canonicalEntities cache holds ${this.canonicalCache.length} ids but ${fresh.length} are alive — a create/destroy missed invalidation`,
+        `canonicalEntities cache holds ${cached.length} ids but ${fresh.length} are alive — a create/destroy missed invalidation`,
       );
-    } else if (this.canonicalCache !== null) {
+    } else {
       for (let i = 0; i < fresh.length; i++) {
-        if (this.canonicalCache[i] !== fresh[i]) {
+        if (cached[i] !== fresh[i]) {
           out.push(
-            `canonicalEntities cache diverges at index ${i}: cached ${this.canonicalCache[i]}, alive ${fresh[i]} — stale memo`,
+            `canonicalEntities cache diverges at index ${i}: cached ${cached[i]}, alive ${fresh[i]} — stale memo`,
           );
           break;
         }
       }
     }
-    for (const verify of this.cacheVerifiers.values()) out.push(...verify());
     return out;
   }
 
   /**
-   * Visit an entity's components (name + live value) in registration order — the single canonical traversal
-   * "what the state is" has, owned by the World. Allocation-free (the per-frame snapshot clone runs it per
-   * entity); {@link componentEntries} builds a `[name, value]` array on top for callers that want one.
+   * Visit an entity's components (name + live value) in registration order: the single canonical traversal
+   * "what the state is" has. Allocation-free, because the per-frame snapshot clone runs it per entity.
    */
   forEachComponent(entity: Entity, visit: (name: string, value: unknown) => void): void {
     for (const c of this.registered) {
@@ -318,11 +227,7 @@ export class World {
     }
   }
 
-  /**
-   * Canonical [componentName, value] pairs for an entity, in registration order — {@link forEachComponent}
-   * collected into an array. Used where a materialized list is convenient (state hashing); the snapshot clone
-   * uses the callback directly to stay allocation-free.
-   */
+  /** {@link forEachComponent} collected into an array, for callers that want a materialized list. */
   componentEntries(entity: Entity): Array<[string, unknown]> {
     const out: Array<[string, unknown]> = [];
     this.forEachComponent(entity, (name, value) => out.push([name, value]));
@@ -335,111 +240,18 @@ export class World {
 
   private bumpComponentGeneration(component: Component<unknown>, entity: Entity): void {
     this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
-    const journal = this.membershipJournals.get(component);
-    if (journal !== undefined) {
-      if (journal.entities.length >= World.MEMBERSHIP_JOURNAL_LIMIT) {
-        // Drop the whole retained span: consumers behind the new base fall back to a full rebuild.
-        journal.base += journal.entities.length;
-        journal.entities.length = 0;
-      }
-      journal.entities.push(entity);
-    }
+    this.journals.record(component, entity);
   }
 
-  /**
-   * Start journaling membership changes (add/remove/destroy) of `component`'s store so an incremental
-   * index can replay them via {@link membershipDeltasSince} instead of rebuilding on every generation
-   * bump. Idempotent; the journal starts at the current generation.
-   */
+  /** Start journaling membership changes of `component`'s store so an incremental index can replay them via
+   *  {@link membershipDeltasSince} instead of rebuilding on every generation bump. */
   journalMembership(component: Component<unknown>): void {
-    if (!this.membershipJournals.has(component)) {
-      this.membershipJournals.set(component, { base: this.componentGeneration(component), entities: [] });
-    }
+    this.journals.start(component, this.componentGeneration(component));
   }
 
-  /**
-   * The entities whose `component` membership (or stored value, via a re-`add`) changed since generation
-   * `since`, in mutation order — or `null` when the journal cannot cover that span (never journaled, or
-   * `since` predates the retained window), in which case the caller must rebuild from the store. One
-   * entity may appear more than once; replay must be idempotent per entry.
-   */
+  /** The entities whose `component` membership (or stored value, via a re-`add`) changed since generation
+   *  `since`, or `null` when the caller must rebuild from the store instead. */
   membershipDeltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
-    const journal = this.membershipJournals.get(component);
-    if (journal === undefined || since < journal.base || since > journal.base + journal.entities.length) {
-      return null;
-    }
-    return journal.entities.slice(since - journal.base);
-  }
-}
-
-/**
- * The iterator {@link World.query} returns: walk the smallest required store, yielding each entity present in
- * every other required store, in that store's insertion order. Hand-written rather than a generator so the hot
- * per-tick query path reuses one {@link result} object across steps instead of allocating a `{value, done}`
- * per entity. Reuse is safe because the for-of / spread protocol reads `.value` before calling `next()` again,
- * so the shared object never carries a stale id out of the loop. A missing required store yields nothing.
- */
-class QueryIterator implements IterableIterator<Entity> {
-  private readonly result: IteratorResult<Entity> = { done: false, value: 0 as Entity };
-  private readonly stores: Array<Map<Entity, unknown>> = [];
-  private readonly smallest: Map<Entity, unknown> | null;
-  private keys: Iterator<Entity> | null;
-
-  constructor(
-    all: ReadonlyMap<Component<unknown>, Map<Entity, unknown>>,
-    required: ReadonlyArray<Component<unknown>>,
-  ) {
-    let smallest: Map<Entity, unknown> | undefined;
-    let resolvable = required.length > 0;
-    for (const c of required) {
-      const s = all.get(c);
-      if (s === undefined) {
-        resolvable = false;
-        break;
-      }
-      this.stores.push(s);
-      if (smallest === undefined || s.size < smallest.size) smallest = s;
-    }
-    if (!resolvable || smallest === undefined) {
-      this.smallest = null;
-      this.keys = null;
-    } else {
-      this.smallest = smallest;
-      this.keys = smallest.keys();
-    }
-  }
-
-  next(): IteratorResult<Entity> {
-    const keys = this.keys;
-    if (keys === null) return this.finish();
-    const smallest = this.smallest;
-    for (;;) {
-      const step = keys.next();
-      if (step.done === true) return this.finish();
-      const id = step.value;
-      let match = true;
-      for (const s of this.stores) {
-        if (s !== smallest && !s.has(id)) {
-          match = false;
-          break;
-        }
-      }
-      if (match) {
-        this.result.value = id;
-        return this.result; // `done` is already false and stays so until the store is exhausted
-      }
-    }
-  }
-
-  private finish(): IteratorResult<Entity> {
-    this.keys = null;
-    this.result.done = true;
-    // The iterator protocol ignores `value` once `done` is true (for-of / spread read it only on a
-    // not-done step), so the last yielded id is left in place rather than cleared with a cast.
-    return this.result;
-  }
-
-  [Symbol.iterator](): IterableIterator<Entity> {
-    return this;
+    return this.journals.deltasSince(component, since);
   }
 }

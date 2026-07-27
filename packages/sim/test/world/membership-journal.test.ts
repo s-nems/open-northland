@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MEMBERSHIP_JOURNAL_LIMIT } from '../../src/ecs/membership-journal.js';
 import { defineComponent, World } from '../../src/ecs/world.js';
 
 /**
@@ -49,7 +50,7 @@ describe('World membership journal', () => {
     const before = w.componentGeneration(C);
     const e = w.create();
     // Push past the retained window: the journal resets its base instead of growing forever.
-    for (let i = 0; i < World.MEMBERSHIP_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
+    for (let i = 0; i < MEMBERSHIP_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
     expect(w.membershipDeltasSince(C, before)).toBeNull();
     // A consumer inside the retained window still replays.
     const recent = w.componentGeneration(C);

@@ -1,0 +1,43 @@
+import type { Entity } from './component.js';
+
+/** Log size past which the whole log is dropped rather than grown forever. Only reachable when nothing
+ *  drains it (a snapshot-less headless benchmark); one full cache rebuild is the entire cost. */
+const OVERFLOW_LIMIT = 65536;
+
+/**
+ * The entities whose components changed since the last {@link drain}: the invalidation feed for
+ * identity-keyed read caches (the snapshot's per-entity clone cache). Read-path only, never consulted by a
+ * sim decision, so it cannot affect determinism.
+ */
+export class TouchedLog {
+  private readonly entities = new Set<Entity>();
+  private mutations = 0;
+  private overflowed = false;
+
+  /** Monotonic count of every recorded mutation. Unlike "is the log empty" it cannot be falsified by one
+   *  consumer draining the log between another consumer's two staleness probes. */
+  get mutationCount(): number {
+    return this.mutations;
+  }
+
+  record(entity: Entity): void {
+    this.mutations++;
+    if (this.entities.size >= OVERFLOW_LIMIT) {
+      this.entities.clear();
+      this.overflowed = true;
+    }
+    this.entities.add(entity);
+  }
+
+  /**
+   * Hands every logged entity to `consume` and clears the log. Returns `true` when the log overflowed since
+   * the last drain: those individual evictions were lost, so the consumer must discard its entire cache.
+   */
+  drain(consume: (entity: Entity) => void): boolean {
+    for (const e of this.entities) consume(e);
+    this.entities.clear();
+    const overflowed = this.overflowed;
+    this.overflowed = false;
+    return overflowed;
+  }
+}

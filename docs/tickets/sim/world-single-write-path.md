@@ -3,8 +3,8 @@
 **Area:** sim (ecs) · **Priority:** P3
 
 `ecs/world.ts` tracks changes through five parallel channels (`componentGenerations`,
-`componentValueGenerations`, `membershipJournals`, the `touched`/`mutations` clone-cache log,
-`canonicalCache`), and keeping them coherent is a manual call contract: writers must remember
+`componentValueGenerations`, `journals`, the `touched` clone-cache log, `canonicalCache`), and
+keeping them coherent is a manual call contract: writers must remember
 `touch()` vs `touchComponent()` vs both, documented in `world.ts` and repeated verbatim three
 times inside `systems/settlers/atomics/effects/goods/harvest.ts`. `registerCacheVerifier`/`verifyCaches`
 exists specifically to catch missed calls, a verifier standing in for a seam. A forgotten touch
