@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, nodeOfPosition, Simulation } from '../../../src/index.js';
-import { aiSystem, applySow } from '../../../src/systems/index.js';
+import { applySow, plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -33,7 +33,7 @@ describe('work division — two farmers never share a target', () => {
     const f1 = farmerAt(sim, 4, 4, farm);
     const f2 = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // f1 (planned first) reaps the field underfoot; f2 must NOT shadow it — it claims the OTHER field.
     expect(sim.world.get(f1, components.CurrentAtomic).effect).toEqual({
@@ -52,14 +52,14 @@ describe('work division — two farmers never share a target', () => {
     fieldAt(sim, farm, 4, 4, { stage: STAGES }); // nearer to the door
     fieldAt(sim, farm, 8, 8, { stage: STAGES }); // farther
     const f1 = farmerAt(sim, 5, 5, farm);
-    aiSystem(sim.world, ctxOf(sim)); // tick 1: f1 sets off toward the near field (MoveGoal + FarmTask)
+    plannerSystem(sim.world, ctxOf(sim)); // tick 1: f1 sets off toward the near field (MoveGoal + FarmTask)
     expect(sim.world.tryGet(f1, components.MoveGoal)).toBeDefined();
     const nearNode = cellAnchorNode(4, 4);
     expect(sim.world.get(f1, components.FarmTask).node).toBe(sim.terrain?.nodeAt(nearNode.hx, nearNode.hy));
 
     // A SECOND farmer appears a tick later, while f1 is still walking — it must claim the far field.
     const f2 = farmerAt(sim, 5, 5, farm);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     const farNode = cellAnchorNode(8, 8);
     expect(sim.world.get(f2, components.FarmTask).node).toBe(sim.terrain?.nodeAt(farNode.hx, farNode.hy));
   });
@@ -161,7 +161,7 @@ describe('store-full pause and overflow', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const { farmer } = fullFarmWorld(sim);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No reap swing, no walk — the farmer steps inside the farm until store room frees.
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
@@ -175,7 +175,7 @@ describe('store-full pause and overflow', () => {
     const { farm, farmer } = fullFarmWorld(sim);
     sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     // Nowhere to put the sheaf — the farmer steps inside with it instead of freezing at the door.
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
@@ -183,7 +183,7 @@ describe('store-full pause and overflow', () => {
 
     // Room frees (the player spends a unit) → the very next plan walks back out and deposits.
     sim.world.get(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP - 1);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(farmer, components.Resting)).toBe(false);
     expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'pileup', store: farm });
   });
@@ -193,7 +193,7 @@ describe('store-full pause and overflow', () => {
     const { farm, farmer } = fullFarmWorld(sim);
     const granary = granaryAt(sim, 2, 2);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     // The sink exists again → the ripe field underfoot is reaped at once.
     expect(sim.world.get(farmer, components.CurrentAtomic).atomicId).toBe(REAP_ATOMIC);
 

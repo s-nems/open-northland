@@ -256,7 +256,7 @@ function engageCombatant(
   if (willFlee) {
     // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase. A
     // stale marker would outlive the flee — `fleeDrive` drops `Fleeing` but not `Engagement` — benching the
-    // unit (aiSystem skips it) and keeping combat awake forever.
+    // unit (plannerSystem skips it) and keeping combat awake forever.
     world.remove(e, Engagement);
     fleeDrive(world, ctx, terrain, index, presence, e, attacker);
     return;

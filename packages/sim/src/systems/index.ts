@@ -28,8 +28,8 @@ export * from './readviews/index.js';
 // The meal length (the eat/forage atomic duration): exposed so tests can assert it without reaching
 // into the internal action vocabulary wholesale.
 export { eatDuration } from './settlers/actions.js';
-export * from './settlers/ai.js';
 export * from './settlers/atomic.js';
+export * from './settlers/planner/system.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
 export * from './spatial/nodes.js';

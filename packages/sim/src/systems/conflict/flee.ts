@@ -53,9 +53,9 @@ const FLEE_REPATH_CADENCE = 6;
 
 /**
  * The need level (fixed-point, in [0, ONE]) at or above which a collapsing hunger/fatigue overrides the FLEE
- * drive — a settler this close to starving stops to eat/sleep even in danger (the AISystem's need drive then
- * owns it), while every lesser need yields to the flee. Set well above the ¾ eat/sleep thresholds. Approximated
- * (source basis "Combat flee"): the original's flee-vs-need arbitration is unreadable.
+ * drive — a settler this close to starving stops to eat/sleep even in danger (the PlannerSystem's need drive
+ * then owns it), while every lesser need yields to the flee. Set well above the ¾ eat/sleep thresholds.
+ * Approximated (source basis "Combat flee"): the original's flee-vs-need arbitration is unreadable.
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
@@ -66,9 +66,9 @@ const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); /
  *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
  *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the flee route so the economy re-tasks
  *    the unit; while cooling down it holds its last route. A unit that was never fleeing does nothing.
- *  - **a collapsing need** ({@link needCollapsing}) → a near-death hunger/fatigue overrides the flee: on the
- *    transition out of fleeing (Fleeing still set) shed the marker + flee route so the AISystem's eat/sleep
- *    drive owns the unit; once yielded, leave that need-walk untouched.
+ *  - **a collapsing need** ({@link needCollapsing}) → a near-death hunger/fatigue overrides the flee: on
+ *    the transition out of fleeing (Fleeing still set) shed the marker + flee route so the PlannerSystem's
+ *    eat/sleep drive owns the unit; once yielded, leave that need-walk untouched.
  *  - **flee** → stamp/refresh {@link Fleeing} (calmUntil null = in danger), and — throttled to
  *    {@link FLEE_REPATH_CADENCE}, or immediately on a failed route — re-aim to a walkable cell
  *    {@link FLEE_STEP_NODES} away in the best direction away from the threat ({@link fleeDestination}). The
@@ -84,9 +84,9 @@ export function fleeDrive(
   attacker: SettlerIdentity,
 ): void {
   // A collapsing need overrides the flee whether or not a threat is in sight, and is checked first so it wins
-  // over both the threat and the cool-down. Yield only on the transition (Fleeing still set): shed the marker +
-  // flee route so the AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we
-  // don't cancel the eat/sleep goal the AI sets each tick.
+  // over both the threat and the cool-down. Yield only on the transition (Fleeing still set): shed the marker
+  // + flee route so the PlannerSystem re-tasks the unit; once yielded (no marker) leave the need-walk alone
+  // so we don't cancel the eat/sleep goal the AI sets each tick.
   if (needCollapsing(world, e)) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);

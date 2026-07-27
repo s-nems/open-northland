@@ -8,8 +8,8 @@ where AGENTS.md Ordering says canonicalization is not needed ("Do not sort membe
 commutative sums, or loops whose result cannot change with order"):
 
 - `hasHaulableOutput` (`systems/settlers/targets/stores/outputs.ts`) — a boolean existence check, and the
-  AI planner's per-tick haul dormancy gate over **all** stockpiles (`systems/settlers/ai.ts`). Order
-  cannot change a `return true`.
+  AI planner's per-tick haul dormancy gate over **all** stockpiles (`systems/settlers/planner/pass.ts`).
+  Order cannot change a `return true`.
 - `storedFoodUnits` (`systems/family/households.ts`) — a commutative integer sum, reached per home-store
   candidate from the hungry-settler food scan and from the child-making checks.
 - `storedFoodGood` (`systems/settlers/targets/food.ts`) — a min-pick that sorts the whole goods map and
@@ -30,4 +30,4 @@ Do not widen this into a `stockpileEntries` audit: the other callers are real ca
 ## Verify
 
 Goldens and `hashState` byte-identical (this is behavior-preserving). `npm test`, `npm run check`,
-`npm run build`. `npm run bench:sim` to confirm the `ai` system's dormancy gate got cheaper.
+`npm run build`. `npm run bench:sim` to confirm the `planner` system's dormancy gate got cheaper.

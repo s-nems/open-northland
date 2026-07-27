@@ -8,7 +8,7 @@ import type { FarmingSpec } from '../../economy/fields.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { closer, manhattan } from '../../spatial/nodes.js';
 import { lowestStockedGood } from '../../stores/index.js';
-import type { PlannerContext } from '../planner-context.js';
+import type { PlannerContext } from '../planner/context.js';
 import {
   interactionCell,
   nearestByCell,

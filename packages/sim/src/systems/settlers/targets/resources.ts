@@ -7,7 +7,7 @@ import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { manhattan } from '../../spatial/nodes.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
-import type { PlannerContext } from '../planner-context.js';
+import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { nearestByCell } from './cell-index.js';
 import { unreachableWorkCell, type WorkCellGates } from './reachability.js';

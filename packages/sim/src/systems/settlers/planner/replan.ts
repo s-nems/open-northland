@@ -9,19 +9,19 @@ import {
   Resting,
   Stranded,
   Wedding,
-} from '../../components/index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
-import { clearNavState, isTravelling } from '../spatial/nodes.js';
-import { type InboundSupplyTally, releaseSupplyRun } from '../stores/index.js';
-import { reconcileYardRoute } from './economy/index.js';
-import { type FarmClaims, releaseFarmTask } from './farming/index.js';
-import { noteUnreachableGoal, pruneUnreachableGoals } from './unreachable-goals.js';
+} from '../../../components/index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { SystemContext } from '../../context.js';
+import { clearNavState, isTravelling } from '../../spatial/nodes.js';
+import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
+import { reconcileYardRoute } from '../economy/index.js';
+import { type FarmClaims, releaseFarmTask } from '../farming/index.js';
+import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
 // The planner's per-settler availability checks: decide whether a settler is idle enough to re-plan
 // this tick and, when it is, shed every intent a previous tick left on it, so the drive ladder
-// (./drive-ladder.ts) sees a clean settler and never re-chooses against its own stale claims. Also
+// (../drive-ladder.ts) sees a clean settler and never re-chooses against its own stale claims. Also
 // home to the economy's ownership gate (anotherSystemOwns).
 
 /** How long a stranded walker parks before shedding its failed route and re-planning — long enough that

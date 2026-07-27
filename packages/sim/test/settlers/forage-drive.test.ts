@@ -12,7 +12,6 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import {
-  aiSystem,
   atomicSystem,
   BERRY_FORAGE_RADIUS,
   BERRY_REGROW_TICKS,
@@ -20,6 +19,7 @@ import {
   berryGrowthSystem,
   EAT_HUNGER_RESTORE,
   HUNGER_RISE_PER_TICK,
+  plannerSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -74,7 +74,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     const settler = settlerAt(sim, 2, 0, HUNGRY);
     const bush = bushAt(sim, 2, 0); // same cell
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -88,7 +88,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     bushAt(sim, 4, 0); // distance 4
     bushAt(sim, 2, 0); // distance 2 — should win
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
@@ -103,7 +103,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Headed for the wood, not the bare bush — foraging did not fire.
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
@@ -119,7 +119,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The far bush is ignored; the settler works the nearby tree instead.
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 1, 0));
@@ -133,7 +133,7 @@ describe('eat drive — picking the NEAREST food across stores and bushes', () =
     const bush = bushAt(sim, 0, 0); // on the bush — distance 0
     storeAt(sim, 3, 0, 5); // a larder exists, but the bush is right here
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'forage', bush });
@@ -145,7 +145,7 @@ describe('eat drive — picking the NEAREST food across stores and bushes', () =
     const store = storeAt(sim, 0, 0, 5); // on the larder — distance 0
     bushAt(sim, 3, 0); // a ripe bush exists, but the larder is right here
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });

@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, MoveGoal, Position, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Unit tests for the AISystem harvest planner's `needforgood` XP-THRESHOLD gate — the *who-may-do-it*
+ * Unit tests for the PlannerSystem harvest planner's `needforgood` XP-THRESHOLD gate — the *who-may-do-it*
  * progression gate, the per-settler sibling of the production-side tribe-presence `jobEnablesGood`
  * gate. A settler may only harvest a resource whose harvested good its accrued XP clears (`needforgood
  * <good> <amount> <expType…>`); a settler that hasn't reached the threshold won't even pick the node.
@@ -69,13 +69,13 @@ function woodAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
+describe('PlannerSystem harvest planner — needforgood XP-threshold gate', () => {
   it('does not target a wood node when the settler is below the wood threshold', () => {
     const sim = new Simulation({ seed: 1, content: woodGatedContent(), map: grassMap(4, 1) });
     const cutter = woodcutterAt(sim, 0, 0, 20 * WOOD_FACTOR - 1); // one raw XP short of 20 repeats
     woodAt(sim, 1, 0);
 
-    aiSystem(sim.world, {
+    plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
       tick: sim.tick,
@@ -94,7 +94,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
     const cutter = woodcutterAt(sim, 0, 0, 20 * WOOD_FACTOR); // exactly 20 repeats of wood XP
     woodAt(sim, 1, 0);
 
-    aiSystem(sim.world, {
+    plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
       tick: sim.tick,
@@ -113,7 +113,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
     const cutter = woodcutterAt(sim, 0, 0, 0);
     woodAt(sim, 1, 0);
 
-    aiSystem(sim.world, {
+    plannerSystem(sim.world, {
       content: sim.content,
       rng: sim.rng,
       tick: sim.tick,

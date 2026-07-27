@@ -3,7 +3,7 @@
 **Area:** sim · **Priority:** P2
 **Blocked by:** [independent benchmark axes](bench-world-scenery-mix.md)
 
-The last controlled runs attributed roughly 79–89% of tick time to `aiSystem`, with four times the
+The last controlled runs attributed roughly 79–89% of tick time to `plannerSystem`, with four times the
 settlers costing about 7.8 times the planner time. Those numbers predate later spatial-memo and blocker
 changes and conflate population with a 3.8-times larger map. A V8 profile still identified repeated
 store/workplace candidate acceptance as the dominant planner work, but the current curve is not pinned.

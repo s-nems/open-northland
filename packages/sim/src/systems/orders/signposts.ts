@@ -62,7 +62,7 @@ export function placeSignpost(
 /**
  * SignpostOrderSystem — turns an arrived {@link ErectSignpostOrder} into the one-shot build-guide
  * hammer swing. Runs after {@link import('./movement.js').playerOrderSystem} (which retires the walk)
- * and before the aiSystem (so the swing starts before the economy could re-task the scout).
+ * and before the plannerSystem (so the swing starts before the economy could re-task the scout).
  *
  * Per scout under an order: while the erect swing runs, wait for its effect; on arrival at the goal,
  * re-validate the spot (the world may have changed en route — a rival post, a new building) and start

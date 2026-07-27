@@ -18,7 +18,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
-import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/settlers/assistant-grants.js';
+import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/settlers/planner/assistant-grants.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 

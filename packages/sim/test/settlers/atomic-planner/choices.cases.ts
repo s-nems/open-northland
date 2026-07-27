@@ -8,7 +8,7 @@ import {
   Settler,
 } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
   anchorCell,
@@ -28,7 +28,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const cutter = woodcutterAt(sim, 0, 0);
     woodAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(cutter, MoveGoal)).toBe(true);
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 3, 0));
@@ -40,7 +40,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const cutter = woodcutterAt(sim, 3, 0);
     const node = woodAt(sim, 3, 0); // same cell
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(cutter, MoveGoal)).toBe(false);
     const atomic = sim.world.get(cutter, CurrentAtomic);
@@ -54,7 +54,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const cutter = woodcutterAt(sim, 0, 0);
     woodAt(sim, 4, 0); // node distance 8
     woodAt(sim, 2, 0); // node distance 4 — should win
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 2, 0));
   });
 
@@ -65,7 +65,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(e, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 99 });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(cutter, MoveGoal)).toBe(false); // nothing it may harvest -> idle
     expect(sim.world.has(cutter, CurrentAtomic)).toBe(false);
   });
@@ -74,7 +74,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
     woodAt(sim, 3, 0, 0); // depleted
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(cutter, MoveGoal)).toBe(false);
   });
 
@@ -83,7 +83,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const cutter = woodcutterAt(sim, 0, 0);
     sim.world.add(cutter, Carrying, { goodType: WOOD, amount: 1 });
     storeAt(sim, 4, 0);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 4, 0));
   });
 
@@ -92,7 +92,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const cutter = woodcutterAt(sim, 4, 0);
     sim.world.add(cutter, Carrying, { goodType: WOOD, amount: 1 });
     const store = storeAt(sim, 4, 0);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     const atomic = sim.world.get(cutter, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'pileup', store });
   });
@@ -110,7 +110,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
       targetEntity: null,
       targetTile: null,
     });
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(cutter, MoveGoal)).toBe(false); // busy — planner left it alone
   });
 
@@ -128,7 +128,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
       experience: new Map(),
     });
     woodAt(sim, 3, 0);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, MoveGoal)).toBe(false);
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
   });

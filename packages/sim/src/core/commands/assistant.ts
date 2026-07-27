@@ -5,7 +5,7 @@ export type AssistantCommand = {
    * {@link import('../../components/assistant.js').AssistantGrants} carrier, so the list hashes and
    * replays like any component. While granted, the auto-equip pass sends settlers with a matching
    * free slot to fetch the good from a reachable store or pile
-   * (`systems/settlers/assistant-grants.ts`). An out-of-range `player` or a good with no content
+   * (`systems/settlers/planner/assistant-grants.ts`). An out-of-range `player` or a good with no content
    * `equip` class is recoverable bad input - skipped, still logged.
    */
   readonly kind: 'setAssistantGrant';

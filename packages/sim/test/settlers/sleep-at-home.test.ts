@@ -11,7 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { isSleepingAtHome } from '../../src/systems/settlers/sleep-at-home.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
@@ -75,7 +75,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     const home = homeAt(sim, 3, 2); // same cell — the settler is already on the door node
     sim.world.add(settler, Residence, { home });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     expect(sim.world.get(settler, Resting).at).toBe(home); // went in — the render hides it
@@ -91,7 +91,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     const home = homeAt(sim, 5, 2);
     sim.world.add(settler, Residence, { home });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // still walking, not yet asleep
     expect(sim.world.has(settler, Resting)).toBe(false); // not inside until it arrives
@@ -103,7 +103,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     const settler = tiredAt(sim, 3, 2);
     homeAt(sim, 5, 2); // a house stands, but this settler does not live in it
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false); // slept outside, never went in
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -118,7 +118,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     sim.world.get(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised — no roof yet
     sim.world.add(settler, Residence, { home: site });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false);
     expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
@@ -135,7 +135,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     // guard the rung re-picks the same door every re-plan and the settler never sleeps at all.
     noteUnreachableGoal(sim.world, ctxOf(sim), settler, door);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Resting)).toBe(false);
     expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);

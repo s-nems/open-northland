@@ -9,7 +9,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import {
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_TICKS,
@@ -66,7 +66,7 @@ function groundPileAt(sim: Simulation, x: number, y: number, planks: number): En
 
 /** Empty planner passes that take the porter through its failed scan into dormancy. */
 function idlePasses(sim: Simulation, n = 3): void {
-  for (let i = 0; i < n; i++) aiSystem(sim.world, ctxOf(sim));
+  for (let i = 0; i < n; i++) plannerSystem(sim.world, ctxOf(sim));
 }
 
 /** The terrain node at cell (x, y)'s anchor — throws when the sim has no map. */
@@ -86,7 +86,7 @@ describe('porter dormancy', () => {
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
 
     groundPileAt(sim, 3, 0, 2); // the Stockpile add bumps the membership generation — a wake
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
@@ -102,14 +102,14 @@ describe('porter dormancy', () => {
     // write goes through) is invisible to the dormant porter — and the coherence verifier catches
     // exactly this incoherence, so a future unlogged write cannot slip past invariant-checked runs.
     sim.world.get(hq, Stockpile).amounts.set(PLANK, 0);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
     expect(sim.world.verifyCaches().some((m) => m.includes('porter'))).toBe(true);
 
     // Logged through the seam (the value generation the dormancy version tracks), the freed sink
     // wakes the porter.
     sim.world.touchComponent(Stockpile);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
@@ -126,7 +126,7 @@ describe('porter dormancy', () => {
 
     // Expiry is a pure tick read (no component write bumps the scan version), so the gate must not
     // have banked this scan: past the memo window the porter re-scans and fetches the pile.
-    aiSystem(sim.world, { ...ctxOf(sim), tick: UNREACHABLE_GOAL_MEMO_TICKS });
+    plannerSystem(sim.world, { ...ctxOf(sim), tick: UNREACHABLE_GOAL_MEMO_TICKS });
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
@@ -142,7 +142,7 @@ describe('porter dormancy', () => {
     // porter (node change), then plan — the entry mismatches on both fields and the scan re-runs.
     sim.world.get(porter, Position).x = fx.fromInt(1);
     sim.world.touch(porter);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 });

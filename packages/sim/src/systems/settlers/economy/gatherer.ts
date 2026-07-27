@@ -4,7 +4,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { workplaceStoredGoods } from '../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../actions.js';
-import type { PlannerContext } from '../planner-context.js';
+import type { PlannerContext } from '../planner/context.js';
 import {
   interactionCell,
   nearestCollectablePileFor,

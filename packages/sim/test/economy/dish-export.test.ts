@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Carrying, CurrentAtomic, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { ExternalFoodIndex } from '../../src/systems/family/food-search.js';
-import { aiSystem, stockCapacity } from '../../src/systems/index.js';
+import { plannerSystem, stockCapacity } from '../../src/systems/index.js';
 import { exportedGoodForm } from '../../src/systems/readviews/index.js';
 import { carriedGoodForm } from '../../src/systems/settlers/economy/routing.js';
 import { testContent } from '../fixtures/content.js';
@@ -72,7 +72,7 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     buildingAt(sim, HEADQUARTERS, 3, 0);
     const baker = settlerAt(sim, 0, 0, CARPENTER, kitchen);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // It lifts the good the kitchen actually holds — the conversion happens when the swing completes.
     const atomic = sim.world.get(baker, CurrentAtomic);

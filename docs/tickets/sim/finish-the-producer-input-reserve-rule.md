@@ -13,7 +13,7 @@ that holds the good, so three rungs still strip protected reserves:
 
 - `economy/builder.ts` — a builder fetching construction material;
 - `settlers/equip-order.ts` — an equip errand;
-- `settlers/assistant-grants.ts` — a granted item.
+- `settlers/planner/assistant-grants.ts` — a granted item.
 
 Real content pays every construction bill in wood/stone/brick, and `work_joinery_01`,
 `work_pottery_01` and `work_smithy_01` all hold wood as a recipe input, so "a builder emptied the

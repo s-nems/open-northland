@@ -10,7 +10,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { anchorCell, ctxOf, grassMap, VIKING, woodAt, woodcutterAt } from './support.js';
 
@@ -50,7 +50,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     const mill = sawmillAt(sim, 3, 0); // its station, three cells away
     const carp = carpenterAt(sim, 0, 0, mill); // bound to that mill
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carp, MoveGoal)).toBe(true);
     expect(sim.world.get(carp, MoveGoal).cell).toBe(anchorCell(sim, 3, 0));
@@ -62,7 +62,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     const mill = sawmillAt(sim, 3, 0);
     const carp = carpenterAt(sim, 3, 0, mill); // same cell as its bound mill — already on station
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carp, MoveGoal)).toBe(false);
     expect(sim.world.has(carp, CurrentAtomic)).toBe(false);
@@ -73,7 +73,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     sawmillAt(sim, 3, 0);
     const carp = carpenterAt(sim, 0, 0); // employed but unbound (no JobAssignment)
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // With no binding the drive has no station to walk to, and a carpenter harvests nothing — so it
     // idles rather than being lured to a mill the JobSystem never assigned it.
@@ -86,7 +86,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     const mine = sawmillAt(sim, 5, 0); // farther (node distance 10) — this is the bound station
     const carp = carpenterAt(sim, 0, 0, mine);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Latched to its own mill: it walks to cell 5, not the nearer mill at 2 — two same-type workplaces
     // staff independently because each operator follows its binding, not proximity.
@@ -101,7 +101,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     sawmillAt(sim, 5, 0);
     woodAt(sim, 2, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 2, 0)); // the tree, not the mill
   });

@@ -9,7 +9,7 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { boundProducerOutputToHaul } from '../../../src/systems/settlers/economy/haul-targets.js';
 import { SinkAvailability } from '../../../src/systems/settlers/targets/stores/sinks.js';
@@ -40,7 +40,7 @@ describe('porter — collecting loose ground piles into a warehouse', () => {
     pileAt(sim, 2, 0, [[WOOD, 2]]); // a heap gatherers dropped at a flag
     const porter = settlerAt(sim, 0, 0, CARRIER, hq); // bound to the warehouse
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
@@ -51,7 +51,7 @@ describe('porter — collecting loose ground piles into a warehouse', () => {
     const pile = pileAt(sim, 2, 0, [[WOOD, 2]]);
     const porter = settlerAt(sim, 2, 0, CARRIER, hq);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(porter, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -65,7 +65,7 @@ describe('porter — collecting loose ground piles into a warehouse', () => {
     const porter = settlerAt(sim, 2, 0, CARRIER, hq);
     sim.world.add(porter, Carrying, { goodType: WOOD, amount: 2 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 6, 0)); // its own HQ, not the nearer one
   });
@@ -82,7 +82,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     buildingAt(sim, GRANARY, 6, 0); // a warehouse that accepts wheat
     const carrier = settlerAt(sim, 2, 0, CARRIER, farm); // stationed AT the farm
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(carrier, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -96,7 +96,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     const carrier = settlerAt(sim, 3, 0, CARRIER, farm);
     sim.world.add(carrier, Carrying, { goodType: WHEAT, amount: 1 }); // already carrying the farm's wheat
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The load heads for the granary (cell 6), NOT back to the farm (cell 2) it was lifted from.
     expect(sim.world.get(carrier, MoveGoal).cell).toBe(cell(sim, 6, 0));
@@ -110,7 +110,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     const carrier = settlerAt(sim, 3, 0, CARRIER, farmA);
     sim.world.add(carrier, Carrying, { goodType: WHEAT, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Excluding only the carrier's OWN farm made the sibling the "nearest store" and the wheat
     // ping-ponged farm↔farm forever — the sink scan must skip every producer of the good.
@@ -123,7 +123,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     buildingAt(sim, FARM, 5, 0); // has wheat room, but produces wheat — not a sink
     const carrier = settlerAt(sim, 2, 0, CARRIER, farmA);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carrier, CurrentAtomic)).toBe(false);
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
@@ -159,7 +159,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     const farm = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]); // wheat on hand, but nowhere else to put it
     const carrier = settlerAt(sim, 2, 0, CARRIER, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // No sink for wheat besides the farm itself → it neither picks up nor walks off with it.
     expect(sim.world.has(carrier, CurrentAtomic)).toBe(false);
@@ -172,7 +172,7 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     buildingAt(sim, GRANARY, 6, 0);
     const carrier = settlerAt(sim, 2, 0, CARRIER, hq);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The HQ produces nothing, so its carrier never hauls the HQ's own stock out — it stays inbound-only
     // (nothing to collect here, so it is simply idle rather than lifting the warehouse's wood).
@@ -226,7 +226,7 @@ describe('the same-side rule — a hauler works only its own player’s stores a
     sim.world.add(enemyPile, Owner, { player: 1 });
     sim.world.add(myPile, Owner, { player: 0 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Skips the nearer enemy pile (cell 2), walks to its own (cell 4).
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 4, 0));
@@ -245,7 +245,7 @@ describe('the same-side rule — a hauler works only its own player’s stores a
     sim.world.add(myGranary, Owner, { player: 0 });
     sim.world.add(carrier, Carrying, { goodType: WHEAT, amount: 1 }); // already carrying the farm's wheat
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The load heads for its own granary (cell 8), never the nearer enemy one (cell 4).
     expect(sim.world.get(carrier, MoveGoal).cell).toBe(cell(sim, 8, 0));

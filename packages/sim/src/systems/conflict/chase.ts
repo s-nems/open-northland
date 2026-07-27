@@ -63,16 +63,16 @@ export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell
 }
 
 /**
- * Advance an owned combatant on `target` it can't yet reach — the walk-into-melee drive. It keeps an
- * {@link Engagement} marker (so the AISystem leaves the unit to combat) and re-issues a {@link MoveGoal} toward
- * an {@link approachCell} (a cell in the weapon's reach band of `target.node`, closest to the unit — so a melee
- * unit stops adjacent rather than walking onto the enemy) at most every {@link REPATH_CADENCE} ticks. Between
- * repaths it follows its live route; the swing check (distance-based) catches it the instant it steps into
- * reach. A dead route (an unreachable target) is dropped so it re-issues; an ordered unit whose route can't
- * resolve gives the order up (the "becomes unreachable" end of an attack order). `target` carries the
+ * Advance an owned combatant on `target` it can't yet reach — the walk-into-melee drive. It keeps an {@link
+ * Engagement} marker (so the PlannerSystem leaves the unit to combat) and re-issues a {@link MoveGoal} toward
+ * an {@link approachCell} (a cell in the weapon's reach band of `target.node`, closest to the unit — so a
+ * melee unit stops adjacent rather than walking onto the enemy) at most every {@link REPATH_CADENCE} ticks.
+ * Between repaths it follows its live route; the swing check (distance-based) catches it the instant it steps
+ * into reach. A dead route (an unreachable target) is dropped so it re-issues; an ordered unit whose route
+ * can't resolve gives the order up (the "becomes unreachable" end of an attack order). `target` carries the
  * caller's pre-resolved combat node (so the chase closes on the same cell the reach check measured) and a
- * building target's full wall list, which lets a chaser whose nearest face is fully manned encircle to a
- * free slot on another face ({@link encircleCandidates}) instead of holding behind the first rank.
+ * building target's full wall list, which lets a chaser whose nearest face is fully manned encircle to a free
+ * slot on another face ({@link encircleCandidates}) instead of holding behind the first rank.
  */
 export function chase(
   world: World,

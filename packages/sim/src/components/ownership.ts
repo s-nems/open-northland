@@ -52,7 +52,7 @@ export function sameSide(world: World, a: Entity, b: Entity): boolean {
 
 /**
  * The {@link sameSide} rule on two owner ids directly — for the planner scans that carry the settler's
- * owner as a number ({@link import('../systems/settlers/planner-context.js').PlannerContext.owner}) and read
+ * owner as a number ({@link import('../systems/settlers/planner/context.js').PlannerContext.owner}) and read
  * the candidate's off the world. Compatible unless BOTH are explicit and differ (see {@link sameSide}).
  */
 export function ownersCompatible(a: number | undefined, b: number | undefined): boolean {

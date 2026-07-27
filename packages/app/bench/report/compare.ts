@@ -1,6 +1,6 @@
 /**
- * Two benchmark reports in, a per-system delta table out. This is what turns "aiSystem costs 4.89 ms"
- * into "aiSystem is 38% slower than the baseline", which is the only form a decision can be made from.
+ * Two benchmark reports in, a per-system delta table out. This is what turns "plannerSystem costs 4.89 ms"
+ * into "plannerSystem is 38% slower than the baseline", which is the only form a decision can be made from.
  *
  * Refusing to compare is a feature: reports of different worlds or tick counts produce confident
  * nonsense deltas, so they raise rather than render.

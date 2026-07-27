@@ -68,7 +68,7 @@ export const PathFollow = defineComponent<{
 
 /**
  * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id, like
- * {@link PathRequest}). The intent layer above pathing — the AISystem turns a goal on a path-less,
+ * {@link PathRequest}). The intent layer above pathing — the PlannerSystem turns a goal on a path-less,
  * request-less entity into a {@link PathRequest}; PathfindingSystem turns that into a {@link PathFollow};
  * MovementSystem walks it. Removed once the entity arrives, so an entity carrying a `MoveGoal` is still
  * travelling. Kept separate from PathRequest/PathFollow (the transient mechanism) so the planner can re-issue
@@ -94,7 +94,7 @@ export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed
 /**
  * A stranded walker's retry pacing: its route FAILED ({@link PathRequest} `failed`) and no drive with its
  * own failure protocol owns it, so the AI planner parks the dead nav state until tick `retryAt`, then sheds
- * it and re-plans (the stranded-recovery block in `systems/settlers/replan.ts`). Without it a failed
+ * it and re-plans (the stranded-recovery block in `systems/settlers/planner/replan.ts`). Without it a failed
  * request reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
  * (`clearNavState`), so an authoritative cancel — a player order, a job change — restarts the walk at once.
  */

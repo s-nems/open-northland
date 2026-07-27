@@ -3,9 +3,9 @@ import { Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import {
-  aiSystem,
   atomicSystem,
   FATIGUE_RISE_PER_TICK,
+  plannerSystem,
   SLEEP_FATIGUE_RESTORE,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -39,7 +39,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
     // A tree to harvest exists, but the tired settler rests instead of working.
     treeAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false); // already clear ground — no walk needed
     const atomic = sim.world.get(settler, CurrentAtomic);
@@ -53,7 +53,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
     const settler = settlerAt(sim, 0, 0, RESTED);
     treeAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Headed for the wood, not resting — the sleep drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
@@ -67,7 +67,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
     const settler = settlerAt(sim, 0, 0, TIRED, TIRED);
     sim.world.add(settler, Carrying, { goodType: 3 /* food_simple */, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(10); // EAT — eat outranks sleep

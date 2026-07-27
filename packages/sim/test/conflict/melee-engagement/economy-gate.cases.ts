@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Engagement, Position, Resource } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, HARVEST_ATOMIC, P0, VIKING, WOOD, WOODCUTTER } from './support.js';
 
@@ -19,7 +19,7 @@ describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
     woodAt(sim, 3, 0); // a wood node on the cutter's tile — it would normally start chopping
     sim.world.add(cutter, Engagement, { repathAt: sim.tick });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(cutter, CurrentAtomic)).toBe(false); // engaged — the economy did NOT start a harvest
   });
@@ -29,7 +29,7 @@ describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
     const cutter = fighterAt(sim, 3, 0, VIKING, WOODCUTTER, { owner: P0 });
     woodAt(sim, 3, 0);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(cutter, CurrentAtomic).atomicId).toBe(HARVEST_ATOMIC); // economy ran — it harvested
   });

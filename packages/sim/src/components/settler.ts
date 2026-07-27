@@ -50,7 +50,7 @@ export const Settler = defineComponent<{
 
 /**
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
- * pickup=22, harvest=24, eat=10, attack=81). The planner (AISystem) sets this; the AtomicSystem
+ * pickup=22, harvest=24, eat=10, attack=81). The planner (PlannerSystem) sets this; the AtomicSystem
  * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed
  * {@link AtomicEffect}, emits an `atomicCompleted` event, and removes the component — the planner sees an
  * entity with no CurrentAtomic as ready for its next atomic.
@@ -136,8 +136,8 @@ export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignme
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
- * A player move order in flight on a settler, stamped by
- * {@link import('../systems/orders/index.js').moveUnit}. While present the AISystem's ECONOMY branch and the
+ * A player move order in flight on a settler, stamped by {@link
+ * import('../systems/orders/index.js').moveUnit}. While present the PlannerSystem's ECONOMY branch and the
  * combat auto-drives leave the unit alone (the reposition is authoritative), but its NEEDS drives still fire.
  * The {@link import('../systems/orders/index.js').playerOrderSystem} removes it the tick the unit arrives (or
  * the route fails / a need takes over) — there is no post-arrival hold; DEFEND's stance anchor is the "hold

@@ -9,7 +9,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -53,7 +53,7 @@ describe('an upgrading workplace — its crew stands down', () => {
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // wood is available next door…
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // …but the workhouse is a site: no fetch walk, no pickup — the smith waits the upgrade out.
     expect(sim.world.has(smith, MoveGoal)).toBe(false);
@@ -68,7 +68,7 @@ describe('an upgrading workplace — its crew stands down', () => {
     const smith = settlerAt(sim, 2, 0, CARPENTER, mill);
     sim.world.add(smith, Carrying, { goodType: WOOD, amount: 1 }); // fetched just before the upgrade
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // Delivery case 1 (the bound workshop) is gated off — the wood routes to the HQ instead.
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 1, 0));
@@ -81,7 +81,7 @@ describe('an upgrading workplace — its crew stands down', () => {
     pileAt(sim, 3, 0, [[WOOD, 2]]); // a loose pile it would normally ferry in
     const porter = settlerAt(sim, 1, 0, CARRIER, hq);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
     expect(sim.world.has(porter, CurrentAtomic)).toBe(false);
@@ -94,7 +94,7 @@ describe('an upgrading workplace — its crew stands down', () => {
     buildingAt(sim, HEADQUARTERS, 0, 0); // the store the haul would deliver to
     const hauler = settlerAt(sim, 1, 0, CARRIER, buildingAt(sim, HEADQUARTERS, 5, 0));
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The site's stock is construction material, not output — nothing qualifies, the carrier idles.
     expect(sim.world.has(hauler, MoveGoal)).toBe(false);
@@ -109,7 +109,7 @@ describe('an upgrading workplace — its crew stands down', () => {
     buildingAt(sim, HEADQUARTERS, 6, 0, [[WOOD, 3]]); // the legitimate source, farther away
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The fetch walks past the site's delivered wood to the warehouse.
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 6, 0));

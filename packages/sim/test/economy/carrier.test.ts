@@ -11,7 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
-import { aiSystem } from '../../src/systems/index.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -106,7 +106,7 @@ describe('carrier — choosing what to haul', () => {
     const carrier = carrierAt(sim, 0, 0, hq);
     const mill = sawmillAt(sim, 3, 0, 2); // 2 planks waiting
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carrier, MoveGoal)).toBe(true);
     const millNode = cellAnchorNode(3, 0); // the mill's anchor node on the half-cell lattice
@@ -120,7 +120,7 @@ describe('carrier — choosing what to haul', () => {
     const carrier = carrierAt(sim, 3, 0, hq);
     const mill = sawmillAt(sim, 3, 0, 2); // same cell
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(carrier, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'pickup', goodType: PLANK, amount: 1, from: mill });
@@ -131,7 +131,7 @@ describe('carrier — choosing what to haul', () => {
     const granary = granaryAt(sim, 4, 0); // the carrier's post — but it has no plank slot
     const carrier = carrierAt(sim, 0, 0, granary);
     sawmillAt(sim, 3, 0, 2); // planks present, but nowhere that can stock them
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
     expect(sim.world.has(carrier, CurrentAtomic)).toBe(false);
   });
@@ -144,7 +144,7 @@ describe('carrier — choosing what to haul', () => {
     const granary = granaryAt(sim, 4, 0);
     const carrier = carrierAt(sim, 0, 0, granary);
     sawmillAt(sim, 3, 0, 2);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
   });
 
@@ -204,14 +204,14 @@ describe('carrier — choosing what to haul', () => {
   it('an UNEMPLOYED settler and a LOOSE carrier never haul (transport is a worked assignment)', () => {
     // Planks wait at the sawmill and the HQ could take them — but hauling belongs to the carrier
     // trade AND to a post: a settler of another idle trade (the fixture farmer, nothing to farm
-    // here) and a carrier with no binding both stand idle. Planner-level (aiSystem only), so the
+    // here) and a carrier with no binding both stand idle. Planner-level (plannerSystem only), so the
     // JobSystem's report-in pass doesn't bind the loose carrier first.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     hqAt(sim, 4, 0);
     const loose = carrierAt(sim, 0, 0); // carrier trade, no post
     const farmer = settlerWithJob(sim, 1, 0, FARMER);
     sawmillAt(sim, 3, 0, 2);
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     for (const e of [loose, farmer]) {
       expect(sim.world.has(e, MoveGoal)).toBe(false);
       expect(sim.world.has(e, CurrentAtomic)).toBe(false);

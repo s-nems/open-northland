@@ -32,9 +32,9 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
-import type { PlannerContext } from './planner-context.js';
-import type { PlannerPass } from './planner-pass.js';
-import { anotherSystemOwns } from './replan.js';
+import type { PlannerContext } from './planner/context.js';
+import type { PlannerPass } from './planner/pass.js';
+import { anotherSystemOwns } from './planner/replan.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { boundWorkplaceTarget } from './targets/index.js';
 import { planTraining } from './training.js';

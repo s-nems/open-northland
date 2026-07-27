@@ -19,8 +19,8 @@ import { herdingSystem } from './movement/herding.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { movementSystem } from './movement/system.js';
 import { deferredOrderSystem, playerOrderSystem, signpostOrderSystem } from './orders/index.js';
-import { aiSystem } from './settlers/ai.js';
 import { atomicSystem } from './settlers/atomic.js';
+import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
 import { visionSystem } from './vision/index.js';
 
@@ -40,21 +40,21 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // travelling when the wander pass reaches it.
   { name: 'animalWander', system: animalWanderSystem },
   { name: 'playerOrder', system: playerOrderSystem },
-  // After playerOrderSystem retires the walk and before aiSystem could re-task the scout: an arrived
+  // After playerOrderSystem retires the walk and before plannerSystem could re-task the scout: an arrived
   // erect order starts its hammer swing this same tick.
   { name: 'signpostOrder', system: signpostOrderSystem },
-  // Family runs before ai so its walks route the same tick and its duty/wedding fences are fresh.
+  // Family runs before the planner so its walks route the same tick and its duty/wedding fences are fresh.
   { name: 'family', system: familySystem },
   // Gossip drives the standing chat pairs with the same placement rationale as family: its walks route
   // this tick and its Chat fence is fresh for the planner.
   { name: 'gossip', system: gossipSystem },
-  { name: 'ai', system: aiSystem },
+  { name: 'planner', system: plannerSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
   { name: 'atomic', system: atomicSystem },
   // Directly after the executor: an order parked behind a non-interruptible atomic applies the tick that
-  // atomic completes, before any drive could see the freed settler (aiSystem already ran this tick).
+  // atomic completes, before any drive could see the freed settler (plannerSystem already ran this tick).
   { name: 'deferredOrder', system: deferredOrderSystem },
   { name: 'production', system: productionSystem },
   { name: 'cropGrowth', system: cropGrowthSystem },

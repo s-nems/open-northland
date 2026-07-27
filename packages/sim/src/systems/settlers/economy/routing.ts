@@ -24,7 +24,7 @@ import {
   producesGoodWithoutInputs,
   stockCapacity,
 } from '../../stores/index.js';
-import type { PlannerContext } from '../planner-context.js';
+import type { PlannerContext } from '../planner/context.js';
 import {
   boundWorkplaceTarget,
   type InteractionCellIndex,

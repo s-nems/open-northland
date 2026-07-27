@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { aiSystem } from '../../../src/systems/index.js';
+import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -35,7 +35,7 @@ describe('planFarmer — the drive ladder', () => {
     const farm = farmAt(sim, 4, 4);
     const farmer = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The nearest jittered-lattice node may or may not be underfoot — either it walks or it sows.
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
@@ -49,7 +49,7 @@ describe('planFarmer — the drive ladder', () => {
     const field = fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot
     const farmer = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(REAP_ATOMIC);
@@ -73,7 +73,7 @@ describe('planFarmer — the drive ladder', () => {
       const farm = farmAt(sim, 4, 4);
       fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
       const farmer = farmerAt(sim, 4, 4, farm);
-      aiSystem(sim.world, ctxOf(sim));
+      plannerSystem(sim.world, ctxOf(sim));
       return sim.world.get(farmer, components.CurrentAtomic).duration;
     };
     expect(reapTicks(2)).toBe(reapTicks(1) * 2);
@@ -109,7 +109,7 @@ describe('planFarmer — the drive ladder', () => {
       fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
       const farmer = farmerAt(sim, 4, 4, farm);
       if (xp > 0) sim.world.get(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
-      aiSystem(sim.world, ctxOf(sim));
+      plannerSystem(sim.world, ctxOf(sim));
       return sim.world.get(farmer, components.CurrentAtomic).duration;
     };
     expect(reapTicks(100)).toBe(reapTicks(0) / 2);
@@ -129,7 +129,7 @@ describe('planFarmer — the drive ladder', () => {
     fieldAt(sim, farm, 6, 4, { watered: true });
     const farmer = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(WATER_ATOMIC);
@@ -145,7 +145,7 @@ describe('planFarmer — the drive ladder', () => {
     sim.world.add(sheaf, GroundDrop, { goodType: WHEAT });
     const farmer = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
@@ -158,7 +158,7 @@ describe('planFarmer — the drive ladder', () => {
     const farmer = farmerAt(sim, 4, 4, farm);
     sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     // Standing on the farm's interaction cell already → the deposit atomic starts at once.
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'pileup', store: farm });
@@ -216,7 +216,7 @@ describe('planFarmer — the drive ladder', () => {
     sim.world.add(farm, components.UnderConstruction, { labor: fx.fromInt(0) });
     const farmer = farmerAt(sim, 4, 4, farm);
 
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
 
     // The field loop never engages a foundation: no claim, no sow/water/reap swing.
     expect(sim.world.tryGet(farmer, components.FarmTask)).toBeUndefined();
@@ -238,13 +238,13 @@ describe('planFarmer — the drive ladder', () => {
       fieldAt(sim, farm, 6, 4, { watered: true }),
     ];
     const farmer = farmerAt(sim, 4, 4, farm); // standing at the farm's own cell (the door)
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(farmer, components.Resting)).toBe(true); // went inside — no loitering
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
 
     // A field turns thirsty → the very next plan leaves the house for the can.
     sim.world.get(fields[0] as Entity, Crop).watered = false;
-    aiSystem(sim.world, ctxOf(sim));
+    plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(farmer, components.Resting)).toBe(false);
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
     const goal = sim.world.tryGet(farmer, components.MoveGoal);
