@@ -2,7 +2,7 @@ import { Female, JobAssignment, Settler, TrainingOrder } from '../../../componen
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { liveWorkFlag } from '../../economy/flags.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/actions.js';

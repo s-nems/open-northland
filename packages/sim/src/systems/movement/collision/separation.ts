@@ -7,7 +7,7 @@ import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
-import { MOVE_SPEED_PER_TICK } from '../movement.js';
+import { MOVE_SPEED_PER_TICK } from '../system.js';
 import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
 import { separationGridPoint, separationWorldPoint } from './separation/geometry.js';
 import {
@@ -36,11 +36,11 @@ const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
 
 /**
  * The per-tick cap on the soft mover-vs-mover push, deliberately below the arrival brake floor
- * (`gait / ARRIVAL_SPEED_DIV`, see `movement.ts`): a walker being brushed by passing traffic still makes net
- * progress every tick, so soft separation can delay an arrival but never prevent one. (One bounded exception:
- * a from-rest walker's very first acceleration-ramp tick advances only gait/3 < this cap, so a fully-braked
- * launch can regress ~gait/15 for that single tick — the ramp outruns the cap from tick two.) Tuned to ⅖ of
- * the gait (just under the ½ floor).
+ * (`gait / ARRIVAL_SPEED_DIV`, see `movement/system.ts`): a walker being brushed by passing traffic still
+ * makes net progress every tick, so soft separation can delay an arrival but never prevent one. (One
+ * bounded exception: a from-rest walker's very first acceleration-ramp tick advances only gait/3 < this
+ * cap, so a fully-braked launch can regress ~gait/15 for that single tick — the ramp outruns the cap from
+ * tick two.) Tuned to ⅖ of the gait (just under the ½ floor).
  */
 const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 

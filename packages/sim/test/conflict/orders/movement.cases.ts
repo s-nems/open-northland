@@ -126,7 +126,7 @@ describe('moveUnit order', () => {
     // The reported floor slide: spam-clicking opposite directions rerouted the walker at FULL
     // carried speed with no corner projection at the splice, so it flipped 180° without slowing.
     // Speed must stay ≤ the walk gait every single tick; the only variation allowed is the light
-    // ease-in/out of the movement-inertia approximation (routing.ts / movement.ts).
+    // ease-in/out of the movement-inertia approximation (movement/routing.ts / movement/system.ts).
     const s = sim();
     const e = ownedWoodcutter(s, 5, 0);
     let prev = { ...s.world.get(e, Position) };

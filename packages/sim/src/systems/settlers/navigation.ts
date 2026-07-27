@@ -68,7 +68,7 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): NodeId {
  * play it out; a route that ends anywhere else is stale — the goal changed mid-walk (a player
  * redirect) — and is re-routed immediately from where the walker stands, so the routing splice
  * replaces the path in the same tick and carries the walker's momentum through the turn
- * (`routing.ts`/`movement.ts` — the movement-inertia corner rule). A goal whose request just failed
+ * (`routing.ts`/`movement/system.ts` — the movement-inertia corner rule). A goal whose request just failed
  * (no route) is left in place but not re-issued this tick — the failed flag is the planner's
  * signal; a future slice decides abandon/wait/repath. This is the *where* layer; the atomic planner
  * (the *what*) sets the goals.

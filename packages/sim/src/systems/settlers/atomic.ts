@@ -5,7 +5,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
-import { applySow, applyWater } from '../economy/farming.js';
+import { applySow, applyWater } from '../economy/fields.js';
 import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../lifecycle/needs.js';
 import { grantCarryExperience, grantScoutExperience, grantWorkExperience } from '../progression/index.js';
 import {

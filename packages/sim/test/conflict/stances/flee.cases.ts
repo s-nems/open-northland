@@ -11,7 +11,7 @@ import {
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { cellAnchorNode, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
-import { ACCEL_TICKS, MOVE_SPEED_PER_TICK, movementSystem } from '../../../src/systems/movement/movement.js';
+import { ACCEL_TICKS, MOVE_SPEED_PER_TICK, movementSystem } from '../../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { combatant, ctxOf, grassMap, P0, P1, tileOf } from './support.js';

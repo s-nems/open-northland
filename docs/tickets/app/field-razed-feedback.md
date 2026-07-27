@@ -5,7 +5,7 @@
 
 A field declares no build area, so a building site over standing wheat is accepted like any other. The
 plants under the new walls are then destroyed (`destroyFieldsUnderBuilding`,
-`packages/sim/src/systems/economy/farming.ts`). That is the intended mechanic — but nothing tells the
+`packages/sim/src/systems/economy/fields.ts`). That is the intended mechanic — but nothing tells the
 player it happened:
 
 - `destroyFieldsUnderBuilding` emits no event, unlike its sibling `destroyBerryBushesInReserved`, which

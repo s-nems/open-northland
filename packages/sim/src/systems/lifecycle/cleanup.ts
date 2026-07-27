@@ -4,7 +4,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
-import { removeWorkFlag } from '../economy/flags.js';
+import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
 

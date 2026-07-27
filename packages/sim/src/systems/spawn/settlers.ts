@@ -23,7 +23,7 @@ import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
-import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/flags.js';
+import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/work-flag.js';
 import { isFemaleJobId } from '../family/eligibility.js';
 import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs.js';

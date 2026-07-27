@@ -16,7 +16,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { combatSystem } from '../../src/systems/index.js';
-import { MOVE_SPEED_PER_TICK } from '../../src/systems/movement/movement.js';
+import { MOVE_SPEED_PER_TICK } from '../../src/systems/movement/system.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { DROP_ATOMIC_ID } from '../../src/systems/settlers/actions.js';
 import { dropCarriedLoad } from '../../src/systems/settlers/effects-goods/index.js';
