@@ -1,15 +1,9 @@
-import {
-  type Camera,
-  cameraViewport,
-  FOG_EXPLORED_ALPHA,
-  FOG_UNEXPLORED_ALPHA,
-  flatTileColour,
-  type SceneTerrain,
-} from '@open-northland/render';
-import { FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
+import { type Camera, cameraViewport, flatTileColour, type SceneTerrain } from '@open-northland/render';
+import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { cellColourResolver } from '../../content/minimap-ground.js';
 import { forEachMinimapDot, type MinimapDotSink } from './dots.js';
+import { createFogMaskLayer } from './fog-mask.js';
 import { loadMinimapFrame } from './frame.js';
 import {
   type MinimapLayout,
@@ -45,8 +39,6 @@ const HOLE_UNDERLAP_NATIVE_PX = 8;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
-// The fog mask alphas are the render layer's FOG_*_ALPHA constants — the minimap shares the world
-// wash's exact grading, so the two surfaces cannot drift.
 /** The letterbox bars + hole backdrop (matches the frame art's near-black window). */
 const HOLE_COLOUR = 0x000000;
 /** The flat fallback frame (bare checkout — no GUI art): parchment-dark border strokes. */
@@ -166,55 +158,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   ground.height = mapL.h;
   container.addChild(ground);
 
-  // The fog-of-war mask over the ground: one cell-resolution alpha raster (black texels, alpha by
-  // state) stretched over the map picture with linear filtering — the same soft edge the world wash
-  // shows. Rebuilt only when the fog generation moves (the VisionSystem's cadence), never per frame.
-  // NAMED APPROXIMATION: the stretch ignores the odd-row half-cell stagger the ground raster samples
-  // (a half-cell skew on a soft mask, invisible at minimap scale).
-  const fogSprite = new Sprite();
-  fogSprite.visible = false;
-  container.addChild(fogSprite);
-  // One retained buffer + texture for the whole session (map cell dims never change): a rebuild
-  // rewrites the alpha lane and re-uploads in place — never a per-generation GPU texture allocation.
-  let fogTexture: Texture | null = null;
-  let fogBuffer: Uint8Array = new Uint8Array(0);
-  let fogGeneration = -1; // generation last rasterized; -1 = no mask drawn
-  const drawFog = (fog: FogView | null): void => {
-    if (fog === null) {
-      if (fogSprite.visible) {
-        fogSprite.visible = false;
-        fogGeneration = -1;
-      }
-      return;
-    }
-    if (fog.generation === fogGeneration) return;
-    fogGeneration = fog.generation;
-    const w = fog.cellsWide;
-    const h = fog.cellsHigh;
-    if (fogTexture === null) {
-      fogBuffer = new Uint8Array(w * h * 4); // rgb stay 0 (black); only the alpha lane is written
-      fogTexture = new Texture({
-        source: new BufferImageSource({ resource: fogBuffer, width: w, height: h, scaleMode: 'linear' }),
-      });
-    }
-    for (let r = 0; r < h; r++) {
-      for (let c = 0; c < w; c++) {
-        const state = fog.stateAt(c, r);
-        fogBuffer[(r * w + c) * 4 + 3] =
-          state === FOG_STATE.VISIBLE
-            ? 0
-            : state === FOG_STATE.EXPLORED
-              ? FOG_EXPLORED_ALPHA
-              : FOG_UNEXPLORED_ALPHA;
-      }
-    }
-    fogTexture.source.update();
-    fogSprite.texture = fogTexture;
-    fogSprite.position.set(mapL.x, mapL.y);
-    fogSprite.width = mapL.w;
-    fogSprite.height = mapL.h;
-    fogSprite.visible = true;
-  };
+  const fogMask = createFogMaskLayer(container, mapL);
 
   // Dots above ground, the view rectangle on top. The dots are a retained raster like the fog mask
   // (one buffer + texture for the session, rewritten and re-uploaded in place per tick — see
@@ -305,7 +249,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         container.visible = true;
       }
       container.position.set(layout.panel.x, layout.panel.y);
-      drawFog(fog); // generation-keyed — a no-op while the fog masks are unchanged
+      fogMask.draw(fog);
       if (snapshot.tick !== lastDotsTick) {
         lastDotsTick = snapshot.tick;
         drawDots(snapshot, fog);
@@ -340,7 +284,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       frame?.dispose();
       groundTex.destroy(true);
       dotsTexture.destroy(true);
-      fogTexture?.destroy(true);
+      fogMask.dispose();
     },
   };
 }

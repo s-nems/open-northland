@@ -1,4 +1,11 @@
-import { TILE_HALF_H, TILE_HALF_W, type Viewport } from '@open-northland/render';
+import {
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  type Viewport,
+} from '@open-northland/render';
+import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 
 /**
@@ -184,6 +191,32 @@ export function stampDot(
       rgba[o + 1] = g;
       rgba[o + 2] = b;
       rgba[o + 3] = 0xff;
+    }
+  }
+}
+
+/** The `FogView` slice the mask raster reads. */
+export interface FogCells {
+  readonly cellsWide: number;
+  readonly cellsHigh: number;
+  readonly stateAt: (cellX: number, cellY: number) => number;
+}
+
+/**
+ * Write one fog mask into `rgba` (`cellsWide × cellsHigh`, row-major, 4 bytes/px): only the ALPHA lane,
+ * graded by state with the render layer's alphas, so the caller keeps the rgb lanes black (a re-upload
+ * in place rewrites nothing else).
+ */
+export function fillFogAlpha(fog: FogCells, rgba: Uint8Array): void {
+  for (let r = 0; r < fog.cellsHigh; r++) {
+    for (let c = 0; c < fog.cellsWide; c++) {
+      const state = fog.stateAt(c, r);
+      rgba[(r * fog.cellsWide + c) * 4 + 3] =
+        state === FOG_STATE.VISIBLE
+          ? 0
+          : state === FOG_STATE.EXPLORED
+            ? FOG_EXPLORED_ALPHA
+            : FOG_UNEXPLORED_ALPHA;
     }
   }
 }
