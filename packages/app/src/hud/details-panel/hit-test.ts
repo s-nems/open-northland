@@ -4,10 +4,10 @@ import { type ButtonHit, type EquipActionHit, type EquipSlotRef, stockSlotRects 
 import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
-// Pure input decisions for the details panel: map a canvas point in the current PanelView to the
-// action target under it or the tooltip text that names it, and resolve what a craft-choice click does
-// to the product selection. No Pixi or DOM, so panel.ts stays the stateful controller and this seam is
-// tested headlessly (see details-panel-hit-test.test.ts).
+// Pure probes for the details panel: map a canvas point in the current PanelView to the action target
+// under it or the tooltip text that names it, and resolve what a craft-choice click does to the product
+// selection. No Pixi or DOM, so this seam is tested headlessly (see details-panel-hit-test.test.ts);
+// `pointer-intent.ts` composes the probes into the click and hover decisions panel.ts acts on.
 
 /** The buttons the current view exposes to pointer routing, in hit-test order. */
 const panelButtons = (view: PanelView): readonly ButtonHit[] => {

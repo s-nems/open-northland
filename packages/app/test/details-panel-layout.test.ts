@@ -22,23 +22,17 @@ import {
   type SettlerLayout,
   stockSlotRects,
 } from '../src/hud/details-panel/layout/index.js';
-import { type PanelView, panelViewFor } from '../src/hud/details-panel/selection-view.js';
+import { panelViewFor } from '../src/hud/details-panel/selection-view.js';
 import { ALL_STOCK_TAB, visibleStockRows } from '../src/hud/details-panel/stock-tabs.js';
 import type { Rect } from '../src/hud/geometry.js';
+import { PANEL_SCREEN, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 /** The watchtower (`tower_00`, catalog typeId 40) — a store-less building (declares no stock slots). */
 const BUILDING_TOWER = 40;
 
-const SCREEN = { width: 1600, height: 1200 };
 /** The settings menu's `?uiscale` steps as numbers - a newly offered scale joins the coverage. */
 const MENU_UISCALE_VALUES = MENU_UISCALES.map(Number);
-
-function viewOfKind<K extends PanelView['kind']>(model: UnitPanelModel, kind: K, s = 1) {
-  const view = panelViewFor(model, SCREEN, s);
-  if (view.kind !== kind) throw new Error(`expected a ${kind} view, got ${view.kind}`);
-  return view as Extract<PanelView, { kind: K }>;
-}
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;
 const settlerLayoutOf = (model: UnitPanelModel, s = 1): SettlerLayout =>
@@ -53,7 +47,7 @@ describe('details panel layout', () => {
       components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } },
     });
 
-    expect(panelViewFor(modelOf([], []), SCREEN, 1).kind).toBe('empty');
+    expect(panelViewFor(modelOf([], []), PANEL_SCREEN, 1).kind).toBe('empty');
     expect(viewOfKind(modelOf([1], [buildingEntity(1, BUILDING_FARM)]), 'building').model.kind).toBe(
       'building',
     );

@@ -6,8 +6,9 @@ The settler panel's three work controls (assign-workplace, assign-home, unassign
 control shape (round glyph button + label + enabled + tooltip + callback) tripled by hand at every
 seam: nine named rect fields in `layout/settler.ts` plus repeated top-offset blocks, nine mapping
 lines in `layout/index.ts` `mapLayout`, three near-identical draw triplets in
-`sections/settler.ts`, two hardcoded three-way lists in `hit-test.ts`, and three optional
-callbacks plus a three-branch dispatch in `panel.ts`. Adding a fourth control (the feature backlog
+`sections/settler.ts`, two hardcoded three-way lists in `hit-test.ts`, three intent kinds mapped
+one by one in `pointer-intent.ts`, and three optional callbacks plus their switch arms in
+`panel.ts`. Adding a fourth control (the feature backlog
 has candidates) means about seven coordinated edits, and a missed one compiles clean and fails
 silently.
 
