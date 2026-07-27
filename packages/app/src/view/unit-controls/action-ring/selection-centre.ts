@@ -6,12 +6,12 @@ import { isSettler, positionOf, settlerJobType } from '../../../game/snapshot.js
 export interface SelectionCentre {
   readonly x: number;
   readonly y: number;
-  readonly ids: number[];
+  readonly ids: readonly number[];
   /** The selection's shared trade, or undefined when the selection mixes trades. */
   readonly jobType: number | undefined;
 }
 
-/** The selected settlers' centroid in WORLD px, or null when none is selected. */
+/** The selected settlers' centroid in WORLD px, or null when none is selected. O(entities). */
 export const selectionCentre = (
   snapshot: WorldSnapshot,
   selection: ReadonlySet<number>,

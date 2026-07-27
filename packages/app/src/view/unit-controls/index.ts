@@ -5,7 +5,7 @@ import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
-import { mountSettlerActions, type SettlerActions } from './action-ring/index.js';
+import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
@@ -113,6 +113,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     app: opts.app,
     canvas,
     uiscale: opts.uiscale ?? 1,
+    selectionCentre: memoBySnapshot(
+      (snapshot) => selectionCentre(snapshot, selected),
+      () => selectionVersion,
+    ),
     professions: opts.professions,
     content: opts.content,
     jobUnlocked: (ids, jobType) => jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
@@ -298,7 +302,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       panel.tick(snapshot);
       // Re-anchor the action ring on the current selection's on-screen centroid (a no-op while it is
       // closed / nothing is selected). Reuses the frame's snapshot + the live camera — no extra scan.
-      actions.update(opts.camera(), snapshot, selected);
+      actions.update(opts.camera(), snapshot);
     },
     dispose: () => {
       canvas.removeEventListener('mousedown', onMouseDown);

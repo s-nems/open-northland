@@ -3,6 +3,7 @@ import type { Camera } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../../catalog/professions.js';
+import type { SelectionCentre } from './selection-centre.js';
 
 /** Which face the menu is showing: nothing, the default arms, or the profession picker. */
 export type MenuMode = 'closed' | 'menu' | 'jobs';
@@ -12,6 +13,10 @@ export interface SettlerActionsOptions {
   readonly canvas: HTMLCanvasElement;
   /** UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. May be fractional. */
   readonly uiscale: number;
+  /** The selected settlers' centroid + ids for a frame's snapshot, or null when none is selected. The
+   *  caller binds the live selection and memoizes the O(entities) scan, so the open ring can ask every
+   *  frame. */
+  readonly selectionCentre: (snapshot: WorldSnapshot) => SelectionCentre | null;
   /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
   readonly professions: readonly PickerEntry[];
   /** The running content — the ring reads the sim's job roles off it, so the marry and erect-signpost
@@ -36,10 +41,10 @@ export interface SettlerActionsOptions {
 export interface SettlerActions {
   /**
    * Per-frame: lay the menu out on its pinned anchor and show/hide it, rebuilding which buttons the
-   * selection's live state offers. Reads the settlers' positions from the frame's already-built snapshot;
-   * only runs a scan while the menu is open and a settler is selected, so a closed menu costs nothing.
+   * selection's live state offers. Reads the settlers through the injected centroid projection; a closed
+   * menu never calls it.
    */
-  update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
+  update(camera: Camera, snapshot: WorldSnapshot): void;
   /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
   toggle(): void;
   /**
