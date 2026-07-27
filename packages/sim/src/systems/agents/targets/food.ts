@@ -18,6 +18,7 @@ import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { isFood } from '../../readviews/index.js';
 import { closer, manhattan } from '../../spatial.js';
+import { carriedGoodForm } from '../economy/routing.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
@@ -84,12 +85,19 @@ function edibleFoodGoodFor(
   return storedFoodGood(world, ctx, store);
 }
 
-/** A store's candidate food good: its lowest-goodType stocked edible ({@link isFood}), or null when it holds
- *  none. Canonical (ascending goodType via {@link stockpileEntries}) so the choice never depends on Map
- *  insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan. */
+/**
+ * A store's candidate food good: its lowest-goodType stocked edible, or null when it holds none.
+ * Canonical (ascending goodType via {@link stockpileEntries}) so the choice never depends on Map
+ * insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan.
+ *
+ * Edibility is judged on the good's CARRIED form ({@link carriedGoodForm}), the same test the family
+ * food search applies: a dish is food in the house that cooks it — a baker eats a loaf off its own
+ * shelf — while the same loaf resting in a warehouse is still cargo. The returned type is the RAW one,
+ * which is what {@link consumeFood} takes off the shelf.
+ */
 function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
-    if (amount <= 0 || !isFood(ctx, goodType)) continue;
+    if (amount <= 0 || !isFood(ctx, carriedGoodForm(world, ctx, entity, goodType))) continue;
     return goodType; // this store's lowest-id food good is its candidate
   }
   return null;
