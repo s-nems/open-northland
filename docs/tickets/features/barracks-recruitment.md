@@ -14,6 +14,12 @@ consume weapon → `Weapon`+job flip; best-available armor) is **observed approx
 original's exact flow is oracle-blocked; name it. No weapon in stock ⇒ typed boundary failure, not
 a silent no-op.
 
+The equip drive is also the only way an AI seat can ever raise a soldier: `setJob` to any fighter
+job runs `settlerMeetsNeed`, whose fighter carve-out survives the AI tree exemption, and the viking
+row `needforjob 31 5 69` reads track 69, which only job 31 itself accrues. A civilian therefore
+cannot be stamped `soldier_unarmed` by command, on any seat. The AI's army ramp waits on this flow
+(verified 2026-07-26 against `content/ir.json`).
+
 ## Scope
 
 - The equip drive: walk → consume weapon from barracks stock → job/Weapon transform, plus the

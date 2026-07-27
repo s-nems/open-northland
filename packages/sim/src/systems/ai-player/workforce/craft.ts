@@ -15,7 +15,7 @@ export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly
 };
 
 /**
- * Craft tuning (claims no men; ladder order lives in `runWorkforce`): keep every operator of a restricted workplace on the plan's product
+ * Craft tuning (claims no men): keep every operator of a restricted workplace on the plan's product
  * list. `CraftSelection` is per WORKER, not per building, and any employment change clears it
  * (`reidleAsJob`), so the check must run every decision — but the command is issued only when the
  * live selection differs (`goods` is stored ascending/deduped, so exact array equality is the

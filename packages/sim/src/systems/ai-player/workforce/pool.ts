@@ -6,19 +6,13 @@ import { jobAtomics } from '../../agents/targets/index.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/flags.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-<<<<<<< HEAD
 import { isFighterJob, isScoutJob } from '../../readviews/index.js';
-=======
-import { isFighterJob } from '../../readviews/index.js';
-import { SCOUT_JOB } from '../../readviews/stances.js';
->>>>>>> 8f32b86b (fix: Stop workshops swallowing flag gatherers and revise the AI plan tail)
 import { ownedSettlers } from '../shared.js';
 import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors.js';
-import { recruitJobOf } from './recruits.js';
 
 /** The seat's adult men sorted into the workforce this decision allocates: the recognized
- *  collectors (by good type), generic collectors, scouts, and barracks recruits kept in place, and
- *  everyone else in the spare `pool`. */
+ *  collectors (by good type), generic collectors, and scouts kept in place, and everyone else in the
+ *  spare `pool`. */
 export interface Workforce {
   /** The builder pool the phases draw from, in classification (deterministic) order. */
   readonly pool: Entity[];
@@ -30,9 +24,6 @@ export interface Workforce {
    *  {@link GENERIC_COLLECTOR_TARGET}. */
   readonly genericCollectors: Entity[];
   readonly scouts: Entity[];
-  /** The men mustered at the barracks — the unarmed trade awaiting the future training flow (see
-   *  `recruits.ts`), in classification (ascending id) order. */
-  readonly recruits: Entity[];
 }
 
 /** The lowest builder-trade job in content, or null when the content has no builder. */
@@ -46,11 +37,10 @@ export function builderJobOf(ctx: SystemContext): number | null {
 }
 
 /**
- * Classify the seat's adult men: the mustered recruits (the unarmed trade) are governed by their own
- * phase, employed workers keep their post, the collectors of each wanted good — up to its target —
- * the generic collectors, and the scouts are recognized in place, and everyone else (civilians, stray
- * trades, surplus collectors) lands in the spare pool — the builder pool of the plan. Armed soldiers
- * stay soldiers: the reset covers civilians and the seat's own recruits only.
+ * Classify the seat's adult men: employed workers keep their post, the collectors of each wanted
+ * good — up to its target — the generic collectors, and the scouts are recognized in place, and
+ * everyone else (civilians, stray trades, surplus collectors) lands in the spare pool — the builder
+ * pool of the plan. Soldiers stay soldiers: the allocator governs civilians only.
  */
 export function classifyWorkforce(
   world: World,
@@ -59,19 +49,13 @@ export function classifyWorkforce(
   wanted: readonly WantedGood[],
 ): Workforce {
   const index = contentIndex(ctx.content);
-  const recruitJob = recruitJobOf(ctx);
   const pool: Entity[] = [];
   const collectorsByGood = new Map<number, Entity[]>();
   const genericCollectors: Entity[] = [];
   const scouts: Entity[] = [];
-  const recruits: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
     const job = world.get(e, Settler).jobType;
-    if (job !== null && job === recruitJob) {
-      recruits.push(e);
-      continue;
-    }
     if (isFighterJob(ctx.content, job)) continue;
     if (world.has(e, JobAssignment)) continue; // staffing a building — keep the post
     if (isScoutJob(ctx.content, job)) {
@@ -102,7 +86,7 @@ export function classifyWorkforce(
     }
     pool.push(e);
   }
-  return { pool, collectorsByGood, genericCollectors, scouts, recruits };
+  return { pool, collectorsByGood, genericCollectors, scouts };
 }
 
 /**

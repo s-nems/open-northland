@@ -12,7 +12,6 @@ import { firstUncoveredBuilding, towerPlacementSpot } from './tower-coverage.js'
 
 export * from './entries.js';
 export {
-  barracksEntryIndex,
   collectorGoodsWanted,
   type EntryStatus,
   entryStatuses,

@@ -6,7 +6,6 @@ const {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
   DEFAULT_BUILD_ORDER,
-  RECRUIT_JOB_ID,
   STAFFING_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
 } = systems;
@@ -87,11 +86,6 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         `collector good ${goodId}`,
       ).toBe(true);
     }
-    // The recruit trade: an unresolved id musters nobody, so the whole army ramp goes quiet.
-    expect(
-      content.jobs.some((j) => j.id === RECRUIT_JOB_ID),
-      `recruit job ${RECRUIT_JOB_ID}`,
-    ).toBe(true);
     // The tower allowlist: a stale id here would leave built towers uncounted as coverage centres,
     // so the coverage entry would re-arm and place towers forever.
     for (const towerId of TOWER_CONTENT_IDS) {

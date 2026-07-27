@@ -29,7 +29,7 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 /** How far past the frontier building an `outskirts` anchor is pushed away from the settlement
  *  centroid — roughly a footprint plus clearance beyond the built edge (named approximation, user
  *  plan 2026-07-25). */
-export const OUTSKIRTS_PUSH_NODES = 8;
+const OUTSKIRTS_PUSH_NODES = 8;
 
 /** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
  *  the live resource of the good nearest the HQ, the map's centre node, or the settlement's
@@ -80,11 +80,11 @@ function outskirtsNode(
   const centroid = anchorCentroid(world, owned);
   if (centroid === null) return null;
   const index = contentIndex(ctx.content);
-  const ownKind = tiersAtOrAbove(index, type);
+  const ownChain = tiersAtOrAbove(index, type);
   let frontier: HalfCellNode | null = null;
   let frontierDist = -1;
   for (const e of owned) {
-    if (ownKind.has(world.get(e, Building).buildingType)) continue;
+    if (ownChain.has(world.get(e, Building).buildingType)) continue;
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
     const dist = Math.abs(node.hx - centroid.hx) + Math.abs(node.hy - centroid.hy);
@@ -186,7 +186,7 @@ export function buildingSpotAccept(
  *  world-metric nodes — far enough that two warehouses serve different corners of a settlement
  *  bounded by the {@link BUILD_SEARCH_MAX_RADIUS_NODES} disc (named approximation, user decision
  *  2026-07-26). */
-export const KIND_SPACING_NODES = 20;
+const KIND_SPACING_NODES = 20;
 
 /** The anchors an `apart` entry keeps its distance from: the seat's buildings of the same KIND as the
  *  placed type (a warehouse spreads away from the HQ and from every other warehouse). */

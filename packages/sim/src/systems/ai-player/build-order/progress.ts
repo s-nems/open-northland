@@ -8,7 +8,6 @@ import { liveWorkFlag } from '../../economy/flags.js';
 import {
   anchorNodeOf,
   anyLiveResource,
-  BARRACKS_BUILDING_ID,
   buildingTypeByContentId,
   goodTypeByContentId,
   headquartersOf,
@@ -98,7 +97,7 @@ export function entryStatus(
 
 /**
  * Every entry's {@link EntryStatus} in list order, over one `ownedBuildings` computation — the
- * decision-wide snapshot the workforce module derives its collector gating and army ramp from.
+ * decision-wide snapshot the workforce module derives its collector gating from.
  * Statuses are recomputed each decision, so they can REGRESS (a razed home; a fringe building
  * re-arming `towerCoverage`) — consumers must tolerate a temporary drop.
  */
@@ -110,16 +109,6 @@ export function entryStatuses(
 ): EntryStatus[] {
   const owned = ownedBuildings(world, player);
   return order.map((entry) => entryStatus(world, ctx, player, owned, entry));
-}
-
-/** The index of the LAST place-barracks entry, or -1 — the army ramp's milestone
- *  (`workforce/recruits.ts`). */
-export function barracksEntryIndex(order: readonly BuildOrderEntry[]): number {
-  let last = -1;
-  for (const [i, entry] of order.entries()) {
-    if (entry.kind === 'place' && entry.building === BARRACKS_BUILDING_ID) last = i;
-  }
-  return last;
 }
 
 /** The lowest-id owned BUILT building the seat can upgrade toward `target` (its type strictly below

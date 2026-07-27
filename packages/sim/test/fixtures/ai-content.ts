@@ -10,11 +10,11 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * upgrade tail and its two-baker target, and the iron good — gated by the viking `needforgood` row
  * over the collector XP tracks — backs the gated collector entry and its experience rule. The
  * brewery/joinery/barracks/storage/tower rows back the 2026-07-25 tail: the joinery's two recipes
- * drive the craft restriction, the barracks the recruit muster, the storages the carrier staffing
- * and the outskirts affinity, and the tower pair the coverage entry (the kind-'tower' wall row
- * proves the id allowlist). Numeric ids follow the original's job/good bands where they exist
- * (woman 5, civilist 6, builder 7, collector 8, joiner 16, farmer 18, miller 19, baker 20, brewer
- * 21, carrier 24, scout 27, and the fighter band's soldier_unarmed 31 / soldier_bow_short 40).
+ * drive the craft restriction, the storages the carrier staffing and the outskirts affinity, and the
+ * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
+ * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
+ * 8, farmer 18, miller 19, baker 20, brewer 21, carrier 24, scout 27, and the fighter band's
+ * soldier_unarmed 31 / soldier_bow_short 40); the joiner takes a free slot, 16.
  */
 export function aiContent(): ContentSet {
   return parseContentSet({
@@ -64,9 +64,8 @@ export function aiContent(): ContentSet {
       { typeId: 21, id: 'brewer' },
       { typeId: 24, id: 'carrier' },
       { typeId: 27, id: 'scout', allowedAtomics: [43] },
-      // The recruit trade: the unarmed bottom of the fighter band (31..41), which the muster posts.
+      // Fighter-band trades (31..41): the tower/barracks garrison the staffing plan must never fill.
       { typeId: 31, id: 'soldier_unarmed' },
-      // A fighter-band garrison trade — tower slots name it; staffing must never fill it.
       { typeId: 40, id: 'soldier_bow_short' },
     ],
     buildings: [
@@ -214,7 +213,7 @@ export function aiContent(): ContentSet {
           { goodType: 7, capacity: 5, initial: 0 },
         ],
       },
-      // The barracks: carrier slots only (the real shape) — the recruit phase's posts.
+      // The barracks: carrier slots only, the real shape — and the seat still staffs none of them.
       {
         typeId: 12,
         id: 'barracks',

@@ -1,4 +1,3 @@
-import { AiPlayer, aiPlayerEntity } from '../../../components/ai-player.js';
 import { CurrentAtomic, ErectSignpostOrder, PlayerOrder } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -17,32 +16,28 @@ import {
   wantedCollectorGoods,
 } from './collectors.js';
 import { tuneCraftSelections } from './craft.js';
+import { flagNodesInUse } from './flag-spots.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
-import { allocateRecruits } from './recruits.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 
 export {
   COLLECTED_GOOD_IDS,
   COLLECTOR_TARGET_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
-  FLAG_MAX_DISTANCE_NODES,
-  FLAG_MIN_DISTANCE_NODES,
   FLAG_RELOCATE_EVERY_DECISIONS,
 } from './collectors.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
+export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { builderJobOf } from './pool.js';
-export { RECRUIT_JOB_ID, recruitPercent } from './recruits.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
 /**
  * The CollectResources module — the seat's one workforce allocator (user plan 2026-07-17, ladder
  * revision 2026-07-25). Every adult non-fighter man is classified against the live world, and the
- * wanted roles are drawn out of the spare pool in priority order: first collectors, the unmarried
- * scout, minimum staffing everywhere, the builder reserve (up to 8 — construction never starves),
- * then the surplus tiers: collector top-ups, target staffing, generic collectors, and the barracks
- * recruits (the seat's `military` flag gates that phase, keeping this module the single allocator —
- * no second module ever races it for a person). A transient conflict with the live world self-heals
- * on the next decision because every target is recomputed from state, never remembered.
+ * wanted roles are drawn out of the spare pool in the priority order the returned array spells out:
+ * the essentials first, then the tiers the surplus pays for. No second module ever races this one
+ * for a person. A transient conflict with the live world self-heals on the next decision because
+ * every target is recomputed from state, never remembered.
  */
 function runWorkforce(
   world: World,
@@ -55,27 +50,18 @@ function runWorkforce(
   const builderJob = builderJobOf(ctx);
   const statuses = entryStatuses(world, ctx, player, order);
   const wanted = wantedCollectorGoods(ctx, order, statuses);
-  const { pool, collectorsByGood, genericCollectors, scouts, recruits } = classifyWorkforce(
-    world,
-    ctx,
-    player,
-    wanted,
-  );
+  const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, wanted);
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
-  const seat = aiPlayerEntity(world, player);
-  const militaryOn = seat !== null && world.get(seat, AiPlayer).modules.military;
+  const taken = flagNodesInUse(world, player);
   return [
-    ...allocateCollectors(world, ctx, hq, wanted, collectorsByGood, force, builderJob),
+    ...allocateCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken, builderJob),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
-    ...reserveBuilders(world, force, builderJob),
-    ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force),
+    ...reserveBuilders(world, force, builderJob), // construction never starves
+    ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken),
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
-    ...allocateGenericCollectors(world, ctx, hq, genericCollectors, force, builderJob),
-    // Military OFF freezes recruits in place (release included) — the keep-the-post rule, not a
-    // demobilization; flipping the flag back resumes governing them.
-    ...(militaryOn ? allocateRecruits(world, ctx, player, order, statuses, recruits, force, builderJob) : []),
+    ...allocateGenericCollectors(world, ctx, hq, genericCollectors, force, taken, builderJob),
     ...tuneCraftSelections(world, ctx, player),
   ];
 }

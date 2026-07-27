@@ -26,13 +26,11 @@ import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   BUILDER_CAP,
   type BuildOrderEntry,
-  barracksEntryIndex,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
   populationModule,
-  recruitPercent,
   SIGNPOST_TARGET_TOLERANCE_NODES,
   signpostCoverageModule,
   signpostLatticeOffset,
@@ -41,8 +39,7 @@ import {
 } from '../../src/systems/ai-player/index.js';
 import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
-import { stampResourceFootprintData } from '../../src/systems/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/stances.js';
+import { isFighterJob, stampResourceFootprintData } from '../../src/systems/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -63,8 +60,6 @@ const FARMER = 18;
 const BAKER = 20;
 const CARRIER = 24;
 const SCOUT = 27;
-/** The unarmed soldier trade the recruit muster posts (`RECRUIT_JOB_ID`). */
-const RECRUIT = 31;
 const WOMAN = 5;
 const HQ_TYPE = 1;
 const HOME_TYPE = 2;
@@ -275,6 +270,11 @@ describe('workforce module (collectResources)', () => {
     // collect-anything flag (18 men: 3 + scout + HQ min carrier + 8 reserve = 13 claimed, the
     // top-ups take two, the HQ's two target carriers two more, and the last man goes generic).
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, WOOD, null]);
+    // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
+    // first post, so without the decision's claimed-node set the two flags land on one tile — one
+    // delivery yard, one pile cap, two gatherers.
+    const spots = commands.filter((c) => c.kind === 'setWorkFlag').map((c) => `${c.x},${c.y}`);
+    expect(new Set(spots).size).toBe(spots.length);
 
     // Every post is recognized on the next decision — no churn, nothing left to do.
     for (const c of commands) sim.enqueue(c);
@@ -613,8 +613,8 @@ describe('workforce module (collectResources)', () => {
   });
 });
 
-describe('workforce module — recruits and craft selections', () => {
-  function barracksSim(men: number, modules?: { military: boolean }): Simulation {
+describe('workforce module — the barracks and craft selections', () => {
+  it('never staffs the barracks: it is a military building, not a workplace the plan crews', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({
@@ -625,74 +625,17 @@ describe('workforce module — recruits and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, men, BUILDER);
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true, ...(modules ? { modules } : {}) });
-    sim.step();
-    return sim;
-  }
-
-  const barracksOf = (sim: Simulation): Entity => entityOfBuilding(sim, BARRACKS_TYPE);
-
-  /** The men this decision musters: each takes the unarmed trade, the guard stance, and a walk to
-   *  the barracks. */
-  function mustered(commands: readonly Command[]): Entity[] {
-    return commands.flatMap((c) => (c.kind === 'setJob' && c.jobType === RECRUIT ? [c.entity] : []));
-  }
-
-  it('musters half the surplus as unarmed soldiers at the 50% ramp stage', () => {
-    const sim = barracksSim(16);
-    // A half-way order: the barracks entry is satisfied, the stock entry after it is not — 50%.
-    const halfway = workforceModule([
-      { kind: 'place', building: 'barracks', count: 1 },
-      { kind: 'place', building: 'stock_02', count: 2 },
-    ]);
-    const commands = [...halfway.run(sim.world, ctxOf(sim), SEAT)];
-    // 16 men: scout + HQ carrier + 8 reserve + 2 HQ target carriers = 12 claimed, 4 surplus → 50%
-    // of 4 = 2 recruits. Nobody is posted INTO the barracks — it employs no recruit (user rule
-    // 2026-07-26); they stand beside it under DEFEND.
-    const recruits = mustered(commands);
-    expect(recruits.length).toBe(2);
-    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === barracksOf(sim))).toEqual([]);
-    for (const e of recruits) {
-      expect(commands).toContainEqual({ kind: 'setStance', entity: e, mode: MILITARY_MODE.DEFEND });
-      expect(commands.some((c) => c.kind === 'moveUnit' && c.entity === e)).toBe(true);
-    }
-
-    // Recognized next decision: recruits hold their post, no churn.
-    for (const c of commands) sim.enqueue(c);
-    sim.step();
-    expect(mustered([...halfway.run(sim.world, ctxOf(sim), SEAT)])).toEqual([]);
-  });
-
-  it('musters the whole surplus once the order is complete', () => {
-    const sim = barracksSim(18);
-    const complete = workforceModule([{ kind: 'place', building: 'barracks', count: 1 }]);
-    // 18 men: scout + HQ carrier + 8 reserve + 2 HQ target carriers = 12 claimed, 6 surplus → 100%
-    // takes all six. The old barracks-slot ceiling is gone: the ramp is the only limit.
-    expect(mustered([...complete.run(sim.world, ctxOf(sim), SEAT)]).length).toBe(6);
-  });
-
-  it('releases surplus recruits when the ramp share drops', () => {
-    const sim = barracksSim(18);
-    const complete = workforceModule([{ kind: 'place', building: 'barracks', count: 1 }]);
-    for (const c of complete.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    spawnMen(sim, 18, BUILDER);
+    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.step();
 
-    // The same seat judged against a half-way order keeps fewer recruits — the extras go back to
-    // the builder pool, newest posts first.
-    const halfway = workforceModule([
-      { kind: 'place', building: 'barracks', count: 1 },
-      { kind: 'place', building: 'stock_02', count: 2 },
-    ]);
-    const commands = [...halfway.run(sim.world, ctxOf(sim), SEAT)];
-    const released = commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
-    expect(released.length).toBeGreaterThan(0);
-  });
-
-  it('recruits nobody while the seat runs with the military module off', () => {
-    const sim = barracksSim(18, { military: false });
-    const complete = workforceModule([{ kind: 'place', building: 'barracks', count: 1 }]);
-    expect(mustered([...complete.run(sim.world, ctxOf(sim), SEAT)])).toEqual([]);
+    // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
+    // rule 2026-07-26) and mints no soldier: the fighter band is earned at the barracks, and until
+    // training lands (docs/tickets/features/barracks-training.md) the surplus stays civilian.
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
+    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === barracks)).toEqual([]);
+    expect(commands.filter((c) => c.kind === 'setJob' && isFighterJob(sim.content, c.jobType))).toEqual([]);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {
@@ -1387,28 +1330,6 @@ describe('population module (homeExpansion)', () => {
     sim.step();
     const withRoom = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(withRoom.filter((c) => c.kind === 'makeChild').map((c) => c.child)).toEqual(['female', 'female']);
-  });
-});
-
-describe('the army ramp helpers', () => {
-  const order: BuildOrderEntry[] = [
-    { kind: 'place', building: 'work_farm_00', count: 1 },
-    { kind: 'place', building: 'barracks', count: 1 },
-    { kind: 'upgrade', building: 'home_level_02', count: 3 },
-    { kind: 'place', building: 'stock_02', count: 2 },
-  ];
-
-  it('anchors on the last place-barracks entry and ramps 50→100 with the satisfied share', () => {
-    expect(barracksEntryIndex(order)).toBe(1);
-    expect(barracksEntryIndex([{ kind: 'collector', good: 'iron' }])).toBe(-1);
-    // Both entries after the barracks unmet → 50%; one satisfied (skip counts) → 75%; all → 100%.
-    expect(recruitPercent(order, ['satisfied', 'satisfied', 'unmet', 'unmet'])).toBe(50);
-    expect(recruitPercent(order, ['satisfied', 'satisfied', 'skip', 'unmet'])).toBe(75);
-    expect(recruitPercent(order, ['satisfied', 'satisfied', 'satisfied', 'satisfied'])).toBe(100);
-    // Nothing after the barracks — straight to full. Same for an order with NO barracks entry:
-    // the standing (map-granted) barracks is the only gate, however unmet the list is.
-    expect(recruitPercent(order.slice(0, 2), ['satisfied', 'satisfied'])).toBe(100);
-    expect(recruitPercent([{ kind: 'collector', good: 'iron' }], ['unmet'])).toBe(100);
   });
 });
 
