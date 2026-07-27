@@ -145,6 +145,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     destroyed = true;
     loop?.stop();
     systemMenu.dispose();
+    // Drop the debug seam with the session: leaving it set pins this sim, renderer and stats for the
+    // lifetime of the document, and a probe would read a world that is no longer running.
+    delete window.__opennorthland;
   };
   const quitToMenu = (): void => {
     destroy();
@@ -351,9 +354,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     fogGates,
   );
 
-  // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
-  // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
-  // the session's — quit halts the loop before navigating away.
   installDebugHandle({
     sim,
     renderer,
@@ -366,6 +366,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     profile,
   });
 
+  // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
+  // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
+  // the session's — quit halts the loop before navigating away.
   loop = startFrameLoop({
     deps,
     control,

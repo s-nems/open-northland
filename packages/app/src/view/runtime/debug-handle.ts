@@ -7,9 +7,10 @@
  * Installed by `startGameView`, so both entries get it and neither declares the global itself.
  */
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
-import { type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
-import type { FrameStatsReport } from '../../diag/frame-stats.js';
-import type { SystemProfileRow } from '../../diag/system-profile.js';
+import { type FixedTimestep, type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
+import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
+import { heapMb } from '../../diag/heap.js';
+import type { SystemProfile, SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
 import type { CameraController } from '../camera/index.js';
 import type { LoopSpeedControl } from '../game-tool-panel.js';
@@ -162,19 +163,10 @@ export interface DebugHandleDeps {
   readonly cameraCtl: CameraController;
   readonly canvas: HTMLCanvasElement;
   readonly control: LoopSpeedControl;
-  readonly timestep: { readonly droppedTicks: number; readonly maxSteps: number };
-  readonly frameStats: { report(): FrameStatsReport; reset(): void };
-  readonly profile: { rows(): readonly SystemProfileRow[]; reset(): void } | null;
-}
-
-/**
- * The JS heap in whole MB, or null where the browser does not expose it. `performance.memory` is a
- * non-standard Chrome-only field, so it is read defensively and simply omitted when absent.
- */
-export function heapMb(): number | null {
-  const mem = (performance as { memory?: { usedJSHeapSize?: number } }).memory;
-  if (mem === undefined || typeof mem.usedJSHeapSize !== 'number') return null;
-  return Math.round(mem.usedJSHeapSize / (1024 * 1024));
+  readonly timestep: FixedTimestep;
+  readonly frameStats: FrameStats;
+  /** Null unless `?debug=profile` asked for a running per-system profile. */
+  readonly profile: SystemProfile | null;
 }
 
 export function installDebugHandle(deps: DebugHandleDeps): void {

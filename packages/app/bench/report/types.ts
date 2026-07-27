@@ -1,8 +1,4 @@
-/**
- * The benchmark's machine-readable result shapes (the `ON_BENCH_JSON` payload). Plain data only, so
- * the folds in `summarize.ts`, the rule in `trust.ts` and the tables in `format.ts` all unit-test
- * without running a sim.
- */
+/** The benchmarks' machine-readable result shapes (the `ON_BENCH_JSON` payload). Plain data only. */
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  medians - the scale-invariant number a regression check can compare across machines. */
@@ -43,8 +39,7 @@ export type BenchWorld =
       readonly aiSeats: number;
     });
 
-/** One measured segment of the run. A single median over a developing settlement is the number that
- *  hides the question the benchmark exists to answer, so cost is always reported along this axis. */
+/** One measured segment of the run (see `measure.ts` for why cost is reported along this axis). */
 export interface BenchWindow {
   readonly index: number;
   /** Inclusive sim-tick bounds of the segment. */
@@ -57,11 +52,13 @@ export interface BenchWindow {
     readonly buildings: number;
     readonly resourceNodes: number;
   };
-  /** Resident set size at the segment boundary. A monotone climb across windows is itself a finding. */
+  /** Resident set size at the segment boundary, process-wide: it includes the harness's own per-tick
+   *  sample buffers, which grow with the tick count. A monotone climb is a finding about the run, not
+   *  proof of a leak in the world. */
   readonly rssMb: number;
 }
 
-/** Machine and run context, recorded so a stale or noisy report cannot be read as a clean one. */
+/** Machine and run context; `trust.ts` turns it into a verdict. */
 export interface BenchEnvironment {
   readonly node: string;
   readonly platform: string;

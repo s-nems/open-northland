@@ -240,7 +240,7 @@ describe('formatReport', () => {
   it('omits the window and growth tables for a single-window run', () => {
     const text = formatReport(summarize(new Map([['ai', [1]]]), [1], META));
     expect(text).not.toContain('growth (window');
-    expect(text).not.toContain('buildings   rss MB');
+    expect(text).not.toContain('rss MB');
   });
 
   it('prints the window and growth tables once there is a curve to show', () => {

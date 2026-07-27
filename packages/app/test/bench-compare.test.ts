@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compareReports, formatComparison, readReport } from '../bench/report/compare.js';
 import type { BenchReport, BenchWindow } from '../bench/report/index.js';
+import { compareReports, formatComparison, readReport } from '../bench/report/index.js';
 
 /**
  * The A/B comparison (`npm run bench:compare`). Its job is to turn two reports into a verdict, so the
@@ -162,8 +162,10 @@ describe('readReport', () => {
 
   it('names the file and the missing field rather than failing later on undefined', () => {
     expect(() => readReport({ world: { kind: 'realMap' } }, 'stale.json')).toThrow(
-      /stale\.json is not a benchmark report: missing ticks\.measured/,
+      /stale\.json is not a benchmark report: missing world\.mapCells/,
     );
+    const noTicks = { ...report(), ticks: undefined };
+    expect(() => readReport(noTicks, 'stale.json')).toThrow(/missing ticks\.measured/);
     expect(() => readReport('not json', 'x.json')).toThrow(/x\.json is not a benchmark report/);
   });
 });

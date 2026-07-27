@@ -20,7 +20,7 @@ export class FixedTimestep {
   }
 
   /**
-   * Ticks the cap has discarded since construction. Dropping the backlog is what stops a death
+   * Ticks the cap has discarded since construction, to the nearest whole tick. Dropping the backlog is what stops a death
    * spiral, but an unreported drop makes a requested playback speed a lie: `?speed=10` cannot be
    * delivered below `speed * TICKS_PER_SECOND / maxSteps` fps, and without this counter nothing says so.
    */
