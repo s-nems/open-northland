@@ -3,6 +3,7 @@ import {
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
+  JobAssignment,
   Position,
   WorkFlag,
   YardDeliveryRoute,
@@ -160,13 +161,18 @@ export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType:
 
 /**
  * Sync a settler's work flag to its (new) `jobType` — the flag half of a profession change, run inside
- * `reidleAsJob` so every employment order (`setJob`, `assignWorker`) applies it identically. A job that can
- * harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
+ * `applyTradeChange` so every path that changes a trade applies it identically. A job that can harvest is
+ * a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
  * ({@link plantWorkFlagAtFeet}). A job that cannot (a builder, a soldier, idle) drops the flag
  * ({@link removeWorkFlag}), so a former gatherer never strands an owner-less flag on the map.
+ *
+ * A settler already bound to a workplace is the third case and takes no flag: a bound gatherer harvests
+ * its building's stored goods, not a flag yard ({@link import('./jobs/binding.js').bindEmployment}). The
+ * caller that binds may do so first, which is what keeps a burst of automatic hires from planting a flag
+ * entity each and destroying it a line later.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  if (jobCanHarvest(ctx, jobType)) {
+  if (jobCanHarvest(ctx, jobType) && !world.has(e, JobAssignment)) {
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
       const selected = live.goodType;
