@@ -33,8 +33,8 @@ import {
  * assignment never depends on component-store insertion order (the AGENTS.md rule: a pick must be canonical):
  *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it staffs, and
  *     whose slots still have room, is bound to the building under its feet. This makes the binding
- *     authoritative for a settler spawned pre-employed onto its station. A gatherer working a patch it was
- *     pinned to is exempt ({@link pinnedToPatch}). **1b. Report in** — a loose carrier not standing
+ *     authoritative for a settler spawned pre-employed onto its station. A gatherer that already works a
+ *     flag is exempt ({@link worksAFlag}). **1b. Report in** — a loose carrier not standing
  *     on a post takes the first open transport slot anywhere (see the pass 1b comment): the haul drive works
  *     only through a binding, so an unposted carrier would otherwise never work.
  *  2. **Assign** — an idle settler (`jobType === null`) is matched to the first open workplace, in canonical
@@ -125,17 +125,16 @@ export const jobSystem: System = (world, ctx) => {
 };
 
 /**
- * Whether the settler is a gatherer under a standing gather order — a live work flag PINNED to one good
- * (`setGatherGood`, or a scene's pinned camp gatherer). Its work is that patch, so the doors it crosses
- * hauling to and from it are incidental; without this it is conscripted by whatever workshop door it
- * walks past that happens to employ its trade, and its patch goes unworked.
+ * Whether the settler already has a post: a live work flag. A flag IS a gatherer's workplace (the
+ * ground it works and delivers to), so the workshop doors it crosses hauling to and from that flag are
+ * incidental. Without this test it is conscripted by whatever door it walks past that employs its
+ * trade, and its patch goes unworked — the reported "collectors piling up in the pottery".
  *
- * An unpinned flag does not count: that is the flag auto-planted under any fresh gatherer
- * (`plantWorkFlagAtFeet`), including the workshop crews a scene spawns onto their stations, which the
- * adopt pass still binds.
+ * A pin ({@link setGatherGood}) is not required: the auto-planted flag every fresh gatherer carries
+ * (`plantWorkFlagAtFeet`) is just as much a post as a pinned one.
  */
-function pinnedToPatch(world: World, settler: Entity): boolean {
-  return liveWorkFlag(world, settler)?.goodType !== undefined;
+function worksAFlag(world: World, settler: Entity): boolean {
+  return liveWorkFlag(world, settler) !== undefined;
 }
 
 /** The settlers either pass can act on. Safe to snapshot ahead of the loop: a binding is only ever
@@ -167,8 +166,8 @@ function bind(
  * settler (bind it to the building under its feet). A candidate is a same-tribe same-tile {@link Building}
  * that works its workers — a `recipe` workplace (a producing workshop, not a passive store/HQ) or a farm
  * (producing a field-farmed good, {@link farmWorkGood}, with no recipe but a field loop) — whose `workers`
- * slots name `jobType` AND still have room for one ({@link jobUnderstaffed}). A gatherer pinned to a patch
- * is never adopted ({@link pinnedToPatch}). The first such building in canonical order is the binding.
+ * slots name `jobType` AND still have room for one ({@link jobUnderstaffed}). A gatherer that already works
+ * a flag is never adopted ({@link worksAFlag}). The first such building in canonical order is the binding.
  * Returns the building or null.
  *
  * The tribe filter keeps the binding consistent with {@link boundWorkplaceTarget} (the walk drive rejects a
@@ -187,7 +186,7 @@ function workplaceStaffedHereBy(
   query: OpeningsQuery,
   jobType: number,
 ): Entity | null {
-  if (pinnedToPatch(world, settler)) return null;
+  if (worksAFlag(world, settler)) return null;
   const sp = world.tryGet(settler, Position);
   if (sp === undefined) return null;
   // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket

@@ -10,6 +10,7 @@ import {
 import { resolveVikingBuilding } from '../../../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { JOB_CARRIER, JOB_COLLECTOR } from '../ids/index.js';
+import { workerRoleOf } from '../worker-roles.js';
 import { gatherMasteryExperience } from './mastery.js';
 
 /**
@@ -136,11 +137,13 @@ export function spawnWorkersAtDoor(
 }
 
 /**
- * The worker slots a scene can actually staff at `buildingType`, from the sim's loaded content: every slot
- * of a producing building (a recipe workshop or a farm — the adopt pass binds a worker standing at its
- * door), but only the carrier slots of a passive store (HQ/warehouse — never adopted, its haulers report in
- * loose via the JobSystem's pass 1b). The skipped store slots (collector/fisher/hunter) would otherwise
- * spawn employed-but-unbindable gatherers that roam the map.
+ * The worker slots a scene can actually staff at `buildingType`, from the sim's loaded content: the
+ * craft slots of a producing building (a recipe workshop or a farm — the adopt pass binds a worker
+ * standing at its door), plus every carrier slot (a loose carrier reports in via the JobSystem's pass
+ * 1b). GATHERER slots are never staffed this way, at a workshop any more than at a store: a spawned
+ * gatherer carries its own auto-planted work flag, and the adopt pass leaves a settler that already
+ * works a flag alone, so the spawn would only add an employed-but-unbindable settler roaming the map.
+ * A scene wanting a gatherer on a workshop's roster must bind it explicitly (`assignWorker`).
  */
 export function staffableCrewFor(
   sim: Simulation,
@@ -149,7 +152,9 @@ export function staffableCrewFor(
   const def = buildingDef(sim, buildingType);
   if (def === undefined) return [];
   const producing = def.recipes.length > 0 || def.produces.length > 0;
-  return def.workers.filter((slot) => producing || slot.jobType === JOB_CARRIER);
+  return def.workers.filter(
+    (slot) => slot.jobType === JOB_CARRIER || (producing && workerRoleOf(slot.jobType) !== 'gatherer'),
+  );
 }
 
 /**
