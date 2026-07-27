@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ChildOrder } from '../../src/components/family.js';
 import { CurrentAtomic } from '../../src/components/settler.js';
 import type { AtomicEffect } from '../../src/core/atomic-effect.js';
+import { defineComponent } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -46,5 +47,33 @@ describe('hashState string values', () => {
     female.world.add(female.world.create(), ChildOrder, { child: 'female' });
     male.world.add(male.world.create(), ChildOrder, { child: 'male' });
     expect(female.hashState()).not.toBe(male.hashState());
+  });
+});
+
+/** The same tripwire from the other side: a shape the walk cannot enumerate contributes nothing (a `Set`, a
+ *  bigint) or only part of itself (a class instance), so it must throw on the first hashed tick rather than
+ *  let two diverging runs hash identically. */
+describe('hashState unhashable value shapes', () => {
+  function simWithComponentValue(value: unknown): Simulation {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.world.add(sim.world.create(), defineComponent<unknown>('UnhashableProbe'), value);
+    return sim;
+  }
+
+  it('throws on a Set-valued component instead of hashing it to nothing', () => {
+    expect(() => simWithComponentValue({ ids: new Set([1, 2]) }).hashState()).toThrow(
+      /unhashable value shape Set/,
+    );
+  });
+
+  it('throws on a bigint-valued component', () => {
+    expect(() => simWithComponentValue({ count: 1n }).hashState()).toThrow(/unhashable value shape bigint/);
+  });
+
+  it('throws on a class-instance component value', () => {
+    class Marker {
+      constructor(readonly n: number) {}
+    }
+    expect(() => simWithComponentValue(new Marker(1)).hashState()).toThrow(/unhashable value shape Marker/);
   });
 });

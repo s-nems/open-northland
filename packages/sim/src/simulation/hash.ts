@@ -1,3 +1,4 @@
+import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -45,11 +46,15 @@ export function hashSimState(
         hashValue(k);
         hashValue(val);
       }
-    } else if (typeof v === 'object') {
-      for (const k of Object.keys(v as object).sort()) {
+    } else if (isPlainRecord(v)) {
+      for (const k of Object.keys(v).sort()) {
         mixString(k);
-        hashValue((v as Record<string, unknown>)[k]);
+        hashValue(v[k]);
       }
+    } else {
+      // A shape no branch covers hides a real divergence: a Set or a bigint mixes in nothing at all, a class
+      // instance only whatever `Object.keys` happens to expose.
+      throw new Error(`hashState: unhashable value shape ${valueShapeName(v)}`);
     }
   };
 

@@ -1,5 +1,6 @@
 import { BerryBush, Resource, Stump } from '../components/economy/index.js';
 import type { SimEvent } from '../core/events.js';
+import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
 
 /**
@@ -135,15 +136,18 @@ export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot 
 }
 
 /**
- * The plain shape {@link clonePlain} produces from `T`: every `Map<K, V>` becomes a sorted `[K, PlainOf<V>]`
- * pair array (keys pass through, values recurse), arrays and objects recurse, scalars pass through. This
+ * The plain shape {@link clonePlain} produces from `T`: every `Map<K, V>` becomes a sorted
+ * `[PlainOf<K>, PlainOf<V>]` pair array, arrays and objects recurse, scalars pass through. This
  * mirrors the runtime transform, so a caller sees the real snapshot shape instead of a `T` the clone never
  * actually returns.
+ *
+ * `extends object` cannot express "plain record", so shapes the clone rejects (a `Set`, a class instance,
+ * `bigint`, `symbol`, a function) still satisfy this type; `clonePlain` throws on them at runtime.
  */
 type PlainOf<T> = T extends null | undefined | string | number | boolean | bigint | symbol
   ? T // scalars pass through — including branded primitives (`Entity` is a `number`), which stay numbers at runtime
   : T extends Map<infer K, infer V>
-    ? [K, PlainOf<V>][]
+    ? [PlainOf<K>, PlainOf<V>][]
     : T extends readonly (infer E)[]
       ? PlainOf<E>[]
       : T extends object
@@ -164,16 +168,22 @@ type PlainOf<T> = T extends null | undefined | string | number | boolean | bigin
  */
 function clonePlain<T>(value: T): PlainOf<T>;
 function clonePlain(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') return value;
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value !== 'object') throw uncloneable(value); // bigint, symbol, function
   if (value instanceof Map) {
     const entries = [...value.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    return entries.map(([k, v]) => [k, clonePlain(v)]);
+    return entries.map(([k, v]) => [clonePlain(k), clonePlain(v)]);
   }
   if (Array.isArray(value)) return value.map((e) => clonePlain(e));
-  const record = value as Record<string, unknown>;
+  if (!isPlainRecord(value)) throw uncloneable(value);
   const out: Record<string, unknown> = {};
-  for (const k of Object.keys(record)) {
-    out[k] = clonePlain(record[k]);
+  for (const k of Object.keys(value)) {
+    out[k] = clonePlain(value[k]);
   }
   return out;
+}
+
+function uncloneable(value: unknown): Error {
+  return new Error(`snapshot: uncloneable value shape ${valueShapeName(value)}`);
 }
