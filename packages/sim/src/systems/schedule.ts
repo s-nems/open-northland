@@ -1,5 +1,3 @@
-import { aiSystem } from './agents/ai.js';
-import { atomicSystem } from './agents/atomic.js';
 import { aiPlayerSystem } from './ai-player/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
@@ -20,6 +18,8 @@ import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { deferredOrderSystem, playerOrderSystem, signpostOrderSystem } from './orders/index.js';
+import { aiSystem } from './settlers/ai.js';
+import { atomicSystem } from './settlers/atomic.js';
 import { gossipSystem } from './social/index.js';
 import { visionSystem } from './vision/index.js';
 

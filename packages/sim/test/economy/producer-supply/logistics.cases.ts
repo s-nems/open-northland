@@ -9,10 +9,10 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
-import { boundProducerOutputToHaul } from '../../../src/systems/agents/economy/haul-targets.js';
-import { SinkAvailability } from '../../../src/systems/agents/targets/stores/sinks.js';
 import { aiSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import { boundProducerOutputToHaul } from '../../../src/systems/settlers/economy/haul-targets.js';
+import { SinkAvailability } from '../../../src/systems/settlers/targets/stores/sinks.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {

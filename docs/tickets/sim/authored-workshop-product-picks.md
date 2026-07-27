@@ -35,7 +35,7 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
 
 ## Verify
 
-- `npm test`; extend `packages/sim/test/agents/gatherer-flag/yard/commands.cases.ts` (the spawn-pick
+- `npm test`; extend `packages/sim/test/settlers/gatherer-flag/yard/commands.cases.ts` (the spawn-pick
   cases) and `packages/app/test/content/authored-map-gather-good.test.ts`, whose `fisher` row already
   pins one known drop.
 - `npm run test:content`; re-count how many of the 819 land, and state the new number.

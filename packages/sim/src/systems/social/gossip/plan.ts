@@ -19,9 +19,9 @@ import {
 import { type Fixed, fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
-import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../agents/drives-needs.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives-needs.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial.js';
 
 /**

@@ -2,7 +2,7 @@
 
 **Area:** sim (goods effects) · **Priority:** P3
 
-`dropOrStackGood` (`packages/sim/src/systems/agents/effects-goods/piles.ts`) excludes a `GroundDrop`
+`dropOrStackGood` (`packages/sim/src/systems/settlers/effects-goods/piles.ts`) excludes a `GroundDrop`
 trunk and a `Building` store from its stack candidates, but not a `Vehicle`. A boat hull is
 `Position` + `Vehicle` + an empty `Stockpile` (`systems/command/placement.ts` `placeBoat`), placed at
 `positionOfNode(command.x, command.y)` — the exact position the `dropGood` command also drops at

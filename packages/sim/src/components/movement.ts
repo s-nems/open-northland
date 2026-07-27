@@ -86,7 +86,7 @@ export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed
 /**
  * A stranded walker's retry pacing: its route FAILED ({@link PathRequest} `failed`) and no drive with its
  * own failure protocol owns it, so the AI planner parks the dead nav state until tick `retryAt`, then sheds
- * it and re-plans (the stranded-recovery block in `systems/agents/replan.ts`). Without it a failed
+ * it and re-plans (the stranded-recovery block in `systems/settlers/replan.ts`). Without it a failed
  * request reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
  * (`clearNavState`), so an authoritative cancel — a player order, a job change — restarts the walk at once.
  */
@@ -104,7 +104,7 @@ export interface UnreachableGoal {
  * *what* failed, so without this the deterministic nearest-first pick returns the identical doomed cell
  * every retry and the settler idles beside reachable work forever. A bounded FIFO rather than one cell so
  * a settler ringed by several walled-off targets cannot cycle between them; see
- * `systems/agents/unreachable-goals.ts` for the pacing. Provably sealed goals are the route-region
+ * `systems/settlers/unreachable-goals.ts` for the pacing. Provably sealed goals are the route-region
  * memo's job (`systems/footprint/route-regions.ts`); this memo covers what that one cannot prove.
  * Optional, so a settler whose routes all succeed never carries it.
  */

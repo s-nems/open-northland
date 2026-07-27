@@ -29,6 +29,6 @@ original before trusting it.
 ## Verify
 
 - Pipeline extraction test on a synthetic `[GfxHouse]` fixture + real pipeline run.
-- `packages/sim/test/agents/spacing.test.ts` builder-slot cases; **golden moves — builder stand cells change;
+- `packages/sim/test/settlers/spacing.test.ts` builder-slot cases; **golden moves — builder stand cells change;
   name the mechanic in the commit**.
 - A construction-site scene: stand cells hug the site's footprint — **user's eyes**.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Simulation } from '../../src/index.js';
-import { collectTargets } from '../../src/systems/agents/targets/index.js';
+import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -9,8 +9,8 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 // defers the three index builds to their first accessor instead of paying them eagerly per tick.
 // (vi.hoisted, because the hoisted vi.mock factory below closes over it.)
 const constructed = vi.hoisted(() => vi.fn());
-vi.mock('../../src/systems/agents/targets/cell-index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/systems/agents/targets/cell-index.js')>();
+vi.mock('../../src/systems/settlers/targets/cell-index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/systems/settlers/targets/cell-index.js')>();
   class CountingIndex extends actual.InteractionCellIndex {
     constructor(...args: ConstructorParameters<typeof actual.InteractionCellIndex>) {
       super(...args);

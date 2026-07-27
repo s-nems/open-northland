@@ -9,9 +9,9 @@ import {
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { startDrop } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
 import { isHunterJob } from '../readviews/index.js';
+import { startDrop } from '../settlers/actions.js';
 import {
   COMPASS_DIRECTIONS,
   clearNavState,

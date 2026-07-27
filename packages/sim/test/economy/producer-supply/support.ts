@@ -16,7 +16,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
 
 /**
- * The PRODUCER SELF-SERVICE + PORTER drives (`systems/agents/economy`): a worker
+ * The PRODUCER SELF-SERVICE + PORTER drives (`systems/settlers/economy`): a worker
  * bound to a recipe workshop fetches the inputs it lacks from a store that holds them and hauls its own
  * finished output out, and a porter bound to a store collects loose ground piles into it. Fixture: good
  * 1 = wood, good 2 = plank, job 1 = woodcutter (harvest 24), job 2 = carpenter (no atomics — the mill's

@@ -18,7 +18,6 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
-import { noteUnreachableGoal } from '../../src/systems/agents/unreachable-goals.js';
 import {
   ADULT_AGE_TICKS,
   BABY_FEMALE,
@@ -30,6 +29,7 @@ import {
   KISSED_ATOMIC_ID,
   mayMarry,
 } from '../../src/systems/index.js';
+import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';

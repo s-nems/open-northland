@@ -7,12 +7,12 @@ every call. It exists so a *pick* over a store's goods is canonical, but three p
 where AGENTS.md Ordering says canonicalization is not needed ("Do not sort membership checks,
 commutative sums, or loops whose result cannot change with order"):
 
-- `hasHaulableOutput` (`systems/agents/targets/stores/outputs.ts`) — a boolean existence check, and the
-  AI planner's per-tick haul dormancy gate over **all** stockpiles (`systems/agents/ai.ts`). Order
+- `hasHaulableOutput` (`systems/settlers/targets/stores/outputs.ts`) — a boolean existence check, and the
+  AI planner's per-tick haul dormancy gate over **all** stockpiles (`systems/settlers/ai.ts`). Order
   cannot change a `return true`.
 - `storedFoodUnits` (`systems/family/households.ts`) — a commutative integer sum, reached per home-store
   candidate from the hungry-settler food scan and from the child-making checks.
-- `storedFoodGood` (`systems/agents/targets/food.ts`) — a min-pick that sorts the whole goods map and
+- `storedFoodGood` (`systems/settlers/targets/food.ts`) — a min-pick that sorts the whole goods map and
   then returns on the first match, once per candidate store inside a ring scan. The winner is
   load-bearing, so this one becomes a min-over-`amounts` scan rather than an unordered walk.
 

@@ -11,10 +11,10 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { carriedGoodForm } from '../agents/economy/routing.js';
-import { interactionCell } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
+import { carriedGoodForm } from '../settlers/economy/routing.js';
+import { interactionCell } from '../settlers/targets/index.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
 
 /**

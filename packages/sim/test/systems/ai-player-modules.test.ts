@@ -21,7 +21,6 @@ import type { Entity } from '../../src/ecs/world.js';
 import type { TerrainMap } from '../../src/index.js';
 import { EventBuffer, fx, positionOfNode, Rng, replay, Simulation } from '../../src/index.js';
 import { withinNodeRadius } from '../../src/nav/node-metric.js';
-import { EAT_ATOMIC_ID } from '../../src/systems/agents/actions.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   BUILDER_CAP,
@@ -40,6 +39,7 @@ import {
 import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { isFighterJob, stampResourceFootprintData } from '../../src/systems/index.js';
+import { EAT_ATOMIC_ID } from '../../src/systems/settlers/actions.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 

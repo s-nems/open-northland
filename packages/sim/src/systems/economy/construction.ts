@@ -53,7 +53,7 @@ import { destroyStumpsInReserved } from './stumps.js';
  *
  * Who delivers the materials and who hammers is the AI planner: a construction site advertises its
  * outstanding materials as delivery demand ({@link import('../stores/index.js').stockCapacity}) so any
- * carrier routes them there, and the builder drive ({@link import('../agents/economy/index.js').planBuilder})
+ * carrier routes them there, and the builder drive ({@link import('../settlers/economy/index.js').planBuilder})
  * both hammers the site and — when it runs dry — fetches a missing material itself.
  *
  * Source basis: the site-then-build flow, the per-tier material cost (`construction`, graphics-table

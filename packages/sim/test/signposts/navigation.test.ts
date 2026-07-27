@@ -12,9 +12,9 @@ import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { navigationLimitFor } from '../../src/systems/index.js';
-import { makeWoodcutter, placeFellableTree, VIKING } from '../agents/gatherer-flag/support.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { makeWoodcutter, placeFellableTree, VIKING } from '../settlers/gatherer-flag/support.js';
 import { stampPost } from './support.js';
 
 /**

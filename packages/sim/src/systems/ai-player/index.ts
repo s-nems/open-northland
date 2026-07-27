@@ -16,7 +16,7 @@ export * from './workforce/index.js';
 
 /**
  * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military),
- * distinct from the settler micro-planner in `agents/ai.ts`. Each AI-flagged seat (the `AiPlayer`
+ * distinct from the settler micro-planner in `settlers/ai.ts`. Each AI-flagged seat (the `AiPlayer`
  * component the `setPlayerAi` command sets) runs its enabled modules on a coarse staggered cadence
  * and enqueues the same `Command` union a human issues; CommandSystem applies them next tick through
  * the one mutation seam, so AI orders hash, log, and replay exactly like player input (replay

@@ -29,12 +29,12 @@ Each is real but lower-leverage than the wave above; take them only if the Chrom
 unacceptable rate. Sim purity/determinism and the scaling budget apply.
 
 - **Ring searches** - `NodeBuckets.nearest` (`systems/spatial.ts`) and `ringNearest`
-  (`agents/targets/cell-index.ts`) allocate a result object per call and a `forEachRingOffset` closure
+  (`settlers/targets/cell-index.ts`) allocate a result object per call and a `forEachRingOffset` closure
   per ring, under combat and the AI planner.
 - **`nodeOfPosition`** (`nav/halfcell.ts`) returns a fresh `{hx,hy}` per call and is called broadly;
   a non-allocating variant for the hottest loops would help.
 - **AI store scan** - `stockCapacity` / `lowestStockedGood` (`systems/stores/capacity.ts`) and
-  `canStoreGood` (`agents/targets/stores/stock.ts`) churn while the planner scans stockpiles.
+  `canStoreGood` (`settlers/targets/stores/stock.ts`) churn while the planner scans stockpiles.
 - **`singletonCarrier`** (`components/rules.ts`) runs a full query per settler per tick via
   `signpostNavigationEnabled` -> `navigationLimitFor`; memoize the carrier on the component generation.
 - **Snapshot clone floor** - every non-scenery entity still re-clones each frame. A wider clone cache

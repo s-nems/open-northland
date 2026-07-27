@@ -1,6 +1,6 @@
 # Retire the legacy unstamped strikes component shape
 
-**Area:** sim (footprint, agents/effects-goods) · **Priority:** P3
+**Area:** sim (footprint, settlers/effects-goods) · **Priority:** P3
 
 The strikes mechanic is implemented twice to keep old state hashes alive. `footprint/resources.ts`
 stamps `strikesPerUnit`/`strikes` only when supplied ("legacy 1-strike hash shape"),

@@ -2,11 +2,11 @@ import { Carrying, ownerOf, Position, Residence, Settler } from '../../component
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { startDrop } from '../agents/actions.js';
-import { unreachableGoalVeto } from '../agents/unreachable-goals.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { isFood } from '../readviews/index.js';
+import { startDrop } from '../settlers/actions.js';
+import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';

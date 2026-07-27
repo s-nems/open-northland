@@ -27,7 +27,7 @@ such as:
 walk to tree -> harvest -> carry wood -> walk to store -> deposit
 ```
 
-`CurrentAtomic` records the action in progress. The agent planner chooses the next action, movement
+`CurrentAtomic` records the action in progress. The settler planner chooses the next action, movement
 systems route and move the settler, and the atomic system applies the effect at the authored point in
 the animation.
 
@@ -46,7 +46,7 @@ The canonical order is `SYSTEM_ORDER` in `packages/sim/src/systems/schedule.ts`.
 tick runs these phases:
 
 1. apply commands and update needs, jobs, orders, family, and social state;
-2. plan agent work, then route, move, and separate units;
+2. plan settler work, then route, move, and separate units;
 3. advance atomics and economy systems, including production, growth, and construction;
 4. update vision, combat, projectiles, ageing, and cleanup;
 5. let the strategic AI inspect the settled world and queue commands for the next tick.

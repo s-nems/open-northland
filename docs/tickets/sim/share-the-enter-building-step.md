@@ -6,7 +6,7 @@ Two rungs now perform the identical three steps — resolve the building's `inte
 to it, and stamp `Resting { at: building }` on arrival:
 
 - `enterHome` — `systems/family/children.ts` (a spouse going in to make a child)
-- `sleepAtHome` — `systems/agents/sleep-at-home.ts` (a tired settler going to bed)
+- `sleepAtHome` — `systems/settlers/sleep-at-home.ts` (a tired settler going to bed)
 
 Second real caller, so it is time for one `enterBuilding(world, ctx, terrain, e, building, then)`.
 
@@ -30,4 +30,4 @@ using it as the inside test.
 
 ## Verify
 
-- `npm test`, including the existing family/child-order suites and `test/agents/sleep-at-home.test.ts`.
+- `npm test`, including the existing family/child-order suites and `test/settlers/sleep-at-home.test.ts`.
