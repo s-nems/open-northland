@@ -107,6 +107,7 @@ export const enSurfaces = {
     paused: 'paused',
     tick: 'tick',
     steps: 'steps',
+    dropped: 'dropped',
     entities: 'entities',
     drawn: 'drawn',
     pooled: 'pooled',

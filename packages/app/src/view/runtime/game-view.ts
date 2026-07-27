@@ -1,6 +1,13 @@
 import { indexById } from '@open-northland/data';
 import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
-import type { Command, Entity, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
+import {
+  type Command,
+  type Entity,
+  FixedTimestep,
+  type SimEvent,
+  type Simulation,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import {
@@ -164,6 +171,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
   // button then drives it live (×1 → ×2 → ×3 → ×1; `P` toggles pause) without clobbering this seed at mount.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
+  // Built here rather than inside the loop so its dropped-tick tally spans the whole session: that
+  // counter is the only record that a requested speed was not delivered.
+  const timestep = new FixedTimestep();
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
   // attenuated, panned) + non-spatial life-event jingles + settler voice chatter — a pure consumer of
@@ -354,6 +364,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   loop = startFrameLoop({
     deps,
     control,
+    timestep,
     fogGates,
     toolPanel,
     minimap: mountedMinimap,

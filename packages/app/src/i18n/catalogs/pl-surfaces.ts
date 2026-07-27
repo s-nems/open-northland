@@ -106,6 +106,7 @@ export const plSurfaces = {
     paused: 'pauza',
     tick: 'krok',
     steps: 'kroki',
+    dropped: 'pominięte',
     entities: 'obiekty',
     drawn: 'rysowane',
     pooled: 'w puli',
