@@ -53,17 +53,37 @@ export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): b
 /**
  * Whether any eligible marriage partner for `seeker` exists — the snapshot mirror of the sim's
  * `mayMarry` + `findPartnerFor` filters (same tribe, opposite sex, unmarried adult, not mid-wedding,
- * not away on a mission, positioned), used to grey the ring's marry button instead of offering a
+ * not away on a mission, positioned), used to drop the ring's marry button instead of offering a
  * silent dead click. The sim command re-validates; a stale frame just mislabels the button. KNOWN
  * GAP: the sim's signpost-confinement filter is not mirrored (the network isn't in the snapshot), so
- * under `setSignpostNavigation` an out-of-area-only match still lights the button and the click
- * cancels — ticketed with the other confinement cues (docs/tickets/app/assign-builder-refusal-cue.md).
+ * under `setSignpostNavigation` an out-of-area-only match still offers the button and the click
+ * cancels.
  */
 export function hasEligiblePartner(
   content: ContentSet,
   snapshot: WorldSnapshot,
   seeker: SnapshotEntity,
 ): boolean {
+  let bySeeker = ELIGIBLE_PARTNER.get(snapshot);
+  if (bySeeker === undefined) {
+    bySeeker = new Map();
+    ELIGIBLE_PARTNER.set(snapshot, bySeeker);
+  }
+  const cached = bySeeker.get(seeker.id);
+  if (cached !== undefined) return cached;
+  const found = scanForPartner(content, snapshot, seeker);
+  bySeeker.set(seeker.id, found);
+  return found;
+}
+
+/** Keyed by snapshot, then by seeker id, so the ring's per-frame button derivation costs one pass per
+ *  tick. `seeker` must be an entity OF `snapshot`: its id keys the memo while the object carries the
+ *  filters. `content` stays outside the key because a session holds one {@link ContentSet}. */
+const ELIGIBLE_PARTNER = new WeakMap<WorldSnapshot, Map<number, boolean>>();
+
+/** The pass behind {@link hasEligiblePartner}. `isBoundByMarriage` runs last: it is the only clause that
+ *  searches the snapshot (two binary lookups), so the marker and tribe reads sieve the candidates first. */
+function scanForPartner(content: ContentSet, snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
   return snapshot.entities.some(
@@ -72,11 +92,11 @@ export function hasEligiblePartner(
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&
-      !isBoundByMarriage(snapshot, e) &&
       !isMarrying(e) &&
-      positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&
-      !systems.isOnMission(content, settlerJobType(e) ?? null),
+      positionOf(e) !== undefined &&
+      !systems.isOnMission(content, settlerJobType(e) ?? null) &&
+      !isBoundByMarriage(snapshot, e),
   );
 }
 
