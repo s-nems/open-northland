@@ -10,17 +10,10 @@ import { uiStringLookup } from '../../content/gui-gfx.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
-import {
-  hitButton,
-  hitCraftChoice,
-  hitEquipAction,
-  hitGatherChoice,
-  hitStockTab,
-  nextCraftGoods,
-  tooltipTextAt,
-} from './hit-test.js';
-import { type ButtonHit, type EquipSlotRef, equipActionKey, mapLayout, ROW_H } from './layout/index.js';
+import { tooltipTextAt } from './hit-test.js';
+import { type EquipSlotRef, mapLayout, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
+import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
@@ -29,8 +22,8 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
 /**
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
  * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
- * extracted original art. `model.ts` decides what is shown, `layout.ts` where, `sections.ts`+`chrome.ts`
- * how — this module wires them to the app: loading, selection/tick updates, pointer claims, and clicks.
+ * extracted original art. `model/` decides what is shown, `layout/` where, `sections/`+`chrome.ts` how,
+ * `pointer-intent.ts` what a click means — this module owns the Pixi state that wires them to the app.
  */
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
@@ -170,10 +163,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let lastStructureKey = '';
   let lastRebuildAt = Number.NEGATIVE_INFINITY;
   let view: PanelView = EMPTY_PANEL_VIEW;
-  let hoverAction: ButtonHit['action'] | null = null;
-  let hoveredGatherGood: number | null | undefined;
-  /** The hovered equipment action button's {@link equipActionKey}, or null. */
-  let hoveredEquipAction: string | null = null;
+  let hover: PanelHover = NO_PANEL_HOVER;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
    *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
@@ -229,7 +219,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     switch (view.kind) {
       case 'building': {
         const draw = mapLayout(view.layout, toDraw);
-        drawBuilding(chrome, draw, view.model, uiString, hoverAction, activeStockTab, ss);
+        drawBuilding(chrome, draw, view.model, uiString, hover.action, activeStockTab, ss);
         break;
       }
       case 'settler': {
@@ -239,9 +229,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
           draw,
           view.model,
           uiString,
-          hoverAction,
-          hoveredGatherGood,
-          hoveredEquipAction,
+          hover.action,
+          hover.choiceGood,
+          hover.equipAction,
           ss,
         );
         break;
@@ -250,7 +240,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         drawCompact(chrome, mapLayout(view.layout, toDraw), view.model, uiString, ss);
         break;
       case 'signpost':
-        drawSignpost(chrome, mapLayout(view.layout, toDraw), uiString, hoverAction);
+        drawSignpost(chrome, mapLayout(view.layout, toDraw), uiString, hover.action);
         break;
     }
 
@@ -264,6 +254,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     // cursor itself won't move to fire a mousemove, so refresh the tooltip here. Rebuilds are already
     // rate-limited (VALUE_REBUILD_MIN_MS), so this adds no per-frame work.
     if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
+  };
+
+  /** Re-bake the current selection after a panel-local change (hover, stock tab); inert while empty. */
+  const rebuildCurrent = (): void => {
+    if (view.kind !== 'empty') rebuild(view.model);
   };
 
   /**
@@ -331,56 +326,52 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onSelectEntity?.(worker);
       return true;
     }
-    if (view.kind === 'settler') {
-      const gatherGood = hitGatherChoice(view, x, y);
-      if (gatherGood !== undefined) {
-        opts.onSetGatherGood(view.model.entityId, gatherGood);
-        return true;
-      }
-      const craftGood = hitCraftChoice(view, x, y);
-      if (craftGood !== undefined) {
-        opts.onSetCraftGoods(
-          view.model.entityId,
-          nextCraftGoods(
-            view.model.work.craftChoices.map((c) => c.goodType),
-            view.model.work.selectedCraftGoods,
-            craftGood,
-            toggleModifier,
-          ),
-        );
-        return true;
-      }
-      const equipHit = hitEquipAction(view, x, y);
-      if (equipHit !== undefined) {
-        if (equipHit.kind === 'unequip') opts.onUnequipSlot?.(view.model.entityId, equipHit.ref);
-        else opts.onEquipSlot?.(view.model.entityId, equipHit.ref);
-        return true;
-      }
-    }
-    if (view.kind === 'building') {
-      const tab = hitStockTab(view, x, y);
-      if (tab !== null) {
-        if (tab !== activeStockTab) {
-          activeStockTab = tab;
-          rebuild(view.model);
+    const click = panelClickAt(view, x, y, toggleModifier);
+    if (click === null) return true;
+    switch (click.kind) {
+      case 'setGatherGood':
+        opts.onSetGatherGood(click.entityId, click.goodType);
+        break;
+      case 'setCraftGoods':
+        opts.onSetCraftGoods(click.entityId, click.goods);
+        break;
+      case 'equipSlot':
+        opts.onEquipSlot?.(click.entityId, click.ref);
+        break;
+      case 'unequipSlot':
+        opts.onUnequipSlot?.(click.entityId, click.ref);
+        break;
+      case 'stockTab':
+        if (click.tab !== activeStockTab) {
+          activeStockTab = click.tab;
+          rebuildCurrent();
         }
-        return true;
+        break;
+      case 'upgrade':
+        opts.onUpgrade(click.entityId);
+        break;
+      case 'cancelUpgrade':
+        opts.onCancelUpgrade(click.entityId);
+        break;
+      case 'demolish':
+        opts.onDemolish(click.entityId);
+        break;
+      case 'demolishSignpost':
+        opts.onDemolishSignpost(click.entityId);
+        break;
+      case 'assignWorkplace':
+        opts.onAssignWorkplace?.(click.entityId);
+        break;
+      case 'assignHome':
+        opts.onAssignHome?.(click.entityId);
+        break;
+      case 'unassignHome':
+        opts.onUnassignHome?.(click.entityId);
+        break;
+      default: {
+        const unreachable: never = click; // exhaustive: a new intent kind fails to compile here
+        throw new Error(`unhandled panel click: ${JSON.stringify(unreachable)}`);
       }
-    }
-    const hit = hitButton(view, x, y);
-    if (hit === null || !hit.enabled) return true;
-    if (view.kind === 'building') {
-      const entityId = view.model.entityId;
-      if (hit.action === 'upgrade') opts.onUpgrade(entityId);
-      else if (hit.action === 'cancelUpgrade') opts.onCancelUpgrade(entityId);
-      else if (hit.action === 'demolish') opts.onDemolish(entityId);
-    } else if (view.kind === 'signpost') {
-      if (hit.action === 'demolish') opts.onDemolishSignpost(view.model.entityId);
-    } else if (view.kind === 'settler') {
-      const entityId = view.model.entityId;
-      if (hit.action === 'assign-workplace') opts.onAssignWorkplace?.(entityId);
-      else if (hit.action === 'assign-home') opts.onAssignHome?.(entityId);
-      else if (hit.action === 'unassign-home') opts.onUnassignHome?.(entityId);
     }
     return true;
   };
@@ -401,39 +392,24 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     else opts.tooltip.show(clientX, clientY, text);
   };
 
+  const setHover = (next: PanelHover): void => {
+    if (sameHover(next, hover)) return;
+    hover = next;
+    rebuildCurrent();
+  };
+
   const onMouseMove = (e: MouseEvent): void => {
     lastPointer = { clientX: e.clientX, clientY: e.clientY };
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    const next = hitButton(view, x, y)?.action ?? null;
-    // One hover slot serves both choice blocks — they never coexist, and `null` (the gather-all
-    // button) must not fall through to the craft probe, so this is an explicit undefined-check.
-    const gather = hitGatherChoice(view, x, y);
-    const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(view, x, y);
-    const equipHit = hitEquipAction(view, x, y);
-    const nextEquipAction = equipHit !== undefined ? equipActionKey(equipHit) : null;
-    if (
-      next === hoverAction &&
-      nextGatherGood === hoveredGatherGood &&
-      nextEquipAction === hoveredEquipAction
-    )
-      return;
-    hoverAction = next;
-    hoveredGatherGood = nextGatherGood;
-    hoveredEquipAction = nextEquipAction;
-    if (view.kind !== 'empty') rebuild(view.model);
+    setHover(panelHoverAt(view, x, y));
   };
 
   // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger — hide it.
   const onMouseLeave = (): void => {
     lastPointer = null;
     opts.tooltip?.hide();
-    if (hoverAction !== null || hoveredGatherGood !== undefined || hoveredEquipAction !== null) {
-      hoverAction = null;
-      hoveredGatherGood = undefined;
-      hoveredEquipAction = null;
-      if (view.kind !== 'empty') rebuild(view.model);
-    }
+    setHover(NO_PANEL_HOVER);
   };
 
   canvas.addEventListener('mousemove', onMouseMove);

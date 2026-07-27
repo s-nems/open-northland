@@ -15,34 +15,17 @@ import {
   nextCraftGoods,
   tooltipTextAt,
 } from '../src/hud/details-panel/hit-test.js';
-import { buildUnitPanelModel, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import { stockSlotRects } from '../src/hud/details-panel/layout/index.js';
-import { type PanelView, panelViewFor } from '../src/hud/details-panel/selection-view.js';
 import {
   ALL_STOCK_TAB,
   detailsStockTabLabels,
   visibleStockRows,
 } from '../src/hud/details-panel/stock-tabs.js';
-import type { Rect } from '../src/hud/geometry.js';
 import { messages } from '../src/i18n/index.js';
-import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
+import { center, panelModelOf as modelOf, viewOfKind } from './support/details-panel.js';
+import { buildingEntity } from './support/sandbox.js';
 
-const SCREEN = { width: 1600, height: 1200 };
 const SCALE = 1;
-
-const center = (r: Rect): { x: number; y: number } => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
-
-function viewOfKind<K extends PanelView['kind']>(
-  model: UnitPanelModel,
-  kind: K,
-): Extract<PanelView, { kind: K }> {
-  const view = panelViewFor(model, SCREEN, SCALE);
-  if (view.kind !== kind) throw new Error(`expected a ${kind} view, got ${view.kind}`);
-  return view as Extract<PanelView, { kind: K }>;
-}
-
-const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
-  buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
 
 const gathererSettler: EntitySnapshot = {
   id: 1,
