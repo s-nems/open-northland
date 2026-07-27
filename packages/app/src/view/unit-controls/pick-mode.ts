@@ -2,6 +2,7 @@ import { type ContentSet, indexById } from '@open-northland/data';
 import type { BuildingHighlightItem, ElevationField } from '@open-northland/render';
 import type { Command, Entity, WorldSnapshot } from '@open-northland/sim';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
+import { memoBySnapshot } from '../projections/index.js';
 import {
   assignableJobForBuilding,
   computeAssignHighlight,
@@ -51,9 +52,12 @@ export interface PickModeController {
 export function createPickModeController(deps: PickModeDeps): PickModeController {
   const buildingsByType = indexById(deps.content.buildings);
   let pickMode: PickMode | null = null;
-  const cancel = (): void => {
-    pickMode = null;
+  let pickVersion = 0;
+  const setMode = (next: PickMode | null): void => {
+    pickMode = next;
+    pickVersion++;
   };
+  const cancel = (): void => setMode(null);
 
   /** Resolve a world click while in "przydziel miejsce pracy" mode: bind the settler to the building under
    *  the cursor when it offers an open slot (a green building), else cancel. Any resolving click exits the
@@ -122,35 +126,34 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     }
   };
 
-  /** The green/red building wash for the render layer — the workplace-assign or home-assign candidates,
-   *  else null. Recomputed per frame from the live snapshot (an O(entity count) pass) so a slot/house
-   *  filling elsewhere re-colours immediately; only runs while a pick mode is armed, a transient gesture. */
-  const highlight = (): readonly BuildingHighlightItem[] | null => {
-    if (pickMode === null) return null;
-    switch (pickMode.kind) {
-      case 'workplace':
-        return computeAssignHighlight(deps.snapshot(), pickMode.settler, buildingsByType);
-      case 'home':
-        return computeHouseHighlight(deps.snapshot(), pickMode.settler, buildingsByType);
-      case 'signpost':
-        return null; // the erect mode washes the ground (placement overlay), not the buildings
-      default: {
-        const unreachable: never = pickMode;
-        return unreachable;
+  /** The green/red building wash for the render layer - the workplace-assign or home-assign candidates,
+   *  else null. The frame loop reads it every frame, so the O(entities) pass is memoized on everything it
+   *  reads: the snapshot instance plus `pickVersion` (bumped by every arm and cancel). */
+  const highlightFor = memoBySnapshot(
+    (snapshot: WorldSnapshot) => {
+      if (pickMode === null) return null;
+      switch (pickMode.kind) {
+        case 'workplace':
+          return computeAssignHighlight(snapshot, pickMode.settler, buildingsByType);
+        case 'home':
+          return computeHouseHighlight(snapshot, pickMode.settler, buildingsByType);
+        case 'signpost':
+          return null; // the erect mode washes the ground (placement overlay), not the buildings
+        default: {
+          const unreachable: never = pickMode;
+          return unreachable;
+        }
       }
-    }
-  };
+    },
+    () => pickVersion,
+  );
+
+  const highlight = (): readonly BuildingHighlightItem[] | null => highlightFor(deps.snapshot());
 
   return {
-    armWorkplace: (settler) => {
-      pickMode = { kind: 'workplace', settler };
-    },
-    armHome: (settler) => {
-      pickMode = { kind: 'home', settler };
-    },
-    armSignpost: (scouts) => {
-      pickMode = { kind: 'signpost', scouts };
-    },
+    armWorkplace: (settler) => setMode({ kind: 'workplace', settler }),
+    armHome: (settler) => setMode({ kind: 'home', settler }),
+    armSignpost: (scouts) => setMode({ kind: 'signpost', scouts }),
     cancel,
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',
