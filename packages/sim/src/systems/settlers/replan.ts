@@ -13,7 +13,7 @@ import {
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { clearNavState, isTravelling } from '../spatial.js';
+import { clearNavState, isTravelling } from '../spatial/nodes.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../stores/index.js';
 import { reconcileYardRoute } from './economy/index.js';
 import { type FarmClaims, releaseFarmTask } from './farming/index.js';

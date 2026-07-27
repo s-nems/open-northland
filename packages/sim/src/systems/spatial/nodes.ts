@@ -1,13 +1,14 @@
-import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../components/index.js';
-import type { Entity, World } from '../ecs/world.js';
-import { nodeOfPosition } from '../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
-import { closer, forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
-import { insertSortedById, removeSortedById } from './sorted-id.js';
+import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../../components/index.js';
+import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { closer, forEachRingOffset, manhattan, nodeKey } from '../footprint/geometry.js';
 
-// The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
-// the node/distance helpers. A leaf module (footprint/geometry.ts and sorted-id.ts below it) so every per-system file
-// imports these without creating cycles; the store/economy read-model lives in ./stores.ts, the same split.
+// The cross-system spatial primitives: canonical scan order, the per-tick node bucket + ring search, and
+// the node/distance helpers. The leaf of this folder, and the only systems/ module below it is
+// footprint/geometry.ts, so every per-system file imports it without creating cycles; systems/stores/ is
+// the same split for the store/economy read-model.
 
 /**
  * Ascending entity-id (canonical) ordering of `entities` — the deterministic scan order a system needs when
@@ -36,7 +37,7 @@ export type IndexNodeVisitor = (e: Entity, x: number, y: number) => void;
 
 /**
  * Visit each node an entity is spatially indexed at — the ONE resolution ladder {@link NodeBuckets} and the
- * coarse {@link import('./conflict/presence.js').HostilePresence} grid both use, so the "presence tallies
+ * coarse {@link import('../conflict/presence.js').HostilePresence} grid both use, so the "presence tallies
  * an entity at the same node(s) the index buckets it at" superset invariant lives in a single function
  * instead of drifting across two parallel copies: the multi-node `nodesOf` (a building at EVERY wall cell)
  * wins, then the single-node `nodeOf`, then the entity's {@link Position} node; nothing is visited when the

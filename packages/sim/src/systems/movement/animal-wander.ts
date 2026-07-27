@@ -13,7 +13,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { stayPointRangeOf } from '../readviews/index.js';
-import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial.js';
+import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
  *  cadence is not readable), paced to read as grazing rather than a patrol. */

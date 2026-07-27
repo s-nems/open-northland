@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { reservedZoneOf } from '../footprint/geometry.js';
-import { entityNode } from '../spatial.js';
+import { entityNode } from '../spatial/nodes.js';
 
 /** A spatial region-index `near` query — every entity of one decor kind whose anchor lies within `reach`
  *  nodes of `(hx, hy)`, ascending-id (e.g. `bushesNearNode`, `stumpsNearNode`). */

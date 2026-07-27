@@ -22,7 +22,7 @@ import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives-needs.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../../spatial.js';
+import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
  * The gossip PLANNER half — the rungs that START a chat (see `index.ts` for the mechanic's source

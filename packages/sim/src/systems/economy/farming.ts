@@ -13,8 +13,8 @@ import {
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/index.js';
-import { resourcesNearNode } from '../resource-index.js';
-import { stockpilesAtNode } from '../stockpile-index.js';
+import { resourcesNearNode } from '../spatial/resources.js';
+import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
 // Field farming — the content resolution, growth system and atomic-effect appliers behind the farm's
 // sow→water→grow→reap loop. The planner half (which field a farmer works next) is the planFarmer drive

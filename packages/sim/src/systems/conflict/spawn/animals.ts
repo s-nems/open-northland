@@ -7,7 +7,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../../readviews/index.js';
-import { COMPASS_DIRECTIONS, entityNode } from '../../spatial.js';
+import { COMPASS_DIRECTIONS, entityNode } from '../../spatial/nodes.js';
 
 /** Upper bound on one spawn command's herd size — the real `maximumgroupsize` values are 2..6, so any
  *  count near this cap is corrupted input, not content. */
@@ -129,7 +129,7 @@ export function spawnAnimalHerd(
  */
 function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
   if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point
-  // The shared 8-compass-direction ring (spatial.ts), in its fixed canonical order. Ring `r`
+  // The shared 8-compass-direction ring (spatial/nodes.ts), in its fixed canonical order. Ring `r`
   // (1-based) places up to 8 members at radius `min(r, range)`; member index within the ring picks
   // the direction.
   const ring = Math.floor((i - 1) / COMPASS_DIRECTIONS.length) + 1; // 1, 2, 3, … as the rings fill

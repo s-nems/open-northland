@@ -4,17 +4,18 @@ import { type Entity, World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { dropOrStackGood } from '../../src/systems/settlers/effects-goods/index.js';
-import { stockpilesAtNode } from '../../src/systems/stockpile-index.js';
+import { stockpilesAtNode } from '../../src/systems/spatial/stockpiles.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The stockpile NODE index (`systems/stockpile-index.ts`) — the golden-rule-6 fix that turns the per-drop tile
- * lookup in `effects-goods/piles.ts` from a scan over every alive entity (~17k on a decoded map) into an O(1)
- * bucket read. Pinned here: buckets hold every stockpile on the node ascending-id (the canonical first-wins
- * order `dropOrStackGood`/`stackOntoTile` pick through, including the candidates they reject and skip), the
- * index refreshes on the Stockpile store generation, and its verifier fires if a positioned stockpile ever
- * moves in place — the invariant the whole memo rests on. Winner parity itself rides the goods/gatherer suites
- * and the golden slice, which all run through the indexed path.
+ * The stockpile NODE index (`systems/spatial/stockpiles.ts`) — the golden-rule-6 fix that turns the
+ * per-drop tile lookup in `effects-goods/piles.ts` from a scan over every alive entity (~17k on a
+ * decoded map) into an O(1) bucket read. Pinned here: buckets hold every stockpile on the node
+ * ascending-id (the canonical first-wins order `dropOrStackGood`/`stackOntoTile` pick through,
+ * including the candidates they reject and skip), the index refreshes on the Stockpile store
+ * generation, and its verifier fires if a positioned stockpile ever moves in place — the invariant the
+ * whole memo rests on. Winner parity itself rides the goods/gatherer suites and the golden slice, which
+ * all run through the indexed path.
  */
 
 const { Position, Stockpile } = components;

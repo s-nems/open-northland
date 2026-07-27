@@ -1,7 +1,7 @@
-import { Stockpile } from '../components/index.js';
-import type { Entity, World } from '../ecs/world.js';
-import { NodeBuckets } from './spatial.js';
-import { createSpatialMemo } from './spatial-memo.js';
+import { Stockpile } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { createSpatialMemo } from './memo.js';
+import { NodeBuckets } from './nodes.js';
 
 /**
  * The per-world STOCKPILE node index — every positioned {@link Stockpile} bucketed by its half-cell node, so

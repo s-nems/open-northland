@@ -26,7 +26,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { startDrop } from '../settlers/actions.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { clearNavState, isTravelling } from '../spatial.js';
+import { clearNavState, isTravelling } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic } from './guards.js';
 
 /**

@@ -1,6 +1,6 @@
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { stumpsNearNode } from '../stump-index.js';
+import { stumpsNearNode } from '../spatial/stumps.js';
 import { decorInReservedZone } from './reserved-decor.js';
 
 // Felled-tree stumps — the inert `ls_trees_dead` decor a chopped tree leaves behind (see the {@link

@@ -19,7 +19,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
-import { clearNavState } from '../spatial.js';
+import { clearNavState } from '../spatial/nodes.js';
 import { isOrderableSettler } from './guards.js';
 
 /**

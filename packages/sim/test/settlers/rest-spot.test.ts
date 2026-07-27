@@ -7,7 +7,7 @@ import { planNeeds } from '../../src/systems/settlers/drives-needs.js';
 import { PlannerSpacing } from '../../src/systems/settlers/planner-spacing.js';
 import { restingCell } from '../../src/systems/settlers/rest-spot.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
-import { NodeBuckets } from '../../src/systems/spatial.js';
+import { NodeBuckets } from '../../src/systems/spatial/nodes.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 

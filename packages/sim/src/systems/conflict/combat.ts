@@ -24,7 +24,7 @@ import {
   MILITARY_MODE,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { canonicalById, clearNavState, entityNode, isTravelling, NodeBuckets } from '../spatial.js';
+import { canonicalById, clearNavState, entityNode, isTravelling, NodeBuckets } from '../spatial/nodes.js';
 import { type ChaseTarget, chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';

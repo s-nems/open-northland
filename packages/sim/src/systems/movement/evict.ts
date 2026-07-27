@@ -6,7 +6,7 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { canonicalById, isTravelling, NodeBuckets } from '../spatial/nodes.js';
 
 /** Max nodes a footprint displacement's landing search visits before giving up — a plot boxed in
  *  on a pathological map leaves its occupants in place rather than searching the whole world (same cap

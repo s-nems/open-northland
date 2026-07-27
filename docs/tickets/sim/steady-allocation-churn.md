@@ -28,7 +28,7 @@ overlay sawtooth should visibly flatten.
 Each is real but lower-leverage than the wave above; take them only if the Chrome A/B still shows an
 unacceptable rate. Sim purity/determinism and the scaling budget apply.
 
-- **Ring searches** - `NodeBuckets.nearest` (`systems/spatial.ts`) and `ringNearest`
+- **Ring searches** - `NodeBuckets.nearest` (`systems/spatial/nodes.ts`) and `ringNearest`
   (`settlers/targets/cell-index.ts`) allocate a result object per call and a `forEachRingOffset` closure
   per ring, under combat and the AI planner.
 - **`nodeOfPosition`** (`nav/halfcell.ts`) returns a fresh `{hx,hy}` per call and is called broadly;

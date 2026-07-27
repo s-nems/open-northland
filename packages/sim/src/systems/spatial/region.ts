@@ -1,6 +1,6 @@
-import type { Component, Entity, World } from '../ecs/world.js';
-import { insertSortedById, removeSortedById } from './sorted-id.js';
-import { createSpatialMemo } from './spatial-memo.js';
+import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
+import type { Component, Entity, World } from '../../ecs/world.js';
+import { createSpatialMemo } from './memo.js';
 
 /**
  * The per-world region spatial index shared by the resource and berry-bush indexes — the golden-rule-6

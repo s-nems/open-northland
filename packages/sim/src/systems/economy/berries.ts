@@ -2,8 +2,8 @@ import { BerryBush, Position } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
-import { bushesNearNode } from '../berry-index.js';
 import type { System, SystemContext } from '../context.js';
+import { bushesNearNode } from '../spatial/bushes.js';
 import { decorInReservedZone } from './reserved-decor.js';
 
 // Berry bushes — wild forageable food. A ripe bush is eaten off directly by any hungry settler (the `forage`

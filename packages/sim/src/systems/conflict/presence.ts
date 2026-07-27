@@ -1,6 +1,6 @@
 import { Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { forEachIndexNode, type IndexNodeVisitor } from '../spatial.js';
+import { forEachIndexNode, type IndexNodeVisitor } from '../spatial/nodes.js';
 
 /**
  * Coarse presence-cell edge (half-cell nodes). Sized so a sight/defend-radius query (≤ ~20 nodes)

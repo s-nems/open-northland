@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { constructionWorkCells, dynamicBlockedCells } from '../footprint/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { canonicalById, isTravelling, NodeBuckets } from '../spatial/nodes.js';
 
 /**
  * The 4-connected radius of a completed workplace's loiter yard (4 half-cell steps ≈ two visual tiles).

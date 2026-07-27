@@ -6,7 +6,7 @@ import { combatTargetNode } from '../../../conflict/target-node.js';
 import type { SystemContext } from '../../../context.js';
 import { tryDeathSaveDraught } from '../../../equipment/index.js';
 import { grantFightExperience } from '../../../progression/index.js';
-import { entityNode, manhattan } from '../../../spatial.js';
+import { entityNode, manhattan } from '../../../spatial/nodes.js';
 import { launchProjectile } from './projectile-launch.js';
 import { harvestCadaver, provokeAnger } from './reactions.js';
 import { collectStagger, type PendingStagger } from './stagger.js';

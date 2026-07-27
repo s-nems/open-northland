@@ -4,7 +4,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ExternalFoodIndex } from '../family/food-search.js';
 import { GossipCandidates } from '../social/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 import { collectInboundSupply, type InboundSupplyTally } from '../stores/index.js';
 import { collectHarvestClaims, type HarvestClaims } from './economy/harvest-claims.js';
 import { SiteLeads, type WorkSeatClaims } from './economy/index.js';

@@ -12,7 +12,7 @@ import {
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import { stockpilesAtNode } from '../../stockpile-index.js';
+import { stockpilesAtNode } from '../../spatial/stockpiles.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../stores/index.js';
 
 // Loose ground piles: create a haulable drop, hand-stack a placed pile, stack a carried load onto a

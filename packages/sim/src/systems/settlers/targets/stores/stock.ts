@@ -13,7 +13,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
-import { forEachRingOffset } from '../../../spatial.js';
+import { forEachRingOffset } from '../../../spatial/nodes.js';
 import {
   buildingProduces,
   isYardHeap,

@@ -2,7 +2,7 @@ import { Building, Position, Production, Settler, Stockpile } from '../../compon
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
 import { grantProductionExperience } from '../progression/index.js';
-import { canonicalById, NodeBuckets } from '../spatial.js';
+import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
 import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
