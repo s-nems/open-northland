@@ -13,6 +13,7 @@ import {
   Settler,
   Stranded,
   SupplyRun,
+  setSettlerJob,
   Weapon,
   WorkFlag,
 } from '../../../src/components/index.js';
@@ -90,7 +91,7 @@ describe('setJob disarm on leaving the fighter trades', () => {
     // froze an ex-soldier in the warrior skin (the reported soldier→civilian/scout stale-skin bug).
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
-    s.world.get(e, Settler).jobType = SOLDIER_JOB;
+    setSettlerJob(s.world, e, SOLDIER_JOB);
     s.world.add(e, Weapon, { weaponTypeId: 3 });
     s.world.add(e, Armor, { armorClass: 2 });
     s.world.add(e, Equipment, {

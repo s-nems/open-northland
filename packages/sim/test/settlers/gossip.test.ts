@@ -9,6 +9,7 @@ import {
   Position,
   Settler,
   setNeedsEnabled,
+  setSettlerJob,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
@@ -169,7 +170,7 @@ describe('gossip initiation (planner rungs)', () => {
   it('soldiers never gossip — neither seeking nor as a partner (forbidatomic 13/14/15)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const soldier = owned(sim, needsSettlerAt(sim, 1, 0, { enjoyment: LONELY }));
-    sim.world.get(soldier, Settler).jobType = SOLDIER_JOB;
+    setSettlerJob(sim.world, soldier, SOLDIER_JOB);
     const civilian = gossiper(sim, 3, 0, LONELY);
 
     plannerSystem(sim.world, ctxOf(sim));

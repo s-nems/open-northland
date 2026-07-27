@@ -1,7 +1,7 @@
 import type { AtomicEffect } from '../core/atomic-effect.js';
 import type { Command } from '../core/commands/index.js';
 import type { Fixed } from '../core/fixed.js';
-import { defineComponent, type Entity } from '../ecs/world.js';
+import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
@@ -20,8 +20,11 @@ export interface SettlerIdentity {
  * (`jobtypes.allowatomic`), and `experience` keyed by specialization gates progression.
  */
 export const Settler = defineComponent<{
-  tribe: number;
-  jobType: number | null;
+  /** `readonly`: never written after the settler is added, and a derived table keys on it (see
+   *  {@link setSettlerJob}). */
+  readonly tribe: number;
+  /** `readonly` so every change goes through {@link setSettlerJob}. */
+  readonly jobType: number | null;
   /** 0..ONE hunger; rises over time, NeedsSystem drives eating. */
   hunger: Fixed;
   /**
@@ -47,6 +50,19 @@ export const Settler = defineComponent<{
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
 }>('Settler');
+
+/** The write view of {@link Settler}'s otherwise-`readonly` trade, held only by {@link setSettlerJob}. */
+type SettlerTradeWrite = { jobType: number | null };
+
+/**
+ * Put a settler in a trade (`null` = idle). The one write path for `Settler.jobType`: the in-place write
+ * is invisible to the membership generation, so it bumps the value generation that
+ * {@link import('../systems/progression/alive-jobs.js').aliveTribeJobs} is keyed on.
+ */
+export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
+  (world.get(entity, Settler) as SettlerTradeWrite).jobType = jobType;
+  world.touchComponent(Settler);
+}
 
 /**
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.

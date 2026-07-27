@@ -18,6 +18,7 @@ import {
   Stance,
   Stockpile,
   setProfessionProgression,
+  setSettlerJob,
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -260,7 +261,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     // A woodcutter fells five wood units (all its work is wood-SPECIFIC), then goes idle.
     const veteran = settler(sim, WOODCUTTER);
     grantWorkExperience(sim.world, ctxOf(sim), veteran, WOOD_GOOD, 5);
-    sim.world.get(veteran, Settler).jobType = null; // lifetime XP survives leaving the job
+    setSettlerJob(sim.world, veteran, null); // lifetime XP survives leaving the job
     const fresh = settler(sim, null);
 
     jobSystem(sim.world, ctxOf(sim));

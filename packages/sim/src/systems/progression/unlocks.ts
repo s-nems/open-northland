@@ -1,5 +1,6 @@
 import type {
   HumanJobExperienceType,
+  JobEnablesKind,
   JobRequirement,
   JobRequirementTarget,
   VehicleType,
@@ -10,6 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFighterJob } from '../readviews/index.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { aliveTribeJobs } from './alive-jobs.js';
 import { requirementRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
@@ -71,29 +73,25 @@ export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobT
  * enabled, so a map with no tribe-type data still places its start buildings rather than silently rejecting
  * them. The tribe id matches the `TribeType` `typeId`, the same id `Settler.tribe`/`Building.tribe` carry.
  *
- * A pure membership query (does *some* enabling-job settler exist?), so the `query` insertion-order traversal
- * is order-independent and needs no canonical sort.
+ * Both halves are memoized (the gating jobs by the content index, the tribe's living trades by
+ * {@link aliveTribeJobs}), so a probe costs only the handful of edges that gate this one target. A pure
+ * membership query, so nothing here needs canonical order.
  */
 function tribeUnlockEnabled(
   world: World,
   ctx: SystemContext,
   tribe: number,
-  kind: 'house' | 'good' | 'job' | 'vehicle',
+  kind: JobEnablesKind,
   targetId: number,
 ): boolean {
-  const tribeType = contentIndex(ctx.content).tribes.get(tribe);
-  if (tribeType === undefined) return true; // no tech-graph for this tribe — nothing gates it
+  // Absent = ungated: no tech-graph for this tribe, or no edge of this kind names this target.
+  const enablingJobs = contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(targetId);
+  if (enablingJobs === undefined) return true;
 
-  // The jobs that unlock this target (a target may be gated by several different jobs).
-  const enablingJobs = new Set<number>();
-  for (const edge of tribeType.jobEnables) {
-    if (edge.kind === kind && edge.targetId === targetId) enablingJobs.add(edge.jobType);
-  }
-  if (enablingJobs.size === 0) return true; // ungated target (e.g. the headquarters / a start good)
-
-  for (const e of world.query(Settler)) {
-    const s = world.get(e, Settler);
-    if (s.tribe === tribe && s.jobType !== null && enablingJobs.has(s.jobType)) return true;
+  const trades = aliveTribeJobs(world).get(tribe);
+  if (trades === undefined) return false; // the tribe holds no trade at all
+  for (const jobType of enablingJobs) {
+    if (trades.has(jobType)) return true;
   }
   return false;
 }

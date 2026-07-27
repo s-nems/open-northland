@@ -5,6 +5,7 @@ import {
   Position,
   Settler,
   Stockpile,
+  setSettlerJob,
   stampOwner,
   stockpileEntries,
   UnderConstruction,
@@ -45,7 +46,7 @@ export function unbindWorkersOf(world: World, building: Entity): void {
   }
   for (const e of bound) {
     world.remove(e, JobAssignment);
-    world.get(e, Settler).jobType = null; // back to idle — the JobSystem re-assigns it next tick
+    setSettlerJob(world, e, null); // back to idle — the JobSystem re-assigns it next tick
   }
 }
 

@@ -9,6 +9,7 @@ import {
   Resource,
   Settler,
   Stockpile,
+  setSettlerJob,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, cellAnchorNode, checkInvariants, fx, Simulation } from '../../src/index.js';
@@ -198,9 +199,8 @@ describe('mining — a trained swing advances multiple strikes (the work-credit 
   const trainedMinerScene = (units: number, strikesPerUnit?: number) => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const master = makeMiner(sim, 0, 0);
-    const s = sim.world.get(master, Settler);
-    s.jobType = WOODCUTTER;
-    s.experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
+    setSettlerJob(sim.world, master, WOODCUTTER);
+    sim.world.get(master, Settler).experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: WOOD, remaining: units, harvestAtomic: HARVEST_STONE });

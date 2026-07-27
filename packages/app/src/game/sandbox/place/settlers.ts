@@ -80,6 +80,6 @@ export function spawnIdleSettler(
   owner: number = HUMAN_PLAYER,
 ): Entity {
   const e = spawnSettlerDirect(sim, JOB_IDLE, x, y, owner);
-  sim.world.get(e, components.Settler).jobType = null; // re-idle so the JobSystem's assign pass employs it
+  components.setSettlerJob(sim.world, e, null); // re-idle so the JobSystem's assign pass employs it
   return e;
 }
