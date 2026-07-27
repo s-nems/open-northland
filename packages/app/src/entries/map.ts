@@ -220,13 +220,19 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // `?ai=<seat>[,…]` flags seats for the strategic AI player — emitted by the menu roster's AI
   // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat
   // without a built headquarters stays inert by the AI's own rule).
-  for (const seat of aiSeatsParam(params)) {
+  const aiSeats = aiSeatsParam(params);
+  for (const seat of aiSeats) {
     sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
 
-  // The session seat's assistant starts with every chest-window grant ON (a playable-map default;
-  // scenes stay neutral fixtures, like the needs toggle).
-  grantAssistantDefaults(sim, sim.content, localPlayer);
+  // The controlled seat and every AI seat start with their chest-window grants ON (user decisions
+  // 2026-07-24 / 2026-07-27; scenes stay neutral fixtures, like the needs toggle). A seat nobody
+  // drives stays bare — a rostered idle/hidden slot, a scripted soldier camp, or the seat a READ-ONLY
+  // spectator merely watches (`localPlayerParam` answers HUMAN_PLAYER for both pseudo-seats, so the
+  // commanding overseer keeps it). Asymmetry to live with: the chest window edits only `localPlayer`,
+  // so an overseer cannot switch an AI seat's grants back off.
+  const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
+  grantAssistantDefaults(sim, sim.content, [...controlled, ...aiSeats]);
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
   // actually work them, not just see render-only decor.

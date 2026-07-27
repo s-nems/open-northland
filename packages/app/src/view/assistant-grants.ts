@@ -68,18 +68,21 @@ export function assistantGrantsSeam(
   };
 }
 
-/** Switch every grant ON for `player` at world start - all four chest-window switches default to
- *  enabled in a playable map (user decision 2026-07-24); scenes stay neutral fixtures and start with
- *  the sim default (nothing granted), like the needs toggle. */
+/** Switch every grant ON for each of `players` at world start - all four chest-window switches
+ *  default to enabled in a playable map (which seats get them is the caller's policy). A repeated
+ *  seat is enqueued once; scenes stay neutral fixtures and start with the sim default (nothing
+ *  granted), like the needs toggle. */
 export function grantAssistantDefaults(
   sim: Pick<Simulation, 'enqueue'>,
   content: GrantContent,
-  player: number,
+  players: readonly number[],
 ): void {
   const grantGoods = resolveGrantGoods(content);
-  for (const id of GRANT_IDS) {
-    for (const goodType of grantGoods[id]) {
-      sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled: true });
+  for (const player of new Set(players)) {
+    for (const id of GRANT_IDS) {
+      for (const goodType of grantGoods[id]) {
+        sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled: true });
+      }
     }
   }
 }
