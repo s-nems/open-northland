@@ -16,7 +16,7 @@ import {
   wantedCollectorGoods,
 } from './collectors.js';
 import { tuneCraftSelections } from './craft.js';
-import { flagNodesInUse } from './flag-spots.js';
+import type { TakenFlagNodes } from './flag-spots.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 
@@ -53,7 +53,7 @@ function runWorkforce(
   const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, wanted);
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world);
-  const taken = flagNodesInUse(world, player);
+  const taken: TakenFlagNodes = new Set();
   return [
     ...allocateCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken, builderJob),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),

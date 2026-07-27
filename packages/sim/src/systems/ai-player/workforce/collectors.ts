@@ -4,6 +4,7 @@ import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../economy/flags.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
@@ -151,8 +152,60 @@ function postCollector(
 }
 
 /**
+ * The upkeep over one good's current holders: a flag whose patch ran dry is re-planted beside the
+ * nearest live resource, one whose patch is alive but has RECEDED past the 2–3-tile band is nudged
+ * after it (only on every {@link FLAG_RELOCATE_EVERY_DECISIONS}-th decision — a live patch does not
+ * need chasing every two seconds), and a holder whose good has left the map entirely rejoins the
+ * builder pool. Every re-plant claims its node like a fresh post: two holders of the same good
+ * resolve the same nearest resource, so without that they would be sent to one tile.
+ */
+function upkeepHolders(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  w: WantedGood,
+  holders: readonly Entity[],
+  taken: TakenFlagNodes,
+  relocateDue: boolean,
+  builderJob: number | null,
+  commands: Command[],
+): void {
+  for (const holder of holders) {
+    const flag = liveWorkFlag(world, holder);
+    const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
+    if (flag === undefined || flagNode === null) continue; // vanished mid-decision — next pass rehires
+    if (patchAlive(world, flagNode, flag.radius, (r) => r.goodType === w.good.typeId)) {
+      if (!relocateDue) continue;
+      const near = nearestLiveResource(world, w.good.typeId, flagNode);
+      const nearNode = near === null ? null : anchorNodeOf(world, near);
+      if (nearNode === null) continue;
+      const drift = Math.abs(nearNode.hx - flagNode.hx) + Math.abs(nearNode.hy - flagNode.hy);
+      if (drift <= FLAG_MAX_DISTANCE_NODES) continue; // still in the band — leave the flag be
+      const spot = flagSpotNear(world, ctx, terrain, nearNode, taken);
+      if (spot !== null && (spot.hx !== flagNode.hx || spot.hy !== flagNode.hy)) {
+        commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
+        claimFlagNode(taken, spot);
+      }
+      continue;
+    }
+    const next = nearestLiveResource(world, w.good.typeId, flagNode);
+    if (next === null) {
+      // The map ran out of this good — the collector rejoins the builder pool.
+      if (builderJob !== null) commands.push({ kind: 'setJob', entity: holder, jobType: builderJob });
+      continue;
+    }
+    const node = anchorNodeOf(world, next);
+    const spot = node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);
+    if (spot !== null) {
+      commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
+      claimFlagNode(taken, spot);
+    }
+  }
+}
+
+/**
  * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2–3 tiles
- * from a live resource, with the dry-patch and drift upkeep over every current holder. No-op on a
+ * from a live resource, over the upkeep of every current holder ({@link upkeepHolders}). No-op on a
  * mapless sim — no cells to place flags over. Source basis: user rules 2026-07-17 / -18 / -25.
  */
 export function allocateCollectors(
@@ -168,59 +221,32 @@ export function allocateCollectors(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const commands: Command[] = [];
-
-  // The infrequent flag upkeep: on every FLAG_RELOCATE_EVERY_DECISIONS-th decision, a flag whose nearest
-  // live resource has drifted out of the 2–3-tile band is re-planted beside it — a live-but-receding
-  // patch otherwise keeps the flag parked at its original spot.
   const relocateDue = Math.floor(ctx.tick / AI_DECISION_INTERVAL_TICKS) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
-
   const hqNode = anchorNodeOf(world, hq);
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
-    for (const holder of holders) {
-      const flag = liveWorkFlag(world, holder);
-      const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
-      if (flag === undefined || flagNode === null) continue; // vanished mid-decision — next pass rehires
-      if (patchAlive(world, flagNode, flag.radius, (r) => r.goodType === w.good.typeId)) {
-        if (!relocateDue) continue;
-        const near = nearestLiveResource(world, w.good.typeId, flagNode);
-        const nearNode = near === null ? null : anchorNodeOf(world, near);
-        if (nearNode === null) continue;
-        const drift = Math.abs(nearNode.hx - flagNode.hx) + Math.abs(nearNode.hy - flagNode.hy);
-        if (drift <= FLAG_MAX_DISTANCE_NODES) continue; // still in the band — leave the flag be
-        const spot = flagSpotNear(world, ctx, terrain, nearNode);
-        if (spot !== null && (spot.hx !== flagNode.hx || spot.hy !== flagNode.hy)) {
-          commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
-        }
-        continue;
-      }
-      const next = nearestLiveResource(world, w.good.typeId, flagNode);
-      if (next === null) {
-        // The map ran out of this good — the collector rejoins the builder pool.
-        if (builderJob !== null) commands.push({ kind: 'setJob', entity: holder, jobType: builderJob });
-        continue;
-      }
-      const node = anchorNodeOf(world, next);
-      const spot = node === null ? null : flagSpotNear(world, ctx, terrain, node);
-      if (spot !== null) commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
-    }
+    upkeepHolders(world, ctx, terrain, w, holders, taken, relocateDue, builderJob, commands);
     if (holders.length > 0 || hqNode === null) continue;
     const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId, taken);
-    if (spot === null) continue; // nothing of this good on the map — no collector wanted
+    if (spot === null) continue; // no reachable free spot beside a live node of this good
     const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
     if (spare !== null) {
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
       continue;
     }
-    // No qualified spare. For an XP-gated good, re-post a veteran collector of an ungated good (a
+    // No qualified spare. Only an XP-GATED good may take a veteran collector of an ungated one (a
     // clay/stone digger clears iron's threshold after one completed dig); its vacated good is rehired
-    // from the pool on a later decision — the plan-order loop self-heals.
+    // from the pool on a later decision — the plan-order loop self-heals. An ungated good waits for a
+    // fresh hire instead: any man can work it, so a steal would only move the shortage, and with a dry
+    // pool two ungated goods would trade the same man back and forth every decision, each swap
+    // dropping his load and cancelling the dig.
     for (const other of wanted) {
       if (other === w) continue;
       const otherHolders = collectorsByGood.get(other.good.typeId) ?? [];
       const veteran = otherHolders[0];
       if (veteran === undefined) continue;
       const s = world.get(veteran, Settler);
+      if (!needGated(ctx, s.tribe, w.good.typeId)) continue; // any fresh hire could work it — wait for one
       if (needGated(ctx, s.tribe, other.good.typeId)) continue; // its own post needs a veteran too — keep it
       if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
       if (s.jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });

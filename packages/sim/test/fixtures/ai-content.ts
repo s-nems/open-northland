@@ -14,7 +14,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
  * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
  * 8, farmer 18, miller 19, baker 20, brewer 21, carrier 24, scout 27, and the fighter band's
- * soldier_unarmed 31 / soldier_bow_short 40); the joiner takes a free slot, 16.
+ * soldier_bow_short 40); the joiner takes a free slot, 16.
  */
 export function aiContent(): ContentSet {
   return parseContentSet({
@@ -64,8 +64,7 @@ export function aiContent(): ContentSet {
       { typeId: 21, id: 'brewer' },
       { typeId: 24, id: 'carrier' },
       { typeId: 27, id: 'scout', allowedAtomics: [43] },
-      // Fighter-band trades (31..41): the tower/barracks garrison the staffing plan must never fill.
-      { typeId: 31, id: 'soldier_unarmed' },
+      // A fighter-band trade (31..41): the tower garrison the staffing plan must never fill.
       { typeId: 40, id: 'soldier_bow_short' },
     ],
     buildings: [

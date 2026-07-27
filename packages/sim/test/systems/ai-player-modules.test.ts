@@ -477,6 +477,25 @@ describe('workforce module (collectResources)', () => {
     ]);
   });
 
+  it('never trades one ungated good\u2019s collector for another\u2019s', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    // Stone and wood both stand, both ungated — and exactly one man, who takes the first post.
+    placeResources(sim, [RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 1);
+    sim.step();
+    const both = workforceModule([]);
+    for (const c of both.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    sim.step();
+
+    // Wood has no collector and no spare man. Stealing stone's would only move the shortage, and
+    // with a dry pool the two goods would swap the same man every decision, each swap dropping his
+    // load. He stays on stone; wood waits for a fresh hire.
+    const posted = [...sim.world.query(Settler, WorkFlag)];
+    expect(posted.map((e) => sim.world.get(e, WorkFlag).goodType)).toEqual([STONE]);
+    expect([...both.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
   it('gates the iron post on accrued XP: fresh spares wait, a veteran digger is re-posted', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -626,7 +645,6 @@ describe('workforce module — the barracks and craft selections', () => {
       owner: SEAT,
     });
     spawnMen(sim, 18, BUILDER);
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.step();
 
     // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
@@ -634,7 +652,11 @@ describe('workforce module — the barracks and craft selections', () => {
     // training lands (docs/tickets/features/barracks-training.md) the surplus stays civilian.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
-    expect(commands.filter((c) => c.kind === 'assignWorker' && c.building === barracks)).toEqual([]);
+    const posted = commands.filter((c) => c.kind === 'assignWorker');
+    // The staffing pass ran — the HQ took its carriers — and skipped the barracks beside it.
+    expect(posted.length).toBeGreaterThan(0);
+    expect(posted.every((c) => c.building === entityOfBuilding(sim, HQ_TYPE))).toBe(true);
+    expect(posted.filter((c) => c.building === barracks)).toEqual([]);
     expect(commands.filter((c) => c.kind === 'setJob' && isFighterJob(sim.content, c.jobType))).toEqual([]);
   });
 
