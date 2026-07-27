@@ -151,7 +151,6 @@ function resolveOpenWorkerJob(
  * type's slot `count` for that job exceeds the number of settlers *bound to this building* for that
  * job ({@link JobAssignment}). Per-building (not tribe-wide) head-count, so two same-type workplaces
  * each fill their own slots independently — a worker bound to mill A doesn't make mill B look staffed.
- * Exported as the capacity gate on its own, for the adopt pass, which applies no other openness rule.
  *
  * Determinism: a count of bound settlers (addition commutes), so iterating `query` insertion order is
  * fine — it's not a *pick*, just a sum (AGENTS.md: only a chosen-entity scan needs canonical order).

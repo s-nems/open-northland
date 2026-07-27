@@ -330,7 +330,7 @@ describe('the civilist trade — the Cywil order pins a settler jobless', () => 
 
 /**
  * The adopt pass (pass 1) binds a pre-employed settler to the workplace under its feet. Its two
- * limits: the slot count still applies, and a gatherer working a planted flag is passing by, not
+ * limits: the slot count still applies, and a settler that already works a flag is passing by, not
  * reporting for duty. Without them a workshop beside a walking route collects staff without bound
  * (the reported "30/2 collectors in the pottery") and the flag gatherer it swallows stops gathering.
  */
@@ -363,21 +363,21 @@ describe('JobSystem — adopting the pre-employed settler standing on a workplac
     expect(sim.world.has(second, JobAssignment)).toBe(false); // the slot is taken — it stays loose
   });
 
-  it('leaves a gatherer pinned to a patch alone, but adopts one with a bare flag', () => {
+  it('leaves a flag worker alone, pinned to a good or not', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     placeBuilding(sim, SAWMILL, 5, 5);
     const pinned = settler(sim, CARPENTER);
     const unpinned = settler(sim, CARPENTER);
-    standOnSawmill(sim, pinned);
-    standOnSawmill(sim, unpinned);
-    flagFor(sim, pinned, WOOD_GOOD);
-    flagFor(sim, unpinned); // the flag auto-planted under any fresh gatherer — no standing order
+    const flagless = settler(sim, CARPENTER);
+    for (const e of [pinned, unpinned, flagless]) standOnSawmill(sim, e);
+    flagFor(sim, pinned, WOOD_GOOD); // a standing gather order (`setGatherGood`)
+    flagFor(sim, unpinned); // the flag auto-planted under any fresh gatherer
 
     jobSystem(sim.world, ctxOf(sim));
 
-    // The pinned one is out working its patch; the bare-flag one is a crew member on its station,
-    // so the single slot goes to it (and the pinned one does not take it even though it is first).
+    // Both flag holders are out working their ground; the slot goes to the one with no post at all.
     expect(sim.world.has(pinned, JobAssignment)).toBe(false);
-    expect(sim.world.has(unpinned, JobAssignment)).toBe(true);
+    expect(sim.world.has(unpinned, JobAssignment)).toBe(false);
+    expect(sim.world.has(flagless, JobAssignment)).toBe(true);
   });
 });
