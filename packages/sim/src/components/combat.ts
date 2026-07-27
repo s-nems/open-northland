@@ -9,7 +9,7 @@ import type { MilitaryMode } from '../systems/readviews/stances.js';
  * original's scale is large (`animaltypes.ini` `hitpoints_adult` 200..20000) and net damage is the integer
  * `combatDamage` join, so the pool stays exact integer arithmetic with an exact `hitpoints <= 0` death test.
  * Every settler carries one (defaulting to
- * {@link import('../systems/conflict/spawn/index.js').DEFAULT_SETTLER_HITPOINTS}); optional elsewhere.
+ * {@link import('../systems/spawn/index.js').DEFAULT_SETTLER_HITPOINTS}); optional elsewhere.
  */
 export const Health = defineComponent<{ hitpoints: number; max: number }>('Health');
 

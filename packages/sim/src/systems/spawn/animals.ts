@@ -1,13 +1,13 @@
-import { Health, HerdMember, MoveSpeed, Position, Settler, StayPoint } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
-import { fx, ONE } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { positionOfNode } from '../../../nav/halfcell.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
-import { animalHitpoints, herdParams, locomotionOf } from '../../readviews/index.js';
-import { COMPASS_DIRECTIONS, entityNode } from '../../spatial/nodes.js';
+import { Health, HerdMember, MoveSpeed, Position, Settler, StayPoint } from '../../components/index.js';
+import type { Command } from '../../core/commands/index.js';
+import { fx, ONE } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { positionOfNode } from '../../nav/halfcell.js';
+import type { NodeId } from '../../nav/terrain/index.js';
+import type { SystemContext } from '../context.js';
+import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
+import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
+import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
 
 /** Upper bound on one spawn command's herd size — the real `maximumgroupsize` values are 2..6, so any
  *  count near this cap is corrupted input, not content. */

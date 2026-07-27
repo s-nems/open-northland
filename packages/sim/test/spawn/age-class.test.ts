@@ -4,8 +4,8 @@ import { Age, Female, Settler } from '../../src/components/index.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { createSettler } from '../../src/systems/conflict/spawn/index.js';
 import { ADULT_AGE_TICKS, CHILD_AGE_TICKS, CHILD_FEMALE, WOMAN_JOB } from '../../src/systems/index.js';
+import { createSettler } from '../../src/systems/spawn/index.js';
 
 /**
  * A settler spawned directly into a baby/child job — an authored map's `sethuman` children — carries an

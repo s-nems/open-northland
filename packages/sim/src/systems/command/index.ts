@@ -11,7 +11,6 @@ import {
 import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
-import { spawnAnimalHerd, spawnSettler } from '../conflict/spawn/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import {
@@ -34,6 +33,7 @@ import {
   unassignHouse,
   unequipGood,
 } from '../orders/index.js';
+import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';

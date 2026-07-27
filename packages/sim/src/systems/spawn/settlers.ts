@@ -15,21 +15,21 @@ import {
   stampOwner,
   Weapon,
   WorkFlag,
-} from '../../../components/index.js';
-import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../../core/commands/index.js';
-import { contentIndex } from '../../../core/content-index.js';
-import { fx, ONE } from '../../../core/fixed.js';
-import type { Rng } from '../../../core/rng.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { positionOfNode } from '../../../nav/halfcell.js';
-import type { SystemContext } from '../../context.js';
-import { jobCanHarvestGood, syncWorkFlagToJob } from '../../economy/flags.js';
-import { isFemaleJobId } from '../../family/eligibility.js';
-import { spawnAgeTicks } from '../../lifecycle/ageclass.js';
-import { rollInitialNeed } from '../../lifecycle/needs.js';
-import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
-import { stampDefaultStance } from '../../orders/index.js';
-import { settlerHitpoints } from '../../readviews/index.js';
+} from '../../components/index.js';
+import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../core/commands/index.js';
+import { contentIndex } from '../../core/content-index.js';
+import { fx, ONE } from '../../core/fixed.js';
+import type { Rng } from '../../core/rng.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { positionOfNode } from '../../nav/halfcell.js';
+import type { SystemContext } from '../context.js';
+import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/flags.js';
+import { isFemaleJobId } from '../family/eligibility.js';
+import { spawnAgeTicks } from '../lifecycle/ageclass.js';
+import { rollInitialNeed } from '../lifecycle/needs.js';
+import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
+import { stampDefaultStance } from '../orders/index.js';
+import { settlerHitpoints } from '../readviews/index.js';
 
 /**
  * The DATA of a settler to create — the {@link Command} `spawnSettler` payload minus its `kind`, so a
