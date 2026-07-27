@@ -193,9 +193,9 @@ export function resolveBuildingOverlayDraw(
  * frames (the node's `Resource.goodType`) and indexes them by the node's {@link DrawItem.level} (a mined
  * deposit's shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). When the
  * item also carries {@link DrawItem.levels} and it differs from the record's own state count, the ladder is
- * rescaled onto the frames (`ceil(level·frames/levels)`) — the sim buckets every deposit into one catalog
- * level count while each `[GfxLandscape]` record authors its own (stone rocks 4 states, ore mines 5), and a
- * full deposit must draw its fullest authored frame either way. A ground drop routed through this resolver
+ * rescaled onto the frames (`ceil(level·frames/levels)`) — a map's deposit is sized from its record and
+ * matches, but a record-less scene/admin one carries the catalog count, and a full deposit must draw its
+ * fullest authored frame either way. A ground drop routed through this resolver
  * (the `trunk` binding) carries a {@link DrawItem.fill} instead — the pile's unit count indexes the same
  * empty→full frames directly (the original's "state ≡ remaining units" valency read). A plain node carries
  * neither and draws the full (last) frame.

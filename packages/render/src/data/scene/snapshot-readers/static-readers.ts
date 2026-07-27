@@ -116,8 +116,8 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 /**
  * A mined node's / crop's visual ladder — its current fill `level` (in `[1, levels]`) and the `levels`
  * denominator it is out of — or `undefined` for a plain node (no `Crop`, no readable `MineDeposit`). The
- * single narrowing both {@link readResourceLevel} and {@link readResourceLevelCount} read, so the two are
- * defined/undefined together by construction.
+ * single narrowing {@link assignStaticFields} reads, so the two are defined/undefined together by
+ * construction.
  *
  * A sown field (a `Crop` resource) uses its growth stage as the level directly: stage k ⇒ gfx state k (the
  * wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the stage numbering).
@@ -141,26 +141,6 @@ function readResourceLadder(
     level: depositVisualLevel(res.remaining, deposit.initial, deposit.levels),
     levels: deposit.levels,
   };
-}
-
-/**
- * A mined resource node's / crop's visual fill level ({@link import('../draw-item.js').DrawItem.level}), or
- * `undefined` for a plain node — the `level` field of the node's {@link readResourceLadder}. The binding
- * then draws its full-state frame when absent.
- */
-function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
-  return readResourceLadder(components)?.level;
-}
-
-/**
- * How many levels a mined node's / a crop's visual ladder has — the sim's `MineDeposit.levels` (or
- * `Crop.stages`), the denominator {@link readResourceLevel}'s value is out of. Carried onto the draw item
- * ({@link import('../draw-item.js').DrawItem.levels}) so the resolver can rescale the sim's ladder onto the
- * bound record's own authored state count (stone rocks carry 4 states, ore mines 5 — the sim buckets both
- * into one catalog count). `undefined` exactly when {@link readResourceLevel} is (a plain full node).
- */
-export function readResourceLevelCount(components: Readonly<Record<string, unknown>>): number | undefined {
-  return readResourceLadder(components)?.levels;
 }
 
 /**
@@ -201,17 +181,19 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
 
 /** The static per-kind draw fields a building / resource / stump carries: the exact subset shared by
  *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog/index.js').FogGhost}. Each kind's
- *  live-only extras (a building's `working`/`upgradePct`/`hpFrac`, a resource's `levels`) are added by the
- *  scene builder outside this set, so a fog ghost carries none of them. */
+ *  live-only extras (a building's `working`/`upgradePct`/`hpFrac`) are added by the scene builder outside
+ *  this set, so a fog ghost carries none of them. `level`/`levels` are one ladder and travel together —
+ *  a ghost holding the level without its denominator would redraw at a different frame. */
 export interface StaticDrawFields {
   typeId?: number;
   builtPct?: number;
   goodType?: number;
   level?: number;
+  levels?: number;
   gfxIndex?: number;
 }
 
-const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'gfxIndex'] as const;
+const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex'] as const;
 // The one list {@link copyStaticFields} walks, so a field added to StaticDrawFields can't be dropped by a
 // hand copy: a key missing from the tuple above makes _UncopiedKey non-never and fails to compile here.
 type _UncopiedKey = Exclude<keyof StaticDrawFields, (typeof STATIC_DRAW_KEYS)[number]>;
@@ -250,8 +232,11 @@ export function assignStaticFields(
     case 'resource': {
       const goodType = readResourceGood(components);
       if (goodType !== undefined) target.goodType = goodType;
-      const level = readResourceLevel(components);
-      if (level !== undefined) target.level = level;
+      const ladder = readResourceLadder(components);
+      if (ladder !== undefined) {
+        target.level = ladder.level;
+        target.levels = ladder.levels;
+      }
       const gfxIndex = readResourceGfxIndex(components);
       if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
       return;

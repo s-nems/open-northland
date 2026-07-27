@@ -175,9 +175,10 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
 });
 
 describe('authoredDepositUnits — an authored growth level to the yield it spawns with', () => {
-  /** Each mined good's catalog deposit size against the state counts its real `ls_ground` records
-   *  author (stone's rocks come in both 4- and 5-state variants; the mines are all 5), and the unit
-   *  ladder level 1..N must spawn with. */
+  /** The fallback path only: each mined good's catalog deposit size against the state counts the real
+   *  `ls_ground` records author, and the unit ladder level 1..N scales onto. A map placement is instead
+   *  sized from its own record, where `units === states` makes this the identity
+   *  (`deposit-ladder.test.ts`). */
   const LADDERS = [
     { good: 'stone', units: STONE_DEPOSIT_UNITS, states: 4, expect: [1, 2, 3, 5] },
     { good: 'stone', units: STONE_DEPOSIT_UNITS, states: 5, expect: [1, 2, 3, 4, 5] },

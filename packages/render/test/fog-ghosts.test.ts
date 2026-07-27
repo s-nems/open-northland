@@ -2,7 +2,7 @@ import { FOG_MODE, FOG_STATE, type FogMode, type FogView } from '@open-northland
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog/index.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';
-import { ONE, tileToScreen } from '../src/index.js';
+import { ONE, type ResourceTypeBinding, resolveResourceDraw, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
@@ -161,5 +161,29 @@ describe('collectSpriteScene — ghost emission', () => {
       ghosts: [GHOST],
     });
     expect(scene.items.map((d) => d.ref)).toEqual([9, 1]);
+  });
+
+  it('remembers a deposit ladder shorter than its record, so the ghost draws the last-seen frame', () => {
+    // A 4-unit deposit down to its last unit, bound to a 5-frame record — the ladders differ, so the
+    // resolver rescales. A ghost that forgot `levels` would skip the rescale and draw a frame lower.
+    const GOOD = 3;
+    const binding: ResourceTypeBinding = { byGood: { [GOOD]: [10, 20, 30, 40, 50] }, default: 0 };
+    const deposit = entity(2, 9, 4, {
+      Resource: { goodType: GOOD, remaining: 1 },
+      MineDeposit: { initial: 4, levels: 4 },
+    });
+    const visible = new Map([[TREE_CELL, FOG_STATE.VISIBLE]]);
+
+    const store = new FogGhostStore();
+    const live = collectSpriteScene(snapshotOf([deposit]), {}).items[0];
+    store.update(snapshotOf([deposit]), viewOf(visible, 1));
+    const ghosts = store.update(snapshotOf([deposit]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2));
+    const remembered = collectSpriteScene(snapshotOf([]), { ghosts }).items[0];
+
+    if (live === undefined || remembered === undefined) throw new Error('missing draw item');
+    // Level 1 of 4 rescales onto 5 frames as ceil(1·5/4) = 2 — bob 20, not the first frame a forgotten
+    // denominator would pick. Pinned, so the pair cannot agree by both falling through to `default`.
+    expect(resolveResourceDraw(binding, live)?.bob).toBe(20);
+    expect(resolveResourceDraw(binding, remembered)).toEqual(resolveResourceDraw(binding, live));
   });
 });
