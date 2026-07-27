@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Health } from '../../src/components/index.js';
 import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
-import { createSettler, DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/conflict/spawn/index.js';
 import { settlerHitpoints } from '../../src/systems/readviews/index.js';
+import { createSettler, DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/spawn/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

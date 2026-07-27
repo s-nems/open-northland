@@ -28,10 +28,9 @@ export type SpawnCommand =
       /**
        * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). Every settler is stamped a {@link Health}
        * pool (civilians have health too — user decision): a positive `hitpoints` sets its size; omit it (the
-       * default) for the shared
-       * {@link import('../../systems/conflict/spawn/index.js').DEFAULT_SETTLER_HITPOINTS} pool. The pool
-       * magnitude is approximated either way: a human's hitpoints are below the readable `.ini` (only
-       * `animaltypes.ini` carries them; source basis "Combat hit resolution").
+       * default) for the shared {@link import('../../systems/spawn/index.js').DEFAULT_SETTLER_HITPOINTS}
+       * pool. The pool magnitude is approximated either way: a human's hitpoints are below the readable
+       * `.ini` (only `animaltypes.ini` carries them; source basis "Combat hit resolution").
        *
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor (an
        * `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than landing on

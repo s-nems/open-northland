@@ -3,8 +3,8 @@ import { Settler } from '../../../src/components/index.js';
 import { Rng } from '../../../src/core/rng.js';
 import { World } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
-import { createSettler } from '../../../src/systems/conflict/spawn/index.js';
 import { NEED_INIT_MAX_DEFICIT_PERCENT, rollInitialNeed } from '../../../src/systems/index.js';
+import { createSettler } from '../../../src/systems/spawn/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 // A need is a deficit (0 = full bar, ONE = empty); a starting deficit of at most half a bar means the HUD

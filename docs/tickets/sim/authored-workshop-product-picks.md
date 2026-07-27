@@ -5,7 +5,7 @@
 
 `setproducedgood` is the original's per-human **produced good**, not only a gatherer's resource pick, and
 it is authored for workshop trades too. The import chain now lands it on `WorkFlag.goodType`
-(`stampGatherGood`, `packages/sim/src/systems/conflict/spawn/settlers.ts`), which covers 573 of the
+(`stampGatherGood`, `packages/sim/src/systems/spawn/settlers.ts`), which covers 573 of the
 decoded corpus's 819 picks. The remainder is dropped and the drop is named in that function's doc. This
 ticket is the follow-up for the part that is a real gap.
 

@@ -15,7 +15,6 @@ export {
   DEFAULT_COLLECTOR_TARGET,
   STAFFING_BY_BUILDING_ID,
 } from './ai-player/workforce/index.js';
-export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode } from './footprint/resources.js';
@@ -76,6 +75,7 @@ export {
   signpostNetwork,
   signpostProbe,
 } from './signposts/index.js';
+export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './spawn/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
 export { cellOfNode } from './vision/gates.js';
 export { SCOUT_VISION_NODES } from './vision/system.js';
