@@ -19,6 +19,7 @@ import {
   openPostFor,
   type StaffingTally,
 } from './openings.js';
+import { applyTradeChange } from './trade-change.js';
 
 /**
  * JobSystem (assignment half) — give an idle settler the job of an understaffed workplace it qualifies for,
@@ -115,11 +116,14 @@ export const jobSystem: System = (world, ctx) => {
       continue; // an employed settler is never re-assigned to another trade
     }
 
-    // Pass 2 — assign + bind an idle settler to a concrete open workplace.
+    // Pass 2: bind an idle settler to a concrete open workplace and put it in that trade. The trade goes
+    // on through the shared reset, not by writing `jobType`: an auto-hired settler owes what an ordered one
+    // owes. Bound BEFORE the reset so the flag sync sees the posting and skips planting a yard flag that
+    // {@link bindEmployment} would destroy on the spot (a hire burst plants one entity each otherwise).
     const open = openJobAt(buildings, query);
     if (open !== null) {
-      settler.jobType = open.jobType;
       bind(world, ctx, staffing, e, open.building, open.jobType);
+      applyTradeChange(world, ctx, e, open.jobType);
     }
   }
 };

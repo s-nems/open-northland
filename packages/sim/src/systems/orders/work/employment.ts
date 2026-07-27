@@ -1,52 +1,33 @@
 import {
   Age,
-  Armor,
-  AttackOrder,
   Building,
   Carrying,
-  CraftSelection,
   CurrentAtomic,
   DeferredOrder,
-  Engagement,
-  Equipment,
-  EquipOrder,
-  Fleeing,
-  GatherSelection,
   JobAssignment,
   ownerOf,
   PlayerOrder,
-  Position,
   Settler,
   SiteAssignment,
-  SupplyRun,
   sameSide,
-  TrainingOrder,
   UnderConstruction,
-  Weapon,
 } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
-import { syncWorkFlagToJob } from '../../economy/work-flag.js';
+import { applyTradeChange, bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { isFighterJob } from '../../readviews/index.js';
-import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/atomics/effects/goods/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial/nodes.js';
-import { stampDefaultStance } from '../combat.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
 
 /**
- * Change one owned settler's profession: set its `Settler.jobType` and reset it to a fresh idle worker of the
- * new trade — drop the old workplace binding ({@link JobAssignment}) so the JobSystem re-employs it at a
- * building of the new job, cancel any current action/route, and clear any {@link PlayerOrder}. A unit carrying
- * a load sets it down first ({@link reidleAsJob} starts the drop atomic) so the old trade's haul isn't
- * teleported into the new job — it re-idles into the new trade once the load is on the ground.
+ * Change one owned settler's profession: reset it to a fresh idle worker of the new trade
+ * ({@link reidleAsJob}) and drop the old workplace binding ({@link JobAssignment}) so the JobSystem
+ * re-employs it at a building of the new job.
  *
  * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, an unknown
  * `jobType`, or a trade whose `needforjob` XP threshold this settler hasn't earned yet
@@ -71,96 +52,25 @@ export function setJob(
 }
 
 /**
- * Reset an owned settler to a fresh idle worker of `jobType`: set its `Settler.jobType`, cancel any current
- * action/route/hold, drop auto-combat state, stamp the new job's default military stance (a soldier→civilian
- * flip stops auto-engaging and starts fleeing; the reverse engages — the player can override with `setStance`),
- * and sync the gatherer work flag to the new trade ({@link syncWorkFlagToJob} — a gatherer trade gets a flag,
- * leaving one drops it). It does not touch {@link JobAssignment}: the caller owns the binding — {@link setJob}
- * drops it (the JobSystem re-employs), while {@link assignWorker} sets it (bind to the player-chosen building).
- * The single home of the "re-idle to a new trade" reset, so the employment orders and the barracks drill
- * (`settlers/drives/training.ts`) can't drift apart.
- * Owned-only: the callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
+ * The authoritative half of a profession change: cancel whatever the settler was doing under the old trade
+ * (its action, its route, any live or parked {@link PlayerOrder}) and set its load down, before taking up
+ * `jobType` ({@link applyTradeChange}). That cancel is the whole difference from the JobSystem's automatic
+ * hire, which runs the trade change alone: an auto-hired settler keeps its action, its route and its player
+ * order. Shared by the employment orders and the barracks drill (`settlers/drives/training.ts`).
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  world.get(e, Settler).jobType = jobType;
-  world.remove(e, TrainingOrder); // a trade change calls off a drill errand — the settler was re-tasked
-  // Cancel whatever it was doing under the old job. setJob vets interruptibility before reaching here
-  // (deferOrderDuringAtomic); assignWorker still cancels unconditionally — a remaining member of the
-  // uninterruptible-atomic class, tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
+  // setJob vets interruptibility before reaching here (deferOrderDuringAtomic); assignWorker still cancels
+  // unconditionally, a remaining member of the uninterruptible-atomic class, tracked in
+  // docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
-  // Before the drop below, so a shed unit joins it.
-  if (isFighterJob(ctx.content, jobType)) shedToolOnEnlist(world, e);
-  // A profession change makes a hands-full settler set its load down first: it replaces the cancelled action
-  // with the drop atomic, so the old trade's haul lands on the ground here rather than being carried on to a
-  // store under the new trade (the requested "drop when you change job" behavior).
-  if (world.has(e, Carrying)) startDrop(world, ctx, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
-  world.remove(e, SiteAssignment); // and drops any construction-crew membership of the old trade
-  // And its supply errand: the old trade's fetch is abandoned with the load, so the site must stop
-  // counting it as inbound (the planner's tally re-seeds from live components each tick).
-  world.remove(e, SupplyRun);
   clearNavState(world, e);
-  world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
-  world.remove(e, AttackOrder);
-  world.remove(e, Fleeing);
-  stampDefaultStance(world, ctx.content, e, jobType);
-  // Leaving the fighter trades disarms the settler: the arms are the soldier's role kit, and the render
-  // draws the armed look from the equipped weapon good over the job — a kept weapon would freeze an
-  // ex-soldier in the warrior skin. Both axes go: the Equipment display slots and the combat Weapon/Armor.
-  // Deliberately AFTER the load-drop step above: with empty hands the first freed unit is taken up, so
-  // the delivery drive walks it into a store instead of leaving it in the grass. Anything the hands
-  // cannot take (the second unit, or either one when the settler was already loaded) lands at its feet
-  // for a porter.
-  if (!isFighterJob(ctx.content, jobType)) {
-    world.remove(e, Weapon);
-    world.remove(e, Armor);
-    shedSlotGood(world, e, 'weapon');
-    shedSlotGood(world, e, 'armor');
-  }
-  syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
-  // The per-employment picks die with the employment they were made under (the rule {@link bindEmployment}
-  // applies on the re-binding path; here the settler goes unemployed until the JobSystem re-posts it).
-  world.remove(e, GatherSelection);
-  world.remove(e, CraftSelection);
-}
-
-/**
- * A fighter keeps no tool - it aids only production work (user rule 2026-07-25) - so entering a
- * soldier/hero trade empties the slot ({@link shedSlotGood}) and calls off a tool-slot equip errand in
- * flight (an errand for another slot survives, as on any job change).
- */
-function shedToolOnEnlist(world: World, e: Entity): void {
-  const order = world.tryGet(e, EquipOrder);
-  if (order !== undefined && order.group === 'tool') world.remove(e, EquipOrder);
-  shedSlotGood(world, e, 'tool');
-}
-
-/**
- * Empty one equipment slot the settler's NEW trade may not use, without swallowing the good: a fresh
- * unit joins free or same-good hands, else lands on the settler's own tile; a part-used one - or one on
- * a positionless settler - is destroyed (the take-off rule, settlers/atomics/effects/goods/equip.ts). Both
- * endings serve the user's rule (2026-07-26: a store if the economy can manage it, the ground
- * otherwise) - a unit left in hand is banked by the delivery drive, a grounded one is collected by a
- * porter like any loose pile.
- */
-function shedSlotGood(world: World, e: Entity, group: 'tool' | 'weapon' | 'armor'): void {
-  const equipment = world.tryGet(e, Equipment);
-  const worn = equipment?.[group];
-  if (equipment === undefined || worn == null) return;
-  equipment[group] = null;
-  world.touch(e);
-  if (isUsed(worn)) return;
-  const held = world.tryGet(e, Carrying);
-  if (held === undefined || held.goodType === worn.goodType) {
-    addCarry(world, e, worn.goodType, 1);
-    return;
-  }
-  const pos = world.tryGet(e, Position);
-  if (pos === undefined) return;
-  const node = nodeOfPosition(pos.x, pos.y);
-  const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice tile, so drops stack
-  placeUnitOnTile(world, at.x, at.y, worn.goodType, ownerOf(world, e));
+  // A hands-full settler sets the old trade's haul down here rather than carrying it on into the new job
+  // (the requested "drop when you change job" behavior). Before the trade change, so the arms a disarmed
+  // soldier is about to take up ({@link applyTradeChange}) are not swept into this drop.
+  if (world.has(e, Carrying)) startDrop(world, ctx, e);
+  applyTradeChange(world, ctx, e, jobType);
 }
 
 /**

@@ -1,20 +1,31 @@
+import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AiPlayer,
   aiModuleEnables,
   Building,
+  Carrying,
+  CurrentAtomic,
   DeliveryFlag,
+  Equipment,
   JobAssignment,
+  MISC_EQUIP_SLOTS,
+  MoveGoal,
   Owner,
+  PlayerOrder,
   Position,
   Settler,
+  Stance,
+  Stockpile,
   setProfessionProgression,
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import { grantWorkExperience, jobSystem } from '../../src/systems/index.js';
 import { setJob } from '../../src/systems/orders/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
@@ -325,6 +336,136 @@ describe('the civilist trade — the Cywil order pins a settler jobless', () => 
 
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: e, jobType: WOODCUTTER });
     expect(sim.world.get(e, Settler).jobType).toBe(WOODCUTTER); // re-traded normally
+  });
+});
+
+/**
+ * An automatic hire is a trade change like any other: it runs the same `applyTradeChange` reset the
+ * employment orders do. Real content makes this reachable: `tower_00`/`tower_01` declare `workers`
+ * slots for the archer jobs 40/41, both in the fighter band, so an auto-hired tower guard used to keep
+ * its civilian FLEE stance and the tool no fighter is ever allowed to hold.
+ *
+ * The local TOWER type stands in for those rows: the shared fixture has fighter jobs but no building
+ * that employs one.
+ */
+describe('JobSystem: an automatic hire runs the trade-change reset', () => {
+  const TOWER = 23; // free in the fixture's building table; real shape: tower_00's `logicworker 40`
+  const SOLDIER = 31; // the fixture's `{ typeId: 31, id: 'soldier_unarmed' }`, a fighter by its id slug
+  const TOOL = 4; // any fixture good stands in for the worn tool
+  const HUMAN = 0;
+
+  /** The fixture plus a tower: one fighter-band worker slot, the only job any building here offers.
+   *  Cloned off the bare smithy so the tower carries the parser's defaults for everything else. */
+  function towerContent(): ContentSet {
+    const content = testContent();
+    const bare = content.buildings.find((b) => b.typeId === SMITHY);
+    if (bare === undefined) throw new Error('fixture has no smithy');
+    content.buildings.push({
+      ...bare,
+      typeId: TOWER,
+      id: 'tower',
+      workers: [{ jobType: SOLDIER, count: 1 }],
+    });
+    return content;
+  }
+
+  /** An idle settler of the human player: owned, because a Stance is only ever stamped on an owned unit. */
+  function ownedIdle(sim: Simulation): Entity {
+    const e = settler(sim, null);
+    sim.world.add(e, Owner, { player: HUMAN });
+    return e;
+  }
+
+  /** Units of `goodType` lying in loose ground piles (a store is a Building, and is skipped). */
+  function groundUnits(sim: Simulation, goodType: number): number {
+    let sum = 0;
+    for (const p of sim.world.query(Stockpile, Position)) {
+      if (sim.world.has(p, Building)) continue;
+      sum += sim.world.get(p, Stockpile).amounts.get(goodType) ?? 0;
+    }
+    return sum;
+  }
+
+  /** Put a fresh tool on `e`'s tool slot, the way the assistant hands one to a working trade. */
+  function wearTool(sim: Simulation, e: Entity): void {
+    sim.world.add(e, Equipment, {
+      boots: null,
+      tool: { goodType: TOOL, degreeOfUse: fx.fromInt(0) },
+      weapon: null,
+      armor: null,
+      misc: new Array(MISC_EQUIP_SLOTS).fill(null),
+    });
+  }
+
+  it('stamps the hired trade’s default stance instead of leaving the civilian one', () => {
+    const sim = new Simulation({ seed: 1, content: towerContent() });
+    const tower = placeBuilding(sim, TOWER, 5, 5);
+    const idle = ownedIdle(sim);
+    sim.world.add(idle, Stance, { mode: MILITARY_MODE.FLEE, anchorCell: null }); // its idle default
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(SOLDIER);
+    expect(sim.world.tryGet(idle, JobAssignment)).toEqual({ workplace: tower });
+    // Without the reset the guard kept FLEE and ran from what it was hired to fight.
+    expect(sim.world.get(idle, Stance).mode).toBe(MILITARY_MODE.ATTACK);
+  });
+
+  it('never stamps a stance on an unowned settler (Stance stays owned-only)', () => {
+    const sim = new Simulation({ seed: 1, content: towerContent() });
+    placeBuilding(sim, TOWER, 5, 5);
+    const neutral = settler(sim, null); // no Owner, a golden/scenario settler
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(neutral, Settler).jobType).toBe(SOLDIER); // still hired
+    expect(sim.world.has(neutral, Stance)).toBe(false); // but carries no military mode
+  });
+
+  it('sheds the tool a fighter may not hold, setting the unit down at its feet', () => {
+    const sim = new Simulation({ seed: 1, content: towerContent() });
+    placeBuilding(sim, TOWER, 5, 5);
+    const idle = ownedIdle(sim);
+    wearTool(sim, idle);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Equipment).tool).toBeNull();
+    expect(sim.world.has(idle, Carrying)).toBe(false); // straight to the ground, not carried off
+    expect(groundUnits(sim, TOOL)).toBe(1); // and conserved: the unit is not swallowed
+  });
+
+  it('leaves the settler’s action, route and player order alone (the order-only half)', () => {
+    // An automatic hire is not an authoritative re-tasking (only `reidleAsJob` cancels), so a settler
+    // walking a player's move order keeps walking, and a carrying one keeps its load.
+    const sim = new Simulation({ seed: 1, content: towerContent() });
+    placeBuilding(sim, TOWER, 5, 5);
+    const idle = ownedIdle(sim);
+    sim.world.add(idle, PlayerOrder, {});
+    sim.world.add(idle, MoveGoal, { cell: 0 as NodeId });
+    sim.world.add(idle, Carrying, { goodType: WOOD_GOOD, amount: 1 });
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(SOLDIER);
+    expect(sim.world.has(idle, PlayerOrder)).toBe(true);
+    expect(sim.world.has(idle, MoveGoal)).toBe(true); // no startDrop cleared the route out from under it
+    expect(sim.world.has(idle, CurrentAtomic)).toBe(false); // and no drop atomic was forced on it
+  });
+
+  it('plants no work-flag entity when hiring a gatherer (it is bound to the workplace)', () => {
+    // The flag would be destroyed by `bindEmployment` on the next line; planting one per hire burns an
+    // entity id and a placement search on every hire burst.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, HQ, 5, 5); // three woodcutter (gatherer) slots
+    const idle = ownedIdle(sim);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(WOODCUTTER);
+    expect(sim.world.has(idle, WorkFlag)).toBe(false); // bound gatherers harvest the building's store
+    // Ids are never recycled, so the next one handed out proves nothing was minted during the hire.
+    expect(sim.world.create() as number).toBe((idle as number) + 1);
   });
 });
 
