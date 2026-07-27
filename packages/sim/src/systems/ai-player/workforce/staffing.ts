@@ -24,7 +24,7 @@ export type StaffingTier = 'min' | 'target';
 
 /** The baseline workplace plan: one worker per operator trade, no carrier (user plan 2026-07-18 —
  *  a carrier-only utility like the well stays a self-served shared facility). */
-export const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
+const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   operatorMin: 1,
   operatorTarget: 1,
   carrierMin: 0,
@@ -50,7 +50,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
 /** The storage plan — the HQ and every warehouse run 1–3 transport carriers (user plan 2026-07-25);
  *  their fisher/hunter/collector slots stay open (the storage-staffs-transport-only rule in
  *  {@link staffBuildings} — not every such slot classifies as a harvest trade). */
-export const STORAGE_STAFFING: BuildingStaffing = {
+const STORAGE_STAFFING: BuildingStaffing = {
   operatorMin: 0,
   operatorTarget: 0,
   carrierMin: 1,
@@ -62,9 +62,8 @@ export const STORAGE_STAFFING: BuildingStaffing = {
  *  every top-up tier, so the reserve is what the surplus ladder distributes BEYOND. */
 export const BUILDER_CAP = 8;
 
-/** The staffing plan for a building type, or null for kinds the allocator never staffs (homes,
- *  towers — their slots are fighter-band garrisons — and the barracks, the recruit phase's own
- *  concern). */
+/** The staffing plan for a building type, or null for the kinds the allocator never staffs — homes,
+ *  towers and the barracks are military or residential, not production the plan crews. */
 function staffingOf(type: BuildingType): BuildingStaffing | null {
   if (type.kind === 'storage') return STORAGE_STAFFING;
   if (type.kind !== 'workplace') return null;
@@ -72,11 +71,11 @@ function staffingOf(type: BuildingType): BuildingStaffing | null {
 }
 
 /**
- * The two staffing passes (min, then target — ladder order lives in `runWorkforce`): staff each
- * built workplace and storage toward its {@link BuildingStaffing} tier —
- * where "operator" is a non-carrier, non-gatherer slot. Gatherer slots are never staffed, so a
- * carrier-only workplace (the well, the hive) gets no permanent worker: it is a shared utility a
- * consumer self-serves (a baker cranks the well for its own water, see agents/economy/workshop).
+ * The two staffing passes (min, then target): staff each built workplace and storage toward its
+ * {@link BuildingStaffing} tier, where "operator" is a non-carrier, non-gatherer slot. Gatherer
+ * slots are never staffed, so a carrier-only workplace (the well, the hive) gets no permanent
+ * worker: it is a shared utility a consumer self-serves (a baker cranks the well for its own water,
+ * see agents/economy/workshop).
  * Within a tier, every WORKPLACE fills before any storage (the plan lists warehouse carriers below
  * workshop staffing), each kind in canonical building order; both tiers advance ONE shared
  * {@link StaffingTally} per decision (commands apply next tick, so the target pass must see the min
@@ -124,11 +123,10 @@ export function staffBuildings(
 
 /**
  * The builder reserve: CLAIM up to {@link BUILDER_CAP} pool men — existing builders first (no
- * churn), then conversions. Because the men are claimed, the top-up tiers, generic collectors, and
- * recruits behind this phase distribute only the surplus BEYOND the reserve, so construction keeps
- * its crew while the settlement staffs up. Men left over once every phase has drawn keep their
- * current trade (idle civilians) until a post opens or the recruit ramp takes them — the cap is
- * one-way, never a demotion.
+ * churn), then conversions. Because the men are claimed, the tiers behind this phase distribute only
+ * the surplus BEYOND the reserve, so construction keeps its crew while the settlement staffs up. Men
+ * left over once every phase has drawn keep their current trade (idle civilians) until a post opens —
+ * the cap is one-way, never a demotion.
  */
 export function reserveBuilders(world: World, force: SpareForce, builderJob: number | null): Command[] {
   if (builderJob === null) return [];

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Building, Owner, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
+const { Building, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
 const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } = systems;
 
 /** The decoded map under test — a free-play start where every seat opens with an authored, stocked
@@ -50,12 +50,18 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     // on what the map actually holds, but a forest map guarantees at least the wood one, and no good
     // may exceed its plan target (`COLLECTOR_TARGET_BY_GOOD_ID`, default 1).
     const pinned: number[] = [];
+    const flagNodes: string[] = [];
     for (const e of sim.world.query(Settler, WorkFlag)) {
       if (sim.world.tryGet(e, Owner)?.player !== AI_SEAT) continue;
       const goodType = sim.world.get(e, WorkFlag).goodType;
       if (goodType !== undefined) pinned.push(goodType);
+      const flagPos = sim.world.tryGet(sim.world.get(e, WorkFlag).flag, Position);
+      if (flagPos !== undefined) flagNodes.push(`${flagPos.x},${flagPos.y}`);
     }
     expect(pinned.length).toBeGreaterThanOrEqual(1);
+    // No two of the seat's gatherers share a flag node: one node is one delivery yard with one
+    // pile cap, so a doubled post would have them fighting over the same tile.
+    expect(new Set(flagNodes).size).toBe(flagNodes.length);
     const goodIdOf = new Map((ir.goods ?? []).map((g) => [g.typeId, g.id]));
     for (const goodType of new Set(pinned)) {
       const goodId = goodIdOf.get(goodType) ?? '';

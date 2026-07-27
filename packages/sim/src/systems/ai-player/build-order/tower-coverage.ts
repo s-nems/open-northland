@@ -34,7 +34,7 @@ export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 /** How far past the covering target the spot search's seed is pushed away from the settlement
  *  centroid — enough to bias the pick outward, short enough that the tower lands just beyond the
  *  last building rather than out in the field (named approximation, user decision 2026-07-26). */
-export const TOWER_OUTSKIRTS_PUSH_NODES = 6;
+const TOWER_OUTSKIRTS_PUSH_NODES = 6;
 
 /**
  * The first owned building (canonical ascending id) outside every coverage circle, or null when the

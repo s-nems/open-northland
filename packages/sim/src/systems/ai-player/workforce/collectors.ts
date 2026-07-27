@@ -1,18 +1,22 @@
 import type { ContentSet } from '@open-northland/data';
-import { Resource, Settler } from '../../../components/index.js';
+import { Settler } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-metric.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../economy/flags.js';
-import { workFlagPlacementBlocks } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { resourcesNearNode } from '../../resource-index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../build-order/index.js';
-import { AI_DECISION_INTERVAL_TICKS, anchorNodeOf, firstRingNode, nearestLiveResource } from '../shared.js';
+import { AI_DECISION_INTERVAL_TICKS, anchorNodeOf, nearestLiveResource } from '../shared.js';
+import {
+  claimFlagNode,
+  collectorSpot,
+  FLAG_MAX_DISTANCE_NODES,
+  flagSpotNear,
+  patchAlive,
+  type TakenFlagNodes,
+} from './flag-spots.js';
 import type { SpareForce } from './pool.js';
 
 /** The goods the gatherers collect from game start, by stable content id (user plan: clay, stone,
@@ -38,12 +42,6 @@ export const GENERIC_COLLECTOR_TARGET = 2;
  *  resource — the infrequent "nudge the flags after the patch drifted" upkeep (user rule
  *  2026-07-18). 30 decisions ≈ 60 s at the base clock. */
 export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
-
-/** A collector's flag stands 2–3 tiles from its resource (user rule) — 4..6 half-cell nodes. */
-export const FLAG_MIN_DISTANCE_NODES = 4;
-export const FLAG_MAX_DISTANCE_NODES = 6;
-/** When the whole 2–3-tile band is blocked, any legal node this close still serves. */
-const FLAG_FALLBACK_MAX_DISTANCE_NODES = 12;
 
 /** A wanted collector good with its resolved gatherer trade, harvest atomic, and staffing target. */
 export interface WantedGood {
@@ -72,7 +70,7 @@ function harvestJobFor(ctx: SystemContext, harvestAtomic: number): number | null
 /** The generalist gatherer trade: the harvest job that can flag-harvest the most goods, ties to the
  *  lowest typeId — a strict `(count desc, id asc)` order, so the winner never depends on set
  *  iteration order. Null when the content has no harvest trade. */
-export function genericCollectorJob(ctx: SystemContext): number | null {
+function genericCollectorJob(ctx: SystemContext): number | null {
   const index = contentIndex(ctx.content);
   let best: number | null = null;
   let bestCount = -1;
@@ -115,61 +113,6 @@ export function wantedCollectorGoods(
   return wanted;
 }
 
-/** Whether any live resource accepted by `alive` remains inside the flag's work circle (the
- *  world-metric circle the gatherer harvests in) — the "patch ran dry, move the flag" probe. */
-function patchAlive(
-  world: World,
-  flagNode: HalfCellNode,
-  radius: number,
-  alive: (r: { goodType: number; remaining: number }) => boolean,
-): boolean {
-  // The region-index box must contain the anisotropic circle (±radius nodes E/W, wider in rows).
-  const box = nodeBoxOfCircles([{ x: flagNode.hx, y: flagNode.hy, r: radius }]);
-  const reach = Math.max(box.maxX - flagNode.hx, box.maxY - flagNode.hy);
-  for (const e of resourcesNearNode(world, flagNode.hx, flagNode.hy, reach)) {
-    const r = world.get(e, Resource);
-    if (r.remaining <= 0 || !alive(r)) continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    if (withinNodeRadius(flagNode.hx, flagNode.hy, node.hx, node.hy, radius)) return true;
-  }
-  return false;
-}
-
-/** The closest legal work-flag node in the 2–3-tile band around a resource (falling back to any
- *  nearby legal node when the band is fully blocked), or null. One blocker scan per call. */
-function flagSpotNear(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  resource: HalfCellNode,
-): HalfCellNode | null {
-  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
-  const legal = (x: number, y: number): boolean =>
-    terrain.inBounds(x, y) && terrain.isWalkable(terrain.nodeAt(x, y)) && !blocked.has(terrain.nodeAt(x, y));
-  const inBand = (x: number, y: number): boolean =>
-    Math.abs(x - resource.hx) + Math.abs(y - resource.hy) >= FLAG_MIN_DISTANCE_NODES && legal(x, y);
-  return (
-    firstRingNode(resource.hx, resource.hy, FLAG_MAX_DISTANCE_NODES, inBand) ??
-    firstRingNode(resource.hx, resource.hy, FLAG_FALLBACK_MAX_DISTANCE_NODES, legal)
-  );
-}
-
-/** The flag spot beside the good's live resource nearest the HQ, or null when the map holds none
- *  (or no legal flag node stands near it). */
-function collectorSpot(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  hqNode: HalfCellNode,
-  goodType: number,
-): HalfCellNode | null {
-  const resource = nearestLiveResource(world, goodType, hqNode);
-  if (resource === null) return null;
-  const node = anchorNodeOf(world, resource);
-  return node === null ? null : flagSpotNear(world, ctx, terrain, node);
-}
-
 /** Whether this settler's accrued XP clears the good's `needforgood` thresholds — the same gate the
  *  harvest pick applies (`nearestHarvestableFor`), so the allocator never posts a collector its own
  *  target scan would refuse (iron/gold demand clay/stone-track XP in the base data). */
@@ -188,13 +131,15 @@ function needGated(ctx: SystemContext, tribe: number, goodType: number): boolean
 }
 
 /** The three commands posting `spare` as a flag gatherer of `w` at `spot`, recorded into the
- *  decision's `holders` list so later phases count the hire before its commands apply. */
+ *  decision's `holders` list and `taken` nodes so later phases count the hire and keep off its spot
+ *  before its commands apply. */
 function postCollector(
   spare: Entity,
   w: WantedGood,
   spot: HalfCellNode,
   holders: Entity[],
   collectorsByGood: Map<number, Entity[]>,
+  taken: TakenFlagNodes,
   commands: Command[],
 ): void {
   commands.push({ kind: 'setJob', entity: spare, jobType: w.job });
@@ -202,11 +147,12 @@ function postCollector(
   commands.push({ kind: 'setGatherGood', entity: spare, goodType: w.good.typeId });
   holders.push(spare);
   collectorsByGood.set(w.good.typeId, holders);
+  claimFlagNode(taken, spot);
 }
 
 /**
- * First posts (ladder order lives in `runWorkforce`): keep at least one flag-bound gatherer per wanted good, each flag standing 2–3 tiles from
- * a live resource, with the dry-patch and drift upkeep over every current holder. No-op on a
+ * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2–3 tiles
+ * from a live resource, with the dry-patch and drift upkeep over every current holder. No-op on a
  * mapless sim — no cells to place flags over. Source basis: user rules 2026-07-17 / -18 / -25.
  */
 export function allocateCollectors(
@@ -216,6 +162,7 @@ export function allocateCollectors(
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
+  taken: TakenFlagNodes,
   builderJob: number | null,
 ): Command[] {
   const terrain = ctx.terrain;
@@ -258,11 +205,11 @@ export function allocateCollectors(
       if (spot !== null) commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
     }
     if (holders.length > 0 || hqNode === null) continue;
-    const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId);
+    const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId, taken);
     if (spot === null) continue; // nothing of this good on the map — no collector wanted
     const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
     if (spare !== null) {
-      postCollector(spare, w, spot, holders, collectorsByGood, commands);
+      postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
       continue;
     }
     // No qualified spare. For an XP-gated good, re-post a veteran collector of an ungated good (a
@@ -279,6 +226,7 @@ export function allocateCollectors(
       if (s.jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
       commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
       commands.push({ kind: 'setGatherGood', entity: veteran, goodType: w.good.typeId });
+      claimFlagNode(taken, spot);
       otherHolders.shift();
       holders.push(veteran);
       collectorsByGood.set(w.good.typeId, holders);
@@ -290,9 +238,9 @@ export function allocateCollectors(
 
 /**
  * Best-effort top-ups to each good's target — the ladder runs them after minimum staffing and the
- * builder reserve (user plan 2026-07-25: minimums everywhere beat second workers anywhere).
- * Only tops up goods that already hold their first post (phase 1's concern, veteran steal included);
- * a top-up that finds neither a qualified spare nor a spare veteran simply waits.
+ * builder reserve (user plan 2026-07-25: minimums everywhere beat second workers anywhere). Only
+ * goods that already hold their first post (phase 1's concern) are topped up, and only from the
+ * spare pool: moving a man off another good's post would leave that one short instead.
  */
 export function topUpCollectors(
   world: World,
@@ -301,6 +249,7 @@ export function topUpCollectors(
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
+  taken: TakenFlagNodes,
 ): Command[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
@@ -310,45 +259,14 @@ export function topUpCollectors(
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     while (holders.length > 0 && holders.length < w.target) {
-      const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId);
+      const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId, taken);
       if (spot === null) break;
-      const spare =
-        force.take((e) => meetsNeed(world, ctx, e, w.good.typeId)) ??
-        takeSurplusVeteran(world, ctx, w, wanted, collectorsByGood);
+      const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
       if (spare === null) break;
-      postCollector(spare, w, spot, holders, collectorsByGood, commands);
+      postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
     }
   }
   return commands;
-}
-
-/**
- * A veteran another good can spare for `w`'s top-up, removed from that good's holder list, or null.
- * An XP-gated good (iron in the base data: 10 clay/stone-track XP) has no eligible fresh hire at all,
- * so its second post can only come from a man who has already dug — but never at the price of another
- * good's FIRST post: only a good above its own first holder, whose own posts an unqualified man could
- * refill, gives one up. The donor drops to its first post and the plan-order loop rehires it from the
- * pool on a later decision.
- */
-function takeSurplusVeteran(
-  world: World,
-  ctx: SystemContext,
-  w: WantedGood,
-  wanted: readonly WantedGood[],
-  collectorsByGood: Map<number, Entity[]>,
-): Entity | null {
-  for (const other of wanted) {
-    if (other === w) continue;
-    const holders = collectorsByGood.get(other.good.typeId) ?? [];
-    if (holders.length < 2) continue; // its own first post — not spare
-    const veteran = holders[holders.length - 1];
-    if (veteran === undefined) continue;
-    if (needGated(ctx, world.get(veteran, Settler).tribe, other.good.typeId)) continue; // needs a veteran too
-    if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
-    holders.pop();
-    return veteran;
-  }
-  return null;
 }
 
 /**
@@ -364,6 +282,7 @@ export function allocateGenericCollectors(
   hq: Entity,
   genericCollectors: readonly Entity[],
   force: SpareForce,
+  taken: TakenFlagNodes,
   builderJob: number | null,
 ): Command[] {
   const terrain = ctx.terrain;
@@ -384,13 +303,14 @@ export function allocateGenericCollectors(
   for (let hired = genericCollectors.length; hired < GENERIC_COLLECTOR_TARGET; hired++) {
     const resource = nearestCollectedResource(world, ctx, hqNode);
     if (resource === null) break; // no collected good stands anywhere — no generic post
-    const spot = flagSpotNear(world, ctx, terrain, resource);
+    const spot = flagSpotNear(world, ctx, terrain, resource, taken);
     if (spot === null) break;
     const spare = force.take();
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: job });
     commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
     commands.push({ kind: 'setGatherGood', entity: spare, goodType: null });
+    claimFlagNode(taken, spot);
   }
   return commands;
 }

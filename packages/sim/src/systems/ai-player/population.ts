@@ -49,7 +49,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   }
   for (const woman of women) {
     if (world.has(woman, Residence)) continue;
-    if (!isMarried(world, woman)) continue;
+    if (!hasLivingSpouse(world, woman)) continue;
     const home = homes.find((h) => h.free > 0);
     if (home === undefined) break; // no free slots — wait for the next house
     home.free--;
@@ -65,7 +65,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   }
   for (const woman of women) {
     if (world.has(woman, ChildOrder) || !world.has(woman, Residence)) continue;
-    if (!isMarried(world, woman)) continue;
+    if (!hasLivingSpouse(world, woman)) continue;
     const child = world.get(woman, Marriage).child;
     if (child !== null && world.isAlive(child) && isMinor(world, child)) continue; // one at a time
     if (plannedFemales < familySlotsTotal) {
@@ -78,8 +78,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   return commands;
 }
 
-/** Married to a living spouse (a widow raising a minor is not orderable into a new family plan). */
-function isMarried(world: World, e: Entity): boolean {
+/** Married to a living spouse — narrower than the family rule's {@link isMarried}, which also counts
+ *  a widow raising a minor: a widow IS orderable into a new family plan. */
+function hasLivingSpouse(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);
   return marriage !== undefined && world.isAlive(marriage.spouse);
 }

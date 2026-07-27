@@ -17,10 +17,6 @@ import { canonicalById } from '../spatial.js';
 // strategic decisions (user rule: no HQ → the AI stays off).
 export { HEADQUARTERS_BUILDING_ID };
 
-/** The barracks content id — the anchor of the recruit phase (`workforce/recruits.ts`) and the army
- *  ramp's build-order milestone (`build-order/progress.ts`). */
-export const BARRACKS_BUILDING_ID = 'barracks';
-
 /**
  * Ticks between one seat's decision passes — 2 s at the 12 ticks/s base clock. A genre-convention
  * approximation (Widelands/KaM/Petra re-evaluate strategy on seconds-scale timers, not per tick);

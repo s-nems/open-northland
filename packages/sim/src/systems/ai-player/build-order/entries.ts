@@ -54,19 +54,15 @@ export type BuildOrderEntry =
  * (sewery, joinery, smithy) are built directly at their level-2 tier with no level-0 intermediate
  * (user decision 2026-07-18; source-backed — the extracted `jobEnablesHouse` rows enable the `_01`
  * tiers as separately placeable house types, each charging its own non-cumulative construction
- * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is
- * hired only when the list reaches it. The tail
- * is material-ordered: the pottery/mason upgrades unlock tile and ornament, which the level-4/5
- * home upgrades then consume; the barracks faces the map centre; the bakery upgrade
- * gains a second baker (`STAFFING_BY_BUILDING_ID`).
+ * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is hired
+ * only when the list reaches it, and the order is material-ordered throughout: the pottery/mason
+ * upgrades unlock the tile and ornament the home upgrades then consume.
  *
  * The late-game tail (user plan 2026-07-25, revised 2026-07-26) opens with the perpetual
- * tower-coverage entry, then doubles the food/tool economy directly at the level-2 tiers (the same
- * `jobEnablesHouse` evidence as above covers `work_bakery_01`, `work_armory_01`, `work_smithy_01`,
- * `tower_01`, `stock_02` — and `home_level_04`, whose own bill is two ornaments). The fourth home
- * onward is therefore placed straight at the top tier ("level 5" is the player label of
- * `home_level_04`) rather than grown; only the opening three walk the upgrade chain. It ends with
- * two warehouses on the outskirts, spread apart (`apart`) because a warehouse is a goods-collection
+ * tower-coverage entry, then doubles the food/tool economy at the level-2 tiers on the same
+ * `jobEnablesHouse` evidence (which also covers `home_level_04`, the player's "level 5" home, whose
+ * own bill is two ornaments — so the fourth home onward is placed at the top tier rather than
+ * grown). It ends with two outskirts warehouses spread `apart`, a warehouse being a goods-collection
  * point like the HQ. The tower entry interleaves by design: a warehouse landing uncovered re-arms
  * it, a tower goes up, the list resumes.
  */
