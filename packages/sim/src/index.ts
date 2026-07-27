@@ -72,6 +72,9 @@ export {
 } from './replay/rebase-content.js';
 export { type ReplayOptions, type RunReplay, replay, stepReplaying } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
+// The idle-adult job key of the HUD population tally, exported top-level rather than through the
+// `systems` namespace: it is a façade read view, not a system.
+export { IDLE_JOB } from './simulation/hud.js';
 export { type FogView, type SimOptions, Simulation, type SystemInstrument } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence

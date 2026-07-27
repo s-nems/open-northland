@@ -1,14 +1,12 @@
-// Pure **read views** over `content` (plus, in hud.ts, world state) — derived classifications and
-// projections that add no behavior of their own (nothing produced/consumed/moved; "source-basis n/a").
-// Two species live here:
-//  - ./hud.ts is the one TERMINAL projection: HUD/renderer/test surface that no sim system reads.
-//  - the rest are content-derived RULE TABLES (weapon classes, animal behaviour, ship/job/layer
-//    classification, animation records) that systems DO consult for game decisions — that is fine
-//    (content is immutable input, so reading it can't feed state back), but they are projections,
-//    not mechanics: each is a pure function of content, memoizable and testable in isolation.
+// Pure **read views** over `content`: content-derived RULE TABLES (weapon classes, animal behaviour,
+// ship/job/layer classification, animation records) that systems DO consult for game decisions. That is
+// fine (content is immutable input, so reading it can't feed state back), but they are projections, not
+// mechanics: each is a pure function of content, memoizable and testable in isolation, adding no behavior
+// of its own (nothing produced/consumed/moved; "source-basis n/a").
 //
 // Split by concern into sibling modules:
-//  - ./hud.ts      — the HUD/goods-graph/housing/population projections over world state + content.
+//  - ./equip-pick.ts: the one member that is not a content table. It reads world + terrain and is the
+//                    façade's pick-menu seam (`Simulation.equipPickList`), consulted by no system.
 //  - ./buildings.ts — the data-defined temple (pray-need satisfier) and barracks (drill house)
 //                    classifications.
 //  - ./food.ts     — the data-defined edible-good (eat-slot) classification and the dish→edible
@@ -71,14 +69,6 @@ export {
 } from './combat.js';
 export { type EquipPickEntry, equipPickList } from './equip-pick.js';
 export { exportedGoodForm, isFood } from './food.js';
-export {
-  goodsGraph,
-  housingCapacity,
-  IDLE_JOB,
-  tribePopulation,
-  tribePopulationByJob,
-  tribeStocks,
-} from './hud.js';
 export {
   baseSoldierJobType,
   isFighterJob,

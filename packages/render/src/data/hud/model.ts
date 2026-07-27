@@ -1,5 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
-import { systems } from '@open-northland/sim';
+import { IDLE_JOB as SIM_IDLE_JOB, type WorldSnapshot } from '@open-northland/sim';
 import { readStockpileAmounts } from '../snapshot/index.js';
 
 /**
@@ -14,7 +13,7 @@ import { readStockpileAmounts } from '../snapshot/index.js';
 
 /** The HUD job-key for an idle, job-seeking adult — the sim's own sentinel, re-exported so a consumer
  *  reading {@link JobCount.jobType} can name it without importing sim. */
-export const IDLE_JOB = systems.IDLE_JOB;
+export const IDLE_JOB = SIM_IDLE_JOB;
 
 /** A single per-job tally row of the HUD: a `jobType` id (or {@link IDLE_JOB}) and its head-count. */
 export interface JobCount {

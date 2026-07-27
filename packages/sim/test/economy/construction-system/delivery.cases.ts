@@ -11,7 +11,8 @@ import {
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
-import { aiSystem, housingCapacity } from '../../../src/systems/index.js';
+import { housingCapacity } from '../../../src/simulation/hud.js';
+import { aiSystem } from '../../../src/systems/index.js';
 
 import {
   builderAt,
