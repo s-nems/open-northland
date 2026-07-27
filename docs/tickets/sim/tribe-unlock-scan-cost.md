@@ -15,5 +15,5 @@ Scope: make the gate O(1) per probe without changing its semantics (an empty edg
 job) alive tally. A memo answers stale within the tick a gating settler dies; that window must be
 deterministic and documented.
 
-Verify: unit tests for the bounded gate (including the same-tick death window), and
-`npm run bench:sim` on a populated map with hundreds of animals before/after.
+Verify: unit tests for the bounded gate (including the same-tick death window), and `npm run bench:map`
+before/after, which is the run that has the wildlife the premise rests on.

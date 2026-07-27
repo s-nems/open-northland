@@ -1,10 +1,14 @@
-# Give the sim benchmark independent population, map, and scenery axes
+# Give the synthetic benchmark independent population, map, and scenery axes
 
 **Area:** sim tooling · **Priority:** P3
 
 `packages/app/bench/world.ts` grows map area with settlement count and spawns settlers/fighters but no
-resources, berry bushes, or crops. It cannot distinguish population scaling from map-area scaling and
-hides whole-world scans that are cheap only because the benchmark omits most real-map entities.
+resources, berry bushes, or crops. It cannot distinguish population scaling from map-area scaling, so
+`npm run bench:sim` reports a single blended curve.
+
+`npm run bench:map` now covers the other half of the old premise: a real decoded map with its scenery
+and resource nodes is measured directly, so the synthetic world no longer has to approximate one. What
+it still cannot give is axis isolation, which is the reason to keep a synthetic world at all.
 
 ## Scope
 

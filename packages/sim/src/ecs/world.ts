@@ -91,11 +91,11 @@ export class World {
    *  freshness key. Unlike "is the touched log empty" it cannot be falsified by another consumer draining
    *  the log between two same-tick snapshots. */
   private mutations = 0;
-  /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less soak run) —
+  /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less headless run) —
    *  the next {@link drainTouched} reports it so the consumer discards its whole cache. */
   private touchedOverflow = false;
   /** Touched-log size past which it is dropped wholesale rather than grown forever — only reachable
-   *  when nothing snapshots (headless soaks); one full cache rebuild is the entire cost. */
+   *  when nothing snapshots (a headless benchmark); one full cache rebuild is the entire cost. */
   private static readonly TOUCHED_OVERFLOW_LIMIT = 65536;
 
   create(): Entity {
@@ -205,7 +205,7 @@ export class World {
   private logTouched(entity: Entity): void {
     this.mutations++;
     if (this.touched.size >= World.TOUCHED_OVERFLOW_LIMIT) {
-      // A snapshot-less soak: drop the log instead of leaking it; the next drain rebuilds the cache.
+      // A snapshot-less headless run: drop the log instead of leaking it; the next drain rebuilds the cache.
       this.touched.clear();
       this.touchedOverflow = true;
     }

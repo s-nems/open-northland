@@ -17,5 +17,6 @@ store/workplace candidate acceptance as the dominant planner work, but the curre
 
 ## Verify
 
-Report before/after ratios and show cost growing no faster than the active-work axis. Goldens and atomic
-traces remain byte-identical; run `npm test`, `npm run check`, and `npm run build`.
+Report before/after ratios and show cost growing no faster than the active-work axis. `npm run bench:map`
+reports that ratio directly in its growth table; `npm run bench:compare` puts two runs side by side.
+Goldens and atomic traces remain byte-identical; run `npm test`, `npm run check`, and `npm run build`.

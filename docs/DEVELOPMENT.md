@@ -77,12 +77,15 @@ Useful options are `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, an
 Screenshots still need human review.
 
 Run the synthetic simulation benchmark with `npm run bench:sim`. Its main controls are
-`ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, and
-`ON_BENCH_JSON`.
+`ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
+and `ON_BENCH_JSON`.
 
-The real-content long runs are `npm run soak:gatherers`, `npm run soak:bakery`, and
-`npm run soak:late-goods`. They are diagnostic tools, not CI gates. Gatherer controls include
-`ON_SOAK_TICKS`, `ON_SOAK_MAP`, `ON_SOAK_SAMPLE_EVERY`, and `ON_SOAK_STALL_TICKS`.
+Run the real-map benchmark with `npm run bench:map`. It needs generated content and its controls are
+`ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, and
+`ON_BENCH_JSON`. `ON_CONTENT_DIR` points it at a content directory outside the checkout. The default
+run is 20k ticks; `ON_BENCH_TICKS=50000` covers a full AI build-out.
+
+Compare two saved reports with `npm run bench:compare -- before.json after.json`.
 
 ## Desktop packaging
 

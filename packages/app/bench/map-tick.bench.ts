@@ -22,7 +22,7 @@ import { assessTrust, type BenchWindow, formatReport, summarize } from './report
  */
 
 const DEFAULT_MAP_ID = 'magiczny_las';
-/** Every seat under AI, matching the `?ai=0,1,2,3,4,5` session the soaks and scenarios also use. */
+/** Every seat under AI, matching the `?ai=0,1,2,3,4,5` session the real-content scenarios also use. */
 const DEFAULT_AI_SEATS = 6;
 /** Far enough in for the AI to leave its opening build order and start straining the systems that
  *  scale with settlement size. `ON_BENCH_TICKS=50000` covers a full build-out. */
