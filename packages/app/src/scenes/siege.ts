@@ -2,12 +2,9 @@ import { BUILDING_KIND } from '@open-northland/data';
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_ARCHER, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
-  JOB_ARCHER,
-  JOB_SOLDIER_BROADSWORD,
-  JOB_SOLDIER_SPEAR,
-  JOB_SOLDIER_SWORD,
   placeBuiltSandboxBuilding,
   spawnSandboxSettler,
   WEAPON_BROADSWORD,

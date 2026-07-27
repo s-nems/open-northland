@@ -8,8 +8,8 @@ import {
   type Simulation,
 } from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../../catalog/buildings.js';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../../../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
-import { JOB_CARRIER, JOB_COLLECTOR } from '../ids/index.js';
 import { workerRoleOf } from '../worker-roles.js';
 import { gatherMasteryExperience } from './mastery.js';
 

@@ -2,12 +2,13 @@ import type { TerrainMapFile } from '@open-northland/data';
 import { components, halfCellMapFromCells, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
-import { GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
+import { GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
 import { mapResourceObjectNames } from '../src/game/sandbox/map-spawn.js';
 import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
 

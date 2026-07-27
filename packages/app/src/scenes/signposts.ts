@@ -1,14 +1,9 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, fx } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_COLLECTOR, JOB_SCOUT } from '../catalog/jobs.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
-import {
-  GATHERERS,
-  JOB_COLLECTOR,
-  JOB_SCOUT,
-  placeResourceNode,
-  spawnSettlerDirect,
-} from '../game/sandbox/index.js';
+import { GATHERERS, placeResourceNode, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**

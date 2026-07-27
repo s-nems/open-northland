@@ -1,9 +1,10 @@
 import { halfCellMapFromCells, Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
-import { GOOD_MUD, GOOD_STONE, GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
+import { GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
 import { resourceCommand } from '../src/game/sandbox/place/index.js';
 
 const MIN_HARVEST_TICKS = 20 * TICKS_PER_SECOND;

@@ -1,5 +1,6 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { MENU_UISCALES } from '../src/entries/menu/settings.js';
 import {
   BUILDING_FARM,
@@ -9,8 +10,6 @@ import {
   GOOD_SHOES,
   GOOD_STONE,
   GOOD_TOOL_WOODEN,
-  JOB_COLLECTOR,
-  JOB_SOLDIER,
 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import {

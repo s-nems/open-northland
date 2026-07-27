@@ -1,6 +1,7 @@
 import type { Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, ONE } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_BUILDER, JOB_CARRIER } from '../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_BAKERY,
@@ -8,8 +9,6 @@ import {
   BUILDING_WAREHOUSE_00,
   GOOD_STONE,
   GOOD_WOOD,
-  JOB_BUILDER,
-  JOB_CARRIER,
   placeSandboxBuilding,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';

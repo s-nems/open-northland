@@ -1,13 +1,12 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components, ONE } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_BUILDER, JOB_COLLECTOR } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   buildingDef,
-  JOB_BUILDER,
-  JOB_COLLECTOR,
   placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSandboxSettler,

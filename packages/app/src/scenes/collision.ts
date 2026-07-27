@@ -1,13 +1,13 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components, fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
   JOB_CARRIER,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
-} from '../game/sandbox/index.js';
+} from '../catalog/jobs.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 

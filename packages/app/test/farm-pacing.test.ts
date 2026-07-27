@@ -2,11 +2,11 @@ import { components, type Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { FARM_MAX_FIELDS } from '../src/catalog/farming.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   BUILDING_FARM,
   BUILDING_WAREHOUSE_00,
   GOOD_WHEAT,
-  JOB_COLLECTOR,
   placeSandboxBuilding,
   spawnSandboxSettler,
   spawnWorkersAtDoor,

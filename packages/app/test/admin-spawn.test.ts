@@ -2,21 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {
-  CLAY_MINE_STRIKES_PER_UNIT,
-  HARD_MINE_STRIKES_PER_UNIT,
-  STONE_DEPOSIT_UNITS,
-} from '../src/catalog/mining.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
-import {
-  GOOD_BOW_LONG,
-  GOOD_BOW_SHORT,
-  GOOD_MUD,
-  GOOD_SPEAR_IRON,
-  GOOD_SPEAR_WOODEN,
-  GOOD_STONE,
-  GOOD_SWORD_LONG,
-  GOOD_SWORD_SHORT,
-  GOOD_WOOD,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_COLLECTOR,
@@ -32,6 +17,23 @@ import {
   JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+} from '../src/catalog/jobs.js';
+import {
+  CLAY_MINE_STRIKES_PER_UNIT,
+  HARD_MINE_STRIKES_PER_UNIT,
+  STONE_DEPOSIT_UNITS,
+} from '../src/catalog/mining.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
+import {
+  GOOD_BOW_LONG,
+  GOOD_BOW_SHORT,
+  GOOD_MUD,
+  GOOD_SPEAR_IRON,
+  GOOD_SPEAR_WOODEN,
+  GOOD_STONE,
+  GOOD_SWORD_LONG,
+  GOOD_SWORD_SHORT,
+  GOOD_WOOD,
   WEAPON_FISTS,
   WEAPON_SWORD,
   weaponEquipmentFor,

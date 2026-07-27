@@ -1,6 +1,7 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
+import { rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
 import {
   assignmentPriority,
   assignmentPriorityFor,

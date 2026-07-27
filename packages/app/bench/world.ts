@@ -1,11 +1,13 @@
 import type { CellTerrainMap, Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../src/catalog/buildings.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   JOB_ARCHER,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+} from '../src/catalog/jobs.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER } from '../src/game/rules.js';
+import {
   spawnSandboxSettler,
   WEAPON_BROADSWORD,
   WEAPON_SHORT_BOW,

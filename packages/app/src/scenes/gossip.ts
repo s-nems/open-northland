@@ -1,12 +1,9 @@
 import type { Entity, Fixed, Simulation } from '@open-northland/sim';
 import { components, fx, ONE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_CIVILIST, JOB_COLLECTOR, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../catalog/jobs.js';
 import {
   GATHERERS,
-  JOB_CIVILIST,
-  JOB_COLLECTOR,
-  JOB_SOLDIER_UNARMED,
-  JOB_WOMAN,
   placeResourceNode,
   placeSandboxBerryBush,
   spawnSettlerDirect,

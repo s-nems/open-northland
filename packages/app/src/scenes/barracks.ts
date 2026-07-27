@@ -1,11 +1,10 @@
 import { components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_CIVILIST, JOB_SOLDIER } from '../catalog/jobs.js';
 import { jobUnlockedFor } from '../game/profession-unlocks.js';
 import {
   BUILDING_BARRACKS,
   BUILDING_HEADQUARTERS,
-  JOB_CIVILIST,
-  JOB_SOLDIER,
   placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSettlerDirect,

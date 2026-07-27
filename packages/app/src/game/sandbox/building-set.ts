@@ -2,6 +2,7 @@ import { type BuildingFootprint, DEFAULT_RECIPE_TICKS } from '@open-northland/da
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
+import { JOB_COLLECTOR } from '../../catalog/jobs.js';
 import { buildingConstructionCost, buildingHitpoints, buildingUpgradeTarget } from './construction.js';
 import type { SandboxContentExtras } from './content/types.js';
 import {
@@ -29,7 +30,6 @@ import {
   GOOD_WATER,
   GOOD_WHEAT,
   GOOD_WOOD,
-  JOB_COLLECTOR,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 

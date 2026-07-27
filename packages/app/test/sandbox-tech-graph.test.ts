@@ -1,11 +1,10 @@
 import { components, type Entity, halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
+import { JOB_CARRIER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
-  JOB_CARRIER,
-  JOB_COLLECTOR,
   placeSandboxBuilding,
   sandboxContent,
   spawnIdleSettler,

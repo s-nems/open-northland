@@ -6,6 +6,7 @@ import {
   MUSHROOM_HARVEST_ATOMIC,
   STONE_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
+import { JOB_COLLECTOR } from '../../../../catalog/jobs.js';
 import {
   CLAY_DEPOSIT_UNITS,
   CLAY_MINE_STRIKES_PER_UNIT,
@@ -16,7 +17,6 @@ import {
   STONE_DEPOSIT_UNITS,
 } from '../../../../catalog/mining.js';
 import { GOOD_GOLD, GOOD_IRON, GOOD_MUD, GOOD_MUSHROOM, GOOD_STONE, GOOD_WOOD } from './goods.js';
-import { JOB_COLLECTOR } from './jobs.js';
 
 /** How a good leaves the landscape: chop a tree down, dig a finite deposit, or pluck a small node. */
 export type GatherMode = 'fell' | 'mine' | 'pick';

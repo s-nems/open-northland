@@ -15,22 +15,21 @@ import {
   TALK_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
-import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
-import { PRIMARY_TRIBE } from '../../../rules.js';
 import {
-  GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_CIVILIST,
-  JOB_FARMER_SLOT,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
-} from '../../ids/index.js';
+} from '../../../../catalog/jobs.js';
+import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
+import { PRIMARY_TRIBE } from '../../../rules.js';
+import { GATHERERS, JOB_FARMER_SLOT } from '../../ids/index.js';
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,

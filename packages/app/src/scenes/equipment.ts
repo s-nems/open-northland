@@ -1,11 +1,10 @@
 import type { Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, type Entity } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
-  JOB_COLLECTOR,
-  JOB_SOLDIER_SWORD,
   placeSandboxBuilding,
   spawnSandboxSettler,
   WEAPON_SWORD,

@@ -1,7 +1,8 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_CIVILIST, JOB_WOMAN, placeSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
+import { JOB_CIVILIST, JOB_WOMAN } from '../catalog/jobs.js';
+import { placeSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**

@@ -1,6 +1,7 @@
 import type { Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { JOB_COLLECTOR } from '../catalog/jobs.js';
 import {
   BUILDING_BAKERY,
   BUILDING_FARM,
@@ -10,7 +11,6 @@ import {
   GOOD_BREAD,
   GOOD_FLOUR,
   GOOD_WATER,
-  JOB_COLLECTOR,
   placeSandboxBuilding,
   spawnSandboxSettler,
   spawnWorkersAtDoor,

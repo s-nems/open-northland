@@ -2,10 +2,10 @@ import { indexById } from '@open-northland/data';
 import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { resolveVikingBuilding } from '../src/catalog/buildings.js';
+import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import {
   assignmentPriority,
-  JOB_COLLECTOR,
   placeSandboxBuilding,
   spawnSandboxSettler,
   workerRoleOf,

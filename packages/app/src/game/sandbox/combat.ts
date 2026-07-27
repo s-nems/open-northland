@@ -1,14 +1,16 @@
 import type { EquipClass } from '@open-northland/data';
-import { PRIMARY_TRIBE } from '../rules.js';
-import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
 import {
-  EQUIP_GOODS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+} from '../../catalog/jobs.js';
+import { PRIMARY_TRIBE } from '../rules.js';
+import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
+import {
+  EQUIP_GOODS,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
   WEAPON_LONG_BOW,

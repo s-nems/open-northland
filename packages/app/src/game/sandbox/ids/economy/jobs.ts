@@ -1,3 +1,4 @@
+/** The sandbox's own derived job ids: the rebased worker-slot band and its classification. */
 import {
   JOB_CARRIER,
   JOB_COLLECTOR,
@@ -6,13 +7,6 @@ import {
   JOB_HUNTER,
   JOB_MILLER,
 } from '../../../../catalog/jobs.js';
-
-/**
- * The sandbox's own derived job ids — the rebased worker-slot band and its classification. The
- * `jobtypes.ini` id space itself is the shared catalog vocabulary (`catalog/jobs.ts`), re-exported through
- * this barrel so the sandbox id space stays the single import surface scenes and views already use.
- */
-export * from '../../../../catalog/jobs.js';
 
 /**
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own

@@ -1,5 +1,6 @@
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { JOB_BABY_MALE, JOB_CHILD_MALE, JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_FARM,
@@ -18,10 +19,6 @@ import {
   GOOD_TOOL_WOODEN,
   GOOD_WHEAT,
   GOOD_WOOD,
-  JOB_BABY_MALE,
-  JOB_CHILD_MALE,
-  JOB_COLLECTOR,
-  JOB_SOLDIER,
 } from '../src/game/sandbox/ids/index.js';
 import { num } from '../src/game/snapshot.js';
 import {
