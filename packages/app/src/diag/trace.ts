@@ -9,9 +9,7 @@
  * `{traceEvents: [...]}` (source basis: the Trace Event format as documented by Perfetto,
  * https://perfetto.dev/docs/getting-started/other-formats).
  */
-import type { Simulation } from '@open-northland/sim';
 import { downloadJsonFile } from './download.js';
-import { installSimInstrument } from './perf-marks.js';
 
 /** The `?debug=` value that turns trace recording on (read at game mount). */
 export const TRACE_DEBUG_FLAG = 'trace';
@@ -85,11 +83,6 @@ export function recordTraceEvent(name: string, startMs: number, endMs: number): 
 /** Retained events (oldest first), or `null` while recording is off — the bundle's optional field. */
 export function recordedTraceEvents(): TraceEvent[] | null {
   return active?.list() ?? null;
-}
-
-/** Hook the sim's per-system seam so every system invocation becomes a `sim/<name>` slice. */
-export function installSimTrace(sim: Simulation): void {
-  installSimInstrument(sim, recordTraceEvent);
 }
 
 /** Serialize the recording as a Perfetto/DevTools-loadable Trace Event JSON file body. */

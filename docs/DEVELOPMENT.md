@@ -63,7 +63,18 @@ Debug modes:
 
 - `debug=diag` records replay and state-hash diagnostics;
 - `debug=perf` adds browser performance marks;
-- `debug=trace` records a trace that can be exported for offline profiling.
+- `debug=trace` records a trace that can be exported for offline profiling;
+- `debug=profile` accumulates per-system sim cost for the whole session.
+
+Flags combine: `?debug=profile,trace` runs both.
+
+A running game exposes `window.__opennorthland`. Besides the live `sim`, `renderer`, `sheet` and
+`cameraCtl`, it answers `perf()` with one JSON-serialisable performance report, so an automated probe
+reads numbers instead of screenshotting the on-canvas readout. `resetPerf()` opens a fresh measurement
+window, and `setSpeed()` / `setPaused()` put the session into a state worth measuring: `setSpeed(1)`
+gives a baseline the per-frame step cap cannot distort, and pausing isolates the render half of a
+frame. Read `sampling.hidden` before trusting any timing: a background tab throttles its frame loop
+and every millisecond becomes fiction.
 
 ## Screenshots and performance
 

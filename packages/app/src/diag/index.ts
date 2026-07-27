@@ -8,8 +8,17 @@ export {
   serializeDiagnosticsBundle,
 } from './bundle.js';
 export { installCrashCapture } from './crash.js';
+export { debugFlags, hasDebugFlag, setDebugFlag } from './debug-flags.js';
 export { downloadJsonFile } from './download.js';
 export { logBootHeader } from './env-header.js';
+export {
+  type FrameDistribution,
+  type FrameEma,
+  type FrameSample,
+  FrameStats,
+  type FrameStatsReport,
+} from './frame-stats.js';
+export { framePhaseEmitter, installSessionInstruments, type PhaseEmitter } from './instruments.js';
 export {
   type ConsoleSink,
   type DiagEntry,
@@ -18,12 +27,7 @@ export {
   type DiagLogOptions,
   diag,
 } from './log.js';
-export {
-  emitPerfMeasure,
-  installSimInstrument,
-  installSimPerfMarks,
-  PERF_MARKS_DEBUG_FLAG,
-} from './perf-marks.js';
+export { emitPerfMeasure, PERF_MARKS_DEBUG_FLAG } from './perf-marks.js';
 export {
   currentDiagGameSession,
   type DiagGameSession,
@@ -33,9 +37,9 @@ export {
   recordDiagHash,
   setDiagGameSession,
 } from './session.js';
+export { PROFILE_DEBUG_FLAG, SystemProfile, type SystemProfileRow } from './system-profile.js';
 export {
   downloadTraceFile,
-  installSimTrace,
   isTraceRecording,
   recordedTraceEvents,
   recordTraceEvent,

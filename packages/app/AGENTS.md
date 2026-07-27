@@ -41,7 +41,15 @@ Use `src/diag/` instead of ad hoc logging:
 - `diag.warn(channel, message, data?)` writes to the bounded diagnostic ring;
 - `debug=diag` records state-hash diagnostics;
 - `debug=perf` emits browser performance measures;
-- `debug=trace` records an exportable trace.
+- `debug=trace` records an exportable trace;
+- `debug=profile` accumulates per-system sim cost in constant memory.
+
+`?debug=` is a comma-separated set. The sim exposes one instrument slot, so every consumer of it is
+fanned out from `installSessionInstruments`; do not call `setInstrument` a second time.
+
+`window.__opennorthland.perf()` is the machine-readable performance seam an automated probe reads
+instead of the on-canvas overlay. Keep it JSON-serialisable: it is returned through `page.evaluate`,
+which throws on anything that does not survive structured cloning.
 
 Do not add raw `console.*` calls to app source. A diagnostic report must remain bounded and safe to
 serialize. Replays rebuild the named entry/world, discard setup enqueues already represented by that
