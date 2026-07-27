@@ -1,5 +1,12 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import { Position, Settler, Stockpile, UnderConstruction } from '../../components/index.js';
+import {
+  ownerOf,
+  Position,
+  Settler,
+  Stockpile,
+  sameSideAs,
+  UnderConstruction,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -19,14 +26,16 @@ export interface EquipPickEntry {
  * Rows keep the content `goods` order; a good with no reachable unit is omitted (the menu shows what
  * IS available, per the feature spec).
  *
- * Mirrors the equip errand's source predicate (`nearestStoreHolding`): a positioned stockpile that is
- * not a construction site. Two named approximations against the errand's exact walk: the confinement
- * gate tests the store's own node (not its interaction cell), and the buried-under-a-building filter
- * is skipped - a menu row may thus rarely name a unit the fetch then fails to reach, which the errand
- * already survives (it returns empty-handed).
+ * Mirrors the equip errand's source predicate (`nearestStoreHolding`): a positioned stockpile on the
+ * settler's own side that is not a construction site. Two named approximations against the errand's
+ * exact walk: the confinement gate tests the store's own node (not its interaction cell), and the
+ * buried-under-a-building filter is skipped - a menu row may thus rarely name a unit the fetch then
+ * fails to reach, which the errand already survives (it returns empty-handed).
  *
  * A fighter's tool menu is empty: `equipGood` refuses a tool on a soldier/hero (orders/equipment.ts),
- * so the menu must not offer what no click can wear.
+ * so the menu must not offer what no click can wear. The manual's other bearer rules are NOT enforced
+ * yet (p. 17-18: potions for everyone "excepting women and heroes", amulets for men but not heroes) -
+ * out of scope for this phase, so the menu currently offers a misc slot to every settler.
  */
 export function equipPickList(
   world: World,
@@ -42,8 +51,10 @@ export function equipPickList(
   }
   if (available.size === 0) return [];
   const limit = terrain === undefined ? null : navigationLimitFor(world, terrain, entity);
+  const onSide = sameSideAs(world, ownerOf(world, entity)); // never count a rival's stock (the errand won't fetch it)
   for (const store of world.query(Stockpile, Position)) {
     if (world.has(store, UnderConstruction)) continue; // a site is a sink, never a source
+    if (!onSide(store)) continue;
     if (limit !== null && terrain !== undefined) {
       const p = world.get(store, Position);
       const n = nodeOfPosition(p.x, p.y);

@@ -52,6 +52,11 @@ export const EquipClass = z
   // free consumable is always a content mistake, so the schema refuses the shape.
   .refine((e) => !e.wears || e.uses !== undefined, {
     message: 'a wearing equip good must rate its uses',
+  })
+  // The same hole from the other side: a good that restores a need but does not wear is a bottomless
+  // bottle (every sip free, and its bearer unkillable through the healing draught's death save).
+  .refine((e) => e.restorePct === undefined || e.wears, {
+    message: 'a restoring equip good must wear down',
   });
 export type EquipClass = z.infer<typeof EquipClass>;
 

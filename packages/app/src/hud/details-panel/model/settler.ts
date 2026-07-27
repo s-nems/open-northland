@@ -1,16 +1,16 @@
-import { components, fx, systems } from '@open-northland/sim';
+import { fx, systems } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { type PanelBar, pct, pctRatio, remainingPct } from './bars.js';
+import { type PanelBar, pct, pctRatio } from './bars.js';
 import {
   type Comp,
-  goodDef,
   goodLabel,
   type JobExperienceDef,
   jobDisplayName,
   type UnitPanelModelContext,
 } from './context.js';
+import type { EquipRow } from './settler-equipment.js';
 import type { UnlockProgressRowModel } from './settler-unlocks.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
@@ -25,29 +25,6 @@ import type { SettlerWorkModel } from './settler-work.js';
  * (section titles, button labels) is looked up from the decoded string tables at render time.
  */
 
-/**
- * The `humanwindow` string ids the settler panel resolves at draw time — the decoded original section
- * titles and equipment-slot labels (`content/gui/strings/<lang>.json`, decoded from the original
- * `ingamegui` tables). Fidelity: everything the original does provide is looked up; the pinned Polish
- * fallbacks the model rows carry only cover a checkout without `content/`. One deliberate exception:
- * the Ogólne stat bars pin their own labels instead of the decoded 11–15 strings — see
- * {@link satisfactionBars}. Named per the no-magic-numbers rule so a slot/label id reads by meaning,
- * not a bare number.
- */
-export const HUMANWINDOW = {
-  general: 1, // 'Ogólne'
-  work: 3, // 'Praca'
-  equip: 4, // 'Ekwipunek'
-  experience: 5, // 'Doświadczenie'
-  assignHome: 28, // 'Przydziel Dom'
-  assignWork: 31, // 'Przydziel Miejsce Pracy'
-  weapon: 60, // 'Broń'
-  armor: 63, // 'Zbroja'
-  boots: 66, // 'Buty'
-  tools: 69, // 'Narzędzia'
-  misc: 72, // 'Ekwipunek'
-} as const;
-
 /** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
 export function stanceLabel(mode: number | undefined): string {
   const hud = messages().hud;
@@ -56,38 +33,6 @@ export function stanceLabel(mode: number | undefined): string {
   if (mode === systems.MILITARY_MODE.IGNORE) return hud.ignore;
   if (mode === systems.MILITARY_MODE.FLEE) return hud.flee;
   return '-';
-}
-
-/** The equipment slot groups the sim `Equipment` component carries - the row identity and the slot
- *  address an equip/swap/take-off order names (`misc` rows address their slot by index). */
-export type EquipGroup = 'boots' | 'tool' | 'weapon' | 'armor' | 'misc';
-
-/** One equipment slot's contents. Empty (`occupied` false, `conditionPct` null) for an unworn slot. */
-export interface EquipSlotModel {
-  /** Whether the slot holds a good - true even when the good's def failed to resolve (no icon/label),
-   *  so the action buttons still read the slot as worn. */
-  readonly occupied: boolean;
-  /** The worn good's string id (the icon key) — undefined when the slot is empty. */
-  readonly goodId?: string;
-  /** The worn good's display name (the action buttons' tooltip line) - undefined when empty. */
-  readonly label?: string;
-  /** How much of an occupied wearing item is LEFT, as a percent (a fresh item reads 100 and drains
-   *  with use - the inverse of the sim's rising `degreeOfUse`; user rule 2026-07-23). Null when the
-   *  slot is empty or holds a permanent good (weapon/armour/amulet). */
-  readonly conditionPct: number | null;
-}
-
-/**
- * One labeled equipment row — the original's `Buty`/`Narzędzia`/`Broń`/`Zbroja`/`Ekwipunek` lines, each
- * a `humanwindow` label id (+ pinned fallback) and its slot(s). Single-slot rows (boots/tool/weapon/
- * armour) carry one; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}.
- */
-export interface EquipRow {
-  readonly titleId: number;
-  readonly fallback: string;
-  /** Which sim `Equipment` field this row shows - the slot address its action buttons order against. */
-  readonly group: EquipGroup;
-  readonly slots: readonly EquipSlotModel[];
 }
 
 export interface SettlerPanelModel {
@@ -125,89 +70,6 @@ export interface SettlerPanelModel {
   readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
   /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. See {@link equipmentRows}. */
   readonly equipmentRows: readonly EquipRow[];
-}
-
-/** A cloned `Equipment` slot as it appears in the snapshot (`{ degreeOfUse, goodType }`) — or empty. */
-type RawEquipSlot = { readonly goodType?: unknown; readonly degreeOfUse?: unknown } | null | undefined;
-
-/** The `Equipment` component as the snapshot serializes it (slots + the misc array). */
-interface RawEquipment {
-  readonly boots?: RawEquipSlot;
-  readonly tool?: RawEquipSlot;
-  readonly weapon?: RawEquipSlot;
-  readonly armor?: RawEquipSlot;
-  readonly misc?: unknown;
-}
-
-/** One equipment slot → its panel model. Empty when unworn/unresolved; an occupied wearing good
- *  (potion/shoes/tool) carries its remaining-condition percent, a permanent good (weapon/armour/
- *  amulet, `equip.wears` false) none. */
-function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotModel {
-  if (slot == null) return { occupied: false, conditionPct: null };
-  const goodType = num(slot.goodType);
-  if (goodType === undefined) return { occupied: false, conditionPct: null };
-  const def = goodDef(ctx, goodType);
-  const wears = def?.equip?.wears ?? false;
-  return {
-    occupied: true,
-    conditionPct: wears ? remainingPct(num(slot.degreeOfUse)) : null,
-    ...(def?.id !== undefined ? { goodId: def.id } : {}),
-    label: goodLabel(ctx, goodType),
-  };
-}
-
-/**
- * The settler's equipment as labeled rows: Broń + Zbroja for a fighter, then Buty, Narzędzia for a
- * civilian, and the misc Ekwipunek row (its {@link components.MISC_EQUIP_SLOTS} consumable slots) -
- * combat gear first (user order 2026-07-23). Reads the sim `Equipment` component; a settler without one
- * shows every base slot empty.
- *
- * Which rows a trade offers follows the JOB, so changing profession swaps the arms rows for the tool row
- * and back: Broń/Zbroja are the original's soldier-only equip slots (`tribetypes` `allowequip`), and a
- * fighter keeps no tool (the sim's rule - `shedToolOnEnlist`). Two escapes keep worn gear reachable
- * rather than stranded: a unit the job would not offer still shows its row while it is worn (so it can
- * be taken off), and an armed non-fighter (a hunter/scout carrying a combat `Weapon`) keeps its arms
- * rows.
- */
-export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
-  const slots = messages().hud.equipmentSlots;
-  const eq = comps.Equipment as RawEquipment | undefined;
-  const s = (comps.Settler ?? {}) as Comp;
-  const rows: EquipRow[] = [];
-  const fighter = systems.isFighterJob(num(s.jobType) ?? null);
-  if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
-    rows.push({
-      titleId: HUMANWINDOW.weapon,
-      fallback: slots.weapon,
-      group: 'weapon',
-      slots: [slotModel(ctx, eq?.weapon)],
-    });
-    rows.push({
-      titleId: HUMANWINDOW.armor,
-      fallback: slots.armor,
-      group: 'armor',
-      slots: [slotModel(ctx, eq?.armor)],
-    });
-  }
-  rows.push({
-    titleId: HUMANWINDOW.boots,
-    fallback: slots.boots,
-    group: 'boots',
-    slots: [slotModel(ctx, eq?.boots)],
-  });
-  if (!fighter || eq?.tool != null) {
-    rows.push({
-      titleId: HUMANWINDOW.tools,
-      fallback: slots.tools,
-      group: 'tool',
-      slots: [slotModel(ctx, eq?.tool)],
-    });
-  }
-  const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
-  const miscSlots: EquipSlotModel[] = [];
-  for (let i = 0; i < components.MISC_EQUIP_SLOTS; i++) miscSlots.push(slotModel(ctx, misc[i] ?? null));
-  rows.push({ titleId: HUMANWINDOW.misc, fallback: slots.misc, group: 'misc', slots: miscSlots });
-  return rows;
 }
 
 /** A need bar's model: its satisfaction level as the gauge percent, the same percent as the hover value. */

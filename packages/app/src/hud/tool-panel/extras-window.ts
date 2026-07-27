@@ -271,20 +271,31 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (!shell.isOpen() || menuLayout === null) return false;
       const hit = hitTestExtrasMenu(menuLayout, x, y);
       if (hit === null) return false;
-      if (hit.kind === 'close') close();
-      else if (hit.kind === 'tab') {
-        tab = hit.tab;
-        rebuild();
-      } else if (hit.kind === 'counter') {
-        state = adjustCounter(state, hit.id, hit.delta);
-        rebuild();
-      } else if (hit.kind === 'grant') {
-        if (deps.grants.set(hit.id, !state.grants[hit.id])) {
-          state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
+      switch (hit.kind) {
+        case 'close':
+          close();
+          break;
+        case 'tab':
+          tab = hit.tab;
           rebuild();
+          break;
+        case 'counter':
+          state = adjustCounter(state, hit.id, hit.delta);
+          rebuild();
+          break;
+        case 'grant':
+          if (deps.grants.set(hit.id, !state.grants[hit.id])) {
+            state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
+            rebuild();
+          }
+          break;
+        case 'window':
+          break; // a click on the window body is consumed, nothing to do
+        default: {
+          const unreachable: never = hit; // exhaustive: a new hit kind fails to compile here
+          return unreachable;
         }
       }
-      // 'window' → consumed, no-op
       return true;
     },
     place,

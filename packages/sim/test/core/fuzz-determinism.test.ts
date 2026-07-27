@@ -136,21 +136,33 @@ const HERD_TRIBES = [10, 11, 12, 13, 14, 15, VIKING, INVALID_TYPE] as const;
 const AXE = 7;
 const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
-// Equip good typeIds (the original's equip set) — the Equipment component stores them verbatim (no
-// content validation), so the fuzz exercises the spawn `equipment` stamp + the pct→Fixed conversion.
-const SHOES_GOOD = 30;
-const MEAD_GOOD = 43;
+// The worn goods some spawn rolls stamp. All three resolve in `fuzzContent()`, so the effects that
+// read the content class - boots speed + walking wear, the tool credit + per-cycle wear, an auto-drunk
+// mead and the healing death save - actually run under the stream instead of short-circuiting on an
+// unknown good.
+const SHOES_GOOD = 8;
+const MEAD_GOOD = 13;
+const HEAL_POTION_GOOD = 16;
 const MAX_USE_PCT = 100;
 /** The fixture's wooden tool - the good a fighter may not wear, worn by some spawn rolls so the
  *  enlist shed (join-the-hands, ground drop, part-used destroy) runs mid-stream. */
 const TOOL_GOOD = 11;
+/** An equip id no fixture good defines: the unknown-good skip path of the order validation. */
+const UNKNOWN_EQUIP_GOOD = 30;
 /** Equip-order slot groups: the five valid categories the `equipGood`/`unequipGood` rolls draw from. */
 const EQUIP_GROUPS = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
 /** Equip-order goods: the fixture's equippables (shoes/sword/fur_boots/wooden tool), a non-equippable
- *  (wood), an id outside the fixture (SHOES_GOOD is the ORIGINAL's 30, unknown here) and a wild invalid
- *  one - the accept + every skip path of the `equipGood` validation, the tool including the
- *  fighter-refusal and the shed-on-enlist branches. */
-const EQUIP_ORDER_GOODS = [8, 9, 10, TOOL_GOOD, RESOURCE_GOOD, SHOES_GOOD, INVALID_TYPE] as const;
+ *  (wood), an id outside the fixture and a wild invalid one - the accept + every skip path of the
+ *  `equipGood` validation, the tool including the fighter-refusal and the shed-on-enlist branches. */
+const EQUIP_ORDER_GOODS = [
+  SHOES_GOOD,
+  9,
+  10,
+  TOOL_GOOD,
+  RESOURCE_GOOD,
+  UNKNOWN_EQUIP_GOOD,
+  INVALID_TYPE,
+] as const;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
@@ -190,7 +202,8 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  // One value past the last explicit case (38), so the default arm (setJob) stays reachable.
+  // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
+  // of silently dropping a command kind from the stream.
   const roll = rng.int(40);
   switch (roll) {
     case 31:
@@ -283,7 +296,10 @@ function nextCommand(rng: Rng): Command {
               equipment: {
                 boots: { goodType: SHOES_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
                 tool: { goodType: TOOL_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
-                misc: [{ goodType: MEAD_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) }, null],
+                misc: [
+                  { goodType: MEAD_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
+                  { goodType: HEAL_POTION_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
+                ],
               },
             }
           : {}),
@@ -513,13 +529,15 @@ function nextCommand(rng: Rng): Command {
         goodType: pick(rng, EQUIP_ORDER_GOODS),
         enabled: rng.int(2) === 0,
       };
-    default:
+    case 39:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {
         kind: 'setJob',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         jobType: pick(rng, JOB_TYPES),
       };
+    default:
+      throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
 }
 

@@ -126,25 +126,26 @@ export function stackOntoTile(
 }
 
 /**
- * Set `amount` of `good` down on the tile at exactly `(x, y)` without ever losing a unit: stack onto the
- * tile's own heap when it takes them ({@link stackOntoTile}), else start a second owned heap beside it -
- * the tile's heap refuses when it is full, holds another good, or belongs to a rival. Two heaps on one
- * tile is a supported state (they render as one pile and each is pickable), so this trades a cosmetic
- * overlap for goods conservation. The set-down step for a good that leaves an equipment slot with no
- * carrier to hold it (see {@link import('../../orders/work/employment.js')}).
+ * Set ONE unit of `good` down on the tile at exactly `(x, y)` without ever losing it: stack onto the
+ * tile's own heap when it takes the unit ({@link stackOntoTile}), else start a second owned heap beside
+ * it - the tile's heap refuses when it is full, holds another good, or belongs to a rival. Two heaps on
+ * one tile is a supported state (they render as one pile and each is pickable), so this trades a
+ * cosmetic overlap for goods conservation. One unit only, because that is what the single caller sheds:
+ * a good leaving an equipment slot with no carrier to hold it (see
+ * {@link import('../../orders/work/employment.js')}). A multi-unit set-down would have to spill the
+ * remainder across rings the way {@link dropCarriedLoad} does.
  */
-export function placeUnitsOnTile(
+export function placeUnitOnTile(
   world: World,
   x: Fixed,
   y: Fixed,
   good: number,
-  amount: number,
   owner: number | undefined,
 ): void {
-  if (stackOntoTile(world, x, y, good, amount, owner) > 0) return;
+  if (stackOntoTile(world, x, y, good, 1, owner) > 0) return;
   const pile = world.create();
   world.add(pile, Position, { x, y });
-  world.add(pile, Stockpile, { amounts: new Map([[good, Math.min(MAX_GROUND_STACK, amount)]]) });
+  world.add(pile, Stockpile, { amounts: new Map([[good, 1]]) });
   stampOwner(world, pile, owner);
 }
 

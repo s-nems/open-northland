@@ -28,7 +28,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { jobCanBuild, startDrop } from '../../agents/actions.js';
-import { addCarry, isUsed, placeUnitsOnTile } from '../../agents/effects-goods/index.js';
+import { addCarry, isUsed, placeUnitOnTile } from '../../agents/effects-goods/index.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
@@ -136,8 +136,8 @@ function shedToolOnEnlist(world: World, e: Entity): void {
 /**
  * Empty one equipment slot the settler's NEW trade may not use, without swallowing the good: a fresh
  * unit joins free or same-good hands, else lands on the settler's own tile; a part-used one - or one on
- * a positionless settler - is destroyed, the take-off regeneration rule (agents/effects-goods/equip.ts).
- * Both endings serve the same rule (user, 2026-07-26: a store if the economy can manage it, the ground
+ * a positionless settler - is destroyed (the take-off rule, agents/effects-goods/equip.ts). Both
+ * endings serve the user's rule (2026-07-26: a store if the economy can manage it, the ground
  * otherwise) - a unit left in hand is banked by the delivery drive, a grounded one is collected by a
  * porter like any loose pile.
  */
@@ -157,7 +157,7 @@ function shedSlotGood(world: World, e: Entity, group: 'tool' | 'weapon' | 'armor
   if (pos === undefined) return;
   const node = nodeOfPosition(pos.x, pos.y);
   const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice tile, so drops stack
-  placeUnitsOnTile(world, at.x, at.y, worn.goodType, 1, ownerOf(world, e));
+  placeUnitOnTile(world, at.x, at.y, worn.goodType, ownerOf(world, e));
 }
 
 /**

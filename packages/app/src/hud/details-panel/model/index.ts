@@ -33,13 +33,13 @@ import {
   type UnitPanelModelContext,
 } from './context.js';
 import {
-  equipmentRows,
   experienceRows,
   type SettlerPanelModel,
   satisfactionBars,
   settlerStatus,
   stanceLabel,
 } from './settler.js';
+import { equipmentRows } from './settler-equipment.js';
 import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
 
@@ -64,13 +64,9 @@ export type {
   WorkerSlotRow,
 } from './building.js';
 export type { UnitPanelModelContext } from './context.js';
-export {
-  type EquipGroup,
-  type EquipRow,
-  type EquipSlotModel,
-  HUMANWINDOW,
-  type SettlerPanelModel,
-} from './settler.js';
+export { HUMANWINDOW } from './humanwindow.js';
+export type { SettlerPanelModel } from './settler.js';
+export type { EquipGroup, EquipRow, EquipSlotModel } from './settler-equipment.js';
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
 
 export interface MultiSettlerPanelModel {

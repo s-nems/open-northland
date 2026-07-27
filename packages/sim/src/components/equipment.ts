@@ -39,9 +39,8 @@ export interface EquipmentSlot {
  *
  * This is the equipment INVENTORY/display axis, distinct from the combat {@link Weapon}/{@link Armor}
  * components (which carry the `weaponTypeId`/`armorClass` the CombatSystem resolves damage through):
- * wiring the two together — equipping a weapon good actually granting the combat `Weapon` — is the
- * deferred "equip drive" (see the barracks-recruitment plan step). For now a scene stamps both when it
- * wants a unit that both displays and fights.
+ * wiring the two together — equipping a weapon good actually granting the combat `Weapon` — is a
+ * deferred phase. For now a scene stamps both when it wants a unit that both displays and fights.
  *
  * It is a **separate optional component** (like {@link Weapon}/{@link Armor}/{@link JobAssignment}):
  * only an explicitly-equipped unit carries one, so a bare settler — every animal, every golden/slice
@@ -84,8 +83,13 @@ export function writeEquipSlot(
  * indexed, 0 elsewhere) and one intent - `goodType` set puts that good on (a swap when the slot is
  * worn), null takes the worn good off. Stamped by the `equipGood`/`unequipGood` order handlers;
  * `agents/equip-order.ts` owns the stage protocol that drives it and removes it. `returnTo` is the
- * node the settler stood on at issue - the errand ends where it began (user-specified design; the
- * original's equip flow is not decoded). `stage` only advances (acquire → stow → return).
+ * node the settler stood on at issue - the errand ends where it began (user-specified design: the
+ * manual describes the window's item list, not how the settler fetches). `stage` only advances
+ * (acquire → stow → return).
+ *
+ * `issuer` separates the player's click from the assistant's hand-out: a player order is urgent enough
+ * to set a carried load down mid-errand, the assistant's waits for the delivery instead
+ * (`agents/equip-order.ts`).
  */
 export const EquipOrder = defineComponent<{
   group: EquipCategory;
@@ -93,4 +97,5 @@ export const EquipOrder = defineComponent<{
   goodType: number | null;
   returnTo: NodeId;
   stage: 'acquire' | 'stow' | 'return';
+  issuer: 'player' | 'assistant';
 }>('EquipOrder');

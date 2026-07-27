@@ -228,9 +228,15 @@ function drawExperienceSection(
  * an iconless potion/amulet - the socket tooltip names the item). The per-slot order buttons hug the
  * socket: put-an-item-on (plus) for an empty slot, swap (arrows) plus take-off (cross) for a worn one
  * - their names live in the cursor tooltip, like the Praca round controls. A wearing good's condition
- * draws as a thin gauge under its socket (full = fresh; the exact percent stays in the socket tooltip).
- * The order buttons are an OpenNorthland extension (the original window shows slots only), like the
- * "usuń z domu" control.
+ * draws as a thin gauge under its socket (full = fresh; the exact percent stays in the socket tooltip)
+ * - a deviation from the manual's "A percentage indicating the degree of use is displayed" (p. 27),
+ * traded for four misc cells that fit one line at every ui scale.
+ * The buttons themselves are original: the manual's equipment section describes "the respective hand
+ * buttons to open a list of all items your villager can obtain nearby" and a list with "buttons for
+ * equipping your Viking and dropping items he already possesses" (Wonders manual p. 27). The round
+ * plus/arrows/cross glyphs stand in for the original's hand art (approximation), and take-off walks the
+ * item to a store instead of dropping it where the settler stands (our deviation, so a fresh item
+ * re-enters the economy).
  */
 function drawEquipmentSection(
   chrome: Chrome,

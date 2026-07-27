@@ -59,7 +59,7 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  *  - Chat: a settler mid-chat is the GossipSystem's.
  *
  * The DEFEND-stance hold is deliberately NOT here: it lives in the drive ladder below the equip
- * errand (the one player order a guard walks without dropping its post — see planAdult).
+ * errand (the one player order a guard walks without dropping its post, see planAdult).
  */
 export function anotherSystemOwns(world: World, e: Entity): boolean {
   return (

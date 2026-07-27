@@ -8,7 +8,9 @@ import {
   GOOD_MEAD,
   GOOD_SHOES,
   GOOD_STONE,
+  GOOD_TOOL_WOODEN,
   JOB_COLLECTOR,
+  JOB_SOLDIER,
 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import {
@@ -87,6 +89,31 @@ describe('details panel layout', () => {
     expect(
       layout.gatherChoiceHits.filter((choice) => choice.selected).map((choice) => choice.goodType),
     ).toEqual([GOOD_STONE]);
+  });
+
+  it('offers a fighter’s stray tool the take-off cross alone (no menu it cannot fill)', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_SOLDIER },
+            Equipment: {
+              boots: null,
+              tool: { goodType: GOOD_TOOL_WOODEN, degreeOfUse: 0 }, // kept from its civilian days
+              weapon: null,
+              armor: null,
+              misc: [null, null, null, null],
+            },
+          },
+        },
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    const keys = settlerLayoutOf(model).equipActionHits.map(equipActionKey);
+    expect(keys).toContain('tool:0:unequip'); // it can always come off
+    expect(keys).not.toContain('tool:0:swap'); // but the sim refuses to give a fighter another
   });
 
   it('lays per-slot equip action buttons: equip on empty, swap + take-off on worn, misc on one line', () => {

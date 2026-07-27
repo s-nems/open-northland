@@ -11,6 +11,7 @@ import {
   ownersCompatible,
   Position,
   Settler,
+  Stance,
   Stockpile,
   SupplyRun,
   UnderConstruction,
@@ -19,7 +20,8 @@ import { contentIndex } from '../../core/content-index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import { isFighterJob, NO_TRADE_JOB, SCOUT_JOB } from '../readviews/index.js';
+import { CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
+import { isFighterJob, MILITARY_MODE, SCOUT_JOB } from '../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 import type { PlannerPass } from './planner-pass.js';
@@ -42,8 +44,11 @@ import { unreachableGoalVeto } from './unreachable-goals.js';
  *
  * Only empty slots are filled (no swaps/upgrades), and a misc grant is one unit per settler. The
  * original's extras window ships per-good hoard commands (decoded `miscwindow` 503-509 "Zgromadź
- * Buty!" etc.) but their engine behavior is unreadable; this hand-out is a project reconstruction
- * from the feature spec (named approximation).
+ * Buty!" etc.); the manual describes the intent ("you want to have shoes given out to all civilians -
+ * if there are shoes available in your village"), which the stock reservation matches, but not the
+ * engine's pacing, so the trickle and the caps are ours (named approximation). Deviation from that
+ * line: only the TOOL grant is trade-scoped ({@link toolHelpsJob}); boots and misc go to fighters too,
+ * because nothing about a soldier makes a pair of shoes useless.
  */
 
 /** One settler's grant consideration beat, staggered by entity id (the field-reclaim idiom), so the
@@ -59,12 +64,14 @@ export const ASSISTANT_MAX_IN_FLIGHT = 4;
 /**
  * Whether the assistant hands `jobType` a tool at all: every working trade takes one (gatherer, porter,
  * farmer, baker...), but a fighter keeps none (`shedToolOnEnlist`, orders/work/employment.ts), and the
- * scout and a settler still holding no trade are passed over so scarce tools go to the trades that work
- * with them (user rule 2026-07-26). Only the assistant's hand-out is bound by this - the player may
- * still equip a scout by hand.
+ * scout, the civilist and the woman are passed over so scarce tools go to the trades that work with
+ * them (user rule 2026-07-26). The civilist ({@link CIVILIST_JOB}) is the trade-less settler the "Cywil"
+ * row seats and a grown boy defaults to; the woman ({@link WOMAN_JOB}) keeps the household larder rather
+ * than a trade, and neither ever operates a workplace, so a tool would only idle in the slot. Only the
+ * assistant's hand-out is bound by this - the player may still equip a scout by hand.
  */
 function toolHelpsJob(jobType: number): boolean {
-  return !isFighterJob(jobType) && jobType !== SCOUT_JOB && jobType !== NO_TRADE_JOB;
+  return !isFighterJob(jobType) && jobType !== SCOUT_JOB && jobType !== CIVILIST_JOB && jobType !== WOMAN_JOB;
 }
 
 /** One granted good, its slot group pre-resolved from content. */
@@ -101,8 +108,12 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (jobType === null) continue; // the ladder never plans a jobless settler
     // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would
     // dump the carried load where the settler stands (a manual order may do that - the assistant
-    // has no such urgency). A later beat catches the settler with free hands.
+    // has no such urgency). A later beat catches the settler with free hands; a load picked up after
+    // the dispatch is covered too, because the errand itself yields to it (agents/equip-order.ts).
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
+    // A guard holds its post: the equip rung outranks the DEFEND hold so the PLAYER can send a guard
+    // for gear, which is no reason for the assistant to walk one off its anchor unasked.
+    if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
     const toolless = !toolHelpsJob(jobType);
 
     const eq = world.tryGet(e, Equipment);
@@ -137,6 +148,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
         goodType: spec.goodType,
         returnTo: here,
         stage: 'acquire',
+        issuer: 'assistant',
       });
       tally.total += 1;
       tally.byGood.set(spec.goodType, underway + 1);

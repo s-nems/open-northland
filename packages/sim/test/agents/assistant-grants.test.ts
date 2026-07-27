@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AssistantGrants,
+  Building,
   Carrying,
   Equipment,
   type EquipmentSlot,
@@ -9,13 +10,15 @@ import {
   Owner,
   Position,
   Settler,
+  Stance,
   Stockpile,
   setNeedsEnabled,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/agents/assistant-grants.js';
-import { NO_TRADE_JOB, SCOUT_JOB } from '../../src/systems/readviews/index.js';
+import { CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
+import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -37,11 +40,14 @@ const WOODCUTTER = 1;
  *  (see the fixture's own note on job 36). */
 const FIGHTER_JOB = 36;
 const VIKING = 1;
+const HEADQUARTERS = 1;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
 
 /** Enough ticks for a stride beat (24) plus a fetch across the small map and the return leg. */
 const ERRAND_TICKS = 600;
+/** Comfortably past the set-down gesture, so a player errand's dropped load has landed. */
+const DROP_ATOMIC_TICKS = 120;
 
 function freshSim(): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 6) });
@@ -241,6 +247,72 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
   });
 
+  it('yields to a load picked up mid-errand, where a player order would set it down', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // A headquarters so a yielded load has somewhere to go: the economy walks it there, which is the
+    // whole point of yielding instead of dumping it in the grass.
+    const hq = sim.world.create();
+    sim.world.add(hq, Position, { x: fx.fromInt(6), y: fx.fromInt(3) });
+    sim.world.add(hq, Building, {
+      buildingType: HEADQUARTERS,
+      tribe: VIKING,
+      built: fx.fromInt(1),
+      level: 0,
+    });
+    sim.world.add(hq, Stockpile, { amounts: new Map([[WOOD, 0]]) });
+    sim.world.add(hq, Owner, { player: HUMAN_PLAYER });
+    // Same state on both, one errand each, differing only in who issued it.
+    const byPlayer = ownedSettler(sim, 2, 2);
+    const byAssistant = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, SHOES, 2);
+    for (const [e, issuer] of [
+      [byPlayer, 'player'],
+      [byAssistant, 'assistant'],
+    ] as const) {
+      sim.world.add(e, EquipOrder, {
+        group: 'boots',
+        slot: 0,
+        goodType: SHOES,
+        returnTo: terrain.nodeAtClamped(0, 0),
+        stage: 'acquire',
+        issuer,
+      });
+      sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 });
+    }
+
+    // When each settler's hands come free: the player's errand sets the load down at once, the
+    // assistant's leaves it to the economy, so its load is still in hand while the other's is gone.
+    let freedPlayer = -1;
+    let freedAssistant = -1;
+    for (let tick = 1; tick <= DROP_ATOMIC_TICKS; tick++) {
+      sim.run(1);
+      if (freedPlayer < 0 && !sim.world.has(byPlayer, Carrying)) freedPlayer = tick;
+      if (freedAssistant < 0 && !sim.world.has(byAssistant, Carrying)) freedAssistant = tick;
+    }
+
+    expect(freedPlayer).toBeGreaterThan(0);
+    expect(freedAssistant === -1 || freedAssistant > freedPlayer).toBe(true);
+    expect(sim.world.get(hq, Stockpile).amounts.get(WOOD) ?? 0).toBe(1); // banked, not grounded
+  });
+
+  it('leaves a posted guard on its anchor', () => {
+    const sim = freshSim();
+    const guard = ownedSettler(sim, 2, 2);
+    sim.world.add(guard, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
+    const worker = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, SHOES, 2);
+    grant(sim, SHOES);
+
+    sim.run(ERRAND_TICKS);
+
+    // The equip rung outranks the DEFEND hold so the PLAYER can send a guard for gear; the assistant
+    // must not use that door.
+    expect(sim.world.tryGet(guard, Equipment)?.boots ?? null).toBeNull();
+    expect(sim.world.get(worker, Equipment).boots?.goodType).toBe(SHOES);
+  });
+
   it('frozen errands of jobless settlers hold neither reservations nor cap slots', () => {
     const sim = freshSim();
     const terrain = sim.terrain;
@@ -256,6 +328,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
         goodType: SHOES,
         returnTo: terrain.nodeAtClamped(0, 0),
         stage: 'acquire',
+        issuer: 'assistant',
       });
     }
     const live = ownedSettler(sim, 2, 2);
@@ -269,22 +342,24 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
 
   it('hands tools to the working trades only, and boots to everyone', () => {
     const sim = freshSim();
-    // The three the tool hand-out passes over, and one trade that takes it.
+    // The four the tool hand-out passes over, and one trade that takes it.
     const fighter = ownedSettler(sim, 2, 2);
     sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
     const scout = ownedSettler(sim, 2, 3);
     sim.world.get(scout, Settler).jobType = SCOUT_JOB;
-    const tradeless = ownedSettler(sim, 2, 4);
-    sim.world.get(tradeless, Settler).jobType = NO_TRADE_JOB;
+    const civilist = ownedSettler(sim, 2, 4); // the "Cywil" row's trade-less settler
+    sim.world.get(civilist, Settler).jobType = CIVILIST_JOB;
+    const woman = ownedSettler(sim, 2, 6);
+    sim.world.get(woman, Settler).jobType = WOMAN_JOB;
     const woodcutter = ownedSettler(sim, 2, 5);
-    pileAt(sim, 12, 2, TOOL_IRON, 4);
-    pileAt(sim, 12, 4, SHOES, 4);
+    pileAt(sim, 12, 2, TOOL_IRON, 5); // more than enough: only the woodcutter may take one
+    pileAt(sim, 12, 4, SHOES, 5); // one pair per settler - boots are not trade-gated
     grant(sim, TOOL_IRON);
     grant(sim, SHOES);
 
-    sim.run(4 * ERRAND_TICKS);
+    sim.run(6 * ERRAND_TICKS);
 
-    for (const e of [fighter, scout, tradeless]) {
+    for (const e of [fighter, scout, civilist, woman]) {
       expect(sim.world.get(e, Equipment).tool).toBeNull(); // no tool spent on a trade that won't use it
       expect(sim.world.get(e, Equipment).boots?.goodType).toBe(SHOES); // the other grants still land
     }

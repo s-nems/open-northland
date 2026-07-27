@@ -35,8 +35,8 @@ export interface ProfessionPicker {
 }
 
 /**
- * Build the profession-picker window (once, from the grouped menu) and return its show/hide/dispose handle.
- * The window is appended to `document.body` hidden; the caller drives it in step with the action-menu mode.
+ * Build the profession-picker window and return its show/hide/dispose handle. The window is appended to
+ * `document.body` hidden and filled per open; the caller drives it in step with the action-menu mode.
  */
 export function createProfessionPicker(opts: ProfessionPickerOptions): ProfessionPicker {
   const window_ = createPickerWindow({

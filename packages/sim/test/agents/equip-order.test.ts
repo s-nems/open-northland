@@ -48,6 +48,7 @@ const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
 const HUMAN_PLAYER = 0;
+const RIVAL_PLAYER = 1;
 const ARMOURY = 22;
 /** The fixture job inside the pinned soldier band (31..41) - fighter-classified by `isFighterJob`
  *  and `setJob`-assignable (see the fixture's own note on job 36). */
@@ -206,6 +207,37 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
       (e) => (sim.world.get(e, Stockpile).amounts.get(SHOES) ?? 0) > 0,
     );
     expect(heaps).toHaveLength(0);
+  });
+
+  it('swap: worn-out boots are replaced by a fresh pair of the SAME good', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    wear(sim, settler, { boots: { goodType: SHOES, usedPct: 80 } });
+    pileAt(sim, 12, 2, SHOES, 1);
+
+    sim.enqueue(equip(settler, SHOES));
+    sim.run(ERRAND_TICKS);
+
+    // The manual's rule (p. 27): equipping over an occupied slot drops the old item, and a part-used
+    // one is lost. Matching goodType alone must not read as "already wearing it" and cancel the walk.
+    // Near-fresh, not exactly fresh: the walk home already wears the new pair a fraction of a percent.
+    const worn = sim.world.get(settler, Equipment).boots?.degreeOfUse ?? fx.fromInt(1);
+    expect(worn).toBeLessThan(fx.div(fx.fromInt(1), fx.fromInt(10)));
+    expect(groundUnits(sim, SHOES)).toBe(0); // the fresh pair was taken; the 80%-worn one was lost
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+  });
+
+  it('swap: a FRESH pair of the same good is not fetched twice', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    wear(sim, settler, { boots: SHOES });
+    const pile = pileAt(sim, 12, 2, SHOES, 1);
+
+    sim.enqueue(equip(settler, SHOES));
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(pile, Stockpile).amounts.get(SHOES)).toBe(1); // stock untouched
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
   });
 
   it('gives up and walks home when nothing reachable holds the good', () => {
@@ -498,6 +530,18 @@ describe('equipPickList - the pick-menu read view', () => {
     expect(sim.equipPickList(settler, 'boots')).toEqual([{ goodType: SHOES, available: 5 }]);
     expect(sim.equipPickList(settler, 'weapon')).toEqual([{ goodType: SWORD, available: 1 }]);
     expect(sim.equipPickList(settler, 'misc')).toEqual([]);
+  });
+
+  it('counts only the settler’s own side - a rival store is not the errand’s to fetch from', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    const ours = pileAt(sim, 8, 2, SHOES, 2);
+    sim.world.add(ours, Owner, { player: HUMAN_PLAYER });
+    const theirs = pileAt(sim, 10, 2, SHOES, 7);
+    sim.world.add(theirs, Owner, { player: RIVAL_PLAYER });
+
+    // Without the owner gate the row would promise 9 pairs and the errand would come home with one.
+    expect(sim.equipPickList(settler, 'boots')).toEqual([{ goodType: SHOES, available: 2 }]);
   });
 
   it('offers a fighter no tools at all - the menu must not list what no click can wear', () => {

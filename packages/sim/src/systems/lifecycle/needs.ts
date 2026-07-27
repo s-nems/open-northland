@@ -169,8 +169,10 @@ export const needsSystem: System = (world, ctx) => {
       const health = world.get(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
       // A bite that would finish the settler may be answered by the healing draught's death-save
-      // (tryDeathSaveDraught) - it starves on, but the potion buys it time.
-      if (health.hitpoints - bite <= 0 && tryDeathSaveDraught(world, ctx, e)) continue;
+      // (tryDeathSaveDraught) - it starves on, but the potion buys it time. `hitpoints > 0` like the
+      // combat twin: a settler already at 0 (a debug kill awaiting cleanup) is not revived.
+      if (health.hitpoints > 0 && health.hitpoints - bite <= 0 && tryDeathSaveDraught(world, ctx, e))
+        continue;
       health.hitpoints = Math.max(0, health.hitpoints - bite);
     }
   }

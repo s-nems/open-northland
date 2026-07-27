@@ -24,10 +24,11 @@ import { unreachableGoalVeto } from './unreachable-goals.js';
  * above the economy rungs (a player errand outranks work) and below the needs drives and the
  * fight/flee/player-walk gates, like the other soft overrides. Stage by stage:
  *
- *  - `acquire`: free the hands first (a leftover job load is set down where the settler stands, the
- *    `moveUnit` idiom), then fetch - walk to the nearest reachable store/pile holding the wanted good
+ *  - `acquire`: free the hands first (a player order sets a leftover job load down where the settler
+ *    stands, the `moveUnit` idiom; an assistant errand yields until the load is delivered), then fetch -
+ *    walk to the nearest reachable store/pile holding the wanted good
  *    and run the `equip` atomic there (the unit lands straight on the body, a fresh swap-out on the
- *    back, a used one destroyed - the effects' regeneration rule). Nothing to fetch anywhere reachable
+ *    back, a used one destroyed - the take-off rule). Nothing to fetch anywhere reachable
  *    → skip to `return` (the errand gives up, faithful to "no source, no order"). A take-off order
  *    (`goodType` null) runs the `unequip` atomic AT the store the unit will land in, so the item stays
  *    visibly worn for the walk (user rule 2026-07-23); only a part-used unit (destroyed on the spot)
@@ -95,13 +96,19 @@ export function planEquipOrder(
       );
       return true;
     }
-    // Already wearing the wanted good (a re-issued order): nothing to fetch.
-    if (worn !== undefined && equipSlotValue(worn, order.group, order.slot)?.goodType === order.goodType) {
+    // Already wearing a FRESH unit of the wanted good (a re-issued order): nothing worth fetching. A
+    // part-used one is still replaced - "boots at 20%, fetch me a new pair" is the swap the menu offers,
+    // and the worn pair goes the way of any swapped-out part-used item.
+    const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+    if (held !== null && held.goodType === order.goodType && !isUsed(held)) {
       order.stage = 'return';
       return planReturn(world, e, order.returnTo, here, avoid);
     }
     if (world.has(e, Carrying)) {
-      startDrop(world, ctx, e); // a leftover job load is set down where the settler stands
+      // The player's own order is urgent enough to set a leftover job load down where the settler
+      // stands; the assistant's hand-out yields instead, so its errand never costs a delivery.
+      if (order.issuer === 'assistant') return false;
+      startDrop(world, ctx, e);
       return true;
     }
     const goodType = order.goodType;
