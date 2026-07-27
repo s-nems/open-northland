@@ -1,7 +1,6 @@
 import {
   type Camera,
   createWindowPixiApp,
-  type MapObjectSprite,
   makeElevationField,
   type TerrainTextureSet,
 } from '@open-northland/render';
@@ -33,6 +32,7 @@ import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/v
 import { grantAssistantDefaults } from '../view/assistant-grants.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
+import { bindHarvestableHandover } from '../view/harvestable-handover.js';
 import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
@@ -234,69 +234,22 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
   grantAssistantDefaults(sim, sim.content, [...controlled, ...aiSeats]);
 
-  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
-  // actually work them, not just see render-only decor.
-  // Direct spawn into the sim (after its one placement tick above), in the map's placement order
+  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (and its fruited bushes
+  // as forageable BerryBush entities), so a gatherer can actually work them, not just see render-only
+  // decor. Direct spawn into the sim (after its one placement tick above), in the map's placement order
   // (deterministic ids) — the authored buildings/settlers already exist, so these nodes take later ids.
-  //
-  // Draw split (the static→dynamic handover): a virgin node keeps its built-once static sprite (the
-  // layer loaded above draws all 40k+ placements for free per frame) and the sim pool skips it via
-  // `staticRefs`; the first time it is worked (`resourceFelled`/`resourceMined`/`resourceDepleted`) the
-  // event handler below removes the static sprite and releases the ref, and the pool draws the entity
-  // from then on — same graphic (its own species variant via `Resource.gfxIndex`), now shrinking with
-  // its levels and vanishing on destroy. Without decoded atlases nothing is static, so the sim pool draws
-  // every node.
-  let staticResources: Map<number, MapObjectSprite> | undefined;
-  let staticRefs: Set<number> | undefined;
+  let harvestableHandover: ((events: readonly SimEvent[]) => void) | null = null;
   if (loaded?.objects !== undefined && ir !== null) {
     const { placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
-    // The map's own fruited bushes as forageable BerryBush entities (wild food) — same static→live
-    // handover as resources: the static layer draws each always-fruited until it is first foraged.
     const bushes = spawnMapBerryBushes(sim, loaded.objects, ir);
     if (staticObjects !== undefined) {
-      staticResources = new Map();
-      for (const [entity, placement] of [...placementByEntity, ...bushes.placementByEntity]) {
-        const sprite = staticObjects.byPlacement.get(placement);
-        // A placement whose atlas never resolved has no static sprite — leave that node pool-drawn.
-        if (sprite !== undefined) staticResources.set(entity as number, sprite);
-      }
-      // Live-view contract (setStaticallyDrawnRefs): the renderer keeps this reference and reads it
-      // per frame; the handover below mutates it in place — O(1) per event, never a whole-set rebuild.
-      staticRefs = new Set(staticResources.keys());
-      renderer.setStaticallyDrawnRefs(staticRefs);
+      harvestableHandover = bindHarvestableHandover(
+        renderer,
+        [...placementByEntity, ...bushes.placementByEntity],
+        staticObjects.byPlacement,
+      );
     }
   }
-  const releaseWorkedResources =
-    staticResources === undefined || staticRefs === undefined
-      ? undefined
-      : (events: readonly SimEvent[]): void => {
-          const held = staticResources;
-          const refs = staticRefs;
-          if (held === undefined || refs === undefined) return;
-          for (const ev of events) {
-            // A resource first worked (felled/mined/depleted) or a bush first foraged leaves the retained
-            // static layer; from then on the live pool draws it (a shrinking deposit, a bare/regrown bush).
-            const worked =
-              ev.kind === 'resourceFelled' || ev.kind === 'resourceMined' || ev.kind === 'resourceDepleted'
-                ? (ev.node as number)
-                : ev.kind === 'berryForaged'
-                  ? (ev.bush as number)
-                  : undefined;
-            // A razed bush is destroyed (a building landed on it), not handed to the pool — drop its static
-            // quad and leave no fog ghost, since nothing remains to remember on explored ground.
-            const razed = ev.kind === 'berryBushRazed' ? (ev.bush as number) : undefined;
-            const entity = worked ?? razed;
-            if (entity === undefined) continue;
-            const sprite = held.get(entity);
-            if (sprite === undefined) continue; // already handed over, or never static (admin spawn)
-            held.delete(entity);
-            refs.delete(entity);
-            renderer.removeMapObject(sprite);
-            // The static quad was this node's fog ghost (a virgin object is its own last-seen state); a worked
-            // node adopts it so it keeps its remembered look on explored ground, but a razed bush is gone.
-            if (razed === undefined) renderer.adoptFogGhost(entity);
-          }
-        };
 
   // Interactive camera: the start frame centres on the player's start ({@link mapStartFocus}: the human
   // player's headquarters/settler cluster, else the map centre) so entering a map lands on the action, not
@@ -339,7 +292,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     // First-touch handover: a worked resource leaves the static layer and the pool draws it on.
-    ...(releaseWorkedResources !== undefined ? { onEvents: releaseWorkedResources } : {}),
+    ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
   });
   await boot.finish();
 }
