@@ -105,6 +105,9 @@ export interface LandscapeGfxRow {
   readonly index: number;
   readonly editName?: string;
   readonly logicType: number;
+  /** `LogicMaximumValency` — the record's harvest capacity in units, which sizes a spawned mineral
+   *  deposit. Not the authored {@link frames} count (see `map-resources.ts` `HarvestObjectRef.states`). */
+  readonly maxValency?: number;
   readonly bmd?: string;
   /** The shadow bob set (`GfxBobLibs` second value) — its silhouettes parallel the body's bob ids. */
   readonly shadowBmd?: string;

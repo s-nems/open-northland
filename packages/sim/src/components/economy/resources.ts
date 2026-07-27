@@ -66,15 +66,17 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
  * Marks a {@link Resource} node that is mined — a stone/iron/gold/clay deposit the collector chips one unit
  * at a time, faithful to the original's `mine → ore → pile` pipeline (a mined good has a distinct
  * `landscapeToPickup` "ore" stage, unlike a mushroom whose harvest is its pickup; `bioLandscape 0` in the
- * data). Stamped by the placement code from the good's `gathering.depositSize`/`depositLevels`. Each chipped
- * unit drains one off `Resource.remaining` and drops at the node's cell as a bare {@link Stockpile} ore pile
- * (a {@link GroundDrop}); the node is removed when `remaining` hits 0.
+ * data). Stamped by the placement code — a decoded map's placement from its own `[GfxLandscape]` record,
+ * anything else from the good's `gathering.depositSize`/`depositLevels`. Each chipped unit drains one off
+ * `Resource.remaining` and drops at the node's cell as a bare {@link Stockpile} ore pile (a
+ * {@link GroundDrop}); the node is removed when `remaining` hits 0.
  *
  * `initial` is the deposit's FULL size — the denominator for the render's shrink-by-level pick (a level is
  * `remaining/initial` bucketed into `levels` visual states, the `[GfxLandscape]` mine record's fill frames).
  * It is the spawn `remaining` for a node placed intact, and stays the full size for one placed already
  * part-mined (a decoded map's authored growth level), so the two spawn paths share one ladder.
- * `levels` is that state count (observed = the ls_ground mine gfx's 5 fill states).
+ * `levels` is that state count, per node: the record's own for a map placement (rocks 4 or 5, mines 5),
+ * the good's uniform fallback otherwise.
  *
  * `strikesPerUnit`/`strikes` make a unit take several work cycles: each completed harvest atomic advances
  * `strikes`, and only the strike reaching `strikesPerUnit` chips the unit off and resets the counter. The

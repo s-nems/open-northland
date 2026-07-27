@@ -65,7 +65,7 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
   });
 
   it('RESCALES the level ladder onto a record with a different authored state count', () => {
-    // The sim buckets every deposit into 5 catalog levels, but this record authors only 4 states
+    // A catalog-sized (record-less) deposit carries 5 levels, but this record authors only 4 states
     // (the real "stones 01" rock). Full (5/5) must draw the fullest frame, dregs (1/5) the first.
     const rock = {
       byGood: { 3: [10, 11, 12, 13].map((bob) => ({ layer: 'ls_ground.rock03', bob })) },

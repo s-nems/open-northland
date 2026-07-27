@@ -30,6 +30,10 @@ export interface HarvestObjectRef {
    *  frame list for a max valency of 3), so a level above this count reads as out of range. 0 when the
    *  record authors no frames. */
   readonly states: number;
+  /** The record's `LogicMaximumValency` — how many units a placement of it holds, which sizes a spawned
+   *  mineral deposit ({@link import('../game/sandbox/map-spawn.js').spawnMapResources}). Absent on an
+   *  older `ir.json` with no `maxValency` lane; the spawn then falls back to the catalog constant. */
+  readonly maxValency?: number;
 }
 
 /**
@@ -56,6 +60,10 @@ export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, Harv
         goodId: p.goodId,
         gfxIndex: idx,
         states: (record.frames ?? []).length,
+        // A 0 capacity would size an empty deposit, so it reads as absent and the spawn falls back.
+        ...(record.maxValency !== undefined && record.maxValency > 0
+          ? { maxValency: record.maxValency }
+          : {}),
       });
     }
   }
@@ -80,6 +88,8 @@ export interface MapResourceSpawn {
    * static object layer's {@link import('./objects.js').stateIndexForLevel}.
    */
   readonly growth?: { readonly level: number; readonly states: number };
+  /** The source record's {@link HarvestObjectRef.maxValency} — the units a full placement of it holds. */
+  readonly maxValency?: number;
 }
 
 /**
@@ -111,6 +121,7 @@ export function mapResourceSpawns(
       hy,
       placement,
       ...(growth !== undefined ? { growth } : {}),
+      ...(ref.maxValency !== undefined ? { maxValency: ref.maxValency } : {}),
     });
   });
   return out;

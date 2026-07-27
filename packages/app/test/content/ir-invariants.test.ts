@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
-import { hasRealIr, loadContentUnderTest } from './helpers.js';
+import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * Property invariants over the REAL generated IR + its sim-ready merge — the class of break the
@@ -22,6 +22,9 @@ const CORE_GOOD_IDS = ['wood', 'stone', 'wheat'] as const;
 // the dead-balance invariant names exactly the accepted gaps and any NEW dead good still fails
 // (mushroom: docs/tickets/app/herb-mushroom-field-farming.md).
 const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
+
+// The goods harvested as a finite deposit the collector chips one unit at a time (`GatherMode 'mine'`).
+const MINED_GOOD_IDS: ReadonlySet<string> = new Set(['stone', 'mud', 'iron', 'gold']);
 
 describe.runIf(hasRealIr())('real IR invariants', () => {
   it('carries the core goods by stable string id', async () => {
@@ -179,5 +182,36 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
         cellKey(target.footprint?.reserved),
       );
     }
+  });
+
+  it('every mined harvest record authors one fill state per unit of its max valency', async () => {
+    // The deposit ladder rests on this: a map placement's deposit is sized by `LogicMaximumValency`
+    // (`map-spawn.ts` `withRecordDeposit`) while the static object layer indexes the record's own frame
+    // lists, so a record where the two disagree puts the sprite pool and the static layer on different
+    // frames for the same placement — a deposit that jumps state the moment a settler first works it.
+    const ir = rawIrUnderTest() as {
+      landscapeGfx?: readonly {
+        index: number;
+        editName?: string;
+        maxValency?: number;
+        frames?: readonly unknown[];
+      }[];
+      gatheringPipeline?: readonly { goodId: string; harvest?: { gfxIndices?: readonly number[] } }[];
+    };
+    const byIndex = new Map((ir.landscapeGfx ?? []).map((g) => [g.index, g]));
+    let checked = 0;
+    for (const p of ir.gatheringPipeline ?? []) {
+      if (!MINED_GOOD_IDS.has(p.goodId)) continue;
+      for (const idx of p.harvest?.gfxIndices ?? []) {
+        const record = byIndex.get(idx);
+        if (record === undefined) continue;
+        checked++;
+        expect(
+          record.maxValency,
+          `'${record.editName}' (${p.goodId}) authors ${record.frames?.length} states for valency ${record.maxValency}`,
+        ).toBe(record.frames?.length);
+      }
+    }
+    expect(checked, 'no mined harvest records found — the pipeline lane went missing').toBeGreaterThan(0);
   });
 });

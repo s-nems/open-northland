@@ -87,9 +87,9 @@ export interface DrawItem {
   readonly level?: number;
   /**
    * The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). The resolver
-   * rescales the ladder onto the bound record's own authored frame count when they differ (the sim
-   * buckets every deposit into one catalog count, but each `[GfxLandscape]` variant authors its own —
-   * stone rocks 4, ore mines 5), so a full deposit always draws its fullest frame. Omitted with {@link level}.
+   * rescales the ladder onto the bound record's own authored frame count when they differ — a map's
+   * deposit is sized from that record and matches, a record-less scene/admin one carries the catalog
+   * count instead — so a full deposit always draws its fullest frame. Omitted with {@link level}.
    */
   readonly levels?: number;
   /**

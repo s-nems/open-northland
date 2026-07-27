@@ -22,7 +22,6 @@ import {
   readProducing,
   readProjectileOrigin,
   readProjectileTarget,
-  readResourceLevelCount,
   readSettlerTribe,
   readStockpile,
   readUpgradePct,
@@ -100,23 +99,6 @@ export function assignBuildingFields(
   if (readProducing(components)) item.working = true;
   const hpFrac = readHpFraction(components);
   if (hpFrac !== undefined) item.hpFrac = hpFrac;
-}
-
-/**
- * Tag a resource node: the shared static fields (per-good species/deposit, shrink-by-`level` fill,
- * source-variant `gfxIndex`) plus the live-only ladder denominator `levels`, so the resolver can
- * rescale the sim's ladder onto the bound record's own state count (ghosts omit it, see
- * {@link assignStaticFields}).
- */
-export function assignResourceFields(
-  item: MutableDrawItem,
-  components: Readonly<Record<string, unknown>>,
-): void {
-  assignStaticFields(item, 'resource', components);
-  if (item.level !== undefined) {
-    const levels = readResourceLevelCount(components);
-    if (levels !== undefined) item.levels = levels;
-  }
 }
 
 /** Tag a berry bush: its render-variant `gfxIndex` (the fruited-bush record, i.e. its species) and a

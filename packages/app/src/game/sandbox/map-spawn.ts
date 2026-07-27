@@ -39,33 +39,46 @@ export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
 
 /**
  * The starting yield a deposit placement authored below full spawns with: its 1-based `lmlv` `level` of
- * `states` authored states, scaled onto the good's full `units`. Floored rather than rounded, because the
- * render's fill bucket rounds up — flooring puts the node back on the exact state the static object layer
- * drew for it, where the deposit holds at least as many units as its record authors states (stone's 5
- * units over 4-5 states, clay's 5 over 5).
+ * `states` authored states, scaled onto the deposit's full `units`. Floored rather than rounded, because
+ * the render's fill bucket rounds up — flooring puts the node back on the exact state the static object
+ * layer drew for it. Over a record-sized deposit ({@link withRecordDeposit}) the scaling is the identity,
+ * `units === states`; it only rescales the catalog fallback, whose count is unrelated to the record's.
  *
  * source basis: `lmlv` is a live per-placement valency, not decor variety — `[GfxLandscape]` keys each
- * frame list by an explicit valency (`wall_01` authors states 80/60/40/20/1 against `LogicMaximumValency
- * 100`), which is only meaningful if the lane it selects on is a quantity. The level→unit scaling is an
- * APPROXIMATION on top of that: the catalog unit counts are observed, not data-derived, so iron (4 units)
- * and gold (3) hold fewer units than their records author states and their lowest levels all collapse to
- * one unit — a deposit destroyed by its first chipped unit, so it never draws a shrink frame at all.
+ * frame list by an explicit valency value (see {@link withRecordDeposit}), which is only meaningful if
+ * the lane it selects on is a quantity.
  */
 export function authoredDepositUnits(units: number, level: number, states: number): number {
   return Math.min(units, Math.max(1, Math.floor((units * level) / states)));
 }
 
 /**
- * Apply a placement's authored growth level to its resolved node spec: a mined deposit starts at the
- * proportional yield while `initial` keeps the good's full size, so the node's decal continues from the
- * state the static layer drew instead of snapping to near-full on the first chip.
+ * Size a mined placement's deposit from its own `[GfxLandscape]` record and start it at the authored
+ * `lmlv` level, so level L spawns exactly L units on state L and the decal keeps predicting the yield all
+ * the way down. A record with no valency — and every admin/scene spawn, which has no record at all —
+ * keeps the catalog size from `catalog/mining.ts`.
+ *
+ * source basis: readable semantics, scoped. `LogicMaximumValency` is a capacity, not a stated unit count —
+ * `wall_01` keys 5 frame lists at 80/60/40/20/1 against a valency of 100, where a step is hitpoints.
+ * Reading it as units holds only for a record authoring one fill state per valency step, which every mined
+ * record does (`maxValency === frames.length` across all 32: gold/iron/clay mines 5, stone rocks 4 or 5)
+ * and which the pileable ore records state outright — `gold ore 01` is `logicispileableonmap` at valency 5
+ * over 5 states, the same "state ≡ remaining units" read a dropped pile's `DrawItem.fill` already uses.
+ * The equality is pinned over real content by `test/content/ir-invariants.test.ts`; a record that broke it
+ * would put the sprite pool and the static object layer on different frames for the same placement.
+ *
+ * `initial` is the full size rather than the starting `remaining`, so a part-mined deposit's decal
+ * continues from the state the static layer drew instead of snapping to near-full on the first chip.
  */
-function withAuthoredGrowth(spec: ResourceNodeSpec, growth: MapResourceSpawn['growth']): ResourceNodeSpec {
-  if (spec.deposit === undefined || growth === undefined) return spec;
+function withRecordDeposit(spec: ResourceNodeSpec, spawn: MapResourceSpawn): ResourceNodeSpec {
+  const { deposit } = spec;
+  if (deposit === undefined) return spec; // a felled tree or a pluck-whole node: no valency, no ladder
+  const { maxValency, growth } = spawn;
+  const units = maxValency ?? spec.remaining;
   return {
     ...spec,
-    remaining: authoredDepositUnits(spec.remaining, growth.level, growth.states),
-    deposit: { ...spec.deposit, initial: spec.remaining },
+    remaining: growth === undefined ? units : authoredDepositUnits(units, growth.level, growth.states),
+    deposit: { ...deposit, initial: units, levels: maxValency ?? deposit.levels },
   };
 }
 
@@ -84,9 +97,9 @@ export interface MapResourceSpawnResult {
  * scene setup pre-tick-0 (the sanctioned exception, like {@link import('./place/index.js').placeResourceNode}). This
  * is what makes a map's own trees hoverable + gatherable.
  *
- * The nodes are created in the map's native placement order, so ids are minted deterministically. Yields
- * and fell/mine parameters reuse the gatherer catalog defaults (`resourceSpecFor`); a deposit authored
- * below full then starts part-mined ({@link withAuthoredGrowth}), while a tree authored as a sapling still
+ * The nodes are created in the map's native placement order, so ids are minted deterministically. Fell/mine
+ * parameters reuse the gatherer catalog defaults (`resourceSpecFor`); a deposit is then resized and
+ * part-mined from its own record ({@link withRecordDeposit}), while a tree authored as a sapling still
  * spawns at the full wood yield — a tree's level is a growth stage it would grow out of, not a stock, and a
  * felled tree never draws its standing frame from the pool. Each spawn carries its placement's own `gfxIndex` (the species
  * variant), so a node the sprite pool draws (a worked/handed-over one) keeps the exact original graphic. A
@@ -101,14 +114,11 @@ export function spawnMapResources(
   let spawned = 0;
   let unspawnable = 0;
   const placementByEntity = new Map<Entity, number>();
-  for (const { goodId, gfxIndex, hx, hy, placement, growth } of mapResourceSpawns(
-    objects,
-    ir,
-    SPAWNABLE_GOOD_IDS,
-  )) {
+  for (const spawn of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
+    const { goodId, gfxIndex, hx, hy, placement } = spawn;
     const g = GATHERER_BY_GOOD_ID.get(goodId);
     if (g === undefined) continue; // filtered by SPAWNABLE_GOOD_IDS already, but keep the type honest
-    const spec = { ...withAuthoredGrowth(resourceSpecFor(g, hx, hy), growth), gfxIndex };
+    const spec = { ...withRecordDeposit(resourceSpecFor(g, hx, hy), spawn), gfxIndex };
     const e = systems.createResourceNode(sim.world, sim.content, spec);
     if (e !== null) {
       spawned++;

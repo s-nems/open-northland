@@ -29,7 +29,6 @@ export {
   readBuiltPct,
   readHpFraction,
   readProducing,
-  readResourceLevelCount,
   readUpgradePct,
   type StaticDrawFields,
 } from './static-readers.js';

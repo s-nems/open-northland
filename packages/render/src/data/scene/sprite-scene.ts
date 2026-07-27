@@ -6,7 +6,6 @@ import {
   assignBerryBushFields,
   assignBuildingFields,
   assignProjectileArc,
-  assignResourceFields,
   assignSettlerFields,
   assignStockpileFields,
   pushGhostItems,
@@ -235,7 +234,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     } else if (kind === 'building') {
       assignBuildingFields(item, components);
     } else if (kind === 'resource') {
-      assignResourceFields(item, components);
+      assignStaticFields(item, 'resource', components);
     } else if (kind === 'stump') {
       assignStaticFields(item, 'stump', components);
     } else if (kind === 'berrybush') {

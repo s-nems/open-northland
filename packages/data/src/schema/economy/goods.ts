@@ -78,11 +78,13 @@ export const GoodGathering = z.strictObject({
    */
   yieldPerNode: z.number().int().nonnegative().default(0),
   /**
-   * Observed, not extracted — the units a mined deposit holds (stone/iron/gold/clay). The readable
-   * `.ini` has no field pinned to this: `landscapetypes.ini` `maximumValency` is a per-cell valency
-   * (constant across a good's stages — mud_mine = mud_ore = mud = 6), not the deposit size, so it stays
-   * a calibration constant. `> 0` marks a mined good — a distinct-`landscapeToPickup` ore deposit the
-   * collector chips one unit at a time; `0` (the extractor default) means not a mined good.
+   * Observed, not extracted — the per-good fallback units a mined deposit holds (stone/iron/gold/clay),
+   * for a spawn with no `[GfxLandscape]` record behind it. No readable per-good field pins this:
+   * `landscapetypes.ini` `maximumValency` is a per-cell valency (constant across a good's stages —
+   * mud_mine = mud_ore = mud = 6), a different field from the per-record `[GfxLandscape]`
+   * `LogicMaximumValency` a decoded map's placement is sized by. `> 0` marks a mined good — a
+   * distinct-`landscapeToPickup` ore deposit the collector chips one unit at a time; `0` (the extractor
+   * default) means not a mined good.
    */
   depositSize: z.number().int().nonnegative().default(0),
   /**
