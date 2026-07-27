@@ -6,24 +6,16 @@
 // `content/`; `npm run test:pipeline` uses it to point the same suite at a fresh pipeline output.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { contentDir, repoRoot } from './content-dir.mjs';
 
-const repoRoot = resolve(fileURLToPath(import.meta.url), '../..');
-// Resolution rules mirror packages/app/test/content/helpers.ts `contentDir()` — keep them in step.
-const override = process.env.ON_CONTENT_DIR;
-const contentDir =
-  override === undefined || override === ''
-    ? resolve(repoRoot, 'content')
-    : isAbsolute(override)
-      ? override
-      : resolve(repoRoot, override);
+const dir = contentDir();
 // A full pipeline run emits all three; guarding each keeps the explicit mode from passing
 // vacuously when a lane vanishes (the map suite and the roster's on-disk checks would skip).
 const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
-const missing = REQUIRED.filter((rel) => !existsSync(resolve(contentDir, rel)));
+const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
-  console.error(`test:content needs generated content — missing under ${contentDir}: ${missing.join(', ')}`);
+  console.error(`test:content needs generated content — missing under ${dir}: ${missing.join(', ')}`);
   console.error('Generate it with: npm run pipeline -- --game "../Cultures 8th Wonder" --out content');
   process.exit(1);
 }
