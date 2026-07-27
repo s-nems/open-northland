@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { type Entity, World } from '../../src/ecs/world.js';
+import { MEMBERSHIP_JOURNAL_LIMIT } from '../../src/ecs/membership-journal.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { dropOrStackGood } from '../../src/systems/settlers/atomics/effects/goods/index.js';
@@ -91,7 +92,7 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     const caughtUp = sim.world.componentGeneration(Stockpile);
     // Blow past the journal cap without a read in between.
     const bulk: Entity[] = [];
-    for (let i = 0; i < World.MEMBERSHIP_JOURNAL_LIMIT + 100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
+    for (let i = 0; i < MEMBERSHIP_JOURNAL_LIMIT + 100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
     for (const e of bulk) sim.world.destroy(e);
     const last = heapAt(sim, 1, 1, WOOD, 1);
     // The journal really overflowed — the index (caught up at `caughtUp`) must take the rebuild path.
