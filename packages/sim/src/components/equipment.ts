@@ -39,7 +39,7 @@ export interface EquipmentSlot {
  *
  * This is the equipment INVENTORY/display axis, distinct from the combat {@link Weapon}/{@link Armor}
  * components (which carry the `weaponTypeId`/`armorClass` the CombatSystem resolves damage through):
- * wiring the two together — equipping a weapon good actually granting the combat `Weapon` — is a
+ * wiring the two together (equipping a weapon good actually granting the combat `Weapon`) is a
  * deferred phase. For now a scene stamps both when it wants a unit that both displays and fights.
  *
  * It is a **separate optional component** (like {@link Weapon}/{@link Armor}/{@link JobAssignment}):

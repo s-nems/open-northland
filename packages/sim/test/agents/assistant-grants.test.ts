@@ -18,7 +18,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { ASSISTANT_MAX_IN_FLIGHT } from '../../src/systems/agents/assistant-grants.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
-import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -36,9 +36,10 @@ const TOOL_IRON = 12;
 const MEAD = 13;
 const WOOD = 1;
 const WOODCUTTER = 1;
-/** The fixture job inside the pinned soldier band (31..41) - fighter-classified by `isFighterJob`
- *  (see the fixture's own note on job 36). */
-const FIGHTER_JOB = 36;
+/** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
+const FIGHTER_JOB = 31;
+/** The fixture's scout trade (`jobtypes.ini` 27). */
+const SCOUT_JOB = 27;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const HUMAN_PLAYER = 0;

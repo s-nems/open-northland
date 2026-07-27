@@ -95,7 +95,7 @@ export function equipGood(
   if (good?.equip === undefined || good.equip.category !== command.group) return;
   // A fighter keeps no tool, so the order is refused rather than shed later (shedToolOnEnlist,
   // work/employment.ts, owns the rule).
-  if (command.group === 'tool' && isFighterJob(world.get(e, Settler).jobType)) return;
+  if (command.group === 'tool' && isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
   stampEquipOrder(world, terrain, e, {
     group: command.group,
     slot: command.slot,

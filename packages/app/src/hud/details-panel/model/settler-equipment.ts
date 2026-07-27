@@ -16,7 +16,7 @@ export interface EquipSlotModel {
   /** Whether the slot holds a good - true even when the good's def failed to resolve (no icon/label),
    *  so the action buttons still read the slot as worn. */
   readonly occupied: boolean;
-  /** The worn good's string id (the icon key) — undefined when the slot is empty. */
+  /** The worn good's string id (the icon key); undefined when the slot is empty. */
   readonly goodId?: string;
   /** The worn good's display name (the action buttons' tooltip line) - undefined when empty. */
   readonly label?: string;
@@ -27,7 +27,7 @@ export interface EquipSlotModel {
 }
 
 /**
- * One labeled equipment row — the original's `Buty`/`Narzędzia`/`Broń`/`Zbroja`/`Ekwipunek` lines, each
+ * One labeled equipment row - the original's `Buty`/`Narzędzia`/`Broń`/`Zbroja`/`Ekwipunek` lines, each
  * a `humanwindow` label id (+ pinned fallback) and its slot(s). Single-slot rows (boots/tool/weapon/
  * armour) carry one; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}.
  */
@@ -43,7 +43,7 @@ export interface EquipRow {
   readonly wearable: boolean;
 }
 
-/** A cloned `Equipment` slot as it appears in the snapshot (`{ degreeOfUse, goodType }`) — or empty. */
+/** A cloned `Equipment` slot as it appears in the snapshot (`{ degreeOfUse, goodType }`), or empty. */
 type RawEquipSlot = { readonly goodType?: unknown; readonly degreeOfUse?: unknown } | null | undefined;
 
 /** The `Equipment` component as the snapshot serializes it (slots + the misc array). */
@@ -90,7 +90,9 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   const eq = comps.Equipment as RawEquipment | undefined;
   const s = (comps.Settler ?? {}) as Comp;
   const rows: EquipRow[] = [];
-  const fighter = systems.isFighterJob(num(s.jobType) ?? null);
+  const jobType = num(s.jobType);
+  const job = jobType === undefined ? undefined : ctx.jobs.find((j) => j.typeId === jobType);
+  const fighter = job !== undefined && systems.isFighterJobRow(job);
   if (fighter || 'Weapon' in comps || eq?.weapon != null || eq?.armor != null) {
     rows.push({
       titleId: HUMANWINDOW.weapon,
