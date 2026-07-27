@@ -188,4 +188,13 @@ describe('healing draught - the death-save', () => {
     expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
+
+  it('never revives an already-dead bearer (the combat twin guards the same way)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const settler = woundedBearer(sim, 0, [fresh(POTION_HEAL)]); // killed this tick, awaiting cleanup
+    sim.world.get(settler, Settler).hunger = ONE;
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(settler, Health).hitpoints).toBe(0); // stays dead, and the bottle is untouched
+    expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));
+  });
 });

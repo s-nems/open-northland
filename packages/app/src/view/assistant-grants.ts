@@ -26,14 +26,15 @@ interface GrantContent {
  *  to nothing - that switch then reads OFF and writes nothing). */
 function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, readonly number[]> {
   const byId = new Map(content.goods.map((g) => [g.id, g.typeId]));
-  const resolved = {} as Record<AssistantGrantId, readonly number[]>;
-  for (const id of GRANT_IDS) {
-    resolved[id] = GRANT_GOOD_SLUGS[id].flatMap((slug) => {
+  const resolve = (id: AssistantGrantId): readonly number[] =>
+    GRANT_GOOD_SLUGS[id].flatMap((slug) => {
       const typeId = byId.get(slug);
       return typeId === undefined ? [] : [typeId];
     });
-  }
-  return resolved;
+  return Object.fromEntries(GRANT_IDS.map((id) => [id, resolve(id)])) as Record<
+    AssistantGrantId,
+    readonly number[]
+  >;
 }
 
 /** The chest window's live grant seam for `player`: reads the sim's grant list, writes one
@@ -50,12 +51,11 @@ export function assistantGrantsSeam(
   return {
     read: () => {
       const granted = new Set(sim.assistantGrants(player));
-      const state = {} as Record<AssistantGrantId, boolean>;
-      for (const id of GRANT_IDS) {
+      const on = (id: AssistantGrantId): boolean => {
         const goods = grantGoods[id];
-        state[id] = goods.length > 0 && goods.every((g) => granted.has(g));
-      }
-      return state;
+        return goods.length > 0 && goods.every((g) => granted.has(g));
+      };
+      return Object.fromEntries(GRANT_IDS.map((id) => [id, on(id)])) as Record<AssistantGrantId, boolean>;
     },
     set: (id, enabled) => {
       const goods = grantGoods[id];

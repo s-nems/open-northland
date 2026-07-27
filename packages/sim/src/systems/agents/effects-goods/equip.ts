@@ -17,10 +17,12 @@ import { reapEmptyLoosePile } from './piles.js';
 import { pileupIntoStore } from './transfer.js';
 
 // The equip errand's two goods effects: wear a unit lifted out of a store (`equip`), and take a worn
-// unit off (`unequip`). A unit never appears out of thin air; the one place one DISAPPEARS is the
-// part-used take-off/swap-out (see isUsed) - stores hold fungible stock amounts, so stowing a used
-// unit would round-trip it back to fresh, and destroying it closes that regeneration (user rule
-// 2026-07-23). The fresh `degreeOfUse` on wear is the same approximation's other side.
+// unit off (`unequip`). This module owns the TAKE-OFF RULE the rest of the equip code points at: a unit
+// never appears out of thin air, and the one place one DISAPPEARS is the part-used take-off/swap-out
+// (see isUsed). Source basis: the manual's equipment section, "Partly used items (potions, shoes, ...)
+// you drop are lost. Unused items such as weapons, armour and amulets can be used again" (the original
+// manual p. 27) - which is also what stores need, since they hold fungible amounts that would round-trip
+// a used unit back to fresh. The fresh `degreeOfUse` on wear is the same rule's other side.
 
 /** The settler's Equipment component, created empty on first wear (a bare settler carries none until
  *  something is actually put on it - see the component's absence contract). */
@@ -73,6 +75,7 @@ export function equipFromStore(
   const eq = ensureEquipment(world, settler);
   const previous = equipSlotValue(eq, group, slot);
   writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
+  world.touch(settler); // log the in-place write (the direct-field-write convention; cheap Set.add)
   const stows = previous !== null && !isUsed(previous);
   if (stows) addCarry(world, settler, previous.goodType, 1);
   advanceOrder(world, settler, stows ? 'stow' : 'return');
@@ -97,6 +100,7 @@ export function unequipWornGood(
   const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
   if (eq === undefined || previous === null) return; // nothing worn there - the errand just returns
   writeEquipSlot(eq, group, slot, null);
+  world.touch(settler);
   if (isUsed(previous)) {
     advanceOrder(world, settler, 'return'); // destroyed on the spot - nothing to stow
     return;

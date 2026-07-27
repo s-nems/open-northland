@@ -80,7 +80,7 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly onUnassignHome?: (settlerId: number) => void;
   /** Open the equip pick menu for one of the selected settler's equipment slots - invoked by the round
    *  per-slot button (an empty slot's plus = put an item on, a worn slot's arrows = swap it; `ref` names
-   *  the slot). The menu itself is the deferred next step. Absent → the buttons are inert. */
+   *  the slot). Absent → the buttons are inert. */
   readonly onEquipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
   /** Order the worn item in `ref` taken off - the per-slot cross button. Absent → the button is inert. */
   readonly onUnequipSlot?: (settlerId: number, ref: EquipSlotRef) => void;

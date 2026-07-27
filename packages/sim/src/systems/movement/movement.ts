@@ -97,9 +97,10 @@ export const movementSystem: System = (world, ctx) => {
     // forever). Flooring at one ULP keeps an absurdly slow data-pinned pace slow but terminating.
     const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const floored = rawGait > ULP ? rawGait : ULP;
-    // Worn boots raise the cruise gait by their content-rated fraction (+40%). The > ZERO guard keeps
-    // every bootless walker's arithmetic byte-identical; the brake floor and arrival snap below scale
-    // with the gait, so a faster pace still terminates.
+    // Worn boots raise the cruise gait by their content-rated fraction (the manual: "A Viking wearing
+    // shoes can walk much faster"; the magnitude is our balance). The > ZERO guard keeps every bootless
+    // walker's arithmetic byte-identical; the brake floor and arrival snap below scale with the gait, so
+    // a faster pace still terminates.
     const bootBonus = bootsSpeedBonus(world, ctx, e);
     const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
     const p = world.get(e, Position);

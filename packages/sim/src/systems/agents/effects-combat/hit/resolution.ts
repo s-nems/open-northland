@@ -139,13 +139,12 @@ export function resolveCombatHit(
   const dealtDamage = damage > 0;
   const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
   // A KILLING blow (hitpoints > 0: a target already at 0, e.g. a debug kill awaiting cleanup, is not
-  // revived) may be answered by the healing draught's death-save; the blow still counted (XP, anger).
-  if (health.hitpoints > 0 && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target)) {
-    // saved - tryDeathSaveDraught reset the pool
-  } else {
-    // The outer max floors the pool itself (a hit never drives it below 0).
-    health.hitpoints = Math.max(0, health.hitpoints - dealt);
-  }
+  // revived) may be answered by the healing draught's death-save, which resets the pool itself; the
+  // blow still counted (XP, anger).
+  const saved =
+    health.hitpoints > 0 && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
+  // The outer max floors the pool itself (a hit never drives it below 0).
+  if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType); // train the weapon class
   if (health.hitpoints <= 0) {

@@ -28,9 +28,10 @@ describe('EquipClass', () => {
   });
 
   it('rejects out-of-range or fractional percents and zero uses', () => {
-    expect(() => EquipClass.parse({ category: 'misc', restorePct: { hunger: 0 } })).toThrow();
-    expect(() => EquipClass.parse({ category: 'misc', restorePct: { fatigue: 101 } })).toThrow();
-    expect(() => EquipClass.parse({ category: 'misc', restorePct: { healthMax: 50.5 } })).toThrow();
+    const bottle = { category: 'misc', wears: true, uses: 2 } as const; // a valid draught but for the percent
+    expect(() => EquipClass.parse({ ...bottle, restorePct: { hunger: 0 } })).toThrow();
+    expect(() => EquipClass.parse({ ...bottle, restorePct: { fatigue: 101 } })).toThrow();
+    expect(() => EquipClass.parse({ ...bottle, restorePct: { healthMax: 50.5 } })).toThrow();
     expect(() => EquipClass.parse({ category: 'tool', uses: 0 })).toThrow();
     expect(() => EquipClass.parse({ category: 'boots', speedBonusPct: -40 })).toThrow();
   });
@@ -38,5 +39,9 @@ describe('EquipClass', () => {
   it('rejects a wearing item without rated uses (it would never break)', () => {
     expect(() => EquipClass.parse({ category: 'boots', wears: true })).toThrow(/rate its uses/);
     expect(EquipClass.parse({ category: 'boots', wears: true, uses: 1 }).uses).toBe(1);
+  });
+
+  it('rejects a restoring item that never wears (a bottomless bottle)', () => {
+    expect(() => EquipClass.parse({ category: 'misc', restorePct: { hunger: 50 } })).toThrow(/wear down/);
   });
 });

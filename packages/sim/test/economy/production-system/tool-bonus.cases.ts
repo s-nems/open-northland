@@ -7,6 +7,7 @@ import {
   Settler,
   Stockpile,
 } from '../../../src/components/index.js';
+import { ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
@@ -98,9 +99,14 @@ describe('productionSystem credits a worn tool additively and wears it per cycle
     const staffed = { kind: 'staffed', operators: [worker] } as const;
     for (let i = 0; i < 99; i++) accrueBonusOutput(sim.world, ctx, mill, doneCycle(), staffed, recipes);
     expect(sim.world.get(worker, Equipment).tool).not.toBeNull(); // one rated cycle left
+    const before = sim.world.get(mill, ProductionBonus).remainders.get(PLANK) ?? ZERO;
     accrueBonusOutput(sim.world, ctx, mill, doneCycle(), staffed, recipes);
     expect(sim.world.get(worker, Equipment).tool).toBeNull(); // broke on its 100th cycle
     const banked = sim.world.tryGet(mill, ProductionBonus)?.remainders.get(PLANK);
+    // The breaking cycle is still a cycle the tool worked: a tool rated for 100 uses credits 100 of
+    // them, not 99 (crediting after the wear step would read the already-cleared slot and bank
+    // nothing). 99 credits of 0.3 leave 0.699 banked, so this hundredth one flushes no whole unit.
+    expect(banked).toBe(fx.add(before, toolFraction(30)));
     accrueBonusOutput(sim.world, ctx, mill, doneCycle(), staffed, recipes);
     expect(sim.world.tryGet(mill, ProductionBonus)?.remainders.get(PLANK)).toBe(banked); // no tool, no credit
   });

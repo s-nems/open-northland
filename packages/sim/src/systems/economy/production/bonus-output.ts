@@ -16,8 +16,8 @@ import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../.
 /**
  * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus
  * ({@link operatorProductionBonus}) PLUS its worn tool's credit ({@link toolProductionBonus} - a SUM,
- * never a product) times its recipe outputs into the workplace's {@link ProductionBonus} remainders —
- * cycle→operator pairing index-for-index, the XP grant's slice — then whole remainder units flush
+ * never a product) times its recipe outputs into the workplace's {@link ProductionBonus} remainders,
+ * cycle to operator pairing index-for-index (the XP grant's slice), then whole remainder units flush
  * into the stockpile. A crafting operator's tool also wears one step per completed cycle, whether or
  * not it rates a credit. Farms never reach here (the field loop runs no recipe cycles), so tools
  * leave them alone by construction. The flush runs on every completion regardless of the crediting
@@ -35,8 +35,10 @@ export function accrueBonusOutput(
     done.forEach((cycle, i) => {
       const op = operators.operators[i];
       if (op === undefined) return;
-      if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
+      // Credit BEFORE wearing: the cycle that breaks the tool is still a cycle the tool worked, so a
+      // tool rated `uses: N` credits N cycles, not N - 1 (wear clears the slot at ONE).
       const bonus = fx.add(operatorProductionBonus(world, ctx, op), toolProductionBonus(world, ctx, op));
+      if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
       if (bonus <= ZERO) return;
       const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
       for (const output of outputs) {

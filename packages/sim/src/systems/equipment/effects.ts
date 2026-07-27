@@ -59,11 +59,15 @@ export function draughtRestores(
 }
 
 /**
- * The healing draught's DEATH-SAVE (design rule: it protects at the moment of death and regenerates
- * then): called where a lethal blow/bite is about to land, it drinks one sip of the lowest-indexed
- * live healing draught and sets the bearer to its restore percent of max hitpoints (floored at 1)
- * instead of dying. Instant - death is instant, so no atomic plays. Returns false when no draught is
- * held (the caller kills as before).
+ * The healing draught's DEATH-SAVE: called where a lethal blow/bite is about to land, it drinks one sip
+ * of the lowest-indexed live healing draught and sets the bearer to its restore percent of max
+ * hitpoints (floored at 1) instead of dying. Instant - death is instant, so no atomic plays. Returns
+ * false when no draught is held (the caller kills as before).
+ *
+ * Named deviation from the manual, which triggers the potion on injury ("A soldier equipped with this
+ * potion will automatically take it when he is injured by an enemy or wild beast", p. 18): the user
+ * chose a death-save instead (2026-07-24), so a bottle is worth one life rather than a top-up, and the
+ * starvation bite gets the same protection.
  */
 export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity): boolean {
   const eq = world.tryGet(e, Equipment);

@@ -128,9 +128,9 @@ export type AtomicEffect =
   /** The settler lifts one unit of `goodType` out of the store/pile `from` STRAIGHT into its equipment
    *  slot (`group`, `slot`) - the equip errand's acquire step, a `pickup` whose unit lands on the body
    *  (fresh) instead of the back. A fresh swapped-out good moves onto the back for stowing; a part-used
-   *  one is destroyed (the no-regeneration rule - `effects-goods/equip.ts` owns it). Otherwise goods are
-   *  conserved: the source loses exactly the worn unit, and a source gone/emptied mid-swing whiffs (the
-   *  planner re-searches). */
+   *  one is destroyed (the take-off rule, `effects-goods/equip.ts`). Otherwise goods are conserved: the
+   *  source loses exactly the worn unit, and a source gone/emptied mid-swing whiffs (the planner
+   *  re-searches). */
   | {
       readonly kind: 'equip';
       readonly from: Entity;
@@ -140,9 +140,9 @@ export type AtomicEffect =
     }
   /** The settler takes the good in equipment slot (`group`, `slot`) off - run AT the stow store (`sink`),
    *  so the item stays visibly worn for the walk there. A fresh unit deposits straight into `sink`
-   *  (overflow onto the back for the stow leg); a part-used one is destroyed (the no-regeneration rule -
-   *  `effects-goods/equip.ts` owns it) in place with `sink` null, as when no store can take the unit
-   *  (the stow leg drops it on the ground). An already-empty slot whiffs. */
+   *  (overflow onto the back for the stow leg); a part-used one is destroyed in place with `sink` null
+   *  (the take-off rule, `effects-goods/equip.ts`), as when no store can take the unit (the stow leg
+   *  drops it on the ground). An already-empty slot whiffs. */
   | {
       readonly kind: 'unequip';
       readonly group: EquipCategory;
