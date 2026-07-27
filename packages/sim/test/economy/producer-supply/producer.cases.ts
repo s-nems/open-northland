@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Carrying,
+  CraftSelection,
   CurrentAtomic,
   MoveGoal,
   Owner,
@@ -21,6 +22,7 @@ import {
   cell,
   ctxOf,
   FARM,
+  FOOD_SIMPLE,
   grassMap,
   HEADQUARTERS,
   PICKUP_ATOMIC,
@@ -338,6 +340,109 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     const atomic = sim.world.get(second, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
+  });
+
+  it('frees an operator whose craft pick names the product the shelf CANNOT start', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The two-product shop stocked with wood but no wheat: planks are startable (and this carpenter
+    // has earned them), food is not. An operator pinned to food may never touch the plank recipe, so a
+    // seat sized off "SOME product is startable" pins it inside a shop it can never run (the AI's
+    // iron-only joinery standing on wood it is not allowed to use). Its seat has to answer for ITS
+    // rotation. The unpinned twin below is the control: same shelf, and it stays.
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [[WOOD, 10]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
+    settlerAt(sim, 5, 0, WOODCUTTER); // alive → PLANK is tech-unlocked, so the plank recipe really can start
+    const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, Resting)).toBe(false);
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0)); // out for the wheat its pick needs
+  });
+
+  it('keeps that same seat for an operator with no pick at all', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [[WOOD, 10]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: shop }); // the planks it may still make
+  });
+
+  it('keeps the seat when the picked product is the one the stock can start', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0, [
+      [WOOD, 10],
+      [WHEAT, 5],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: shop });
+  });
+
+  it('frees an operator that has EARNED none of the workplace’s products', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The rotation's other narrowing: the fixture's `needforgood PLANK` row. A carpenter without those
+    // repeats can start nothing here however full the shelf is, so the seat gate must let it go
+    // (banked planks and a sink: its next-best work is the output run).
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 3],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    settlerAt(sim, 5, 0, WOODCUTTER); // alive → PLANK is tech-unlocked, so only the XP gate is left
+    const green = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(green, Resting)).toBe(false);
+    expect(sim.world.get(green, CurrentAtomic).effect).toMatchObject({
+      kind: 'pickup',
+      goodType: PLANK,
+      from: mill,
+    });
+  });
+
+  it('seats the same operator once it has earned the product', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 3],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    settlerAt(sim, 5, 0, WOODCUTTER);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
+  });
+
+  it('stays to advance a running batch its own pick could never have started', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The seat a GRINDING batch needs belongs to whoever is present (the FIFO advance rule), pick or
+    // no pick: otherwise a food-pinned operator would walk out on the plank batch it is holding and
+    // leave it paused for the whole trip.
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+    sim.world.add(shop, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: shop });
   });
 });
 

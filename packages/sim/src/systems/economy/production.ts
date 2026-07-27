@@ -10,6 +10,7 @@ import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
 
 export { shelfBlockedOutput, startableCycleCount } from './production/cycles.js';
+export { craftablePool } from './production/rotation.js';
 
 /**
  * ProductionSystem — one workplace turns input goods into output goods over time.

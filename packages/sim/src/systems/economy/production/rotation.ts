@@ -9,18 +9,33 @@ import { beginCycle, canStartCycle } from './cycles.js';
 // The cycle model it starts through is ./cycles.ts; the loop that calls this is ../production.ts.
 
 /**
+ * The products of `recipes` this operator may craft, in rotation order: its {@link CraftSelection}
+ * goods, else every product of the workplace, each narrowed to what the operator has EARNED (a
+ * `needforgood` XP threshold, {@link settlerMeetsNeed}, locks a ware until the operator's repeats clear
+ * it, so a fresh smith forges only the ungated wares and grows into the rest; source basis: observed
+ * original behaviour, locked products are absent from a young craftsman's output, and the
+ * profession-progression toggle lifts the gate). A selection naming nothing this workplace makes, or
+ * nothing earned, degrades to that all-products default rather than stalling a staffed workshop.
+ */
+export function craftablePool(
+  world: World,
+  ctx: SystemContext,
+  operator: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+): readonly number[] {
+  const subject = needSubjectOf(world, operator);
+  const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
+  const picked =
+    world.tryGet(operator, CraftSelection)?.goods.filter((g) => recipes.has(g) && earned(g)) ?? [];
+  return picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
+}
+
+/**
  * Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start.
- * The choice walks the operator's rotation — its {@link CraftSelection} goods, or every product of the
- * workplace when it has none (or when its picks name nothing this workplace makes — an orphaned pick
- * degrades to all-products rather than stalling) — from the rotation cursor, taking the first startable
- * product and advancing the cursor past it (so alternation resumes after the started product, and a blocked
- * product is retried next start instead of being skipped forever). A first-ever start stamps the
- * "all products" selection so the worker's rotation position persists.
- *
- * The pool is further narrowed to the products this operator has EARNED: a `needforgood` XP threshold
- * ({@link settlerMeetsNeed}) locks a ware until the operator's repeats clear it — a fresh smith forges
- * only the ungated wares and grows into the rest (source basis: observed original behaviour — locked
- * products are absent from a young craftsman's output; the profession-progression toggle lifts it).
+ * The choice walks the operator's rotation ({@link craftablePool}) from the rotation cursor, taking the
+ * first startable product and advancing the cursor past it (so alternation resumes after the started
+ * product, and a blocked product is retried next start instead of being skipped forever). A first-ever
+ * start stamps the "all products" selection so the worker's rotation position persists.
  */
 export function startCycleFor(
   world: World,
@@ -29,19 +44,9 @@ export function startCycleFor(
   operator: Entity,
   recipes: ReadonlyMap<number, Recipe>,
 ): void {
-  let selection = world.tryGet(operator, CraftSelection);
-  const subject = needSubjectOf(world, operator);
-  const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
-  const picked =
-    selection !== undefined && selection.goods.length > 0
-      ? selection.goods.filter((g) => recipes.has(g) && earned(g))
-      : [];
-  // A selection naming nothing this workplace makes — or nothing this operator has EARNED — degrades
-  // to the (earned) all-products default, like the gather pick's graceful fallback: employment changes
-  // clear picks, but a content rebase or a raw command can still orphan one, and an orphaned pick must
-  // not stall a staffed workshop.
-  const pool = picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
+  const pool = craftablePool(world, ctx, operator, recipes);
   if (pool.length === 0) return; // no recipes at all, or none this operator has earned yet
+  let selection = world.tryGet(operator, CraftSelection);
   const cursor = selection?.cursor ?? 0;
   for (let i = 0; i < pool.length; i++) {
     const good = pool[(cursor + i) % pool.length];
