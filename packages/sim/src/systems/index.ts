@@ -20,6 +20,7 @@ export * from './footprint/index.js';
 export * from './lifecycle/ageclass.js';
 export * from './lifecycle/cleanup.js';
 export * from './lifecycle/needs.js';
+export * from './movement/animal-wander.js';
 export * from './movement/collision/index.js';
 export * from './movement/evict.js';
 export * from './movement/herding.js';

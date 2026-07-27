@@ -118,6 +118,7 @@ export {
   mayHunt,
   playableTribes,
   settlerHitpoints,
+  stayPointRangeOf,
 } from './tribes/index.js';
 export {
   isShipVehicle,

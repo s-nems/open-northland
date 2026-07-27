@@ -16,6 +16,8 @@ import { ctxOf, settlerWithHunger } from './support.js';
 
 /** A soldier job id (jobtypes.ini soldiers 31..41) — a fighter, whose company need is frozen. */
 const SOLDIER_JOB = 31;
+/** The fixture bear (tribe 10), a recorded tribe with no `jobEnables`, what `isAnimalTribe` reads. */
+const ANIMAL_TRIBE = 10;
 
 describe('needsSystem — hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {
@@ -62,6 +64,30 @@ describe('needsSystem — hunger rises over time', () => {
     expect(hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100)));
     expect(hunger).toBeLessThan(ONE);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+});
+
+describe('needsSystem: the wildlife exemption, and only wildlife', () => {
+  it('freezes every need of an animal-tribe settler (no bar could ever be satisfied)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const bear = settlerWithHunger(sim, fx.fromInt(0));
+    const settler = sim.world.get(bear, Settler);
+    settler.tribe = ANIMAL_TRIBE;
+    settler.jobType = null; // as spawnAnimalHerd places it, wildlife takes no trade
+
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    expect(settler.hunger).toBe(fx.fromInt(0));
+    expect(settler.fatigue).toBe(fx.fromInt(0));
+    expect(settler.enjoyment).toBe(fx.fromInt(0));
+  });
+
+  it('rises the needs of a JOBLESS civilization settler (only wildlife is exempt, not joblessness)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const idle = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.get(idle, Settler).jobType = null; // e.g. its workplace was just demolished
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(idle, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
   });
 });
 

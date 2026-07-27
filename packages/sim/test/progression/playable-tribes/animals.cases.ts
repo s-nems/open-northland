@@ -12,6 +12,7 @@ import {
   isPlayableTribe,
   isWarrantableAnimal,
   locomotionOf,
+  stayPointRangeOf,
 } from '../../../src/systems/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
@@ -155,6 +156,16 @@ describe('herdParams (the animal herd/spawn read view)', () => {
       birthPointRange: 0,
       stayPointRange: 0,
     });
+  });
+});
+
+describe('stayPointRangeOf (the scalar territory-radius read view)', () => {
+  it('agrees with herdParams, which it exists only to answer without minting a struct', () => {
+    const content = tribeContent();
+    for (const tribe of [8, 9, 1, 99]) {
+      expect(stayPointRangeOf(content, tribe)).toBe(herdParams(content, tribe)?.stayPointRange ?? 0);
+    }
+    expect(stayPointRangeOf(content, 8)).toBe(7); // bears, the one tribe here with a real record
   });
 });
 

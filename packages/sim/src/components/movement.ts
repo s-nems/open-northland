@@ -22,6 +22,15 @@ export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity');
 export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
 
 /**
+ * An animal's territory anchor: the node the grazing drive (`animalWanderSystem`) leashes its roaming to.
+ *
+ * A separate optional component (the {@link HerdMember} pattern): only a creature `spawnAnimalHerd`
+ * placed on a map carries one, so it doubles as the "this entity is roaming wildlife" marker the drive
+ * queries on.
+ */
+export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint');
+
+/**
  * A per-entity locomotion pace override: how far this entity advances toward its current {@link PathFollow}
  * waypoint each tick, in fixed-point tile units. The MovementSystem reads `perTick` for a path-follower that
  * carries one; an entity without it walks at the universal settler pace ({@link MOVE_SPEED_PER_TICK}).
