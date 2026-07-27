@@ -88,7 +88,7 @@ export function writeEquipSlot(
  * (acquire → stow → return).
  *
  * `issuer` separates the player's click from the assistant's hand-out: a player order is urgent enough
- * to set a carried load down mid-errand, the assistant's waits for the delivery instead
+ * to set a carried load down mid-errand, the assistant's is dropped instead
  * (`settlers/drives/equip-order.ts`).
  */
 export const EquipOrder = defineComponent<{

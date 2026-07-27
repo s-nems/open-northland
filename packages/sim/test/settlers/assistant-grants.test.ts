@@ -249,7 +249,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(SHOES);
   });
 
-  it('yields to a load picked up mid-errand, where a player order would set it down', () => {
+  it('drops the errand on a load picked up mid-errand, where a player order sets the load down', () => {
     const sim = freshSim();
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim expected');
@@ -297,6 +297,56 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(freedPlayer).toBeGreaterThan(0);
     expect(freedAssistant === -1 || freedAssistant > freedPlayer).toBe(true);
     expect(sim.world.get(hq, Stockpile).amounts.get(WOOD) ?? 0).toBe(1); // banked, not grounded
+    // The player's errand survives its own set-down; the assistant's is gone rather than held across
+    // a delivery of unbounded length - the cap slot and the stock reservation go with it.
+    expect(sim.world.has(byPlayer, EquipOrder)).toBe(true);
+    expect(sim.world.has(byAssistant, EquipOrder)).toBe(false);
+  });
+
+  it('a permanently loaded settler releases its cap slot instead of pinning the hand-out', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // The whole cap, held by settlers that never advance: each one is on an acquire-stage errand and
+    // its hands are re-loaded every tick, the state a producer with no reachable sink sits in for good.
+    const stuck: Entity[] = [];
+    for (let i = 0; i < ASSISTANT_MAX_IN_FLIGHT; i++) {
+      const e = ownedSettler(sim, 4 + i, 4);
+      sim.world.add(e, EquipOrder, {
+        group: 'boots',
+        slot: 0,
+        goodType: SHOES,
+        returnTo: terrain.nodeAtClamped(0, 0),
+        stage: 'acquire',
+        issuer: 'assistant',
+      });
+      stuck.push(e);
+    }
+    const live = ownedSettler(sim, 2, 2);
+    // Stock well past the cap, so it is the cap alone under test: with one pair, the stock reservation
+    // would block dispatch on its own and neither assertion below could tell the two brakes apart.
+    pileAt(sim, 12, 2, SHOES, 10);
+    grant(sim, SHOES);
+
+    // Count re-stamps, not just the end state: dropping the errand would be a bad trade if the next
+    // beat handed the same loaded settler a fresh one, so this pins the dispatch-side free-hands guard.
+    let reStamps = 0;
+    const held = new Map(stuck.map((e) => [e, true])); // each starts on the errand stamped above
+    for (let tick = 0; tick < ERRAND_TICKS; tick++) {
+      for (const e of stuck) sim.world.add(e, Carrying, { goodType: WOOD, amount: 1 });
+      sim.run(1);
+      for (const e of stuck) {
+        const has = sim.world.has(e, EquipOrder);
+        if (has && held.get(e) === false) reStamps++;
+        held.set(e, has);
+      }
+    }
+
+    // Held errands would have eaten the whole cap, leaving the free settler barefoot beside a stocked
+    // pile with no sign of why.
+    expect(sim.world.tryGet(live, Equipment)?.boots?.goodType).toBe(SHOES);
+    expect(reStamps).toBe(0);
+    for (const e of stuck) expect(sim.world.has(e, EquipOrder)).toBe(false);
   });
 
   it('leaves a posted guard on its anchor', () => {

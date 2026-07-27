@@ -25,14 +25,14 @@ import { unreachableGoalVeto } from '../unreachable-goals.js';
  * fight/flee/player-walk gates, like the other soft overrides. Stage by stage:
  *
  *  - `acquire`: free the hands first (a player order sets a leftover job load down where the settler
- *    stands, the `moveUnit` idiom; an assistant errand yields until the load is delivered), then fetch -
- *    walk to the nearest reachable store/pile holding the wanted good
- *    and run the `equip` atomic there (the unit lands straight on the body, a fresh swap-out on the
- *    back, a used one destroyed - the take-off rule). Nothing to fetch anywhere reachable
- *    → skip to `return` (the errand gives up, faithful to "no source, no order"). A take-off order
- *    (`goodType` null) runs the `unequip` atomic AT the store the unit will land in, so the item stays
- *    visibly worn for the walk (user rule 2026-07-23); only a part-used unit (destroyed on the spot)
- *    or a unit no store can take (dropped by the stow leg) comes off in place.
+ *    stands, the `moveUnit` idiom; an assistant errand is dropped instead), then fetch - walk to the
+ *    nearest reachable store/pile holding the wanted good and run the `equip` atomic there (the unit
+ *    lands straight on the body, a fresh swap-out on the back, a used one destroyed - the take-off
+ *    rule). Nothing to fetch anywhere reachable → skip to `return` (the errand ends, faithful to "no
+ *    source, no order"). A take-off order (`goodType` null) runs the `unequip` atomic AT the store the
+ *    unit will land in, so the item stays visibly worn for the walk (user rule 2026-07-23); only a
+ *    part-used unit (destroyed on the spot) or a unit no store can take (dropped by the stow leg)
+ *    comes off in place.
  *  - `stow`: a carried good (the swap-out / a taken-off unit no store could take) goes into the
  *    nearest store that can take it; when none can, it is set down on the ground where the settler
  *    stands (user-specified fallback). Partial deposits re-plan until the hands are free.
@@ -105,9 +105,14 @@ export function planEquipOrder(
       return planReturn(world, e, order.returnTo, here, avoid);
     }
     if (world.has(e, Carrying)) {
-      // The player's own order is urgent enough to set a leftover job load down where the settler
-      // stands; the assistant's hand-out yields instead, so its errand never costs a delivery.
-      if (order.issuer === 'assistant') return false;
+      // The player's own order sets a leftover job load down where the settler stands; the assistant's
+      // hand-out never costs a delivery, so its errand is dropped rather than held across a delivery of
+      // unbounded length: a held `acquire` order pins one cap slot and one reserved unit of its player's
+      // hand-out. A later stride beat re-dispatches the settler once its hands are free.
+      if (order.issuer === 'assistant') {
+        world.remove(e, EquipOrder);
+        return false;
+      }
       startDrop(world, ctx, e);
       return true;
     }
