@@ -1,4 +1,6 @@
-import { indexById } from '@open-northland/data';
+import { type ContentSet, indexById } from '@open-northland/data';
+import type { BuildingHighlightItem } from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
@@ -9,6 +11,7 @@ import {
   computeAssignHighlight,
   currentTradeSlotAt,
 } from '../src/view/unit-controls/highlights/index.js';
+import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
 
 /**
  * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a
@@ -102,5 +105,90 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
       const b = byId.get(item.id);
       expect(b !== undefined && isBuilding(b) && ownerPlayerOf(b) === HUMAN_PLAYER).toBe(true);
     }
+  });
+});
+
+/**
+ * The frame loop reads `highlight()` every RAF frame while the assign gesture is armed, but the pass it
+ * runs is O(entities) (twice over, with the staffing map). It must therefore run once per snapshot, not
+ * once per frame - while still re-colouring as soon as the world changes or another settler is armed.
+ */
+describe('pick-mode highlight cost', () => {
+  /** A snapshot whose entity scans are counted (`entities` is the O(N) lane every projection walks). */
+  function countingSnapshot(source: WorldSnapshot): { snapshot: WorldSnapshot; scans: () => number } {
+    let scans = 0;
+    const snapshot: WorldSnapshot = {
+      ...source,
+      get entities() {
+        scans++;
+        return source.entities;
+      },
+    };
+    return { snapshot, scans: () => scans };
+  }
+
+  function pickController(snapshot: () => WorldSnapshot, content: ContentSet): PickModeController {
+    return createPickModeController({
+      snapshot,
+      targets: {
+        owned: () => [],
+        enemies: () => [],
+        flags: () => [],
+        signposts: () => [],
+        ownedSettlersIn: () => [],
+      },
+      content,
+      mapSize: { width: 8, height: 8 },
+      toWorld: () => ({ x: 0, y: 0 }),
+      enqueue: () => undefined,
+    });
+  }
+
+  it('scans the world once per snapshot, not once per frame, and re-scans for a new arm', () => {
+    const scene = getScene('sandbox');
+    if (scene === undefined) throw new Error('sandbox scene missing');
+    const sim = createSceneSim(scene);
+    sim.step();
+    const buildingsByType = indexById(sim.content.buildings);
+    // Two settlers of DIFFERENT trades, so the wash they each produce differs.
+    const owned = sim.snapshot().entities.filter((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER);
+    const settler = owned[0];
+    if (settler === undefined) throw new Error('no owned settler in the sandbox');
+    const other = owned.find((e) => settlerJobType(e) !== settlerJobType(settler));
+    if (other === undefined) throw new Error('expected a second owned settler of another trade');
+
+    const source = sim.snapshot();
+    const first = countingSnapshot(source);
+    let current: WorldSnapshot = first.snapshot;
+    const pick = pickController(() => current, sim.content);
+
+    pick.armWorkplace(settler.id);
+    const frame = (): readonly BuildingHighlightItem[] | null => pick.highlight();
+    const wash = frame();
+    const afterFirst = first.scans();
+    expect(afterFirst).toBeGreaterThan(0);
+    expect(wash).toEqual(computeAssignHighlight(source, settler.id, buildingsByType));
+    // The next frames reuse the memo: no rescan, and the very same array the renderer already holds.
+    expect(frame()).toBe(wash);
+    expect(frame()).toBe(wash);
+    expect(first.scans()).toBe(afterFirst);
+
+    // A new arm re-colours for the newly armed settler, on the same snapshot.
+    pick.armWorkplace(other.id);
+    expect(frame()).toEqual(computeAssignHighlight(source, other.id, buildingsByType));
+    expect(first.scans()).toBeGreaterThan(afterFirst);
+
+    // A fresh snapshot (a tick that may have changed the world) re-scans.
+    sim.step();
+    const second = countingSnapshot(sim.snapshot());
+    current = second.snapshot;
+    frame();
+    expect(second.scans()).toBeGreaterThan(0);
+
+    // Cancelling stops the work entirely.
+    pick.cancel();
+    const before = second.scans();
+    expect(frame()).toBeNull();
+    expect(second.scans()).toBe(before);
   });
 });
