@@ -2,6 +2,7 @@ import type { ElevationField, WorldRenderer } from '@open-northland/render';
 import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
+import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
@@ -40,7 +41,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
   const { app, canvas, params, sim, renderer } = opts;
 
   const geometryDebug = createGeometryDebugOverlay({
-    enabled: params.get('debug') === GEOMETRY_DEBUG_FLAG,
+    enabled: hasDebugFlag(params, GEOMETRY_DEBUG_FLAG),
     buildingsByType: opts.buildingsByType,
     setItems: (items) => renderer.setGeometryDebug(items),
   });
@@ -97,8 +98,8 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     // The live toggle keeps the URL honest, so a reload reproduces what is on screen.
     setGeometryEnabled: (enabled) => {
       geometryDebug.setEnabled(enabled);
-      if (enabled) params.set('debug', GEOMETRY_DEBUG_FLAG);
-      else params.delete('debug');
+      // One flag of a set: a plain `params.set` here would clobber an active `?debug=profile,trace`.
+      setDebugFlag(params, GEOMETRY_DEBUG_FLAG, enabled);
       const search = params.toString();
       window.history.replaceState(
         null,

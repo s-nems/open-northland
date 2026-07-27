@@ -5,6 +5,7 @@
  * and no explicit clearing is needed.
  */
 import { HashTrace, type Simulation } from '@open-northland/sim';
+import { hasDebugFlag } from './debug-flags.js';
 
 export interface DiagGameSession {
   readonly entry: 'map' | 'scene';
@@ -50,5 +51,5 @@ export function recordDiagHash(sim: Simulation): void {
 
 /** Build the session's `HashTrace` when the `?debug=diag` flag asks for hash recording. */
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {
-  return params.get('debug') === HASH_TRACE_DEBUG_FLAG ? new HashTrace() : null;
+  return hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG) ? new HashTrace() : null;
 }

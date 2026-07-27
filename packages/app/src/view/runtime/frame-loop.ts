@@ -1,13 +1,7 @@
 import type { HudLayout, PlacementGhost } from '@open-northland/render';
-import { type FixedTimestep, MS_PER_TICK, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import type { FixedTimestep, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
-import {
-  emitPerfMeasure,
-  PERF_MARKS_DEBUG_FLAG,
-  recordDiagHash,
-  recordTraceEvent,
-  TRACE_DEBUG_FLAG,
-} from '../../diag/index.js';
+import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle, LoopSpeedControl } from '../game-tool-panel.js';
@@ -36,6 +30,8 @@ export interface FrameLoopDeps {
   readonly control: LoopSpeedControl;
   /** Constructed by the mount so its dropped-tick counter outlives any one frame. */
   readonly timestep: FixedTimestep;
+  /** The frame fold the readout formats and the debug handle reports. */
+  readonly frameStats: FrameStats;
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
@@ -75,6 +71,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     deps,
     control,
     timestep,
+    frameStats,
     fogGates,
     toolPanel,
     minimap: mountedMinimap,
@@ -97,10 +94,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // death-stinger filter below all read it.
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
-  // `?debug=perf`: emit the frame phases as User Timing measures (the per-system slices come from
-  // the sim instrument installed by game-view) so one DevTools recording shows the whole anatomy.
-  const perfMarks = deps.params.get('debug') === PERF_MARKS_DEBUG_FLAG;
-  const tracePhases = deps.params.get('debug') === TRACE_DEBUG_FLAG;
+  // `?debug=perf` / `?debug=trace`: emit the frame phases (the per-system slices come from the sim
+  // instrument installed by game-view) so one recording shows the whole frame anatomy.
+  const emitPhase = framePhaseEmitter(deps.params);
   let lastMs = performance.now();
   // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
   // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
@@ -271,22 +267,20 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // CPU split #3: the render build + submit and the rest of the frame's app work (camera, controls,
     // sound) — the remainder after sim + snapshot, so the three sum to cpuMs.
     const drawMs = cpuMs - simMs - snapMs;
-    if (perfMarks || tracePhases) {
+    if (emitPhase !== null) {
       // Named approximation: drawMs is the cpu REMAINDER (two intervals — camera/fog work between
       // sim end and snapshot start, then build+submit); one slice draws it as the tail interval.
-      const emit = perfMarks ? emitPerfMeasure : recordTraceEvent;
-      emit('frame/sim', cpu0, cpu0 + simMs);
-      emit('frame/snapshot', snap0, snap0 + snapMs);
-      emit('frame/draw', snap0 + snapMs, cpu0 + cpuMs);
+      emitPhase('frame/sim', cpu0, cpu0 + simMs);
+      emitPhase('frame/snapshot', snap0, snap0 + snapMs);
+      emitPhase('frame/draw', snap0 + snapMs, cpu0 + cpuMs);
     }
-    perf.update(elapsed, {
+    frameStats.record({
+      elapsedMs: elapsed,
       tick: snap.tick,
       steps,
-      speed: control.speed,
-      // What the loop actually ran, against what `?speed=` asked for. The cap silently discards the
-      // rest, so without this the readout would keep reporting a multiplier nothing delivered.
-      deliveredSpeed: elapsed > 0 ? (steps * MS_PER_TICK) / elapsed : 0,
+      // The timestep's monotonic session total; the fold derives the per-window delta from it.
       droppedTicks: timestep.droppedTicks,
+      speed: control.speed,
       paused: control.paused,
       entities: snap.entities.length,
       cpuMs,
@@ -295,6 +289,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       drawMs,
       ...renderer.stats(),
     });
+    perf.update(frameStats.report());
   }
   return startRafLoop(frame);
 }

@@ -10,13 +10,7 @@ import {
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
-import {
-  installSimPerfMarks,
-  installSimTrace,
-  PERF_MARKS_DEBUG_FLAG,
-  startTraceRecording,
-  TRACE_DEBUG_FLAG,
-} from '../../diag/index.js';
+import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
@@ -39,6 +33,7 @@ import { createFogGates, createSnapshotProjections } from '../projections/index.
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls } from '../unit-controls/index.js';
+import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
 import { mountGamePresentation } from './game-presentation.js';
@@ -133,14 +128,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // The controlled player — every "our units / our fog / our economy" read below goes through it.
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
-  // `?debug=perf` (live DevTools User Timing marks) / `?debug=trace` (a bounded Trace Event
-  // recording, exportable from the system menu) — two consumers of the sim's per-system instrument
-  // seam. Started before the HUD mounts so the system menu sees an active recording.
-  if (params.get('debug') === PERF_MARKS_DEBUG_FLAG) installSimPerfMarks(sim);
-  if (params.get('debug') === TRACE_DEBUG_FLAG) {
-    startTraceRecording();
-    installSimTrace(sim);
-  }
+  // Every consumer of the sim's per-system seam (`?debug=perf` marks, `?debug=trace` recording,
+  // `?debug=profile` running totals) fanned out from the one instrument slot. Installed before the HUD
+  // mounts so the system menu sees an active recording.
+  const profile = installSessionInstruments(sim, params);
 
   // `destroy` halts the loop and drops this session's overlays so a later game never runs a second loop
   // over the same stage; `quitToMenu` then navigates back. Full-page navigation is the v1 transition —
@@ -174,6 +165,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // Built here rather than inside the loop so its dropped-tick tally spans the whole session: that
   // counter is the only record that a requested speed was not delivered.
   const timestep = new FixedTimestep();
+  // The frame fold: the readout formats it, the debug handle reports it.
+  const frameStats = new FrameStats();
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
   // attenuated, panned) + non-spatial life-event jingles + settler voice chatter — a pure consumer of
@@ -361,10 +354,23 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
   // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
   // the session's — quit halts the loop before navigating away.
+  installDebugHandle({
+    sim,
+    renderer,
+    sheet: deps.sheet,
+    cameraCtl,
+    canvas,
+    control,
+    timestep,
+    frameStats,
+    profile,
+  });
+
   loop = startFrameLoop({
     deps,
     control,
     timestep,
+    frameStats,
     fogGates,
     toolPanel,
     minimap: mountedMinimap,

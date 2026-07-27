@@ -1,4 +1,4 @@
-import type { TerrainTextureSet, WorldRenderer } from '@open-northland/render';
+import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
@@ -18,18 +18,6 @@ import {
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
-
-declare global {
-  interface Window {
-    /** The `?scene=` entry's console-debug seam — see the assignment in {@link renderSceneMode}. */
-    __opennorthland?: {
-      readonly sim: import('@open-northland/sim').Simulation;
-      readonly renderer: WorldRenderer;
-      readonly sheet: import('@open-northland/render').SpriteSheet | undefined;
-      readonly cameraCtl: import('../view/camera/index.js').CameraController;
-    };
-  }
-}
 
 /**
  * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
@@ -146,10 +134,4 @@ export async function renderSceneMode(
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
   });
   await boot.finish();
-
-  // Dev/debug seam: the live instances, reachable from the browser console (`__opennorthland.sim` …) so a
-  // human or an automated probe can inspect the running scene without rebuilding it. Read-only: a
-  // console mutation bypasses the command pipeline and silently voids determinism (state hashes and
-  // golden comparability no longer mean anything for that session).
-  window.__opennorthland = { sim, renderer, sheet, cameraCtl };
 }
