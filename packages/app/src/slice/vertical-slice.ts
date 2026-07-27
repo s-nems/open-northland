@@ -23,6 +23,7 @@ import {
   type WorldContentOptions,
   weaponEquipmentFor,
 } from '../game/sandbox/index.js';
+import { authoredCatalogExtras } from './authored-catalog.js';
 import {
   type AuthoredJoinRows,
   type AuthoredPlacement,
@@ -325,33 +326,7 @@ export function runAuthoredSlice(
     );
   }
 
-  const buildingDefById = new Map<number, { id: string; kind: string }>();
-  for (const b of rows.buildings ?? []) {
-    if (b.typeId !== undefined && b.id !== undefined)
-      buildingDefById.set(b.typeId, { id: b.id, kind: b.kind ?? 'workplace' });
-  }
-  const usedBuildings = [
-    ...new Set(placements.filter((p) => p.kind === 'building').map((p) => p.typeId)),
-  ].sort((a, b) => a - b);
-  const usedJobs = [...new Set(placements.filter((p) => p.kind === 'human').map((p) => p.jobType))].sort(
-    (a, b) => a - b,
-  );
-  const usedTribes = [...new Set(placements.map((p) => p.tribe))].sort((a, b) => a - b);
-  // The authored-id fold fleshes out the smaller sandbox catalog so authored maps keep a full build menu
-  // and profession rules; it is moot under a real-content override, which already carries every id (see
-  // resolveWorldContent).
-  const content = resolveWorldContent(map, options, {
-    jobs: usedJobs.filter((typeId) => typeId !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
-    buildings: usedBuildings.map((typeId) => {
-      const def = buildingDefById.get(typeId);
-      return {
-        typeId,
-        id: def?.id ?? `building_${typeId}`,
-        ...(def?.kind !== undefined ? { kind: def.kind } : {}),
-      };
-    }),
-    tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
-  });
+  const content = resolveWorldContent(map, options, authoredCatalogExtras(placements, rows));
 
   const sim = newSliceSim(seed, map, content);
   enqueuePlacements(sim, placements);
