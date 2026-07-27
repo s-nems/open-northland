@@ -8,6 +8,7 @@ import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import { clientToCanvas } from '../geometry.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
+import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import { createExtrasWindow, type ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
@@ -245,52 +246,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   });
 
   // --- Button actions -------------------------------------------------------------------------------
-  const activateButton = (id: ToolButtonId): void => {
-    switch (id) {
-      case 'speed':
-        speedButton.cycle();
-        break;
-      case 'buildings':
-        placement.cancel();
-        goodsDrop.cancel();
-        goodsWindow.close();
-        extras.close();
-        menu.toggle();
-        break;
-      case 'extras':
-        // The chest window - the assistant's counters and grant switches (+ the empty plans tab).
-        // Closes statistics too: the two windows overlap, and a click on the visible one must never
-        // land on a control hidden under it.
-        placement.cancel();
-        goodsDrop.cancel();
-        menu.close();
-        goodsWindow.close();
-        stats.close();
-        extras.toggle();
-        break;
-      case 'mission':
-        // Temporary home for the goods drop palette - "put a good on the ground" (`dropGood`) - until
-        // the mission window exists. Mutually exclusive with the build menu / building placement (one
-        // held thing at a time).
-        placement.cancel();
-        goodsDrop.cancel();
-        menu.close();
-        extras.close();
-        goodsWindow.toggle();
-        break;
-      case 'statistics':
-      case 'help': // placeholder alias: Help has no window yet, so it toggles Statistics for now.
-        extras.close(); // the chest window overlaps the stats rect (see the 'extras' case)
-        stats.toggle();
-        break;
-      case 'options':
-        opts.onSystemMenu?.();
-        break;
-      default:
-        // diplomacy / population / tech_tree - not wired in v1.
-        break;
-    }
+  const surfaces: ToolButtonSurfaces = {
+    windows: { menu, goods: goodsWindow, extras, stats },
+    cancelHeld: () => {
+      placement.cancel();
+      goodsDrop.cancel();
+    },
+    cycleSpeed: () => speedButton.cycle(),
+    openSystemMenu: () => opts.onSystemMenu?.(),
   };
+
+  const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
 
   // --- Input --------------------------------------------------------------------------------------
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
