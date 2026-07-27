@@ -5,10 +5,10 @@
 `experienceGatesApply` (`packages/sim/src/systems/progression/unlocks.ts`) exempts every AI seat from
 the experience tree on civilian targets, so `settlerMeetsNeed(..., 'good', ...)` is constant `true`
 for the settlers the workforce allocator governs. That makes `meetsNeed`
-(`packages/sim/src/systems/ai-player/workforce/collectors.ts`) a no-op at both its call sites: the
-first post and the veteran repost accept any spare man, iron included.
+(`packages/sim/src/systems/ai-player/workforce/collectors/wanted-goods.ts`) a no-op at both its call
+sites: the first post and the veteran repost accept any spare man, iron included.
 
-The surrounding machinery still runs. `needGated` reads the tribe's requirement rows directly, so the
+The surrounding machinery still runs. `needsVeteran` reads the tribe's requirement rows directly, so the
 veteran repost still fires for iron when the spare pool is dry, moving an ungated good's collector
 onto it — currently harmless but pointless, since the same fresh man `meetsNeed` accepts could have
 taken the iron post directly.
@@ -22,7 +22,7 @@ describing behaviour a real seat cannot reach.
 
 Decide which side is right and make the code say it:
 
-- if the exemption stands, delete `meetsNeed`, `needGated` and the veteran repost, and rewrite the
+- if the exemption stands, delete `meetsNeed`, `needsVeteran` and the veteran repost, and rewrite the
   two tests against what an AI seat actually does;
 - if collectors should still earn iron, narrow `experienceGatesApply` so `needforgood` keeps applying
   to AI seats, and give those two tests a seat that is really an AI player.

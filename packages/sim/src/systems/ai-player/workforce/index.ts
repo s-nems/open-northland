@@ -14,19 +14,14 @@ import {
   allocateGenericCollectors,
   topUpCollectors,
   wantedCollectorGoods,
-} from './collectors.js';
+} from './collectors/index.js';
 import { tuneCraftSelections } from './craft.js';
 import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 
-export {
-  COLLECTED_GOOD_IDS,
-  COLLECTOR_TARGET_BY_GOOD_ID,
-  DEFAULT_COLLECTOR_TARGET,
-  FLAG_RELOCATE_EVERY_DECISIONS,
-} from './collectors.js';
+export { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } from './collectors/index.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export { GARRISON_TARGET } from './garrison.js';

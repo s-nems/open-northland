@@ -8,7 +8,7 @@ import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../shared.js';
-import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors.js';
+import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors/index.js';
 
 /** The seat's adult men sorted into the workforce this decision allocates: the recognized
  *  collectors (by good type), generic collectors, and scouts kept in place, and everyone else in the
