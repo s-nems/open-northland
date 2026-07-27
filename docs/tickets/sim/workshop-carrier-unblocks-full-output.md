@@ -21,5 +21,5 @@ an input trip that cannot unblock production.
 
 - Planner test: a blocked workshop with no craftsman and an under-capacity input makes its bound
   carrier pick up output before fetching or taking a general haul.
-- Re-run the measured bakery soak and report supplier-drive frequency and shelf levels.
+- Re-measure supplier-drive frequency and shelf levels on a real-map run of comparable length.
 - `npm test`, `npm run check`, and `npm run build`; existing goldens stay unchanged.

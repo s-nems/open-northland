@@ -109,15 +109,26 @@ need listening in a browser or desktop build.
 
 ## Benchmarks and long runs
 
-`npm run bench:sim` reports per-system and whole-tick timing for a synthetic RTS-scale world. It also
-checks that repeated benchmark runs end at the same hash. Absolute timing is machine-dependent, so
-compare runs on the same machine and look at scaling as population changes.
+`npm run bench:sim` reports per-system and whole-tick timing for a synthetic RTS-scale world. Its
+world has independent knobs and no generated content, so it runs on any checkout. It also checks that
+repeated benchmark runs end at the same hash.
 
-`npm run soak:gatherers`, `npm run soak:bakery`, and `npm run soak:late-goods` run long real-content
-economy diagnostics. They can find late stalls but are not regression gates by themselves. Reduce a
-discovered failure to a focused test once its cause is understood.
+`npm run bench:map` reports the same per-system timing for a real decoded map with AI seats, cut into
+windows so a system whose cost grows as the settlement develops is visible as a curve rather than
+hidden in one average. It needs generated content and fails loudly without it, because a benchmark
+that measures nothing must not read as a clean run.
 
-See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark and soak controls.
+Both reports record the machine they were taken on and judge it. A contended box, a machine whose own
+speed drifted mid-run, or a window spiking far above its median leads the report with an untrustworthy
+banner. Treat those numbers as void rather than as a result.
+
+`npm run bench:compare -- before.json after.json` turns two `ON_BENCH_JSON` reports into a per-system
+delta table with a noise band. It refuses to compare different worlds or run lengths, and reports a
+changed state hash as a behavior change rather than a speed one.
+
+Absolute timing is machine-dependent, so compare runs on the same machine.
+
+See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark controls.
 
 ## Choosing the required checks
 

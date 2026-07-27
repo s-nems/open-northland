@@ -4,12 +4,8 @@
  * off the top of whatever the reader is looking at.
  */
 import { systemGrowth } from './summarize.js';
+import { type Column, table } from './table.js';
 import type { BenchReport, BenchWindow, BenchWorld, SystemStat } from './types.js';
-
-interface Column {
-  readonly header: string;
-  readonly width: number;
-}
 
 const SYSTEM_COLUMNS: readonly Column[] = [
   { header: 'system', width: -16 },
@@ -37,27 +33,6 @@ const GROWTH_COLUMNS: readonly Column[] = [
   { header: 'growth', width: 9 },
   { header: 'last share', width: 12 },
 ];
-
-/** A negative width means left-aligned; the rule line spans the summed absolute widths. */
-function row(columns: readonly Column[], values: readonly string[]): string {
-  return columns
-    .map((c, i) => {
-      const value = values[i] ?? '';
-      return c.width < 0 ? value.padEnd(-c.width) : value.padStart(c.width);
-    })
-    .join('')
-    .trimEnd();
-}
-
-function header(columns: readonly Column[]): readonly string[] {
-  return [
-    row(
-      columns,
-      columns.map((c) => c.header),
-    ),
-    '-'.repeat(columns.reduce((sum, c) => sum + Math.abs(c.width), 0)),
-  ];
-}
 
 function ms(value: number): string {
   return value.toFixed(3);
@@ -96,25 +71,8 @@ function banner(report: BenchReport): readonly string[] {
   ];
 }
 
-function systemRows(systems: readonly SystemStat[]): readonly string[] {
-  return systems.map((s) =>
-    row(SYSTEM_COLUMNS, [s.name, ms(s.medianMs), ms(s.p95Ms), `${s.sharePct.toFixed(1)}%`]),
-  );
-}
-
-function windowRows(windows: readonly BenchWindow[]): readonly string[] {
-  return windows.map((w) =>
-    row(WINDOW_COLUMNS, [
-      `${w.index + 1}/${windows.length}`,
-      `${w.fromTick}..${w.toTick}`,
-      ms(w.tickMs.medianMs),
-      ms(w.tickMs.p95Ms),
-      `${w.population.settlers}`,
-      `${w.population.buildings}`,
-      `${w.rssMb}`,
-      `  ${w.systems.at(0)?.name ?? '-'}`,
-    ]),
-  );
+function systemRows(systems: readonly SystemStat[]): readonly (readonly string[])[] {
+  return systems.map((s) => [s.name, ms(s.medianMs), ms(s.p95Ms), `${s.sharePct.toFixed(1)}%`]);
 }
 
 /** First-vs-last window per system. Empty for a single-window run, where growth has no meaning. */
@@ -124,9 +82,9 @@ function growthSection(report: BenchReport): readonly string[] {
   return [
     '',
     `growth (window 1 -> ${report.windows.length})`,
-    ...header(GROWTH_COLUMNS),
-    ...growth.map((g) =>
-      row(GROWTH_COLUMNS, [
+    ...table(
+      GROWTH_COLUMNS,
+      growth.map((g) => [
         g.name,
         ms(g.firstMs),
         ms(g.lastMs),
@@ -137,9 +95,24 @@ function growthSection(report: BenchReport): readonly string[] {
   ];
 }
 
-function windowSection(report: BenchReport): readonly string[] {
-  if (report.windows.length < 2) return [];
-  return ['', ...header(WINDOW_COLUMNS), ...windowRows(report.windows)];
+function windowSection(windows: readonly BenchWindow[]): readonly string[] {
+  if (windows.length < 2) return [];
+  return [
+    '',
+    ...table(
+      WINDOW_COLUMNS,
+      windows.map((w) => [
+        `${w.index + 1}/${windows.length}`,
+        `${w.fromTick}..${w.toTick}`,
+        ms(w.tickMs.medianMs),
+        ms(w.tickMs.p95Ms),
+        `${w.population.settlers}`,
+        `${w.population.buildings}`,
+        `${w.rssMb}`,
+        `  ${w.systems.at(0)?.name ?? '-'}`,
+      ]),
+    ),
+  ];
 }
 
 export function formatReport(report: BenchReport): string {
@@ -158,9 +131,8 @@ export function formatReport(report: BenchReport): string {
     trustLine(report),
     `tick total: median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms`,
     '',
-    ...header(SYSTEM_COLUMNS),
-    ...systemRows(report.systems),
-    ...windowSection(report),
+    ...table(SYSTEM_COLUMNS, systemRows(report.systems)),
+    ...windowSection(report.windows),
     ...growthSection(report),
   ].join('\n');
 }

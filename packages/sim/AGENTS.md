@@ -48,7 +48,8 @@ Per-tick work must scale with active work, never all entity pairs. Reuse:
 - dormancy or generation checks for provably unchanged work;
 - `World.canonicalEntities()` when a shared canonical list is actually required.
 
-Never mutate a shared cached list. Measure system scaling with `npm run bench:sim`; timing stays in
+Never mutate a shared cached list. Measure system scaling with `npm run bench:sim` (synthetic world,
+isolated axes) or `npm run bench:map` (a real decoded map, reported as a growth curve); timing stays in
 the caller through `Simulation.setInstrument`, never in sim source.
 
 ## Tests and goldens
