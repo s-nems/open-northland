@@ -17,8 +17,8 @@ import {
 // operator index only when a workplace actually looks up operators — never on a workshop-less or
 // fully starved tick. (vi.hoisted, because the hoisted vi.mock factory below closes over it.)
 const constructed = vi.hoisted(() => vi.fn());
-vi.mock('../../src/systems/spatial.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/systems/spatial.js')>();
+vi.mock('../../src/systems/spatial/nodes.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/systems/spatial/nodes.js')>();
   class CountingBuckets extends actual.NodeBuckets {
     constructor(...args: ConstructorParameters<typeof actual.NodeBuckets>) {
       super(...args);

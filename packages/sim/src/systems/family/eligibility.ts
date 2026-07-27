@@ -6,7 +6,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 import { isMinor } from './households.js';
 
 // Who may marry, and how a partner is picked — the pure predicates behind the `marry` command and the

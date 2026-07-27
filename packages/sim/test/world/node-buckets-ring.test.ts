@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Position } from '../../src/components/index.js';
 import { type Entity, World } from '../../src/ecs/world.js';
 import { positionOfNode } from '../../src/index.js';
-import { NodeBuckets } from '../../src/systems/spatial.js';
+import { NodeBuckets } from '../../src/systems/spatial/nodes.js';
 
 /**
  * Unit tests for the {@link NodeBuckets.nearest} grid RING SEARCH — the spatial primitive behind the

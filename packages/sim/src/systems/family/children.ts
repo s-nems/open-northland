@@ -39,7 +39,7 @@ import { anyNeedPressing } from '../settlers/drives-needs.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { canonicalById, isTravelling } from '../spatial.js';
+import { canonicalById, isTravelling } from '../spatial/nodes.js';
 import { isOnMission } from './eligibility.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import { ExternalFoodIndex } from './food-search.js';

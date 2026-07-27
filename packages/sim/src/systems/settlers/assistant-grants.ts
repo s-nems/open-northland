@@ -23,7 +23,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE } from '../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../signposts/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 import type { PlannerPass } from './planner-pass.js';
 import { anotherSystemOwns } from './replan.js';
 import { nearestStoreHolding } from './targets/index.js';

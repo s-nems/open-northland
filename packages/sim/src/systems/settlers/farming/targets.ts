@@ -6,7 +6,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
-import { closer, manhattan } from '../../spatial.js';
+import { closer, manhattan } from '../../spatial/nodes.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import {

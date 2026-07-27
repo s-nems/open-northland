@@ -6,11 +6,11 @@ import {
   canonicalResources,
   resourceHarvestAtomics,
   resourcesNearNode,
-} from '../../src/systems/resource-index.js';
+} from '../../src/systems/spatial/resources.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The resource REGION index (`systems/resource-index.ts`) — the golden-rule-6 fix that lets a flag-bound
+ * The resource REGION index (`systems/spatial/resources.ts`) — the golden-rule-6 fix that lets a flag-bound
  * gatherer's `nearestHarvestableFor` scan read only the nodes near its flag instead of every resource
  * on a decoded map (~17k). Correctness contract pinned here: the query is a SUPERSET of the anchors
  * within the reach box, returned ascending-id (the canonical first-wins order the nearest-pick

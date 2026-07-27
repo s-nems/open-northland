@@ -1,7 +1,7 @@
 import { Resource } from '../../components/index.js';
+import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { insertSortedById, removeSortedById } from '../sorted-id.js';
-import { createSpatialMemo } from '../spatial-memo.js';
+import { createSpatialMemo } from '../spatial/memo.js';
 
 // The per-world "standing resource node at a half-cell tile" index, a spatial-memo rider maintained
 // incrementally against the Resource store's generation. `resourceAtTile` (the ground-drop → deposit

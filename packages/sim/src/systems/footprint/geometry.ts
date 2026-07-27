@@ -8,8 +8,8 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 /** Injective per-node key for a spatial set/bucket (integer node `x`,`y`). A string so a consumer with
  *  no terrain handle (hence no map width) can still key by node — and so a negative/off-map coordinate
  *  can never alias onto a real node the way a numeric `y*width+x` packing would. Re-exported by
- *  spatial.ts (whose `NodeBuckets` keys with it); defined here because spatial.ts already imports from
- *  this package, keeping the leaf import graph acyclic. */
+ *  spatial/nodes.ts (whose `NodeBuckets` keys with it); defined here because that module already
+ *  imports from this package, keeping the leaf import graph acyclic. */
 export function nodeKey(x: number, y: number): string {
   return `${x},${y}`;
 }
@@ -24,7 +24,7 @@ export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boole
 
 /** Integer Manhattan distance between two nodes — the cheap reach/nearness heuristic the AI planner,
  *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
- *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ./spatial.ts. */
+ *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ../spatial/nodes.ts. */
 export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   const ca = terrain.coordsOf(a);
   const cb = terrain.coordsOf(b);
@@ -83,7 +83,7 @@ export function translatedCells(
 }
 
 /** Compare nearest-candidate picks by distance, then canonical cell/node id — the one `(distance, id)`
- *  tie-break every nearest scan shares. Re-exported by spatial.ts. */
+ *  tie-break every nearest scan shares. Re-exported by spatial/nodes.ts. */
 export function closer(dist: number, cell: number, bestDist: number, bestCell: number): boolean {
   return dist < bestDist || (dist === bestDist && cell < bestCell);
 }

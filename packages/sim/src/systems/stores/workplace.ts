@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
-import { canonicalById, NodeBuckets } from '../spatial.js';
+import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 // The workplace read model: what a building's type makes, who is allowed to staff it, and how many
 // operators are on station right now. Read by the AI planner (recognising workplaces / bound

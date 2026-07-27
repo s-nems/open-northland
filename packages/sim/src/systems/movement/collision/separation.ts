@@ -6,7 +6,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
-import { canonicalById, NodeBuckets } from '../../spatial.js';
+import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 import { MOVE_SPEED_PER_TICK } from '../movement.js';
 import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
 import { separationGridPoint, separationWorldPoint } from './separation/geometry.js';

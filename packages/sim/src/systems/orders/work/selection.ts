@@ -21,7 +21,7 @@ import {
 } from '../../economy/flags.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { clearNavState } from '../../spatial.js';
+import { clearNavState } from '../../spatial/nodes.js';
 import { workplaceStoredGoods } from '../../stores/index.js';
 import { isOrderableSettler } from '../guards.js';
 

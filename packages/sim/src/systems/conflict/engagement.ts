@@ -11,7 +11,7 @@ import {
   MILITARY_MODE,
   type MilitaryMode,
 } from '../readviews/index.js';
-import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
+import { entityNode, manhattan, type NodeBuckets } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';

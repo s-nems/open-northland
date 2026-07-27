@@ -6,7 +6,7 @@ import type { SystemContext } from '../context.js';
 import { nearestCell } from '../footprint/geometry.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { clearNavState, closer, isTravelling, manhattan, redirectRoute } from '../spatial.js';
+import { clearNavState, closer, isTravelling, manhattan, redirectRoute } from '../spatial/nodes.js';
 import type { CombatantStance } from './engagement.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a

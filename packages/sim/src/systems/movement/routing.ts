@@ -8,7 +8,7 @@ import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
-import { canonicalById, isValidNodeId } from '../spatial.js';
+import { canonicalById, isValidNodeId } from '../spatial/nodes.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
 import { turnOntoNextLeg } from './stepping.js';
 

@@ -5,7 +5,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, nearestCell, translatedCells } from '../footprint/geometry.js';
 import { interactionNode } from '../footprint/index.js';
-import { entityNode } from '../spatial.js';
+import { entityNode } from '../spatial/nodes.js';
 
 // The node(s) combat measures a target's distance to (and paths a chaser toward). Split out of targeting.ts
 // so the ring-search index, the chase drive, and the mid-swing whiff check all resolve a building target's

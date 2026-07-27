@@ -19,7 +19,7 @@ import {
   isTravelling,
   type NodeBuckets,
   redirectRoute,
-} from '../spatial.js';
+} from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';

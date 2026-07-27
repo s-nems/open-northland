@@ -1,7 +1,7 @@
-import { Position } from '../components/index.js';
-import type { Component, Entity, World } from '../ecs/world.js';
-import { nodeOfPosition } from '../nav/halfcell.js';
-import { canonicalById } from './spatial.js';
+import { Position } from '../../components/index.js';
+import type { Component, Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
+import { canonicalById } from './nodes.js';
 
 /**
  * The shared scaffold of the per-world generation-keyed spatial index memos (the region indexes, the

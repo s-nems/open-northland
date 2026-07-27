@@ -5,7 +5,7 @@ import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js'
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementBlocks } from '../../footprint/index.js';
-import { anyResourceNear } from '../../resource-index.js';
+import { anyResourceNear } from '../../spatial/resources.js';
 import { anchorNodeOf, firstRingNode, nearestLiveResource } from '../shared.js';
 
 /** A collector's flag stands 2–3 tiles from its resource (user rule) — 4..6 half-cell nodes. */

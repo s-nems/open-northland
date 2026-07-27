@@ -36,8 +36,7 @@ export * from './settlers/ai.js';
 export * from './settlers/atomic.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
-export * from './sorted-id.js';
-export * from './spatial.js';
+export * from './spatial/nodes.js';
 export * from './stores/index.js';
 export * from './vision/index.js';
 // The package-internal systems barrel: per-system modules are re-exported wholesale so tests and

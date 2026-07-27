@@ -3,7 +3,7 @@ import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import { closer, forEachRingOffset, manhattan } from '../../spatial.js';
+import { closer, forEachRingOffset, manhattan } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
 
 /**
@@ -82,7 +82,7 @@ interface CellBucket {
  * so the result is byte-identical to a full linear scan for any candidate mix (the boat-store and
  * flag-pile cases included), while the common building-dominated scan pays a bounded ring, not a walk.
  *
- * This is the economy counterpart of {@link import('../../spatial.js').NodeBuckets NodeBuckets}, which
+ * This is the economy counterpart of {@link import('../../spatial/nodes.js').NodeBuckets NodeBuckets}, which
  * cannot serve here: it tie-breaks by `(distance, entity-id)` off a candidate's own tile, whereas these
  * scans measure to the interaction cell and tie-break by `cell-id` first.
  */

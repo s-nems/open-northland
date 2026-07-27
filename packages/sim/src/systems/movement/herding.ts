@@ -1,7 +1,7 @@
 import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
-import { entityNode, isTravelling, manhattan } from '../spatial.js';
+import { entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
 
 /**
  * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.

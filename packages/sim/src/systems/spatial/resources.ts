@@ -1,6 +1,6 @@
-import { Resource } from '../components/index.js';
-import type { Entity, World } from '../ecs/world.js';
-import { createRegionIndex } from './region-index.js';
+import { Resource } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { createRegionIndex } from './region.js';
 
 /**
  * The per-world RESOURCE spatial index — a {@link createRegionIndex} over {@link Resource} nodes, plus the

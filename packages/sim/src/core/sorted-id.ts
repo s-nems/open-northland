@@ -6,7 +6,7 @@
  */
 
 /** The first index of ascending `arr` whose id (per `idOf`) is ≥ `id`. */
-export function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
+function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
   let lo = 0;
   let hi = arr.length;
   while (lo < hi) {

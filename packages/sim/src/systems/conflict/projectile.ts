@@ -8,7 +8,7 @@ import {
   type PendingStagger,
   resolveCombatHit,
 } from '../settlers/effects-combat/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 
 /**
  * How many tiles a projectile advances **per tick per unit** of the weapon's extracted `WeaponType.speed`

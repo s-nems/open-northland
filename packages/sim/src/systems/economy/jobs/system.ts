@@ -5,7 +5,7 @@ import type { System, SystemContext } from '../../context.js';
 import { type InteractionNode, interactionNode } from '../../footprint/index.js';
 import { isAnimalTribe } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { canonicalById, NodeBuckets } from '../../spatial.js';
+import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
 import { farmWorkGood } from '../farming.js';
 import { liveWorkFlag } from '../flags.js';

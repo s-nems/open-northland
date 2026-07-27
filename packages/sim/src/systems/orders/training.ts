@@ -16,7 +16,7 @@ import { isBarracks } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/training.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { clearNavState } from '../spatial.js';
+import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**

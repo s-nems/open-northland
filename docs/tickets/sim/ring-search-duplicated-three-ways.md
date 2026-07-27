@@ -22,7 +22,7 @@ consulted.
 ## Scope
 
 Extract one helper — `ringSearch(terrain, from, cap, { traverse, accept })` in
-`systems/spatial.ts` — with three call sites passing predicates. AGENTS.md deduplicates at the second
+`systems/spatial/nodes.ts` — with three call sites passing predicates. AGENTS.md deduplicates at the second
 real caller; this is the third.
 
 Two smaller things to fold in while there:

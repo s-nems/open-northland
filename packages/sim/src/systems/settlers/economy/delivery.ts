@@ -15,7 +15,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { constructionWorkCell } from '../../footprint/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { clearNavState } from '../../spatial.js';
+import { clearNavState } from '../../spatial/nodes.js';
 import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';

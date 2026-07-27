@@ -37,7 +37,7 @@ import { isFighterJob } from '../../readviews/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/actions.js';
 import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/effects-goods/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { clearNavState } from '../../spatial.js';
+import { clearNavState } from '../../spatial/nodes.js';
 import { stampDefaultStance } from '../combat.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
 

@@ -15,7 +15,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
-import { canonicalById, clearNavState, entityNode } from '../spatial.js';
+import { canonicalById, clearNavState, entityNode } from '../spatial/nodes.js';
 
 /**
  * The gatherer work-flag lifecycle — create / relocate / destroy of a gatherer's drop-off flag, plus the "is

@@ -14,7 +14,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 
 // The household read model: who lives where, what a home stocks, and what of it is spoken for.
 

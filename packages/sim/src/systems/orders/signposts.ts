@@ -14,7 +14,7 @@ import type { System, SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { isScoutJob } from '../readviews/index.js';
 import { canPlaceSignpost } from '../signposts/index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 

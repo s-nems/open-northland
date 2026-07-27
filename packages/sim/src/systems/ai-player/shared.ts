@@ -6,8 +6,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
-import { anyResourceNear, canonicalResources, resourcesNearNode } from '../resource-index.js';
-import { canonicalById } from '../spatial.js';
+import { canonicalById } from '../spatial/nodes.js';
+import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 
 // Shared per-seat lookups the strategic modules recompute each decision (once per
 // AI_DECISION_INTERVAL_TICKS per seat, so plain canonical scans stay within the RTS budget).

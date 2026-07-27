@@ -15,7 +15,7 @@ import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
 import { carriedGoodForm } from '../settlers/economy/routing.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { canonicalById, NodeBuckets } from '../spatial.js';
+import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to
