@@ -82,14 +82,14 @@ export function writeEquipSlot(
  * A player equip errand in flight on a settler: one slot address (`group` + `slot`, the misc row
  * indexed, 0 elsewhere) and one intent - `goodType` set puts that good on (a swap when the slot is
  * worn), null takes the worn good off. Stamped by the `equipGood`/`unequipGood` order handlers;
- * `agents/equip-order.ts` owns the stage protocol that drives it and removes it. `returnTo` is the
+ * `settlers/equip-order.ts` owns the stage protocol that drives it and removes it. `returnTo` is the
  * node the settler stood on at issue - the errand ends where it began (user-specified design: the
  * manual describes the window's item list, not how the settler fetches). `stage` only advances
  * (acquire → stow → return).
  *
  * `issuer` separates the player's click from the assistant's hand-out: a player order is urgent enough
  * to set a carried load down mid-errand, the assistant's waits for the delivery instead
- * (`agents/equip-order.ts`).
+ * (`settlers/equip-order.ts`).
  */
 export const EquipOrder = defineComponent<{
   group: EquipCategory;

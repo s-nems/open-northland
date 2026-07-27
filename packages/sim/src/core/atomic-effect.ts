@@ -22,7 +22,7 @@ export type AtomicEffect =
   | { readonly kind: 'produce'; readonly recipeOutput: number }
   /** A consumer worker draws one unit of `goodType` from an input-less shared utility (`utility` — a well
    *  for water, a hive for honey): on completion one unit appears on its back
-   *  ({@link import('../systems/agents/effects-goods/index.js').drawUtilityGood}). The utility mints from no
+   *  ({@link import('../systems/settlers/effects-goods/index.js').drawUtilityGood}). The utility mints from no
    *  inputs, so the draw creates the unit — the consumer-side twin of the ProductionSystem depositing an
    *  input-less recipe's output when the utility is staffed (goods conserved up to that by-definition
    *  creation). `utility` is an inspection record; a utility gone since the planner chose it still yields
@@ -121,7 +121,7 @@ export type AtomicEffect =
   /** The settler sets its carried load down on the ground before an interrupt takes over (a profession
    *  change, or fleeing an enemy): on completion the whole {@link import('../components/settler.js').Carrying}
    *  load is placed on the settler's own tile, spilling any remainder over the `MAX_GROUND_STACK` cap to the
-   *  nearest free walkable hexes ({@link import('../systems/agents/effects-goods/index.js').dropCarriedLoad}).
+   *  nearest free walkable hexes ({@link import('../systems/settlers/effects-goods/index.js').dropCarriedLoad}).
    *  No good is lost — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the
    *  settler at apply time. */
   | { readonly kind: 'drop' }

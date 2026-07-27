@@ -13,7 +13,7 @@
  *
  * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the
  * needs-drives (the original's "a baby is cared for, it doesn't self-feed"), while a CHILD runs the needs
- * ladder (the original binds child eat/sleep animations — see `agents/drive-ladder.ts`). The planner
+ * ladder (the original binds child eat/sleep animations — see `settlers/drive-ladder.ts`). The planner
  * keys on the `Age` component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a
  * synthetic fixture's adult job id can equal a real age-class id, but only a born-young settler
  * carries `Age`. `isNonWorkingAge` stays the structural id→stage predicate the JobSystem uses.

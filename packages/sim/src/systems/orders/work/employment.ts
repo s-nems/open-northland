@@ -27,14 +27,14 @@ import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
-import { jobCanBuild, startDrop } from '../../agents/actions.js';
-import { addCarry, isUsed, placeUnitOnTile } from '../../agents/effects-goods/index.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { jobCanBuild, startDrop } from '../../settlers/actions.js';
+import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/effects-goods/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial.js';
 import { stampDefaultStance } from '../combat.js';
@@ -136,7 +136,7 @@ function shedToolOnEnlist(world: World, e: Entity): void {
 /**
  * Empty one equipment slot the settler's NEW trade may not use, without swallowing the good: a fresh
  * unit joins free or same-good hands, else lands on the settler's own tile; a part-used one - or one on
- * a positionless settler - is destroyed (the take-off rule, agents/effects-goods/equip.ts). Both
+ * a positionless settler - is destroyed (the take-off rule, settlers/effects-goods/equip.ts). Both
  * endings serve the user's rule (2026-07-26: a store if the economy can manage it, the ground
  * otherwise) - a unit left in hand is banked by the delivery drive, a grounded one is collected by a
  * porter like any loose pile.
@@ -217,7 +217,7 @@ export function assignWorker(
  * Assign one owned builder to a specific construction `site` — the original's "put a builder on a foundation"
  * (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the builder drive raises
  * that site over the nearest one and the site's workers window lists the settler until the build finishes
- * ({@link import('../../agents/economy/index.js').planBuilder} re-stamps or drops the pin). Only the builder
+ * ({@link import('../../settlers/economy/index.js').planBuilder} re-stamps or drops the pin). Only the builder
  * trade qualifies — a civilian right-clicked onto a site is a no-op (the app routes normal buildings to
  * `assignWorker` instead). Authoritative like every employment order: it cancels the current action/route/hold
  * so the builder heads for its site this tick.

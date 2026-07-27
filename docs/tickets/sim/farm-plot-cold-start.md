@@ -2,7 +2,7 @@
 
 **Area:** sim · **Origin:** farm pacing calibration, 2026-07-20 · **Priority:** P3
 
-The farmer drive orders its ladder `reap > carry > sow > water > wait` (`packages/sim/src/systems/agents/
+The farmer drive orders its ladder `reap > carry > sow > water > wait` (`packages/sim/src/systems/settlers/
 farming/planner.ts`). Sow beats the can, so a farm starting on bare ground sows its whole `maxFields` plot
 (24 on the shipped balance) before it waters a single plant. Measured headless on the sandbox balance
 (grass map, farm at the centre, sink beside it):

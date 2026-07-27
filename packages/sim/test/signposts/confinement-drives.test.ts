@@ -13,9 +13,9 @@ import {
 import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
-import { justAbove, NEED_THRESHOLD } from '../agents/needs/support.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { justAbove, NEED_THRESHOLD } from '../settlers/needs/support.js';
 
 /**
  * Signpost confinement over the AUTONOMOUS drives: with `setSignpostNavigation` on, every searched

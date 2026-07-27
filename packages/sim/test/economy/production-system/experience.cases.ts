@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Production, ProductionBonus, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { ONE, Simulation } from '../../../src/index.js';
-import { pickupFromStore } from '../../../src/systems/agents/effects-goods/index.js';
 import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
 import { experienceBonus, productionSystem, recipesByProductOf } from '../../../src/systems/index.js';
+import { pickupFromStore } from '../../../src/systems/settlers/effects-goods/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD } from './support.js';
 

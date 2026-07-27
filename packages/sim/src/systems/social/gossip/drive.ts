@@ -15,7 +15,6 @@ import { type Fixed, fx, ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../agents/drives-needs.js';
 import type { System, SystemContext } from '../../context.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import {
@@ -26,6 +25,7 @@ import {
 } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, atomicAnimationByName } from '../../readviews/index.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
+import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives-needs.js';
 
 /**
  * The gossip DRIVE half — {@link gossipSystem} advances every standing {@link Chat} pair one tick (see

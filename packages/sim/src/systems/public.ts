@@ -2,12 +2,6 @@
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
 export { withinNodeRadius } from '../nav/node-metric.js';
-export {
-  FATIGUE_BUBBLE_THRESHOLD,
-  FATIGUE_SLEEP_THRESHOLD,
-  HUNGER_BUBBLE_THRESHOLD,
-  HUNGER_EAT_THRESHOLD,
-} from './agents/drives-needs.js';
 // The AI opening plan's content bindings — exported so the real-content suite can pin every id in
 // the plan against the served IR (an unknown id silently skips its entry in the sim).
 export {
@@ -64,6 +58,12 @@ export {
   scoutJobType,
 } from './readviews/jobs.js';
 export { MILITARY_MODE } from './readviews/stances.js';
+export {
+  FATIGUE_BUBBLE_THRESHOLD,
+  FATIGUE_SLEEP_THRESHOLD,
+  HUNGER_BUBBLE_THRESHOLD,
+  HUNGER_EAT_THRESHOLD,
+} from './settlers/drives-needs.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,

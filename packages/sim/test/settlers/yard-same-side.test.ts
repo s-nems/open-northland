@@ -3,8 +3,8 @@ import { Carrying, Owner, ownerOf, Position, Stockpile } from '../../src/compone
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { dropCarryAtOwnTile } from '../../src/systems/agents/effects-goods/index.js';
-import { collectTargets, nearestFreeYardNode } from '../../src/systems/agents/targets/index.js';
+import { dropCarryAtOwnTile } from '../../src/systems/settlers/effects-goods/index.js';
+import { collectTargets, nearestFreeYardNode } from '../../src/systems/settlers/targets/index.js';
 import { stockpilesAtNode } from '../../src/systems/stockpile-index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';

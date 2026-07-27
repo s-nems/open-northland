@@ -11,14 +11,14 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type NodeId, Simulation } from '../../src/index.js';
+import type { SystemContext } from '../../src/systems/index.js';
 import {
   isUnreachableGoal,
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_SIZE,
   UNREACHABLE_GOAL_MEMO_TICKS,
   unreachableGoals,
-} from '../../src/systems/agents/unreachable-goals.js';
-import type { SystemContext } from '../../src/systems/index.js';
+} from '../../src/systems/settlers/unreachable-goals.js';
 import { ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
 import { builderAt, constructionContent, HOUSE, siteAt } from '../economy/construction-system/support.js';
 import { ctxOf } from '../fixtures/context.js';

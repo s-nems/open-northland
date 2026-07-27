@@ -1,12 +1,12 @@
 # Keep spacing drives off doors and sealed nooks
 
-**Area:** sim (movement/agents) · **Priority:** P3
+**Area:** sim (movement/settlers) · **Priority:** P3
 
 The footprint eviction pass now refuses to LAND a displaced settler on a building's door node or on a
 sealed nook (a walkable cell whose every orthogonal neighbour is walk-blocked) — see
 `nearestFreeCellOutside` in `packages/sim/src/systems/movement/evict.ts` and `buildingDoorNodes` in
 `systems/footprint/blocked.ts`. The idle spacing drives still can: `deStackIdle`'s `nearestFreeCell`
-and `loiterCell`'s yard scan (`systems/agents/destack.ts`) accept any unblocked unoccupied cell, so a
+and `loiterCell`'s yard scan (`systems/settlers/destack.ts`) accept any unblocked unoccupied cell, so a
 de-stacked or loitering unit can come to rest on another building's door (visually inside the
 building; a stray body on the node `presentOperatorCount` reads) or wedged in a nook between bodies.
 
@@ -20,7 +20,7 @@ rests a unit on a door/nook (if one moves, that is the intended behavior change 
 commit). Test like `evict.test.ts`'s nook cases: a stack beside a doored/U-walled fixture must fan
 out onto open cells only.
 
-The rest-spot rung (`systems/agents/rest-spot.ts` `isOpenGround`) has a third version of the
+The rest-spot rung (`systems/settlers/rest-spot.ts` `isOpenGround`) has a third version of the
 "require an unblocked neighbour" clearance — for choosing where a tired settler lies down. There are
 now three "where may a unit come to rest" rules in the tree: `evict.ts`, the two drives this ticket
 names, and rest-spot. Fold them onto one shared predicate as part of this work rather than adding a

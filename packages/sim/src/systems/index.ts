@@ -1,10 +1,5 @@
 import type { System, SystemContext } from './context.js';
 
-// The meal length (the eat/forage atomic duration): exposed so tests can assert it without reaching
-// into the internal action vocabulary wholesale.
-export { eatDuration } from './agents/actions.js';
-export * from './agents/ai.js';
-export * from './agents/atomic.js';
 export * from './command/index.js';
 export * from './conflict/combat.js';
 export * from './conflict/projectile.js';
@@ -33,6 +28,11 @@ export * from './movement/routing.js';
 export * from './orders/index.js';
 export * from './progression/index.js';
 export * from './readviews/index.js';
+// The meal length (the eat/forage atomic duration): exposed so tests can assert it without reaching
+// into the internal action vocabulary wholesale.
+export { eatDuration } from './settlers/actions.js';
+export * from './settlers/ai.js';
+export * from './settlers/atomic.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
 export * from './sorted-id.js';

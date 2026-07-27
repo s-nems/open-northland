@@ -1,8 +1,8 @@
 # Replace deliveryTargetFor's lettered if-else chain with an ordered rule table
 
-**Area:** sim (agents/economy) · **Priority:** P3
+**Area:** sim (settlers/economy) · **Priority:** P3
 
-`deliveryTargetFor` in `systems/agents/economy/routing.ts` is an if-else chain whose case comments
+`deliveryTargetFor` in `systems/settlers/economy/routing.ts` is an if-else chain whose case comments
 are numbered `1.` through `5.` with `3b.`, `3c.`, and `4b.` wedged in between, the signature of
 special cases inserted where restructuring was due. Each rung independently re-derives
 `JobAssignment`/`WorkFlag`/`SiteAssignment` and applies its own gated/ungated decision, and the

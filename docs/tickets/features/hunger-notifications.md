@@ -10,7 +10,7 @@ surface exists (the only banner is build-placement).
 
 **Source basis:** messages ids 10/11 are the original's own hunger notifications. Sim triggers are
 already exposed: `Settler.hunger`, `HUNGER_EAT_THRESHOLD` (¾ bar,
-`packages/sim/src/systems/agents/drives-needs.ts`), hunger pins at `ONE` before starvation.
+`packages/sim/src/systems/settlers/drives-needs.ts`), hunger pins at `ONE` before starvation.
 
 ## Scope
 

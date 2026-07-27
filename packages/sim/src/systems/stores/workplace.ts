@@ -50,7 +50,7 @@ export function recipesByProductOf(
  * never on `mergedRecipeOf`.
  *
  * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished output it
- * should haul to a warehouse (see `agents/economy/workshop/supply.ts`).
+ * should haul to a warehouse (see `settlers/economy/workshop/supply.ts`).
  */
 export function buildingProduces(world: World, ctx: SystemContext, building: Entity): readonly number[] {
   const b = world.tryGet(building, Building);
@@ -66,7 +66,7 @@ const EMPTY_PRODUCES: readonly number[] = [];
  * {@link import('../../core/content-index.js').ContentIndex.inputlessProducersByGood} (an unstaffed
  * input-less producer of the good, never a hardcoded id); a staffed input-less producer does not qualify.
  *
- * Cross-system: the self-service input scan ({@link import('../agents/economy/workshop/supply.js').nearestMissingInputSource})
+ * Cross-system: the self-service input scan ({@link import('../settlers/economy/workshop/supply.js').nearestMissingInputSource})
  * lets a consumer draw the good here when this utility is the nearest source, and the utility-carrier
  * delivery rung (routing.ts) uses it to feed the good to nearby consumers before central storage.
  */

@@ -3,7 +3,7 @@ import * as components from '../../src/components/index.js';
 import { type Entity, World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { dropOrStackGood } from '../../src/systems/agents/effects-goods/index.js';
+import { dropOrStackGood } from '../../src/systems/settlers/effects-goods/index.js';
 import { stockpilesAtNode } from '../../src/systems/stockpile-index.js';
 import { testContent } from '../fixtures/content.js';
 

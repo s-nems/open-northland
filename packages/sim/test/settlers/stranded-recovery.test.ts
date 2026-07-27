@@ -7,7 +7,7 @@ import { orderMove, ownedWoodcutter, sim, woodAt } from '../conflict/orders/supp
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * The planner's stranded-route recovery (see the block in systems/agents/replan.ts): a failed walk is
+ * The planner's stranded-route recovery (see the block in systems/settlers/replan.ts): a failed walk is
  * parked (Stranded — paced, not per-tick), then shed and re-planned; drives with their own failure
  * protocol keep their signal; an authoritative order ends the park at once.
  */

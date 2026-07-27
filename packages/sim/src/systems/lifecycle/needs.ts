@@ -53,7 +53,7 @@ export function rollInitialNeed(rng: Rng): Fixed {
  *
  * Source basis: the original's eat clips carry `event 30 2 +4000` on the CHANGE_ENERGY channel
  * (`logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_ENERGY = 2`) against the ~10000-unit reserve
- * span {@link import('../agents/effects-combat/need-cost.js')} scales against, and observation of the
+ * span {@link import('../settlers/effects-combat/need-cost.js')} scales against, and observation of the
  * running original puts one meal at 40% of the bar. The data's at-home and candy clips carry a larger
  * `+6000`; a single flat restore per meal is the approximation until the per-clip vocabulary is wired.
  */
@@ -127,7 +127,7 @@ export const STARVATION_BITES_TO_DIE = 240;
  * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
  * bind a baby sleep animation with rest events (`setatomic 1/2 8 "viking_baby_*_sleep"`); it is
  * deliberately unwired — the family-care freeze covers rest too. A baby weans into childhood with its
- * birth needs, and from there the child eat/sleep drives take over (`agents/drive-ladder.ts`). Keyed
+ * birth needs, and from there the child eat/sleep drives take over (`settlers/drive-ladder.ts`). Keyed
  * on Age + stage like the planner's gate, so an adult fixture whose synthetic job id collides with a
  * baby id still lives a full needs life.
  *
@@ -137,7 +137,7 @@ export const STARVATION_BITES_TO_DIE = 240;
  * starving them would only depopulate the map — a named approximation each:
  *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
  *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
- *    lives in the job planner, which skips a jobless settler before any needs drive runs (`agents/ai.ts`).
+ *    lives in the job planner, which skips a jobless settler before any needs drive runs (`settlers/ai.ts`).
  * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
  * food is truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a
  * child's 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold.

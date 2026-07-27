@@ -14,8 +14,8 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { resolveAttackHit } from '../../src/systems/agents/effects-combat/index.js';
 import { aiSystem, atomicSystem, needsSystem } from '../../src/systems/index.js';
+import { resolveAttackHit } from '../../src/systems/settlers/effects-combat/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 

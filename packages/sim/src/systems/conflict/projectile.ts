@@ -2,12 +2,12 @@ import { Building, Health, Position, Projectile } from '../../components/index.j
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { System, SystemContext } from '../context.js';
 import {
   applyPendingStaggers,
   type PendingStagger,
   resolveCombatHit,
-} from '../agents/effects-combat/index.js';
-import type { System, SystemContext } from '../context.js';
+} from '../settlers/effects-combat/index.js';
 import { canonicalById } from '../spatial.js';
 
 /**

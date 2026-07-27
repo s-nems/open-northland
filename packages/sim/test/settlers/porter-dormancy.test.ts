@@ -9,11 +9,11 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
+import { aiSystem } from '../../src/systems/index.js';
 import {
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_TICKS,
-} from '../../src/systems/agents/unreachable-goals.js';
-import { aiSystem } from '../../src/systems/index.js';
+} from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
