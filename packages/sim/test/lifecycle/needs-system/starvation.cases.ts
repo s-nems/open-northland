@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
-import { Health, Settler } from '../../../src/components/index.js';
+import { Health, Settler, setSettlerJob } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
@@ -56,7 +56,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
   it('exempts animals and jobless settlers (jobType null — no eat/graze path to save them)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
-    sim.world.get(e, Settler).jobType = null;
+    setSettlerJob(sim.world, e, null);
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
@@ -68,7 +68,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     // of hunger before its CHILD_AGE_TICKS boundary and reproduction would be a death loop. Age matters:
     // an adult fixture whose synthetic job id collides with BABY_MALE must still starve.
     const e = starvingSettler(sim, 300);
-    sim.world.get(e, Settler).jobType = BABY_MALE;
+    setSettlerJob(sim.world, e, BABY_MALE);
     sim.world.add(e, components.Age, { ticks: 0 });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
@@ -79,7 +79,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     // A child runs the planner's eat drive (the drive ladder); with no food anywhere its hunger pins and the
     // starvation bite applies — only the baby stage keeps the cared-for exemption.
     const e = starvingSettler(sim, 300);
-    sim.world.get(e, Settler).jobType = CHILD_MALE;
+    setSettlerJob(sim.world, e, CHILD_MALE);
     sim.world.add(e, components.Age, { ticks: CHILD_AGE_TICKS });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300 - 2);

@@ -13,6 +13,7 @@ import {
   Stance,
   Stockpile,
   setNeedsEnabled,
+  setSettlerJob,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -322,7 +323,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     // frozen on an acquire-stage errand for the same good the live settler needs.
     for (let i = 0; i < ASSISTANT_MAX_IN_FLIGHT; i++) {
       const stuck = ownedSettler(sim, 4 + i, 4);
-      sim.world.get(stuck, Settler).jobType = null;
+      setSettlerJob(sim.world, stuck, null);
       sim.world.add(stuck, EquipOrder, {
         group: 'boots',
         slot: 0,
@@ -345,13 +346,13 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     const sim = freshSim();
     // The four the tool hand-out passes over, and one trade that takes it.
     const fighter = ownedSettler(sim, 2, 2);
-    sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
     const scout = ownedSettler(sim, 2, 3);
-    sim.world.get(scout, Settler).jobType = SCOUT_JOB;
+    setSettlerJob(sim.world, scout, SCOUT_JOB);
     const civilist = ownedSettler(sim, 2, 4); // the "Cywil" row's trade-less settler
-    sim.world.get(civilist, Settler).jobType = CIVILIST_JOB;
+    setSettlerJob(sim.world, civilist, CIVILIST_JOB);
     const woman = ownedSettler(sim, 2, 6);
-    sim.world.get(woman, Settler).jobType = WOMAN_JOB;
+    setSettlerJob(sim.world, woman, WOMAN_JOB);
     const woodcutter = ownedSettler(sim, 2, 5);
     pileAt(sim, 12, 2, TOOL_IRON, 5); // more than enough: only the woodcutter may take one
     pileAt(sim, 12, 4, SHOES, 5); // one pair per settler - boots are not trade-gated

@@ -63,11 +63,17 @@ const BODY = [
   { x: 6, y: 5 },
 ];
 
-function settlerAtNode(sim: Simulation, x: number, y: number, owner?: number): Entity {
+function settlerAtNode(
+  sim: Simulation,
+  x: number,
+  y: number,
+  owner?: number,
+  tribe: number = VIKING,
+): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Settler, {
-    tribe: VIKING,
+    tribe,
     jobType: null,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
@@ -79,11 +85,13 @@ function settlerAtNode(sim: Simulation, x: number, y: number, owner?: number): E
   return e;
 }
 
+/** The owner slot of a settler nothing owns: wildlife and scenery fixtures. */
+const NO_OWNER = undefined;
+
 /** A herd animal at a node — a `Settler` of an animal tribe with a self-led `HerdMember` and no Owner,
  *  the component shape `spawnAnimalHerd` builds. A passive tribe, so no combat drive ever moves it. */
 function animalAtNode(sim: Simulation, x: number, y: number): Entity {
-  const e = settlerAtNode(sim, x, y);
-  sim.world.get(e, Settler).tribe = COW;
+  const e = settlerAtNode(sim, x, y, NO_OWNER, COW);
   sim.world.add(e, HerdMember, { leader: e });
   return e;
 }

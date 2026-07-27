@@ -11,9 +11,9 @@ import {
   Owner,
   ownerOf,
   Position,
-  Settler,
   SiteAssignment,
   SupplyRun,
+  setSettlerJob,
   TrainingOrder,
   Weapon,
 } from '../../../components/index.js';
@@ -39,7 +39,7 @@ import { syncWorkFlagToJob } from '../work-flag.js';
  * `assignWorker` and the JobSystem set a new one ({@link import('./binding.js').bindEmployment}).
  */
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  world.get(e, Settler).jobType = jobType;
+  setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand: the settler was re-tasked
   if (isFighterJob(ctx.content, jobType)) shedToolOnEnlist(world, e);
   world.remove(e, SiteAssignment); // the old trade's construction-crew membership goes

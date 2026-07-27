@@ -30,6 +30,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  */
 
 const BEAR = 10; // the fixture animal: stayPointRange 6, searchForLeader, maximumLeaderDistance 3
+const BEE = 11; // a solitary fixture animal: no maximumDistanceToStayPoint at all
 const STAY_RANGE = 6;
 /** How far one step may aim from where the bear stands, the drive's own clamp against its territory. */
 const STEP_BUDGET = Math.min(ANIMAL_WANDER_STEP_NODES, STAY_RANGE);
@@ -39,11 +40,11 @@ const LEADER_DISTANCE = 3;
 const SETTLE_TICKS = 400;
 
 /** An animal standing at half-cell node (x, y), anchored to a stay point at node `anchor`. */
-function grazerAt(sim: Simulation, x: number, y: number, anchor = { x, y }): Entity {
+function grazerAt(sim: Simulation, x: number, y: number, anchor = { x, y }, tribe = BEAR): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Settler, {
-    tribe: BEAR,
+    tribe,
     jobType: null,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
@@ -119,9 +120,8 @@ describe('animalWanderSystem: the grazing drive', () => {
 
   it('leaves an animal with no territory (stayPointRange 0) standing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
-    // The fixture BEE (tribe 11) is a solitary animal whose record sets no maximumDistanceToStayPoint.
-    const bee = grazerAt(sim, 10, 10);
-    sim.world.get(bee, Settler).tribe = 11;
+    // The fixture BEE is a solitary animal whose record sets no maximumDistanceToStayPoint.
+    const bee = grazerAt(sim, 10, 10, { x: 10, y: 10 }, BEE);
 
     expect(rollUntilGoal(sim, bee)).toBe(false);
   });

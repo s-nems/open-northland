@@ -15,6 +15,7 @@ import {
   Stance,
   Stockpile,
   setNeedsEnabled,
+  setSettlerJob,
   TrainingOrder,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -411,7 +412,7 @@ describe('order validation (recoverable no-ops)', () => {
   it('rejects a jobless settler - the planner ladder never plans one, so its errand would sit inert', () => {
     const sim = freshSim();
     const idle = ownedSettler(sim, 2, 2);
-    sim.world.get(idle, Settler).jobType = null;
+    setSettlerJob(sim.world, idle, null);
     equipGood(sim.world, ctxOf(sim), {
       kind: 'equipGood',
       entity: idle,
@@ -504,7 +505,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('leaves a disarmed soldier its weapon and armour on the ground, not nowhere', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 3, 2);
-    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    setSettlerJob(sim.world, e, FIGHTER_JOB);
     wear(sim, e, { weapon: SWORD });
     const eq = sim.world.get(e, Equipment);
     eq.armor = { goodType: FUR_BOOTS, degreeOfUse: fx.fromInt(0) }; // any good stands in for armour here
@@ -522,7 +523,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('carries the disarmed weapon into a store when one can take it', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 3, 2);
-    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    setSettlerJob(sim.world, e, FIGHTER_JOB);
     wear(sim, e, { weapon: SWORD });
     const store = armouryAt(sim, 9, 2);
 
@@ -539,7 +540,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
   it('refuses a tool equip order on a fighter but still accepts its boots order', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 2, 2);
-    sim.world.get(e, Settler).jobType = FIGHTER_JOB;
+    setSettlerJob(sim.world, e, FIGHTER_JOB);
     pileAt(sim, 12, 2, TOOL_WOODEN, 1);
     pileAt(sim, 12, 4, SHOES, 1);
 
@@ -620,7 +621,7 @@ describe('equipPickList - the pick-menu read view', () => {
     const sim = freshSim();
     const civilian = ownedSettler(sim, 2, 2);
     const fighter = ownedSettler(sim, 3, 2);
-    sim.world.get(fighter, Settler).jobType = FIGHTER_JOB;
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
     pileAt(sim, 8, 2, TOOL_WOODEN, 2);
     pileAt(sim, 8, 4, SHOES, 1);
 

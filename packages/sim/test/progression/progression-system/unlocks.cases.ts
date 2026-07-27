@@ -249,13 +249,14 @@ describe('settlerMeetsNeed — the barracks schooling path onto a fighter trade'
 
 describe('jobEnables tech-graph under the profession-progression toggle', () => {
   it('bypasses the presence graph for civilian jobs and goods while off, fighters stay gated', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const ctx = ctxOf(sim);
+    const content = testContent();
     // Gate the carpenter job and a soldier job on a (nonexistent) living woodcutter.
-    sim.content.tribes[0]?.jobEnables.push(
+    content.tribes[0]?.jobEnables.push(
       { jobType: 1, kind: 'job', targetId: 2 },
       { jobType: 1, kind: 'job', targetId: SOLDIER_JOB },
     );
+    const sim = new Simulation({ seed: 1, content });
+    const ctx = ctxOf(sim);
     // Gated while progression is on: no woodcutter is alive.
     expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(false);
     expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(false); // fixture: plank gated on a woodcutter

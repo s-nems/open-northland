@@ -31,6 +31,7 @@ import {
   storedGoodSets,
   workerJobSets,
 } from './content-index/production.js';
+import { type EnablingJobTables, enablingJobTables } from './content-index/progression.js';
 import { maxWorkCellOffset } from './content-index/terrain.js';
 
 export { constructionBillForType } from './content-index/construction.js';
@@ -69,6 +70,8 @@ export interface ContentIndex {
   readonly jobs: ReadonlyMap<number, JobType>;
   /** Tribe types by `typeId`. */
   readonly tribes: ReadonlyMap<number, TribeType>;
+  /** The `jobEnables*` tech graph grouped for the unlock gate. See {@link EnablingJobTables}. */
+  readonly enablingJobsByTribe: EnablingJobTables;
   /** Vehicle types by `typeId`. */
   readonly vehicles: ReadonlyMap<number, VehicleType>;
   /** Command-boundary building lookup with `indexById`'s last-wins duplicate semantics. Runtime
@@ -198,11 +201,13 @@ function buildIndex(content: ContentSet): ContentIndex {
   const workerJobs = workerJobSets(content);
   const jobs = byKey(content.jobs, (j) => j.typeId);
   const roles = jobRoleSets(jobs);
+  const tribes = byKey(content.tribes, (t) => t.typeId);
   return {
     buildings: byKey(content.buildings, (b) => b.typeId),
     goods: byKey(content.goods, (g) => g.typeId),
     jobs,
-    tribes: byKey(content.tribes, (t) => t.typeId),
+    tribes,
+    enablingJobsByTribe: enablingJobTables(tribes),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
     commandBuildings: indexById(content.buildings),
     commandJobs: indexById(content.jobs),

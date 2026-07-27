@@ -24,7 +24,7 @@
  * order picks it; baby_female → child_female → woman; baby_male → child_male → civilist).
  */
 
-import { Age, Residence, Settler } from '../../components/index.js';
+import { Age, Residence, Settler, setSettlerJob } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
@@ -134,12 +134,12 @@ export const growthSystem: System = (world) => {
     if (age.ticks >= ADULT_AGE_TICKS) {
       // Grown to an adult — a boy becomes a civilian ({@link CIVILIST_JOB}), a girl the adult woman
       // role ({@link WOMAN_JOB}); neither is auto-employed, the player assigns work.
-      settler.jobType = isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB;
+      setSettlerJob(world, e, isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB);
       graduated.push(e); // its Age is now meaningless
       continue;
     }
     const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
-    if (target !== settler.jobType) settler.jobType = target;
+    if (target !== settler.jobType) setSettlerJob(world, e, target);
   }
   for (const e of graduated) {
     world.remove(e, Age);

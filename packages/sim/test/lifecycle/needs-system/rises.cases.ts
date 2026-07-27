@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
-import { Settler } from '../../../src/components/index.js';
+import { Settler, setSettlerJob } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
   BABY_MALE,
@@ -70,10 +70,9 @@ describe('needsSystem — hunger rises over time', () => {
 describe('needsSystem: the wildlife exemption, and only wildlife', () => {
   it('freezes every need of an animal-tribe settler (no bar could ever be satisfied)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const bear = settlerWithHunger(sim, fx.fromInt(0));
+    // As spawnAnimalHerd places it: an animal tribe, and wildlife takes no trade.
+    const bear = settlerWithHunger(sim, fx.fromInt(0), { tribe: ANIMAL_TRIBE, jobType: null });
     const settler = sim.world.get(bear, Settler);
-    settler.tribe = ANIMAL_TRIBE;
-    settler.jobType = null; // as spawnAnimalHerd places it, wildlife takes no trade
 
     for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
     expect(settler.hunger).toBe(fx.fromInt(0));
@@ -84,7 +83,7 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
   it('rises the needs of a JOBLESS civilization settler (only wildlife is exempt, not joblessness)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const idle = settlerWithHunger(sim, fx.fromInt(0));
-    sim.world.get(idle, Settler).jobType = null; // e.g. its workplace was just demolished
+    setSettlerJob(sim.world, idle, null); // e.g. its workplace was just demolished
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(idle, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
@@ -95,7 +94,7 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
   it('freezes every need of an Age carrier in a baby stage (its family keeps it fed and rested)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const baby = settlerWithHunger(sim, fx.fromInt(0));
-    sim.world.get(baby, Settler).jobType = BABY_MALE;
+    setSettlerJob(sim.world, baby, BABY_MALE);
     sim.world.add(baby, components.Age, { ticks: 0 });
 
     for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
@@ -108,7 +107,7 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
   it('rises the needs of an Age carrier in a CHILD stage (weaned — it self-feeds from here)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const child = settlerWithHunger(sim, fx.fromInt(0));
-    sim.world.get(child, Settler).jobType = CHILD_MALE;
+    setSettlerJob(sim.world, child, CHILD_MALE);
     sim.world.add(child, components.Age, { ticks: CHILD_AGE_TICKS });
 
     needsSystem(sim.world, ctxOf(sim));
@@ -118,7 +117,7 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
   it('rises the needs of an ADULT fixture whose synthetic job id collides with a baby id (no Age)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const adult = settlerWithHunger(sim, fx.fromInt(0));
-    sim.world.get(adult, Settler).jobType = BABY_MALE; // an adult trade in some fixtures — no Age carried
+    setSettlerJob(sim.world, adult, BABY_MALE); // an adult trade in some fixtures — no Age carried
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(adult, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
@@ -213,7 +212,7 @@ describe('needsSystem — enjoyment (company) rises for civilians, frozen for fi
   it('does not raise a fighter enjoyment (a soldier company need is frozen)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
-    sim.world.get(e, Settler).jobType = SOLDIER_JOB;
+    setSettlerJob(sim.world, e, SOLDIER_JOB);
 
     for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
     const settler = sim.world.get(e, Settler);
