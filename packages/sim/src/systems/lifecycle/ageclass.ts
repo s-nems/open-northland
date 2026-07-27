@@ -8,7 +8,7 @@
  * pinned to `Data/GameSourceIncludes/logicdefines.inc` (`JOB_TYPE_HUMAN_BABY_FEMALE = 1` …
  * `JOB_TYPE_HUMAN_WOMAN = 5`, `JOB_TYPE_HUMAN_CIVILIST = 6`) and the matching `Data/logic/jobtypes.ini`
  * records. Those ids are already in the extracted `JobType` IR; this module is the sim-side recognition that
- * ids 1–4 are the non-working life stages, so a birth (`family/children.ts`) creates a baby rather
+ * ids 1–4 are the non-working life stages, so a birth (`spawn/newborn.ts`) creates a baby rather
  * than an instantly-employable adult, and the JobSystem leaves a baby/child unemployed.
  *
  * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the

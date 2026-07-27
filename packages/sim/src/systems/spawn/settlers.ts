@@ -87,7 +87,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   // Sex is explicit (the `Female` marker) because `jobType` loses it on adult trades: the sex-tagged
   // job slugs (`baby_female`/`child_female`/`woman`) stamp it at creation; every other spawn is male.
   // Matched by the job's `id` slug, not its numeric id (a fixture's adult trade may reuse a low id).
-  // Births stamp it from the parents' `makeChild` choice instead (systems/family/children.ts).
+  // Births stamp it from the parents' `makeChild` choice instead (./newborn.ts).
   const jobId = contentIndex(content).commandJobs.get(spec.jobType)?.id;
   if (isFemaleJobId(jobId)) {
     world.add(e, Female, FEMALE);

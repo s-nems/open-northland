@@ -50,7 +50,7 @@ import { SANDBOX_ANIMAL_TRIBES } from './animals.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
 /** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) — the hearts phase's duration key. The
- *  sim transcribes the same id (`systems/family/children.ts` MAKE_LOVE_ATOMIC_ID); both pin to the
+ *  sim transcribes the same id (`systems/family/children/make-love.ts` MAKE_LOVE_ATOMIC_ID); both pin to the
  *  decoded define, so neither can drift alone. */
 const MAKE_LOVE_ATOMIC = 78;
 
