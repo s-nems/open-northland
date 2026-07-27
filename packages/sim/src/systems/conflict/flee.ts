@@ -11,7 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { isHunterJob } from '../readviews/index.js';
-import { startDrop } from '../settlers/actions.js';
+import { startDrop } from '../settlers/atomics/start.js';
 import {
   COMPASS_DIRECTIONS,
   clearNavState,

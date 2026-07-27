@@ -1,8 +1,8 @@
-import { Health, Position, Projectile } from '../../../../components/index.js';
-import type { AtomicEffect } from '../../../../core/atomic-effect.js';
-import { eventAt } from '../../../../core/events.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { SystemContext } from '../../../context.js';
+import { Health, Position, Projectile } from '../../../../../../components/index.js';
+import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
+import { eventAt } from '../../../../../../core/events.js';
+import type { Entity, World } from '../../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../../context.js';
 
 /**
  * Launch a {@link Projectile} at the shooter's ATTACK-event frame — the ranged branch of a swing (a bow

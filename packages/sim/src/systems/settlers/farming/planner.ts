@@ -18,7 +18,7 @@ import { buildingEnabled, scaledWorkRepeats, workSpeedBonus } from '../../progre
 import { atomicDuration } from '../../readviews/animations.js';
 import { closer, manhattan } from '../../spatial/nodes.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
-import { atOrWalk, startAtomic, startPickup } from '../actions.js';
+import { atOrWalk, startAtomic, startPickup } from '../atomics/start.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../targets/index.js';
 import { unreachableGoals } from '../unreachable-goals.js';

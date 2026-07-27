@@ -5,7 +5,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { isFood } from '../readviews/index.js';
-import { startDrop } from '../settlers/actions.js';
+import { startDrop } from '../settlers/atomics/start.js';
 import { unreachableGoalVeto } from '../settlers/unreachable-goals.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { deliverHome, fetchFrom } from './food-haul.js';

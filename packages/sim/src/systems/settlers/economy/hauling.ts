@@ -1,6 +1,6 @@
 import { JobAssignment } from '../../../components/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { walkPickupBatch } from '../actions.js';
+import { walkPickupBatch } from '../atomics/start.js';
 import type { PlannerContext } from '../planner/context.js';
 import { nearestWorkplaceOutput } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';

@@ -14,7 +14,7 @@ import { grantTrainingExperience, needSubjectOf, settlerMeetsNeed } from '../pro
 import { needAtomicDuration } from '../readviews/animations.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from './actions.js';
+import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from './atomics/start.js';
 import { interactionCell } from './targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
 

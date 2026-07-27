@@ -6,7 +6,7 @@
 `componentValueGenerations`, `membershipJournals`, the `touched`/`mutations` clone-cache log,
 `canonicalCache`), and keeping them coherent is a manual call contract: writers must remember
 `touch()` vs `touchComponent()` vs both, documented in `world.ts` and repeated verbatim three
-times inside `systems/settlers/effects-goods/harvest.ts`. `registerCacheVerifier`/`verifyCaches`
+times inside `systems/settlers/atomics/effects/goods/harvest.ts`. `registerCacheVerifier`/`verifyCaches`
 exists specifically to catch missed calls, a verifier standing in for a seam. A forgotten touch
 is a silent determinism/staleness bug the type system cannot catch.
 

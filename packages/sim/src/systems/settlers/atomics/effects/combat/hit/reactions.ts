@@ -1,6 +1,6 @@
-import { Anger, Carrying, Settler } from '../../../../components/index.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { SystemContext } from '../../../context.js';
+import { Anger, Carrying, Settler } from '../../../../../../components/index.js';
+import type { Entity, World } from '../../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../../context.js';
 import {
   angryGameTimeOf,
   cadaverYieldOf,
@@ -9,8 +9,8 @@ import {
   isHunterJob,
   isProvokableAnimal,
   MEAT_GOOD,
-} from '../../../readviews/index.js';
-import { addCarry } from '../../effects-goods/index.js';
+} from '../../../../../readviews/index.js';
+import { addCarry } from '../../goods/index.js';
 
 /**
  * The hunter's `harvest_cadaver` payoff — when a **hunter**'s lethal blow fells **catchable prey**, the

@@ -10,7 +10,7 @@ import {
   needAtomicDuration,
 } from '../readviews/animations.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { atOrWalk, SLEEP_ATOMIC_ID, startAtomic } from './actions.js';
+import { atOrWalk, SLEEP_ATOMIC_ID, startAtomic } from './atomics/start.js';
 import { interactionCell } from './targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
 

@@ -8,12 +8,12 @@ import {
   setStockAmount,
   stampOwner,
   Vehicle,
-} from '../../../components/index.js';
-import type { Fixed } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
-import { stockpilesAtNode } from '../../spatial/stockpiles.js';
-import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../stores/index.js';
+} from '../../../../../components/index.js';
+import type { Fixed } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import { nodeOfPosition } from '../../../../../nav/halfcell.js';
+import { stockpilesAtNode } from '../../../../spatial/stockpiles.js';
+import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../../../stores/index.js';
 
 // Loose ground piles: create a haulable drop, hand-stack a placed pile, stack a carried load onto a
 // yard heap, and reap a pile a pickup emptied. The shared on-the-ground shapes the harvest, carry, and
@@ -132,7 +132,7 @@ export function stackOntoTile(
  * one tile is a supported state (they render as one pile and each is pickable), so this trades a
  * cosmetic overlap for goods conservation. One unit only, because that is what the single caller sheds:
  * a good leaving an equipment slot with no carrier to hold it (see
- * {@link import('../../orders/work/employment.js')}). A multi-unit set-down would have to spill the
+ * {@link import('../../../../orders/work/employment.js')}). A multi-unit set-down would have to spill the
  * remainder across rings the way {@link dropCarriedLoad} does.
  */
 export function placeUnitOnTile(

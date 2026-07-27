@@ -1,8 +1,8 @@
-import { BerryBush, Carrying, Position, Stockpile, setStockAmount } from '../../../components/index.js';
-import { eventAt } from '../../../core/events.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
-import { BERRY_STAGE_TICKS } from '../../economy/berries.js';
+import { BerryBush, Carrying, Position, Stockpile, setStockAmount } from '../../../../../components/index.js';
+import { eventAt } from '../../../../../core/events.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
+import { BERRY_STAGE_TICKS } from '../../../../economy/berries.js';
 import { shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 

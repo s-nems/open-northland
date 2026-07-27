@@ -8,10 +8,10 @@ import {
   Stockpile,
   setStockAmount,
   writeEquipSlot,
-} from '../../../components/index.js';
-import { fx } from '../../../core/fixed.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { SystemContext } from '../../context.js';
+} from '../../../../../components/index.js';
+import { fx } from '../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../context.js';
 import { addCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 import { pileupIntoStore } from './transfer.js';

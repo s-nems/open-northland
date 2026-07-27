@@ -44,7 +44,7 @@ import {
 import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { isFighterJob, stampResourceFootprintData } from '../../src/systems/index.js';
-import { EAT_ATOMIC_ID } from '../../src/systems/settlers/actions.js';
+import { EAT_ATOMIC_ID } from '../../src/systems/settlers/atomics/start.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 

@@ -6,9 +6,9 @@ import { NodeBuckets } from './nodes.js';
 /**
  * The per-world STOCKPILE node index — every positioned {@link Stockpile} bucketed by its half-cell node, so
  * "which heap is on this tile?" costs O(1) instead of a scan over every alive entity. It is the golden-rule-6
- * lever for the per-drop tile lookups: the ground-pile drops (`effects-goods/piles.ts`) and the sow occupancy
- * test used to walk `canonicalEntities()`, ~17k on a decoded map, nearly all of them resource nodes carrying no
- * stock at all — the store this indexes holds only buildings, boat hulls and loose heaps.
+ * lever for the per-drop tile lookups: the ground-pile drops (`atomics/effects/goods/piles.ts`) and the sow
+ * occupancy test used to walk `canonicalEntities()`, ~17k on a decoded map, nearly all of them resource nodes
+ * carrying no stock at all — the store this indexes holds only buildings, boat hulls and loose heaps.
  *
  * Derived read-state, never hashed: a {@link createSpatialMemo} rider, maintained incrementally against the
  * Stockpile store generation (create/destroy). Two invariants make that key sound, and the registered verifier

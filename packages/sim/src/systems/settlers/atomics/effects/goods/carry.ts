@@ -1,8 +1,8 @@
-import { Carrying, ownerOf, Position } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { forEachRingOffset } from '../../spatial/nodes.js';
+import { Carrying, ownerOf, Position } from '../../../../../components/index.js';
+import type { Entity, World } from '../../../../../ecs/world.js';
+import { nodeOfPosition, positionOfNode } from '../../../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
+import { forEachRingOffset } from '../../../../spatial/nodes.js';
 import { stackOntoTile } from './piles.js';
 
 // A settler's carried load (single-slot {@link Carrying}): add to it, shrink it, or set it down on the

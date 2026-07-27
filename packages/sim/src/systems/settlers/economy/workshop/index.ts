@@ -3,7 +3,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import { shelfBlockedOutput } from '../../../economy/production.js';
 import { planGossipIdle } from '../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../stores/index.js';
-import { atOrWalk, startDraw, startPickup } from '../../actions.js';
+import { atOrWalk, startDraw, startPickup } from '../../atomics/start.js';
 import { loiterCell } from '../../destack.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';

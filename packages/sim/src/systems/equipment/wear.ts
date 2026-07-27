@@ -21,7 +21,7 @@ export function wearStepOf(ctx: SystemContext, goodType: number): Fixed {
 /**
  * Advance the addressed worn slot's `degreeOfUse` by `step`; reaching ONE breaks the item - the slot
  * clears and the unit is gone (deliberate sink, like the destroy-used rule - see
- * `settlers/effects-goods/equip.ts`). No-op for an empty slot, a ZERO step, or an already-spent unit
+ * `settlers/atomics/effects/goods/equip.ts`). No-op for an empty slot, a ZERO step, or an already-spent unit
  * (a scene can stamp one at 100%).
  */
 export function applyEquipWear(

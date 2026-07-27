@@ -1,9 +1,9 @@
-import { CurrentAtomic, Settler } from '../../../../components/index.js';
-import { fx } from '../../../../core/fixed.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { SystemContext } from '../../../context.js';
-import { atomicAnimationName, atomicDuration } from '../../../readviews/animations.js';
-import { isInterruptibleAtomic } from '../../../readviews/index.js';
+import { CurrentAtomic, Settler } from '../../../../../../components/index.js';
+import { fx } from '../../../../../../core/fixed.js';
+import type { Entity, World } from '../../../../../../ecs/world.js';
+import type { SystemContext } from '../../../../../context.js';
+import { atomicAnimationName, atomicDuration } from '../../../../../readviews/animations.js';
+import { isInterruptibleAtomic } from '../../../../../readviews/index.js';
 
 /**
  * The numeric atomic id a struck combatant runs to **flinch** — the original's `setatomic <job> 82

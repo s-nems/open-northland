@@ -34,8 +34,8 @@ import { syncWorkFlagToJob } from '../../economy/work-flag.js';
 import { interactionNode } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { jobCanBuild, startDrop } from '../../settlers/actions.js';
-import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/effects-goods/index.js';
+import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/atomics/effects/goods/index.js';
+import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial/nodes.js';
 import { stampDefaultStance } from '../combat.js';
@@ -139,7 +139,7 @@ function shedToolOnEnlist(world: World, e: Entity): void {
 /**
  * Empty one equipment slot the settler's NEW trade may not use, without swallowing the good: a fresh
  * unit joins free or same-good hands, else lands on the settler's own tile; a part-used one - or one on
- * a positionless settler - is destroyed (the take-off rule, settlers/effects-goods/equip.ts). Both
+ * a positionless settler - is destroyed (the take-off rule, settlers/atomics/effects/goods/equip.ts). Both
  * endings serve the user's rule (2026-07-26: a store if the economy can manage it, the ground
  * otherwise) - a unit left in hand is banked by the delivery drive, a grounded one is collected by a
  * porter like any loose pile.

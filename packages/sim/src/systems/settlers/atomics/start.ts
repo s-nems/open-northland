@@ -5,16 +5,16 @@ import {
   MoveGoal,
   Settler,
   type SettlerIdentity,
-} from '../../components/index.js';
-import type { AtomicEffect } from '../../core/atomic-effect.js';
-import { fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { atomicDuration, needAtomicDuration } from '../readviews/animations.js';
-import { clearNavState } from '../spatial/nodes.js';
-import type { PlannerContext } from './planner/context.js';
-import { interactionCell, jobAtomics } from './targets/index.js';
+} from '../../../components/index.js';
+import type { AtomicEffect } from '../../../core/atomic-effect.js';
+import { fx } from '../../../core/fixed.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { atomicDuration, needAtomicDuration } from '../../readviews/animations.js';
+import { clearNavState } from '../../spatial/nodes.js';
+import type { PlannerContext } from '../planner/context.js';
+import { interactionCell, jobAtomics } from '../targets/index.js';
 
 // The planner's action vocabulary: the atomic ids the drives issue, the shared "start an atomic" entry point,
 // and the walk-or-act step every target-bound drive ends in. Each id below is only a content cross-reference /
@@ -93,13 +93,13 @@ export const PILEUP_ATOMIC_ID = 23;
  * change, or fleeing an enemy). The readable data binds no dedicated putdown clip (source basis: no `drop`
  * atomic in `atomicanimations`/`setatomic`), so the drop reuses the pickup gesture's animation — the same
  * bend-to-the-ground motion in reverse — as a named approximation; the typed `drop` effect
- * ({@link import('../../core/atomic-effect.js').AtomicEffect}) sets the whole load on the ground on completion,
- * so the behavior is the effect, not the shared id. */
+ * ({@link import('../../../core/atomic-effect.js').AtomicEffect}) sets the whole load on the ground on
+ * completion, so the behavior is the effect, not the shared id. */
 export const DROP_ATOMIC_ID = PICKUP_ATOMIC_ID;
 
 /**
  * Start a settler setting its carried load down (the {@link DROP_ATOMIC_ID} atomic, `drop` effect): it stops
- * where it is, plays the drop animation, then {@link import('./effects-goods/index.js').dropCarriedLoad} sets
+ * where it is, plays the drop animation, then {@link import('./effects/goods/index.js').dropCarriedLoad} sets
  * the whole load on the ground on completion. Clearing the nav state ({@link clearNavState}) is what makes the
  * drop a standstill: a settler interrupted mid-walk (a porter re-ordered elsewhere, or scared into fleeing)
  * halts and sets the load down before moving, instead of dropping on the move. A busy settler is left alone —
@@ -185,7 +185,7 @@ export function startPickup(
 /**
  * Issue the `draw` atomic on `e` against a shared utility (a well, a hive): the worker acts at the utility's
  * operate node for `ticks` — the utility recipe's own work time to extract one unit, not an animation length
- * — then {@link import('./effects-goods/index.js').drawUtilityGood} sets one unit of `goodType` on its back.
+ * — then {@link import('./effects/goods/index.js').drawUtilityGood} sets one unit of `goodType` on its back.
  * The gesture is the generic goods-handling animation ({@link PICKUP_ATOMIC_ID}, the same reuse
  * {@link DROP_ATOMIC_ID} makes): the drawer's trade is not the utility's and there is no decoded crank
  * animation, so a neutral bend-to-draw reads for any worker at either utility (named approximation).
