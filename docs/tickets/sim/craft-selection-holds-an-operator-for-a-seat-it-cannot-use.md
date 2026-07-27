@@ -62,8 +62,8 @@ Also observed, not diagnosed: `leather` is 0 on every seat, so `work_sewery_01` 
 
 - A real-map run reports non-zero `tool_iron` production and a non-zero worn-tool count on the
   working trades. No soak harness exists; the nearest host is the flagged real-content run in
-  `packages/app/test/content/ai-map-scenario.test.ts` (same `magiczny_las` + AI seats), which boots
-  120 ticks and would need a longer horizon for this measurement.
+  `packages/app/test/content/ai-map-scenario.test.ts` (same `magiczny_las`, but a single AI seat),
+  which boots 120 ticks and would need a longer horizon for this measurement.
 - A focused unit test: a workplace holding only recipe A's inputs, with its operator selected onto B,
   frees that operator instead of holding it inside.
 - `npm test`, `npm run test:content`. Golden state hashes must not move without a named reason.

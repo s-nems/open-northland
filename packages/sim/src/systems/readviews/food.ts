@@ -90,10 +90,12 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
  * end — `stockCapacity` is 0 for it in every store, so routing finds no sink, no carrier ever lifts it,
  * and the kitchen wedges at a full shelf with its workers idle.
  *
- * Scope: this resolves the mapping only. {@link carriedGoodForm} decides WHEN it applies — a lift out of the
- * producing house — and a dish minted straight onto the back (a hunter's meat from `harvestCadaver`,
- * `atomics/effects/combat/hit/reactions.ts`, and the bare-node pluck in `atomics/effects/goods/harvest.ts`)
- * bypasses it entirely. See docs/tickets/sim/dish-conversion-at-carry-mint.md.
+ * Scope: this resolves the mapping only. {@link carriedGoodForm} decides WHEN it applies (a lift out of the
+ * producing house), so a good minted straight onto the back bypasses it entirely. Under shipped content the
+ * one seam that mints an actual dish is a hunter's meat from `harvestCadaver`
+ * (`atomics/effects/combat/hit/reactions.ts`); the bare-node pluck in `atomics/effects/goods/harvest.ts` is
+ * the same seam structurally, but no bare-node good is a dish today. See
+ * docs/tickets/sim/dish-conversion-at-carry-mint.md.
  */
 export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
   return edibleForms(ctx.content).get(goodType) ?? goodType;

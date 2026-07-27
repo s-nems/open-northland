@@ -24,7 +24,7 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
 
 ## Scope (the workshop half)
 
-- `setCraftGoods` (`packages/sim/src/systems/orders/work.ts`) already models a per-settler product
+- `setCraftGoods` (`packages/sim/src/systems/orders/work/selection.ts`) already models a per-settler product
   selection as `CraftSelection` — the natural home for `baker` → `bread`.
 - `setCraftGoods` requires a bound workplace (`JobAssignment`), which an imported settler only gets
   once `attachtohouse` imports. Both

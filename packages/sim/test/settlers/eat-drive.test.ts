@@ -93,7 +93,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
     // The meal is the eat clip's own length ("viking_eat", 5) — the clip is a whole meal, so nothing
-    // repeats it (see actions.ts).
+    // repeats it (see atomics/start.ts).
     expect(atomic.duration).toBe(5);
     expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });
   });
