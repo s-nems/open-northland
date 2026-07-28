@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { Owner, Position, Settler, WorkFlag } from '../../src/components/index.js';
+import { Owner, Position, Resource, Settler, WorkFlag } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import type { Simulation } from '../../src/index.js';
+import { positionOfNode, type Simulation } from '../../src/index.js';
+import type { BlockOverlay } from '../../src/nav/block-overlay.js';
 import { setWorkFlag, workFlagPlacementBlocks } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import { mappedSim, terrainOf, VIKING } from './building-placement/support.js';
@@ -18,6 +19,8 @@ import { mappedSim, terrainOf, VIKING } from './building-placement/support.js';
 
 const WOODCUTTER = 1;
 const P0 = 0;
+const WOOD = 1;
+const HARVEST_ATOMIC = 24;
 
 function ownedGatherer(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
@@ -42,7 +45,7 @@ const flagCmd = (entity: Entity, x: number, y: number): Extract<Command, { kind:
   y,
 });
 
-function blocksOf(sim: Simulation): ReadonlySet<number> {
+function blocksOf(sim: Simulation): BlockOverlay {
   return workFlagPlacementBlocks(sim.world, sim.content, terrainOf(sim));
 }
 
@@ -84,5 +87,23 @@ describe('workFlagPlacementBlocks incremental state', () => {
     expect(withFlag.has(terrain.nodeAt(4, 4))).toBe(true);
     expect(ignoring.has(terrain.nodeAt(4, 4))).toBe(false); // its own cell must not block a re-place
     expect(blocksOf(sim).has(terrain.nodeAt(4, 4))).toBe(true); // the ignore path never mutated the shared set
+  });
+
+  it('keeps a node the ignored flag shares with another blocker blocked', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const g = ownedGatherer(sim, 12, 12);
+    const SPOT = { x: 4, y: 4 };
+    setWorkFlag(sim.world, ctxOf(sim), flagCmd(g, SPOT.x, SPOT.y));
+    const flag = sim.world.get(g, WorkFlag).flag;
+
+    // A resource standing on the flag's own cell: two contributions to that node, so withholding the
+    // flag's own leaves the resource's, and the node stays illegal ground for a re-place.
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, positionOfNode(SPOT.x, SPOT.y));
+    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 3, harvestAtomic: HARVEST_ATOMIC });
+
+    const ignoring = workFlagPlacementBlocks(sim.world, sim.content, terrain, flag);
+    expect(ignoring.has(terrain.nodeAt(SPOT.x, SPOT.y))).toBe(true);
   });
 });

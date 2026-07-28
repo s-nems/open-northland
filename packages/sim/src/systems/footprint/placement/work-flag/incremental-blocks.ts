@@ -8,6 +8,7 @@ import {
   Signpost,
 } from '../../../../components/index.js';
 import type { Component, Entity, World } from '../../../../ecs/world.js';
+import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
 import {
@@ -226,7 +227,7 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
  *  markers' cells — every {@link eachBlockerCell} channel except the margin zones ({@link EXCLUSION}
  *  and {@link BUILDING_ZONE}), since a resource/building margin remains valid open ground for a flag.
  *  Backed by the incremental {@link IncrementalBlocks} state, so reads share one refcounted set that
- *  changes cost O(own footprint), and the returned set object mutates in place as the world changes —
+ *  changes cost O(own footprint), and the returned view reads that live state rather than a copy of it:
  *  read it fresh within a decision, never hold it across sim mutations. The `ignoreFlag` variant (a
  *  flag re-placed over its own cell) withholds that flag's contributions via the refcounts. */
 export function workFlagPlacementBlocks(
@@ -234,19 +235,28 @@ export function workFlagPlacementBlocks(
   content: ContentSet,
   terrain: TerrainGraph,
   ignoreFlag?: Entity,
-): ReadonlySet<NodeId> {
+): BlockOverlay {
   const state = liveBlocks(world, content, terrain);
   if (ignoreFlag === undefined) return state.blocked;
   const held = state.flagCells.get(ignoreFlag);
   if (held === undefined || held.length === 0) return state.blocked;
-  // A node the ignored flag covers stays blocked only while another blocker also contributes to it.
-  const without = new Set(state.blocked);
-  const heldCounts = new Map<NodeId, number>();
-  for (const node of held) heldCounts.set(node, (heldCounts.get(node) ?? 0) + 1);
-  for (const [node, n] of heldCounts) {
-    if ((state.counts.get(node) ?? 0) <= n) without.delete(node);
-  }
-  return without;
+  return blocksWithout(state, held);
+}
+
+/** The blocked set minus one flag's own contributions: a node that flag covers stays blocked only
+ *  while another blocker also contributes to it. O(|ignoredCells|), the ignored flag's own footprint,
+ *  because it withholds through the refcounts instead of materializing the difference. */
+function blocksWithout(state: IncrementalBlocks, ignoredCells: BlockedCells): BlockOverlay {
+  const withheld = new Map<NodeId, number>();
+  for (const node of ignoredCells) withheld.set(node, (withheld.get(node) ?? 0) + 1);
+  return {
+    has: (node) => (state.counts.get(node) ?? 0) > (withheld.get(node) ?? 0),
+    // Over-counts by the withheld nodes; `BlockOverlay` asks only that 0 mean empty, which holds
+    // because `blocked` is exactly the positive-count keys.
+    get size() {
+      return state.blocked.size;
+    },
+  };
 }
 
 /** The {@link blocksMemo} coherence verifier: while the state claims freshness, a full re-derive must
