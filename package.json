@@ -16,7 +16,7 @@
     "typecheck:test": "tsc --build && tsc --project tsconfig.tests.json",
     "test": "npm run typecheck && vitest run",
     "test:watch": "npm run typecheck && vitest",
-    "bench:sim": "vitest run --config packages/app/bench/vitest.config.ts sim-tick",
+    "bench:sim": "node scripts/bench-sim.mjs",
     "bench:map": "node scripts/bench-map.mjs",
     "bench:compare": "node scripts/bench-compare.mjs",
     "test:content": "node scripts/test-content.mjs",
