@@ -1,5 +1,6 @@
 import { MoveGoal, Owner } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { nearestCell } from '../../footprint/geometry.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
@@ -10,11 +11,6 @@ import type { PlannerSpacing } from '../planner/spacing.js';
 //  - work slots ({@link claimWorkCell}): builders converging on one construction site claim distinct
 //    perimeter cells. Body collision can't do this: civilians are deliberate pass-through, and
 //    the SeparationSystem displaces only walking movers — two units standing on one node are never pushed apart.
-
-/** Max nodes a de-stack ring search visits before giving up — a boxed-in unit simply stays put.
- *  Quadrupled with the half-cell migration: nodes are 4× denser per world area, so this cap covers
- *  the same on-screen search radius the old 48-cell cap did. */
-const SPACING_SEARCH_CAP = 192;
 
 /**
  * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on half-cell node (tileX,tileY)
@@ -122,30 +118,18 @@ export function loiterCell(
 
 /**
  * The nearest cell to `from` that is walkable, unblocked by a building, holds no resting occupant, and
- * hasn't been claimed by another spacing consumer this tick — a breadth-first ring search over the
- * graph's canonical N,E,S,W neighbours (so the first hit at the minimum distance is
- * history-independent), bounded by {@link SPACING_SEARCH_CAP}. Returns null when nothing free is
- * reachable within the cap. Blocked cells are neither entered nor traversed, mirroring the pathfinder
- * that will carry the move out.
+ * hasn't been claimed by another spacing consumer this tick, or null when nothing free is reachable
+ * within {@link STAND_SEARCH_CAP}. Blocked cells are neither entered nor traversed, mirroring the
+ * pathfinder that will carry the move out.
  */
 function nearestFreeCell(terrain: TerrainGraph, from: NodeId, spacing: PlannerSpacing): NodeId | null {
   const blocked = spacing.blockedCells();
-  const seen = new Set<NodeId>([from]);
-  let frontier: NodeId[] = [from];
-  let visited = 0;
-  while (frontier.length > 0 && visited < SPACING_SEARCH_CAP) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n) || blocked.has(n)) continue;
-        seen.add(n);
-        visited++;
-        const { x, y } = terrain.coordsOf(n);
-        if (!spacing.isClaimed(n) && spacing.occupancy.at(x, y).length === 0) return n;
-        next.push(n);
-      }
-    }
-    frontier = next;
-  }
-  return null;
+  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
+    traverse: (n) => !blocked.has(n),
+    accept: (n) => {
+      if (spacing.isClaimed(n)) return false;
+      const { x, y } = terrain.coordsOf(n);
+      return spacing.occupancy.at(x, y).length === 0;
+    },
+  });
 }

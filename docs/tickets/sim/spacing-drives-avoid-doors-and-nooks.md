@@ -23,10 +23,10 @@ out onto open cells only.
 The rest-spot rung (`systems/settlers/drives/rest-spot.ts` `isOpenGround`) has a third version of the
 "require an unblocked neighbour" clearance — for choosing where a tired settler lies down. There are
 now three "where may a unit come to rest" rules in the tree: `evict.ts`, the two drives this ticket
-names, and rest-spot. Fold them onto one shared predicate as part of this work rather than adding a
-fourth; `rest-spot.ts` also traverses blocked nodes while refusing to land on them, which the others
-may or may not want. See the related dedup ticket
-[ring-search-duplicated-three-ways](ring-search-duplicated-three-ways.md).
+names, and rest-spot. The BFS underneath them is already shared (`ringSearch`, `nav/ring-search.ts`);
+what is still duplicated is the `accept` predicate each one passes it, so fold those onto one shared
+clearance test as part of this work rather than adding a fourth. Note that rest-spot traverses blocked
+nodes while refusing to land on them, which the others may or may not want.
 
 ## Verify
 
