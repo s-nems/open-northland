@@ -11,10 +11,10 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
-import { FOOTPRINT_EVICT_SEARCH_CAP } from '../movement/evict.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
@@ -86,11 +86,10 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
 /**
  * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked, not a
  * door cell (a designated stand), and holding no positioned stockpile yet — one pile per tile, so a
- * different-good heap is never buried under the landing. A breadth-first ring search from `from` in
- * the graph's canonical neighbour order that may traverse the evicting building's own `body` (the pile
- * is displaced across its plot, not carried) but never any other blocked cell — the same shape as the
- * settler eviction's `nearestFreeCellOutside`, minus its settler-occupancy rules (a pile and a settler
- * share a tile freely). Null when nothing free lies within the cap.
+ * different-good heap is never buried under the landing. It may traverse the evicting building's own
+ * `body` (the pile is displaced across its plot, not carried) but never any other blocked cell — the
+ * settler eviction's `nearestFreeCellOutside` rule, minus the settler-occupancy tests (a pile and a
+ * settler share a tile freely). Null when nothing free lies within the cap.
  */
 function nearestPileLanding(
   world: World,
@@ -100,25 +99,12 @@ function nearestPileLanding(
   blocked: BlockOverlay,
   doors: ReadonlySet<NodeId>,
 ): NodeId | null {
-  const seen = new Set<NodeId>([from]);
-  let frontier: NodeId[] = [from];
-  let visited = 0;
-  while (frontier.length > 0 && visited < FOOTPRINT_EVICT_SEARCH_CAP) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n)) continue;
-        if (blocked.has(n) && !body.has(n)) continue; // another building/resource — neither target nor path
-        seen.add(n);
-        visited++;
-        if (!blocked.has(n) && !doors.has(n)) {
-          const { x, y } = terrain.coordsOf(n);
-          if (stockpilesAtNode(world, x, y).length === 0) return n;
-        }
-        next.push(n);
-      }
-    }
-    frontier = next;
-  }
-  return null;
+  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
+    traverse: (n) => !blocked.has(n) || body.has(n),
+    accept: (n) => {
+      if (blocked.has(n) || doors.has(n)) return false;
+      const { x, y } = terrain.coordsOf(n);
+      return stockpilesAtNode(world, x, y).length === 0;
+    },
+  });
 }

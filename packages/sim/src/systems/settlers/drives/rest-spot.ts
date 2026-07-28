@@ -1,4 +1,5 @@
 import type { Entity, World } from '../../../ecs/world.js';
+import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -20,16 +21,9 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 // absent from the occupancy buckets, so they avoid owned sleepers without being avoided in turn.
 
 /**
- * Max nodes a rest-spot ring search visits before the settler simply sleeps where it stands. Matches the
- * de-stack search order of magnitude: far enough to leave a crowded village square, cheap enough to run
- * per tired settler.
- */
-const REST_SPOT_SEARCH_CAP = 192;
-
-/**
  * The node `e` should sleep on: `here` when it is already lying in the open, otherwise the nearest open
  * node the settler may walk to (claimed for the tick, so two settlers turning in together pick different
- * beds). Falls back to `here` when nothing qualifies within {@link REST_SPOT_SEARCH_CAP} — a boxed-in
+ * beds). Falls back to `here` when nothing qualifies within {@link STAND_SEARCH_CAP} — a boxed-in
  * settler rests where it stands rather than refusing to sleep.
  *
  * Re-plan stability matters here: the caller runs this every tick the settler is idle and tired, so
@@ -48,32 +42,21 @@ export function restingCell(
   const blocked = spacing.blockedCells();
   if (isOpenGround(terrain, here, blocked) && nodeIsFreeFor(terrain, here, e, spacing)) return here;
 
-  // The beds this settler's routes just failed to reach — the BFS traverses blocked nodes, so a bed can
-  // sit behind a wall; without this the settler would re-pick the same unroutable spot every re-plan.
+  // The beds this settler's routes just failed to reach. The search traverses blocked nodes (the open
+  // patch just past a rank of houses is a fine bed), so a bed can sit behind a wall; without this the
+  // settler would re-pick the same unroutable spot every re-plan.
   const failed = unreachableGoals(world, ctx, e);
-  const seen = new Set<NodeId>([here]);
-  let frontier: NodeId[] = [here];
-  let visited = 0;
-  while (frontier.length > 0 && visited < REST_SPOT_SEARCH_CAP) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      // Traverse blocked nodes but never bed down on them — the open patch just past a rank of houses is
-      // a fine bed, and whether it is actually reachable is the follow-up route's job (nav/nearest.ts).
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n)) continue;
-        seen.add(n);
-        visited++;
-        next.push(n);
-        if (spacing.isClaimed(n) || isUnreachableGoal(failed, n)) continue;
-        if (limit !== null && !limit.allowsNode(n)) continue;
-        if (!isOpenGround(terrain, n, blocked) || !nodeIsFreeFor(terrain, n, e, spacing)) continue;
-        spacing.claim(n);
-        return n;
-      }
-    }
-    frontier = next;
-  }
-  return here; // nowhere clear within reach — sleep on the spot
+  const bed = ringSearch(terrain, here, STAND_SEARCH_CAP, {
+    accept: (n) =>
+      !spacing.isClaimed(n) &&
+      !isUnreachableGoal(failed, n) &&
+      (limit === null || limit.allowsNode(n)) &&
+      isOpenGround(terrain, n, blocked) &&
+      nodeIsFreeFor(terrain, n, e, spacing),
+  });
+  if (bed === null) return here; // nowhere clear within reach — sleep on the spot
+  spacing.claim(bed);
+  return bed;
 }
 
 /** Whether `node` is walkable ground clear of every building/resource footprint, its own and its

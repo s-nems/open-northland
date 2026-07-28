@@ -3,16 +3,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
+import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial/nodes.js';
-
-/** Max nodes a footprint displacement's landing search visits before giving up — a plot boxed in
- *  on a pathological map leaves its occupants in place rather than searching the whole world (same cap
- *  stance as the spacing drives' SPACING_SEARCH_CAP). Shared with the goods twin
- *  (`evictLooseGoodsFromFootprint`); the spawn push below takes `nearestUnblockedNode`'s own default. */
-export const FOOTPRINT_EVICT_SEARCH_CAP = 192;
 
 /**
  * Push every settler standing inside `building`'s walk-blocked footprint out onto the nearest free
@@ -170,14 +165,12 @@ function settlerNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
 
 /**
  * The nearest walkable node outside every walk-block that no standing settler occupies and no earlier
- * evictee has claimed — a breadth-first ring search from `from` in the graph's canonical neighbour
- * order (first hit at minimum ring distance, history-independent). Unlike the spacing drives' search
- * it MAY traverse the evicting building's own `body` cells (the evictee is displaced across its plot,
- * not walked), but never any other blocked cell. A landing target must also be neither a `doors` cell
- * (a designated stand, visually inside its building) nor itself a sealed nook — it keeps at least one
- * unblocked orthogonal side, so the push never wedges the settler into the next gap over (the real
- * HQ/home seam has two such one-node pockets in a row). Null when nothing free is reachable within
- * the cap.
+ * evictee has claimed. Unlike the spacing drives' search it MAY traverse the evicting building's own
+ * `body` cells (the evictee is displaced across its plot, not walked), but never any other blocked
+ * cell. A landing target must also be neither a `doors` cell (a designated stand, visually inside its
+ * building) nor itself a sealed nook — it keeps at least one unblocked orthogonal side, so the push
+ * never wedges the settler into the next gap over (the real HQ/home seam has two such one-node pockets
+ * in a row). Null when nothing free is reachable within the cap.
  */
 function nearestFreeCellOutside(
   terrain: TerrainGraph,
@@ -188,25 +181,13 @@ function nearestFreeCellOutside(
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,
 ): NodeId | null {
-  const seen = new Set<NodeId>([from]);
-  let frontier: NodeId[] = [from];
-  let visited = 0;
-  while (frontier.length > 0 && visited < FOOTPRINT_EVICT_SEARCH_CAP) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n)) continue;
-        if (blocked.has(n) && !body.has(n)) continue; // another building/resource — neither target nor path
-        seen.add(n);
-        visited++;
-        if (!blocked.has(n) && !doors.has(n) && terrain.walkableNeighbours(n).some((m) => !blocked.has(m))) {
-          const { x, y } = terrain.coordsOf(n);
-          if (!claimed.has(n) && occupancy.at(x, y).length === 0) return n;
-        }
-        next.push(n);
-      }
-    }
-    frontier = next;
-  }
-  return null;
+  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
+    traverse: (n) => !blocked.has(n) || body.has(n),
+    accept: (n) => {
+      if (blocked.has(n) || doors.has(n)) return false;
+      if (!terrain.walkableNeighbours(n).some((m) => !blocked.has(m))) return false;
+      const { x, y } = terrain.coordsOf(n);
+      return !claimed.has(n) && occupancy.at(x, y).length === 0;
+    },
+  });
 }
