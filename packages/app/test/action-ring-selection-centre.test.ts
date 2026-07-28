@@ -2,7 +2,7 @@ import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR, JOB_SCOUT } from '../src/catalog/jobs.js';
 import { selectionCentre } from '../src/view/unit-controls/action-ring/selection-centre.js';
-import { type Ent, snapshotOf } from './support/snapshot.js';
+import { type Ent, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 const TRIBE = 1;
 
@@ -33,5 +33,23 @@ describe('selectionCentre', () => {
     expect(selectionCentre(world, new Set([1, 3]))?.jobType).toBeUndefined();
     expect(selectionCentre(world, new Set())).toBeNull();
     expect(selectionCentre(world, new Set([99]))).toBeNull();
+  });
+
+  it('reports ids ascending whatever order they were clicked in', () => {
+    expect(selectionCentre(world, new Set([3, 1, 2]))?.ids).toEqual([1, 2, 3]);
+  });
+
+  it('costs the selection, not the map: a two-settler ring never walks a crowded snapshot', () => {
+    const ROW = 64;
+    const crowd = snapshotOf(
+      Array.from({ length: 4096 }, (_unused, i) => standing(i + 1, i % ROW, Math.floor(i / ROW))),
+    );
+    const counted = visitCountingSnapshot(crowd);
+
+    const centre = selectionCentre(counted.snapshot, new Set([4000, 7]));
+
+    expect(centre?.ids).toEqual([7, 4000]);
+    // Two binary searches, measured at 19 entities; walking the world would hand out all 4096.
+    expect(counted.visits()).toBeLessThan(crowd.entities.length / 8);
   });
 });
