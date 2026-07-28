@@ -81,11 +81,11 @@ export function relocateWorkFlag(
   pos: { x: Fixed; y: Fixed },
   gatherer?: Entity,
 ): void {
-  const p = world.get(flag, Position);
-  p.x = pos.x;
-  p.y = pos.y;
-  world.touch(flag);
-  noteWorkFlagMove(world); // an in-place Position write — componentGeneration cannot see it
+  world.write(flag, Position, (p) => {
+    p.x = pos.x;
+    p.y = pos.y;
+  });
+  noteWorkFlagMove(world); // the flag-block overlay keys on its own counter, not a component generation
   // Each match mutates only its own state, so the scan's store order is permitted — no chosen-entity pick.
   for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
     if (world.tryGet(e, WorkFlag)?.flag !== flag) continue;
@@ -177,8 +177,9 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
     if (live !== undefined) {
       const selected = live.goodType;
       if (selected !== undefined && !jobCanHarvestGood(ctx, jobType, selected)) {
-        delete world.get(e, WorkFlag).goodType;
-        world.touch(e);
+        world.write(e, WorkFlag, (binding) => {
+          delete binding.goodType;
+        });
       }
       return; // already carries a live flag — keep it, with a filter valid for the new trade
     }

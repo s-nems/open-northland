@@ -51,11 +51,11 @@ describe('crop growth', () => {
     expect(sim.world.get(field, Resource).remaining).toBe(0);
   });
 
-  it('growth is RENDER-visible through a primed snapshot cache — in-place writes are touch-logged', () => {
+  it('growth is RENDER-visible through a primed snapshot cache — in-place writes are logged', () => {
     // A Crop carries Resource, so the snapshot's scenery-clone cache holds its clone until the entity
-    // is World.touch'ed. The browser snapshots every frame, so the cache primes on the crop's very
-    // first (freshly-sown, invisible) state — an un-touched water/growth write then renders the field
-    // frozen at that stage forever (the user-observed "wheat never grows" while the sim ripens it fine).
+    // is written through `World.write`. The browser snapshots every frame, so the cache primes on the
+    // crop's very first (freshly-sown, invisible) state — an unlogged water/growth write then renders the
+    // field frozen at that stage forever (the user-observed "wheat never grows" while the sim ripens it fine).
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
     const field = fieldAt(sim, farm, 2, 2);

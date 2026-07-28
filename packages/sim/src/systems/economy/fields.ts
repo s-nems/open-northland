@@ -195,8 +195,9 @@ export function applySow(
 export function applyWater(world: World, crop: Entity): void {
   const c = world.tryGet(crop, Crop);
   if (c === undefined || c.watered || c.stage >= c.stages) return;
-  c.watered = true;
-  world.touch(crop); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+  world.write(crop, Crop, (v) => {
+    v.watered = true;
+  });
 }
 
 /**
@@ -250,19 +251,21 @@ export const cropGrowthSystem: System = (world) => {
     const crop = world.get(e, Crop);
     if (crop.stage >= crop.stages) continue; // ripe — waiting for the scythe
     if (!crop.watered) continue; // thirsty — stands until a farmer comes with the can
-    crop.growth += 1;
-    // In-place write on a snapshot-cached scenery entity (a Crop carries Resource) — log it so the snapshot's
-    // scenery-clone cache re-clones the field; a missed touch freezes the crop at its first-seen stage forever.
-    // One touch covers every write this tick, including the ripe Resource.remaining below.
-    world.touch(e);
-    if (crop.growth < crop.ticksPerStage) continue;
-    crop.growth -= crop.ticksPerStage;
-    crop.stage += 1;
-    crop.watered = false; // the stage consumed its watering — thirsty again (farmer-fueled growth)
-    if (crop.stage >= crop.stages) {
-      crop.growth = 0; // ripe — freeze the counter (display-stable)
-      const res = world.tryGet(e, Resource);
-      if (res !== undefined) res.remaining = crop.yieldUnits; // now worth its yield to the scythe
+    let ripened = false;
+    world.write(e, Crop, (c) => {
+      c.growth += 1;
+      if (c.growth >= c.ticksPerStage) {
+        c.growth -= c.ticksPerStage;
+        c.stage += 1;
+        c.watered = false; // the stage consumed its watering — thirsty again (farmer-fueled growth)
+        ripened = c.stage >= c.stages;
+        if (ripened) c.growth = 0; // freeze the counter (display-stable)
+      }
+    });
+    if (ripened && world.has(e, Resource)) {
+      world.write(e, Resource, (r) => {
+        r.remaining = crop.yieldUnits; // the last stage landed — now worth its yield to the scythe
+      });
     }
   }
 };

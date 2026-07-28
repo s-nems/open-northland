@@ -28,7 +28,7 @@ export class World {
   /** Per-component membership (add/remove/destroy) generation, used by derived caches that depend on a
    *  component store. */
   private readonly componentGenerations = new Map<Component<unknown>, number>();
-  /** Per-component in-place value-write generation (see {@link touchComponent}), separate from the membership
+  /** Per-component in-place value-write generation (see {@link write}), separate from the membership
    *  generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations = new Map<Component<unknown>, number>();
   private readonly journals = new MembershipJournals();
@@ -95,28 +95,27 @@ export class World {
   }
 
   /**
-   * Log an in-place component-value mutation on `entity` so identity-keyed read caches drop their stale copy.
-   * `add`/`remove`/`destroy` log automatically; call this only where a system writes a field of a stored value
-   * directly (e.g. the harvest effect decrementing `Resource.remaining`).
+   * Apply an in-place mutation to `entity`'s stored `component` value and log it on every change channel at
+   * once (the identity-keyed snapshot clone cache and the component's value generation). Required for any
+   * write a derived cache can observe; `add`/`remove`/`destroy` log for themselves, and a raw
+   * `get(...).field = x` reaches no channel — the staleness {@link verifyCaches} exists to catch.
+   * Throws when `entity` does not carry `component`; a caller that tolerates a raced-away entity tests
+   * with {@link has}/{@link tryGet} first.
    */
-  touch(entity: Entity): void {
+  write<T>(entity: Entity, component: Component<T>, mutate: (value: T) => void): void {
+    mutate(this.get(entity, component));
     this.touched.record(entity);
+    const key = component as Component<unknown>;
+    this.componentValueGenerations.set(key, (this.componentValueGenerations.get(key) ?? 0) + 1);
   }
 
-  /**
-   * Log an in-place value write in `component`'s store, bumping the component's VALUE generation so
-   * value-sensitive derived caches invalidate. Does not log the entity for the snapshot clone cache: a write
-   * that must also reach the snapshot pairs this with {@link touch}.
-   */
-  touchComponent(component: Component<unknown>): void {
-    this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
-  }
-
+  /** In-place value writes seen by `component`'s store so far. A cache over stored VALUES memoizes against
+   *  this; one over membership uses {@link componentGeneration}. */
   componentValueGeneration(component: Component<unknown>): number {
     return this.componentValueGenerations.get(component) ?? 0;
   }
 
-  /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`touch`): the "may the
+  /** Monotonic version of every entity mutation (`create`/`add`/`remove`/`destroy`/`write`): the "may the
    *  previous snapshot be reused?" key for `Simulation.snapshot`'s per-tick memo. */
   get mutationVersion(): number {
     return this.touched.mutationCount;

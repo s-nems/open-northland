@@ -111,10 +111,10 @@ export function setGatherGood(
   if (goodType !== null && !jobCanHarvestGood(ctx, settler.jobType, goodType)) return;
   const flag = liveWorkFlag(world, e);
   if (flag !== undefined) {
-    const binding = world.get(e, WorkFlag);
-    if (goodType === null) delete binding.goodType;
-    else binding.goodType = goodType;
-    world.touch(e);
+    world.write(e, WorkFlag, (binding) => {
+      if (goodType === null) delete binding.goodType;
+      else binding.goodType = goodType;
+    });
   } else {
     // The flag-less employed path: the pick lives in a GatherSelection and must be a good the bound
     // workplace stockpiles (the "an employed gatherer forages only for its workplace" rule).
@@ -124,12 +124,12 @@ export function setGatherGood(
       world.remove(e, GatherSelection); // back to every stored good
     } else {
       if (!(workplaceStoredGoods(world, ctx, workplace)?.has(goodType) ?? false)) return;
-      const selection = world.tryGet(e, GatherSelection);
-      if (selection === undefined) {
+      if (!world.has(e, GatherSelection)) {
         world.add(e, GatherSelection, { goodType });
       } else {
-        selection.goodType = goodType;
-        world.touch(e);
+        world.write(e, GatherSelection, (selection) => {
+          selection.goodType = goodType;
+        });
       }
     }
   }
@@ -167,12 +167,12 @@ export function setCraftGoods(
   }
   const goods = [...new Set(command.goods)].filter((g) => recipes.has(g)).sort((a, b) => a - b);
   if (goods.length === 0) return; // named nothing this workplace makes
-  const selection = world.tryGet(e, CraftSelection);
-  if (selection === undefined) {
+  if (!world.has(e, CraftSelection)) {
     world.add(e, CraftSelection, { goods, cursor: 0 });
   } else {
-    selection.goods = goods;
-    selection.cursor = 0;
-    world.touch(e);
+    world.write(e, CraftSelection, (selection) => {
+      selection.goods = goods;
+      selection.cursor = 0;
+    });
   }
 }

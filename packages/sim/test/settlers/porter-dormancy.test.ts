@@ -6,6 +6,7 @@ import {
   Position,
   Settler,
   Stockpile,
+  setStockAmount,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
@@ -108,7 +109,7 @@ describe('porter dormancy', () => {
 
     // Logged through the seam (the value generation the dormancy version tracks), the freed sink
     // wakes the porter.
-    sim.world.touchComponent(Stockpile);
+    setStockAmount(sim.world, hq, PLANK, 0);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
@@ -140,8 +141,9 @@ describe('porter dormancy', () => {
     groundPileAt(sim, 3, 0, 2);
     // A pile appearing and the porter moving in the same window must not mask each other: shift the
     // porter (node change), then plan — the entry mismatches on both fields and the scan re-runs.
-    sim.world.get(porter, Position).x = fx.fromInt(1);
-    sim.world.touch(porter);
+    sim.world.write(porter, Position, (p) => {
+      p.x = fx.fromInt(1);
+    });
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });

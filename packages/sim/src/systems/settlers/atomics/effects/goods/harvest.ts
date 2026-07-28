@@ -78,9 +78,11 @@ export function harvestFromNode(
   }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
-    felling.chopsLeft = Math.max(0, felling.chopsLeft - swings);
-    world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-    if (felling.chopsLeft > 0) return 0; // a mid-job chop extracts nothing yet
+    const chopsLeft = Math.max(0, felling.chopsLeft - swings);
+    world.write(node, Felling, (f) => {
+      f.chopsLeft = chopsLeft;
+    });
+    if (chopsLeft > 0) return 0; // a mid-job chop extracts nothing yet
     fellNode(world, ctx, settler, node, res.goodType, res.remaining);
     return res.remaining;
   }
@@ -99,8 +101,9 @@ export function harvestFromNode(
     if (strikesPerUnit > 1) {
       const advanced = (deposit.strikes ?? 0) + swings;
       const freed = Math.floor(advanced / strikesPerUnit);
-      deposit.strikes = advanced % strikesPerUnit;
-      world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+      world.write(node, MineDeposit, (d) => {
+        d.strikes = advanced % strikesPerUnit;
+      });
       if (freed === 0) return 0;
       took = Math.min(freed * HARVEST_YIELD, res.remaining);
     } else {
@@ -113,9 +116,11 @@ export function harvestFromNode(
   // Decrement only after the unit is safely dropped/carried: were `addCarry` ever to reject (a full load), the
   // unit is not lost and the node isn't wrongly depleted. The planner only reaches a harvest empty-handed, so
   // `addCarry` never throws today; this keeps the throw-safe ordering anyway.
-  res.remaining -= took;
-  world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-  if (res.remaining <= 0) {
+  const remaining = res.remaining - took;
+  world.write(node, Resource, (r) => {
+    r.remaining = remaining;
+  });
+  if (remaining <= 0) {
     depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
   } else if (world.has(node, MineDeposit)) {
     // A surviving deposit shrank a unit — announce it (`resourceMined`) so the map view hands the node

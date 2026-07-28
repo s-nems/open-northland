@@ -78,10 +78,10 @@ function unit(
 
 /** Teleport a unit to cell (x,y) — the between-rebuild move the regression tests need. */
 function teleport(sim: Simulation, e: Entity, x: number, y: number): void {
-  const p = sim.world.get(e, Position);
-  p.x = fx.fromInt(x);
-  p.y = fx.fromInt(y);
-  sim.world.touch(e);
+  sim.world.write(e, Position, (p) => {
+    p.x = fx.fromInt(x);
+    p.y = fx.fromInt(y);
+  });
 }
 
 /** The raw mask state of visual cell (x,y) for a player (bypasses RECON's view mapping). */
@@ -115,8 +115,9 @@ describe('scout experience — the signpost craft widens the eye', () => {
     // 15 cells (30 nodes) east: beyond the base 26-node eye, inside mastery's +6.
     expect(rawState(sim, P0, 19, 4)).not.toBe(FOG_STATE.VISIBLE);
 
-    sim.world.get(scout, Settler).experience.set(SCOUT_EXPERIENCE_TYPE, 100); // mastery: the full cap
-    sim.world.touch(scout);
+    sim.world.write(scout, Settler, (s) => {
+      s.experience.set(SCOUT_EXPERIENCE_TYPE, 100); // mastery: the full cap
+    });
     for (let t = 0; t <= VISION_CADENCE_TICKS + 1; t++) sim.step();
     expect(rawState(sim, P0, 19, 4)).toBe(FOG_STATE.VISIBLE);
   });

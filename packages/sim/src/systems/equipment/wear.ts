@@ -37,8 +37,14 @@ export function applyEquipWear(
   const worn = equipSlotValue(eq, group, slot);
   if (worn === null || worn.degreeOfUse >= ONE) return;
   const used = fx.add(worn.degreeOfUse, step);
-  writeEquipSlot(eq, group, slot, used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used });
-  world.touch(entity); // log the in-place write (the direct-field-write convention; cheap Set.add)
+  world.write(entity, Equipment, (equipment) =>
+    writeEquipSlot(
+      equipment,
+      group,
+      slot,
+      used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used },
+    ),
+  );
 }
 
 /** One walked waypoint's boots wear (the movement system's per-arrival hook). */

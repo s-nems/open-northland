@@ -137,7 +137,7 @@ export function consumeFoodUnits(world: World, ctx: SystemContext, house: Entity
     if (left <= 0) break;
     if (amount <= 0 || !isFood(ctx, goodType)) continue;
     const take = Math.min(amount, left);
-    setStockAmount(world, stock.amounts, goodType, amount - take);
+    setStockAmount(world, house, goodType, amount - take);
     left -= take;
   }
 }

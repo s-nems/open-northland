@@ -78,8 +78,9 @@ export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity)
     if (held === null) continue;
     const pct = liveEquipOf(ctx, held)?.restorePct?.healthMax;
     if (pct === undefined) continue;
-    health.hitpoints = Math.max(1, Math.trunc((health.max * pct) / 100));
-    world.touch(e); // log the in-place Health write (the direct-field-write convention)
+    world.write(e, Health, (h) => {
+      h.hitpoints = Math.max(1, Math.trunc((h.max * pct) / 100));
+    });
     applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));
     return true;
   }

@@ -16,21 +16,17 @@ export function drinkDraught(world: World, ctx: SystemContext, settler: Entity, 
   const eq = world.tryGet(settler, Equipment);
   const held = eq?.misc[slot] ?? null;
   if (held === null || held.degreeOfUse >= ONE) return;
-  const restores = draughtRestores(ctx, held.goodType);
-  const s = world.tryGet(settler, Settler);
-  if (s !== undefined) {
-    if (restores.hunger !== undefined) s.hunger = relieveNeed(s.hunger, restores.hunger);
-    if (restores.fatigue !== undefined) s.fatigue = relieveNeed(s.fatigue, restores.fatigue);
+  const { hunger, fatigue, healthMaxPct } = draughtRestores(ctx, held.goodType);
+  if ((hunger !== undefined || fatigue !== undefined) && world.has(settler, Settler)) {
+    world.write(settler, Settler, (s) => {
+      if (hunger !== undefined) s.hunger = relieveNeed(s.hunger, hunger);
+      if (fatigue !== undefined) s.fatigue = relieveNeed(s.fatigue, fatigue);
+    });
   }
-  if (restores.healthMaxPct !== undefined) {
-    const health = world.tryGet(settler, Health);
-    if (health !== undefined) {
-      health.hitpoints = Math.min(
-        health.max,
-        health.hitpoints + Math.trunc((health.max * restores.healthMaxPct) / 100),
-      );
-    }
+  if (healthMaxPct !== undefined && world.has(settler, Health)) {
+    world.write(settler, Health, (h) => {
+      h.hitpoints = Math.min(h.max, h.hitpoints + Math.trunc((h.max * healthMaxPct) / 100));
+    });
   }
-  world.touch(settler); // log the in-place needs/health write (the direct-field-write convention)
   applyEquipWear(world, settler, 'misc', slot, wearStepOf(ctx, held.goodType));
 }

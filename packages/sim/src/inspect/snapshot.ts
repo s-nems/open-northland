@@ -37,11 +37,11 @@ export interface EntitySnapshot {
  * of {@link Resource} nodes that then sit unchanged for thousands of ticks, and deep-cloning them every snapshot
  * was the 28 ms/frame that pinned a real map at ~20 fps (golden rule 6: per-frame cost scales with active work).
  * An entry is reused verbatim until the World's touched-entity log names its entity (any `add`/`remove`/`destroy`,
- * or an in-place write the mutating system `touch`es — the harvest decrements). Only entities carrying
- * {@link Resource} or {@link Stump} are cached: their mutation sites are few and named, unlike a settler whose
- * Position mutates in place every tick. Coherence is enforced by a {@link World.registerCacheVerifier} verifier
- * (a fresh re-clone must equal every cached entry), so a future un-`touch`ed mutation fails invariant-checked
- * runs at the tick it happens instead of shipping a stale render.
+ * or a {@link World.write} — the harvest decrements). Only entities carrying {@link Resource} or {@link Stump}
+ * are cached: their mutation sites are few and named, unlike a settler whose Position mutates in place every
+ * tick. Coherence is enforced by a {@link World.registerCacheVerifier} verifier (a fresh re-clone must equal
+ * every cached entry), so a future mutation that bypasses the seam fails invariant-checked runs at the tick it
+ * happens instead of shipping a stale render.
  */
 const sceneryClones = new WeakMap<World, Map<Entity, EntitySnapshot>>();
 
@@ -70,7 +70,7 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
     if (!world.isAlive(id)) continue; // evicted lazily on the next drain — absence is not incoherence
     const fresh = cloneEntity(world, id);
     if (JSON.stringify(fresh.components) !== JSON.stringify(cached.components)) {
-      out.push(`snapshot scenery clone of entity ${id} is stale — an in-place mutation missed World.touch`);
+      out.push(`snapshot scenery clone of entity ${id} is stale — an in-place mutation bypassed World.write`);
     }
   }
   return out;
@@ -102,7 +102,7 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
     const snap = cloneEntity(world, id);
     entities.push(snap);
     // BerryBush joins Resource/Stump as cached scenery: a bush sits unchanged between growth stages, so it is
-    // re-cloned only at the `touch`ed moments it changes stage (foraged, bloomed, ripened) — not every frame
+    // re-cloned only at the logged moments it changes stage (foraged, bloomed, ripened) — not every frame
     // like a moving settler. `nextStageAtTick` is an absolute schedule, so a regrowing bush doesn't churn.
     if (world.has(id, Resource) || world.has(id, Stump) || world.has(id, BerryBush)) {
       cache.set(id, snap);

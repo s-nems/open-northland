@@ -46,7 +46,7 @@ export function startCycleFor(
 ): void {
   const pool = craftablePool(world, ctx, operator, recipes);
   if (pool.length === 0) return; // no recipes at all, or none this operator has earned yet
-  let selection = world.tryGet(operator, CraftSelection);
+  const selection = world.tryGet(operator, CraftSelection);
   const cursor = selection?.cursor ?? 0;
   for (let i = 0; i < pool.length; i++) {
     const good = pool[(cursor + i) % pool.length];
@@ -54,12 +54,10 @@ export function startCycleFor(
     if (good === undefined || recipe === undefined) continue;
     if (!canStartCycle(world, ctx, building, recipe)) continue;
     beginCycle(world, building, recipe, good);
-    if (selection === undefined) {
-      world.add(operator, CraftSelection, { goods: [], cursor: 0 });
-      selection = world.get(operator, CraftSelection);
-    }
-    selection.cursor = (cursor + i + 1) % pool.length;
-    world.touch(operator); // an in-place component write — evict any cached snapshot clone
+    if (selection === undefined) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
+    world.write(operator, CraftSelection, (s) => {
+      s.cursor = (cursor + i + 1) % pool.length;
+    });
     return;
   }
 }

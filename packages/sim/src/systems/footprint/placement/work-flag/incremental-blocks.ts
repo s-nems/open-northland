@@ -47,7 +47,7 @@ interface IncrementalBlocks {
    *  but its deltas resync through the Resource capturer (a footprint stamp/unstamp changes which cells
    *  that resource blocks), so a stamp decoupled from its Resource membership change is still caught. */
   footprintGen: number;
-  /** Guard for the one input no journal covers: the in-place tier swap (`touchComponent(Building)`)
+  /** Guard for the one input no journal covers: the in-place tier swap (a `World.write` value bump)
    *  changes captured cells with no membership bump — any move forces a full rebuild (rare). */
   buildingValueGen: number;
   /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store — O(flags), tiny. */

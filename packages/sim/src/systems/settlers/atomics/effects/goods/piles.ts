@@ -60,7 +60,7 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
     if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0 && stock.amounts.size > 0) continue; // holds a different good — never overwrite it
-    setStockAmount(world, stock.amounts, goodType, Math.min(MAX_GROUND_STACK, have + amount));
+    setStockAmount(world, e, goodType, Math.min(MAX_GROUND_STACK, have + amount));
     return e;
   }
   const pile = world.create();
@@ -113,7 +113,7 @@ export function stackOntoTile(
     const have = stock.amounts.get(good) ?? 0;
     const placed = Math.min(MAX_GROUND_STACK - have, want);
     if (placed <= 0) return 0; // this tile is full for the good
-    setStockAmount(world, stock.amounts, good, have + placed);
+    setStockAmount(world, e, good, have + placed);
     return placed;
   }
   // No heap on this tile yet — start one with up to a full stack.

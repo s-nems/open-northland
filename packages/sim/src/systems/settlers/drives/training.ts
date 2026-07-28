@@ -99,8 +99,9 @@ export function serveDrillRepetition(
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return; // the errand was called off mid-repetition — it schools nothing
   grantTrainingExperience(world, ctx, e, atomicId);
-  order.drillTicksLeft -= Math.max(1, ticks);
-  world.touch(e); // in-place field writes are logged explicitly, not detected
+  world.write(e, TrainingOrder, (o) => {
+    o.drillTicksLeft -= Math.max(1, ticks);
+  });
 }
 
 /** Drop the errand and the inside-the-house marker, releasing the settler to the economy (`false`). */

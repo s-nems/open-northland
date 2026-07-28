@@ -12,11 +12,11 @@ import { HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.
 const ANCHOR = { x: 5, y: 5 };
 
 /**
- * The building walk-block memo (building-blocked-cache.ts): a call burst between two building
- * mutations shares ONE build, and every mutation seam that can change the cell set — membership
- * (add/remove/destroy) and the home tier upgrade's IN-PLACE `buildingType` swap (which moves only the
- * VALUE generation, via `touchComponent(Building)`) — invalidates it. The in-place seam is the
- * regression the naive `componentGeneration(Building)`-only key would miss.
+ * The building walk-block memo (building-blocked-cache.ts): a call burst between two building mutations
+ * shares ONE build, and every mutation seam that can change the cell set — membership (add/remove/destroy)
+ * and the home tier upgrade's IN-PLACE `buildingType` swap (which `World.write` logs on the VALUE
+ * generation) — invalidates it. The in-place seam is the regression the naive
+ * `componentGeneration(Building)`-only key would miss.
  */
 describe('buildingBlockedCells memo', () => {
   it('a burst of callers between two building mutations shares one cached set', () => {
@@ -60,13 +60,16 @@ describe('buildingBlockedCells memo', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('the verifier flags an in-place Building write that skipped touchComponent', () => {
+  it('the verifier flags an in-place Building write that bypassed the write seam', () => {
     const { sim, home } = twoTierHome();
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     sim.world.get(home, Building).buildingType = HOME_L; // raw store write — no value-generation bump
     expect(sim.world.verifyCaches().join('\n')).toContain('buildingBlockedCells');
 
-    sim.world.touchComponent(Building); // the bump the writer owed — the next read rebuilds
+    // The same write through the seam — logged, so the next read rebuilds.
+    sim.world.write(home, Building, (b) => {
+      b.buildingType = HOME_L;
+    });
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     expect(sim.world.verifyCaches()).toEqual([]);
   });
