@@ -1,5 +1,5 @@
 import type { ContentSet, JobType } from '@open-northland/data';
-import { isFighterRole, jobRoleOfId } from '../../core/content-index/jobs.js';
+import { isCarrierJobId, isFighterRole, jobRoleOfId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 
 /**
@@ -39,6 +39,12 @@ export function isHeroJob(content: ContentSet, jobType: number | null): boolean 
  *  the running content (the HUD reads a readonly content slice, not the `ContentSet`). */
 export function isFighterJobRow(job: Pick<JobType, 'id'>): boolean {
   return isFighterRole(jobRoleOfId(job.id));
+}
+
+/** Whether a job ROW is the transport trade — the row-level twin of
+ *  {@link import('../stores/index.js').isCarrierJob}, for the same row-holding callers. */
+export function isCarrierJobRow(job: Pick<JobType, 'id'>): boolean {
+  return isCarrierJobId(job.id);
 }
 
 /** Whether `jobType` is a **scout** trade — the non-combat explorer that erects signposts. */

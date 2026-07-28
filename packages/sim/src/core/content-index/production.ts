@@ -1,9 +1,6 @@
 import type { ContentSet, Recipe } from '@open-northland/data';
 import { harvestCapableJobs } from './atomics.js';
-
-/** The content `id` slug of the transport (carrier) job — mirrors `isCarrierJob`'s slug test, in
- *  content space (no World). A carrier/gatherer-only building has no operator trade. */
-const CARRIER_JOB_ID = 'carrier';
+import { isCarrierJobId } from './jobs.js';
 
 /** The per-building-type `product → recipe` tables
  *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) — first-wins per typeId
@@ -56,7 +53,8 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
  * a hardcoded well/hive id. First-wins per typeId, matching the other tables.
  */
 export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const carrierJobs = new Set(content.jobs.filter((j) => j.id === CARRIER_JOB_ID).map((j) => j.typeId));
+  // A carrier/gatherer-only building has no operator trade.
+  const carrierJobs = new Set(content.jobs.filter((j) => isCarrierJobId(j.id)).map((j) => j.typeId));
   const harvestJobs = harvestCapableJobs(content);
   const isOperatorSlot = (jobType: number): boolean => !carrierJobs.has(jobType) && !harvestJobs.has(jobType);
   const map = new Map<number, Set<number>>();

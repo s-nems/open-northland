@@ -71,6 +71,7 @@ export { type EquipPickEntry, equipPickList } from './equip-pick.js';
 export { exportedGoodForm, isFood } from './food.js';
 export {
   baseSoldierJobType,
+  isCarrierJobRow,
   isFighterJob,
   isFighterJobRow,
   isHeroJob,

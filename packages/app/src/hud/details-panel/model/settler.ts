@@ -6,6 +6,7 @@ import { type PanelBar, pct, pctRatio } from './bars.js';
 import {
   type Comp,
   goodLabel,
+  isCarrierJob,
   type JobExperienceDef,
   jobDisplayName,
   type UnitPanelModelContext,
@@ -173,8 +174,8 @@ function experienceBonusPct(
     return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);
   }
   if (spec === systems.TRAINING_EXPERIENCE_TYPE) return null;
-  const trackJob = track !== undefined ? ctx.jobs.find((j) => j.typeId === track.jobType) : undefined;
-  if (trackJob?.id === 'carrier') return null; // the sim's isCarrierJob rule, by the same content slug
+  // A carrier's track has no percentage bonus to show.
+  if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
   return Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
 }
 

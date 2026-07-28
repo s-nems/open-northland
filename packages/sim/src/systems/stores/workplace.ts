@@ -1,5 +1,6 @@
 import type { Recipe } from '@open-northland/data';
 import { Building, Position, Settler } from '../../components/index.js';
+import { isCarrierJobId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -152,11 +153,9 @@ export function workplaceStoredGoods(
  * the craft loop, and the production operator count excludes carriers.
  */
 export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
-  return contentIndex(ctx.content).jobs.get(jobType)?.id === CARRIER_JOB_ID;
+  const job = contentIndex(ctx.content).jobs.get(jobType);
+  return job !== undefined && isCarrierJobId(job.id);
 }
-
-/** The content `id` slug of the transport (carrier) job — see {@link isCarrierJob}. */
-const CARRIER_JOB_ID = 'carrier';
 
 /**
  * The operator jobs of a workplace: its worker-slot jobs minus the transport (carrier) and gatherer slots —
