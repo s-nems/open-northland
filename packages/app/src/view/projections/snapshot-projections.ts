@@ -11,22 +11,25 @@ import { computeSettlerBubbles } from './settler-bubbles.js';
  * Memoize a snapshot projection while the simulation returns the same memoized snapshot instance, so an
  * O(entities) read runs once per tick, not once per RAF frame. `versionOf` additionally keys the memo on
  * caller state outside the snapshot (a counter bumped on change); omit it for a projection of the
- * snapshot alone.
+ * snapshot alone. Keyed weakly, so a consumer that stops pulling (a closed stats window) releases the
+ * snapshot it last read instead of pinning it for the session.
  */
 export function memoBySnapshot<T>(
   build: (snapshot: WorldSnapshot) => T,
   versionOf?: () => number,
 ): (snapshot: WorldSnapshot) => T {
-  let memo: { snapshot: WorldSnapshot; version: number; value: T } | null = null;
+  const memo = new WeakMap<WorldSnapshot, { version: number; value: T }>();
   return (snapshot) => {
     const version = versionOf?.() ?? 0;
-    if (memo === null || memo.snapshot !== snapshot || memo.version !== version)
-      memo = { snapshot, version, value: build(snapshot) };
-    return memo.value;
+    const hit = memo.get(snapshot);
+    if (hit !== undefined && hit.version === version) return hit.value;
+    const value = build(snapshot);
+    memo.set(snapshot, { version, value });
+    return value;
   };
 }
 
-/** The two O(entities) read projections the frame loop shares across HUD/render consumers. */
+/** The snapshot read projections the frame loop shares across HUD/render consumers. */
 export function createSnapshotProjections(
   buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
   roleOf: (jobType: number) => WorkerRole,

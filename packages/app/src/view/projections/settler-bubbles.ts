@@ -1,6 +1,7 @@
 import type { SettlerBubble, SettlerBubbleKind } from '@open-northland/render';
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import {
+  actorsOf,
   childOrderOf,
   isMarrying,
   isSettler,
@@ -31,7 +32,7 @@ import {
  */
 export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] {
   const out: SettlerBubble[] = [];
-  for (const e of snapshot.entities) {
+  for (const e of actorsOf(snapshot)) {
     if (!isSettler(e)) continue;
     const kind = bubbleKindOf(e);
     if (kind === undefined) continue;

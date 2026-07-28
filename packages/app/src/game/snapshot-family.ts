@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
 import {
+  actorsOf,
   isSettler,
   num,
   positionOf,
@@ -158,7 +159,7 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
   // Pass 1 — collect residents with their homes (the snapshot's entity order is ascending id).
   const residents: { e: SnapshotEntity; home: number }[] = [];
   const residentHomes = new Map<number, number>();
-  for (const e of snapshot.entities) {
+  for (const e of actorsOf(snapshot)) {
     const home = residenceHomeOf(e);
     if (home === undefined || !isSettler(e)) continue;
     residents.push({ e, home });

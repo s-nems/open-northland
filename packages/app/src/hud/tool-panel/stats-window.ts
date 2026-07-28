@@ -32,8 +32,9 @@ export interface StatsWindow {
   claims(x: number, y: number): boolean;
   /** A click strictly inside the open window closes it (v1 has no window chrome controls). */
   handleClick(x: number, y: number): boolean;
-  /** Per-frame while open: rebuild only when a tally row actually changed (see the change key). */
-  refresh(hud: HudLayout): void;
+  /** Per-frame while open: rebuild only when a tally row actually changed (see the change key). `hudFor`
+   *  is pulled only while the window is open, because building it is an O(entities) scan. */
+  refresh(hudFor: () => HudLayout): void;
 }
 
 /**
@@ -105,8 +106,9 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
       close();
       return true;
     },
-    refresh: (hud): void => {
+    refresh: (hudFor): void => {
       if (!shell.isOpen()) return;
+      const hud = hudFor();
       // Change-detection key excludes the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
       // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
       // meshes each frame. Keyed by row index (0 is the tick row), not a substring match, so a future tally

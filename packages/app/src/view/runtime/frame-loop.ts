@@ -60,9 +60,9 @@ export interface FrameLoopDeps {
 
 /**
  * Start the fixed-timestep RAF loop. Per-frame order matters and is pinned here: sim steps (collecting
- * every step's events for audio) → camera glide → one snapshot + one `buildHud` scan feeding the tool
- * panel's stats window → tool-panel re-place before the renderer's render (screen-space meshes carry the
- * canvas resolution) → unit-controls tick reusing the same snapshot (before the render, so the baked
+ * every step's events for audio) → camera glide → one snapshot feeding the tool panel's stats window →
+ * tool-panel re-place before the renderer's render (screen-space meshes carry the canvas resolution) →
+ * unit-controls tick reusing the same snapshot (before the render, so the baked
  * details panel and the portrait inset painted over it show the same frame) → the retained
  * `renderer.update` → sound → perf readout. Returns the loop's stop handle: the game session halts it on quit so no second
  * loop steps the stage once a new game starts (see game-view.ts).
@@ -163,12 +163,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       fogView === null
         ? frameEvents
         : frameEvents.filter((ev) => !('at' in ev) || fogGates.seesNode(ev.at.hx, ev.at.hy));
-    // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — shown only
-    // when the player opens the stats window.
-    const hud = hudFor(snap);
     // Re-place the tool panel's screen-space sprites before the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
-    toolPanel.controller.update(hud);
+    toolPanel.controller.update(() => hudFor(snap));
     // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved,
     // its fog mask only when the fog generation moved.
     mountedMinimap.update(snap, fogView);

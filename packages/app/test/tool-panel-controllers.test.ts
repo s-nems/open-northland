@@ -251,31 +251,48 @@ describe('stats window controller', () => {
       { x: 0, y: 12, text: `wood: ${wood}` },
     ],
   });
-
   it('rebuilds only when a tally row changes, never on the tick row alone', () => {
     const { ctx, made } = stubContext();
     const stats = createStatsWindow({ ctx, container: new Container() });
 
-    stats.refresh(hud(1, 5));
+    stats.refresh(() => hud(1, 5));
     expect(made).toHaveLength(0); // closed → no build
 
     stats.toggle();
-    stats.refresh(hud(1, 5));
+    stats.refresh(() => hud(1, 5));
     const builtOnce = made.length;
     expect(builtOnce).toBeGreaterThan(0); // first open refresh builds title + rows
 
-    stats.refresh(hud(2, 5)); // only the tick advanced
+    stats.refresh(() => hud(2, 5)); // only the tick advanced
     expect(made).toHaveLength(builtOnce); // ← the per-frame guard: no glyph rebuild
 
-    stats.refresh(hud(3, 6)); // a tally changed
+    stats.refresh(() => hud(3, 6)); // a tally changed
     expect(made.length).toBeGreaterThan(builtOnce);
+  });
+
+  it('pulls the HUD read-view only while open', () => {
+    const { ctx } = stubContext();
+    const stats = createStatsWindow({ ctx, container: new Container() });
+    let builds = 0;
+    const pull = (): HudLayout => {
+      builds++;
+      return hud(1, 5);
+    };
+
+    stats.refresh(pull);
+    stats.refresh(pull);
+    expect(builds).toBe(0); // the frame must not pay buildHud's entity scan for a closed window
+
+    stats.toggle();
+    stats.refresh(pull);
+    expect(builds).toBe(1);
   });
 
   it('claims only the drawn rect while open, and a click inside closes it', () => {
     const { ctx } = stubContext();
     const stats = createStatsWindow({ ctx, container: new Container() });
     stats.toggle();
-    stats.refresh(hud(1, 5));
+    stats.refresh(() => hud(1, 5));
 
     // The drawn rect's origin mirrors the controller's own formula; probe just inside it.
     const x = ctx.layout.width + (WIN_PAD + 150 + 3 * WIN_PAD) * ctx.scale + 1;
