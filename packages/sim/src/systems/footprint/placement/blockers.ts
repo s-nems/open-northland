@@ -12,9 +12,9 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
 
 // The single definition of what a standing entity blocks, as (cell, channel) pairs. Every placement rule
-// in this folder — building (./building.ts) and work flag (./work-flag.ts), each in both its sparse and
-// dense form — is stamped from this ONE store walk and differs only in which channels it consumes, so a
-// new blocker kind added here reaches every rule and no two rules can drift apart.
+// in this folder — building (./building.ts) and work flag (./work-flag/) — is stamped from this ONE store
+// walk and differs only in which channels it consumes, so a new blocker kind added here reaches every rule
+// and no two rules can drift apart.
 
 /**
  * What a standing entity contributes to a cell — merged across entity KIND within each channel, because

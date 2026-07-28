@@ -25,6 +25,7 @@ import {
   HUT,
   mappedSim,
   placementContent,
+  referenceCanPlace,
   terrainOf,
   VIKING,
   WATER,
@@ -113,10 +114,12 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
   });
 });
 
-describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding', () => {
-  // The overlay greys tiles the probe rejects, so it must match the command-time rule cell-for-cell —
-  // both now share one precomputed-blockers check. Prove agreement over a whole grid with real obstacles.
-  it('matches canPlaceBuilding at every anchor with a tree, water, and a building on the map', () => {
+describe('the dense mask rule agrees with an independent derivation', () => {
+  // The command gate and the overlay probe both read one memoized `Uint8Array` grid, so comparing them
+  // against each other proves nothing — and the memo verifier re-stamps through that same code. The
+  // oracle ({@link referenceCanPlace}) walks the blocker channels straight into sparse string sets, so a
+  // wrong channel routing or wrong index arithmetic in the mask shows up here and nowhere else.
+  it('matches the reference rule at every anchor with a tree, water, and a building on the map', () => {
     const cells = grassCells(16, 16);
     cells.typeIds[5 * 16 + 8] = WATER; // blocking terrain — cell (8,5), nodes (16..17, 10..11)
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
@@ -132,8 +135,9 @@ describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding
     let free = 0;
     for (let y = 0; y < terrain.height; y++) {
       for (let x = 0; x < terrain.width; x++) {
-        const expected = canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, x, y);
-        expect(probe.canPlace(x, y)).toBe(expected);
+        const expected = referenceCanPlace(sim, terrain, HUT, x, y);
+        expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, x, y)).toBe(expected);
+        expect(probe.canPlace(x, y)).toBe(expected); // the overlay greys exactly what a click is refused
         expected ? free++ : blocked++;
       }
     }
@@ -155,10 +159,11 @@ describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding
   });
 });
 
-describe('placementBlockerVersion — the overlay memo key that decouples the wash from the tick', () => {
-  // The build-mode overlay re-probes the whole visible node band only when this value moves; keying it
-  // on the tick (the old regression) re-probed every RAF while the game played. So the version MUST
-  // hold steady across ticks yet move the instant a building/resource enters or leaves the world.
+describe('placementBlockerVersion — the shared memo key that decouples the blocker scan from the tick', () => {
+  // Both the build-mode overlay and the `placeBuilding` command gate re-derive the blocker grid only when
+  // this value moves; keying it on the tick (the old regression) re-scanned every RAF while the game
+  // played. So the version MUST hold steady across ticks yet move the instant a building/resource enters
+  // or leaves the world.
   it('holds steady across ticks while buildings and resources are unchanged', () => {
     const sim = mappedSim();
     const v0 = sim.placementBlockerVersion();
@@ -200,6 +205,41 @@ describe('placementBlockerVersion — the overlay memo key that decouples the wa
     const probe = placementProbe(sim.world, sim.content, terrain, HUT);
     expect(probe.canPlace(11, 11)).toBe(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11));
     expect(probe.canPlace(11, 11)).toBe(false); // now sits on the just-placed hut's zone
+  });
+
+  it('re-derives the COMMAND GATE when a blocker appears and again when it is destroyed', () => {
+    // The gate reads the same memoized grid, so a repeated probe must never answer from a stale stamp —
+    // and `verifyCaches` must agree with a fresh derive at each step (the registered grid verifier).
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    // Anchor (6,5): reserved ring x∈[5..8] covers node (7,5).
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, positionOfNode(7, 5));
+    sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(false);
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    sim.world.destroy(tree);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('the verifier flags a blocker move no generation can see', () => {
+    // The version covers add/remove, not an in-place Position write — the gap the memo would otherwise
+    // serve stale. Resources never move today; this proves the tripwire fires if one ever does, so the
+    // three `toEqual([])` above are a coherent verifier agreeing, not a silent bail.
+    const sim = mappedSim();
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, positionOfNode(3, 3));
+    sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5); // stamps the memo
+    expect(sim.world.verifyCaches()).toEqual([]);
+
+    sim.world.get(tree, Position).x = positionOfNode(9, 9).x; // raw store write — no generation bump
+    expect(sim.world.verifyCaches().join('\n')).toContain('placementBlockerGrid');
   });
 });
 
