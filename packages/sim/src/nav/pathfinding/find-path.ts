@@ -84,7 +84,7 @@ export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
  * `start === goal` yields the single-node path `[start]` (when walkable).
  *
  * `blocked` is the dynamic walk-block overlay (standing building bodies, resource footprints and standing unit
- * bodies — see `dynamicBlockedCells`/`unitWalkBlocks`), applied on top of the graph's static terrain
+ * bodies — see `dynamicBlockOverlay`/`unitWalkBlocks`), applied on top of the graph's static terrain
  * walkability: a blocked node is never entered (goal included), but a blocked start is deliberately exempt — an
  * entity standing where a foundation just appeared must be able to step off the footprint (its first move
  * leaves the blocked node; it can never move back in).

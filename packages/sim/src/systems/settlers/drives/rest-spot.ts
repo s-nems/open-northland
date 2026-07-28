@@ -1,4 +1,5 @@
 import type { Entity, World } from '../../../ecs/world.js';
+import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -61,7 +62,7 @@ export function restingCell(
 
 /** Whether `node` is walkable ground clear of every building/resource footprint, its own and its
  *  neighbours' — the "out in the open, off the doorstep" test a bed must pass. */
-function isOpenGround(terrain: TerrainGraph, node: NodeId, blocked: ReadonlySet<NodeId>): boolean {
+function isOpenGround(terrain: TerrainGraph, node: NodeId, blocked: BlockOverlay): boolean {
   if (!terrain.isWalkable(node) || blocked.has(node)) return false;
   for (const n of terrain.walkableNeighbours(node)) if (blocked.has(n)) return false;
   return true;

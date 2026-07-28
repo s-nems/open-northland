@@ -13,7 +13,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
-import { constructionWorkCells, dynamicBlockedCells } from '../../src/systems/index.js';
+import { constructionWorkCells, dynamicBlockOverlay } from '../../src/systems/index.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt as spawnSettler } from '../fixtures/settler.js';
@@ -297,7 +297,7 @@ describe('builder work slots (claimWorkCell)', () => {
     const site = stockedSiteAt(s, 12, 6);
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('mapped builder sim expected');
-    const blocked = dynamicBlockedCells(s.world, ctxOf(s), terrain);
+    const blocked = dynamicBlockOverlay(s.world, ctxOf(s), terrain);
 
     expect(constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked)).toEqual([]);
   });
@@ -307,7 +307,7 @@ describe('builder work slots (claimWorkCell)', () => {
     const site = stockedSiteAt(s, 12, 6);
     const terrain = s.terrain;
     if (terrain === undefined) throw new Error('mapped builder sim expected');
-    const blocked = dynamicBlockedCells(s.world, ctxOf(s), terrain);
+    const blocked = dynamicBlockOverlay(s.world, ctxOf(s), terrain);
     const work = constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked).map((cell) =>
       terrain.coordsOf(cell),
     );

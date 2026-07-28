@@ -13,7 +13,7 @@ import {
 import { findPath, positionOfNode } from '../../src/index.js';
 import {
   canPlaceBuilding,
-  dynamicBlockedCells,
+  dynamicBlockOverlay,
   plannerSystem,
   resourceBlockedCells,
   resourceFootprintForGood,
@@ -125,7 +125,7 @@ describe('resource footprints', () => {
       terrain,
       terrain.nodeAt(0, 1),
       terrain.nodeAt(4, 1),
-      dynamicBlockedCells(sim.world, ctxOf(sim), terrain),
+      dynamicBlockOverlay(sim.world, ctxOf(sim), terrain),
     );
 
     expect(path).not.toBeNull();
@@ -137,7 +137,7 @@ describe('resource footprints', () => {
     const terrain = terrainOf(sim);
     const mushroom = placeResource(sim, MUSHROOM, MUSHROOM_ATOMIC, 2, 1);
 
-    const blocked = dynamicBlockedCells(sim.world, ctxOf(sim), terrain);
+    const blocked = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
 
     expect(blocked.has(terrain.nodeAt(2, 1))).toBe(false);
     expect(resourceWorkCell(sim.world, terrain, mushroom, terrain.nodeAt(0, 1))).toBe(terrain.nodeAt(2, 1));
@@ -232,7 +232,7 @@ describe('resource footprints', () => {
     const goal = sim.world.get(worker, MoveGoal).cell;
     expect(goal).not.toBe(treeNode); // snapped off the blocked anchor
     expect(terrain.isWalkable(goal)).toBe(true);
-    expect(dynamicBlockedCells(sim.world, ctxOf(sim), terrain).has(goal)).toBe(false);
+    expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(goal)).toBe(false);
     expect(terrain.neighbours(treeNode)).toContain(goal); // the nearest node — a neighbour of the tree
     expect(sim.world.has(worker, PlayerOrder)).toBe(true); // the order took (was not refused)
 

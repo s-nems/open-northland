@@ -31,7 +31,8 @@ not do), `npm run check`, `npm run build`. Measure first and after with a comman
 `npm run bench:sim` — never `performance.now` in `src`.
 
 The "close it if `|blocked|` is only a few thousand nodes" escape no longer applies: `magiczny_las`
-stands up 35 170 `Resource` entities plus every building body, and the identical copy in
-`dynamicBlockedCells` profiles at 33% of `Simulation.step` on that map — see
-[blocked-overlay-copy-per-tick](blocked-overlay-copy-per-tick.md), whose façade this should reuse
-rather than reinvent.
+stands up 35 170 `Resource` entities plus every building body, and the identical per-tick copy in the
+since-removed `dynamicBlockedCells` profiled at 33% of `Simulation.step` on that map before it was
+replaced by the `dynamicBlockOverlay` membership view. The façade here should follow the same shape
+(`LayeredBlocks` in `nav/block-overlay.ts` answers union membership; the ignore carve-out still needs
+its own subtractive wrapper) rather than reinvent it.

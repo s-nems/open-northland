@@ -84,7 +84,7 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  * store's membership AND value generations (the home tier upgrade swaps `buildingType` in place under
  * `touchComponent(Building)` — see the cache key doc), so a burst of callers between two building
  * mutations shares one O(buildings × footprint cells) build. The returned set is the SHARED cached
- * copy: membership reads only — a caller that must mutate copies first ({@link dynamicBlockedCells}).
+ * copy: membership reads only — a caller that must mutate copies first.
  * Determinism: a set union over `world.query` — order-independent (membership only, no pick; the door
  * carve-out is per-building, keyed to its own cells), so store-order iteration is fine.
  */
