@@ -7,10 +7,11 @@ import { testContent } from '../fixtures/content.js';
  * The snapshot PERF machinery a decoded map depends on (tens of thousands of standing resource nodes,
  * golden rule 6): `Simulation.snapshot()` is memoized per tick, and `takeSnapshot` reuses a cached
  * clone for an unchanged SCENERY entity (one carrying `Resource`/`Stump`) — evicted through the
- * World's touched-entity log (`add`/`remove`/`destroy` auto-log; an in-place write must `touch`).
+ * World's touched-entity log (`add`/`remove`/`destroy` auto-log; an in-place write must go through
+ * {@link World.write}).
  * These tests pin the identity contract (reuse) and, more importantly, the INVALIDATION paths — a
  * stale clone would render a harvested node as still full — plus the `verifyCaches` verifier that
- * catches a missed `touch` in invariant-checked runs.
+ * catches a write that bypassed the seam in invariant-checked runs.
  */
 
 const { Position, Resource } = components;
@@ -81,13 +82,14 @@ describe('takeSnapshot scenery clone cache', () => {
     expect(inB).toBe(inA);
   });
 
-  it('re-clones a scenery entity after an in-place write that calls world.touch (the harvest path)', () => {
+  it('re-clones a scenery entity after an in-place write through world.write (the harvest path)', () => {
     const sim = newSim();
     const node = bareResource(sim, 5);
     const a = sim.snapshot();
-    // The harvest effect's exact idiom: mutate the stored value in place, then log the entity.
-    sim.world.get(node, Resource).remaining = 4;
-    sim.world.touch(node);
+    // The harvest effect's exact idiom: mutate the stored value through the write seam.
+    sim.world.write(node, Resource, (r) => {
+      r.remaining = 4;
+    });
     const b = sim.snapshot();
     const inA = a.entities.find((e) => e.id === (node as number));
     const inB = b.entities.find((e) => e.id === (node as number));
@@ -106,12 +108,12 @@ describe('takeSnapshot scenery clone cache', () => {
     expect(b.entities.find((e) => e.id === (node as number))).toBeUndefined();
   });
 
-  it('verifyCaches reports a stale clone when an in-place write MISSES world.touch', () => {
+  it('verifyCaches reports a stale clone when an in-place write BYPASSES world.write', () => {
     const sim = newSim();
     const node = bareResource(sim, 5);
     sim.snapshot(); // fills the cache (and registers its verifier)
     expect(sim.world.verifyCaches()).toEqual([]);
-    sim.world.get(node, Resource).remaining = 1; // the bug the verifier exists to catch: no touch
+    sim.world.get(node, Resource).remaining = 1; // the bug the verifier exists to catch: an unlogged write
     const findings = sim.world.verifyCaches();
     expect(findings.some((f) => f.includes('snapshot scenery clone'))).toBe(true);
   });

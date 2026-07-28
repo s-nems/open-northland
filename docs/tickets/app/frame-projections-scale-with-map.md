@@ -58,7 +58,7 @@ the cheap half:
 
 Changing the snapshot's own shape (a persistent patched array, or an id-keyed index the consumers
 share instead of each re-deriving one) is the larger follow-up and is explicitly out of scope here;
-file it separately once the cheap half is measured. Its prerequisite is reliable `World.touch`
+file it separately once the cheap half is measured. Its prerequisite is reliable `World.write`
 coverage, already noted in
 [steady-allocation-churn](../sim/steady-allocation-churn.md).
 

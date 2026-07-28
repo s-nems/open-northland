@@ -132,18 +132,19 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
     // (reported as a plain finish — no tier was adopted, so `buildingUpgraded` would lie).
     if (target !== undefined) {
       adoptedTier = true;
-      building.buildingType = target.typeId;
-      building.level += 1;
-      // The in-place type swap changes every buildingType-derived answer (stock slots, recipe, produces)
-      // — log the value write so version-keyed caches (porter dormancy) re-scan.
-      world.touchComponent(Building);
+      // The type swap changes every buildingType-derived answer (stock slots, recipe, produces), so it
+      // goes through the write seam: version-keyed caches (porter dormancy) re-scan.
+      world.write(e, Building, (b) => {
+        b.buildingType = target.typeId;
+        b.level += 1;
+      });
       const health = world.tryGet(e, Health);
       if (health !== undefined && target.hitpoints !== undefined) health.max = target.hitpoints;
     }
     // Restore the stashed pre-upgrade inventory into the (now post-build) stockpile, canonical order.
     const amounts = world.get(e, Stockpile).amounts;
     for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.savedStock })) {
-      setStockAmount(world, amounts, goodType, (amounts.get(goodType) ?? 0) + amount);
+      setStockAmount(world, e, goodType, (amounts.get(goodType) ?? 0) + amount);
     }
     world.remove(e, Upgrading);
   }
@@ -202,7 +203,7 @@ function setHealth(world: World, e: Entity, builtFraction: Fixed): void {
 /** Remove the `cost` materials from a building's stockpile (spent into the structure / upgrade). The
  *  caller has verified every material is present in full via {@link constructionMaterialsPresent}. */
 function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
-  consumeGoods(world, world.get(building, Stockpile).amounts, cost);
+  consumeGoods(world, building, cost);
 }
 
 /**

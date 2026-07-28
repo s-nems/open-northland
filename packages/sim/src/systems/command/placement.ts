@@ -195,8 +195,9 @@ export function upgradeBuilding(
     else stock.amounts.delete(line.goodType);
   }
   world.add(command.building, Upgrading, { savedStock: stock.amounts, seeded });
-  stock.amounts = hold;
-  world.touchComponent(Stockpile); // an in-place swap — log it so the porter dormancy gate re-scans
+  world.write(command.building, Stockpile, (s) => {
+    s.amounts = hold;
+  });
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
   // The plot is a building site again — settlers standing on it step out (bindings kept, see above).
@@ -227,10 +228,10 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
       const back = Math.min(stock.amounts.get(goodType) ?? 0, amount);
       if (back > 0) upgrading.savedStock.set(goodType, (upgrading.savedStock.get(goodType) ?? 0) + back);
     }
-    // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole
-    // is safe. An in-place swap — log it so the porter dormancy gate re-scans.
-    stock.amounts = upgrading.savedStock;
-    world.touchComponent(Stockpile);
+    // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole is safe.
+    world.write(command.building, Stockpile, (s) => {
+      s.amounts = upgrading.savedStock;
+    });
   }
   building.built = ONE;
   world.remove(command.building, UnderConstruction);

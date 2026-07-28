@@ -1,5 +1,5 @@
 import type { Fixed } from '../../core/fixed.js';
-import { defineComponent, type World } from '../../ecs/world.js';
+import { defineComponent, type Entity, type World } from '../../ecs/world.js';
 
 /** A building instance placed in the world. */
 export const Building = defineComponent<{
@@ -37,29 +37,22 @@ export function holdsAll(amounts: Map<number, number> | undefined, cost: readonl
 }
 
 /**
- * Write one good's amount into a live stockpile's Map and log the value write
- * (`world.touchComponent(Stockpile)`), so value-generation consumers (the porter dormancy gate) never
- * miss a wake. Every in-place system write to an already-added {@link Stockpile} goes through here —
- * a bare `amounts.set` is the seam's one footgun (only creation-time writes before `world.add` may
- * stay raw; the add itself logs those).
+ * Write one good's amount into `store`'s live stockpile. Every in-place system write to an
+ * already-added {@link Stockpile} goes through here — a bare `amounts.set` reaches no change channel
+ * (only creation-time writes before `world.add` may stay raw; the add itself logs those).
  */
-export function setStockAmount(
-  world: World,
-  amounts: Map<number, number>,
-  goodType: number,
-  amount: number,
-): void {
-  amounts.set(goodType, amount);
-  world.touchComponent(Stockpile);
+export function setStockAmount(world: World, store: Entity, goodType: number, amount: number): void {
+  world.write(store, Stockpile, (s) => s.amounts.set(goodType, amount));
 }
 
-/** Subtract every line of `cost` from `amounts` IN PLACE (via {@link setStockAmount}, so the value
- *  write is logged). The caller must have verified {@link holdsAll} first, so no count goes negative;
- *  a good that hits zero is left as a 0 entry — the canonical Map tolerates it, and the stockpile is
- *  never iterated for a decision, so a stale 0 is harmless. */
-export function consumeGoods(world: World, amounts: Map<number, number>, cost: readonly GoodsLine[]): void {
+/** Subtract every line of `cost` from `store`'s stockpile IN PLACE. The caller must have verified
+ *  {@link holdsAll} first, so no count goes negative; a good that hits zero is left as a 0 entry — the
+ *  canonical Map tolerates it, and the stockpile is never iterated for a decision, so a stale 0 is
+ *  harmless. */
+export function consumeGoods(world: World, store: Entity, cost: readonly GoodsLine[]): void {
+  const amounts = world.get(store, Stockpile).amounts;
   for (const line of cost) {
-    setStockAmount(world, amounts, line.goodType, (amounts.get(line.goodType) ?? 0) - line.amount);
+    setStockAmount(world, store, line.goodType, (amounts.get(line.goodType) ?? 0) - line.amount);
   }
 }
 

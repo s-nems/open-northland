@@ -56,7 +56,7 @@ export function pickupFromStore(
   const have = stock.amounts.get(goodType) ?? 0;
   const moved = Math.min(amount, have);
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
-  setStockAmount(world, stock.amounts, goodType, have - moved);
+  setStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);
   flushBankedBonus(world, ctx, from); // the freed slot may release a capacity-blocked bonus unit
   reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
@@ -90,7 +90,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const moved = Math.min(load.amount, space);
   if (moved <= 0) return 0; // store full for this good — keep carrying
 
-  setStockAmount(world, stock.amounts, load.goodType, have + moved);
+  setStockAmount(world, store, load.goodType, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
   return moved;
 }

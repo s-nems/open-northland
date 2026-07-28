@@ -57,7 +57,7 @@ export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity,
   ];
   // Oldest-first eviction: the array is append-ordered, so the head is the least recent failure.
   const entries = kept.slice(Math.max(0, kept.length - UNREACHABLE_GOAL_MEMO_SIZE));
-  // No `world.touch`: the memo is a planner-private decision input that no snapshot consumer reads,
+  // Not written through `world.write`: the memo is a planner-private decision input no snapshot consumer reads,
   // so nothing identity-keyed can go stale on this write.
   if (memo === undefined) world.add(e, UnreachableGoals, { entries });
   else memo.entries = entries;

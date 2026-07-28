@@ -70,12 +70,12 @@ export function equipFromStore(
   if (stock === undefined) return; // source gone - nothing to wear (don't conjure goods)
   const have = stock.amounts.get(goodType) ?? 0;
   if (have <= 0) return; // source emptied since the planner chose it - the errand re-searches
-  setStockAmount(world, stock.amounts, goodType, have - 1);
+  setStockAmount(world, from, goodType, have - 1);
   reapEmptyLoosePile(world, from); // a fully-collected ground pile vanishes (a warehouse stays)
-  const eq = ensureEquipment(world, settler);
-  const previous = equipSlotValue(eq, group, slot);
-  writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
-  world.touch(settler); // log the in-place write (the direct-field-write convention; cheap Set.add)
+  const previous = equipSlotValue(ensureEquipment(world, settler), group, slot);
+  world.write(settler, Equipment, (eq) =>
+    writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) }),
+  );
   const stows = previous !== null && !isUsed(previous);
   if (stows) addCarry(world, settler, previous.goodType, 1);
   advanceOrder(world, settler, stows ? 'stow' : 'return');
@@ -99,8 +99,7 @@ export function unequipWornGood(
   const eq = world.tryGet(settler, Equipment);
   const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
   if (eq === undefined || previous === null) return; // nothing worn there - the errand just returns
-  writeEquipSlot(eq, group, slot, null);
-  world.touch(settler);
+  world.write(settler, Equipment, (v) => writeEquipSlot(v, group, slot, null));
   if (isUsed(previous)) {
     advanceOrder(world, settler, 'return'); // destroyed on the spot - nothing to stow
     return;

@@ -81,22 +81,22 @@ export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
  * anchored on the scheduled tick (`+= BERRY_STAGE_TICKS`), not the current one, so a bloom always lands at the
  * forage-anchored midpoint. Because the schedule is an absolute tick, a regrowing bush's component does not
  * churn every tick: it changes only at its stage transitions (foraged, bloomed, ripened), so the snapshot
- * scenery cache re-clones a bush only at those moments. A ripe bush is skipped. Each step is `World.touch`ed so
- * the snapshot cache re-reads it.
+ * scenery cache re-clones a bush only at those moments. A ripe bush is skipped.
  */
 export const berryGrowthSystem: System = (world, ctx) => {
   for (const e of world.query(BerryBush)) {
     const bush = world.get(e, BerryBush);
     if (bush.stage === 'ripe') continue; // already fruited — nothing to regrow
     if (ctx.tick < bush.nextStageAtTick) continue; // still growing toward the next stage
-    if (bush.stage === 'bare') {
-      bush.stage = 'flowering';
-      bush.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
-    } else {
-      bush.stage = 'ripe';
-      bush.nextStageAtTick = 0; // freeze the schedule (display-stable; unused while ripe)
-    }
-    world.touch(e); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+    world.write(e, BerryBush, (b) => {
+      if (b.stage === 'bare') {
+        b.stage = 'flowering';
+        b.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
+      } else {
+        b.stage = 'ripe';
+        b.nextStageAtTick = 0; // freeze the schedule (display-stable; unused while ripe)
+      }
+    });
   }
 };
 

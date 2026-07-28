@@ -53,8 +53,9 @@ export function reconcileYardRoute(world: World, e: Entity): void {
   }
   const request = world.tryGet(e, PathRequest);
   if (!route.failed && request?.failed === true && request.goal === route.goal) {
-    route.failed = true;
-    world.touch(e);
+    world.write(e, YardDeliveryRoute, (r) => {
+      r.failed = true;
+    });
     clearNavState(world, e);
   }
 }

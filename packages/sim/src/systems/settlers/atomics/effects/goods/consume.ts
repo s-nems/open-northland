@@ -22,7 +22,7 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
     if (stock === undefined) return; // source gone — nothing to consume
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0) return; // emptied since the planner chose it — eat anyway, but take nothing
-    setStockAmount(world, stock.amounts, goodType, have - 1);
+    setStockAmount(world, from, goodType, have - 1);
     reapEmptyLoosePile(world, from); // the last bite of a ground heap reaps it (a warehouse/hull stays)
     return;
   }
@@ -39,16 +39,16 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
  * (the render static→live handover cue). A bush that is already bare (another forager beat this one to it since the
  * planner chose it) or gone is a no-op — nothing to give — but the AtomicSystem still credits the meal
  * (the bite was taken), the same raced-source stance as {@link consumeFood}'s emptied store. The bush entity
- * persists (it regrows in place, unlike a depleted {@link Resource} node that is destroyed). The in-place
- * write is `World.touch`ed because a bush is a snapshot-cached scenery entity. Pure over entity state +
- * the tick counter; no RNG/wall-clock.
+ * persists (it regrows in place, unlike a depleted {@link Resource} node that is destroyed). Pure over
+ * entity state + the tick counter; no RNG/wall-clock.
  */
 export function forageBerry(world: World, ctx: SystemContext, bush: Entity): void {
   const b = world.tryGet(bush, BerryBush);
   if (b === undefined || b.stage !== 'ripe') return; // bare/blooming/gone since the planner chose it — nothing to eat
-  b.stage = 'bare';
-  b.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
-  world.touch(bush); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+  world.write(bush, BerryBush, (v) => {
+    v.stage = 'bare';
+    v.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
+  });
   const pos = world.get(bush, Position);
   ctx.events.emit({ kind: 'berryForaged', bush, at: eventAt(pos.x, pos.y) });
 }

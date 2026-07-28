@@ -156,7 +156,7 @@ export function anyCycleStartable(
  *  {@link canStartCycle}. `duration` is clamped to the `>= 1` the {@link ProductionCycle} documents, so the
  *  completion compare can read it plainly (validated content is already `ticks >= 1`). */
 export function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: number): void {
-  consumeGoods(world, world.get(building, Stockpile).amounts, recipe.inputs);
+  consumeGoods(world, building, recipe.inputs);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
   const prod = world.tryGet(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
@@ -197,7 +197,7 @@ export function depositCycleOutput(
   const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
   for (const output of outputs) {
     const have = stock.get(output.goodType) ?? 0;
-    setStockAmount(world, stock, output.goodType, have + output.amount);
+    setStockAmount(world, building, output.goodType, have + output.amount);
     ctx.events.emit({
       kind: 'goodProduced',
       building,

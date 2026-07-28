@@ -60,8 +60,9 @@ type SettlerTradeWrite = { jobType: number | null };
  * {@link import('../systems/progression/alive-jobs.js').aliveTribeJobs} is keyed on.
  */
 export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
-  (world.get(entity, Settler) as SettlerTradeWrite).jobType = jobType;
-  world.touchComponent(Settler);
+  world.write(entity, Settler, (s) => {
+    (s as SettlerTradeWrite).jobType = jobType;
+  });
 }
 
 /**

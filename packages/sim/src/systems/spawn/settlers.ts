@@ -191,8 +191,9 @@ function stampGatherGood(
   if (goodType === undefined) return;
   const flag = world.tryGet(e, WorkFlag);
   if (flag === undefined || !jobCanHarvestGood(ctx, command.jobType, goodType)) return;
-  flag.goodType = goodType;
-  world.touch(e);
+  world.write(e, WorkFlag, (f) => {
+    f.goodType = goodType;
+  });
 }
 
 /** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The raw

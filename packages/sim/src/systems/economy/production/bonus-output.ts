@@ -93,7 +93,7 @@ function flushWholeUnits(
         have -
         reservedFor(world, building, goodType, recipes);
       if (free <= 0) break;
-      setStockAmount(world, stock, goodType, have + 1);
+      setStockAmount(world, building, goodType, have + 1);
       remainder = fx.sub(remainder, ONE);
       ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: 1 });
     }

@@ -164,10 +164,10 @@ export class Simulation {
    * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the fixed
    * timestep may not have stepped, and re-cloning an unchanged world each frame was a large share of a real
    * map's frame cost. The memo is reused while the tick and the World's {@link World.mutationVersion} are
-   * unchanged (any `create`/`add`/`remove`/`destroy`/`touch` — e.g. a pre-tick-0 fixture spawn — bumps it).
+   * unchanged (any `create`/`add`/`remove`/`destroy`/`write` — e.g. a pre-tick-0 fixture spawn — bumps it).
    * A monotonic counter, not the touched log's emptiness, so a direct external `takeSnapshot` draining the
-   * log between two same-tick snapshots cannot make this serve a stale view. A direct in-place store write
-   * without `World.touch` between same-tick snapshots is the one blind spot; sim systems only mutate inside
+   * log between two same-tick snapshots cannot make this serve a stale view. A store write that bypasses
+   * `World.write` between same-tick snapshots is the one blind spot; sim systems only mutate inside
    * `step()`, which advances the tick.
    */
   snapshot(): WorldSnapshot {

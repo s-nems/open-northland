@@ -48,5 +48,5 @@ unacceptable rate. Sim purity/determinism and the scaling budget apply.
   the per-settler allocations are the larger half and need the limit itself cached or made
   non-allocating.
 - **Snapshot clone floor** - every non-scenery entity still re-clones each frame. A wider clone cache
-  needs reliable `World.touch` coverage on in-place mutations (today only ~17 sites touch), so it is a
-  deliberate, larger follow-up, not a quick cut.
+  needs every in-place mutation to go through `World.write`, so it is a deliberate, larger follow-up, not
+  a quick cut.
