@@ -106,6 +106,24 @@ export function isBuilding(e: SnapshotEntity): boolean {
 export function isSignpost(e: SnapshotEntity): boolean {
   return e.components.Signpost !== undefined;
 }
+
+/** {@link actorsOf} keyed by snapshot, like {@link GATE_FACTS}. */
+const ACTORS = new WeakMap<WorldSnapshot, readonly SnapshotEntity[]>();
+
+/**
+ * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Derived
+ * once per snapshot so the app's per-tick view projections share one walk of a decoded map's scenery
+ * instead of one each. Iterate it; it is not a snapshot's own entity lane, so never hand it to
+ * `entityById`, whose binary search would miss everything this filtered out.
+ */
+export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
+  const cached = ACTORS.get(snapshot);
+  if (cached !== undefined) return cached;
+  const actors = snapshot.entities.filter((e) => isSettler(e) || isBuilding(e));
+  ACTORS.set(snapshot, actors);
+  return actors;
+}
+
 /** The `buildingType` typeId of a building entity, or undefined if it isn't one / carries none. */
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { buildingType?: unknown } | undefined;

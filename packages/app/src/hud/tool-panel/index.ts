@@ -101,11 +101,10 @@ export interface ToolPanelController {
    *  to drive the map's buildable/blocked overlay. */
   placementType(): number | null;
   /**
-   * Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. Takes the
-   * frame's already-built HUD layout (the caller builds it once for the always-on HUD) so the panel does
-   * not run a second O(entities) `buildHud` scan.
+   * Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. The HUD
+   * layout arrives as an accessor, not a value, so a closed window never runs its `buildHud` scan.
    */
-  update(hud: HudLayout): void;
+  update(hudFor: () => HudLayout): void;
   dispose(): void;
 }
 
@@ -379,14 +378,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     claimsPointer,
     claimsWheel,
     placementType: () => placement.activeType(),
-    update(hud): void {
+    update(hudFor): void {
       // The strip is a static baked texture (a scene-graph sprite that batches + follows resizes for
       // free) — no per-frame re-placement. The build menu's vector runs stay put too, so refresh() only
       // reflows on a resize; the goods window (its own factory), stats window + placement banner re-place.
       menu.refresh();
       if (goodsWindow.isOpen()) goodsWindow.place();
       if (extras.isOpen()) extras.place();
-      stats.refresh(hud);
+      stats.refresh(hudFor);
       placement.placeBanner();
       goodsDrop.placeBanner();
     },

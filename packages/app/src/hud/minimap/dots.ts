@@ -1,7 +1,7 @@
 import { fogTileVisible, ONE, tileToScreen } from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import { actorsOf, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
 import type { WorldBounds } from './model.js';
 
 /** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
@@ -29,11 +29,10 @@ export function forEachMinimapDot(
   playerColourOf: ((player: number) => number) | undefined,
   sink: MinimapDotSink,
 ): void {
-  for (const e of snapshot.entities) {
+  for (const e of actorsOf(snapshot)) {
     const player = ownerPlayerOf(e);
-    if (player === undefined) continue; // neutral (piles, projectiles…) — the minimap shows forces
+    if (player === undefined) continue; // unowned (wildlife, a neutral building): the minimap shows forces
     const settler = isSettler(e);
-    if (!settler && !isBuilding(e)) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
     // Fog: a dot only on currently-visible ground (the viewer's own forces always are — they see

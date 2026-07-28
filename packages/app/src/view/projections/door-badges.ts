@@ -2,6 +2,7 @@ import type { DoorBadge, HouseholdKind } from '@open-northland/render';
 import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import {
+  actorsOf,
   buildingTypeOf,
   familiesByHome,
   type HomeFamily,
@@ -45,7 +46,8 @@ export function computeDoorBadges(
   const tally = new Map<number, { craftsmen: number; carriers: number; gatherers: number }>();
   // Resident families per home — one door dot per family (see familiesByHome).
   const households = familiesByHome(snapshot);
-  for (const e of snapshot.entities) {
+  const actors = actorsOf(snapshot);
+  for (const e of actors) {
     if (!isSettler(e)) continue;
     const workplace = workplaceOf(e);
     if (workplace === undefined) continue; // an unemployed / unbound settler shows no building badge
@@ -61,7 +63,7 @@ export function computeDoorBadges(
 
   // Pass 2 — project the worker-icon anchor of every building with workers, residents, or hearts.
   const out: DoorBadge[] = [];
-  for (const e of snapshot.entities) {
+  for (const e of actors) {
     if (!isBuilding(e)) continue;
     const counts = tally.get(e.id);
     const families = households.get(e.id);
