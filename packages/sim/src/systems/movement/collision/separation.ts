@@ -1,11 +1,12 @@
 import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
-import { dynamicBlockedCells } from '../../footprint/index.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 import { MOVE_SPEED_PER_TICK } from '../system.js';
 import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
@@ -138,13 +139,13 @@ export const separationSystem: System = (world, ctx) => {
     }
     return ghost;
   };
-  let blockedOverlay: ReadonlySet<NodeId> | undefined;
+  let blockedOverlay: BlockOverlay | undefined;
   const safeLanding = (x: Fixed, y: Fixed): boolean => {
     const n = nodeOfPosition(x, y);
     if (!terrain.inBounds(n.hx, n.hy)) return false;
     const node = terrain.nodeAt(n.hx, n.hy);
     if (!terrain.isWalkable(node)) return false;
-    blockedOverlay ??= dynamicBlockedCells(world, ctx, terrain);
+    blockedOverlay ??= dynamicBlockOverlay(world, ctx, terrain);
     return !blockedOverlay.has(node);
   };
 

@@ -1,5 +1,6 @@
 import { FarmTask } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 
 /** Tick-shared field claims and lazily built sow-search state: nodes held by live in-flight tasks
@@ -12,7 +13,7 @@ export interface FarmClaims {
 }
 
 export interface SowScan {
-  readonly blocked: ReadonlySet<NodeId>;
+  readonly blocked: BlockOverlay;
   readonly occupied: ReadonlySet<NodeId>;
 }
 

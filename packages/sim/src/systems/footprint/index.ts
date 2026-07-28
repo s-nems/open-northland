@@ -13,7 +13,7 @@ export {
   buildingDoorNodes,
   type ConstructionPlot,
   constructionSitePlots,
-  dynamicBlockedCells,
+  dynamicBlockLayers,
   dynamicBlockOverlay,
   walkBlockedBodyOf,
 } from './blocked.js';

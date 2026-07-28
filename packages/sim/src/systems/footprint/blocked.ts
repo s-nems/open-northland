@@ -12,7 +12,9 @@ import { resourceBlockedCells } from './resource-blocked-cache.js';
 // WALK-BLOCK overlays the routing/render consume: the union views over the memoized building
 // walk-block cells (./building-blocked-cache.ts) and the incrementally-cached resource cells
 // (./resource-blocked-cache.ts), plus the ground plots of under-construction sites. DERIVED state —
-// never hashed, never stored.
+// never hashed, never stored. The views ALIAS the live caches, so a holder spanning several entities
+// (a planner pass, a routing drain) relies on no stamp/unstamp running inside its schedule slot;
+// today every stamp site sits in command/atomic/growth/reclaim slots, none inside a holder's.
 
 /**
  * Every standing building's door node — the passable gates {@link buildingBlockedCells} carves out of
@@ -90,27 +92,25 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-/** Building walk-blocks plus the cached resource walk-block overlay, materialized as ONE union set —
- *  for a caller that needs an owning `Set` (or to fold more layers over it). Both inputs are shared
- *  caches, so the union is copied fresh per call; a caller that only tests membership should prefer
- *  {@link dynamicBlockOverlay}, which skips the copy entirely. */
-export function dynamicBlockedCells(
+/** The two shared walk-block caches (standing building bodies, then resource footprints) as the
+ *  layer list a caller folds into its own {@link LayeredBlocks} alongside further layers (routing adds
+ *  the unit stamp), so composing never copies either cache. Membership reads only: the sets stay the
+ *  shared cached copies. */
+export function dynamicBlockLayers(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-): ReadonlySet<NodeId> {
-  const blocked = new Set<NodeId>(buildingBlockedCells(world, ctx, terrain));
-  for (const cell of resourceBlockedCells(world, terrain)) blocked.add(cell);
-  return blocked;
+): readonly [ReadonlySet<NodeId>, ReadonlySet<NodeId>] {
+  return [buildingBlockedCells(world, ctx, terrain), resourceBlockedCells(world, terrain)];
 }
 
 /**
- * The same building + resource walk-block overlay as {@link dynamicBlockedCells}, but as a
- * membership VIEW ({@link LayeredBlocks}) that never copies either cached layer into a fresh set.
- * For a caller that only asks `.has(node)` — the pathfinder's block test, the move-order goal snap,
- * the spawn push — this is the O(1)-to-compose form: a box-select issuing one move order per selected
- * unit (or a map load spawning hundreds of settlers) reuses the two shared caches per call.
+ * The building + resource walk-block overlay as a membership VIEW ({@link LayeredBlocks}) that never
+ * copies either cached layer into a fresh set. For a caller that only asks `.has(node)` — the
+ * pathfinder's block test, the move-order goal snap, the spawn push — this is the O(1)-to-compose
+ * form: a box-select issuing one move order per selected unit (or a map load spawning hundreds of
+ * settlers) reuses the two shared caches per call.
  */
 export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
-  return new LayeredBlocks([buildingBlockedCells(world, ctx, terrain), resourceBlockedCells(world, terrain)]);
+  return new LayeredBlocks(dynamicBlockLayers(world, ctx, terrain));
 }

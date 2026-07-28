@@ -1,8 +1,9 @@
 import { Owner, Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { constructionWorkCells, dynamicBlockedCells } from '../../footprint/index.js';
+import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
@@ -18,7 +19,7 @@ const WORKPLACE_YARD_RADIUS_NODES = 4;
  */
 export class PlannerSpacing {
   private readonly claims = new Set<NodeId>();
-  private blocked: ReadonlySet<NodeId> | undefined;
+  private blocked: BlockOverlay | undefined;
   private workCellsBySite: Map<Entity, readonly NodeId[]> | undefined;
   private yardByAnchor: Map<NodeId, ReadonlySet<NodeId>> | undefined;
 
@@ -28,7 +29,7 @@ export class PlannerSpacing {
     private readonly terrain: TerrainGraph,
     /** Stationary owned settlers bucketed by integer tile, as of the moment this pass began. */
     readonly occupancy: NodeBuckets,
-    private readonly buildBlockedCells: () => ReadonlySet<NodeId>,
+    private readonly buildBlockedCells: () => BlockOverlay,
   ) {}
 
   /** Gated on {@link Owner}: the unowned golden/economy fixtures bucket nothing, so their planner
@@ -38,7 +39,7 @@ export class PlannerSpacing {
       (e) => !isTravelling(world, e),
     );
     return new PlannerSpacing(world, ctx, terrain, new NodeBuckets(world, stationaryOwned), () =>
-      dynamicBlockedCells(world, ctx, terrain),
+      dynamicBlockOverlay(world, ctx, terrain),
     );
   }
 
@@ -49,13 +50,13 @@ export class PlannerSpacing {
     ctx: SystemContext,
     terrain: TerrainGraph,
     occupancy: NodeBuckets,
-    blocked: ReadonlySet<NodeId>,
+    blocked: BlockOverlay,
   ): PlannerSpacing {
     return new PlannerSpacing(world, ctx, terrain, occupancy, () => blocked);
   }
 
   /** The building/resource walk-block overlay: cells a drive may neither aim at nor route through. */
-  blockedCells(): ReadonlySet<NodeId> {
+  blockedCells(): BlockOverlay {
     this.blocked ??= this.buildBlockedCells();
     return this.blocked;
   }
