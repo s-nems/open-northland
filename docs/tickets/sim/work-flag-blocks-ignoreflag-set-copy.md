@@ -1,6 +1,6 @@
 # Stop copying the whole work-flag blocked set per `ignoreFlag` query
 
-**Area:** packages/sim · **Priority:** P3
+**Area:** packages/sim · **Priority:** P2
 
 `workFlagPlacementBlocks(world, content, terrain, ignoreFlag)`
 (packages/sim/src/systems/footprint/placement/work-flag/incremental-blocks.ts) returns the shared live
@@ -28,5 +28,10 @@ caller really is membership-only before changing the return type.
 
 `npm test` (goldens must NOT move — a moved golden here means the winner changed, which this must
 not do), `npm run check`, `npm run build`. Measure first and after with a command-burst case under
-`npm run bench:sim` — never `performance.now` in `src`. If `|blocked|` on a real map turns out to be
-only a few thousand nodes, close this ticket as not worth the indirection instead of landing it.
+`npm run bench:sim` — never `performance.now` in `src`.
+
+The "close it if `|blocked|` is only a few thousand nodes" escape no longer applies: `magiczny_las`
+stands up 35 170 `Resource` entities plus every building body, and the identical copy in
+`dynamicBlockedCells` profiles at 33% of `Simulation.step` on that map — see
+[blocked-overlay-copy-per-tick](blocked-overlay-copy-per-tick.md), whose façade this should reuse
+rather than reinvent.
