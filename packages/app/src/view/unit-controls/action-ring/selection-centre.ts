@@ -24,7 +24,8 @@ export const selectionCentre = (
   let jobType: number | undefined;
   let mixed = false;
   // Ascending, because a Set iterates in click order while `ids` reaches the sim as command order (one
-  // `setJob` per id) and picks the acting scout for an erect-signpost order.
+  // `setJob` per id) and picks the acting scout for an erect-signpost order. Approximation: which scout
+  // the original sends is unobserved, so the lowest id is the deterministic stand-in.
   for (const id of [...selection].sort((a, b) => a - b)) {
     const e = entityById(snapshot, id);
     if (e === undefined || !isSettler(e)) continue;
