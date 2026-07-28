@@ -13,7 +13,6 @@ import {
   PlayerOrder,
   Position,
   Residence,
-  Resting,
   Settler,
   Wedding,
 } from '../../../components/index.js';
@@ -22,8 +21,9 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isFood } from '../../readviews/index.js';
-import { atOrWalk, startDrop } from '../../settlers/atomics/start.js';
+import { startDrop } from '../../settlers/atomics/start.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
+import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../../signposts/index.js';
@@ -32,7 +32,6 @@ import { isOnMission } from '../eligibility.js';
 import { deliverHome, fetchFrom } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUnits } from '../households.js';
-import { isInside, stepOut } from './indoors.js';
 import { birth, makeLoveDuration } from './make-love.js';
 
 /**
@@ -197,8 +196,8 @@ function isDrivable(world: World, e: Entity): boolean {
  * no need pulling it away (ready to make love). A hungry/tired/devout spouse feeds, sleeps, or prays first,
  * because the needs drive runs after this system and outranks the {@link FamilyDuty} fence: re-driving `e`
  * home each tick would fight that walk and it would never reach food, and its own reserved child fund is
- * inedible to it, so it would starve mid-loop. `e` stays claimed; the needs drive sheds its {@link Resting},
- * and this walk resumes once the need clears.
+ * inedible to it, so it would starve mid-loop. `e` stays claimed; the needs drive steps it back out, and
+ * this walk resumes once the need clears.
  */
 function ensureInside(
   world: World,
@@ -213,8 +212,7 @@ function ensureInside(
   return false;
 }
 
-/** Walk to the home's door and step inside ({@link Resting}, like a workshop operator resting in). Mapless
- *  fixtures step in directly (no cells to walk). */
+/** Walk to the home's door and step inside; mapless fixtures step in directly (no cells to walk). */
 function enterHome(
   world: World,
   ctx: SystemContext,
@@ -224,17 +222,14 @@ function enterHome(
 ): void {
   if (!isDrivable(world, e)) return;
   // A husband claimed straight out of a workshop/farm rest still carries that marker: shed it so the walk
-  // home is visible; `enter` re-stamps it at the home.
-  if (!isInside(world, e, home)) world.remove(e, Resting);
-  const enter = (): void => {
-    world.add(e, Resting, { at: home });
-  };
+  // home is visible; the arrival re-stamps it at the home.
+  stepOut(world, e);
   if (terrain === undefined) {
-    enter();
+    stepIn(world, e, home);
     return;
   }
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), enter);
+  enterBuilding(world, e, home, here, interactionCell(world, ctx, terrain, home, here));
 }

@@ -3,7 +3,7 @@
 **Area:** sim · **Priority:** P3
 
 `driveChildOrders` (`packages/sim/src/systems/family/children/`) walks each parent home with
-`enterHome` → `atOrWalk`, but has no failed-route protocol of its own: when the walk fails (the door
+`enterHome` → `enterBuilding`, but has no failed-route protocol of its own: when the walk fails (the door
 enclosed by later construction, a signpost-area mismatch), the planner's stranded recovery
 (`systems/settlers/planner/replan.ts`, `Stranded`) sheds the dead route on its pace and the family pass
 re-issues the identical walk — a paced retry loop. The wife meanwhile waits INSIDE (render hides her) with the

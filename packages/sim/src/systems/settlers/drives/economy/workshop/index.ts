@@ -1,9 +1,10 @@
-import { CARRY_CAPACITY, Owner, Resting } from '../../../../../components/index.js';
+import { CARRY_CAPACITY, Owner } from '../../../../../components/index.js';
 import type { Entity } from '../../../../../ecs/world.js';
 import { shelfBlockedOutput } from '../../../../economy/production.js';
 import { planGossipIdle } from '../../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../../stores/index.js';
 import { atOrWalk, startDraw, startPickup } from '../../../atomics/start.js';
+import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
@@ -151,22 +152,20 @@ function routeToInputSource(
 }
 
 /** Stand ON the workplace's door and step inside — an operator holding a work seat (it drives the
- *  ProductionSystem's presence gate, and the render hides a {@link Resting} settler as "gone in"). */
+ *  ProductionSystem's presence gate, and the render hides a settler that has gone in). */
 function holdInsideWorkplace(plan: PlannerContext, workplace: Entity): void {
   const { world, ctx, terrain, entity, here } = plan;
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-    world.add(entity, Resting, { at: workplace }),
-  );
+  enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here));
 }
 
 /** Loiter visibly BESIDE the workplace door — a player-owned bound worker with nothing to do this tick
  *  (no seat, no input to fetch, no output to haul). Unlike {@link holdInsideWorkplace} it never stands on
- *  the door (so it neither runs the craft nor hides indoors) and never stamps {@link Resting}: the settler
+ *  the door (so it neither runs the craft nor hides indoors) and never steps inside: the settler
  *  waits in the default standing pose next to its workplace, the user-directed "bored by the door" look.
  *  Once in place it may strike up an idle chat with a nearby fellow idler (the bottom-rung gossip — bored
  *  crews chatter at their doors; the Chat fence hands it back the moment real work reappears).
- *  Unowned economy/golden fixtures keep the original wait-inside behaviour (walk to the door, stamp
- *  {@link Resting}) so their state hashes stay byte-identical — the loiter spread is a player-facing polish,
+ *  Unowned economy/golden fixtures keep the original wait-inside behaviour (walk to the door and step
+ *  in) so their state hashes stay byte-identical — the loiter spread is a player-facing polish,
  *  and only owned units carry the {@link Owner} the spacing machinery gates on. */
 function loiterByDoor(
   plan: PlannerContext,

@@ -3,8 +3,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
 import { atomicAnimationName, atomicDurationForName } from '../../readviews/animations.js';
+import { stepOut } from '../../settlers/indoors.js';
 import { spawnNewborn } from '../../spawn/index.js';
-import { stepOut } from './indoors.js';
 
 /** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`), used only to resolve the hearts phase's
  *  duration from the tribe's bound animation. The sandbox catalog transcribes the same id

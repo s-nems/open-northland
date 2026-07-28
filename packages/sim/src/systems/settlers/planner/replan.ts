@@ -6,7 +6,6 @@ import {
   Fleeing,
   PathRequest,
   PlayerOrder,
-  Resting,
   Stranded,
   Wedding,
 } from '../../../components/index.js';
@@ -17,6 +16,7 @@ import { clearNavState, isTravelling } from '../../spatial/nodes.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
+import { stepOut } from '../indoors.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
 // The planner's per-settler availability checks: decide whether a settler is idle enough to re-plan
@@ -90,7 +90,7 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
  * ({@link pruneUnreachableGoals}, run before any drive reads it). Each is re-stamped by the drive that still
  * wants it within this same tick, so the render never sees a gap: a settler mid-park keeps its SupplyRun
  * (released only at the re-plan) because the errand may resume after a transient blockage, and a settler
- * on family duty keeps its {@link Resting} marker (the FamilySystem owns that one).
+ * on family duty keeps its rest-inside marker (the FamilySystem owns that one).
  */
 export function releaseStaleIntent(
   world: World,
@@ -120,7 +120,7 @@ export function releaseStaleIntent(
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
-  if (!world.has(e, FamilyDuty)) world.remove(e, Resting);
+  if (!world.has(e, FamilyDuty)) stepOut(world, e);
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

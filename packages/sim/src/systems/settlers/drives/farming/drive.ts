@@ -5,7 +5,6 @@ import {
   FarmTask,
   JobAssignment,
   Position,
-  Resting,
   UnderConstruction,
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
@@ -19,6 +18,7 @@ import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
+import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
@@ -84,7 +84,7 @@ function boundFarmTarget(
  *  d. **Water** a thirsty field (the cultivate atomic) — every stage consumes one watering, so between sowings
  *     the farmer circles its growing fields with the can (see the farming module note).
  *  e. **Rest inside the farm** — nothing to reap, carry, water or sow this tick: walk to the farm and step
- *     inside (the {@link Resting} marker — the render hides the settler), back out the moment a field needs the
+ *     inside (the render hides a settler that has gone in), back out the moment a field needs the
  *     can. The original's off-duty workers wait in the house, not lined at the door.
  *
  * Always returns true once bound to a farm (a farmer is spoken for, like the flag-bound gatherer); returns
@@ -249,8 +249,6 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
 
   // e. Nothing to tend this tick — walk home and wait inside the farm (re-stamped every idle tick, so the
   // marker holds without flicker; the replan sweep (planner/replan.ts) clears it the moment work appears).
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () =>
-    world.add(e, Resting, { at: farm }),
-  );
+  enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here));
   return true;
 }
