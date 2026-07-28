@@ -23,6 +23,11 @@ halving proven: 8 s of 100 ms `performance.memory.usedJSHeapSize` samples (summi
 increments) on `?map=blekiny_nurt` with active AI combat, before vs after the branch. The `pamięć`
 overlay sawtooth should visibly flatten.
 
+The A/B is still owed, but the absolute rate that makes it worth running is now measured: a late-game
+`?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=reveal` session at tick ~46 500 swings
+`sampling.heapMb` between roughly 300 and 940 MB on a ~13 s cycle. That is post-first-wave, so the
+remaining sites below are the live ones.
+
 ## Remaining sites (measured, after the first wave)
 
 Each is real but lower-leverage than the wave above; take them only if the Chrome A/B still shows an
@@ -35,8 +40,13 @@ unacceptable rate. Sim purity/determinism and the scaling budget apply.
   a non-allocating variant for the hottest loops would help.
 - **AI store scan** - `stockCapacity` / `lowestStockedGood` (`systems/stores/capacity.ts`) and
   `canStoreGood` (`settlers/targets/stores/stock.ts`) churn while the planner scans stockpiles.
-- **`singletonCarrier`** (`components/rules.ts`) runs a full query per settler per tick via
-  `signpostNavigationEnabled` -> `navigationLimitFor`; memoize the carrier on the component generation.
+- **`navigationLimitFor`** (`systems/signposts/network.ts`) allocates a `Set`, a `posts.filter()`
+  array, the `nodeBoxOfCircles` spread and a returned closure on every call. It is called per settler
+  per tick from both `planAdult`/`planChild` and `jobSystem`, and `runAuthoredSlice` enables signpost
+  navigation for every map session, so the early `signpostNavigationEnabled` exit never fires there.
+  Memoizing `singletonCarrier` (`components/rules.ts`) on the component generation removes the query;
+  the per-settler allocations are the larger half and need the limit itself cached or made
+  non-allocating.
 - **Snapshot clone floor** - every non-scenery entity still re-clones each frame. A wider clone cache
   needs reliable `World.touch` coverage on in-place mutations (today only ~17 sites touch), so it is a
   deliberate, larger follow-up, not a quick cut.
