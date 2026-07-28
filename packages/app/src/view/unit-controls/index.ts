@@ -1,10 +1,9 @@
 import type { Entity } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
-import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
-import { memoBySnapshot } from '../projections/index.js';
+import { memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
@@ -247,20 +246,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
-  /** The flag entity ids of the currently-selected gatherers (their {@link WorkFlag}.flag), so the renderer
-   *  can highlight each selected gatherer's own flag. An O(entities) scan, memoized per tick + selection
-   *  (not per RAF) — the renderer reads it every frame, and a non-empty selection is the normal state. */
+  /** The selected gatherers' own work flags, memoized per tick + selection: the renderer reads them
+   *  every frame, and a non-empty selection is the normal state. */
   const flaggedFlags = memoBySnapshot(
-    (snapshot) => {
-      if (selected.size === 0) return EMPTY_IDS;
-      const out = new Set<number>();
-      for (const ent of snapshot.entities) {
-        if (!selected.has(ent.id)) continue;
-        const flag = workFlagOf(ent);
-        if (flag !== undefined) out.add(flag);
-      }
-      return out;
-    },
+    (snapshot) => (selected.size === 0 ? EMPTY_IDS : selectedWorkFlags(snapshot, selected)),
     () => selectionVersion,
   );
   const flaggedFlagIds = (): ReadonlySet<number> => flaggedFlags(opts.snapshot());
