@@ -30,7 +30,19 @@ export interface HalfCellNode {
  * (world x briefly < 0 on a west-border leg) truncates to 0 harmlessly.
  */
 export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {
-  return { hx: fx.toInt(fx.mul(worldX(x, y), TWO)), hy: fx.toInt(fx.mul(y, TWO)) };
+  return { hx: nodeHxOfPosition(x, y), hy: nodeHyOfPosition(y) };
+}
+
+/** {@link nodeOfPosition}'s `hx` alone, the scalar variant for per-entity-per-tick loops (index builds,
+ *  collision neighbourhoods, per-candidate scans), where minting a node object per call is measured churn. */
+export function nodeHxOfPosition(x: Fixed, y: Fixed): number {
+  return fx.toInt(fx.mul(worldX(x, y), TWO));
+}
+
+/** {@link nodeOfPosition}'s `hy` alone. `hy` depends only on the row, so the scalar pair recomputes
+ *  nothing the object form would have shared. */
+export function nodeHyOfPosition(y: Fixed): number {
+  return fx.toInt(fx.mul(y, TWO));
 }
 
 /**

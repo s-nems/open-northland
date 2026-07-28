@@ -8,7 +8,7 @@ import {
   UnderConstruction,
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { nodeOfPosition } from '../../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -87,7 +87,12 @@ export function canStoreGood(
   if (world.has(entity, GroundDrop)) return false;
   if (isYardHeap(world, entity)) return false;
   const recipe = mergedRecipeOf(world, ctx, entity);
-  if (recipe?.outputs.some((output) => output.goodType === goodType)) return false;
+  if (recipe !== undefined) {
+    // A plain loop, not `.some(closure)`: the sink scans probe this per candidate per query.
+    for (const output of recipe.outputs) {
+      if (output.goodType === goodType) return false;
+    }
+  }
   const stock = world.get(entity, Stockpile);
   const have = stock.amounts.get(goodType) ?? 0;
   return have < stockCapacity(world, ctx, entity, goodType);
@@ -132,8 +137,7 @@ export function nearestFreeYardNode(
   gate?: SpatialGate,
 ): NodeId | null {
   const fp = world.get(flag, Position);
-  const fn = nodeOfPosition(fp.x, fp.y);
-  const flagNode = terrain.nodeAtClamped(fn.hx, fn.hy);
+  const flagNode = terrain.nodeAtClamped(nodeHxOfPosition(fp.x, fp.y), nodeHyOfPosition(fp.y));
   const hasRoom = (node: NodeId): boolean => {
     const o = yard.occupied.get(node);
     return (
@@ -150,14 +154,20 @@ export function nearestFreeYardNode(
   const { x: cx, y: cy } = terrain.coordsOf(flagNode);
   const afterRank = after === undefined ? null : terrain.coordsOf(after);
   const afterRadius = afterRank === null ? -1 : Math.abs(afterRank.x - cx) + Math.abs(afterRank.y - cy);
+  // One visitor for the whole spiral (not one per ring): `best` resets per ring, so the first ring
+  // with a usable tile still wins before a farther ring is probed.
+  let best: NodeId | null = null;
+  let ring = 0;
+  const visit = (dx: number, dy: number): void => {
+    if (!terrain.inBounds(cx + dx, cy + dy)) return;
+    const node = terrain.nodeAt(cx + dx, cy + dy);
+    if (ring < afterRadius || (ring === afterRadius && after !== undefined && node <= after)) return;
+    if (usable(node) && (best === null || node < best)) best = node;
+  };
   for (let r = 0; r <= GOODS_YARD_MAX_RADIUS; r++) {
-    let best: NodeId | null = null;
-    forEachRingOffset(r, (dx, dy) => {
-      if (!terrain.inBounds(cx + dx, cy + dy)) return;
-      const node = terrain.nodeAt(cx + dx, cy + dy);
-      if (r < afterRadius || (r === afterRadius && after !== undefined && node <= after)) return;
-      if (usable(node) && (best === null || node < best)) best = node;
-    });
+    best = null;
+    ring = r;
+    forEachRingOffset(r, visit);
     if (best !== null) return best;
   }
   return usable(here) ? here : null;
@@ -181,8 +191,7 @@ export function buriedUnderBuilding(
 ): boolean {
   if (world.has(entity, Building)) return false;
   const p = world.get(entity, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  return walls.has(terrain.nodeAtClamped(n.hx, n.hy));
+  return walls.has(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)));
 }
 
 /**

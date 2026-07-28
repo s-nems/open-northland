@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import { Building, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 
@@ -179,9 +179,10 @@ function eachStandingFighter(
   for (const e of world.query(Settler, Position)) {
     if (!hasBodyCollision(world, content, e) || !isStanding(world, e)) continue;
     const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    if (!terrain.inBounds(n.hx, n.hy)) continue;
-    visit(e, terrain.nodeAt(n.hx, n.hy), world.get(e, Owner).player);
+    const hx = nodeHxOfPosition(p.x, p.y);
+    const hy = nodeHyOfPosition(p.y);
+    if (!terrain.inBounds(hx, hy)) continue;
+    visit(e, terrain.nodeAt(hx, hy), world.get(e, Owner).player);
   }
 }
 

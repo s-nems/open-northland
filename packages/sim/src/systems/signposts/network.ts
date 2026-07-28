@@ -8,7 +8,7 @@ import {
   signpostNavigationEnabled,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isFighterJob, isScoutJob } from '../readviews/index.js';
@@ -148,11 +148,40 @@ function verifyNetwork(world: World): string[] {
  */
 export type NavigationLimit = SpatialGate;
 
+/** One settler's memoized limit plus every input it derives from. Each input is re-checked on read
+ *  (position node, owner, job, Signpost generation; posts never move, so only an erect/tear-down
+ *  changes the network), which is what lets the memo skip a coherence verifier: a stale entry cannot
+ *  be served, only recomputed. `terrain` and `content` are per-world constants, so they need no slot. */
+interface LimitMemoEntry {
+  readonly hx: number;
+  readonly hy: number;
+  readonly player: number;
+  readonly jobType: number | null;
+  readonly signpostVersion: number;
+  readonly limit: NavigationLimit | null;
+}
+
+interface LimitMemo {
+  readonly entries: Map<Entity, LimitMemoEntry>;
+  /** Entry count that triggers the next dead-entry sweep: entity ids are never reused, so without a
+   *  sweep the map would grow with every settler that ever lived. Doubled after each sweep (amortized
+   *  O(1) per insert). */
+  sweepAt: number;
+}
+
+const LIMIT_MEMO_SWEEP_MIN = 256;
+
+const limitMemo = new WeakMap<World, LimitMemo>();
+
 /**
  * The navigation limit confining settler `e`, or `null` when it is UNLIMITED: signpost navigation off
  * (the default — every pre-signpost world), a mapless sim, a non-settler/unowned target, or an exempt
  * job — the scout and every fighter roam globally (source basis: observed original behaviour; the
  * user-specified rule set).
+ *
+ * Memoized per settler ({@link LimitMemoEntry} holds the key semantics). The
+ * `signpostNavigationEnabled` toggle is read live on every call (an in-place rules flip bumps no
+ * generation), so it needs no slot in the memo key.
  */
 export function navigationLimitFor(
   world: World,
@@ -165,28 +194,76 @@ export function navigationLimitFor(
   const owner = world.tryGet(e, Owner);
   const p = world.tryGet(e, Position);
   if (settler === undefined || owner === undefined || p === undefined) return null;
-  if (isScoutJob(content, settler.jobType) || isFighterJob(content, settler.jobType)) return null;
-  const here = nodeOfPosition(p.x, p.y);
-  const posts = signpostNetwork(world).get(owner.player) ?? [];
+  const hx = nodeHxOfPosition(p.x, p.y);
+  const hy = nodeHyOfPosition(p.y);
+  const signpostVersion = world.componentGeneration(Signpost);
+  let memo = limitMemo.get(world);
+  if (memo === undefined) {
+    memo = { entries: new Map(), sweepAt: LIMIT_MEMO_SWEEP_MIN };
+    limitMemo.set(world, memo);
+  }
+  const held = memo.entries.get(e);
+  if (
+    held !== undefined &&
+    held.hx === hx &&
+    held.hy === hy &&
+    held.player === owner.player &&
+    held.jobType === settler.jobType &&
+    held.signpostVersion === signpostVersion
+  ) {
+    return held.limit;
+  }
+  const limit = computeNavigationLimit(world, content, terrain, settler.jobType, owner.player, hx, hy);
+  if (memo.entries.size >= memo.sweepAt) sweepDeadEntries(world, memo);
+  memo.entries.set(e, { hx, hy, player: owner.player, jobType: settler.jobType, signpostVersion, limit });
+  return limit;
+}
+
+/** Drop memo entries whose entity no longer is a settler, then push the next sweep out to double the
+ *  surviving size. */
+function sweepDeadEntries(world: World, memo: LimitMemo): void {
+  for (const entity of memo.entries.keys()) {
+    if (!world.has(entity, Settler)) memo.entries.delete(entity);
+  }
+  memo.sweepAt = Math.max(LIMIT_MEMO_SWEEP_MIN, memo.entries.size * 2);
+}
+
+/** The uncached derivation behind {@link navigationLimitFor}: the union gate over the settler's local
+ *  circle and every reachable signpost group's circles. */
+function computeNavigationLimit(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  jobType: number | null,
+  player: number,
+  hx: number,
+  hy: number,
+): NavigationLimit | null {
+  if (isScoutJob(content, jobType) || isFighterJob(content, jobType)) return null;
+  const posts = signpostNetwork(world).get(player) ?? [];
   // Reachable groups: a group counts iff some member's nav circle intersects the local circle.
   const reachable = new Set<number>();
   for (const s of posts) {
-    if (withinNodeRadius(here.hx, here.hy, s.hx, s.hy, s.navRadius + LOCAL_NAV_RADIUS_NODES)) {
+    if (withinNodeRadius(hx, hy, s.hx, s.hy, s.navRadius + LOCAL_NAV_RADIUS_NODES)) {
       reachable.add(s.group);
     }
   }
-  const inRange = posts.filter((s) => reachable.has(s.group));
-  const bounds = nodeBoxOfCircles([
-    { x: here.hx, y: here.hy, r: LOCAL_NAV_RADIUS_NODES },
-    ...inRange.map((s) => ({ x: s.hx, y: s.hy, r: s.navRadius })),
-  ]);
+  const inRange: SignpostSite[] = [];
+  const circles = [{ x: hx, y: hy, r: LOCAL_NAV_RADIUS_NODES }];
+  for (const s of posts) {
+    if (!reachable.has(s.group)) continue;
+    inRange.push(s);
+    circles.push({ x: s.hx, y: s.hy, r: s.navRadius });
+  }
+  const bounds = nodeBoxOfCircles(circles);
   return {
     bounds,
     allowsNode(node: NodeId): boolean {
-      const c = terrain.coordsOf(node);
-      if (withinNodeRadius(here.hx, here.hy, c.x, c.y, LOCAL_NAV_RADIUS_NODES)) return true;
+      const cx = terrain.xOf(node);
+      const cy = terrain.yOf(node);
+      if (withinNodeRadius(hx, hy, cx, cy, LOCAL_NAV_RADIUS_NODES)) return true;
       for (const s of inRange) {
-        if (withinNodeRadius(s.hx, s.hy, c.x, c.y, s.navRadius)) return true;
+        if (withinNodeRadius(s.hx, s.hy, cx, cy, s.navRadius)) return true;
       }
       return false;
     },

@@ -205,11 +205,17 @@ export class InteractionCellIndex {
     }
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
     const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
+    // One visitor for the whole sweep (not one per ring): `best` and `ringDist` reset per ring, so the
+    // first ring with a hit still returns before any farther ring is probed.
+    let best: NearestByCell<P> | null = null;
+    let ringDist = 0;
+    const visit = (dx: number, dy: number): void => {
+      best = this.pickInRing(hx + dx, hy + dy, ringDist, accept, gate, veto, onSide, best);
+    };
     for (let d = 0; d <= maxRadius; d++) {
-      let best: NearestByCell<P> | null = null;
-      forEachRingOffset(d, (dx, dy) => {
-        best = this.pickInRing(hx + dx, hy + dy, d, accept, gate, veto, onSide, best);
-      });
+      best = null;
+      ringDist = d;
+      forEachRingOffset(d, visit);
       if (best !== null) return { best, exhaustive };
     }
     return { best: null, exhaustive };

@@ -1,12 +1,4 @@
-import {
-  Building,
-  DeliveryFlag,
-  GroundDrop,
-  Position,
-  Stockpile,
-  stockpileEntries,
-  Vehicle,
-} from '../../components/index.js';
+import { Building, DeliveryFlag, GroundDrop, Position, Stockpile, Vehicle } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -65,9 +57,11 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     if (building.built < ONE) {
       // Construction site: the per-good ceiling is that good's line in the site's bill (cumulative
       // from-scratch, or the upgrade difference — constructionBillOf resolves which); a non-material
-      // good gets 0 — refused.
-      const line = constructionBillOf(world, ctx, store).find((c) => c.goodType === goodType);
-      return line?.amount ?? 0;
+      // good gets 0 — refused. A plain loop: the AI sink scan probes this per candidate per query.
+      for (const line of constructionBillOf(world, ctx, store)) {
+        if (line.goodType === goodType) return line.amount;
+      }
+      return 0;
     }
     // Built building: its per-good stock-slot ceiling (the memoized slot table — the planner's sink
     // scans probe this thousands of times per tick) — a good with no declared slot gets 0.
@@ -92,12 +86,15 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   return UNCAPPED_CAPACITY;
 }
 
-/** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. Canonical (ascending
- *  goodType via {@link stockpileEntries}) so a pick keyed off it never depends on Map insertion order.
- *  The shared building block behind the ground-pile scans (`nearestGroundPile`, the collect-trunk drive). */
+/** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. A min over the Map's keys,
+ *  insertion-order independent, so the pick stays canonical without minting a sorted entries array
+ *  (the ground-pile scans probe this per candidate per query). */
 export function lowestStockedGood(stock: { amounts: Map<number, number> }): number | null {
-  for (const [goodType, amount] of stockpileEntries(stock)) if (amount > 0) return goodType;
-  return null;
+  let lowest: number | null = null;
+  for (const [goodType, amount] of stock.amounts) {
+    if (amount > 0 && (lowest === null || goodType < lowest)) lowest = goodType;
+  }
+  return lowest;
 }
 
 /**
