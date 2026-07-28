@@ -1,5 +1,5 @@
 import { tileToScreen } from '@open-northland/render';
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
 import { isSettler, positionOf, settlerJobType } from '../../../game/snapshot.js';
 
 /** The selected settlers' centroid (WORLD px) plus the ids and their common trade. */
@@ -11,7 +11,8 @@ export interface SelectionCentre {
   readonly jobType: number | undefined;
 }
 
-/** The selected settlers' centroid in WORLD px, or null when none is selected. O(entities). */
+/** The selected settlers' centroid in WORLD px, or null when none is selected. Walks the selection and
+ *  binary-searches each id: O(selected · log entities). */
 export const selectionCentre = (
   snapshot: WorldSnapshot,
   selection: ReadonlySet<number>,
@@ -22,8 +23,11 @@ export const selectionCentre = (
   // The selection's common trade (undefined when mixed) — picks the per-profession menu variant.
   let jobType: number | undefined;
   let mixed = false;
-  for (const e of snapshot.entities) {
-    if (!selection.has(e.id) || !isSettler(e)) continue;
+  // Ascending, because a Set iterates in click order while `ids` reaches the sim as command order (one
+  // `setJob` per id) and picks the acting scout for an erect-signpost order.
+  for (const id of [...selection].sort((a, b) => a - b)) {
+    const e = entityById(snapshot, id);
+    if (e === undefined || !isSettler(e)) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const s = tileToScreen(pos.x / ONE, pos.y / ONE); // the drawn feet anchor (world px)

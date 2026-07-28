@@ -3,7 +3,8 @@ import { fx, type WorldSnapshot } from '@open-northland/sim';
 /**
  * Shared fixtures for the pure snapshot→view projections: small composable builders that shape a
  * {@link WorldSnapshot} by hand — the sim never runs — so a test pins exactly the entities and components
- * its projection reads, plus the counting wrapper a per-frame memo is measured against.
+ * its projection reads, plus two counting wrappers: reads of the entity lane (what a per-frame memo is
+ * measured against) and entities actually handed out (what tells a world scan from a lookup).
  */
 
 /** A hand-built snapshot entity: an id + its raw component bag (each projection reads the keys it needs). */
@@ -67,4 +68,22 @@ export function countingSnapshot(source: WorldSnapshot): {
     },
     scans: () => scans,
   };
+}
+
+/**
+ * A snapshot that counts every ENTITY it hands out, not every read of the lane — the measure that tells a
+ * probe driven by the world apart from one driven by its own small input (a selection, a work list).
+ */
+export function visitCountingSnapshot(source: WorldSnapshot): {
+  snapshot: WorldSnapshot;
+  visits: () => number;
+} {
+  let visits = 0;
+  const entities = new Proxy(source.entities, {
+    get(target, key, receiver) {
+      if (typeof key === 'string' && String(Number(key)) === key) visits++;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { snapshot: { ...source, entities }, visits: () => visits };
 }
