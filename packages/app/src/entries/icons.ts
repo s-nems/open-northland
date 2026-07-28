@@ -1,3 +1,4 @@
+import type { BobsIndexEntry } from '@open-northland/content-resolver/wire';
 import { GUI_FRAMES } from '../content/gui-atlas-map.js';
 import { fetchJsonOrNull } from '../content/net.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -15,10 +16,19 @@ import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay
  * gitignored `content/`); a bare checkout degrades to a "run the pipeline" message.
  */
 
-interface BobsIndexEntry {
-  readonly stem: string;
-  readonly base: string;
-  readonly variant: string;
+/** Narrow one `/bobs-index` row, mirroring the emit-side shape: a wrong-typed row drops instead of
+ *  reaching the gallery as an entry whose fields read `undefined`. */
+function parseBobsEntry(raw: unknown): BobsIndexEntry | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { stem, base, variant } = raw as Record<string, unknown>;
+  if (typeof stem !== 'string' || stem === '') return undefined;
+  if (typeof base !== 'string' || typeof variant !== 'string') return undefined;
+  return { stem, base, variant };
+}
+
+export function parseBobsIndex(data: unknown): readonly BobsIndexEntry[] {
+  if (!Array.isArray(data)) return [];
+  return data.map(parseBobsEntry).filter((entry) => entry !== undefined);
 }
 
 interface AtlasFrameJson {
@@ -96,8 +106,8 @@ function groupLabel(base: string): string {
 
 export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchParams): void {
   void (async () => {
-    const index = await fetchJsonOrNull<BobsIndexEntry[]>('/bobs-index');
-    if (index === null || index.length === 0) {
+    const index = parseBobsIndex(await fetchJsonOrNull<unknown>('/bobs-index'));
+    if (index.length === 0) {
       mountMessage(messages().icons.title, messages().icons.missingDetail);
       return;
     }

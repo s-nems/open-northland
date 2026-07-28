@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import type { BobsIndexEntry } from './wire.js';
 
 /**
  * Node-side builder for the `/bobs-index` payload — the list the in-app icon gallery (`?icons`)
@@ -7,16 +8,6 @@ import { join } from 'node:path';
  * The `.indexed.*` sheets carry a palette index in the red channel for the runtime recolour rather
  * than a viewable image, so they are skipped.
  */
-
-/** One `/bobs-index` entry: a viewable atlas stem and its base-set / palette-variant split. */
-export interface BobsIndexEntry {
-  /** The atlas stem — the `/bobs/<stem>.png` + `/bobs/<stem>.atlas.json` the gallery loads. */
-  readonly stem: string;
-  /** The base sprite set (the stem up to the first dot), e.g. `ls_gui_window`, `ls_houses_viking`. */
-  readonly base: string;
-  /** The palette variant (the stem after the first dot), e.g. `iconsleft`, `house01`; `''` if none. */
-  readonly variant: string;
-}
 
 /** Build one entry per viewable atlas under `bobsRoot`, sorted by (base, variant). `bobsRoot` must
  *  exist — the caller guards. */

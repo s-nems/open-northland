@@ -1,3 +1,4 @@
+import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
 import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
@@ -7,17 +8,6 @@ import { type MapPlayerSlot, mountPlayersPanel, type PlayersPanel } from './menu
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
 const MENU_LOGO = new URL('./menu/assets/logo.webp', import.meta.url).href;
-
-export interface MapIndexEntry {
-  readonly id: string;
-  readonly name?: string;
-  readonly description?: string;
-  readonly minimap: boolean;
-  /** The map's player roster from its script sidecar (absent when the map ships no playerdata). */
-  readonly players?: readonly MapPlayerSlot[];
-  /** The map locks its authored team colours (`[multiplayer]` `playerfixcolors`). */
-  readonly fixedColors?: boolean;
-}
 
 type EntryKind = 'scene' | 'map' | 'tool';
 
@@ -56,9 +46,9 @@ function parsePlayerSlot(raw: unknown): MapPlayerSlot | undefined {
   };
 }
 
-export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
+export function parseMapsIndex(data: unknown): readonly MapsIndexEntry[] {
   if (!Array.isArray(data)) return [];
-  const entries: MapIndexEntry[] = [];
+  const entries: MapsIndexEntry[] = [];
   for (const item of data) {
     if (typeof item !== 'object' || item === null) continue;
     const { id, name, description, minimap, players, fixedColors } = item as Record<string, unknown>;
@@ -76,7 +66,7 @@ export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
   return entries;
 }
 
-async function loadMapList(): Promise<readonly MapIndexEntry[]> {
+async function loadMapList(): Promise<readonly MapsIndexEntry[]> {
   return parseMapsIndex(await fetchJsonOrNull<unknown>('/maps-index'));
 }
 
