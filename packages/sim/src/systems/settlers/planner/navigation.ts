@@ -24,7 +24,7 @@ function floorInt(v: Fixed): number {
  * ascending cell id — deterministic; a bracket node clamped onto the map at a border can duplicate
  * another, which is harmless — identical distance and id). Mid-leg a walker sits between two
  * walkable waypoints, so the bracket always contains a walkable node — but the NEAREST bracket node
- * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain/graph.ts`
+ * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain/edges.ts`
  * steps), and a walker past the seam truncates onto that flank. `findPath` rejects an unwalkable
  * start outright, which would fail the request and strand the walker mid-seam; skipping to the
  * nearest WALKABLE bracket node keeps every mid-walk re-route servable. Falls back to the

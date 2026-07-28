@@ -177,7 +177,7 @@ export interface ContentIndex {
   /**
    * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
    * `landscapeGfx` work-area cell — floored at 3, covering both `resourceWorkCell` fallbacks with headroom:
-   * `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1, `nav/terrain/graph.ts`
+   * `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1, `nav/terrain/edges.ts`
    * NEIGHBOUR_OFFSETS), and the lattice's widest single step (a diagonal, `(±1,±2)`) is Manhattan 3 — so even
    * a future fallback widened to the full step set stays under the floor. The slack a radius-bounded candidate
    * query must widen its anchor box by so it provably contains every node whose work cell could pass the
