@@ -11,9 +11,9 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { isInside } from '../../settlers/indoors.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { ExternalFoodIndex } from '../food-search.js';
-import { isInside } from './indoors.js';
 import { type ChildOrderPass, driveOrder } from './order.js';
 
 /**

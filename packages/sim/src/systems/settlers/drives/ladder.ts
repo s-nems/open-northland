@@ -4,7 +4,6 @@ import {
   JobAssignment,
   ownerOf,
   Position,
-  Resting,
   type Settler,
   Stance,
   UnderConstruction,
@@ -19,6 +18,7 @@ import { MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { anotherSystemOwns } from '../planner/replan.js';
@@ -96,11 +96,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
-    // A needs drive pulled the settler away: shed a lingering waiting-inside marker so the walk to
-    // food/temple/a bed is visible (the render hides a Resting settler) and the family stages stop
-    // reading a foraging parent as "inside". The sleep rung is the one drive that stamps Resting
-    // itself — a settler that just got into its own bed keeps it (see isSleepingAtHome).
-    if (!isSleepingAtHome(world, e)) world.remove(e, Resting);
+    // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in
+    // (../indoors.ts), except the bed the sleep rung just put it in.
+    if (!isSleepingAtHome(world, e)) stepOut(world, e);
     return;
   }
 

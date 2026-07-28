@@ -1,10 +1,4 @@
-import {
-  JobAssignment,
-  Resting,
-  Settler,
-  type SettlerIdentity,
-  TrainingOrder,
-} from '../../../components/index.js';
+import { JobAssignment, Settler, type SettlerIdentity, TrainingOrder } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -14,7 +8,8 @@ import { grantTrainingExperience, needSubjectOf, settlerMeetsNeed } from '../../
 import { needAtomicDuration } from '../../readviews/animations.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { atOrWalk, EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { EXERCISE_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { enterBuilding, stepOut } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -30,8 +25,8 @@ export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
  * The planner's BARRACKS-DRILL rung (called from `./ladder.ts`, which states where it sits): drive a
  * settler's live {@link TrainingOrder} one step forward.
  *
- * The settler walks to the barracks door, steps inside ({@link Resting}) and runs the exercise atomic one
- * repetition at a time until {@link BARRACKS_DRILL_TICKS} are served, then steps back out {@link enlist}ed.
+ * The settler walks to the barracks door, steps inside and runs the exercise atomic one repetition at a
+ * time until {@link BARRACKS_DRILL_TICKS} are served, then steps back out {@link enlist}ed.
  * The order is abandoned when the barracks is gone/unbuilt or its door is no longer open to the settler —
  * it is handed back to the economy rather than looping on a dead errand.
  */
@@ -58,8 +53,7 @@ export function planTraining(
   if (!isBarracks(world, ctx, order.house)) return abandonDrill(world, e);
   const door = interactionCell(world, ctx, terrain, order.house, here);
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
-  atOrWalk(world, e, here, door, () => {
-    world.add(e, Resting, { at: order.house });
+  enterBuilding(world, e, order.house, here, door, () =>
     startAtomic(
       world,
       e,
@@ -67,8 +61,8 @@ export function planTraining(
       { kind: 'exercise' },
       needAtomicDuration(ctx.content, settler, EXERCISE_ATOMIC_ID),
       order.house,
-    );
-  });
+    ),
+  );
   return true;
 }
 
@@ -112,7 +106,7 @@ export function serveDrillRepetition(
 /** Drop the errand and the inside-the-house marker, releasing the settler to the economy (`false`). */
 function abandonDrill(world: World, e: Entity): boolean {
   world.remove(e, TrainingOrder);
-  world.remove(e, Resting);
+  stepOut(world, e);
   return false;
 }
 

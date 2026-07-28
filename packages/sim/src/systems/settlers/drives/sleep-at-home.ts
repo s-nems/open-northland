@@ -1,4 +1,4 @@
-import { CurrentAtomic, Residence, Resting, type SettlerIdentity } from '../../../components/index.js';
+import { CurrentAtomic, Residence, type SettlerIdentity } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -10,7 +10,8 @@ import {
   needAtomicDuration,
 } from '../../readviews/animations.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { atOrWalk, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -41,10 +42,9 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 const HOME_SLEEP_SUFFIX = '_home';
 
 /**
- * Send `e` to bed in its own house: walk to the home's door, then step inside ({@link Resting} — the
- * render hides a settler that has gone in) and run the sleep atomic there. Returns `false` when the
- * settler has no home, its home is gone or still a building site, or the door lies outside its signpost
- * area — the caller then falls back to the open-ground rule.
+ * Send `e` to bed in its own house: walk to the home's door, step inside and run the sleep atomic there.
+ * Returns `false` when the settler has no home, its home is gone or still a building site, or the door
+ * lies outside its signpost area - the caller then falls back to the open-ground rule.
  */
 export function sleepAtHome(
   world: World,
@@ -64,29 +64,23 @@ export function sleepAtHome(
   // settler looping on an unroutable door would never fall through to the open-ground rule and would
   // stay pinned at the top of its fatigue bar forever.
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), door)) return false;
-  atOrWalk(world, e, here, door, () => {
-    world.add(e, Resting, { at: home });
-    startAtomic(world, e, SLEEP_ATOMIC_ID, { kind: 'sleep' }, homeSleepDuration(ctx, settler), e);
-  });
+  enterBuilding(world, e, home, here, door, () =>
+    startAtomic(world, e, SLEEP_ATOMIC_ID, { kind: 'sleep' }, homeSleepDuration(ctx, settler), e),
+  );
   return true;
 }
 
 /**
- * Whether `e` is inside its OWN house mid-sleep — the test that stops the planner shedding the marker
- * that put it there. Every other drive treats a lingering {@link Resting} as stale (`./ladder.ts`,
- * `planner/replan.ts`), so without this the settler would be turfed out of its own bed the tick it got in.
- *
- * The `at === home` check is load-bearing, not belt-and-braces: the open-ground rung starts an
- * identical `sleep` atomic, and a settler on `FamilyDuty` keeps its `Resting` through a re-plan
- * (`planner/replan.ts`), so testing the atomic alone would hide a settler asleep in a field behind a stale
- * marker pointing at some workplace it waited in earlier.
+ * Whether `e` is inside its OWN house mid-sleep - the exception `./ladder.ts` tests before shedding the
+ * marker that just put it there. Testing the house, not just the marker, is load-bearing: the open-ground
+ * rung starts an identical `sleep` atomic and a settler on `FamilyDuty` keeps its marker through a
+ * re-plan, so the atomic alone would hide a settler asleep in a field behind a stale one pointing at a
+ * workplace it waited in earlier.
  */
 export function isSleepingAtHome(world: World, e: Entity): boolean {
-  const restingAt = world.tryGet(e, Resting)?.at;
+  const home = world.tryGet(e, Residence)?.home;
   return (
-    restingAt !== undefined &&
-    restingAt === world.tryGet(e, Residence)?.home &&
-    world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep'
+    home !== undefined && isInside(world, e, home) && world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep'
   );
 }
 

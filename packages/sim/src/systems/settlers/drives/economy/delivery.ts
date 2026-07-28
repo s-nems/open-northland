@@ -5,7 +5,6 @@ import {
   JobAssignment,
   PathRequest,
   Position,
-  Resting,
   UnderConstruction,
   WorkFlag,
   YardDeliveryRoute,
@@ -19,6 +18,7 @@ import { clearNavState } from '../../../spatial/nodes.js';
 import { stampSupplyRun } from '../../../stores/index.js';
 import { dropCarryAtOwnTile } from '../../atomics/effects/goods/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../../atomics/start.js';
+import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, nearestFreeYardNode } from '../../targets/index.js';
 import { deliveryTargetFor } from './delivery-targets.js';
@@ -87,9 +87,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
       !world.has(workplace, UnderConstruction) &&
       world.has(workplace, Position)
     ) {
-      atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-        world.add(entity, Resting, { at: workplace }),
-      );
+      enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here));
       return;
     }
     // Reaching here: no sink, and not a producer resting in a completed Building workplace. A settler still
