@@ -1,5 +1,5 @@
-export { type BobsIndexEntry, buildBobsIndexEntries } from './bobs-index.js';
-export { buildMapsIndexEntries, type MapsIndexEntry } from './maps-index.js';
+export { buildBobsIndexEntries } from './bobs-index.js';
+export { buildMapsIndexEntries } from './maps-index.js';
 export {
   type ContentFileHit,
   type ContentHit,
@@ -8,3 +8,4 @@ export {
   resolveContentRequest,
 } from './routes.js';
 export { resolveFileUnderRoot } from './under-root.js';
+export type { BobsIndexEntry, MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';

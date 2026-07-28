@@ -1,3 +1,5 @@
+import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+
 /**
  * Pure roster state for the map-select player panel: seats, colours and vacant modes over the
  * slots `/maps-index` serves. No DOM — the panel half lives in `panel.ts`; everything here is
@@ -5,23 +7,7 @@
  */
 
 /** One map player slot as `/maps-index` serves it (the script sidecar's roster + lobby table). */
-export interface MapPlayerSlot {
-  readonly player: number;
-  /** The authored `playerdata` type — what the slot does when nobody sits on it. */
-  readonly type: 'human' | 'ai';
-  readonly tribeId: number;
-  readonly colorId: number;
-  readonly name?: string;
-  /** Whether a person may take this seat (authored `human`, or the map's `[multiplayer]`
-   *  `playeroption` row offers `human` — the original lobby's seat-eligibility table). */
-  readonly claimable: boolean;
-  /** `[multiplayer]` `playerhideinmenu` — never listed (but still in the game and wearing its
-   *  authored colour, so its colour stays reserved in the picker). */
-  readonly hidden: boolean;
-  /** Whether the seat may auto-play when vacant — its `playeroption` row offers `ai` (or the map
-   *  ships no row). Human/Closed-only rows exist in the corpus; those seats never get the toggle. */
-  readonly aiAllowed: boolean;
-}
+export type MapPlayerSlot = MapsIndexPlayerSlot;
 
 /** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
 export type VacantMode = 'idle' | 'ai';
