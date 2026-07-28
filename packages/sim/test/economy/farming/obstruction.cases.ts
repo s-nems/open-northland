@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
+import { nodeOfPosition } from '../../../src/nav/halfcell.js';
 import { applySow } from '../../../src/systems/index.js';
+import { testContent } from '../../fixtures/content.js';
 
 import {
   BLOCKHOUSE,
@@ -14,17 +16,20 @@ import {
   fieldAt,
   fieldAtNode,
   grassMap,
+  heapAtNode,
   Position,
   STAGES,
   Stockpile,
+  sceneryAtNode,
   VIKING,
   WHEAT,
   wallsContent,
 } from './support.js';
 
-// A farm standing in a built-up settlement: buildings appear over ground its fields hold, and its sow
-// lattice has to find the gaps between them. Every case here needs a walk-BLOCKING building, so they all
-// run on the fixture's one walled type (`blockhouseAt`) — the rest of the fixture blocks nothing.
+// A farm whose plot has to find the gaps around whatever already stands on its ground: walls it cannot walk
+// through, and bodies that merely occupy a node without blocking it. The walled cases run on the fixture's
+// one walled type (`blockhouseAt`) — the rest of the fixture blocks nothing, which is exactly what makes it
+// the fixture for the occupancy half.
 
 describe('a building raised over a field', () => {
   it('is allowed onto a standing plot — farmland never refuses a site', () => {
@@ -111,5 +116,46 @@ describe('sowing against standing walls', () => {
       expect(sim.world.get(e, Position).x).toBeLessThan(fx.fromInt(5));
     }
     expect(sim.world.get(farm, Stockpile).amounts.get(WHEAT) ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe('sowing around bodies that stand without blocking', () => {
+  // The occupancy half of the lattice filter, the one the walk-block overlay cannot answer: a loose heap or
+  // a footprint-less scenery node is walkable, so only the standing-entity check keeps a plant off it. The
+  // planner and `applySow` share that check, so a node the planner rejects is never one the swing accepts.
+  const SOW_TICKS = 120;
+
+  function sowingSim(): Simulation {
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(14, 14) });
+    const farm = farmAt(sim, 7, 7);
+    farmerAt(sim, 7, 7, farm);
+    return sim;
+  }
+
+  /** The half-cell nodes this world's plants stand on. */
+  function cropNodes(sim: Simulation): { hx: number; hy: number }[] {
+    return [...sim.world.query(Crop, Position)].map((e) => {
+      const p = sim.world.get(e, Position);
+      return nodeOfPosition(p.x, p.y);
+    });
+  }
+
+  it('never plants on a node a heap or a scenery node already holds', () => {
+    const baseline = sowingSim();
+    baseline.run(SOW_TICKS);
+    const sown = cropNodes(baseline);
+    const [heap, scenery] = sown; // two nodes this farm provably reaches for
+    if (heap === undefined || scenery === undefined) throw new Error('the baseline farm sowed too little');
+
+    const sim = sowingSim();
+    heapAtNode(sim, heap.hx, heap.hy);
+    sceneryAtNode(sim, scenery.hx, scenery.hy);
+    sim.run(SOW_TICKS);
+
+    const replanted = cropNodes(sim);
+    expect(replanted).not.toContainEqual(heap);
+    expect(replanted).not.toContainEqual(scenery);
+    // Not vacuous: it filled the same number of fields, just on other ground.
+    expect(replanted).toHaveLength(sown.length);
   });
 });

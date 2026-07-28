@@ -1,6 +1,7 @@
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { createSpatialMemo } from './memo.js';
+import { NodeBuckets, nodeKey } from './nodes.js';
 
 /**
  * The per-world region spatial index shared by the resource and berry-bush indexes — the golden-rule-6
@@ -29,6 +30,9 @@ interface RegionMember {
 
 interface RegionState<Extra> {
   byRegion: Map<number, RegionMember[]>;
+  /** The same members re-bucketed at NODE granularity, minted by the first {@link RegionIndex.atNode}
+   *  caller and maintained from then on — an index nobody probes per node never pays for it. */
+  byNode: NodeBuckets | null;
   /** Ascending-id canonical membership — the mutable master copy behind {@link RegionIndex.canonical}. */
   list: Entity[];
   /** The shared frozen view handed to consumers, minted lazily and dropped on every change — a consumer
@@ -81,12 +85,52 @@ export interface RegionIndex<Extra> {
    *  {@link near}: no collection, no sort (order-independent for a pure "is there one?"), first hit
    *  returns. For scans like "does any live resource of this good stand nearby". */
   someNear(world: World, hx: number, hy: number, reach: number, test: (e: Entity) => boolean): boolean;
+  /** Every indexed entity whose anchor node IS `(hx, hy)`, ascending-id — the exact-node twin of
+   *  {@link near}, for the per-node occupancy probes ("is anything standing on this tile?"). O(1) where
+   *  the same question through `near(..., 0)` costs a whole region bucket. Unlike {@link near} this is
+   *  the index's LIVE bucket, not a copy: a caller that destroys members must copy it first. */
+  atNode(world: World, hx: number, hy: number): readonly Entity[];
   /** The per-index derived extra, maintained incrementally beside the membership. */
   extra(world: World): Extra;
 }
 
 function regionKeyOf(hx: number, hy: number): number {
   return Math.floor(hx / REGION_NODES) * REGION_KEY_STRIDE + Math.floor(hy / REGION_NODES);
+}
+
+/** The minted node layer's held-versus-fresh leg. It rides its own insert/remove calls beside `byRegion`,
+ *  so a missed one is invisible to the region walk and would surface only as a wrong occupancy answer.
+ *  Element-wise like the stockpile index's, so it still holds once an `atNode` caller picks a winner. */
+function nodeLayerDivergence(
+  verifier: string,
+  held: NodeBuckets,
+  fresh: Map<number, RegionMember[]>,
+): string[] {
+  const expected = new Map<string, Entity[]>();
+  // A node belongs to exactly one region and every region bucket is ascending-id, so appending here
+  // reproduces the ascending order both `atNode` paths build.
+  for (const bucket of fresh.values()) {
+    for (const m of bucket) {
+      const at = expected.get(nodeKey(m.hx, m.hy));
+      if (at === undefined) expected.set(nodeKey(m.hx, m.hy), [m.e]);
+      else at.push(m.e);
+    }
+  }
+  for (const bucket of held.buckets()) {
+    const key = nodeKey(bucket.x, bucket.y);
+    const want = expected.get(key);
+    if (want === undefined || want.length !== bucket.entities.length) {
+      return [`${verifier} node layer diverges at (${bucket.x},${bucket.y}) — a removal missed`];
+    }
+    if (want.some((e, i) => bucket.entities[i] !== e)) {
+      return [`${verifier} node layer is out of order at (${bucket.x},${bucket.y})`];
+    }
+    expected.delete(key);
+  }
+  if (expected.size > 0) {
+    return [`${verifier} node layer is missing ${expected.size} node(s) — an insert missed`];
+  }
+  return [];
 }
 
 /**
@@ -105,7 +149,7 @@ export function createRegionIndex<Extra, Capture>(
   }
 
   const memo = createSpatialMemo<RegionState<Extra>, Member>(component, labels, {
-    empty: () => ({ byRegion: new Map(), list: [], frozen: null, extra: extraOps.empty() }),
+    empty: () => ({ byRegion: new Map(), byNode: null, list: [], frozen: null, extra: extraOps.empty() }),
     member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
     insert: (state, e, m) => {
       state.frozen = null;
@@ -117,6 +161,7 @@ export function createRegionIndex<Extra, Capture>(
         state.byRegion.set(key, bucket);
       }
       insertSortedById(bucket, { e, hx: m.hx, hy: m.hy }, (member) => member.e);
+      state.byNode?.insert(e, m.hx, m.hy);
       extraOps.insert(state.extra, m.capture);
     },
     remove: (state, e, m) => {
@@ -128,6 +173,7 @@ export function createRegionIndex<Extra, Capture>(
         removeSortedById(bucket, e, (member) => member.e);
         if (bucket.length === 0) state.byRegion.delete(key);
       }
+      state.byNode?.remove(e, m.hx, m.hy);
       extraOps.remove(state.extra, m.capture);
     },
     diverges: (held, fresh) => {
@@ -150,6 +196,10 @@ export function createRegionIndex<Extra, Capture>(
             `${labels.verifier} region ${key} diverges from a fresh rebuild — a ${labels.singular} moved in place`,
           ];
         }
+      }
+      if (held.byNode !== null) {
+        const missed = nodeLayerDivergence(labels.verifier, held.byNode, fresh.byRegion);
+        if (missed.length > 0) return missed;
       }
       if (extraOps.diverges(held.extra, fresh.extra)) {
         return [
@@ -187,6 +237,17 @@ export function createRegionIndex<Extra, Capture>(
       // ascending-id order the nearest-scan's first-wins tie-break depends on.
       out.sort((a, b) => a - b);
       return out;
+    },
+    atNode: (world, hx, hy) => {
+      const state = memo.read(world);
+      if (state.byNode === null) {
+        const buckets = new NodeBuckets(world, []);
+        for (const bucket of state.byRegion.values()) {
+          for (const m of bucket) buckets.insert(m.e, m.hx, m.hy);
+        }
+        state.byNode = buckets;
+      }
+      return state.byNode.at(hx, hy);
     },
     someNear: (world, hx, hy, reach, test) => {
       const index = memo.read(world);
