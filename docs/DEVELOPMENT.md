@@ -99,6 +99,9 @@ Screenshots still need human review.
 Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
 rather than weak: re-run on an idle box instead of reading them.
 
+`bench:sim` and `bench:map` each rebuild the workspace from scratch before measuring, so a bare run
+describes the working tree rather than whatever was last built.
+
 Run the synthetic simulation benchmark with `npm run bench:sim`. Its main controls are
 `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
 and `ON_BENCH_JSON`.

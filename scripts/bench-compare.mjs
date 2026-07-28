@@ -4,10 +4,9 @@
 //   npm run bench:compare -- before.json after.json    two named reports
 // The comparison itself is typed TS under packages/app/bench so the report shapes live in one place;
 // with no arguments the pair is resolved there too, against the same guards the comparison raises on.
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { repoRoot } from './content-dir.mjs';
+import { runBenchFile } from './bench-run.mjs';
 
 const args = process.argv.slice(2);
 if (args.length !== 0 && args.length !== 2) {
@@ -29,13 +28,5 @@ if (args.length === 2) {
   named.ON_BENCH_AFTER = paths[1];
 }
 
-const result = spawnSync(
-  'npx',
-  ['vitest', 'run', '--config', 'packages/app/bench/vitest.config.ts', 'compare'],
-  {
-    stdio: 'inherit',
-    cwd: repoRoot,
-    env: { ...process.env, ...named },
-  },
-);
-process.exit(result.status ?? 1);
+// No rebuild: the comparison reads two stored reports and never loads a workspace package.
+runBenchFile('compare', { ...process.env, ...named });

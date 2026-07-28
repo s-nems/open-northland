@@ -32,6 +32,4 @@ still blends both axes. The synthetic fixture is what separates them.
 
 Report before/after ratios and show cost growing no faster than the active-work axis. `npm run bench:map`
 reports that ratio directly in its growth table; `npm run bench:compare` puts two runs side by side.
-Both need the sim built first — see
-[bench-map-measures-stale-dist](../tooling/bench-map-measures-stale-dist.md). Goldens and atomic traces
-remain byte-identical; run `npm test`, `npm run check`, and `npm run build`.
+Goldens and atomic traces remain byte-identical; run `npm test`, `npm run check`, and `npm run build`.
