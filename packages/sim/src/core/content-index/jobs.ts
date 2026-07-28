@@ -29,6 +29,17 @@ export function isFighterRole(role: JobRole | null): boolean {
   return role === 'soldier' || role === 'hero';
 }
 
+/**
+ * Whether a job id names the transport trade — the original's carrier (`logicworker 24`, the "tragarz" who
+ * ferries goods but never operates a workshop's craft). An APPROXIMATION over the extracted job name, the
+ * same basis as {@link jobRoleOfId}: no readable rule file carries a transport flag, and both the sandbox
+ * content and the extraction pipeline emit this job under the stable `carrier` slug. The one owner of that
+ * test — the producer drive, the operator count and the HUD all route through it.
+ */
+export function isCarrierJobId(id: string): boolean {
+  return id === 'carrier';
+}
+
 /** The job typeIds of each role. */
 export type JobRoleSets = Readonly<Record<JobRole, ReadonlySet<number>>>;
 

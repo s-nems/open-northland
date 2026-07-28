@@ -1,4 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
@@ -95,4 +96,11 @@ export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | und
   const stages: Readonly<Record<string, string | undefined>> = messages().lifeStage;
   const stage = job?.id !== undefined ? stages[job.id] : undefined;
   return stage ?? job?.name ?? jobLabel(jobType);
+}
+
+/** Whether a job slot is the transport trade — the sim's own carrier rule ({@link systems.isCarrierJobRow}),
+ *  read over the panel's content slice so the HUD cannot classify it differently. */
+export function isCarrierJob(ctx: UnitPanelModelContext, jobType: number): boolean {
+  const job = ctx.jobs.find((j) => j.typeId === jobType);
+  return job !== undefined && systems.isCarrierJobRow(job);
 }

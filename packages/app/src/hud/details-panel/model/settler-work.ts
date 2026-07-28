@@ -8,6 +8,7 @@ import {
   type Comp,
   goodDef,
   goodLabel,
+  isCarrierJob,
   recipeOutputs,
   type UnitPanelModelContext,
 } from './context.js';
@@ -187,8 +188,7 @@ function craftChoicesFor(
   if (def === undefined || def.recipes.length === 0) return null;
   const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
   if (jobType === undefined) return null;
-  const isCarrier = (jt: number) => ctx.jobs.find((j) => j.typeId === jt)?.id === 'carrier';
-  const operatorSlots = def.workers.filter((slot) => !isCarrier(slot.jobType));
+  const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
   const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
   const choices = def.recipes.flatMap((recipe) => {
