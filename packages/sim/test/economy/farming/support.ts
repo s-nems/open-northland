@@ -33,6 +33,11 @@ export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Re
 
 export const GRASS = 0;
 export const WHEAT = 6;
+/** A good the farm neither grows nor stores — what the standing-body fixtures hold so no drive wants them. */
+const PLANK = 2;
+/** A harvest atomic the farmer is not permitted (fixture job 18 allows 29/34/35 only), so a standing-body
+ *  fixture cannot be mistaken for one of the farm's own targets. */
+const OFF_TRADE_ATOMIC = 25;
 export const FARMER = 18;
 export const FARM = 5;
 export const VIKING = 1;
@@ -135,6 +140,26 @@ export function fieldAtNode(
     watered: opts.watered ?? false,
     yieldUnits: 1,
   });
+  return e;
+}
+
+/** A loose ground pile on half-cell node (hx, hy), holding a good no farmer fetches (a {@link GroundDrop}
+ *  is never a delivery sink, and a non-wheat one is never a sheaf). Blocks nothing — it only STANDS there,
+ *  which is the occupancy the sow lattice filters on separately from the walk-block overlay. */
+export function heapAtNode(sim: Simulation, hx: number, hy: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  sim.world.add(e, Stockpile, { amounts: new Map([[PLANK, 1]]) });
+  sim.world.add(e, GroundDrop, { goodType: PLANK });
+  return e;
+}
+
+/** A footprint-less resource node on half-cell node (hx, hy) — scenery that stands without blocking, the
+ *  {@link heapAtNode} twin on the resource side of the same occupancy rule. */
+export function sceneryAtNode(sim: Simulation, hx: number, hy: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  sim.world.add(e, Resource, { goodType: PLANK, remaining: 0, harvestAtomic: OFF_TRADE_ATOMIC });
   return e;
 }
 

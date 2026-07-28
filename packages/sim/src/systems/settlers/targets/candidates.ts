@@ -64,8 +64,8 @@ export interface TargetCandidates {
 
 /** Snapshot the planner's canonical target categories once for the tick.
  *
- *  The three {@link InteractionCellIndex}es are lazy getters memoized for the tick (the
- *  `FarmClaims.sowScan` shape), so a tick where no settler asks for a nearest store / temple / site
+ *  The three {@link InteractionCellIndex}es are lazy getters memoized for the tick, so a tick where no
+ *  settler asks for a nearest store / temple / site
  *  never constructs that index. Deferring the build cannot move a pick: each index is built from the
  *  eager candidate list here, and its constructor reads only `Building` + `Position` + the content
  *  footprint — none of which the planner pass mutates — so the first-access build is byte-identical

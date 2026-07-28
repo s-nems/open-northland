@@ -13,7 +13,7 @@ import {
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/index.js';
-import { resourcesNearNode } from '../spatial/resources.js';
+import { resourcesAtNode } from '../spatial/resources.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
 // Field farming — the content resolution, growth system and atomic-effect appliers behind the farm's
@@ -105,15 +105,14 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
 }
 
 /** Whether any standing entity already occupies the half-cell node `(hx, hy)` for sowing purposes — a
- *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). Reads live state, not the
- *  planner's tick-start `sowScan`: this is the completion-time re-check, so it must see a field or heap that
- *  landed on the node *since* the planner chose it. A membership test (boolean, no pick), so the stockpile
- *  index's superset answer needs no canonical ordering. Covers standing entities only; the walls half of the
- *  same race is {@link applySow}'s separate block-set check. Both halves ride incrementally-maintained
- *  indexes, so the sow the swing just planted costs an O(1) index update, not a rebuild. */
-function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
-  if (stockpilesAtNode(world, hx, hy).length > 0) return true;
-  return resourcesNearNode(world, hx, hy, 0).length > 0; // reach 0 — exactly this node's anchors
+ *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). The ONE occupancy rule
+ *  behind both halves of the sow race: the planner filters its lattice with it, and {@link applySow}
+ *  re-checks it when the swing lands, so it must read LIVE state — a field or heap that landed on the node
+ *  since the planner chose it still has to reject the swing. A membership test (boolean, no pick), so the
+ *  node indexes' superset answers need no canonical ordering. Covers standing entities only; the walls half
+ *  is {@link applySow}'s separate block-set check. */
+export function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
+  return stockpilesAtNode(world, hx, hy).length > 0 || resourcesAtNode(world, hx, hy).length > 0;
 }
 
 /**
@@ -210,7 +209,7 @@ export function applyWater(world: World, crop: Entity): void {
  * merely inside the reserved margin is still walkable, reachable and worth reaping. That is the one
  * difference from the decor razing passes, which clear the whole reserved zone.
  *
- * Bounded by the footprint (golden rule 6): one reach-0 index probe per blocked cell, never a field scan.
+ * Bounded by the footprint (golden rule 6): one node probe per blocked cell, never a field scan.
  */
 export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
@@ -227,7 +226,9 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
   for (const cell of translatedCells(terrain, footprint.blocked, hx, hy)) {
     if (!blocked.has(cell)) continue;
     const at = terrain.coordsOf(cell);
-    for (const e of resourcesNearNode(world, at.x, at.y, 0)) {
+    // Copied first: the probe hands back the index's LIVE node bucket, and the destroys below splice it
+    // the moment anything re-reads the resource index.
+    for (const e of [...resourcesAtNode(world, at.x, at.y)]) {
       if (!world.has(e, Crop)) continue;
       unstampResourceFootprint(world, e); // through the incremental cache, never a full overlay rebuild
       world.destroy(e);

@@ -63,6 +63,12 @@ export function resourcesNearNode(world: World, hx: number, hy: number, reach: n
   return index.near(world, hx, hy, reach);
 }
 
+/** Every resource whose anchor node IS `(hx, hy)` — the exact-node occupancy probe behind the sow lattice
+ *  and the field-razing pass. The index's live bucket — copy it before destroying members. */
+export function resourcesAtNode(world: World, hx: number, hy: number): readonly Entity[] {
+  return index.atNode(world, hx, hy);
+}
+
 /** Whether any resource inside the same box passes `test` — the existence-only twin of
  *  {@link resourcesNearNode}: no collection, no sort, first hit returns. */
 export function anyResourceNear(

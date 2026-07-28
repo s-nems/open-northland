@@ -5,6 +5,7 @@ import { positionOfNode } from '../../src/nav/halfcell.js';
 import {
   canonicalResources,
   resourceHarvestAtomics,
+  resourcesAtNode,
   resourcesNearNode,
 } from '../../src/systems/spatial/resources.js';
 import { testContent } from '../fixtures/content.js';
@@ -101,6 +102,40 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     sim.world.destroy(b);
     expect(resourceHarvestAtomics(sim.world).has(24)).toBe(false); // last one gone
     expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('atNode answers the node itself, not the region box around it', () => {
+    const sim = newSim();
+    const on = nodeAt(sim, 20, 20);
+    nodeAt(sim, 21, 20); // one node over, same 32-node region — must not answer for (20, 20)
+    expect(resourcesAtNode(sim.world, 20, 20)).toEqual([on]);
+    expect(resourcesAtNode(sim.world, 22, 20)).toEqual([]);
+  });
+
+  it('atNode mints from the standing population and tracks creates and destroys after', () => {
+    const sim = newSim();
+    const first = nodeAt(sim, 7, 7);
+    const second = nodeAt(sim, 7, 7); // stacked BEFORE the mint — the region-walk path, not the incremental one
+    expect(resourcesAtNode(sim.world, 7, 7)).toEqual([first, second]); // the mint
+    const third = nodeAt(sim, 7, 7);
+    expect(resourcesAtNode(sim.world, 7, 7)).toEqual([first, second, third]);
+    sim.world.destroy(first);
+    expect(resourcesAtNode(sim.world, 7, 7)).toEqual([second, third]);
+    sim.world.destroy(second);
+    sim.world.destroy(third);
+    expect(resourcesAtNode(sim.world, 7, 7)).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('keeps a node bucket ascending when a lower id re-enters the store', () => {
+    const sim = newSim();
+    const a = nodeAt(sim, 9, 9);
+    const b = nodeAt(sim, 9, 9);
+    expect(resourcesAtNode(sim.world, 9, 9)).toEqual([a, b]);
+    sim.world.remove(a, Resource);
+    expect(resourcesAtNode(sim.world, 9, 9)).toEqual([b]);
+    sim.world.add(a, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    expect(resourcesAtNode(sim.world, 9, 9)).toEqual([a, b]); // sorted re-entry, not an append
   });
 
   it('canonicalResources memoizes the ascending full list against the same generation', () => {

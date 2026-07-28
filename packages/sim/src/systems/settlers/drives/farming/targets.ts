@@ -1,10 +1,9 @@
 import { Position, Stockpile, sameSideAs } from '../../../../components/index.js';
 import { coordHash } from '../../../../core/coord-hash.js';
-import type { Entity, World } from '../../../../ecs/world.js';
+import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import type { SystemContext } from '../../../context.js';
-import type { FarmingSpec } from '../../../economy/fields.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
+import { type FarmingSpec, sowNodeOccupied } from '../../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
 import { closer, manhattan } from '../../../spatial/nodes.js';
 import { lowestStockedGood } from '../../../stores/index.js';
@@ -12,11 +11,10 @@ import type { PlannerContext } from '../../planner/context.js';
 import {
   interactionCell,
   nearestByCell,
-  type TargetCandidates,
   unreachableWorkCell,
   type WorkCellGates,
 } from '../../targets/index.js';
-import type { FarmClaims, SowScan } from './claims.js';
+import type { FarmClaims } from './claims.js';
 
 /**
  * The nearest cut-sheaf {@link import('../../../../components/index.js').GroundDrop} of the farmed good lying
@@ -94,10 +92,9 @@ function sowJitter(bx: number, by: number): { dx: number; dy: number } {
  * lands on sand/desert/snow), clear of the walk-block overlays (building walls, standing resources),
  * not occupied by any resource/field/heap, and not claimed by another farmer's in-flight action.
  *
- * Cost: O(radius² / step²) candidates per sow attempt, plus ONE O(resources + stockpiles + footprints)
- * occupancy/blockage index per TICK — built by the first farmer to reach its sow step, reused by every
- * later one ({@link FarmClaims.sowScan}); an idle farmer replanning against an exhausted ring must not
- * rebuild the world index every tick.
+ * Cost: O(radius² / step²) candidates per sow attempt, each occupancy probe an O(1) node-index lookup
+ * and the block test an O(1) membership view — the search reads the farm's own ring, never the map's
+ * standing entities.
  */
 export function nextSowNode(
   plan: PlannerContext,
@@ -108,10 +105,9 @@ export function nextSowNode(
     readonly gates: WorkCellGates;
   },
 ): NodeId | null {
-  const { world, ctx, terrain, here, targets } = plan;
+  const { world, ctx, terrain, here } = plan;
   const { anchor, spec, claims, gates } = opts;
-  claims.sowScan ??= buildSowScan(world, ctx, terrain, targets);
-  const { blocked, occupied } = claims.sowScan;
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
 
   const at = terrain.coordsOf(anchor);
   const radius = spec.farming.fieldRadius;
@@ -130,7 +126,7 @@ export function nextSowNode(
       if (dist > radius) continue; // outside the farm's field ring
       if (!terrain.isWalkable(node) || blocked.has(node)) continue; // water/walls/standing bodies
       if (!terrain.isPlantable(node)) continue; // barren ground (sand/desert/snow) — grain needs grass
-      if (occupied.has(node) || claims.nodes.has(node)) continue; // taken, or claimed by a colleague
+      if (claims.nodes.has(node) || sowNodeOccupied(world, hx, hy)) continue; // claimed, or already taken
       // A free, plantable node the farmer cannot actually walk to — the far bank of a river the radius
       // spans, or a pocket the surrounding walls seal off. The sow node IS the walk goal, so without this
       // the farmer re-picks the same doomed spot every replan and its whole plot goes untended behind it.
@@ -143,24 +139,4 @@ export function nextSowNode(
     }
   }
   return best;
-}
-
-/** Build the tick's {@link SowScan}: the dynamic walk-block overlay plus every node a standing entity
- *  occupies (resources + fields, stores, loose heaps, dropped sheaves). Pure tick-start world state —
- *  see {@link FarmClaims.sowScan} for why it is built once per tick, not per farmer. */
-function buildSowScan(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  targets: TargetCandidates,
-): SowScan {
-  const occupied = new Set<NodeId>();
-  const occupy = (e: Entity): void => {
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    occupied.add(terrain.nodeAtClamped(n.hx, n.hy));
-  };
-  for (const e of targets.resources) occupy(e);
-  for (const e of targets.stockpiles) occupy(e);
-  return { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied };
 }
