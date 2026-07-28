@@ -10,7 +10,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
@@ -84,8 +84,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     const good = lowestStockedGood(stock);
     if (good === null) continue;
     const p = world.get(entity, Position);
-    const node = nodeOfPosition(p.x, p.y);
-    yardOccupied.set(terrain.nodeAtClamped(node.hx, node.hy), {
+    yardOccupied.set(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)), {
       good,
       fill: stock.amounts.get(good) ?? 0,
       owner: ownerOf(world, entity),

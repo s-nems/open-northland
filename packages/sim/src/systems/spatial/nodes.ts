@@ -1,7 +1,7 @@
 import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../../components/index.js';
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { closer, forEachRingOffset, manhattan, nodeKey } from '../footprint/geometry.js';
 
@@ -66,8 +66,7 @@ export function forEachIndexNode(
   }
   const p = world.tryGet(e, Position);
   if (p === undefined) return;
-  const n = nodeOfPosition(p.x, p.y);
-  visit(e, n.hx, n.hy);
+  visit(e, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
 
 /**
@@ -176,11 +175,15 @@ export class NodeBuckets {
     maxDist: number,
     accept: (e: Entity) => boolean,
   ): { entity: Entity; distance: number } | null {
+    // One visitor for the whole search (not one per ring): `best` resets per ring, so the first ring
+    // with a hit still returns before any farther ring is touched.
+    let best: Entity | null = null;
+    const visit = (dx: number, dy: number): void => {
+      best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
+    };
     for (let d = minDist; d <= maxDist; d++) {
-      let best: Entity | null = null;
-      forEachRingOffset(d, (dx, dy) => {
-        best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
-      });
+      best = null;
+      forEachRingOffset(d, visit);
       if (best !== null) return { entity: best, distance: d };
     }
     return null;
@@ -226,8 +229,7 @@ export function isValidNodeId(terrain: TerrainGraph, node: number): node is Node
  */
 export function entityNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const p = world.get(e, Position);
-  const n = nodeOfPosition(p.x, p.y);
-  return terrain.nodeAtClamped(n.hx, n.hy);
+  return terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
 
 // closer, manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for

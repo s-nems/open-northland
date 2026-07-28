@@ -1,6 +1,6 @@
 import { Position } from '../../components/index.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { canonicalById } from './nodes.js';
 
 /**
@@ -68,8 +68,7 @@ export function createSpatialMemo<S, M>(
   const admit = (world: World, state: MemoState<S, M>, e: Entity): void => {
     const p = world.tryGet(e, Position);
     if (p === undefined) return; // Position-less: unindexable, exactly as the query-driven build skips it
-    const n = nodeOfPosition(p.x, p.y);
-    const m = payload.member(world, e, n.hx, n.hy);
+    const m = payload.member(world, e, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
     payload.insert(state.payload, e, m);
     state.members.set(e, m);
   };

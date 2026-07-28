@@ -117,6 +117,63 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
   });
 });
 
+describe('navigationLimitFor, the per-settler memo', () => {
+  it('re-serves one limit object while inputs hold; a node crossing or job change recomputes', () => {
+    const sim = confinedSim();
+    const u = ownedUnit(sim, 2, 2, 1);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const first = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(first).not.toBeNull();
+    // Identity, not equality: the memo must hand back the SAME gate, not an equivalent re-derivation.
+    expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(first);
+
+    // One tile east is a new half-cell node, so the local circle recentres.
+    sim.world.get(u, Position).x = fx.fromInt(3);
+    const moved = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(moved).not.toBe(first);
+    // The shifted rim: two nodes past the OLD east rim is out for the old gate, in for the new one.
+    const pastOldRim = terrain.nodeAt(4 + LOCAL_NAV_RADIUS_NODES + 2, 4);
+    expect(first?.allowsNode(pastOldRim)).toBe(false);
+    expect(moved?.allowsNode(pastOldRim)).toBe(true);
+
+    // A trade change to a fighter lifts the confinement: jobType is part of the memo key.
+    sim.world.add(u, Settler, { ...sim.world.get(u, Settler), jobType: SOLDIER });
+    expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
+  });
+
+  it('an erected signpost invalidates held limits through the Signpost store generation', () => {
+    const sim = confinedSim();
+    const u = ownedUnit(sim, 2, 2, 1);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const before = navigationLimitFor(sim.world, sim.content, terrain, u);
+    stampPost(sim, 12, 2, 16);
+    stampPost(sim, 26, 2, 16);
+    const after = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(after).not.toBe(before);
+    const farInPostCircle = terrain.nodeAt(64, 4);
+    expect(before?.allowsNode(farInPostCircle)).toBe(false);
+    expect(after?.allowsNode(farInPostCircle)).toBe(true);
+  });
+
+  it('toggling the rule off is honoured immediately: the flag is read live, never memoized', () => {
+    const sim = confinedSim();
+    const u = ownedUnit(sim, 2, 2, 1);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const first = navigationLimitFor(sim.world, sim.content, terrain, u);
+    expect(first).not.toBeNull();
+    sim.enqueue({ kind: 'setSignpostNavigation', enabled: false });
+    sim.step();
+    expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
+    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    // Re-enabling serves the held entry again: the toggle never invalidates, it only gates.
+    expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(first);
+  });
+});
+
 describe('confinement gates the gatherer scan', () => {
   it('a woodcutter ignores a tree beyond its area and harvests it once a signpost links it', () => {
     const sim = confinedSim(192);

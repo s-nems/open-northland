@@ -2,7 +2,7 @@ import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../compo
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
-import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
@@ -131,19 +131,21 @@ export const separationSystem: System = (world, ctx) => {
     if (ghost === undefined) {
       zones ??= calmZonesByPlayer(world, terrain);
       const p = world.get(e, Position);
-      const n = nodeOfPosition(p.x, p.y);
+      const hx = nodeHxOfPosition(p.x, p.y);
+      const hy = nodeHyOfPosition(p.y);
       ghost =
-        terrain.inBounds(n.hx, n.hy) &&
-        (zones.get(world.get(e, Owner).player)?.has(terrain.nodeAt(n.hx, n.hy)) ?? false);
+        terrain.inBounds(hx, hy) &&
+        (zones.get(world.get(e, Owner).player)?.has(terrain.nodeAt(hx, hy)) ?? false);
       ghostMemo.set(e, ghost);
     }
     return ghost;
   };
   let blockedOverlay: BlockOverlay | undefined;
   const safeLanding = (x: Fixed, y: Fixed): boolean => {
-    const n = nodeOfPosition(x, y);
-    if (!terrain.inBounds(n.hx, n.hy)) return false;
-    const node = terrain.nodeAt(n.hx, n.hy);
+    const hx = nodeHxOfPosition(x, y);
+    const hy = nodeHyOfPosition(y);
+    if (!terrain.inBounds(hx, hy)) return false;
+    const node = terrain.nodeAt(hx, hy);
     if (!terrain.isWalkable(node)) return false;
     blockedOverlay ??= dynamicBlockOverlay(world, ctx, terrain);
     return !blockedOverlay.has(node);
@@ -152,7 +154,8 @@ export const separationSystem: System = (world, ctx) => {
   for (const e of movers) {
     const start = before.get(e);
     if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
-    const node = nodeOfPosition(start.x, start.y);
+    const nodeHx = nodeHxOfPosition(start.x, start.y);
+    const nodeHy = nodeHyOfPosition(start.y);
     const isFirm = firmMovers.has(e);
 
     // Gather this mover's neighbourhood. Radius < both bucket pitches, so bodies within reach live in the 3×3
@@ -163,10 +166,10 @@ export const separationSystem: System = (world, ctx) => {
     nearPosts.length = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        for (const n of moverIndex.at(node.hx + dx, node.hy + dy)) {
+        for (const n of moverIndex.at(nodeHx + dx, nodeHy + dy)) {
           if (n !== e) nearMovers.push(n);
         }
-        if (isFirm) nearPosts.push(...postIndex.at(node.hx + dx, node.hy + dy));
+        if (isFirm) nearPosts.push(...postIndex.at(nodeHx + dx, nodeHy + dy));
       }
     }
     if (nearMovers.length === 0 && nearPosts.length === 0) {
