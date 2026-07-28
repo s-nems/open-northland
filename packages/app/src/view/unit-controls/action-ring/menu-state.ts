@@ -18,7 +18,7 @@ import { DEFAULT_MENU_STATE, type SettlerMenuState } from '../../../hud/action-r
  * make son+daughter) its ring shows. A multi-selection (or a missing entity) shows none: the family
  * orders are per-settler, so they only surface when exactly one settler anchors the ring. The scout
  * swap (erect-signpost replaces alert/query) keys on the selection's UNIFORM jobType, so a multi-scout
- * selection keeps the button (the erect order takes several scouts).
+ * selection keeps the button, though only `ids[0]` erects.
  */
 export const menuStateFor = (
   content: ContentSet,

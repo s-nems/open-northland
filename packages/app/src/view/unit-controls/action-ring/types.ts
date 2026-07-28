@@ -14,8 +14,7 @@ export interface SettlerActionsOptions {
   /** UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. May be fractional. */
   readonly uiscale: number;
   /** The selected settlers' centroid + ids for a frame's snapshot, or null when none is selected. The
-   *  caller binds the live selection and memoizes the O(entities) scan, so the open ring can ask every
-   *  frame. */
+   *  caller binds the live selection and memoizes the result, so the open ring can ask every frame. */
   readonly selectionCentre: (snapshot: WorldSnapshot) => SelectionCentre | null;
   /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
   readonly professions: readonly PickerEntry[];

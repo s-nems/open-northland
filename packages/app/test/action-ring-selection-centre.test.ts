@@ -37,6 +37,10 @@ describe('selectionCentre', () => {
 
   it('reports ids ascending whatever order they were clicked in', () => {
     expect(selectionCentre(world, new Set([3, 1, 2]))?.ids).toEqual([1, 2, 3]);
+    // A selected id with no live entity drops out instead of shifting the rest.
+    expect(selectionCentre(world, new Set([3, 99, 1]))?.ids).toEqual([1, 3]);
+    // Click order must not reach the centroid either: the same settlers sum in the same order.
+    expect(selectionCentre(world, new Set([2, 1]))).toEqual(selectionCentre(world, new Set([1, 2])));
   });
 
   it('costs the selection, not the map: a two-settler ring never walks a crowded snapshot', () => {
