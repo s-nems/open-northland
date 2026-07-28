@@ -9,6 +9,13 @@ import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
+import { buildingFootprintOf } from '../../../src/systems/footprint/geometry.js';
+import {
+  BUILDING_ZONE,
+  EXCLUSION,
+  eachBlockerCell,
+  OBSTACLE,
+} from '../../../src/systems/footprint/placement/blockers.js';
 import { testContent } from '../../fixtures/content.js';
 
 /**
@@ -101,4 +108,40 @@ export function placedBuilding(sim: Simulation, index = 0): Entity {
 
 export function buildingsPlaced(sim: Simulation): number {
   return [...sim.world.query(Building)].length;
+}
+
+/**
+ * The placement rule re-derived independently of the production code path: a direct
+ * {@link eachBlockerCell} walk into sparse string-keyed sets, then the reserved/body probe. The shipped
+ * rule reads a memoized dense `Uint8Array` mask instead, and its cache verifier re-stamps through that
+ * same path — so this is the only oracle that can catch a wrong channel routing or wrong `y*width+x`
+ * arithmetic inside it. String keys (not a numeric packing) so an off-map blocker cannot alias onto a
+ * real node here either.
+ */
+export function referenceCanPlace(
+  sim: Simulation,
+  terrain: TerrainGraph,
+  buildingType: number,
+  x: number,
+  y: number,
+): boolean {
+  const footprint = buildingFootprintOf(sim.content, buildingType);
+  if (footprint === undefined) return true; // no collision model — places freely
+  const obstacles = new Set<string>();
+  const exclusions = new Set<string>();
+  eachBlockerCell(sim.world, sim.content, (bx, by, channel) => {
+    if (channel === OBSTACLE || channel === BUILDING_ZONE) obstacles.add(`${bx},${by}`);
+    else if (channel === EXCLUSION) exclusions.add(`${bx},${by}`);
+  });
+  for (const c of footprint.reserved) {
+    const cx = x + c.dx;
+    const cy = y + c.dy;
+    if (!terrain.inBounds(cx, cy)) return false;
+    if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false;
+    if (obstacles.has(`${cx},${cy}`)) return false;
+  }
+  for (const c of footprint.familyBody) {
+    if (exclusions.has(`${x + c.dx},${y + c.dy}`)) return false;
+  }
+  return true;
 }
