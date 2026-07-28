@@ -8,5 +8,6 @@ export * from './door-badges.js';
 export * from './fog-gates.js';
 export * from './geometry-debug-items.js';
 export * from './hud-labels.js';
+export * from './selected-work-flags.js';
 export * from './settler-bubbles.js';
 export * from './snapshot-projections.js';
