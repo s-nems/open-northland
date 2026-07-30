@@ -1,6 +1,5 @@
 import type { FogView, SimEvent } from '@open-northland/sim';
 import { type Application, Container, type TextureSource } from 'pixi.js';
-import { type FogGhost, FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem, SceneTerrain } from '../../data/scene/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
@@ -13,7 +12,6 @@ import {
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
   DamageSmokeLayer,
-  FogLayer,
   type GeometryDebugItem,
   GeometryDebugLayer,
   HudLayer,
@@ -42,6 +40,7 @@ import {
   type WorldRendererOptions,
 } from './frame.js';
 import { WorldChrome } from './world-chrome.js';
+import { WorldFog } from './world-fog.js';
 
 /**
  * The retained-mode world renderer — a thin orchestrator over the sub-layers it composes. It owns a
@@ -65,16 +64,10 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
-  /** Entities the static map-object layer draws instead of the pool (see {@link setStaticallyDrawnRefs}). */
-  private staticDrawnRefs?: ReadonlySet<number>;
   private readonly pool: SpritePool;
-  /** The fog-of-war wash (world-space, over terrain + flat decor, below the sprites) + the viewer's
-   *  fog view it composites from ({@link updateFog}; null = fog off, the wash clears). */
-  private readonly fog: FogLayer;
-  private fogView: FogView | null = null;
-  /** The viewer's remembered statics (buildings/resources once seen, drawn dimmed on explored
-   *  ground) — refreshed on the fog view's mask generations inside {@link update}. */
-  private readonly fogGhosts = new FogGhostStore();
+  /** Fog of war (world-space wash over terrain + flat decor, below the sprites) with the remembered
+   *  statics and the static-layer handover set it culls against. See {@link WorldFog}. */
+  private readonly fog = new WorldFog();
   /** The build-mode dim wash over non-buildable tiles (world-space, below the sprites). */
   private readonly placementOverlay: PlacementOverlayLayer;
   /** Grey ground plots under placed construction sites (world-space, below the sprites). */
@@ -129,7 +122,6 @@ export class WorldRenderer {
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.collapses = new CollapseLayer(this.spriteLayer, this.textureCache, opts?.sheet);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
-    this.fog = new FogLayer();
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
@@ -174,12 +166,12 @@ export class WorldRenderer {
   /**
    * Set (or clear) this frame's fog-of-war view — the viewer player's per-cell visibility mask
    * (`Simulation.fogView`). Drives three things inside the next {@link update}: the fog wash over the
-   * ground ({@link FogLayer}), the sprite pool's fog cull, and the tall map-object gate. `null` = fog
-   * off, every layer reverts to its pre-fog behaviour. Call each frame; the wash itself re-composites
-   * only when band/generation move.
+   * ground, the sprite pool's fog cull, and the tall map-object gate. `null` = fog off, every layer
+   * reverts to its pre-fog behaviour. Call each frame; the wash itself re-composites only when
+   * band/generation move.
    */
   updateFog(view: FogView | null): void {
-    this.fogView = view;
+    this.fog.setView(view);
   }
 
   /**
@@ -262,26 +254,16 @@ export class WorldRenderer {
     this.mapObjects.remove(obj);
   }
 
-  /**
-   * Remember entity `ref` as a fog ghost even if its ground is not currently visible — the other half
-   * of the {@link removeMapObject} handover: a virgin node first worked under the viewer's fog leaves
-   * the static layer (its de-facto ghost) for the fog-culled sprite pool, so without this adoption its
-   * remembered look would vanish from explored ground. Queued until the next mask rebuild; harmless
-   * while fog is off (a fresh fog start re-explores from scratch anyway).
-   */
+  /** The other half of the {@link removeMapObject} handover: keep drawing `ref` as a remembered static
+   *  once it leaves the retained layer. See {@link WorldFog.adoptGhost}. */
   adoptFogGhost(ref: number): void {
-    this.fogGhosts.adopt(ref);
+    this.fog.adoptGhost(ref);
   }
 
-  /**
-   * Name the entities the retained static map-object layer draws instead of the sprite pool (a decoded
-   * map's virgin resource nodes). The pool's per-frame scene build skips them entirely. Live-view
-   * contract: the renderer holds the reference and reads it each frame — the caller mutates the same
-   * set in place as nodes are first worked (its event handler runs before the frame's draw, so a
-   * mid-frame mutation cannot be observed) and never needs to re-pass it.
-   */
+  /** Name the entities the retained static map-object layer draws instead of the sprite pool (a decoded
+   *  map's virgin resource nodes). See {@link WorldFog.setStaticallyDrawnRefs}. */
   setStaticallyDrawnRefs(refs: ReadonlySet<number>): void {
-    this.staticDrawnRefs = refs;
+    this.fog.setStaticallyDrawnRefs(refs);
   }
 
   /**
@@ -326,21 +308,9 @@ export class WorldRenderer {
     // Water-surface animation on the interpolated sim clock (deterministic — `?shot` at a fixed tick
     // reproduces byte-identically); one shared uniform write, a no-op on waterless maps.
     this.terrain.animate(tick + alpha);
-    // Recomposite the fog wash (band/generation-keyed — usually a no-op) and build this frame's cull
-    // predicates for the tall objects + the sprite pool below. Both close over the same FogView, so the
-    // wash, the trees and the entities can never disagree about a cell.
-    const fogView = this.fogView;
-    this.fog.update(fogView, vp);
-    // The ghost memory refreshes on the fog view's mask generations (cheap per frame otherwise);
-    // fog OFF clears it — the sim resets exploration history the same way.
-    let ghosts: readonly FogGhost[] | undefined;
-    if (fogView === null) {
-      this.fogGhosts.clear();
-    } else {
-      ghosts = this.fogGhosts.update(snapshot, fogView, this.staticDrawnRefs);
-    }
+    const fogFrame = this.fog.update(snapshot, vp);
     // `stateAt` is a bound arrow-function property on the view, so passing it detached is safe.
-    this.mapObjects.update(vp, tick, fogView === null ? undefined : fogView.stateAt);
+    this.mapObjects.update(vp, tick, this.fog.cellStateAt);
     // Each field is documented on PoolFrame. The portrait's subject is force-drawn through the cull so
     // its cutout survives off-screen / inside a building; setPortraitInset ran before this update, so the
     // ref is this frame's.
@@ -354,12 +324,8 @@ export class WorldRenderer {
       screenH: this.app.screen.height,
       elevation: this.elevation,
       alpha,
+      ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
-      ...(this.staticDrawnRefs !== undefined ? { staticRefs: this.staticDrawnRefs } : {}),
-      ...(fogView !== null
-        ? { fogVisible: (tx: number, ty: number) => fogTileVisible(fogView, tx, ty) }
-        : {}),
-      ...(ghosts !== undefined && ghosts.length > 0 ? { ghosts } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),
     });
     // The `drawn: this.pool` seams below read what the reconcile above just stamped — see `DrawnGeometry`

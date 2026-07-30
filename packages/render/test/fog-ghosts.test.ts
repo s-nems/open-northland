@@ -1,35 +1,15 @@
-import { FOG_MODE, FOG_STATE, type FogMode, type FogView } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog/index.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import { ONE, type ResourceTypeBinding, resolveResourceDraw, tileToScreen } from '../src/index.js';
-import { entity, snapshotOf } from './support/fixtures.js';
+import { entity, snapshotOf, fogViewOf as viewOf } from './support/fixtures.js';
 
 /**
  * Unit tests for the fog-ghost memory (`data/fog-ghosts.ts`) and its scene emission — the remembered
  * statics a viewer keeps seeing (dimmed) on explored ground. Pure data layer: hand-built snapshots +
  * a hand-built FogView, no Pixi, like the rest of the scene tests.
  */
-
-/** A hand-driven FogView over a sparse cell→state map (missing = UNEXPLORED, like the sim). */
-function viewOf(
-  states: ReadonlyMap<string, number>,
-  generation: number,
-  mode: FogMode = FOG_MODE.REVEAL,
-): FogView {
-  return {
-    mode,
-    cellsWide: 64,
-    cellsHigh: 64,
-    generation,
-    stateAt: (cx, cy) => {
-      const raw = states.get(`${cx},${cy}`) ?? FOG_STATE.UNEXPLORED;
-      // Mirror the sim's RECON view rule so recon tests read the same mapping the app does.
-      if (mode === FOG_MODE.RECON && raw === FOG_STATE.UNEXPLORED) return FOG_STATE.EXPLORED;
-      return raw;
-    },
-  };
-}
 
 // All fixtures sit on EVEN rows, where the stagger is 0 and cell (cx, cy) = (⌊tileX⌋, tileY).
 const HOUSE = entity(1, 5, 4, { Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 } });
