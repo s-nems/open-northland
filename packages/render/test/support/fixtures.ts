@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE, type FogMode, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../../src/data/projection/index.js';
 import type { SpriteState } from '../../src/data/scene/index.js';
 import type { DrawItem, SceneTerrain } from '../../src/index.js';
@@ -62,4 +62,24 @@ export function entity(
  *  guarantees, so a fixture cannot hand a reader a shape the sim never produces. */
 export function snapshotOf(entities: WorldSnapshot['entities'], tick = 1): WorldSnapshot {
   return { tick, entities: [...entities].sort((a, b) => a.id - b.id), events: [] };
+}
+
+/** A hand-driven {@link FogView} over a sparse `"cx,cy"` → state map (missing = UNEXPLORED, like the
+ *  sim), mirroring the sim's RECON rule so a recon spec reads the same mapping the app does. */
+export function fogViewOf(
+  states: ReadonlyMap<string, number>,
+  generation: number,
+  mode: FogMode = FOG_MODE.REVEAL,
+): FogView {
+  return {
+    mode,
+    cellsWide: 64,
+    cellsHigh: 64,
+    generation,
+    stateAt: (cx, cy) => {
+      const raw = states.get(`${cx},${cy}`) ?? FOG_STATE.UNEXPLORED;
+      if (mode === FOG_MODE.RECON && raw === FOG_STATE.UNEXPLORED) return FOG_STATE.EXPLORED;
+      return raw;
+    },
+  };
 }

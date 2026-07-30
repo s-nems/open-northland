@@ -1,8 +1,8 @@
 /**
  * The retained world renderer: the orchestrator ({@link import('./world-renderer.js')}) composing the
- * sub-layers, its public data contract ({@link import('./frame.js')}), and the screen-space chrome it
- * owns directly — the pause wash, the post-fx vignette and the zoom sampling toggle
- * ({@link import('./world-chrome.js')}, folder-internal).
+ * sub-layers, its public data contract ({@link import('./frame.js')}), and the two folder-internal
+ * collaborators it owns directly, the viewer's fog ({@link import('./world-fog.js')}) and the
+ * screen-space chrome ({@link import('./world-chrome.js')}).
  */
 export {
   type BuildingHighlightItem,
