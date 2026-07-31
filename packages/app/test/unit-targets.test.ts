@@ -104,6 +104,26 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targets.owned()).toEqual([]); // the hit-test set stays screen-bounded
   });
 
+  it('never picks or orders claimed livestock - the herd is property, not units', () => {
+    // A claimed animal is a Settler-shaped entity with the Livestock marker and our Owner: drawn (and
+    // heart-badged), but the herd drives itself, so neither a click/marquee nor an order may take it.
+    const animal = {
+      id: 90_002,
+      components: {
+        Settler: {},
+        Livestock: {},
+        Owner: { player: HUMAN_PLAYER },
+        Position: { x: 6 * ONE, y: 8 * ONE },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, animal] };
+    const drawnAnimal = { ...firstDrawn('settler', HUMAN_PLAYER), ref: animal.id };
+    const targets = targetsOver([...fullScene, drawnAnimal]);
+
+    expect(targets.owned().map((t) => t.ref)).not.toContain(animal.id);
+    expect(targets.ownedSettlersIn(new Set([animal.id]))).toEqual([]);
+  });
+
   it('orders a settler the frame never draws, such as one standing inside a building', () => {
     // Indoor settlers (the `Resting` marker, or mid-exchange in a store) are deliberately not drawn, so
     // the frame cannot supply them — the order set reads the snapshot instead and still reaches them.

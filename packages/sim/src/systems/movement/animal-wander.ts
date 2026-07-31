@@ -4,8 +4,10 @@ import {
   CurrentAtomic,
   Engagement,
   Frightened,
+  Livestock,
   LivestockVisit,
   MoveGoal,
+  Owner,
   Position,
   Resting,
   Settler,
@@ -15,12 +17,17 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
+import { grazeLeashOf } from '../livestock/assignment.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
  *  cadence is not readable), paced to read as grazing rather than a patrol. */
 export const ANIMAL_WANDER_PERIOD_TICKS = 5 * TICKS_PER_SECOND;
+
+/** Mean ticks between a CLAIMED animal's grazing steps - calmer than the wild cadence (user feedback:
+ *  penned stock beside the farm read as restless at the wild pace). */
+export const LIVESTOCK_WANDER_PERIOD_TICKS = 15 * TICKS_PER_SECOND;
 
 /** How far one grazing step may aim from where the creature stands (node Manhattan). Clamped down to the
  *  creature's own territory radius, so a species whose range is 2 or 3 nodes still has picks its leash
@@ -68,9 +75,15 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
 
-    const range = stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
+    // Claimed livestock grazes on the short shared leash ({@link grazeLeashOf}) at a calm pace; wild
+    // creatures keep their species' territory radius and the wild cadence. Both reads happen BEFORE
+    // the roll (see the rng note).
+    const claimed = world.has(e, Livestock) && world.has(e, Owner);
+    const range = claimed
+      ? grazeLeashOf(ctx.content, world.get(e, Settler).tribe)
+      : stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
     if (range <= 0) continue; // no territory to range over: this creature holds its spot
-    if (ctx.rng.int(ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
+    if (ctx.rng.int(claimed ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
 
     const here = entityNode(world, terrain, e);
     const at = terrain.coordsOf(here);

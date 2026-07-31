@@ -36,9 +36,10 @@ const BREEDERS = 2;
 const SHEEP_BIRTH = { x: 8, y: 20 } as const;
 const CATTLE_BIRTH = { x: 30, y: 21 } as const;
 
-/** The farm's starter larder: full input slots (the extracted caps), so the scene needs no supply chain. */
-const STARTER_WATER = 10;
-const STARTER_WHEAT = 10;
+/** The farm's starter larder, deliberately stuffed past the 10-unit slot caps (the Magazyn row clamps
+ *  its DISPLAY at capacity) so ~40 feed batches run without a supply chain. */
+const STARTER_WATER = 40;
+const STARTER_WHEAT = 80;
 
 const { Building, Health, LivestockVisit, Owner, Position, Resting, Settler, StayPoint, Stockpile } =
   components;

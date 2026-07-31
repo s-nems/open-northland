@@ -5,7 +5,9 @@ import {
   CurrentAtomic,
   Engagement,
   HerdMember,
+  Livestock,
   MoveGoal,
+  Owner,
   Position,
   Settler,
   StayPoint,
@@ -16,6 +18,8 @@ import {
   ANIMAL_WANDER_PERIOD_TICKS,
   ANIMAL_WANDER_STEP_NODES,
   animalWanderSystem,
+  LIVESTOCK_GRAZE_LEASH_NODES,
+  LIVESTOCK_WANDER_PERIOD_TICKS,
   manhattan,
 } from '../../src/systems/index.js';
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
@@ -102,6 +106,35 @@ describe('animalWanderSystem: the grazing drive', () => {
       p.y = centre.y;
       sim.world.remove(bear, MoveGoal);
     }
+  });
+
+  it('keeps a CLAIMED animal on the short grazing leash, not its species territory', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(30, 30) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const anchorCell = terrain.nodeAt(15, 15);
+    // The fixture bear stands in for any claimed creature: the claim (Livestock + Owner), not the
+    // species, is what shrinks the leash from its territory radius (6) to the grazing leash.
+    const claimed = grazerAt(sim, 15, 15);
+    sim.world.add(claimed, Livestock, {});
+    sim.world.add(claimed, Owner, { player: 0 });
+
+    let goals = 0;
+    // Many calm-cadence periods over, so a frozen creature cannot pass by luck.
+    for (let i = 0; i < 20 * LIVESTOCK_WANDER_PERIOD_TICKS; i++) {
+      animalWanderSystem(sim.world, ctxOf(sim));
+      const goal = sim.world.tryGet(claimed, MoveGoal);
+      if (goal === undefined) continue;
+      goals++;
+      expect(manhattan(terrain, goal.cell, anchorCell)).toBeLessThanOrEqual(LIVESTOCK_GRAZE_LEASH_NODES);
+      const c = terrain.coordsOf(goal.cell);
+      const p = sim.world.get(claimed, Position);
+      const centre = positionOfNode(c.x, c.y);
+      p.x = centre.x;
+      p.y = centre.y;
+      sim.world.remove(claimed, MoveGoal);
+    }
+    expect(goals).toBeGreaterThan(0); // it still grazes - the calm cadence idles, it doesn't freeze
   });
 
   it('lets a creature displaced past its leash step back toward the anchor', () => {

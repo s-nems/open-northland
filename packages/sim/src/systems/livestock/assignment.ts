@@ -48,15 +48,27 @@ const GRAZE_OFFSETS: readonly (readonly [number, number])[] = [
  *  {@link GRAZE_OFFSETS} entry; scene checks and tests assert against it. */
 export const LIVESTOCK_GRAZE_RANGE_NODES = 7;
 
+/** How far (node Manhattan) a claimed animal may drift from its grazing spot before it is walked
+ *  home - overrides the species' own wild-territory radius (a cow's 20 nodes reads as straying, not
+ *  grazing, next to a farm; user feedback: the herd wandered too far). */
+export const LIVESTOCK_GRAZE_LEASH_NODES = 3;
+
+/** A claimed animal's effective leash: its species territory capped at the grazing leash - the ONE
+ *  rule the march-home sweep and the grazing drive (`animalWanderSystem`) must agree on, or an animal
+ *  grazing at the wider bound would be marched back every period. */
+export function grazeLeashOf(content: SystemContext['content'], tribe: number): number {
+  return Math.min(stayPointRangeOf(content, tribe), LIVESTOCK_GRAZE_LEASH_NODES);
+}
+
 /**
  * LivestockAssignmentSystem - claimed animals herd themselves home. Each period, every player's owned
  * {@link Livestock} creatures re-anchor their {@link StayPoint} leash onto grazing spots ringing the
  * player's built livestock workplaces - split round-robin across the farm doors in canonical id order
  * (so a two-farm player's stock spreads evenly), each member on its own {@link GRAZE_OFFSETS} spot -
- * or ringing the headquarters door while no farm stands. An idle animal still
- * beyond its own leash walks straight home (a {@link MoveGoal} on the anchor - the original's claimed
- * stock marches to the HQ/farm rather than drifting); inside the leash the grazing drive
- * (`animalWanderSystem`) takes over. No farm and no HQ leaves the current territory untouched.
+ * or ringing the headquarters door while no farm stands. An idle animal beyond the grazing leash
+ * ({@link LIVESTOCK_GRAZE_LEASH_NODES}) walks straight home (a {@link MoveGoal} on the anchor - the
+ * original's claimed stock marches to the HQ/farm rather than drifting); inside the leash the grazing
+ * drive (`animalWanderSystem`) takes over. No farm and no HQ leaves the current territory untouched.
  * Species are not matched to farms (the extracted animal farm feeds both; even split is a named
  * approximation).
  *
@@ -92,11 +104,11 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
           s.cell = cell;
         });
       }
-      // March home: an idle animal beyond its own territory leash heads straight for the anchor
+      // March home: an idle animal beyond the grazing leash heads straight for the anchor
       // (re-issued each period until it arrives - self-healing against a refused route). The
       // herding-system guards: never yank a running atomic or fight an in-flight walk.
       if (world.has(e, CurrentAtomic) || isTravelling(world, e)) return;
-      const range = stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
+      const range = grazeLeashOf(ctx.content, world.get(e, Settler).tribe);
       if (manhattan(terrain, entityNode(world, terrain, e), cell) <= range) return;
       world.add(e, MoveGoal, { cell });
     });
