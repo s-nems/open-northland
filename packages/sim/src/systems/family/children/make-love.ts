@@ -1,4 +1,11 @@
-import { ChildOrder, MakingLove, Marriage } from '../../../components/index.js';
+import {
+  AssistantChildOrder,
+  ChildOrder,
+  consumeAssistantCounter,
+  MakingLove,
+  Marriage,
+  ownerOf,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
@@ -40,6 +47,11 @@ export function birth(
   const baby = spawnNewborn(world, ctx.content, mother, home, sex);
   world.get(mother, Marriage).child = baby;
   world.get(father, Marriage).child = baby;
+  // A counter-funded order pays its assistant counter the moment the child exists.
+  if (world.has(mother, AssistantChildOrder)) {
+    consumeAssistantCounter(world, ownerOf(world, mother), sex === 'female' ? 'extraWomen' : 'extraMen');
+    world.remove(mother, AssistantChildOrder);
+  }
   world.remove(mother, ChildOrder);
   world.remove(home, MakingLove);
   stepOut(world, mother);

@@ -15,6 +15,13 @@ export function armorClassOf(armor: ArmorType): number | undefined {
   return armor.mainType;
 }
 
+/** The `armortypes.ini` `maintype` class ids - the decoded two-tier enum {@link armorClassOf} reads
+ *  (light = cloth+leather, heavy = chain+plate), named like {@link WEAPON_MAIN_TYPE}. */
+export const ARMOR_MAIN_TYPE = {
+  LIGHT: 1,
+  HEAVY: 2,
+} as const;
+
 /**
  * The armor records grouped by their coarse class ({@link armorClassOf}: the extracted `mainType`) -
  * `Map<mainType, ArmorType[]>`, one bucket per class. The armor-side twin of {@link weaponsByClass}.

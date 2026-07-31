@@ -10,7 +10,7 @@ import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
-import type { ExtrasGrantsSeam } from './extras-window.js';
+import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
@@ -64,6 +64,8 @@ export interface ToolPanelOptions {
   readonly enqueue: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;
+  /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
+  readonly counters: ExtrasCountersSeam;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`) - gates the placement click, so a
@@ -218,6 +220,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     buildings: opts.buildings,
     goods: opts.goods,
     grants: opts.grants,
+    counters: opts.counters,
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),
   });
@@ -290,7 +293,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       activateButton(btn);
       consumed = true;
     } else {
-      consumed = windows.handleClick(x, y);
+      consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
     }
     if (!consumed) consumed = placement.handleClick(e.clientX, e.clientY);
     if (!consumed) consumed = goodsDrop.handleClick(e.clientX, e.clientY);

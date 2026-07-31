@@ -239,8 +239,7 @@ export function settlerMeetsNeed(
  * source-basis (readable-semantics inference): the data states both row kinds but not how they combine.
  * Reading them as alternatives is what makes the table consistent - a civilian can reach no fight track,
  * so an AND would leave the whole band unreachable and the `trainfor*` rows dead. Refine if the
- * original's combination rule is ever observed; what that opens up meanwhile is scoped in
- * `docs/tickets/features/barracks-recruitment.md`.
+ * original's combination rule is ever observed.
  */
 export function schoolingMet(
   tracks: readonly HumanJobExperienceType[],

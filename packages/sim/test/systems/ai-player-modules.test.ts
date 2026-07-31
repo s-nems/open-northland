@@ -867,31 +867,9 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(recruits.map((c) => c.entity)).toEqual([men[13]]);
   });
 
-  it('hires nobody when its content schools nobody, and sends a part-drilled man back in', () => {
-    // Content with the drill clip unbound: every term would bank zero TRAINING, so a hire could only
-    // cycle the same man through the barracks for the rest of the game.
-    const unschooled = parseContentSet({
-      ...aiContent(),
-      tribes: aiContent().tribes.map((t) => ({ ...t, atomicBindings: [] })),
-    });
-    const sim = new Simulation({ seed: 1, content: unschooled, map: grassNodeMap(64, 32) });
-    placeHq(sim);
-    sim.enqueue({
-      kind: 'placeBuilding',
-      buildingType: BARRACKS_TYPE,
-      x: 40,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    spawnMen(sim, 40, BUILDER);
-    makeAiSeat(sim, SEAT);
-    sim.step();
-    const ctx = { ...ctxOf(sim), content: unschooled };
-    expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'trainSoldier')).toEqual([]);
-
-    // Back on schooling content, a man whose drill was cut short keeps what he served and stays
-    // eligible - writing him off would burn one man out of the pool per interruption.
+  it('sends a man whose drill was interrupted back in', () => {
+    // Writing an interrupted recruit off would burn one man out of the pool per interruption; he
+    // simply stays eligible, and the next full term enlists him.
     const live = aiSim();
     placeHq(live);
     live.enqueue({
@@ -912,7 +890,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const recruit = first.entity;
     live.enqueue(first);
     live.step();
-    // The player walks him off mid-drill: the order goes, the banked schooling stays.
+    // The player walks him off mid-drill: the order goes, and he drops back into the hire pool.
     live.enqueue({ kind: 'moveUnit', entity: recruit, x: 2, y: 2 });
     for (let i = 0; i < 8; i++) live.step();
     expect(live.world.tryGet(recruit, TrainingOrder)).toBeUndefined();

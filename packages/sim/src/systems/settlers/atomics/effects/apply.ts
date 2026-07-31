@@ -92,7 +92,7 @@ export function applyEffect(
       clearNeed(world, settler, 'enjoyment');
       return;
     case 'exercise':
-      serveDrillRepetition(world, ctx, settler, atomic.atomicId, atomic.duration);
+      serveDrillRepetition(world, settler, atomic.duration);
       return;
     case 'erectSignpost': {
       const terrain = ctx.terrain;
@@ -115,7 +115,7 @@ export function applyEffect(
       dropCarriedLoad(world, ctx.terrain, settler);
       return;
     case 'equip':
-      equipFromStore(world, settler, effect.from, effect.goodType, effect.group, effect.slot);
+      equipFromStore(world, ctx, settler, effect.from, effect.goodType, effect.group, effect.slot);
       return;
     case 'unequip':
       unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);

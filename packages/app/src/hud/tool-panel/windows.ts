@@ -2,11 +2,11 @@ import type { HudLayout } from '@open-northland/render';
 import type { Container } from 'pixi.js';
 import { buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
-import { createExtrasWindow, type ExtrasGrantsSeam } from './extras-window.js';
+import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import { createStatsWindow } from './stats-window.js';
 import { createTabbedListWindow, type TabbedListWindow } from './tabbed-list/index.js';
-import type { ToolWindow } from './window-shell.js';
+import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /**
  * The tool panel's pop-up window layer: one owned set, so what a press hits, what claims the wheel and
@@ -31,6 +31,7 @@ export interface ToolWindowsDeps {
   readonly buildings: readonly MenuBuildingEntry[];
   readonly goods: readonly MenuGoodEntry[];
   readonly grants: ExtrasGrantsSeam;
+  readonly counters: ExtrasCountersSeam;
   readonly onPickBuilding: (typeId: number) => void;
   readonly onPickGood: (goodType: number) => void;
 }
@@ -40,7 +41,7 @@ export interface ToolWindows {
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
   claims(x: number, y: number): boolean;
   /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
-  handleClick(x: number, y: number): boolean;
+  handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
   /** Scroll a list the point is over, and report whether an open pop-up owns the wheel there (a window
    *  with nothing to scroll still owns it). */
   handleWheel(x: number, y: number, deltaY: number): boolean;
@@ -62,7 +63,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     source: goodsTabbedList(deps.goods),
     onPick: (g) => deps.onPickGood(g.goodType),
   });
-  const extras = createExtrasWindow({ ctx, container, grants: deps.grants });
+  const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
   const stats = createStatsWindow({ ctx, container });
 
   /** The pop-ups that own a scrollable, hoverable list - the wheel and hover routes. */
@@ -90,7 +91,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   return {
     byId: { menu, goods, extras, stats },
     claims: (x, y) => topAt(x, y) !== null,
-    handleClick: (x, y): boolean => topAt(x, y)?.handleClick(x, y) ?? false,
+    handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
     handleWheel: (x, y, deltaY): boolean => {
       const top = topAt(x, y);
       if (top === null) return false;

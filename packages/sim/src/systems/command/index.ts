@@ -23,6 +23,7 @@ import {
   marry,
   moveUnit,
   placeSignpost,
+  setAssistantCounter,
   setAssistantGrant,
   setCraftGoods,
   setGatherGood,
@@ -141,6 +142,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setAssistantGrant':
       setAssistantGrant(world, ctx, command);
+      return;
+    case 'setAssistantCounter':
+      setAssistantCounter(world, ctx, command);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

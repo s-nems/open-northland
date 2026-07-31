@@ -15,6 +15,8 @@ import type { SystemContext } from '../../../../context.js';
 import { addCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 import { pileupIntoStore } from './transfer.js';
+import { layDownWeaponGood, takeUpWeaponGood } from './weapon-class.js';
+import { isUsed } from './wear.js';
 
 // The equip errand's two goods effects: wear a unit lifted out of a store (`equip`), and take a worn
 // unit off (`unequip`). This module owns the TAKE-OFF RULE the rest of the equip code points at: a unit
@@ -45,11 +47,6 @@ function advanceOrder(world: World, settler: Entity, stage: 'stow' | 'return'): 
   if (order !== undefined) order.stage = stage;
 }
 
-/** Whether a worn unit has any use on it - the destroy-instead-of-stow trigger (see the module note). */
-export function isUsed(slot: EquipmentSlot): boolean {
-  return slot.degreeOfUse > fx.fromInt(0);
-}
-
 /**
  * Resolve one completed `equip`: move one unit of `goodType` out of `from`'s {@link Stockpile}
  * straight into the settler's equipment slot; a still-fresh swapped-out good lands on the back (the
@@ -60,6 +57,7 @@ export function isUsed(slot: EquipmentSlot): boolean {
  */
 export function equipFromStore(
   world: World,
+  ctx: SystemContext,
   settler: Entity,
   from: Entity,
   goodType: number,
@@ -76,6 +74,7 @@ export function equipFromStore(
   world.write(settler, Equipment, (eq) =>
     writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) }),
   );
+  if (group === 'weapon') takeUpWeaponGood(world, ctx, settler, goodType); // the good→class transform
   const stows = previous !== null && !isUsed(previous);
   if (stows) addCarry(world, settler, previous.goodType, 1);
   advanceOrder(world, settler, stows ? 'stow' : 'return');
@@ -100,6 +99,7 @@ export function unequipWornGood(
   const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
   if (eq === undefined || previous === null) return; // nothing worn there - the errand just returns
   world.write(settler, Equipment, (v) => writeEquipSlot(v, group, slot, null));
+  if (group === 'weapon') layDownWeaponGood(world, ctx, settler); // an armed class never stays weaponless
   if (isUsed(previous)) {
     advanceOrder(world, settler, 'return'); // destroyed on the spot - nothing to stow
     return;

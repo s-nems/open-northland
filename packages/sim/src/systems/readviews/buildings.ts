@@ -39,7 +39,7 @@ export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t:
  * and the barracks is the one that employs anybody: `logicworker 24 4` (four haulers keeping its arsenal
  * stocked) against the school's none. A structural signature like {@link isTemple}'s, because the field
  * that names the difference outright - `logicSchoolSize`, 25 at the barracks against the school's 5 - is
- * readable but not carried into the IR yet (docs/tickets/features/barracks-training.md).
+ * readable but not carried into the IR yet (docs/tickets/pipeline/building-school-size.md).
  */
 export function isBarracksType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
   return type.kind === BUILDING_KIND.training && type.workers.length > 0;

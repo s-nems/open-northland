@@ -24,11 +24,12 @@ import { ctxOf, grassMap } from './needs/support.js';
 
 /**
  * The barracks drill: a colonist sent to a training house walks to its door, drills inside for
- * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier - the only route onto the soldier trade,
- * because its `needforjob` row reads a track only a serving soldier accrues.
+ * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier. The served term IS the qualification -
+ * the drill banks no experience stat and flips the trade directly (user rule 2026-08-02), while the
+ * class's requirement rows read tracks nothing accrues, keeping every other door onto the trade shut.
  *
  * The fixture mirrors the extracted shape at fixture scale: a `training` house, the civilist's exercise
- * clip granting one TRAINING point per repetition (`event <at> 29 1`), and the base soldier class's
+ * clip (whose `event <at> 29 1` the sim now ignores), and the base soldier class's
  * `needforjob 31 5 69` / `trainforjob 31 5 77` pair.
  */
 
@@ -168,7 +169,7 @@ function terrainOf(sim: Simulation): TerrainGraph {
 }
 
 describe('trainSoldier - the barracks drill', () => {
-  it('walks a colonist in, drills him, and sends him out a soldier for good', () => {
+  it('walks a colonist in, drills him, and sends him out a soldier', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
@@ -181,7 +182,9 @@ describe('trainSoldier - the barracks drill', () => {
 
     run(sim, RUN_TICKS);
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
-    expect(qualifiesAsSoldier(sim, recruit)).toBe(true);
+    // The flip is the drill's whole product: nothing banked, so the XP-gate stays closed even for
+    // him - the barracks remains the only route onto the trade (user rule 2026-08-02).
+    expect(qualifiesAsSoldier(sim, recruit)).toBe(false);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(sim.world.has(recruit, Resting)).toBe(false); // back outside
   });
@@ -198,7 +201,7 @@ describe('trainSoldier - the barracks drill', () => {
     expect(sim.world.has(veteran, TrainingOrder)).toBe(false);
   });
 
-  it('banks exactly one TRAINING point per completed repetition of the drill', () => {
+  it('banks no experience stat at all - the trade flip is the whole product', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // already on the door node - no walk
@@ -206,9 +209,10 @@ describe('trainSoldier - the barracks drill', () => {
     sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, RUN_TICKS);
 
-    // Only a COMPLETED repetition is charged, so the drill runs to the next whole clip past the budget.
-    const repetitions = Math.ceil(BARRACKS_DRILL_TICKS / EXERCISE_CLIP_TICKS);
-    expect(sim.world.get(recruit, Settler).experience.get(TRAINING_TRACK)).toBe(repetitions);
+    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
+    // The clip's TRAINING event is dead data: no "Wyszkolenie" counter may ever appear on a drilled
+    // settler (user rule 2026-08-02).
+    expect(sim.world.get(recruit, Settler).experience.size).toBe(0);
   });
 
   it('lets a player walk call the drill off, and a re-issue starts a fresh term', () => {

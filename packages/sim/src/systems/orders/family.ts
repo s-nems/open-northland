@@ -1,6 +1,14 @@
-import { Building, ChildOrder, Female, Marriage, Residence, Settler } from '../../components/index.js';
+import {
+  AssistantChildOrder,
+  Building,
+  ChildOrder,
+  Female,
+  Marriage,
+  Residence,
+  Settler,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import {
   builtHomeType,
@@ -102,11 +110,18 @@ export function makeChild(
   command: Extract<Command, { kind: 'makeChild' }>,
 ): void {
   const e = command.entity;
-  if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
-  if (!world.has(e, Female)) return; // only the wife carries the order (she runs its stages)
-  const marriage = world.tryGet(e, Marriage);
-  if (marriage === undefined || !world.isAlive(marriage.spouse)) return;
-  const child = marriage.child;
-  if (child !== null && world.isAlive(child) && isMinor(world, child)) return; // one child at a time
+  if (!mayBearChild(world, e)) return;
+  world.remove(e, AssistantChildOrder); // an explicit order supersedes the assistant's booking
   world.add(e, ChildOrder, { child: command.child });
+}
+
+/** Whether a `makeChild` order on `e` would be accepted right now - shared with the assistant's
+ *  birth dispatcher (`systems/assistant/`) so an auto-issued order obeys exactly the player's gates. */
+export function mayBearChild(world: World, e: Entity): boolean {
+  if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return false;
+  if (!world.has(e, Female)) return false; // only the wife carries the order (she runs its stages)
+  const marriage = world.tryGet(e, Marriage);
+  if (marriage === undefined || !world.isAlive(marriage.spouse)) return false;
+  const child = marriage.child;
+  return child === null || !world.isAlive(child) || !isMinor(world, child); // one child at a time
 }

@@ -1,4 +1,16 @@
-import { AssistantGrants, assistantGrantsEntity, isValidPlayer } from '../../components/index.js';
+import {
+  ASSISTANT_COUNTER_KINDS,
+  ASSISTANT_COUNTER_MAX,
+  ASSISTANT_COUNTER_MIN,
+  AssistantCounters,
+  AssistantGrants,
+  assistantCountersAtDefault,
+  assistantCountersEntity,
+  assistantGrantsEntity,
+  defaultAssistantCounters,
+  INFINITE_COUNTER_KINDS,
+  isValidPlayer,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';
@@ -33,4 +45,34 @@ export function setAssistantGrant(
   } else {
     world.get(carrier, AssistantGrants).goods = goods;
   }
+}
+
+/**
+ * Set one assistant production counter to an absolute state - see the command doc. The carrier
+ * follows the grant list's rules-singleton lifecycle: created on the first non-default write,
+ * updated in place, destroyed when every counter returns to zero-and-finite.
+ */
+export function setAssistantCounter(
+  world: World,
+  _ctx: SystemContext,
+  command: Extract<Command, { kind: 'setAssistantCounter' }>,
+): void {
+  if (!isValidPlayer(command.player)) return;
+  // A replayed/hand-built command can carry any JSON: an unknown kind would write a key the default
+  // check never inspects, and a non-finite value escapes the clamp. Both are recoverable bad input.
+  if (!(ASSISTANT_COUNTER_KINDS as readonly string[]).includes(command.counter)) return;
+  if (!Number.isFinite(command.value)) return;
+  const value = Math.min(ASSISTANT_COUNTER_MAX, Math.max(ASSISTANT_COUNTER_MIN, Math.trunc(command.value)));
+  const infinite = command.infinite && INFINITE_COUNTER_KINDS.has(command.counter);
+  const carrier = assistantCountersEntity(world, command.player);
+  if (carrier === null) {
+    if (value === 0 && !infinite) return; // already at the default - no carrier to make
+    const counters = defaultAssistantCounters();
+    counters[command.counter] = { value, infinite };
+    world.add(world.create(), AssistantCounters, { player: command.player, counters });
+    return;
+  }
+  const block = world.get(carrier, AssistantCounters);
+  block.counters[command.counter] = { value, infinite };
+  if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
 }

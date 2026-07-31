@@ -14,18 +14,20 @@ import {
 } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
-import type { AssistantGrantId } from './extras-menu.js';
+import type { AssistantCounterFace, AssistantCounterId, AssistantGrantId } from './extras-menu.js';
 import {
   type AssistantState,
   adjustCounter,
+  COUNTER_IDS,
   defaultAssistantState,
   type ExtrasMenuLayout,
   type ExtrasTab,
   hitTestExtrasMenu,
   layoutExtrasMenu,
   toggleGrant,
+  toggleInfinity,
 } from './extras-menu.js';
-import { createWindowShell, type ToolWindow } from './window-shell.js';
+import { type ClickModifiers, createWindowShell, type ToolWindow } from './window-shell.js';
 
 /** Text sizes (design px) - the build menu's title/tab/row scale. */
 const TITLE_PX = 13;
@@ -45,6 +47,16 @@ const GLYPH_INSET = 4;
 const VALUE_CELL_FILL = 0x161009;
 /** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
 const EXTRAS_TITLE_STRING_ID = 500;
+/** Ctrl/Cmd-click stepper multiplier (feature spec: a held Ctrl steps by ten). */
+const CTRL_STEP = 10;
+
+const faceDiffers = (a: AssistantCounterFace, b: AssistantCounterFace): boolean =>
+  a.value !== b.value || a.infinite !== b.infinite;
+
+const countersEqual = (
+  a: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
+  b: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
+): boolean => COUNTER_IDS.every((id) => !faceDiffers(a[id], b[id]));
 
 /**
  * The grant switches' sim seam: the switch faces mirror the sim's per-player grant list, a click
@@ -59,11 +71,23 @@ export interface ExtrasGrantsSeam {
   set(id: AssistantGrantId, enabled: boolean): boolean;
 }
 
+/**
+ * The counters' sim seam (`view/assistant-counters.ts`): the faces mirror the sim's per-player
+ * counter block - which DRAINS as the queue produces, so the window re-reads it every frame - and a
+ * click writes one absolute `setAssistantCounter` through it.
+ */
+export interface ExtrasCountersSeam {
+  read(): Readonly<Record<AssistantCounterId, AssistantCounterFace>>;
+  /** Set one counter's absolute face; false when rejected (a read-only session) - no echo then. */
+  set(id: AssistantCounterId, value: number, infinite: boolean): boolean;
+}
+
 export interface ExtrasWindowDeps {
   readonly ctx: PanelContext;
   /** The panel's window container the window mounts its own container under. */
   readonly container: Container;
   readonly grants: ExtrasGrantsSeam;
+  readonly counters: ExtrasCountersSeam;
 }
 
 /** The pop-up extras ("chest") window: the assistant/plans tabs and the assistant's controls. */
@@ -76,10 +100,9 @@ export interface ExtrasWindow extends ToolWindow {
  * Build the extras-window controller over the pure {@link layoutExtrasMenu} geometry, on the shared
  * {@link createWindowShell} lifecycle and the build menu's chrome (tiled wood body, rust headline,
  * button-card rows; every bitmap degrades to flat Graphics). Rebuilt on open and on any control click
- * (every click moves a visible value, and the window is a dozen runs). The grant switches live in the
- * sim (read on every open, written through {@link ExtrasGrantsSeam} on click - the click's local echo
- * keeps the face snappy while the command applies next tick); the counters are still UI-only session
- * state and survive close/reopen locally.
+ * (every click moves a visible value, and the window is a dozen runs). Both control blocks live in
+ * the sim: grants read on open, counters re-read every frame (the queues drain as they produce),
+ * each written through its seam on click with a local echo while the command applies next tick.
  */
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
@@ -99,6 +122,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   let menuLayout: ExtrasMenuLayout | null = null;
   /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
   let runsAt: { x: number; y: number }[] = [];
+  /** The live counter block as read at the last local write. While the sim still shows exactly this
+   *  block, the write has not applied (a queued command, a paused game) and the click's echo must
+   *  hold - a frame countdown would snap back under pause. Any live change clears it: commands apply
+   *  FIFO, so the first change after the write already contains it. */
+  let echoBase: AssistantState['counters'] | null = null;
 
   const clear = (): void => {
     shell.clear();
@@ -150,6 +178,15 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     shell.graphics.stroke({ color: CLOSE_X_COLOR, width: Math.max(1, scale) });
   };
 
+  /** The lemniscate as two stroked circles - drawn, not text: the decoded bitmap font has no '∞'. */
+  const drawInfinityGlyph = (r: Rect): void => {
+    const radius = Math.max(2, r.h / 5);
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    shell.graphics.circle(cx - radius, cy, radius).circle(cx + radius, cy, radius);
+    shell.graphics.stroke({ color: CLOSE_X_COLOR, width: Math.max(1, scale) });
+  };
+
   const rebuild = (): void => {
     clear();
     menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state });
@@ -198,12 +235,17 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         card.y + (card.h - TEXT_CAP_H * scale) / 2,
         ROW_PX,
       );
+      if (c.infinityRect !== null) {
+        drawPlate(c.infinityRect, c.infinite); // lit while the queue never drains
+        drawInfinityGlyph(c.infinityRect);
+      }
       drawStepper(c.minusRect, 'minus');
       drawStepper(c.plusRect, 'plus');
       // The value sits in a recessed cell between the steppers.
       shell.graphics.rect(c.valueRect.x, c.valueRect.y, c.valueRect.w, c.valueRect.h).fill(VALUE_CELL_FILL);
       drawBevel(shell.graphics, c.valueRect, scale, 'pressed');
-      addRunCentred(String(c.value), 'white', c.valueRect, ROW_PX);
+      if (c.infinite) drawInfinityGlyph(c.valueRect);
+      else addRunCentred(String(c.value), 'white', c.valueRect, ROW_PX);
     }
     for (const g of layout.grants) {
       const card = cardRect(g.rect);
@@ -234,6 +276,17 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   const place = (): void => {
     if (menuLayout === null) return;
+    // The sim drains counters as the queues produce; mirror it without waiting for a reopen. A
+    // rebuild only when a face actually changed - the frame's usual cost is the comparison.
+    const live = deps.counters.read();
+    if (echoBase === null || !countersEqual(live, echoBase)) {
+      echoBase = null; // the sim moved: whatever we wrote is applied (or overtaken) - show live
+      if (!countersEqual(state.counters, live)) {
+        state = { ...state, counters: live };
+        rebuild();
+        return; // rebuild ends by re-running place()
+      }
+    }
     const { width: rw, height: rh } = ctx.screen();
     for (let i = 0; i < shell.runs.length; i++) {
       const at = runsAt[i];
@@ -253,13 +306,15 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (shell.isOpen()) close();
       else {
         shell.setOpen(true);
-        state = { ...state, grants: deps.grants.read() }; // the sim owns the switch state
+        // The sim owns both blocks' state.
+        state = { counters: deps.counters.read(), grants: deps.grants.read() };
+        echoBase = null; // a fresh read has nothing pending to hold
         rebuild();
       }
     },
     close,
     claims: (x, y) => shell.claims(menuLayout?.window ?? null, x, y),
-    handleClick: (x, y): boolean => {
+    handleClick: (x, y, mods?: ClickModifiers): boolean => {
       if (!shell.isOpen() || menuLayout === null) return false;
       const hit = hitTestExtrasMenu(menuLayout, x, y);
       if (hit === null) return false;
@@ -271,10 +326,27 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
           tab = hit.tab;
           rebuild();
           break;
-        case 'counter':
-          state = adjustCounter(state, hit.id, hit.delta);
-          rebuild();
+        case 'counter': {
+          // Ctrl (or Cmd) steps by ten - the coarse stepper the spec asks for.
+          const next = adjustCounter(state, hit.id, hit.delta * (mods?.bigStep === true ? CTRL_STEP : 1));
+          const face = next.counters[hit.id];
+          if (next !== state && deps.counters.set(hit.id, face.value, face.infinite)) {
+            echoBase = deps.counters.read(); // the pre-apply block the echo holds against
+            state = next; // local echo; the command applies next sim tick
+            rebuild();
+          }
           break;
+        }
+        case 'counterInfinity': {
+          const next = toggleInfinity(state, hit.id);
+          const face = next.counters[hit.id];
+          if (next !== state && deps.counters.set(hit.id, face.value, face.infinite)) {
+            echoBase = deps.counters.read();
+            state = next;
+            rebuild();
+          }
+          break;
+        }
         case 'grant':
           if (deps.grants.set(hit.id, !state.grants[hit.id])) {
             state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick

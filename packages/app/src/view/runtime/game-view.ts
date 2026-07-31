@@ -20,6 +20,7 @@ import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
 import { currentLocale } from '../../i18n/index.js';
+import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
 import type { CameraController } from '../camera/index.js';
 import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
@@ -215,6 +216,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     camera: () => cameraCtl.camera(),
     enqueue: issueCommand,
     grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, deps.readOnly !== true),
+    counters: assistantCountersSeam(sim, localPlayer, issueCommand, deps.readOnly !== true),
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),

@@ -4,12 +4,12 @@ import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_CIVILIST,
   JOB_COLLECTOR,
   JOB_HERO_SABER,
   JOB_HERO_SWORD,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
-  JOB_IDLE,
   JOB_SOLDIER_AXE_BIG,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SABER_LONG,
@@ -122,7 +122,7 @@ describe('admin spawn command mapping', () => {
     });
     expect(cmd).toEqual({
       kind: 'spawnSettler',
-      jobType: JOB_IDLE,
+      jobType: JOB_CIVILIST,
       x: 2,
       y: 3,
       tribe: PRIMARY_TRIBE,
@@ -242,6 +242,6 @@ describe('weaponEquipmentFor - the one job→equipment-weapon map every spawn pa
     const eq = (jobType: number) => weaponEquipmentFor(jobType, sandboxGoods);
     expect(eq(JOB_SOLDIER_UNARMED)).toBeUndefined();
     expect(eq(JOB_COLLECTOR)).toBeUndefined();
-    expect(eq(JOB_IDLE)).toBeUndefined();
+    expect(eq(JOB_CIVILIST)).toBeUndefined();
   });
 });

@@ -1,5 +1,9 @@
+import type { AssistantCounterKind } from '../../components/assistant.js';
+
 /** Commands that configure the per-player settlement assistant. */
-export type AssistantCommand = {
+export type AssistantCommand = AssistantGrantCommand | AssistantCounterCommand;
+
+type AssistantGrantCommand = {
   /**
    * Grant (or revoke) one wearable good type in `player`'s assistant hand-out list - the per-player
    * {@link import('../../components/assistant.js').AssistantGrants} carrier, so the list hashes and
@@ -14,4 +18,21 @@ export type AssistantCommand = {
   /** The content good type id; must carry an `equip` class (only wearables are grantable). */
   readonly goodType: number;
   readonly enabled: boolean;
+};
+
+/**
+ * Set one assistant production counter (the chest window's steppers/infinity button) to an absolute
+ * state - absolute rather than a delta so a replayed or re-sent command cannot drift the value. The
+ * handler clamps `value` into `[ASSISTANT_COUNTER_MIN, ASSISTANT_COUNTER_MAX]` and drops `infinite`
+ * on a kind outside `INFINITE_COUNTER_KINDS`; the per-player `AssistantCounters` carrier follows the
+ * grant list's rules-singleton lifecycle. An out-of-range `player` is recoverable bad input -
+ * skipped, still logged.
+ */
+type AssistantCounterCommand = {
+  readonly kind: 'setAssistantCounter';
+  /** The player slot (`[0, MAX_PLAYERS)`). */
+  readonly player: number;
+  readonly counter: AssistantCounterKind;
+  readonly value: number;
+  readonly infinite: boolean;
 };

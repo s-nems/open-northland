@@ -1,6 +1,5 @@
 import {
   cellAnchorNode,
-  components,
   type Entity,
   type SettlerEquipment,
   type Simulation,
@@ -70,8 +69,8 @@ export function spawnSettlerDirect(
  * one the JobSystem's second pass employs - it binds an idle settler to the first canonical building with an
  * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
  * warehouse/HQ is not adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
- * so its haulers arrive as idle settlers the JobSystem assigns. Spawned as {@link JOB_IDLE} then
- * re-idled, because the `spawnSettler` command has no null-job form.
+ * so its haulers arrive as idle settlers the JobSystem assigns. {@link JOB_IDLE} is the command wire
+ * form of `jobType: null` - the sim normalizes it at creation, so the spawn lands trade-less as is.
  */
 export function spawnIdleSettler(
   sim: Simulation,
@@ -79,7 +78,5 @@ export function spawnIdleSettler(
   y: number,
   owner: number = HUMAN_PLAYER,
 ): Entity {
-  const e = spawnSettlerDirect(sim, JOB_IDLE, x, y, owner);
-  components.setSettlerJob(sim.world, e, null); // re-idle so the JobSystem's assign pass employs it
-  return e;
+  return spawnSettlerDirect(sim, JOB_IDLE, x, y, owner);
 }

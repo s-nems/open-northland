@@ -1,6 +1,10 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
+  AssistantCounters,
+  type AssistantCounterValues,
+  assistantCountersEntity,
   assistantGrantedGoods,
+  defaultAssistantCounters,
   type FogMode,
   fogMode,
   needsEnabled,
@@ -267,6 +271,22 @@ export class Simulation {
    */
   assistantGrants(player: number): readonly number[] {
     return [...assistantGrantedGoods(this.world, player)];
+  }
+
+  /**
+   * `player`'s assistant production counters (the `setAssistantCounter` command's state; all-default
+   * when the carrier is absent). The chest window's steppers label themselves from this. A detached
+   * copy - never the live component block.
+   */
+  assistantCounters(player: number): Readonly<AssistantCounterValues> {
+    const carrier = assistantCountersEntity(this.world, player);
+    if (carrier === null) return defaultAssistantCounters();
+    const live = this.world.get(carrier, AssistantCounters).counters;
+    const copy = defaultAssistantCounters();
+    for (const kind of Object.keys(copy) as (keyof AssistantCounterValues)[]) {
+      copy[kind] = { ...live[kind] };
+    }
+    return copy;
   }
 
   /**

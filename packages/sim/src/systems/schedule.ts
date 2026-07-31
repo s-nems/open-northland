@@ -1,4 +1,5 @@
 import { aiPlayerSystem } from './ai-player/index.js';
+import { assistantSystem } from './assistant/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
 import { animalFrightSystem } from './conflict/fright.js';
@@ -53,6 +54,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After playerOrderSystem retires the walk and before plannerSystem could re-task the scout: an arrived
   // erect order starts its hammer swing this same tick.
   { name: 'signpostOrder', system: signpostOrderSystem },
+  // The assistant dispatches before family and the planner, so a fresh child order is driven and a
+  // fresh drill routed the same tick it was booked.
+  { name: 'assistant', system: assistantSystem },
   // Family runs before the planner so its walks route the same tick and its duty/wedding fences are fresh.
   { name: 'family', system: familySystem },
   // Gossip drives the standing chat pairs with the same placement rationale as family: its walks route

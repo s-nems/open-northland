@@ -67,8 +67,9 @@ export interface SandboxTribe {
 /**
  * The base soldier class's two gate rows, transcribed from the extracted viking table: `needforjob 31 5
  * 69` (five repeats of the `soldier general` track) and `trainforjob 31 5 77` (five TRAINING repeats).
- * How the two combine is the sim's `schoolingMet`. The armed classes' own rows wait on the weapon slice
- * (docs/tickets/features/barracks-recruitment.md).
+ * How the two combine is the sim's `schoolingMet`. The armed classes carry no rows on purpose: a
+ * soldier handles any weapon handed to him, the barracks only unlocks the base profession (user rule
+ * 2026-08-01), so the weapon-class flip never consults these gates.
  */
 const SOLDIER_GATE: readonly JobRequirement[] = [
   {
