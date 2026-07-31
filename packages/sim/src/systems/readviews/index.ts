@@ -59,6 +59,7 @@ export {
 export {
   ARMOR_MATERIAL,
   armorMaterialForClass,
+  armorMaterialForGood,
   type CombatProfile,
   combatDamage,
   damageVsBuilding,

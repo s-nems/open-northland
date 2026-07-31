@@ -1,10 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { Armor, CurrentAtomic, Weapon } from '../../../src/components/index.js';
-import { Simulation } from '../../../src/index.js';
+import {
+  Armor,
+  CurrentAtomic,
+  Equipment,
+  type EquipmentSlot,
+  MISC_EQUIP_SLOTS,
+  Weapon,
+} from '../../../src/components/index.js';
+import type { Entity } from '../../../src/ecs/world.js';
+import { fx, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import { BEAR, ctxOf, FRANK, fighterAt, grassMap, VIKING, WOODCUTTER } from './support.js';
+
+/** Dress `e` in an Equipment component whose armor slot holds `goodType` (null = an empty slot). */
+function wearArmor(sim: Simulation, e: Entity, goodType: number | null): void {
+  sim.world.add(e, Equipment, {
+    boots: null,
+    tool: null,
+    weapon: null,
+    armor: goodType === null ? null : { goodType, degreeOfUse: fx.fromInt(0) },
+    misc: new Array<EquipmentSlot | null>(MISC_EQUIP_SLOTS).fill(null),
+  });
+}
 
 describe('combatSystem — armor material column (the target armor material join)', () => {
   // The fixture's test_axe lists `damage { "0": 50, "1": 60 }`; leather (armor class 1, material 1).
@@ -38,7 +57,7 @@ describe('combatSystem — armor material column (the target armor material join
     expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
       kind: 'attack',
       target: enemy,
-      damage: 60, // test_axe damage["1"] — the material-1 column, NOT 60 − 5 (armor selects, doesn't mitigate)
+      damage: 60, // test_axe damage["1"], the material-1 column, NOT 60 - 10 (armor selects, doesn't mitigate)
       maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
@@ -76,6 +95,80 @@ describe('combatSystem — armor material column (the target armor material join
       target: viking,
       damage: 0, // bearfist has no damage["1"] column
       maxRange: 2, // test_bearfist reach, carried for the hit-frame re-check
+    });
+  });
+});
+
+describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => {
+  // The fixture's leather armor record is `{ typeId: 1, goodType: 1 }`, so a worn armor GOOD 1 resolves
+  // to material 1 (test_axe damage["1"] = 60) through `armorByGoodType`, the same column a stamped
+  // `Armor{armorClass: 1}` selects, but joined from the player-equipped inventory axis.
+
+  it('a worn armor good selects its record’s material column', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    wearArmor(sim, enemy, 1); // the leather record's goodType → material 1
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 60, // test_axe damage["1"], the worn good's material column
+      maxRange: 2,
+    });
+  });
+
+  it('worn armor overrides a scene-stamped Armor tier', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    sim.world.add(enemy, Armor, { armorClass: 2 }); // alone this would select column 2 (damage 0)
+    wearArmor(sim, enemy, 1); // the worn leather good wins → material 1
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 60, // the worn good's column, not the stamped tier's
+      maxRange: 2,
+    });
+  });
+
+  it('a worn good with no armor record presents the bare column (no fallback to the stamped tier)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    sim.world.add(enemy, Armor, { armorClass: 1 }); // the tier a silent fallback would leak through
+    wearArmor(sim, enemy, 999); // no [armortype] record claims good 999
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // Mirrors the worn-weapon rule: an unresolvable worn good presents material 0, never the stamped tier.
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 50, // test_axe damage["0"]
+      maxRange: 2,
+    });
+  });
+
+  it('an empty armor slot falls back to the stamped Armor tier', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    sim.world.add(enemy, Armor, { armorClass: 1 });
+    wearArmor(sim, enemy, null); // Equipment present, armor slot empty, not an override
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 60, // the stamped tier still selects material 1
+      maxRange: 2,
     });
   });
 });

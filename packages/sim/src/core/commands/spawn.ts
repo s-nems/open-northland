@@ -33,8 +33,9 @@ export type SpawnCommand =
        * `.ini` (only `animaltypes.ini` carries them; source basis "Combat hit resolution").
        *
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor (an
-       * `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than landing on
-       * the unarmored class 0. Omit it (the default) and the settler is unarmored.
+       * `Armor` component): an incoming hit selects that tier's damage column instead of the unarmored
+       * class 0 (`weaponDamageVsMaterial`, readviews/combat.ts; nothing is subtracted). Omit it (the
+       * default) and the settler is unarmored.
        *
        * When `weaponTypeId` is a positive `[weapontype]` id the combatant wields that specific weapon (a
        * `Weapon` component) — resolved against its own tribe — instead of the default `(tribe, jobType)` weapon
