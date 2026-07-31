@@ -194,6 +194,9 @@ export interface ContentIr {
    *  record is a living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns.
    *  Behaviour fields stay sim-side. */
   readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
+  /** The `armortypes.ini` records - the worn-good → recolor-tier join (`armorTiersByGood`,
+   *  content/sprite-sheet/human-sheet.ts). */
+  readonly armor?: readonly { typeId?: number; goodType?: number }[];
   /** The decoded sound bank (`@open-northland/audio` builds its index from it). */
   readonly sounds?: SoundBank;
 }

@@ -224,5 +224,10 @@ export const plContent = {
       summary:
         'Osadnik wysłany do koszar ćwiczy w środku 15 sekund i wychodzi jako żołnierz bez broni; obok żołnierz, który tylko trenuje, i cywil, dla którego zawód żołnierza pozostaje zamknięty.',
     },
+    armor: {
+      title: 'Parada zbroi',
+      summary:
+        'Parada mieczników: po kolumnie na każdy stan zbroi (bez, wełniana, skórzana, kolczuga, płytowa) i po wierszu na kolor gracza, wszyscy w postawie ignorowania, więc wrogie frakcje nie walczą. Do oceny przebarwień zbroi na tle kolorów drużyn.',
+    },
   },
 } as const;

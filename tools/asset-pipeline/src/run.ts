@@ -94,7 +94,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // through the player's LUT row). See stages/player-colors.ts + packages/render's palette-LUT shader.
   progress?.stage?.('player-colors');
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out, outTree);
-  const lut = await convertPlayerColorLut(args.out, outTree).catch((err: unknown) => {
+  const lut = await convertPlayerColorLut(roots, args.out, outTree).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${errorMessage(err)}`);
     return undefined;
   });
@@ -106,7 +106,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   });
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
-      `${lut ? `, ${lut.colors}-colour LUT -> ${lut.png}` : ' (LUT skipped)'}` +
+      `${lut ? `, ${lut.colors}-colour ×${lut.armorTiers}-tier LUT -> ${lut.png}` : ' (LUT skipped)'}` +
       `, ${guideAtlases} guidepost player atlas(es)`,
   );
 

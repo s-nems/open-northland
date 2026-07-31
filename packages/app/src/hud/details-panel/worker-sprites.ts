@@ -2,6 +2,7 @@ import {
   buildSpriteScene,
   type DrawItem,
   PalettedSprite,
+  paletteLutRow,
   type ResolvedLayer,
   resolveLayers,
   type SpriteSheet,
@@ -162,9 +163,12 @@ export class WorkerSpriteOverlay {
       const cellX = inner.x + slotW * i + gapOffset;
       if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
       const feetX = cellX + slotW / 2;
+      const lut = this.sheet?.palette;
+      // Same (armor tier, player) LUT row the world pool binds, so the portrait matches the map look.
+      const row = lut === undefined ? 0 : paletteLutRow(lut, r.item.player, r.item.armorGood);
       for (let li = 0; li < r.layers.length; li++) {
         const layer = r.layers[li];
-        if (layer !== undefined) this.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, r.item.player ?? 0);
+        if (layer !== undefined) this.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, row);
       }
       this.hits.push({ id: r.id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });

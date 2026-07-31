@@ -39,6 +39,7 @@ export {
   readAtomicTargetEntity,
   readCarrying,
   readEngaged,
+  readEquipmentArmorGood,
   readEquipmentWeaponGood,
   readJobType,
   readOwnerPlayer,

@@ -20,6 +20,8 @@ export {
   extractLandscapeGraphics,
   extractPaletteIndex,
   paletteAliasMap,
+  type RampAlias,
+  rampAliasMap,
 } from './ini/bindings/index.js';
 export {
   extractBuildingBobs,

@@ -14,6 +14,7 @@ import {
   readBerryBushLevel,
   readCarrying,
   readEngaged,
+  readEquipmentArmorGood,
   readEquipmentWeaponGood,
   readFacing,
   readHpFraction,
@@ -76,6 +77,9 @@ export function assignSettlerFields(
   // null (an Equipment with an empty weapon slot) drives the bare-hands warrior body instead.
   const weaponGood = readEquipmentWeaponGood(components);
   if (weaponGood !== undefined) item.weaponGood = weaponGood;
+  // The worn armor good drives the armor recolor (the (tier, player) palette LUT row).
+  const armorGood = readEquipmentArmorGood(components);
+  if (armorGood !== undefined) item.armorGood = armorGood;
   const player = readOwnerPlayer(components);
   if (player !== undefined) item.player = player;
   // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
