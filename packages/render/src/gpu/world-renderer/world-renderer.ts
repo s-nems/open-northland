@@ -39,6 +39,7 @@ import {
   type WorldFrame,
   type WorldRendererOptions,
 } from './frame.js';
+import { mountPainterOrder } from './painter-order.js';
 import { WorldChrome } from './world-chrome.js';
 import { WorldFog } from './world-fog.js';
 
@@ -65,32 +66,31 @@ export class WorldRenderer {
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
   private readonly pool: SpritePool;
-  /** Fog of war (world-space wash over terrain + flat decor, below the sprites) with the remembered
-   *  statics and the static-layer handover set it culls against. See {@link WorldFog}. */
+  /** Fog of war: the wash, the remembered statics, and the static-layer handover set it culls
+   *  against. See {@link WorldFog}. */
   private readonly fog = new WorldFog();
-  /** The build-mode dim wash over non-buildable tiles (world-space, below the sprites). */
+  /** The build-mode dim wash over non-buildable tiles. */
   private readonly placementOverlay: PlacementOverlayLayer;
-  /** Grey ground plots under placed construction sites (world-space, below the sprites). */
+  /** Grey ground plots under placed construction sites. */
   private readonly constructionPlots = new ConstructionPlotLayer();
   /** The build-mode cursor ghost (the held building's translucent sprite, inside the sprite layer). */
   private readonly placementGhost: PlacementGhostLayer;
-  /** Feet rings under the currently-selected entities (world-space, below the sprites). */
+  /** Feet rings under the currently-selected entities. */
   private readonly selectionLayer = new SelectionLayer();
-  /** Transient combat ground marks — blood on hits, bones on deaths (world-space, below the sprites so a
-   *  surviving fighter draws over what it stands on). Fed by {@link ingestCombatEffects}. */
+  /** Transient combat marks — blood on hits, bones on deaths. Fed by {@link ingestCombatEffects}. */
   private readonly effects = new CombatEffectsLayer();
   /** A razed/demolished building's sink-into-the-ground transient (nodes live inside the depth-sorted
    *  sprite layer). Fed by {@link ingestCombatEffects} alongside the marks. */
   private readonly collapses: CollapseLayer;
-  /** Smoke plumes over damaged buildings (world-space, above the sprites) — driven per frame from the
-   *  pool's culled damaged list, a pure function of each building's current HP fraction. */
+  /** Smoke plumes over damaged buildings — driven per frame from the pool's culled damaged list, a
+   *  pure function of each building's current HP fraction. */
   private readonly damageSmoke = new DamageSmokeLayer();
-  /** Stacked worker badges beside each staffed building's door (world-space, above the sprites). */
+  /** Stacked worker badges beside each staffed building's door. */
   private readonly badgeLayer = new BadgeLayer();
-  /** Thought bubbles floating over a settler's head in a standing family state (world-space, above the
-   *  sprites). Fed the decoded art by {@link setSettlerBubbleGfx}. */
+  /** Thought bubbles over a settler's head in a standing family state. Fed the decoded art by
+   *  {@link setSettlerBubbleGfx}. */
   private readonly bubbleLayer = new SettlerBubbleLayer();
-  /** The `?debug=geometry` footprint overlay (world-space, above the sprites — it annotates them). */
+  /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
   /** The workplace-assignment highlight: candidate building id → assignable (green) / not (red), while the
    *  player is choosing a workplace for the selected settler. Applied as a soft tint on the building sprite
@@ -126,26 +126,21 @@ export class WorldRenderer {
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
     this.spriteLayer.addChild(this.placementGhost.container);
-    // Z-order within the world layer: terrain (back) → flat decor → build-placement wash → selection
-    // rings → bones (ground litter) → sprites + tall objects → blood spurts → door badges (front).
-    // Ground-level marks sit under the sprites so a house/tree/unit in front draws over them; blood and
-    // door badges sit over them so a spurt shows on the struck body and a marker floats above its building.
-    this.worldLayer.addChild(this.terrain.container);
-    this.worldLayer.addChild(this.mapObjects.decorContainer);
-    // The fog wash covers the ground + flat decor and sits under everything gameplay-drawn: entities
-    // on fogged ground are individually fog-culled (pool + tall objects), so nothing legitimate draws
-    // above the wash inside the fog.
-    this.worldLayer.addChild(this.fog.container);
-    this.worldLayer.addChild(this.constructionPlots.container);
-    this.worldLayer.addChild(this.placementOverlay.container);
-    this.worldLayer.addChild(this.selectionLayer.container);
-    this.worldLayer.addChild(this.effects.groundContainer);
-    this.worldLayer.addChild(this.spriteLayer);
-    this.worldLayer.addChild(this.effects.overlayContainer);
-    this.worldLayer.addChild(this.damageSmoke.container);
-    this.worldLayer.addChild(this.badgeLayer.container);
-    this.worldLayer.addChild(this.bubbleLayer.container);
-    this.worldLayer.addChild(this.geometryDebug.container);
+    mountPainterOrder(this.worldLayer, {
+      terrain: this.terrain.container,
+      decor: this.mapObjects.decorContainer,
+      fog: this.fog.container,
+      constructionPlots: this.constructionPlots.container,
+      placementWash: this.placementOverlay.container,
+      selection: this.selectionLayer.container,
+      bones: this.effects.groundContainer,
+      sprites: this.spriteLayer,
+      blood: this.effects.overlayContainer,
+      damageSmoke: this.damageSmoke.container,
+      doorBadges: this.badgeLayer.container,
+      bubbles: this.bubbleLayer.container,
+      geometryDebug: this.geometryDebug.container,
+    });
     app.stage.addChild(this.worldLayer);
     // Stage z-order: world → vignette → pause wash → HUD. The chrome mounts its two quads here, between
     // the world layer above and the HUD below, so the grade and the pause tint colour the map and never
