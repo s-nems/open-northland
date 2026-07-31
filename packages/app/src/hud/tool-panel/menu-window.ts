@@ -69,6 +69,8 @@ export interface MenuWindow extends ToolWindow {
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Update the row-hover highlight from a canvas-space point (no-op when closed). */
   handleHover(x: number, y: number): void;
+  /** Drop the row-hover highlight, for when the pointer leaves the menu or another pop-up covers it. */
+  clearHover(): void;
   /** Per-frame hook: reflow the list only when a canvas resize changes how many rows fit. */
   refresh(): void;
 }
@@ -256,12 +258,17 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     rebuild();
     place();
   };
+  const clearHover = (): void => {
+    // `drawHover` clears before it draws, so no highlight is painted while `hoveredType` is null.
+    if (hoveredType === null && lastPointer === null) return;
+    hoveredType = null;
+    lastPointer = null; // a rebuild re-derives the highlight from it, so drop it with the highlight
+    hoverG.clear();
+  };
   const close = (): void => {
     shell.setOpen(false);
-    hoveredType = null;
-    lastPointer = null;
+    clearHover();
     clear();
-    hoverG.clear();
     menuLayout = null;
   };
 
@@ -303,6 +310,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
       scrollBy(Math.sign(deltaY) * WHEEL_ROWS);
       return true;
     },
+    clearHover,
     handleHover: (x, y): void => {
       if (!shell.isOpen() || menuLayout === null) return;
       lastPointer = { x, y };

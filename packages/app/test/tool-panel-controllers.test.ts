@@ -1,6 +1,6 @@
 import type { HudLayout } from '@open-northland/render';
 import type { Command } from '@open-northland/sim';
-import { Container } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
@@ -66,9 +66,9 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
 
 /** The same layout the build-menu controller computes internally (same origin formula + inputs): to the
  *  right of the strip, dropping from the buildings button so it clears the top-left debug overlay. */
-function expectedMenuLayout(ctx: PanelContext) {
+function expectedMenuLayout(ctx: PanelContext, buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
   const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? ctx.layout.strip.y;
-  return layoutBuildingMenu(BUILDINGS, {
+  return layoutBuildingMenu(buildings, {
     originX: ctx.layout.width + WIN_PAD * ctx.scale,
     originY: buildingsY,
     scale: ctx.scale,
@@ -98,6 +98,18 @@ const hud = (tick: number, wood: number): HudLayout => ({
     { x: 0, y: 12, text: `wood: ${wood}` },
   ],
 });
+
+/** A read-view with enough tallies that the content-sized stats window reaches down over the build
+ *  menu's first list row (both windows size themselves from their content, so they can overlap). */
+const TALL_HUD: HudLayout = {
+  width: 100,
+  height: 80,
+  rows: ['Tribe 1 · tick 1', 'wood: 5', 'stone: 2', 'grain: 9'].map((text, i) => ({
+    x: 0,
+    y: i * 12,
+    text,
+  })),
+};
 
 describe('menu window controller', () => {
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
@@ -322,16 +334,25 @@ describe('tool windows registry', () => {
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx } = stubContext();
     const picks: number[] = [];
+    const container = new Container();
     const windows = createToolWindows({
       ctx,
-      container: new Container(),
+      container,
       buildings,
       goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
       grants: GRANTS,
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });
-    return { ctx, windows, picks };
+    return { ctx, windows, picks, container };
+  }
+
+  /** Whether the build menu's row-hover highlight is drawn. The menu mounts first and parents
+   *  back < frame < hover, so its highlight layer is the window container's third child. */
+  function hasRowHighlight(container: Container): boolean {
+    const layer = container.children[2];
+    if (!(layer instanceof Graphics)) throw new Error('the build menu no longer owns child 2');
+    return layer.context.instructions.length > 0;
   }
 
   it('claims a point only while a pop-up is open under it', () => {
@@ -355,24 +376,57 @@ describe('tool windows registry', () => {
     expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
   });
 
-  // Pins the panel's current probe order, which is NOT draw order: statistics draws over the build menu
-  // yet is probed last (docs/tickets/app/tool-panel-window-click-order.md flips both this and PROBE_ORDER).
-  it('probes the pop-ups in the pinned order, so an overlap goes to the earlier one', () => {
-    const { ctx, windows } = mountWindows();
+  it('probes the pop-ups in draw order, so an overlap goes to the top-drawn window', () => {
+    const { ctx, windows, picks } = mountWindows();
     windows.byId.menu.toggle();
     windows.byId.stats.toggle();
-    windows.refresh(() => hud(1, 5)); // the stats window draws (and gains its rect) on its first refresh
+    windows.refresh(() => TALL_HUD); // the stats window draws (and gains its rect) on its first refresh
 
-    // The statistics window opens over the build menu's column: a point inside both.
-    const shared = {
-      x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1,
-      y: expectedMenuLayout(ctx).window.y + 1,
-    };
+    // Statistics draws after (over) the build menu and its column overlaps the menu's list: a point
+    // inside the statistics panel and inside the menu's first building row.
+    const row = expectedMenuLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+    const shared = { x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1, y: row.y + 1 };
     expect(windows.byId.menu.claims(shared.x, shared.y)).toBe(true);
     expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
 
     expect(windows.handleClick(shared.x, shared.y)).toBe(true);
-    expect(windows.byId.stats.isOpen()).toBe(true); // the menu consumed it first; stats never saw it
+    expect(windows.byId.stats.isOpen()).toBe(false); // statistics took the press and closed on inside
+    expect(windows.byId.menu.isOpen()).toBe(true);
+    expect(picks).toEqual([]); // the covered menu row must not enter building placement
+  });
+
+  it('gives the wheel to the top-drawn window instead of scrolling a covered list', () => {
+    const { ctx, windows, picks } = mountWindows(MANY);
+    windows.byId.menu.toggle();
+    windows.byId.stats.toggle();
+    windows.refresh(() => TALL_HUD);
+
+    const row = expectedMenuLayout(ctx, MANY).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+    const covered = { x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1, y: row.y + 1 };
+    expect(windows.byId.stats.claims(covered.x, covered.y)).toBe(true);
+
+    expect(windows.handleWheel(covered.x, covered.y, 120)).toBe(true); // statistics owns the wheel there
+    // The list did not move under the cursor: the uncovered part of the same row still picks the first
+    // building (a scroll would have paged it forward).
+    const uncovered = firstRowPoint(ctx);
+    windows.handleClick(uncovered.x, uncovered.y);
+    expect(picks).toEqual([MANY[0]?.typeId]);
+  });
+
+  it('drops the build-menu row highlight where another pop-up covers the point', () => {
+    const { ctx, windows, container } = mountWindows();
+    windows.byId.menu.toggle();
+    windows.byId.stats.toggle();
+    windows.refresh(() => TALL_HUD);
+
+    const row = expectedMenuLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+    windows.handleHover(row.x + 1, row.y + 1);
+    expect(hasRowHighlight(container)).toBe(true);
+
+    // The same row, but under the statistics window: highlighting it would promise a pick the press
+    // no longer makes.
+    windows.handleHover(ctx.layout.width + STATS_GAP_X * ctx.scale + 1, row.y + 1);
+    expect(hasRowHighlight(container)).toBe(false);
   });
 
   it('consumes the wheel over any open pop-up, list or not', () => {
