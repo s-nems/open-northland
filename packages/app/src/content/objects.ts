@@ -7,7 +7,7 @@ import {
   type SpriteLayer,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
-import { servedAtlasStem, servedShadowStem } from './ir/joins.js';
+import { deckFarRow, drawsAsFlatDecor, servedAtlasStem, servedShadowStem } from './ir/joins.js';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
@@ -118,9 +118,9 @@ export async function loadCombatBones(
  *    ({@link stateIndexForLevel}), each bob id resolved through the atlas manifest (0×0 frames
  *    dropped). A record with `loopAnimation` plays the whole list at the sim tick rate (waves,
  *    swaying trees, fire); a static record shows the list's first frame.
- *  - **decor vs tall** — an object with no `LogicWalkBlockArea` footprint (waves, grass, flowers,
- *    mine stains) is flat ground decor and draws under the entity sprites; one with a footprint
- *    (trees, stones) depth-sorts against settlers by its feet anchor.
+ *  - **paint order**: {@link drawsAsFlatDecor} draws under the entity sprites; everything else
+ *    depth-sorts against settlers by its feet anchor, or by {@link deckFarRow} where that row is
+ *    wrong.
  *  - **position** — the half-cell `(hx, hy)` projected onto the plain half-cell lattice
  *    (`halfCellToScreen` — the `emla` grid the original places on; no row stagger at this level).
  *  - **phase** — a slow spatial gradient (`hx + hy`), so a looping bob's neighbours stay within a
@@ -205,6 +205,8 @@ export async function loadMapObjects(
     /** The cast-shadow twin frames, index-paired with {@link frames}; absent when no pose casts one. */
     readonly shadow: MapObjectSprite['shadow'];
     readonly decor: boolean;
+    /** The bridge-deck depth row ({@link deckFarRow}), absent for everything that sorts at its anchor. */
+    readonly farRow: number | undefined;
     /** False for the tree logic types (the measured full-bright exemption — {@link UNSHADED_LANDSCAPE_TYPES}). */
     readonly shaded: boolean;
   }
@@ -229,7 +231,8 @@ export async function loadMapObjects(
         source: layer.source,
         frames: frames.slice(0, count),
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
-        decor: (record.walkBlockAreas ?? []).length === 0,
+        decor: drawsAsFlatDecor(record),
+        farRow: deckFarRow(record),
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
       };
     });
@@ -265,6 +268,7 @@ export async function loadMapObjects(
       ...(type.shadow !== undefined ? { shadow: type.shadow } : {}),
       scale: 1,
       decor: type.decor,
+      ...(type.farRow !== undefined ? { depthY: halfCellToScreen(hx, hy + type.farRow).y } : {}),
       ...(lift !== 0 ? { lift } : {}),
       // Slow spatial phase gradient (`hx + hy`), not uniform: adjacent half-cells stay within one frame
       // of each other (the wave sheet reads continuous) while the phase drifts across the map so the

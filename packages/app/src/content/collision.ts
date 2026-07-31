@@ -7,6 +7,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../catalog/terrain.js';
+import { isBridgeRecord } from './ir/joins.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**
@@ -34,7 +35,6 @@ import { forEachPlacement } from './map-placements.js';
  *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal).
  *    A skipped placement's collision is then the sim-content footprint (own-node), a named
  *    approximation of the IR area until real per-variant footprints enter the sim's content set.
- *    Bridges are the other exception: they block building only ({@link BRIDGE_EDIT_GROUP}).
  *
  * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
@@ -104,10 +104,6 @@ function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
   return table;
 }
 
-/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
- *  Exported so the real-IR invariant pins the same join key this reads. */
-export const BRIDGE_EDIT_GROUP = 'misc_bridges';
-
 /** One object's blocking cells: `body` blocks walking and building, `margin` blocks building alone. */
 interface ObjectFootprint {
   readonly body: readonly (readonly [number, number])[];
@@ -134,7 +130,7 @@ function objectFootprints(
     const walk = cells(g.walkBlockAreas);
     const build = cells(g.buildBlockAreas);
     if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
-    const body = g.editGroups?.includes(BRIDGE_EDIT_GROUP) === true ? [] : walk;
+    const body = isBridgeRecord(g) ? [] : walk;
     // Every cell the object blocks at all, minus the body: the two areas overlap, hence the set.
     const claimed = new Set(body.map(key));
     const margin: [number, number][] = [];
