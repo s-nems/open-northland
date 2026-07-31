@@ -2,15 +2,14 @@ import { findChunk, unpackMapLayer } from '../../../decoders/mapdat/index.js';
 import type { DecodedMap } from './lane.js';
 
 /**
- * Decodes the `lmms` lane. Unlike `lmhe`/`embr` the lane is HALF-CELL resolution (2W × 2H, like
- * `emla` — verified by unpacked length; observed byte values 0..7 across the owned corpus). The band
- * SEMANTICS are unconfirmed — it is NOT a water mask (waterless maps carry the same 1..7 bands, and
- * band 7 sits mostly under land patterns on river maps; probed 2026-07-16), so no renderer consumes it
- * yet — it is carried for the shore-foam follow-up (`docs/tickets/features/water-fx-and-shore.md`).
- * Collapsed to one value per cell by sampling each cell's CENTRE node (`(2x + (y&1), 2y)` — the vertex
- * the ground mesh bakes for the cell), matching the per-cell resolution of the other render lanes (a
- * named approximation that halves the lane's resolution). Returns undefined when the map lacks the
- * lane; throws on a length mismatch.
+ * Decodes the `lmms` lane: the max moveable-unit size per half-cell node, a distance transform from
+ * blocked nodes capped at 7 (meaning per the CulturesNation dat-format documentation; the 0..7 value
+ * range is verified across the owned corpus, see `docs/formats/MAPDAT.md`). HALF-CELL resolution
+ * (2W x 2H, like `emla`), collapsed to one value per cell by sampling each cell's CENTRE node
+ * (`(2x + (y&1), 2y)`, the vertex the ground mesh bakes for the cell) - a named approximation that
+ * halves the lane's resolution. Exported as the `shore` lane: no renderer consumes it yet, and as a
+ * distance-from-obstruction field it still fits the shore-foam use the name anticipates. Returns
+ * undefined when the map lacks the lane; throws on a length mismatch.
  */
 export function shoreFromMapDat({ map, size }: DecodedMap): number[] | undefined {
   const chunk = findChunk(map, 'lmms');
