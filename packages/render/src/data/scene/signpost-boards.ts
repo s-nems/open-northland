@@ -1,5 +1,6 @@
 import { type Fixed, nodeOfPosition, ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { tileToScreen } from '../projection/index.js';
+import { signpostsOf } from './snapshot-index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
 /**
@@ -27,7 +28,8 @@ interface Post {
   readonly navRadius: number;
 }
 
-/** Per-snapshot memo — signposts change rarely but this must not rescan per frame. */
+/** Per-snapshot memo — the signpost entities come from the shared scene walk, but decoding and pairing
+ *  them runs only for the snapshots that actually draw a signpost. */
 const boardsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, readonly number[]>>();
 const EMPTY_BOARDS: ReadonlyMap<number, readonly number[]> = new Map();
 
@@ -39,23 +41,9 @@ export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, r
   const cached = boardsBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
   const posts: Post[] = [];
-  for (const entity of snapshot.entities) {
-    const signpost = entity.components.Signpost as { navRadius?: unknown } | undefined;
-    if (signpost === undefined || typeof signpost.navRadius !== 'number') continue;
-    const owner = entity.components.Owner as { player?: unknown } | undefined;
-    const p = readPosition(entity.components);
-    if (p === null || typeof owner?.player !== 'number') continue;
-    // Snapshot Positions are raw Fixed ints, validated as numbers by the reader.
-    const { hx, hy } = nodeOfPosition(p.x as Fixed, p.y as Fixed);
-    posts.push({
-      id: entity.id,
-      x: p.x / ONE,
-      y: p.y / ONE,
-      hx,
-      hy,
-      player: owner.player,
-      navRadius: signpost.navRadius,
-    });
+  for (const entity of signpostsOf(snapshot)) {
+    const post = readPost(entity.id, entity.components);
+    if (post !== null) posts.push(post);
   }
   let index: ReadonlyMap<number, readonly number[]> = EMPTY_BOARDS;
   if (posts.length > 1) {
@@ -94,4 +82,16 @@ function addBoard(byId: Map<number, number[]>, from: Post, to: Post): void {
     byId.set(from.id, list);
   }
   if (!list.includes(bucket)) list.push(bucket);
+}
+
+/** Decode one signpost entity into a {@link Post}; null when it carries no radius, owner or position. */
+function readPost(id: number, components: Readonly<Record<string, unknown>>): Post | null {
+  const signpost = components.Signpost as { navRadius?: unknown } | undefined;
+  if (signpost === undefined || typeof signpost.navRadius !== 'number') return null;
+  const owner = components.Owner as { player?: unknown } | undefined;
+  const p = readPosition(components);
+  if (p === null || typeof owner?.player !== 'number') return null;
+  // Snapshot Positions are raw Fixed ints, validated as numbers by the reader.
+  const { hx, hy } = nodeOfPosition(p.x as Fixed, p.y as Fixed);
+  return { id, x: p.x / ONE, y: p.y / ONE, hx, hy, player: owner.player, navRadius: signpost.navRadius };
 }

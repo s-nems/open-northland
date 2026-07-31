@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   readActingAtomic,
   readAtomicTargetEntity,
@@ -8,12 +8,12 @@ import {
 } from './snapshot-readers/index.js';
 
 /**
- * The per-snapshot memoized pre-scans {@link import('./sprite-scene.js').collectSpriteScene} reads before
- * the per-entity loop: the enterable-store set (which settlers are hidden mid-exchange) and the target
- * position index (to face a mid-swing actor / aim a projectile). Both are pure functions of the frozen
- * snapshot, memoized on its object identity — `collectSpriteScene` runs per frame while the snapshot
- * changes per tick, so each scan happens once per tick, not once per frame. Plus the atomic-id contract
- * that decides which actors face their target.
+ * The per-snapshot pre-scans the scene build reads before its per-entity loop: the enterable-store set
+ * (which settlers are hidden mid-exchange), the target position index (to face a mid-swing actor / aim a
+ * projectile), and the signposts the board prepass pairs up. All are pure functions of the frozen
+ * snapshot and come out of ONE walk memoized on its object identity — the scene builds per frame while
+ * the snapshot changes per tick, so the walk happens once per tick, not once per frame or once per
+ * consumer. Plus the atomic-id contract that decides which actors face their target.
  */
 
 /**
@@ -67,9 +67,19 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ...CHAT_ATOMIC_IDS,
 ]);
 
-/** Per-snapshot memo of {@link enterableStoresOf}, keyed on snapshot identity — the module doc's
- *  per-frame-vs-per-tick memo, so this full entity pass runs once per tick, not once per frame. */
-const enterableStoresBySnapshot = new WeakMap<WorldSnapshot, ReadonlySet<number>>();
+interface SceneIndex {
+  readonly enterableStores: ReadonlySet<number>;
+  readonly targetPositions: ReadonlyMap<number, { x: number; y: number }>;
+  readonly signposts: readonly EntitySnapshot[];
+}
+
+const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
+
+/** The shared empty index for a snapshot with no target-facing actor — memoized like a real index so a
+ *  quiet scene allocates nothing and every frame reuses this one map. */
+const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
+
+const NO_SIGNPOSTS: readonly EntitySnapshot[] = [];
 
 /**
  * Completed buildings (built, not a construction site) — the "enterable store" set. A settler whose
@@ -79,60 +89,72 @@ const enterableStoresBySnapshot = new WeakMap<WorldSnapshot, ReadonlySet<number>
  * pile / flag / construction site is not enterable — those exchanges keep their animation.
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
-  const cached = enterableStoresBySnapshot.get(snapshot);
-  if (cached !== undefined) return cached;
-  const stores = new Set<number>();
-  for (const entity of snapshot.entities) {
-    if ('Building' in entity.components && readBuiltPct(entity.components) === undefined) {
-      stores.add(entity.id);
-    }
-  }
-  enterableStoresBySnapshot.set(snapshot, stores);
-  return stores;
+  return sceneIndexOf(snapshot).enterableStores;
 }
-
-/** The shared empty index for a snapshot with no target-facing actor — memoized like a real index so a
- *  quiet scene allocates nothing and every frame reuses this one map. */
-const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
-
-/** Per-snapshot memo of {@link targetPositionsOf} — same per-frame-vs-per-tick argument as
- *  {@link enterableStoresBySnapshot}. */
-const targetPosBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();
 
 /**
  * The `entity id → live Position` index used to face a mid-swing attacker/harvester at its target and to
  * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for.
- * Holds only the ids actually referenced as a target this tick (a first pass collects them), so a busy
- * map's index stays a handful of entries instead of every positioned entity — one settlement fighting
- * must not re-index a whole map's forests each tick. A snapshot with no target-facing actor memoizes the
- * shared empty index. Memoized per snapshot (the module doc's per-frame-vs-per-tick memo). Stores the
- * snapshot's own Position object (readPosition returns it, not a copy); the `/ONE` to tile space is
- * deferred to the rare facing lookups.
+ * Holds only the ids actually referenced as a target this tick, so a busy map's index stays a handful of
+ * entries instead of every positioned entity — one settlement fighting must not re-index a whole map's
+ * forests. A snapshot with no target-facing actor gets the shared empty index. Stores the snapshot's own
+ * Position object (readPosition returns it, not a copy); the `/ONE` to tile space is deferred to the rare
+ * facing lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
-  const cached = targetPosBySnapshot.get(snapshot);
+  return sceneIndexOf(snapshot).targetPositions;
+}
+
+/** The snapshot's signpost entities, in its own ascending id order — the board prepass
+ *  ({@link import('./signpost-boards.js')}) decodes and pairs them. */
+export function signpostsOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
+  return sceneIndexOf(snapshot).signposts;
+}
+
+function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
+  const cached = indexBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
+  const enterableStores = new Set<number>();
   const wanted = new Set<number>();
-  const collect = (ref: number | null): void => {
-    if (ref !== null) wanted.add(ref);
-  };
+  const signposts: EntitySnapshot[] = [];
   for (const entity of snapshot.entities) {
-    const acting = readActingAtomic(entity.components);
+    const components = entity.components;
+    if ('Building' in components && readBuiltPct(components) === undefined) {
+      enterableStores.add(entity.id);
+    }
+    const acting = readActingAtomic(components);
     if (acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) {
-      collect(readAtomicTargetEntity(entity.components));
+      const target = readAtomicTargetEntity(components);
+      if (target !== null) wanted.add(target);
     }
-    if ('Projectile' in entity.components) collect(readProjectileTarget(entity.components));
-  }
-  let index: ReadonlyMap<number, { x: number; y: number }> = EMPTY_POS_INDEX;
-  if (wanted.size > 0) {
-    const byRef = new Map<number, { x: number; y: number }>();
-    for (const entity of snapshot.entities) {
-      if (!wanted.has(entity.id)) continue;
-      const p = readPosition(entity.components);
-      if (p !== null) byRef.set(entity.id, p);
+    if ('Projectile' in components) {
+      const target = readProjectileTarget(components);
+      if (target !== null) wanted.add(target);
     }
-    index = byRef;
+    if ('Signpost' in components) signposts.push(entity);
   }
-  targetPosBySnapshot.set(snapshot, index);
+  const index: SceneIndex = {
+    enterableStores,
+    targetPositions: positionsOfRefs(snapshot, wanted),
+    signposts: signposts.length > 0 ? signposts : NO_SIGNPOSTS,
+  };
+  indexBySnapshot.set(snapshot, index);
   return index;
+}
+
+/** Resolve the handful of targeted refs by id. `entityById` binary-searches, so this relies on the
+ *  snapshot's ascending-id contract: a re-ordered entity list must never reach here. */
+function positionsOfRefs(
+  snapshot: WorldSnapshot,
+  refs: ReadonlySet<number>,
+): ReadonlyMap<number, { x: number; y: number }> {
+  if (refs.size === 0) return EMPTY_POS_INDEX;
+  const byRef = new Map<number, { x: number; y: number }>();
+  for (const ref of refs) {
+    const found = entityById(snapshot, ref);
+    if (found === undefined) continue;
+    const p = readPosition(found.components);
+    if (p !== null) byRef.set(ref, p);
+  }
+  return byRef;
 }
