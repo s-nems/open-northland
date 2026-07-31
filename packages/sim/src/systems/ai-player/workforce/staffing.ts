@@ -9,21 +9,23 @@ import { isCarrierJob } from '../../stores/index.js';
 import { isBuilt, ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
-/** A building's staffing plan: workers per OPERATOR trade and TOTAL transport carriers, each read
- *  at the `min` tier first (everyone's minimum beats anyone's second worker) and topped up to the
- *  `target` tier once every minimum stands. Slot counts cap every value. */
+/** A building's staffing plan: workers per OPERATOR trade and TOTAL transport carriers, read tier
+ *  by tier (everyone's minimum beats anyone's second worker, targets before any surplus seat). Slot
+ *  counts cap every value. */
 export interface BuildingStaffing {
   readonly operatorMin: number;
   readonly operatorTarget: number;
+  /** Operators filled only by the `surplus` pass. Absent: the target count is final. */
+  readonly operatorSurplus?: number;
   readonly carrierMin: number;
   readonly carrierTarget: number;
 }
 
 /** Whichever tier a staffing pass fills toward — see {@link staffBuildings}. */
-export type StaffingTier = 'min' | 'target';
+export type StaffingTier = 'min' | 'target' | 'surplus';
 
-/** The baseline workplace plan: one worker per operator trade, no carrier (user plan 2026-07-18 —
- *  a carrier-only utility like the well stays a self-served shared facility). */
+/** The baseline workplace plan: one worker per operator trade, no carrier (user plan — a
+ *  carrier-only utility like the well stays a self-served shared facility). */
 const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   operatorMin: 1,
   operatorTarget: 1,
@@ -31,15 +33,15 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   carrierTarget: 0,
 };
 
-/** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (user plan
- *  2026-07-25, revised 2026-07-27). Applies per building INSTANCE — a second bakery gets the same
- *  one-baker minimum and two-plus-carrier target as the first. Every SECOND hand is a target-tier
- *  extra, including the farm's (user rule 2026-07-27: a farm runs on one farmer until men are
- *  actually spare — knowingly buying the measured lone-farmer shortfall, where the second farmer is
- *  worth more than its own output because one man cannot walk the watering circuit in time); the
- *  bakery's carrier is the one carrier post the minimum still pays for. */
+/** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (user plan).
+ *  Applies per building INSTANCE — a second bakery gets the same one-baker minimum and
+ *  two-plus-carrier target as the first. Every SECOND hand is a target-tier extra, including the
+ *  farm's (user rule: a farm runs on one farmer until men are actually spare — knowingly buying the
+ *  measured lone-farmer shortfall, where the second farmer is worth more than its own output
+ *  because one man cannot walk the watering circuit in time); the bakery's carrier is the one
+ *  carrier post the minimum still pays for. */
 export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
-  work_farm_00: { operatorTarget: 3 },
+  work_farm_00: { operatorTarget: 2, operatorSurplus: 3 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // The level-0 bakery has a single baker slot — only its carrier is planned; the two-baker
   // target belongs to the level-2 tier, which actually offers the seats.
@@ -54,8 +56,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
 };
 
 /** The storage plan — the HQ and every warehouse run up to three transport carriers, all at the
- *  TARGET tier (user rule 2026-07-27: a warehouse post is a convenience the settlement buys out of
- *  genuinely spare men, never ahead of production or the builder reserve). Their
+ *  TARGET tier (user rule: a warehouse post is a convenience the settlement buys out of
+ *  genuinely spare men, never ahead of workplace staffing or the builder reserve). Their
  *  fisher/hunter/collector slots stay open (the storage-staffs-transport-only rule in
  *  {@link staffBuildings} — not every such slot classifies as a harvest trade). */
 const STORAGE_STAFFING: BuildingStaffing = {
@@ -65,9 +67,9 @@ const STORAGE_STAFFING: BuildingStaffing = {
   carrierTarget: 3,
 };
 
-/** The builder reserve: the pool keeps up to this many builders (user plan 2026-07-25 — "8
- *  builders max"). Claimed right after minimum staffing, so construction never starves, and before
- *  every top-up tier, so the reserve is what the surplus ladder distributes BEYOND. */
+/** The builder reserve: the pool keeps up to this many builders (user plan — "8 builders max").
+ *  Claimed right after minimum staffing, so construction never starves, and before every top-up
+ *  tier, so the reserve is what the surplus ladder distributes BEYOND. */
 export const BUILDER_CAP = 8;
 
 /** The staffing plan for a building type, or null for the kinds the allocator never staffs — homes,
@@ -79,15 +81,15 @@ function staffingOf(type: BuildingType): BuildingStaffing | null {
 }
 
 /**
- * The two staffing passes (min, then target): staff each built workplace and storage toward its
+ * The staffing passes (min, target, then surplus): staff each built workplace and storage toward its
  * {@link BuildingStaffing} tier, where "operator" is a non-carrier, non-gatherer slot. Gatherer
  * slots are never staffed, so a carrier-only workplace (the well, the hive) gets no permanent
  * worker: it is a shared utility a consumer self-serves (a baker cranks the well for its own water,
  * see settlers/drives/economy/workshop).
  * Within a tier, every WORKPLACE fills before any storage (the plan lists warehouse carriers below
- * workshop staffing), each kind in canonical building order; both tiers advance ONE shared
- * {@link StaffingTally} per decision (commands apply next tick, so the target pass must see the min
- * pass's claims). Once the pool runs dry the rest waits for grown sons (user rules 2026-07-18/-25).
+ * workshop staffing), each kind in canonical building order; all tiers advance ONE shared
+ * {@link StaffingTally} per decision (commands apply next tick, so a later pass must see the earlier
+ * passes' claims). Once the pool runs dry the rest waits for grown sons (user rule).
  */
 export function staffBuildings(
   world: World,
@@ -110,7 +112,12 @@ export function staffBuildings(
     if (type === undefined) continue;
     const staffing = staffingOf(type);
     if (staffing === null) continue;
-    const operatorWant = tier === 'min' ? staffing.operatorMin : staffing.operatorTarget;
+    const operatorWant =
+      tier === 'min'
+        ? staffing.operatorMin
+        : tier === 'target'
+          ? staffing.operatorTarget
+          : (staffing.operatorSurplus ?? staffing.operatorTarget);
     const carrierWant = tier === 'min' ? staffing.carrierMin : staffing.carrierTarget;
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);

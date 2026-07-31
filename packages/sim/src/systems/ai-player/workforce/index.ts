@@ -24,17 +24,18 @@ import { reserveBuilders, staffBuildings } from './staffing.js';
 export { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } from './collectors/index.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
-export { GARRISON_TARGET } from './garrison.js';
 export { builderJobOf } from './pool.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
 /**
- * The CollectResources module — the seat's one workforce allocator (user plan 2026-07-17, ladder
- * revision 2026-07-25). Every adult non-fighter man is classified against the live world, and the
- * wanted roles are drawn out of the spare pool in the priority order the returned array spells out:
- * the essentials first, then the tiers the surplus pays for, and the garrison last of all. No second
- * module ever races this one for a person. A transient conflict with the live world self-heals on the
- * next decision because every target is recomputed from state, never remembered.
+ * The CollectResources module — the seat's one workforce allocator (user plan). Every adult
+ * non-fighter man is classified against the live world, and the wanted roles are drawn out of the
+ * spare pool in the priority order the returned array spells out: the essentials first, then the
+ * tiers the surplus pays for — collector top-ups and the surplus staffing tier rank behind every
+ * target post (user rule: extra collectors and the third farmer are of little use early) — and the
+ * garrison last of all. No second module ever races this one for a person. A transient conflict
+ * with the live world self-heals on the next decision because every target is recomputed from
+ * state, never remembered.
  */
 function runWorkforce(
   world: World,
@@ -56,8 +57,9 @@ function runWorkforce(
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob), // construction never starves
-    ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken),
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
+    ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken),
+    ...staffBuildings(world, ctx, player, force, tally, 'surplus'),
     ...allocateGenericCollectors(world, ctx, hq, genericCollectors, force, taken, builderJob),
     ...trainGarrison(world, ctx, player, force),
     ...tuneCraftSelections(world, ctx, player),
@@ -66,7 +68,7 @@ function runWorkforce(
 
 /** The scout hire and retire: the scout exists exactly while signpost work remains — an idle scout turns back into a
  *  builder; the lattice calls one up again when a post is missing. Only an UNMARRIED man is hired
- *  (user rule 2026-07-25 — a scout is away on a mission and its wife would wait forever); a married
+ *  (user rule — a scout is away on a mission and its wife would wait forever); a married
  *  scout already working is retired only through the normal idle path, never mid-post. A scout
  *  mid-action is left alone: `setJob` cancels the running atomic, so retiring one mid-meal would
  *  throw the meal away (see signpost-coverage.ts). */

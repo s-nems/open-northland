@@ -68,11 +68,11 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     for (const [id, staffing] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `staffing override ${id}`).toBeDefined();
-      // The staffing cap is min(slot.count, target) — a real slot must offer the target's seats.
-      const operatorTarget = staffing.operatorTarget ?? 0;
-      if (operatorTarget > 0) {
-        const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorTarget);
-        expect(fits, `an operator slot of ${id} offering ${operatorTarget} seats`).toBe(true);
+      // The staffing cap is min(slot.count, tier) — a real slot must offer the highest tier's seats.
+      const operatorWant = Math.max(staffing.operatorTarget ?? 0, staffing.operatorSurplus ?? 0);
+      if (operatorWant > 0) {
+        const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
+        expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
       }
       const carrierTarget = staffing.carrierTarget ?? 0;
       if (carrierTarget > 0) {

@@ -6,6 +6,7 @@ import {
   aiModuleEnables,
   Building,
   CurrentAtomic,
+  Female,
   JobAssignment,
   Marriage,
   Owner,
@@ -33,7 +34,6 @@ import {
   DEFAULT_BUILD_ORDER,
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
-  GARRISON_TARGET,
   populationModule,
   SIGNPOST_TARGET_TOLERANCE_NODES,
   signpostCoverageModule,
@@ -278,8 +278,8 @@ describe('workforce module (collectResources)', () => {
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
     // First posts in plan order, then the stone/wood top-ups (mud stays at one), then one
-    // collect-anything flag (18 men: 3 + scout + 8 reserve = 12 claimed, the top-ups take two, the
-    // HQ's three target-tier carriers three more, and the last man goes generic).
+    // collect-anything flag (18 men: 3 + scout + 8 reserve = 12 claimed, the HQ's three target-tier
+    // carriers three more, the top-ups take two, and the last man goes generic).
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, WOOD, null]);
     // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
     // first post, so without the decision's claimed-node set the two flags land on one tile — one
@@ -291,6 +291,23 @@ describe('workforce module (collectResources)', () => {
     for (const c of commands) sim.enqueue(c);
     sim.step();
     expect([...collectModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('holds the top-ups behind the target staffing tier (extra collectors come much later)', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 15);
+    sim.step();
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    // 15 men: 3 first posts + scout + 8 reserve = 12 claimed, and the HQ's three target-tier
+    // carriers drain the rest — the stone/wood top-ups wait until the settlement is staffed.
+    const selections = commands.filter((c) => c.kind === 'setGatherGood');
+    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    const carriers = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === hq);
+    expect(carriers.map((c) => c.jobPriority)).toEqual([[CARRIER], [CARRIER], [CARRIER]]);
   });
 
   it('retires a generic collector whose circle holds nothing its trade can harvest', () => {
@@ -382,17 +399,30 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[FARMER]]);
   });
 
-  it('tops the farm up to three farmers once the surplus clears the reserve', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: FARM_TYPE, x: 40, y: 16, tribe: VIKING, owner: SEAT });
-    spawnMen(sim, 14, BUILDER);
-    sim.step();
-
-    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
-    const farm = entityOfBuilding(sim, FARM_TYPE);
-    const staffing = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === farm);
-    expect(staffing.map((c) => c.jobPriority)).toEqual([[FARMER], [FARMER], [FARMER]]);
+  it('adds the second farmer at the target tier; the third waits for the last surplus tier', () => {
+    const staffFarm = (men: number): number => {
+      const sim = aiSim();
+      placeHq(sim);
+      sim.enqueue({
+        kind: 'placeBuilding',
+        buildingType: FARM_TYPE,
+        x: 40,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      spawnMen(sim, men, BUILDER);
+      sim.step();
+      const farm = entityOfBuilding(sim, FARM_TYPE);
+      return [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+        (c) => c.kind === 'assignWorker' && c.building === farm,
+      ).length;
+    };
+    // 14 men: scout + farm minimum + 8 builders + the target-tier second farmer + the HQ's three
+    // carriers claim everyone — the third farmer ranks BEHIND the storage targets now.
+    expect(staffFarm(14)).toBe(2);
+    // One more man clears every target post, and the surplus tier seats the third farmer.
+    expect(staffFarm(15)).toBe(3);
   });
 
   it('gives the iron-tool joinery a second joiner only out of the surplus', () => {
@@ -724,7 +754,7 @@ describe('workforce module — the barracks and craft selections', () => {
     }
   });
 
-  it('counts the men already drilling, stops at the target, and obeys the military toggle', () => {
+  it('keeps drafting decision after decision — no fixed size caps the army', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({
@@ -739,17 +769,17 @@ describe('workforce module — the barracks and craft selections', () => {
     makeAiSeat(sim, SEAT);
     sim.step();
 
-    // Decision after decision the garrison fills: each recruit keeps its TrainingOrder, so the next
-    // pass counts it and the hires stop exactly at the target.
+    // Each recruit keeps its TrainingOrder and leaves the pool; the next spare bachelor follows.
+    // Well past the old six-man garrison the draft is still running.
     const hired = new Set<Entity>();
-    for (let decision = 0; decision < GARRISON_TARGET + 2; decision++) {
+    for (let decision = 0; decision < 10; decision++) {
       for (const c of [...collectModule.run(sim.world, ctxOf(sim), SEAT)]) {
         if (c.kind === 'trainSoldier') hired.add(c.entity);
         sim.enqueue(c);
       }
       sim.step();
     }
-    expect(hired.size).toBe(GARRISON_TARGET);
+    expect(hired.size).toBe(10);
 
     const off = aiSim();
     placeHq(off);
@@ -767,6 +797,74 @@ describe('workforce module — the barracks and craft selections', () => {
     expect(
       [...collectModule.run(off.world, ctxOf(off), SEAT)].filter((c) => c.kind === 'trainSoldier'),
     ).toEqual([]);
+  });
+
+  it('drafts only the bachelor surplus beyond the waiting brides', () => {
+    const draft = (men: number, women: number): Command[] => {
+      const sim = aiSim();
+      placeHq(sim);
+      sim.enqueue({
+        kind: 'placeBuilding',
+        buildingType: BARRACKS_TYPE,
+        x: 40,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      spawnMen(sim, men, BUILDER);
+      for (let i = 0; i < women; i++) {
+        sim.enqueue({
+          kind: 'spawnSettler',
+          jobType: WOMAN,
+          x: 4 + 2 * i,
+          y: 28,
+          tribe: VIKING,
+          owner: SEAT,
+        });
+      }
+      makeAiSeat(sim, SEAT);
+      sim.step();
+      return [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    };
+    // A soldier neither marries nor fathers children, and the sons of housed couples are the army's
+    // only future recruits — with a bride waiting for every bachelor, nobody drills.
+    expect(draft(20, 20).filter((c) => c.kind === 'trainSoldier')).toEqual([]);
+    // One bachelor beyond the brides: exactly he is spare for the army.
+    expect(draft(21, 20).filter((c) => c.kind === 'trainSoldier')).toHaveLength(1);
+  });
+
+  it('never drafts a married man — his family grows the recruits to come', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 20, BUILDER);
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 4, y: 28, tribe: VIKING, owner: SEAT });
+    makeAiSeat(sim, SEAT);
+    sim.step();
+
+    // The scout, the eight-builder reserve, and the HQ's three carriers claim the twelve lowest-id
+    // men; marrying the thirteenth puts a husband at the head of the spare pool.
+    const men = [...sim.world.query(Settler)]
+      .filter((e) => !sim.world.has(e, Female) && sim.world.get(e, Settler).jobType === BUILDER)
+      .sort((a, b) => a - b);
+    const husband = men[12];
+    const wife = [...sim.world.query(Settler)].find((e) => sim.world.has(e, Female));
+    if (husband === undefined || wife === undefined) throw new Error('setup: crew missing');
+    sim.world.add(husband, Marriage, { spouse: wife, child: null });
+    sim.world.add(wife, Marriage, { spouse: husband, child: null });
+
+    const recruits = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+      (c) => c.kind === 'trainSoldier',
+    );
+    // The draft steps over the husband and takes the bachelor behind him.
+    expect(recruits.map((c) => c.entity)).toEqual([men[13]]);
   });
 
   it('hires nobody when its content schools nobody, and sends a part-drilled man back in', () => {
