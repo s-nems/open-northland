@@ -211,7 +211,7 @@ export const enContent = {
     hunting: {
       title: 'Hunter at work',
       summary:
-        'A flag-bound hunter shoots the hares near its flag, and carries the meat off their carcasses home pluck by pluck - while the sheep herd, kept for husbandry, is left as a last resort.',
+        'A flag-bound hunter stalks the hares near its flag - shots can miss, every release scatters the herd, each kill is carried home before the next, sheep kept for husbandry fall only as a last resort, and a picked-clean carcass leaves its bones.',
     },
     equipment: {
       title: 'Equipment window',

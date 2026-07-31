@@ -1,4 +1,11 @@
-import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../components/index.js';
+import {
+  CurrentAtomic,
+  Frightened,
+  HerdMember,
+  MoveGoal,
+  Position,
+  Settler,
+} from '../../components/index.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
 import { entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
@@ -47,6 +54,7 @@ export const herdingSystem: System = (world, ctx) => {
     // Busy / already travelling: leave it (don't interrupt a swing or fight the navigation planner).
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
+    if (world.has(e, Frightened)) continue; // a scattering follower is not pulled back into the scare
     // A leader that has been reaped (killed in combat) is gone — its components are removed, so a
     // follower has no cell to return to; leave it where it stands (the herd is leaderless until a
     // later slice re-designates one).

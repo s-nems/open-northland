@@ -1,4 +1,4 @@
-import { Position, Resource, Settler } from '../../../../../../components/index.js';
+import { Carcass, Position, Resource, Settler } from '../../../../../../components/index.js';
 import { contentIndex } from '../../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../../../../nav/halfcell.js';
@@ -67,6 +67,7 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
       harvestAtomic,
       ...(gfxIndex !== undefined ? { gfxIndex } : {}),
     });
+    world.add(e, Carcass, {}); // a drained carcass leaves bones (the deplete seam reads this)
     stampResourceFootprintOrFallback(world, ctx.content, e, y.goodType);
   }
 }

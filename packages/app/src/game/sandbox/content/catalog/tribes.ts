@@ -133,14 +133,12 @@ export function buildSandboxTribes(
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
-      // The hunter: the bow draw reuses the archer's short-bow clip and the carcass pluck the
-      // collector's mushroom pick (the real `viking_hunter_attack`/`..._harvest_cadaver` clips are
-      // not transcribed - a named sandbox approximation, like the saber bodies).
-      { jobType: JOB_HUNTER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
+      // The hunter's own clips, timed verbatim off the extraction (`catalog/hunting.ts`).
+      { jobType: JOB_HUNTER, atomicId: ATTACK_ATOMIC, animation: 'viking_hunter_attack' },
       {
         jobType: JOB_HUNTER,
         atomicId: HARVEST_CADAVER_ATOMIC,
-        animation: 'viking_collector_harvest_mushroom',
+        animation: 'viking_hunter_harvest_cadaver',
       },
       ...jobTypes.flatMap((jobType) => [
         { jobType, atomicId: STORE_PICKUP_ATOMIC, animation: STORE_PICKUP_ANIMATION },

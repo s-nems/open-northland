@@ -21,6 +21,7 @@ import {
   readJobType,
   readOwnerPlayer,
   readProducing,
+  readProjectileMissAim,
   readProjectileOrigin,
   readProjectileTarget,
   readSettlerTribe,
@@ -178,8 +179,11 @@ export function pushSignpostItems(
 /**
  * Point a projectile draw item along its flight and lob it (the ballistic-arc trig lives in
  * {@link projectileArc}), returning the ballistic height to fold into the draw-lift channel (never the
- * depth key, so the lob can't reshuffle occlusion mid-flight). A shot whose target vanished this frame
- * keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to expire it.
+ * depth key, so the lob can't reshuffle occlusion mid-flight). A MISSED shot's chord ends at its frozen
+ * aim point ({@link readProjectileMissAim}) rather than the live target - the sim flies it to the dirt
+ * while the scared animal bolts, and tracking the runner would bend the nose and stall the lob. A true
+ * shot whose target vanished this frame keeps `rotation` unset and flies flat (lift 0) for the one tick
+ * the sim takes to expire it.
  */
 export function assignProjectileArc(
   item: MutableDrawItem,
@@ -187,8 +191,9 @@ export function assignProjectileArc(
   screen: ReturnType<typeof tileToScreen>,
   posByRef: ReadonlyMap<number, { x: number; y: number }>,
 ): number {
-  const targetRef = readProjectileTarget(components);
-  const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
+  const missAim = readProjectileMissAim(components);
+  const targetRef = missAim === null ? readProjectileTarget(components) : null;
+  const to = missAim ?? (targetRef !== null ? posByRef.get(targetRef) : undefined);
   if (to === undefined) return 0;
   const origin = readProjectileOrigin(components);
   const arc = projectileArc(

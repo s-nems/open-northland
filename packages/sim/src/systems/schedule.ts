@@ -1,6 +1,7 @@
 import { aiPlayerSystem } from './ai-player/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
+import { animalFrightSystem } from './conflict/fright.js';
 import { projectileSystem } from './conflict/projectile.js';
 import type { System } from './context.js';
 import { berryGrowthSystem } from './economy/berries.js';
@@ -35,6 +36,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'command', system: commandSystem },
   { name: 'needs', system: needsSystem },
   { name: 'job', system: jobSystem },
+  // Before herding, so a fresh scatter outranks the cohesion recall (a frightened follower runs first,
+  // the herd pulls it home only once the scare lapses).
+  { name: 'animalFright', system: animalFrightSystem },
   { name: 'herding', system: herdingSystem },
   // After herding, so cohesion outranks grazing: a follower the herd drive just recalled is already
   // travelling when the wander pass reaches it.

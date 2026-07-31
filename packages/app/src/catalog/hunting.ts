@@ -129,3 +129,11 @@ export const HUNTER_BOW_BALANCE: {
   maxRange: 13, // short bow reaches 15
   damage: { '0': 400, '1': 100, '2': 320, '3': 80, '4': 80, '6': 50, '7': 80 },
 };
+
+// The hunter's clip timings, transcribed verbatim from the extracted `atomicanimations.ini`:
+// `viking_hunter_attack` (the action-81 bow draw) and `viking_hunter_harvest_cadaver` (the action-33
+// pluck) - the sandbox `atomicAnimations` lane ships them so its hunter paces exactly like one on
+// real content.
+export const HUNTER_BOW_DRAW_LENGTH = 25;
+export const HUNTER_BOW_RELEASE_FRAME = 12; // the ATTACK event (the arrow looses mid-draw)
+export const HUNTER_HARVEST_CADAVER_LENGTH = 35;

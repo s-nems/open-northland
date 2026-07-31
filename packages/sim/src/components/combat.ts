@@ -43,6 +43,15 @@ export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon');
 export const Anger = defineComponent<{ until: number }>('Anger');
 
 /**
+ * A wild animal's fright - stamped on non-aggressive wildlife near a loosed shot's mark
+ * (`frightenWildlifeNear`); the `animalFrightSystem` runs the carrier away from the scare node `from`
+ * until `until` lapses, re-aiming on the `repathAt` throttle. A separate marker because {@link Fleeing}
+ * cannot serve wildlife: the stance ladder strips it from any unit whose stance is not FLEE, and
+ * unowned animals have no stance. Tick fields are monotonic integers against {@link SystemContext.tick}.
+ */
+export const Frightened = defineComponent<{ until: number; repathAt: number; from: NodeId }>('Frightened');
+
+/**
  * A combat-engagement marker, present while a unit is swinging at or chasing an enemy and removed once no
  * valid enemy is in reach/sight. The PlannerSystem skips economy planning for an engaged unit but sits below
  * the needs drives, so hunger/fatigue/piety still pull it away. `repathAt` throttles the chase: a chaser
@@ -107,7 +116,9 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *    `projectileSystem` maps it onto a per-tick tile step via a named calibration constant;
  *  - `originX`/`originY` — the shooter's Position at the release frame (fixed-point, frozen at launch), read
  *    only by the render, which needs the chord's start to place the shot on its ballistic arc (the original
- *    visibly lobs arrows — observed, height approximated).
+ *    visibly lobs arrows — observed, height approximated);
+ *  - `missAim` - a MISSED shot's aim point (the target's position frozen at release): the flight steers here
+ *    instead of homing, and lands in the dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot.
  */
 export const Projectile = defineComponent<{
   source: Entity;
@@ -118,4 +129,5 @@ export const Projectile = defineComponent<{
   speed: number;
   originX: Fixed;
   originY: Fixed;
+  missAim: { x: Fixed; y: Fixed } | null;
 }>('Projectile');

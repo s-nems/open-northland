@@ -3,6 +3,7 @@ import {
   AttackOrder,
   CurrentAtomic,
   Engagement,
+  Frightened,
   MoveGoal,
   Position,
   Settler,
@@ -60,6 +61,7 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
+    if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
 
     const range = stayPointRangeOf(ctx.content, world.get(e, Settler).tribe);
     if (range <= 0) continue; // no territory to range over: this creature holds its spot

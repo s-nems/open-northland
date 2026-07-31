@@ -30,8 +30,9 @@ export interface CombatEffect {
 export const BLOOD_LIFETIME_TICKS = 60;
 /**
  * How long a bone pile lingers before it has fully faded, in sim ticks — a long-lived battlefield mark that still
- * fades so a long war doesn't accumulate unbounded marks. Approximated (the original's cadaver decay time is
- * unreadable).
+ * fades so a long war doesn't accumulate unbounded marks. Approximated: the original's `cadaver_skeleton`
+ * landscape auto-decays after a readable param of 100 (`landscapetypes.ini` transition 13), but that
+ * param's unit is not - this keeps the pile on screen long enough to read.
  */
 export const BONES_LIFETIME_TICKS = 1800;
 /**
@@ -79,9 +80,10 @@ function seedFrom(sourceId: number, tick: number): number {
 /**
  * Fold this frame's sim events into the live mark list: drop expired marks, then append a blood splatter for each
  * landed blow (`combatHit` melee / `projectileHit` ranged) and a bone pile for each death carrying a position
- * (`settlerDied.at`). A miss emits no hit event, so it leaves no blood; a blow on a building (`structure`)
- * emits the event for its impact SFX but draws no blood — a wall doesn't bleed. The list is capped at
- * {@link MAX_ACTIVE_EFFECTS} (oldest-first drop). Returns a new array; pure over its inputs.
+ * (`settlerDied.at`) and for each drained hunter's carcass (`resourceDepleted {carcass}` - see the sim's
+ * `Carcass` component for the source basis). A miss emits no hit event, so it leaves no blood; a blow on a
+ * building (`structure`) emits the event for its impact SFX but draws no blood - a wall doesn't bleed. The
+ * list is capped at {@link MAX_ACTIVE_EFFECTS} (oldest-first drop). Returns a new array; pure over its inputs.
  */
 export function foldCombatEffects(
   active: readonly CombatEffect[],
@@ -106,6 +108,14 @@ export function foldCombatEffects(
         hy: ev.at.hy,
         spawnTick: tick,
         seed: seedFrom(ev.entity, tick),
+      });
+    } else if (ev.kind === 'resourceDepleted' && ev.carcass === true) {
+      next.push({
+        kind: 'bones',
+        hx: ev.at.hx,
+        hy: ev.at.hy,
+        spawnTick: tick,
+        seed: seedFrom(ev.node, tick),
       });
     }
   }
