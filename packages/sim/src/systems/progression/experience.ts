@@ -59,12 +59,25 @@ export function trackFor(
 }
 
 /**
+ * Strokes one unit of output costs this `(job, good)` pairing - the track's extracted
+ * `baserepeatcounter` (`humanjobexperiencetypes.ini`: hunter 5, farmer wheat 2, fisher 5), read as
+ * strokes-per-action. The reading is indirect but calibrated: the farm's measured throughput (~10
+ * grain per farmer per 10 min, `catalog/farming.ts`) lands with 2 strokes and would not with 1 or 4;
+ * per-stroke counting in the running original is unverified. 1 for a trackless pairing, a track
+ * without the field, or an authored 0 - never below one stroke.
+ */
+export function workRepeatsFor(ctx: SystemContext, jobType: number | null, goodType: number): number {
+  if (jobType === null) return 1;
+  return Math.max(1, trackFor(ctx, jobType, goodType)?.baseRepeatCounter ?? 1);
+}
+
+/**
  * Grant a settler XP for `units` of `goodType` its completed work atomic actually extracted. No-ops when
  * the settler has no job, is gone, no track matches the `(job, good)` pairing, or the swing extracted
  * nothing (a mid-job chop/strike). Adds each track's `experienceFactor` per unit — XP counts resource
  * units gathered, never swings, so a felled trunk trains its whole yield at once (design rule,
  * user-specified). `experienceFactor` is the original's per-track accrual rate (raw integer, 1..250 in
- * the base data); the non-linear XP→level curve (`baseRepeatCounter`) is a later balance slice.
+ * the base data); the track's `baseRepeatCounter` is the stroke count ({@link workRepeatsFor}), not XP.
  *
  * Work trains ONLY the matched track — one XP row per worked resource, so digging stone never
  * advances the clay specialization (design rule, user-specified, 2026-07-25). The `needfor*` gates
@@ -91,6 +104,7 @@ export function grantWorkExperience(
 /** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
  *  work- and fight-XP grants (and the single seam a future accrual cap/curve would land in). */
 function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
+  if (amount <= 0) return; // a zero-rate track plants no phantom map key (state-hash noise)
   s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
 }
 
@@ -269,8 +283,8 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
  * `soldier general` track (rate 0); the band half is skipped for civilians and absent tracks.
  *
  * Approximated: the accrual trigger (per-damaging-swing) has no readable oracle — the original may accrue
- * per swing or per kill; per-damaging-swing is the deterministic reading. The XP→level→stat curve
- * (`baseRepeatCounter`, the combat bonuses a level grants) is a later calibration slice (source basis).
+ * per swing or per kill; per-damaging-swing is the deterministic reading. The XP→level→stat curve (the
+ * combat bonuses a level grants) is a later calibration slice (source basis).
  */
 export function grantFightExperience(
   world: World,

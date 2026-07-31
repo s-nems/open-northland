@@ -13,7 +13,12 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
-import { buildingEnabled, scaledWorkRepeats, workSpeedBonus } from '../../../progression/index.js';
+import {
+  buildingEnabled,
+  scaledWorkRepeats,
+  workRepeatsFor,
+  workSpeedBonus,
+} from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/nodes.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
@@ -110,12 +115,16 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
-  // Experience on the crop's track cuts the strokes per spot ({@link scaledWorkRepeats}); the whole
+  // The crop's extracted stroke count ({@link workRepeatsFor} - `baserepeatcounter`, farmer wheat 2);
+  // experience on its track cuts the strokes per spot ({@link scaledWorkRepeats}), so the whole
   // labor-gated farm loop, and with it the farm's output, approaches 2x at mastery (approximation).
-  const strokes = scaledWorkRepeats(spec.farming.workRepeats, workSpeedBonus(world, ctx, e, spec.goodType));
+  const strokes = scaledWorkRepeats(
+    workRepeatsFor(ctx, settler.jobType, spec.goodType),
+    workSpeedBonus(world, ctx, e, spec.goodType),
+  );
 
   /** How long one field action takes: the atomic's animation length replayed `strokes` times — the
-   *  farmer scythes/sows/waters several strokes per spot, not one (see the good's `workRepeats`). */
+   *  farmer scythes/sows/waters several strokes per spot, not one. */
   const swingTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic) * strokes;
 
   /** Claim `node` for this settler's next action and record the in-flight intent (see FarmTask). */

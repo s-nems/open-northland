@@ -17,14 +17,15 @@ export const HARVEST_SWINGS_PER_REST = 2;
 /**
  * Whether the swing that just resolved against `node` left its multi-swing job still in progress — the
  * executor then chains the next swing (or the breather) directly instead of releasing the settler for a
- * tick, since the one-tick planner gap between swings draws a flick of the idle pose mid-work. True only
- * for a standing {@link Felling} tree with chops left or a {@link MineDeposit} mid-unit (`strikes` advanced
- * but the unit not yet loose); the swing that fells / chips a unit loose / depletes releases the settler,
- * and the planner routes the pickup/carry — the job's natural break. A plain node (a mushroom, gone after
- * its single pluck) never chains.
+ * tick, since the one-tick planner gap between swings draws a flick of the idle pose mid-work. True for a
+ * standing {@link Felling} tree with chops left, and for any node mid-unit - a {@link MineDeposit} or a
+ * multi-stroke bare node (`Resource.strikes`) with strokes advanced but the unit not yet loose; the swing
+ * that fells / chips a unit loose / plucks / depletes releases the settler, and the planner routes the
+ * pickup/carry - the job's natural break. A single-stroke plain node (a mushroom) never chains.
  */
 export function continuesHarvest(world: World, node: Entity): boolean {
-  if (!world.has(node, Resource)) return false; // felled/depleted/plucked — carrying is the break
+  const res = world.tryGet(node, Resource);
+  if (res === undefined) return false; // felled/depleted/plucked - carrying is the break
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) return felling.chopsLeft > 0;
   const deposit = world.tryGet(node, MineDeposit);
@@ -32,7 +33,8 @@ export function continuesHarvest(world: World, node: Entity): boolean {
   // bank a remainder here — the executor releases on the extraction result, not this test, and the
   // banked strikes persist on the node across the pickup trip.
   if (deposit !== undefined) return (deposit.strikes ?? 0) > 0;
-  return false;
+  // A bare node mid-unit (the multi-stroke pluck, `Resource.strikes`) chains like a deposit does.
+  return (res.strikes ?? 0) > 0;
 }
 
 /**

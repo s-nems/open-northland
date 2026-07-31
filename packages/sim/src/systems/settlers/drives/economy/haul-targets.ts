@@ -27,7 +27,7 @@ import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
  */
 export function nearestGroundPile(
   plan: PlannerContext,
-  opts: { readonly deliverable: (goodType: number, from?: Entity) => boolean },
+  opts: { readonly deliverable: (goodType: number) => boolean },
 ): { pile: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
   const { deliverable } = opts;
@@ -43,7 +43,7 @@ export function nearestGroundPile(
       if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
       const good = lowestStockedGood(world.get(e, Stockpile));
       if (good === null) return null; // an empty pile is nothing to collect
-      if (!deliverable(good, e)) return null; // no sink this porter can reach — leave it, try another good
+      if (!deliverable(good)) return null; // no sink this porter can reach - leave it, try another good
       if (buriedUnderBuilding(world, terrain, walls, e)) return null; // walled in — an unreachable stand
       const cell = interactionCell(world, ctx, terrain, e, here);
       if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this porter's route just failed on
@@ -79,7 +79,7 @@ export function nearestGroundPile(
  * the good to lift, or null when there is nothing to haul.
  */
 export function boundProducerOutputToHaul(
-  deliverable: (goodType: number, from?: Entity) => boolean,
+  deliverable: (goodType: number) => boolean,
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -96,7 +96,7 @@ export function boundProducerOutputToHaul(
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
     if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
-    if (deliverable(goodType, home)) {
+    if (deliverable(goodType)) {
       return { home, goodType };
     }
   }

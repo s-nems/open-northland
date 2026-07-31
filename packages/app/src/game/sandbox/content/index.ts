@@ -1,9 +1,11 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { WHEAT_WORK_REPEATS } from '../../../catalog/farming.js';
 import { EXTENDED_GOODS } from '../../../catalog/goods.js';
 import { HUNTER_GENERAL_XP_TRACK, huntPreyRows } from '../../../catalog/hunting.js';
 import type { GoodRef } from '../../../content/settler-gfx/index.js';
 import { buildSandboxBuildings } from '../building-set.js';
 import { sandboxWeapons } from '../combat.js';
+import { GOOD_WHEAT, JOB_FARMER_SLOT } from '../ids/index.js';
 import {
   sandboxGatheringPipeline,
   sandboxLandscape,
@@ -18,6 +20,24 @@ import { buildSandboxTribes } from './catalog/tribes.js';
 import type { SandboxContentExtras, WorldContentOptions } from './types.js';
 
 export type { SandboxContentExtras, WorldContentOptions } from './types.js';
+
+/**
+ * The sandbox farmer-wheat track: the extracted `baserepeatcounter 2` (`humanjobexperiencetypes.ini`
+ * type 46) against the sandbox's own ids (the farm employs the SLOT job, not the plain farmer id), so
+ * `workRepeatsFor` paces a sandbox field action like a real-content one. `experienceFactor` is 0 HERE,
+ * not the extracted 100: the sandbox farm is the calibration target of `farm-pacing.test.ts` (a flat
+ * ~10 grain per farmer per 10 min, measured without training), and an accruing track would master the
+ * crew mid-measurement. Real content indexes the extracted row, training included.
+ */
+const FARMER_WHEAT_XP_TRACK = {
+  typeId: 46,
+  id: 'farmer_wheat',
+  name: 'farmer wheat',
+  jobType: JOB_FARMER_SLOT,
+  goodType: GOOD_WHEAT,
+  experienceFactor: 0,
+  baseRepeatCounter: WHEAT_WORK_REPEATS,
+} as const;
 
 /** The complete validated hand-authored content set shared by scenes and the playable vertical slice. */
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
@@ -36,9 +56,10 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     tribes: [...tribes.values()],
     animals: buildSandboxAnimals(),
     // The hunter's prey/yield table and XP track (`catalog/hunting.ts`), resolved against the stable
-    // sandbox id tables — the same authored balance the real-content merge applies.
+    // sandbox id tables - the same authored balance the real-content merge applies. The farmer track
+    // carries the extracted stroke count the field loop reads (`catalog/farming.ts`).
     huntPrey: huntPreyRows(EXTENDED_GOODS, SANDBOX_ANIMAL_TRIBES),
-    jobExperience: [HUNTER_GENERAL_XP_TRACK],
+    jobExperience: [HUNTER_GENERAL_XP_TRACK, FARMER_WHEAT_XP_TRACK],
     atomicAnimations: buildSandboxAtomicAnimations(),
   });
 }

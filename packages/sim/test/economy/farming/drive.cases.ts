@@ -43,6 +43,9 @@ describe('planFarmer — the drive ladder', () => {
     expect(atomic?.atomicId === SOW_ATOMIC || goal !== undefined).toBe(true);
   });
 
+  /** The grafted fixture farmer-wheat track id (the base fixture carries no farmer track at all). */
+  const FARMER_WHEAT_TRACK = 90;
+
   it('reaps a ripe field before sowing more', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
@@ -56,18 +59,25 @@ describe('planFarmer — the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
   });
 
-  it("a field action lasts workRepeats strokes — the dial the farm's whole throughput rests on", () => {
-    // Two content sets differing ONLY in wheat's `workRepeats`; the reap of an identical ripe field
-    // underfoot must take exactly twice as long at 2 strokes as at 1.
-    const reapTicks = (workRepeats: number): number => {
+  it("a field action lasts the track's baseRepeatCounter strokes - the farm's throughput dial", () => {
+    // Two content sets differing ONLY in the farmer-wheat track's stroke count (`workRepeatsFor`); the
+    // reap of an identical ripe field underfoot must take exactly twice as long at 2 strokes as at 1.
+    const reapTicks = (strokes: number): number => {
       const base = testContent();
       const content = {
         ...base,
-        goods: base.goods.map((g) =>
-          g.typeId === WHEAT && g.farming !== undefined
-            ? { ...g, farming: { ...g.farming, workRepeats } }
-            : g,
-        ),
+        jobExperience: [
+          ...base.jobExperience,
+          {
+            typeId: FARMER_WHEAT_TRACK,
+            id: 'farmer_wheat',
+            name: 'farmer wheat',
+            jobType: FARMER,
+            goodType: WHEAT,
+            experienceFactor: 1,
+            baseRepeatCounter: strokes,
+          },
+        ],
       };
       const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
       const farm = farmAt(sim, 4, 4);
@@ -80,18 +90,12 @@ describe('planFarmer — the drive ladder', () => {
   });
 
   it('experience cuts the strokes per spot — a master reaps in half the strokes (scaledWorkRepeats wiring)', () => {
-    // The fixture carries no farmer track, so graft one (typeId 90, rate 1) and pin wheat at 4 strokes:
+    // The fixture carries no farmer track, so graft one (typeId 90, rate 1) pinning wheat at 4 strokes:
     // 100 XP = 100 repeats = mastery, so the same reap must plan 2 strokes instead of 4.
-    const FARMER_WHEAT_TRACK = 90;
     const reapTicks = (xp: number): number => {
       const base = testContent();
       const content = {
         ...base,
-        goods: base.goods.map((g) =>
-          g.typeId === WHEAT && g.farming !== undefined
-            ? { ...g, farming: { ...g.farming, workRepeats: 4 } }
-            : g,
-        ),
         jobExperience: [
           ...base.jobExperience,
           {
@@ -101,6 +105,7 @@ describe('planFarmer — the drive ladder', () => {
             jobType: FARMER,
             goodType: WHEAT,
             experienceFactor: 1,
+            baseRepeatCounter: 4,
           },
         ],
       };

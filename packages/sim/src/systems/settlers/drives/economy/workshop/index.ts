@@ -57,7 +57,7 @@ export function planProducer(
   // A full output slot is the one stall no fetch can clear, so shipping that good outranks the next input
   // trip and happens whether or not a carrier is bound to the workshop.
   const blocked = shelfBlockedOutput(world, ctx, workplace);
-  if (blocked !== null && deliverableGoodProbe(plan)(blocked, workplace)) {
+  if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
     startOutputHaul(plan, workplace, blocked);
     return;
   }

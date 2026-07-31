@@ -122,18 +122,6 @@ export const GoodFarming = z.strictObject({
   growthSpreadPercent: z.number().int().nonnegative().max(99).default(0),
   /** Observed — units a ripe field drops (as a ground sheaf) when reaped. */
   yieldPerField: z.number().int().positive(),
-  /**
-   * How many times a farmer replays a field atomic's animation per action — the farmer stands and
-   * scythes (or sows, or waters) a few strokes rather than one. Multiplies the plant/cultivate/harvest
-   * durations, and so sets the labor a single grain costs, which is what the farm's whole throughput
-   * rests on (see the `farming` module note).
-   *
-   * Data, not observed: `humanjobexperiencetypes.ini` type 46 "farmer wheat" (`job 18`, `good 4`)
-   * carries `baserepeatcounter 2`. The same key appears on "hunter general" (5) and "fisher general"
-   * (5) — the three gather trades — which reads as strokes-per-action. "base" implies experience scales
-   * it down; that half is NOT modelled here (see docs/tickets/sim/job-repeat-counter-extraction.md).
-   */
-  workRepeats: z.number().int().positive().default(1),
   /** Observed — how far from the farm's anchor its workers sow, in half-cell nodes (no radius in data). */
   fieldRadius: z.number().int().positive(),
   /** Observed — how many fields one farm keeps standing at once. A property of the FARM, not of its

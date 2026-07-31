@@ -17,7 +17,6 @@ import {
   HEADQUARTERS,
   KITCHEN,
   PICKUP_ATOMIC,
-  pileAt,
   settlerAt,
   WOOD,
 } from './producer-supply/support.js';
@@ -44,21 +43,16 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     expect(exportedGoodForm(ctx, WOOD)).toBe(WOOD); // an ordinary good is carried as itself
   });
 
-  it('converts only on the way out of the house that produces the dish', () => {
+  it("converts in every hand but the dish's own gathering trade (the picker decides, not the source)", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const kitchen = buildingAt(sim, KITCHEN, 0, 0, [[BREAD, 1]]);
-    const hq = buildingAt(sim, HEADQUARTERS, 3, 0);
-    const heap = pileAt(sim, 5, 0, [[BREAD, 1]]);
+    const carrier = settlerAt(sim, 5, 0, CARRIER);
     const ctx = ctxOf(sim);
 
-    expect(carriedGoodForm(sim.world, ctx, kitchen, BREAD)).toBe(FOOD_SIMPLE);
-    // A store that merely HOLDS the dish, and a loose heap, hand it over raw. Scoping this matters for
-    // meat: it is a dish AND a map-harvested good, so converting it wherever it was found would stop a
-    // porter routing a meat heap to the one building that stocks meat.
-    expect(carriedGoodForm(sim.world, ctx, hq, BREAD)).toBe(BREAD);
-    expect(carriedGoodForm(sim.world, ctx, heap, BREAD)).toBe(BREAD);
-    expect(carriedGoodForm(sim.world, ctx, null, BREAD)).toBe(BREAD);
-    expect(carriedGoodForm(sim.world, ctx, kitchen, WOOD)).toBe(WOOD); // not a dish
+    // A dish converts in a hauler's hands wherever it was lifted from (`carriedGoodForm` owns the
+    // rule). No fixture job harvests bread, so it converts for everyone; the hunter/meat exemption is
+    // pinned in meat-conversion.test.ts.
+    expect(carriedGoodForm(sim.world, ctx, carrier, BREAD)).toBe(FOOD_SIMPLE);
+    expect(carriedGoodForm(sim.world, ctx, carrier, WOOD)).toBe(WOOD); // not a dish
   });
 
   it('a baker with a full bread shelf carries one out instead of standing idle', () => {
@@ -112,17 +106,15 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
     expect((shelf.get(BREAD) ?? 0) + (larder.get(FOOD_SIMPLE) ?? 0) + inFlight).toBe(5 + produced);
   });
 
-  it("the family's food search sees the kitchen's loaves, not a warehouse's", () => {
+  it("the family's food search sees a stocked dish as food wherever it sits", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const kitchen = buildingAt(sim, KITCHEN, 5, 0, [[BREAD, 3]]);
-    // A loaf that never came out of its kitchen stays a loaf, so the warehouse at her feet is no food
-    // source and she walks past it to the shelf that is (the meat-heap scoping, from the family side).
-    buildingAt(sim, HEADQUARTERS, 0, 0, [[BREAD, 3]]);
+    buildingAt(sim, KITCHEN, 5, 0, [[BREAD, 3]]);
+    // Any stocked dish reads as food now - the family's own lift converts it - so the nearer shelf
+    // wins whether or not it is the kitchen that cooked the loaf. She asks for the good to LIFT (raw).
+    const hq = buildingAt(sim, HEADQUARTERS, 0, 0, [[BREAD, 3]]);
     const index = new ExternalFoodIndex(sim.world, ctxOf(sim), sim.terrain);
 
-    // The reported bug: hearts over the home while the settlement's only food sat on the bakery shelf
-    // as bread, leaving her nowhere to fetch from. She asks for the good to LIFT — the raw loaf.
-    expect(index.nearest({ hx: 0, hy: 0 }, undefined, null)).toEqual({ store: kitchen, goodType: BREAD });
+    expect(index.nearest({ hx: 0, hy: 0 }, undefined, null)).toEqual({ store: hq, goodType: BREAD });
   });
 
   it('the baker walking away from the kitchen is holding food, not bread', () => {

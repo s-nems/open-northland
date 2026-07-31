@@ -8,6 +8,7 @@ import {
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
+import { exportedGoodForm } from '../../../../readviews/index.js';
 import { stockCapacity } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
@@ -29,11 +30,10 @@ export function drawUtilityGood(world: World, settler: Entity, goodType: number)
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
  * {@link Stockpile} onto the settler's back. The amount is conserved — the carrier gains exactly what
  * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
- * The good's identity is not: a dish lifted out of the house that produces it lands on the back as the
- * edible it becomes ({@link carriedGoodForm}) — the bakery loses one bread, the carrier holds one
- * `food_simple`. Lifting the same good from anywhere else (a ground heap, a store merely holding it)
- * keeps it raw. The planner probed routing through the same helper before ordering the lift, so the
- * delivery rung already agrees on what is being carried.
+ * The good's identity is not: a dish lands on the back as the edible it becomes in THIS settler's
+ * hands ({@link carriedGoodForm} - the rule and its source basis live there); the bakery loses one
+ * bread, the carrier holds one `food_simple`. The planner probed routing through the same helper
+ * before ordering the lift, so the delivery rung already agrees on what is being carried.
  * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
  * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
  * completing — a competing system or another carrier). A source with nothing left to give is a no-op.
@@ -46,7 +46,7 @@ export function pickupFromStore(
   goodType: number,
   amount: number,
 ): void {
-  const carried = carriedGoodForm(world, ctx, from, goodType);
+  const carried = carriedGoodForm(world, ctx, settler, goodType);
   if (from === null) {
     addCarry(world, settler, carried, amount);
     return;
@@ -84,13 +84,25 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const stock = world.tryGet(store, Stockpile);
   if (stock === undefined) return 0;
 
-  const have = stock.amounts.get(load.goodType) ?? 0;
-  const capacity = stockCapacity(world, ctx, store, load.goodType);
+  // A store with no slot for a raw dish banks its edible instead: the hunter's meat delivered to a
+  // larder/warehouse lands as food (no larder or warehouse slots a raw edible in the readable stock
+  // tables - see `carriedGoodForm` for the rule's basis), while a store that DOES stock the raw good
+  // (the animal farm's meat slot, the bakery's bread shelf) takes it raw.
+  let banked = load.goodType;
+  let capacity = stockCapacity(world, ctx, store, banked);
+  if (capacity <= 0) {
+    const edible = exportedGoodForm(ctx, load.goodType);
+    if (edible !== load.goodType) {
+      banked = edible;
+      capacity = stockCapacity(world, ctx, store, edible);
+    }
+  }
+  const have = stock.amounts.get(banked) ?? 0;
   const space = Math.max(0, capacity - have);
   const moved = Math.min(load.amount, space);
   if (moved <= 0) return 0; // store full for this good — keep carrying
 
-  setStockAmount(world, store, load.goodType, have + moved);
+  setStockAmount(world, store, banked, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
   return moved;
 }

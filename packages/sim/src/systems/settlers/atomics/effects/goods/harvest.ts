@@ -6,6 +6,8 @@ import {
   ownerOf,
   Position,
   Resource,
+  ResourceLayers,
+  Settler,
   Stump,
   stampOwner,
   WorkFlag,
@@ -13,7 +15,8 @@ import {
 import { eventAt } from '../../../../../core/events.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-import { unstampResourceFootprint } from '../../../../footprint/index.js';
+import { stampResourceFootprintOrFallback, unstampResourceFootprint } from '../../../../footprint/index.js';
+import { workRepeatsFor } from '../../../../progression/index.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 
@@ -73,6 +76,10 @@ export function harvestFromNode(
 ): number {
   const res = world.tryGet(node, Resource);
   if (res === undefined) return 0; // node already felled/gone — the swing struck nothing (conserved)
+  // A swing planned against a good the node no longer holds hit air: a shared carcass can re-arm to its
+  // next layer (`depleteNode`) while a second hunter's atomic is in flight, and minting the STALE good
+  // while draining the new layer would transmute goods. Yield nothing; the raced hunter re-plans.
+  if (res.goodType !== goodType) return 0;
   if (world.has(node, Crop)) {
     return reapField(world, node, res);
   }
@@ -111,7 +118,26 @@ export function harvestFromNode(
     }
     dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {
-    addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)
+    // A bare-node pluck whose trade plays several strokes per unit (`workRepeatsFor` - the extracted
+    // `baserepeatcounter`; the hunter's carcass): only the stroke that completes the count plucks the
+    // unit, earlier ones bank on the node's counter. Mastery frees units in fewer strokes through
+    // `swings` (the same fewer-swings rule the deposits ride). Single-stroke trades skip the counter.
+    const repeats = workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, res.goodType);
+    if (repeats > 1) {
+      const advanced = (res.strikes ?? 0) + swings;
+      if (advanced < repeats) {
+        world.write(node, Resource, (r) => {
+          r.strikes = advanced;
+        });
+        return 0; // a mid-unit stroke extracts nothing yet
+      }
+      const rest = advanced % repeats; // a mastered stroke's overshoot carries into the next unit
+      world.write(node, Resource, (r) => {
+        if (rest === 0) delete r.strikes;
+        else r.strikes = rest;
+      });
+    }
+    addCarry(world, settler, goodType, took); // the pluck IS the pickup - straight onto the back
   }
   // Decrement only after the unit is safely dropped/carried: were `addCarry` ever to reject (a full load), the
   // unit is not lost and the node isn't wrongly depleted. The planner only reaches a harvest empty-handed, so
@@ -230,8 +256,29 @@ function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
  * collision-unblock seam. Unlike {@link fellNode} it leaves nothing behind — the yield already dropped as ore
  * piles / went onto the back — it just deletes the node so the planner never re-scans a spent deposit. The
  * node's cell is read before the destroy (the component object is dropped from its store by `world.destroy`).
+ *
+ * A node with buried {@link ResourceLayers} (a hunter's multi-good carcass) is not spent yet: the drained
+ * good re-arms as the head layer instead - same body, same cell, the next good and its stage decal - and
+ * only the last layer's drain removes it. The footprint is re-stamped per stage (decals differ per good).
  */
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
+  const buried = world.tryGet(node, ResourceLayers);
+  const layer = buried?.layers[0];
+  if (buried !== undefined && layer !== undefined) {
+    unstampResourceFootprint(world, node);
+    world.write(node, Resource, (r) => {
+      r.goodType = layer.goodType;
+      r.remaining = layer.amount;
+      r.harvestAtomic = layer.harvestAtomic;
+      if (layer.gfxIndex !== undefined) r.gfxIndex = layer.gfxIndex;
+      else delete r.gfxIndex;
+      delete r.strikes; // a fresh good starts its stroke count over
+    });
+    if (buried.layers.length === 1) world.remove(node, ResourceLayers);
+    else world.write(node, ResourceLayers, (l) => l.layers.shift());
+    stampResourceFootprintOrFallback(world, ctx.content, node, layer.goodType);
+    return;
+  }
   const pos = world.get(node, Position);
   const at = eventAt(pos.x, pos.y);
   removeResourceNode(world, node);

@@ -147,7 +147,7 @@ function huntingGround(
  *
  * Cost: the memo is per-engage, so an active chase re-probes each tick, and a carcass-less probe tests
  * every indexed resource in the {@link HUNTER_WORK_FLAG_RADIUS} box. Unmeasured; if a bench on a
- * resource-dense ground shows it, bound it (docs/tickets/sim/combat-spatial-rebuild-per-tick.md).
+ * resource-dense ground shows it, bound it (docs/tickets/sim/hunter-scan-costs-bench.md).
  */
 function huntingGroundHoldsCarcass(
   world: World,

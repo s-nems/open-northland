@@ -140,7 +140,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     });
   });
 
-  it('walks past a warehouse holding the same loaves — cargo there, not food', () => {
+  it('eats stocked loaves out of a warehouse too - a stored dish is food wherever it sits', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 2, 0, HUNGRY);
     const warehouse = storeAt(sim, 2, 0); // same cell, loaves only
@@ -148,7 +148,12 @@ describe('eatDrive — the planner choosing to eat', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
+    // Consuming IS the conversion (`exportedGoodForm`), so the shelf that cooked it no longer matters.
+    expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({
+      kind: 'eat',
+      goodType: BREAD,
+      from: warehouse,
+    });
   });
 
   it('ignores the eat drive below the threshold (a fed settler works normally)', () => {

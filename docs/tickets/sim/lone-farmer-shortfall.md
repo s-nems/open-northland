@@ -41,9 +41,8 @@ levers, none yet evaluated:
   also speeds crews 2-4, which are already high.
 - Let one watering fuel more than one stage step (a watering budget rather than a per-stage gate).
   Changes the mechanic, so it needs a source basis, not just a better curve.
-- Re-check `workRepeats` against the original once
-  docs/tickets/sim/job-repeat-counter-extraction.md wires the extracted value in; the whole ladder
-  scales with it.
+- Re-check the stroke count against the original (`workRepeatsFor` now reads the extracted
+  `baserepeatcounter 2` from the indexed jobExperience track); the whole ladder scales with it.
 
 Whichever lever is chosen, the ~20% overshoot on crews 2-4 is partly harness idealization — measure
 in a real settlement scene (hunger, sleep, hauling contention) before tuning against the headless
