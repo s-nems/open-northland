@@ -114,11 +114,13 @@ interface ObjectFootprint {
 /**
  * `EditName` → footprint for every object that blocks something (harvestables skipped, module doc).
  *
- * A bridge contributes no body: its deck is authored in the GROUND lanes (the map paints a walkable
- * strip under the sprite) and the original never bakes the object into its own half-cell landscape
- * lane, so stamping the walk area would sever that authored strip. Its cells block building only.
- * Approximation: the whole walk area goes, not just the deck strip, so a bridge's parapets and
- * abutment stonework stop blocking as well.
+ * A bridge contributes no body, so its cells block building only. This is an approximation standing in
+ * for a fix elsewhere, not the original's rule: the map's derivable `lmwb` plane bakes every object's
+ * walk area, a bridge's included (`docs/formats/MAPDAT.md`), and that area is a parapet outline whose
+ * corridor carries the authored crossing. Our per-cell ground collapse seals that corridor at its
+ * land/water cells, which is what actually severs the crossings;
+ * `docs/tickets/app/shoreline-half-water-cells.md` owns the real fix and reverting this exception.
+ * Until then settlers also walk the parapets and abutment stonework, which the original blocks.
  */
 function objectFootprints(
   rows: NonNullable<CollisionIrView['landscapeGfx']>,

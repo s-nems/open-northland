@@ -29,8 +29,8 @@ export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): Readonl
 
 /**
  * The multiplier one object placed at half-cell node `(hx, hy)` is graded by: the mean of the lane over
- * the ground cells its footprint covers. A footprint-less record (the flat decals) falls back to its own
- * cell, which is the whole ground it stands on.
+ * the ground cells its footprint covers. A footprint-less record (the flat decals) has nothing to
+ * average over, so its own cell stands.
  *
  * Approximation: the original folds a single shade argument into a bob's alpha blit, and no readable
  * source says which cell it reads for a bob spanning many.

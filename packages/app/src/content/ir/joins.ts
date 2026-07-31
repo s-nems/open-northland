@@ -14,7 +14,10 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
 }
 
-/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`). */
+/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
+ *  A name-pinned selector, not a data flag: no extracted lane distinguishes a bridge (`logicType` is
+ *  `void` for most records carrying a walk area, dungeon walls and statues included). `ice bridge`
+ *  sits in an ice-wall group and is left out by that same judgement, not by evidence. */
 export const BRIDGE_EDIT_GROUP = 'misc_bridges';
 const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
 
@@ -33,12 +36,13 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
 
 /**
  * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
- * deck), `undefined` for every other record. Settlers cross ON a bridge deck (`content/collision.ts`
- * holds why), so sorting at the object's own row buries everyone on the far half of the span.
+ * deck), `undefined` for every other record. Settlers cross a bridge's span (`content/collision.ts`
+ * holds why), so sorting at the object's own row buries everyone on the far half of it.
  *
- * One sort row for a deck up to 13 half-rows long is an approximation: an occluder anchored between the
- * far row and the bridge's own row paints over the deck instead of under it. 36 placements in the owned
- * corpus sit there, bank stones and trees beside an abutment.
+ * One sort row for a deck up to 13 half-rows long is an approximation: anything anchored between the
+ * far row and the bridge's own row paints over the deck instead of under it. 36 static placements in
+ * the owned corpus sit there, bank stones and trees beside an abutment, plus any settler standing on
+ * the bank alongside a span.
  */
 export function deckFarRow(
   record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,

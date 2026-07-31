@@ -90,8 +90,9 @@ const STRIP_NODE_Y = 2;
 
 /**
  * `specjalna_mosty_na_rzece` in miniature: two land banks split by a water column, crossed by the
- * one land cell the mapmaker painted under the bridge sprite. The bridge object's walk area covers
- * that whole strip, so stamping it as a body would sever the only crossing.
+ * one land cell the mapmaker painted under the bridge sprite. The walk area is deliberately solid
+ * over that strip, the worst case for the exception; the real records are hollow parapet outlines
+ * whose corridor the shoreline ticket restores.
  */
 function bridgeMap() {
   const W = 5;
@@ -120,8 +121,8 @@ const BRIDGE_IR = {
     {
       editName: 'bridge stone',
       editGroups: ['misc_bridges'],
-      // The real bridges' shape: a walk area over the deck, inside a build area that reaches one
-      // node row past each end.
+      // A walk area inside a build area that reaches one node row past each end, as the real
+      // records nest them.
       walkBlockAreas: [
         [1, 0, 0, 2],
         [1, 0, 1, 2],
