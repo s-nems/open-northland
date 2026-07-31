@@ -23,6 +23,8 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
  *
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
  *  - **LPM click** — select the unit/building under the cursor (Shift adds to the selection).
+ *  - **Sign rows** - either button on a building's sign-chain row selects the settler the row stands
+ *    for; only a direct PPM on the unit itself opens its action menu.
  *  - **LPM drag** — a marquee box; on release, select every owned unit whose feet fall inside it.
  *  - **PPM** on one of your own units — select it and bring up its action menu (the original's
  *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an enemy unit — order the
@@ -223,7 +225,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
       // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
       if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
-      else orders.issueRightClick(e);
+      else {
+        // A sign-chain row consumes the right button as a plain select (no action ring, no order):
+        // the chain hangs over the door, so without this mask the click reads as "PPM on the settler
+        // idling below" (ring pops up) or falls through the floating art into a move order.
+        const w = toWorld(e.clientX, e.clientY);
+        const badgeSettler = pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation);
+        if (badgeSettler !== null) setSelection([badgeSettler], false);
+        else orders.issueRightClick(e);
+      }
       return;
     }
     if (e.button !== 0) return; // middle = camera pan (handled by the camera controller)
