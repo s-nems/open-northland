@@ -19,8 +19,8 @@ import { makeCellSampler } from './cell-field.js';
  *
  * Landscape objects are shaded too, with one measured exception: mine decals, stones and grass track
  * the lane (masked opaque-pixel ratio ×0.58 → ×1.58 across it), while tree canopies stay full-bright
- * even anchored on embr=0 border cells (flat regression over 118 canopies) — the app's object loader
- * applies the anchor-cell multiplier to everything but the tree logic types (`content/objects.ts`).
+ * even anchored on embr=0 border cells (flat regression over 118 canopies): the app grades each object
+ * over the ground its footprint covers, minus that exemption (`content/object-shading.ts`).
  * Buildings and settlers draw unshaded, as the original does: its normal bob-print core
  * (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no brightness argument — only
  * landscape objects fold shade into their alpha blit. An earlier per-entity feet-cell multiplier was
