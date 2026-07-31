@@ -1,6 +1,6 @@
 import { Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { forEachIndexNode, type IndexNodeVisitor } from '../spatial/nodes.js';
+import type { IndexNodeVisitor } from '../spatial/nodes.js';
 
 /**
  * Coarse presence-cell edge (half-cell nodes). Sized so a sight/defend-radius query (≤ ~20 nodes)
@@ -30,22 +30,19 @@ interface PresenceCell {
  * null `EngageSpec.player` (or the flee drive's own hunter exemption): unowned ones (valid targets
  * can share the "unowned" class) and hunters (owner-blind prey filter admits passive catchable
  * animals). The passive share may only shrink within the tick (Anger is stamped by the earlier
- * atomic damage pass and only reaped here), so the build-time count stays conservative. Rebuilt
- * each combat tick from the same combatant list as the ring-search index; derived state, never
- * hashed.
+ * atomic damage pass and only reaped here), so the build-time count stays conservative. Filled each
+ * combat tick from the same walk as the ring-search index; derived state, never hashed.
  */
 export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */
   private readonly byCx = new Map<number, Map<number, PresenceCell>>();
   private readonly world: World;
   /**
-   * One reused tally visitor for the whole build (no per-entity closure): count the entity into its coarse
-   * cell's total and, for an owned unit, that player's share. Owner is read per visit (a Map lookup) so the
-   * visitor keeps no per-entity state — a unit resolves to one node, a building's few walls to several. The
-   * node ladder it tallies over (and why that keeps `othersWithin` a superset of the ring search) is
-   * {@link forEachIndexNode}.
+   * Count `e` into node (x,y)'s coarse cell: the tally sink, public so the ring-search index's own build walk
+   * can feed it (`NodeBuckets`'s `alsoVisit`). Owner and wildlife class are read per visit, so the one
+   * reused visitor keeps no per-entity state.
    */
-  private readonly tally: IndexNodeVisitor = (e, x, y) => {
+  readonly addNode: IndexNodeVisitor = (e, x, y) => {
     const cell = this.cellAt(Math.floor(x / PRESENCE_CELL_NODES), Math.floor(y / PRESENCE_CELL_NODES));
     cell.total++;
     const wild = this.wildClassOf?.(e) ?? null;
@@ -59,9 +56,6 @@ export class HostilePresence {
 
   constructor(
     world: World,
-    combatants: Iterable<Entity>,
-    nodeOf?: (e: Entity) => { x: number; y: number } | null,
-    nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
     /** Classifies an unowned animal combatant: `'passive'` (non-hostile-now — discounted from
      *  `othersWithin`, so a map of grazing herds cannot defeat every gated seeker's early-out) or
      *  `'hostile'` (aggressive/angry — additionally discounted from `civsWithin`, so a wolf pack
@@ -70,7 +64,6 @@ export class HostilePresence {
   ) {
     this.world = world;
     this.wildClassOf = wildClassOf;
-    for (const e of combatants) forEachIndexNode(world, e, nodeOf, nodesOf, this.tally);
   }
 
   /**
