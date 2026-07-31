@@ -116,6 +116,9 @@ export interface LandscapeGfxFramesRow {
 export interface LandscapeGfxRow {
   readonly index: number;
   readonly editName?: string;
+  /** `EditGroups` — the editor palette folders the record sits in; the collision join keys the bridge
+   *  rule on one of them (`collision.ts` `BRIDGE_EDIT_GROUP`). */
+  readonly editGroups?: readonly string[];
   readonly logicType: number;
   /** `LogicMaximumValency` — the record's harvest capacity in units, which sizes a spawned mineral
    *  deposit. Not the authored {@link frames} count (see `map-resources.ts` `HarvestObjectRef.states`). */

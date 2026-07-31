@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
 import { flagPointByType, VIKING_TRIBE } from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
+import { BRIDGE_EDIT_GROUP } from '../../src/content/collision.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
@@ -136,6 +137,20 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const nav of NAV_LANDSCAPE_TYPES) {
       expect(landscapeIds, `nav class ${nav.typeId} missing after merge`).toContain(nav.typeId);
     }
+  });
+
+  it('still ships bridges in the edit group the collision join keys on', () => {
+    // `buildCollisionTerrain` reads this group to keep a bridge off the walk grid, since a bridge's
+    // crossing is authored in the ground lanes underneath it. A pipeline rename or a dropped
+    // `editGroups` lane would silently re-block every deck and sever river crossings again, with the
+    // synthetic collision fixture still green.
+    const ir = rawIrUnderTest() as {
+      landscapeGfx?: readonly { editGroups?: readonly string[]; walkBlockAreas?: readonly unknown[] }[];
+    };
+    const bridges = (ir.landscapeGfx ?? []).filter((g) => g.editGroups?.includes(BRIDGE_EDIT_GROUP));
+    expect(bridges.length, `no landscapeGfx row in '${BRIDGE_EDIT_GROUP}'`).toBeGreaterThan(0);
+    // Vacuity guard: the rule only does anything for a bridge that would otherwise stamp a body.
+    expect(bridges.some((g) => (g.walkBlockAreas?.length ?? 0) > 0)).toBe(true);
   });
 
   it('the upgradeTarget lane carries the known level chains and never chains a wonder', async () => {

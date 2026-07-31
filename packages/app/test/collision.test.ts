@@ -1,6 +1,8 @@
-import { parseTerrainMap } from '@open-northland/data';
+import { type ContentSet, IR_VERSION, parseContentSet, parseTerrainMap } from '@open-northland/data';
+import { buildTerrainGraph } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  NAV_LANDSCAPE_TYPES,
   TERRAIN_BARREN,
   TERRAIN_BLOCKED,
   TERRAIN_IMPASSABLE,
@@ -81,6 +83,71 @@ const IR = {
   ],
 } satisfies CollisionIrView;
 
+/** The bridge fixture's placement node: the west end of the authored strip. */
+const BRIDGE_HX = 4;
+/** The strip's upper node row (cell row 1's 2×2 block spans node rows 2..3). */
+const STRIP_NODE_Y = 2;
+
+/**
+ * `specjalna_mosty_na_rzece` in miniature: two land banks split by a water column, crossed by the
+ * one land cell the mapmaker painted under the bridge sprite. The bridge object's walk area covers
+ * that whole strip, so stamping it as a body would sever the only crossing.
+ */
+function bridgeMap() {
+  const W = 5;
+  const H = 3;
+  const meadow = 0;
+  const water = 1;
+  const a = new Array<number>(W * H).fill(meadow);
+  const b = new Array<number>(W * H).fill(meadow);
+  for (const row of [0, 2]) {
+    a[row * W + 2] = water;
+    b[row * W + 2] = water;
+  }
+  return parseTerrainMap({
+    width: W,
+    height: H,
+    typeIds: new Array(W * H).fill(1),
+    ground: { patterns: ['meadow 01', 'water 01'], a, b },
+    objects: { types: ['bridge stone'], placements: [BRIDGE_HX, STRIP_NODE_Y, 0], levels: [1] },
+  });
+}
+
+const BRIDGE_IR = {
+  gfxPatterns: IR.gfxPatterns,
+  trianglePatternTypes: IR.trianglePatternTypes,
+  landscapeGfx: [
+    {
+      editName: 'bridge stone',
+      editGroups: ['misc_bridges'],
+      // The real bridges' shape: a walk area over the deck, inside a build area that reaches one
+      // node row past each end.
+      walkBlockAreas: [
+        [1, 0, 0, 2],
+        [1, 0, 1, 2],
+      ],
+      buildBlockAreas: [
+        [1, 0, -1, 2],
+        [1, 0, 0, 2],
+        [1, 0, 1, 2],
+        [1, 0, 2, 2],
+      ],
+    },
+  ],
+} satisfies CollisionIrView;
+
+/** The minimum content a collision grid needs to become a graph: `buildTerrainGraph` resolves node
+ *  typeIds through `landscape` alone, so the economy tables stay empty. */
+function collisionContent(): ContentSet {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'collision.test' } },
+    goods: [],
+    jobs: [],
+    buildings: [],
+    landscape: [...NAV_LANDSCAPE_TYPES],
+  });
+}
+
 describe('buildCollisionTerrain', () => {
   // The join returns the sim's HALF-CELL grid (2W×2H nodes); `at` indexes NODE coordinates.
   const grid = buildCollisionTerrain(fixtureMap(), IR);
@@ -130,6 +197,32 @@ describe('buildCollisionTerrain', () => {
     expect(gAt(8, 4)).toBe(TERRAIN_MARGIN); // mountain — the fallback pins the same real flags
     expect(gAt(8, 0)).toBe(TERRAIN_MARGIN); // snow
     expect(gAt(2, 6)).toBe(TERRAIN_BARREN); // sand — walk+build in the fallback too, still no plough
+  });
+
+  it('keeps a bridge off the walk grid so its authored ground strip still crosses the water', () => {
+    const g = buildCollisionTerrain(bridgeMap(), BRIDGE_IR);
+    const graph = buildTerrainGraph(collisionContent(), g);
+    const componentAt = (x: number, y: number): number => graph.componentOf(graph.nodeAt(x, y));
+    // The strip's own nodes stay walkable, and the deck still refuses a building.
+    expect(g.typeIds[STRIP_NODE_Y * g.width + BRIDGE_HX]).toBe(TERRAIN_MARGIN);
+    // West bank and east bank are one component: the bridge does not sever the strip. Guarding the
+    // label against -1 first, or two unwalkable banks would satisfy the equality vacuously.
+    const westBank = componentAt(0, STRIP_NODE_Y);
+    expect(westBank).toBeGreaterThanOrEqual(0);
+    expect(componentAt(g.width - 1, STRIP_NODE_Y)).toBe(westBank);
+
+    // Same map, same block areas, but the object is not in the bridge edit group: it stamps a body
+    // across the strip and the two banks fall apart.
+    const asPlainObject = {
+      ...BRIDGE_IR,
+      landscapeGfx: BRIDGE_IR.landscapeGfx.map((row) => ({ ...row, editGroups: ['misc_decor'] })),
+    };
+    const split = buildCollisionTerrain(bridgeMap(), asPlainObject);
+    const splitGraph = buildTerrainGraph(collisionContent(), split);
+    expect(split.typeIds[STRIP_NODE_Y * split.width + BRIDGE_HX]).toBe(TERRAIN_BLOCKED);
+    expect(splitGraph.componentOf(splitGraph.nodeAt(0, STRIP_NODE_Y))).not.toBe(
+      splitGraph.componentOf(splitGraph.nodeAt(split.width - 1, STRIP_NODE_Y)),
+    );
   });
 
   it('degrades to all-open when the map carries no ground/object lanes', () => {
