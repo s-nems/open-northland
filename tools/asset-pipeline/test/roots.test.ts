@@ -17,6 +17,7 @@ describe('source roots', () => {
   let tmp: TempDir;
   let game: string;
   let mod: string;
+  let out: string;
 
   const write = async (root: string, rel: string, text: string): Promise<void> => {
     const path = join(root, rel);
@@ -28,20 +29,24 @@ describe('source roots', () => {
     tmp = await makeTempDir('roots');
     game = join(tmp.path, 'game');
     mod = join(tmp.path, 'mod');
+    out = join(tmp.path, 'out');
     await mkdir(game, { recursive: true });
     await mkdir(mod, { recursive: true });
+    await mkdir(out, { recursive: true });
   });
 
   afterEach(() => tmp.cleanup());
 
   describe('rootsInOrder', () => {
-    it('puts the mod overlay first', () => {
+    it('orders the layers mod, base install, unpacked archive', () => {
       expect(rootsInOrder({ game, mod })).toEqual([mod, game]);
+      expect(rootsInOrder({ game, mod, archive: out })).toEqual([mod, game, out]);
     });
 
-    it('collapses to one root when the overlay is absent or the identity', () => {
+    it('collapses a layer that is absent or repeats an earlier one', () => {
       expect(rootsInOrder({ game, mod: undefined })).toEqual([game]);
       expect(rootsInOrder({ game, mod: game })).toEqual([game]);
+      expect(rootsInOrder({ game, mod: undefined, archive: game })).toEqual([game]);
     });
   });
 

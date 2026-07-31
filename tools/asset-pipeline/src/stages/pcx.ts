@@ -4,7 +4,7 @@ import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
-import { archiveRoots, collectSourceFiles, type SourceRoots } from '../roots.js';
+import { collectSourceFiles, type SourceRoots } from '../roots.js';
 import { TEXTURES_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
 
@@ -42,10 +42,8 @@ export interface PcxConversion {
  * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} — the IR's normalized
  * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
  * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
- * to the warn-and-skip below. The source `roots` are tried first (loose files, overlay-first), then
- * `outDir` (pictures the lib unpack extracted). Pairs are deduped by texture path (several records
- * share one page); a missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s
- * per-file boundary.
+ * to the warn-and-skip below. Pairs are deduped by texture path (several records share one page); a
+ * missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s per-file boundary.
  */
 export async function composeMaskedTransitionPages(
   roots: SourceRoots,
@@ -54,14 +52,8 @@ export async function composeMaskedTransitionPages(
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
   const seen = new Set<string>();
-  const readTexturePcx = async (normalizedPath: string): Promise<Uint8Array> => {
-    const rel = join(TEXTURES_DIR, basename(normalizedPath));
-    try {
-      return await readSourceFile(roots, rel);
-    } catch {
-      return await readSourceFile(archiveRoots(outDir), rel);
-    }
-  };
+  const readTexturePcx = (normalizedPath: string): Promise<Uint8Array> =>
+    readSourceFile(roots, join(TEXTURES_DIR, basename(normalizedPath)));
   for (const pair of pairs) {
     if (seen.has(pair.texture)) continue;
     seen.add(pair.texture);
@@ -90,8 +82,9 @@ export async function composeMaskedTransitionPages(
 }
 
 /**
- * Converts every `.pcx` under the source `roots` (overlay-first union) to a `.png` under `outDir`,
- * mirroring the relative path. Returns the conversions performed (input/output relative paths). A
+ * Converts every `.pcx` under the source `roots` (layer-ordered union — one `.png` per relative path,
+ * decoded from the layer that wins it) to a `.png` under `outDir`, mirroring the relative path.
+ * Returns the conversions performed (input/output relative paths). A
  * picture that fails to read or decode is logged and skipped — a batch pipeline must not abort on one
  * malformed/palette-less image. An output-write failure (and a missing/unreadable game root)
  * propagates instead: that's an environmental error, not a per-file boundary failure, and should

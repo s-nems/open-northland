@@ -1,9 +1,19 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { encodeLib } from '../src/decoders/lib.js';
+import { decodePng } from '../src/decoders/png.js';
+import { withArchiveLayer } from '../src/roots.js';
+import { convertBmdTree } from '../src/stages/bmd/index.js';
 import { resolveIniSources } from '../src/stages/ir/sources.js';
+import { unpackLibTree } from '../src/stages/lib.js';
 import { convertMapDatTree } from '../src/stages/maps/index.js';
+import { convertPcxTree } from '../src/stages/pcx.js';
+import { indexSourceAssets } from '../src/stages/source-files.js';
+import { sampleBmdBytes } from './fixtures/bmd.js';
 import { buildMapDat } from './fixtures/mapdat.js';
+import { solidPalette } from './fixtures/palette.js';
+import { samplePcx } from './fixtures/pcx.js';
 import { makeTempDir } from './support/game-tree.js';
 
 /**
@@ -63,5 +73,114 @@ describe('split game/mod source roots', () => {
     expect(done[0]?.meta).toBe(true);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'shared.meta.json'), 'utf8'));
     expect(meta.name).toBe('Nazwa');
+  });
+});
+
+/**
+ * The lowest layer: the `.lib` members the unpack stage extracts under `--out`. The loose copy wins a
+ * collision (docs/SOURCES.md "Source precedence"), and a loose-only asset must still reach the stages
+ * that resolve by reference — the mod's new building bobs exist in no archive.
+ */
+describe('loose files over unpacked .lib members', () => {
+  const TEXTURES = join('Data', 'engine2d', 'bin', 'textures');
+  const BOBS = join('Data', 'engine2d', 'bin', 'bobs');
+  const LOOSE_RGB = [10, 20, 30] as const;
+  const ARCHIVE_RGB = [200, 210, 220] as const;
+
+  let game: string;
+  let out: string;
+
+  const write = async (rel: string, bytes: Uint8Array): Promise<void> => {
+    const path = join(game, rel);
+    await mkdir(join(path, '..'), { recursive: true });
+    await writeFile(path, bytes);
+  };
+
+  /** The first pixel's RGB — `samplePcx` over a `solidPalette` paints every pixel one colour. */
+  const firstPixel = async (rel: string): Promise<number[]> => {
+    const { rgba } = decodePng(await readFile(join(out, rel)));
+    return [rgba[0] ?? -1, rgba[1] ?? -1, rgba[2] ?? -1];
+  };
+
+  beforeEach(async () => {
+    const tmp = await makeTempDir('archive-layer');
+    game = join(tmp.path, 'game');
+    out = join(tmp.path, 'out');
+    // `runPipeline` creates the out dir before any stage runs, so the archive layer always resolves.
+    await mkdir(game, { recursive: true });
+    await mkdir(out, { recursive: true });
+    return () => rm(tmp.path, { recursive: true, force: true });
+  });
+
+  it('converts a colliding .pcx once, from the loose bytes, and still converts an archive-only one', async () => {
+    await write(
+      join('DataX', 'Libs', 'data0001.lib'),
+      encodeLib({
+        files: [
+          {
+            name: 'data\\engine2d\\bin\\textures\\text_000.pcx',
+            data: samplePcx(solidPalette(...ARCHIVE_RGB)).bytes,
+          },
+          {
+            name: 'data\\engine2d\\bin\\textures\\archive_only.pcx',
+            data: samplePcx(solidPalette(...ARCHIVE_RGB)).bytes,
+          },
+        ],
+      }),
+    );
+    await write(join(TEXTURES, 'text_000.pcx'), samplePcx(solidPalette(...LOOSE_RGB)).bytes);
+    await unpackLibTree({ game, mod: undefined }, out);
+
+    const done = await convertPcxTree(withArchiveLayer({ game, mod: undefined }, out), out);
+
+    const collided = done.filter((d) => d.output === join(TEXTURES, 'text_000.png'));
+    expect(collided).toHaveLength(1);
+    expect(await firstPixel(join(TEXTURES, 'text_000.png'))).toEqual([...LOOSE_RGB]);
+    expect(await firstPixel(join(TEXTURES, 'archive_only.png'))).toEqual([...ARCHIVE_RGB]);
+  });
+
+  it('resolves a colliding .bmd reference to the loose copy and indexes a loose-only one', async () => {
+    await write(
+      join('DataX', 'Libs', 'data0001.lib'),
+      encodeLib({ files: [{ name: 'data\\engine2d\\bin\\bobs\\body.bmd', data: sampleBmdBytes() }] }),
+    );
+    await write(join(BOBS, 'body.bmd'), sampleBmdBytes());
+    await write(join(BOBS, 'nowe', 'f_bakery.bmd'), sampleBmdBytes());
+    await unpackLibTree({ game, mod: undefined }, out);
+
+    const index = await indexSourceAssets(withArchiveLayer({ game, mod: undefined }, out));
+
+    expect(index.get('data/engine2d/bin/bobs/body.bmd')?.path).toBe(join(game, BOBS, 'body.bmd'));
+    expect(index.get('data/engine2d/bin/bobs/nowe/f_bakery.bmd')?.path).toBe(
+      join(game, BOBS, 'nowe', 'f_bakery.bmd'),
+    );
+  });
+
+  it('atlases a loose-only .bmd into the out tree (the mod ships building bobs in no archive)', async () => {
+    await write(join(BOBS, 'nowe', 'f_bakery.bmd'), sampleBmdBytes());
+    await write(join('Data', 'pal', 'house.pcx'), samplePcx().bytes);
+
+    const done = await convertBmdTree(
+      {
+        bindings: [
+          {
+            bmd: 'data/engine2d/bin/bobs/nowe/f_bakery.bmd',
+            shadowBmd: undefined,
+            paletteName: 'house',
+            tribeId: 1,
+            jobId: 2,
+          },
+        ],
+        palettes: [{ name: 'house', gfxFile: 'data/pal/house.pcx' }],
+        buildTimeBmds: new Set(),
+      },
+      out,
+      await indexSourceAssets(withArchiveLayer({ game, mod: undefined }, out)),
+    );
+
+    expect(done.map((d) => d.png)).toEqual([join(BOBS, 'nowe', 'f_bakery.house.png')]);
+    // The atlas lands under out at the source's relative path, never back into the read-only game tree.
+    await expect(readFile(join(out, BOBS, 'nowe', 'f_bakery.house.png'))).resolves.toBeInstanceOf(Buffer);
+    expect(await readdir(join(game, BOBS, 'nowe'))).toEqual(['f_bakery.bmd']);
   });
 });

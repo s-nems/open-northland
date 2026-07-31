@@ -31,6 +31,18 @@ Source keys are case-sensitive, repeated keys and list-valued keys have differen
 ids are often scoped by record family or tribe. Verify the real key space before adding an index or
 cross-reference.
 
+When one path exists in more than one place, the layers resolve mod overlay, then base install, then
+`.lib` member: a loose file wins its archive twin. 75 paths collide that way in the owned copy (66
+`.pcx`, 4 `.bmd`, 3 `.fnt`, 2 `.bmp`). The basis is data consistency rather than a direct observation
+of the original: the mod's `mapmoveableanimations/animations.ini` indexes 312 bobs of
+`CR_Hum_Body_74.bmd`, which only the loose copy carries, while the archive copy has the base game's 96
+— matching the base `animations.cif`, whose one sequence indexes 96. A mod-installed tree is
+self-consistent only under loose-first.
+
+Only the stages that read both places carry the archive layer (the `.pcx` conversion, the atlas source
+index, the transition-overlay compose). The rest read loose files exclusively, which resolves the same
+way for every collision above; an archive-**only** file of those kinds would stay invisible to them.
+
 ## Supported input formats
 
 | Format | Purpose | Project reference |

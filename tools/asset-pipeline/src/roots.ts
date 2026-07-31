@@ -4,16 +4,19 @@ import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
 /**
- * The read-only source trees one conversion reads: the owned base install plus the culturesnation
- * mod overlay — a directory shaped like the game root (e.g. the unpacked CnMod zip, which ships
- * `DataCnmd/`, `CnModMaps/`, and patched `Data/`/`DataX/` files). A file present in the overlay wins
- * over the base game's copy on the same relative path, matching what an install with the mod
- * extracted over it would contain. `mod === game` is that installed-in-place layout: the overlay is
- * the identity and every path resolves against the one tree.
+ * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay —
+ * a directory shaped like the game root (e.g. the unpacked CnMod zip, which ships `DataCnmd/`,
+ * `CnModMaps/`, and patched `Data/`/`DataX/` files) — then the owned base install, then the
+ * unpacked-archive layer ({@link withArchiveLayer}). A file present in an earlier layer wins the same
+ * relative path, matching what an install with the mod extracted over it would contain. `mod === game`
+ * is that installed-in-place layout: the overlay is the identity and every path resolves against the
+ * one tree.
  */
 export interface SourceRoots {
   readonly game: string;
   readonly mod: string | undefined;
+  /** The `.lib` members unpacked under `--out`; absent until the unpack stage has run. */
+  readonly archive?: string | undefined;
 }
 
 /** One source file found under the roots: its root-relative path and the winning absolute path. */
@@ -22,18 +25,19 @@ export interface SourceFile {
   readonly path: string;
 }
 
-/** The roots in resolution order (mod overlay first), collapsed when the overlay is absent or identity. */
+/** The roots in resolution order, deduplicated — an absent or identity layer collapses away. */
 export function rootsInOrder(roots: SourceRoots): readonly string[] {
-  return roots.mod === undefined || roots.mod === roots.game ? [roots.game] : [roots.mod, roots.game];
+  const layers = [roots.mod, roots.game, roots.archive].filter((r) => r !== undefined);
+  return [...new Set(layers)];
 }
 
 /**
- * The unpacked-archive tree addressed as a one-root `SourceRoots`: the archive layer for stages that
- * re-read extracted `.lib` members from `out`. Which layer should win a loose/archive collision is
- * unobserved in the original; each call site keeps its current order.
+ * Adds the unpacked-archive tree under `outDir` as the lowest-precedence layer, so a loose file wins a
+ * path collision with its `.lib` twin. Source basis (data consistency, not a direct observation of the
+ * original) in docs/SOURCES.md "Source precedence".
  */
-export function archiveRoots(outDir: string): SourceRoots {
-  return { game: outDir, mod: undefined };
+export function withArchiveLayer(roots: SourceRoots, outDir: string): SourceRoots {
+  return { ...roots, archive: outDir };
 }
 
 /**
@@ -141,9 +145,9 @@ export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[
 
 /**
  * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
- * as an overlay-first case-folded union ({@link unionCaseFoldedRoots}). A missing `game` root
- * propagates (an environmental error); the mod root's existence is the caller's contract
- * ({@link SourceRoots}).
+ * as a layer-ordered case-folded union ({@link unionCaseFoldedRoots}). A missing root propagates (an
+ * environmental error): the mod root's existence is the caller's contract ({@link SourceRoots}), and
+ * the archive layer's is the unpack stage's — `runPipeline` creates `--out` before any stage runs.
  */
 export async function collectSourceFiles(
   roots: SourceRoots,

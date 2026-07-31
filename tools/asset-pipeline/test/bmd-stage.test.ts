@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Bmd, BOB_TYPE_1BIT, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
-import { bmdToAtlas, convertBmdTree, convertShadowBmdTree, indexOutTree } from '../src/stages/bmd/index.js';
+import { bmdToAtlas, convertBmdTree, convertShadowBmdTree } from '../src/stages/bmd/index.js';
+import { indexSourceAssets } from '../src/stages/source-files.js';
 import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette, solidPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
@@ -107,7 +108,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     expect(done).toHaveLength(1);
@@ -146,7 +147,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     expect(done).toHaveLength(2);
@@ -184,7 +185,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     expect(done.map((c) => c.png)).toEqual([join('Data', 'Bobs', 'Body.bear01.png')]);
@@ -198,7 +199,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     ); // empty palette index
 
     expect(done).toEqual([]);
@@ -216,7 +217,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     expect(done).toEqual([]);
@@ -235,7 +236,7 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     expect(done).toEqual([]);
@@ -278,7 +279,11 @@ describe('convertShadowBmdTree', () => {
   });
 
   const convert = async (bindings: BmdPaletteBinding[]): Promise<string[]> =>
-    convertShadowBmdTree({ bindings, palettes: [], buildTimeBmds: new Set() }, out, await indexOutTree(out));
+    convertShadowBmdTree(
+      { bindings, palettes: [], buildTimeBmds: new Set() },
+      out,
+      await indexSourceAssets({ game: out, mod: undefined }),
+    );
 
   it('writes `<shadow-stem>.shadow.{png,atlas.json}` beside the shadow .bmd — the name the app joins on', async () => {
     await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
@@ -386,7 +391,7 @@ describe('convertBmdTree build-time bake', () => {
     await convertBmdTree(
       { bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) },
       out,
-      await indexOutTree(out),
+      await indexSourceAssets({ game: out, mod: undefined }),
     );
 
     const alphaOf = async (png: string): Promise<number> => {
