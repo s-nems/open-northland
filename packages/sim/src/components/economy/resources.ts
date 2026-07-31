@@ -17,7 +17,32 @@ export const Resource = defineComponent<{
    * Never read by any sim decision, absent on admin/scene spawns.
    */
   gfxIndex?: number;
+  /**
+   * Swings banked toward the next plucked unit on a bare node whose trade plays several strokes per
+   * unit (`workRepeatsFor` - the extracted `baserepeatcounter`; the hunter's carcass pluck). Absent
+   * until first advanced and deleted when a unit frees, so a single-stroke node keeps its historical
+   * component shape (hash). The bare-node twin of {@link MineDeposit}'s `strikes`.
+   */
+  strikes?: number;
 }>('Resource');
+
+/**
+ * The still-buried yields of a multi-good {@link Resource} node, in extraction order: when the node's
+ * current good drains, the deplete seam re-arms the node as the head layer instead of removing it, so
+ * one body yields several goods from a single decal. Built interleaved for a hunter's carcass - the
+ * original's cadaver ALTERNATES its two stages per pluck (`landscapetypes.ini` 79 `cadaver_leather` /
+ * 80 `cadaver_meat`: each harvest transition yields that stage's good and flips the decal into the
+ * other), so a deer gives meat, skin, meat off one body. Which stage a fresh kill opens with is not
+ * readable; meat-first is a named approximation.
+ */
+export interface ResourceLayer {
+  goodType: number;
+  amount: number;
+  harvestAtomic: number;
+  gfxIndex?: number;
+}
+
+export const ResourceLayers = defineComponent<{ layers: ResourceLayer[] }>('ResourceLayers');
 
 /** One integer cell offset relative to a placed resource node's anchor tile. */
 export interface ResourceFootprintCell {

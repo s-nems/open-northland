@@ -1,33 +1,37 @@
-import { Position, Resource, Settler } from '../../../../../../components/index.js';
+import {
+  Position,
+  Resource,
+  type ResourceLayer,
+  ResourceLayers,
+  Settler,
+} from '../../../../../../components/index.js';
 import { contentIndex } from '../../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../../../../nav/terrain/index.js';
+import type { NodeId } from '../../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../../context.js';
 import { sowNodeOccupied } from '../../../../../economy/fields.js';
 import { dynamicBlockOverlay, stampResourceFootprintOrFallback } from '../../../../../footprint/index.js';
 import { huntYieldsOf, isHunterJob } from '../../../../../readviews/index.js';
 
 /**
- * The hunter's kill payoff - a **hunter**'s lethal blow on huntable prey leaves the prey's carcass on
- * the ground as harvestable {@link Resource} nodes, one per {@link huntYieldsOf} entry (meat, and the
- * species' hides/wool), each holding its yield. The hunter then works them with the good's own harvest
- * atomic (`harvest_cadaver`, the original's `setatomic 15 33` chain) through the ordinary gatherer
- * machinery: one unit per pluck onto the back, carried off over several trips, the node reaped when
- * drained. Models the original's cadaver-decal pipeline (`landscapetype` 79/80 with `[GfxLandscape]`
- * 847/848); the per-species contents come from the authored {@link HuntPrey} table (source basis
- * "Hunter prey and carcass yields").
+ * The hunter's kill payoff - a **hunter**'s lethal blow on huntable prey leaves ONE carcass on the
+ * ground: a harvestable {@link Resource} node holding the body's whole yield table (user rule: one
+ * body, one decal - the hunter pulls its different goods out of the same carcass). The extraction
+ * order interleaves the yield goods per unit and the node re-arms itself between goods
+ * ({@link ResourceLayers} - the original's alternating cadaver stages carry the source basis). The
+ * hunter works it with each good's own harvest atomic (`harvest_cadaver`, the original's
+ * `setatomic 15 33` chain) through the ordinary gatherer machinery: one unit per pluck, carried off
+ * over several trips, the node reaped when the last layer drains.
  *
- * Placement: the first node lands where the prey fell; further nodes take the first free walkable
- * neighbour ({@link TerrainGraph.walkableNeighbours}, canonical order) so the decals don't stack, and
- * fall back to the kill node when hemmed in (goods are never dropped). A node is "free" when nothing
- * stands on it ({@link sowNodeOccupied}, the shared occupancy rule) and the walk overlay doesn't block
- * it. Carcasses are unowned, like every standing resource - a kill on shared ground is shared game.
+ * Placement: where the prey fell, or its first free walkable neighbour when something already stands
+ * there ({@link sowNodeOccupied} + the walk overlay), falling back to the kill node when hemmed in.
+ * Carcasses are unowned, like every standing resource - a kill on shared ground is shared game.
  *
- * Each node carries the good's cadaver decal index as its render-variant tag when its pipeline stage
- * names one (`Resource.gfxIndex` - opaque to the sim): that is how the merged real content's wool row,
- * which rides the leather cadaver stage, draws the right decal even though the render's per-good
- * binding is built from the raw IR rows and has no wool entry.
+ * Each layer carries its good's cadaver decal index as its render-variant tag when its pipeline stage
+ * names one (`Resource.gfxIndex` - opaque to the sim): the decal flips between the stages as the
+ * hunter works down the body, and the merged real content's wool row, which rides the leather cadaver
+ * stage, draws the right decal even though the render's per-good binding has no wool entry.
  *
  * No-ops unless the attacker is a hunter and the target is a huntable-prey animal; mapless worlds
  * (fixture combat tests) spawn nothing. Pure over content + entity state - no RNG, no wall-clock.
@@ -44,29 +48,62 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
   if (terrain === undefined || at === undefined) return; // mapless / positionless - nowhere to fall
   const n = nodeOfPosition(at.x, at.y);
   const anchor = terrain.nodeAtClamped(n.hx, n.hy);
-  // The kill node first, then its walkable neighbours (canonical N,E,S,W): each yield good takes the
-  // first still-free slot. `sowNodeOccupied` reads the live resource index, so a node this loop just
-  // filled rejects the next good; the walk overlay is re-read per good for the same reason (the stamp
-  // below mutates the cache a held view would alias - inert while carcass records are block-free, but
-  // never rely on it).
-  const slots: readonly NodeId[] = [anchor, ...terrain.walkableNeighbours(anchor)];
+
   const index = contentIndex(ctx.content);
-  for (const y of yields) {
+  const pool = yields.flatMap((y) => {
     const harvestAtomic = index.goods.get(y.goodType)?.atomics.harvest;
-    if (harvestAtomic === undefined) continue; // load-checked (cross-references); never mint unharvestable goods
-    const blocked = dynamicBlockOverlay(world, ctx, terrain);
-    const node =
-      slots.find((s) => !blocked.has(s) && !sowNodeOccupied(world, terrain.xOf(s), terrain.yOf(s))) ?? anchor;
+    if (harvestAtomic === undefined) return []; // load-checked (cross-references); never mint unharvestable goods
     const pipeline = index.gatheringPipelinesByGood.get(y.goodType);
     const gfxIndex = (pipeline?.harvest ?? pipeline?.pickup)?.gfxIndices[0];
-    const e = world.create();
-    world.add(e, Position, positionOfNode(terrain.xOf(node), terrain.yOf(node)));
-    world.add(e, Resource, {
-      goodType: y.goodType,
-      remaining: y.amount,
-      harvestAtomic,
-      ...(gfxIndex !== undefined ? { gfxIndex } : {}),
-    });
-    stampResourceFootprintOrFallback(world, ctx.content, e, y.goodType);
+    return [{ goodType: y.goodType, harvestAtomic, gfxIndex, left: y.amount }];
+  });
+  const layers = interleavedLayers(pool);
+  const head = layers.shift();
+  if (head === undefined) return; // nothing resolvable to yield
+
+  // The kill node, or its first free walkable neighbour (canonical N,E,S,W) when something stands there.
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const slots: readonly NodeId[] = [anchor, ...terrain.walkableNeighbours(anchor)];
+  const node =
+    slots.find((s) => !blocked.has(s) && !sowNodeOccupied(world, terrain.xOf(s), terrain.yOf(s))) ?? anchor;
+
+  const e = world.create();
+  world.add(e, Position, positionOfNode(terrain.xOf(node), terrain.yOf(node)));
+  world.add(e, Resource, {
+    goodType: head.goodType,
+    remaining: head.amount,
+    harvestAtomic: head.harvestAtomic,
+    ...(head.gfxIndex !== undefined ? { gfxIndex: head.gfxIndex } : {}),
+  });
+  if (layers.length > 0) world.add(e, ResourceLayers, { layers });
+  stampResourceFootprintOrFallback(world, ctx.content, e, head.goodType);
+}
+
+/** The body's extraction sequence: one unit per step, round-robin across the yield goods in authored
+ *  order (the cadaver's per-pluck stage flip), merged into same-good runs - a single-good body reads
+ *  as one plain run, an exhausted good simply drops out of the rotation. */
+function interleavedLayers(
+  pool: { goodType: number; harvestAtomic: number; gfxIndex: number | undefined; left: number }[],
+): ResourceLayer[] {
+  const seq: ResourceLayer[] = [];
+  for (
+    let active = pool.filter((p) => p.left > 0);
+    active.length > 0;
+    active = active.filter((p) => p.left > 0)
+  ) {
+    for (const p of active) {
+      p.left--;
+      const last = seq[seq.length - 1];
+      if (last !== undefined && last.goodType === p.goodType) last.amount++;
+      else {
+        seq.push({
+          goodType: p.goodType,
+          amount: 1,
+          harvestAtomic: p.harvestAtomic,
+          ...(p.gfxIndex !== undefined ? { gfxIndex: p.gfxIndex } : {}),
+        });
+      }
+    }
   }
+  return seq;
 }

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, Health, Position, Resource } from '../../../src/components/index.js';
+import {
+  Carrying,
+  Health,
+  Position,
+  Resource,
+  ResourceLayers,
+  Settler,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
+import { harvestFromNode } from '../../../src/systems/settlers/atomics/effects/goods/harvest.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
@@ -13,11 +21,13 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
   const HUNTER = 15; // job 15 - JOB_TYPE_HUMAN_HUNTER
   const WOODCUTTER = 1; // a non-hunter trade
   const COW = 13; // lastResort prey, fixture yield: meat(21) ×4
-  const DEER = 14; // normal game, fixture yield: meat(21) ×2 + leather(22) ×1 (the two-node carcass)
+  const DEER = 14; // normal game, fixture yield: meat(21) ×2 + leather(22) ×1 (the layered carcass)
   const WOLVES = 9; // a known animal tribe with NO huntPrey row (not huntable)
   const MEAT = 21;
   const LEATHER = 22;
   const HARVEST_CADAVER = 33;
+  const HUNTER_GENERAL_TRACK = 37; // the fixture hunter_general specialization id
+  const HUNTER_GENERAL_FACTOR = 200; // its experienceFactor (XP per carcass unit)
 
   function simWithMap(): Simulation {
     return new Simulation({ seed: 1, content: testContent(), map: grassCellMap(5, 2) });
@@ -76,18 +86,121 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
     expect(sim.world.has(hunter, Carrying)).toBe(false);
   });
 
-  it('a TWO-good carcass (deer: meat + leather) spreads onto the kill node and its first free neighbour', () => {
+  it('a TWO-good carcass (deer: meat + leather) is ONE body whose yields interleave as layers', () => {
     const sim = simWithMap();
     const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
     const deer = prey(sim, DEER, 3, 0, 20);
     startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
     atomicSystem(sim.world, ctxOf(sim));
-    // Meat lands where the deer fell (node (6,0)); leather takes the first free walkable neighbour in
-    // canonical N,E,S,W order - N is off-map on row 0, so E: node (7,0).
+    // One node where the deer fell (user rule: one body, one decal). The open good is the first unit of
+    // the meat-first interleave; the rest is buried as layers (leather, then the second meat).
     expect(carcasses(sim)).toEqual([
-      { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER, position: positionOfNode(6, 0) },
-      { goodType: LEATHER, remaining: 1, harvestAtomic: HARVEST_CADAVER, position: positionOfNode(7, 0) },
+      { goodType: MEAT, remaining: 1, harvestAtomic: HARVEST_CADAVER, position: positionOfNode(6, 0) },
     ]);
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+    expect(sim.world.get(node, ResourceLayers).layers).toEqual([
+      { goodType: LEATHER, amount: 1, harvestAtomic: HARVEST_CADAVER },
+      { goodType: MEAT, amount: 1, harvestAtomic: HARVEST_CADAVER },
+    ]);
+  });
+
+  it('draining a layer re-arms the SAME body as the next good; only the last drain removes it', () => {
+    const sim = simWithMap();
+    const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
+    const deer = prey(sim, DEER, 3, 0, 20);
+    startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+
+    // Meat, skin, meat off the one body - the alternating cadaver stages (see ResourceLayers).
+    for (const expected of [MEAT, LEATHER, MEAT]) {
+      expect(sim.world.get(node, Resource).goodType).toBe(expected);
+      startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: expected }, 1, HARVEST_CADAVER);
+      atomicSystem(sim.world, ctxOf(sim));
+      expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: expected, amount: 1 });
+      sim.world.remove(hunter, Carrying); // banked off-screen - the next pluck lifts a different good
+    }
+    expect(sim.world.isAlive(node)).toBe(false); // the last layer's drain removed the body
+    const depleted = sim.events.current().filter((ev) => ev.kind === 'resourceDepleted');
+    expect(depleted).toHaveLength(1); // one removal cue - the stage swaps are not depletions
+  });
+
+  it("the pluck costs the track's baseRepeatCounter strokes per unit (the extracted 5)", () => {
+    // The base fixture's hunter track carries no baseRepeatCounter (single-stroke, like the goldens);
+    // grafting the extracted 5 onto it turns each unit into a 5-stroke job with a strike counter.
+    const HUNTER_STROKES = 5;
+    const base = testContent();
+    const content = {
+      ...base,
+      jobExperience: base.jobExperience.map((t) =>
+        t.id === 'hunter_general' ? { ...t, baseRepeatCounter: HUNTER_STROKES } : t,
+      ),
+    };
+    const sim = new Simulation({ seed: 1, content, map: grassCellMap(5, 2) });
+    const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
+    const cow = prey(sim, COW, 3, 0, 20);
+    startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+
+    // Four strokes bank on the node's counter and pluck nothing; the fifth frees the unit.
+    for (let stroke = 1; stroke < HUNTER_STROKES; stroke++) {
+      startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: MEAT }, 1, HARVEST_CADAVER);
+      atomicSystem(sim.world, ctxOf(sim));
+      expect(sim.world.has(hunter, Carrying)).toBe(false);
+      expect(sim.world.get(node, Resource).strikes).toBe(stroke);
+    }
+    startAtomic(sim, hunter, { kind: 'harvest', resource: node, goodType: MEAT }, 1, HARVEST_CADAVER);
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: MEAT, amount: 1 });
+    expect(sim.world.get(node, Resource).remaining).toBe(3); // one unit off the cow's four
+    expect(sim.world.get(node, Resource).strikes).toBeUndefined(); // a fresh count for the next unit
+    // XP counts UNITS, never strokes: five strokes, one unit, one experienceFactor grant.
+    expect(sim.world.get(hunter, Settler).experience.get(HUNTER_GENERAL_TRACK)).toBe(HUNTER_GENERAL_FACTOR);
+  });
+
+  it('a swing planned against a good the body no longer holds yields NOTHING (the re-arm race)', () => {
+    const sim = simWithMap();
+    const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
+    const deer = prey(sim, DEER, 3, 0, 20);
+    startAtomic(sim, hunter, { kind: 'attack', target: deer, damage: 100 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+
+    // A second hunter's in-flight swing lands after the body re-armed to another good: it hit air.
+    expect(harvestFromNode(sim.world, ctxOf(sim), hunter, node, LEATHER)).toBe(0);
+    expect(sim.world.has(hunter, Carrying)).toBe(false); // nothing minted, nothing transmuted
+    expect(sim.world.get(node, Resource)).toMatchObject({ goodType: MEAT, remaining: 1 });
+  });
+
+  it("a mastered stroke's overshoot carries into the next unit (the strikes remainder persists)", () => {
+    const HUNTER_STROKES = 5;
+    const base = testContent();
+    const content = {
+      ...base,
+      jobExperience: base.jobExperience.map((t) =>
+        t.id === 'hunter_general' ? { ...t, baseRepeatCounter: HUNTER_STROKES } : t,
+      ),
+    };
+    const sim = new Simulation({ seed: 1, content, map: grassCellMap(5, 2) });
+    const hunter = combatant(sim, VIKING, HUNTER, 0, 0);
+    const cow = prey(sim, COW, 3, 0, 20);
+    startAtomic(sim, hunter, { kind: 'attack', target: cow, damage: 100 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    const node = [...sim.world.query(Resource)][0];
+    if (node === undefined) throw new Error('carcass missing');
+
+    // Double swings (gather mastery): 2, 4 bank; 6 crosses 5 - the unit frees and 1 stroke carries over.
+    expect(harvestFromNode(sim.world, ctxOf(sim), hunter, node, MEAT, 2)).toBe(0);
+    expect(harvestFromNode(sim.world, ctxOf(sim), hunter, node, MEAT, 2)).toBe(0);
+    expect(harvestFromNode(sim.world, ctxOf(sim), hunter, node, MEAT, 2)).toBe(1);
+    expect(sim.world.get(hunter, Carrying)).toEqual({ goodType: MEAT, amount: 1 });
+    expect(sim.world.get(node, Resource).strikes).toBe(1); // the overshoot, banked toward the next unit
+    expect(sim.world.get(node, Resource).remaining).toBe(3);
   });
 
   it('a NON-lethal hunter blow leaves no carcass (the kill must fell the prey)', () => {

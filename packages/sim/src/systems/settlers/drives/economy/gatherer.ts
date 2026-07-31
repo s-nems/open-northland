@@ -9,7 +9,7 @@ import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { HUNT_CARCASS_SLACK_NODES } from '../../../conflict/hunting-ground.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import { isHunterJob } from '../../../readviews/index.js';
+import { exportedGoodForm, isHunterJob } from '../../../readviews/index.js';
 import { workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -50,10 +50,21 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
 
   // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
   // stores, narrowed to its GatherSelection pick when one is set (the flag-less collector rule — a
-  // smithy's collector fetches iron/wood, never the quarry's stone). An unemployed roamer, or one at
-  // a store-less building, stays unrestricted.
+  // smithy's collector fetches iron/wood, never the quarry's stone). A good is "for the workplace"
+  // also when the store takes its BANKED form (`exportedGoodForm`): an HQ-employed hunter's meat
+  // banks as food into the food slot (`pileupIntoStore`), so a food-slot store must not filter the
+  // carcass out - without this the hunter kills once and wedges (the one-kill gate counts the carcass
+  // it may never pluck). An unemployed roamer, or one at a store-less building, stays unrestricted.
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
-  const stored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
+  const rawStored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
+  const stored =
+    rawStored !== undefined
+      ? new Set(
+          plan.ctx.content.goods
+            .map((g) => g.typeId)
+            .filter((g) => rawStored.has(g) || rawStored.has(exportedGoodForm(plan.ctx, g))),
+        )
+      : undefined;
   const pick = world.tryGet(e, GatherSelection)?.goodType;
   const goodFilter =
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
@@ -108,15 +119,19 @@ function planFlagGatherer(
   }
 
   // 2. Chop / mine the nearest FREE node within the flag's work radius (nothing beyond it; a node a
-  //    colleague already digs is claimed — one digger per node). A hunter's reach adds the kill slack:
-  //    a chased kill may fall past the radius, and a carcass the leash permitted must still be banked.
-  const slack = isHunterJob(ctx.content, plan.jobType) ? HUNT_CARCASS_SLACK_NODES : 0;
+  //    colleague already digs is claimed - one digger per node). A hunter's reach adds the kill slack
+  //    (a chased kill may fall past the radius, and a carcass the leash permitted must still be
+  //    banked), and its flag's good filter is IGNORED: a layered carcass re-arms through its goods in
+  //    turn, so a meat-only pick would strand the body at its leather stage while the one-kill gate
+  //    (`huntingGroundHoldsCarcass`, filter-blind) held forever - the whole body is the hunter's work.
+  const hunter = isHunterJob(ctx.content, plan.jobType);
+  const slack = hunter ? HUNT_CARCASS_SLACK_NODES : 0;
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     area: {
       center: flagCell,
       radius: flag.radius + slack,
-      ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
+      ...(flag.goodType !== undefined && !hunter ? { goodType: flag.goodType } : {}),
     },
   });
   if (node !== null) {

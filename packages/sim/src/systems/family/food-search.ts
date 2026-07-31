@@ -12,8 +12,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { isFood } from '../readviews/index.js';
-import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
+import { exportedGoodForm, isFood } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
@@ -134,14 +133,14 @@ export class ExternalFoodIndex {
 
 /**
  * The lowest stocked good (canonical order) a family may take away from `store` as food, or null when
- * it holds none. The test is on the good's CARRIED form ({@link carriedGoodForm}): a dish counts while
- * it sits in the house that cooks it, because the lift turns it into the edible — the bakery's loaves
- * are food to a woman fetching them, and a raw loaf resting in a warehouse still is not. The returned
- * type is the RAW one to lift; the pickup effect performs the same conversion the search assumed.
+ * it holds none. The test is on the good's edible form ({@link exportedGoodForm}): a stocked dish
+ * counts wherever it sits, because the family's lift turns it into the edible (`carriedGoodForm` owns
+ * the rule). The returned type is the RAW one to lift; the pickup effect performs the same conversion
+ * the search assumed.
  */
 function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(store, Stockpile))) {
-    if (amount > 0 && isFood(ctx, carriedGoodForm(world, ctx, store, goodType))) return goodType;
+    if (amount > 0 && isFood(ctx, exportedGoodForm(ctx, goodType))) return goodType;
   }
   return null;
 }

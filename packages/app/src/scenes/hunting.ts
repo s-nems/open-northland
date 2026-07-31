@@ -70,7 +70,8 @@ export const huntingScene: SceneDefinition = {
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   // Sized for the paced hunt: the 25-tick draw, the ~40% fresh hit rate, the herd scattering off every
-  // release, and the one-kill-at-a-time carry all stretch the four-hare bag far past the raw kill time.
+  // release, the 5-stroke pluck (the extracted `baserepeatcounter`), and the one-kill-at-a-time carry
+  // all stretch the four-hare bag far past the raw kill time.
   runTicks: 2600,
   initialZoom: 0.8,
   checks: [
