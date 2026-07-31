@@ -1,6 +1,8 @@
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
+import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
+import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
@@ -213,5 +215,15 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
       }
     }
     expect(checked, 'no mined harvest records found — the pipeline lane went missing').toBeGreaterThan(0);
+  });
+
+  it('every player slot resolves its ls_temp building-sign records', () => {
+    // The sign join keys on exact `playerNN sign ...` edit names; a pipeline rename would silently
+    // degrade every boot to the placeholder squares (the synthetic fixture shares the join's own name
+    // assumption, so only real data can catch the drift).
+    const refs = resolveBuildingSignRefs(rawIrUnderTest() as ContentIr);
+    refs.forEach((slot, i) => {
+      expect(slot, `player slot ${i} unresolved`).toBeDefined();
+    });
   });
 });

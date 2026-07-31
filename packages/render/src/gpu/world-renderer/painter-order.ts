@@ -13,6 +13,7 @@ export interface WorldSceneLayers {
   readonly blood: Container;
   readonly damageSmoke: Container;
   readonly doorBadges: Container;
+  readonly constructionSigns: Container;
   readonly bubbles: Container;
   readonly geometryDebug: Container;
 }
@@ -37,6 +38,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.blood,
     layers.damageSmoke,
     layers.doorBadges,
+    layers.constructionSigns,
     layers.bubbles,
     layers.geometryDebug,
   );

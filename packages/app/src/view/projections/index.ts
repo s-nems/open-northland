@@ -4,6 +4,7 @@
  * debug items, localized HUD labels). No DOM, no Pixi; the interactive glue lives one level up.
  */
 export * from './building-points.js';
+export * from './construction-signs.js';
 export * from './door-badges.js';
 export * from './fog-gates.js';
 export * from './geometry-debug-items.js';

@@ -76,6 +76,10 @@ export {
 } from './gpu/gallery/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export type {
+  BuildingSignGfx,
+  BuildingSignKind,
+  BuildingSignSheet,
+  ConstructionSign,
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,
