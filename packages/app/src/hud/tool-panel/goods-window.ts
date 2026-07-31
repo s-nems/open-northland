@@ -3,7 +3,7 @@ import { messages } from '../../i18n/index.js';
 import { drawCloseX, drawWindowPanel, HOVER_ALPHA, HOVER_TINT, WIN_PAD } from '../chrome.js';
 import type { PanelContext } from './context.js';
 import { type GoodsMenuLayout, hitTestGoodsMenu, layoutGoodsMenu, type MenuGoodEntry } from './goods-menu.js';
-import { createWindowShell } from './window-shell.js';
+import { createWindowShell, type ToolWindow } from './window-shell.js';
 
 /** Text insets (design px) — where a run sits inside its rect. Match the building menu's nudges. */
 const TITLE_INSET_Y = 2;
@@ -26,14 +26,7 @@ export interface GoodsWindowDeps {
 }
 
 /** The pop-up goods palette ("Surowce"): open/close, category tabs, and the pick→drop hand-off. */
-export interface GoodsWindow {
-  isOpen(): boolean;
-  toggle(): void;
-  close(): void;
-  /** True when the point is over the open window (the HUD claims it before world picking). */
-  claims(x: number, y: number): boolean;
-  /** Route a canvas-space click; returns true when the palette consumed it. */
-  handleClick(x: number, y: number): boolean;
+export interface GoodsWindow extends ToolWindow {
   /** Per-frame while open: re-place the text runs against the live canvas size. */
   place(): void;
 }

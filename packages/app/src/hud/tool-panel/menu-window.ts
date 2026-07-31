@@ -26,7 +26,7 @@ import {
   type MenuRow,
 } from './building-menu.js';
 import type { PanelContext } from './context.js';
-import { createWindowShell } from './window-shell.js';
+import { createWindowShell, type ToolWindow } from './window-shell.js';
 
 /**
  * The window title: the decoded `miscwindow` id 0 is the original's clunky internal name "Zbuduj Okno"
@@ -64,14 +64,7 @@ export interface MenuWindowDeps {
 }
 
 /** The pop-up building-menu window ("Budowa"): open/close, category tabs, scroll, and the pick→place hand-off. */
-export interface MenuWindow {
-  isOpen(): boolean;
-  toggle(): void;
-  close(): void;
-  /** True when the point is over the open window (the HUD claims it before world picking). */
-  claims(x: number, y: number): boolean;
-  /** Route a canvas-space click; returns true when the menu consumed it. */
-  handleClick(x: number, y: number): boolean;
+export interface MenuWindow extends ToolWindow {
   /** Route a wheel event; returns true when the menu consumed it (scrolled the list). */
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Update the row-hover highlight from a canvas-space point (no-op when closed). */

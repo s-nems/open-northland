@@ -8,13 +8,10 @@ import {
   toolButtonEffect,
 } from '../src/hud/tool-panel/button-effects.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
-import { createExtrasWindow } from '../src/hud/tool-panel/extras-window.js';
 import { createGoodsDropController } from '../src/hud/tool-panel/goods-drop.js';
-import { createGoodsWindow } from '../src/hud/tool-panel/goods-window.js';
 import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
-import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
-import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
+import { createToolWindows, type ToolWindowId } from '../src/hud/tool-panel/windows.js';
 
 const SCREEN = { width: 800, height: 600 };
 const BUILDING_JOINERY = 23;
@@ -37,31 +34,10 @@ function stubContext(): PanelContext {
   };
 }
 
-/** The four windows plus the two held modes the mount wires, over a stubbed context (no Pixi text). */
+/** The pop-up window layer plus the two held modes the mount wires, over a stubbed context (no Pixi text). */
 function mountSurfaces() {
   const ctx = stubContext();
   const container = new Container();
-  const menu = createMenuWindow({
-    ctx,
-    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace' }],
-    container,
-    onPick: () => undefined,
-  });
-  const goodsWindow = createGoodsWindow({
-    ctx,
-    goods: [{ goodType: GOOD_WOOD, id: 'wood', label: 'Wood' }],
-    container,
-    onPick: () => undefined,
-  });
-  const extras = createExtrasWindow({
-    ctx,
-    container,
-    grants: {
-      read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
-      set: () => true,
-    },
-  });
-  const stats = createStatsWindow({ ctx, container });
   const placement = createPlacementController({
     ctx,
     container,
@@ -79,9 +55,21 @@ function mountSurfaces() {
     enqueue: () => undefined,
     screenToTile: () => ({ col: 1, row: 1 }),
   });
+  const windows = createToolWindows({
+    ctx,
+    container,
+    buildings: [{ typeId: BUILDING_JOINERY, label: 'Joinery', kind: 'workplace' }],
+    goods: [{ goodType: GOOD_WOOD, id: 'wood', label: 'Wood' }],
+    grants: {
+      read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
+      set: () => true,
+    },
+    onPickBuilding: (typeId) => placement.enter(typeId),
+    onPickGood: (goodType) => goodsDrop.enter(goodType),
+  });
   const pressed: string[] = [];
   const surfaces: ToolButtonSurfaces = {
-    windows: { menu, goods: goodsWindow, extras, stats },
+    windows: windows.byId,
     cancelHeld: () => {
       placement.cancel();
       goodsDrop.cancel();
@@ -90,11 +78,11 @@ function mountSurfaces() {
     openSystemMenu: () => pressed.push('systemMenu'),
   };
   const press = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
-  const open = (): Record<string, boolean> => ({
-    menu: menu.isOpen(),
-    goods: goodsWindow.isOpen(),
-    extras: extras.isOpen(),
-    stats: stats.isOpen(),
+  const open = (): Record<ToolWindowId, boolean> => ({
+    menu: windows.byId.menu.isOpen(),
+    goods: windows.byId.goods.isOpen(),
+    extras: windows.byId.extras.isOpen(),
+    stats: windows.byId.stats.isOpen(),
   });
   return { press, open, placement, goodsDrop, pressed };
 }
