@@ -70,10 +70,6 @@ export const combatSystem: System = (world, ctx) => {
     if (!world.has(e, Building)) return [terrain.coordsOf(entityNode(world, terrain, e))];
     return buildingBodyNodes(world, ctx, terrain, e, bodyNodes).map((n) => terrain.coordsOf(n));
   };
-  const index = new NodeBuckets(world, targets, undefined, nodesOf);
-  // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
-  // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
-  // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
   // Wildlife classes for the presence grid's discounts. Pure reads only: the lapsed-Anger reap stays with
   // the attacker pass (hostileAnimalNow).
   const wildClassOf = (t: Entity): 'passive' | 'hostile' | null => {
@@ -84,7 +80,13 @@ export const combatSystem: System = (world, ctx) => {
     const anger = world.tryGet(t, Anger);
     return anger !== undefined && ctx.tick < anger.until ? 'hostile' : 'passive';
   };
-  const presence = new HostilePresence(world, targets, undefined, nodesOf, wildClassOf);
+  // The coarse presence grid: the owned seekers' "any enemy possibly in range?" early-out, so a standing
+  // army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It spans
+  // buildings too, so a lone army near an undefended enemy base still wakes to raze it.
+  const presence = new HostilePresence(world, wildClassOf);
+  // The index build feeds the grid as it walks: same list, same resolver, so a separate presence pass would
+  // re-resolve every target's nodes (a building's whole wall ring) for nodes it has already been handed.
+  const index = new NodeBuckets(world, targets, undefined, nodesOf, presence.addNode);
 
   // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
   // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is

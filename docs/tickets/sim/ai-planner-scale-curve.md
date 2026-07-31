@@ -42,8 +42,8 @@ axes and was taken on a loaded box. The synthetic fixture is what separates them
 
 - Reproduce fixed-map population and fixed-population map-area curves once that fixture lands.
 - Do not add an absolute millisecond gate.
-- If the curve names a term to cut, check it is the planner's own: the heaviest per-tick spatial work
-  now belongs to combat ([combat-spatial-rebuild-per-tick](combat-spatial-rebuild-per-tick.md)).
+- If the curve names a term to cut, check it is the planner's own; `combatSystem` outranked it in the
+  measurement above, and its duplicated spatial walk has since been removed.
 
 ## Verify
 

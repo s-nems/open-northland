@@ -36,16 +36,13 @@ export { nodeKey };
 export type IndexNodeVisitor = (e: Entity, x: number, y: number) => void;
 
 /**
- * Visit each node an entity is spatially indexed at — the ONE resolution ladder {@link NodeBuckets} and the
- * coarse {@link import('../conflict/presence.js').HostilePresence} grid both use, so the "presence tallies
- * an entity at the same node(s) the index buckets it at" superset invariant lives in a single function
- * instead of drifting across two parallel copies: the multi-node `nodesOf` (a building at EVERY wall cell)
- * wins, then the single-node `nodeOf`, then the entity's {@link Position} node; nothing is visited when the
- * entity resolves to none (dropped from the grid).
+ * Visit each node an entity is spatially indexed at: the ONE resolution ladder every node-indexed structure
+ * builds through. The multi-node `nodesOf` (a building at EVERY wall cell) wins, then the single-node
+ * `nodeOf`, then the entity's {@link Position} node; nothing is visited when the entity resolves to none
+ * (dropped from the grid).
  *
  * A callback rather than a returned array so the per-tick index build allocates no per-entity `[{x,y}]`; each
- * consumer passes one reused visitor (a class field), so the common Position case allocates nothing beyond the
- * node lookup.
+ * consumer passes one reused visitor, so the common Position case allocates nothing beyond the node lookup.
  */
 export function forEachIndexNode(
   world: World,
@@ -83,18 +80,29 @@ export function forEachIndexNode(
  */
 export class NodeBuckets {
   private readonly byX = new Map<number, Map<number, Entity[]>>();
-  /** One reused visitor for the whole build (no per-entity closure). */
-  private readonly pushNode: IndexNodeVisitor = (e, x, y) => this.push(e, x, y);
+  /** One reused visitor for the whole build (no per-entity closure), appending rather than sorted-inserting:
+   *  fed a pre-sorted list, append keeps buckets ascending-id. */
+  private readonly pushNode: IndexNodeVisitor = (e, x, y) => {
+    this.bucketFor(x, y).push(e);
+  };
 
   constructor(
     world: World,
     entities: Iterable<Entity>,
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
+    /** A second per-node sink fed by this build's walk, for a structure indexing the SAME list through the
+     *  SAME resolver: it then holds exactly the nodes these buckets hold, for one walk rather than two. */
+    alsoVisit?: IndexNodeVisitor,
   ) {
-    // The shared {@link forEachIndexNode} ladder — the same node(s) the coarse presence grid tallies, so
-    // the presence early-out stays a superset of what a ring search over these buckets can find.
-    for (const e of entities) forEachIndexNode(world, e, nodeOf, nodesOf, this.pushNode);
+    const visit: IndexNodeVisitor =
+      alsoVisit === undefined
+        ? this.pushNode
+        : (e, x, y) => {
+            this.pushNode(e, x, y);
+            alsoVisit(e, x, y);
+          };
+    for (const e of entities) forEachIndexNode(world, e, nodeOf, nodesOf, visit);
   }
 
   /** The bucket for node (x,y), minting its column and bucket on first use. */
@@ -110,12 +118,6 @@ export class NodeBuckets {
       column.set(y, bucket);
     }
     return bucket;
-  }
-
-  /** Append `e` to node (x,y)'s bucket - the per-tick constructor's shared insert (fed a pre-sorted list,
-   *  so append keeps buckets ascending-id). */
-  private push(e: Entity, x: number, y: number): void {
-    this.bucketFor(x, y).push(e);
   }
 
   /** The entities on node (x,y), in ascending-id order — empty (shared) when the node is unoccupied. */
