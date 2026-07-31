@@ -73,6 +73,10 @@ export interface ResolvedLayer {
   readonly shadow?: true;
 }
 
+/** Shared empty extras list so a settler or projectile draw allocates nothing on its way through the
+ *  kind dispatch (only a building ever replaces it). */
+const NO_EXTRAS: readonly ResolvedLayer[] = [];
+
 /**
  * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
  * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
@@ -101,58 +105,74 @@ export function resolveLayers(
   gaitClock: number = tick,
 ): ResolvedLayer[] | null {
   if (sheet === undefined) return null;
-  // A projectile has no decoded arrow bob (only character bodies are extracted) — it always draws the
-  // pool's oriented-arrow marker, never a borrowed atlas frame (named gap).
-  if (item.kind === 'projectile') return null;
-
-  // Per-job settler character (the `[jobbasegraphics]` join): the job's own body + one stable head
-  // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global
-  // settler path only when the sheet carries no characters (the synthetic sheet).
-  if (item.kind === 'settler' && sheet.characters !== undefined) {
-    return resolveCharacterLayers(sheet.characters, item, tick, gaitClock);
-  }
 
   let bobId: number | null;
   // Layers a building appends ABOVE its body draw — a finished building's animated state overlay (the
   // mill's rotor) and/or an upgrading building's revealing next-tier stack — resolved inside the
-  // building branch and appended to whichever body layer this frame draws. Empty otherwise.
-  let buildingExtras: readonly ResolvedLayer[] = [];
-  if (item.kind === 'building') {
-    const branch = resolveBuildingLayers(sheet, item, tick);
-    if (branch.done) return branch.layers;
-    bobId = branch.bobId;
-    buildingExtras = branch.extras;
-  } else if (item.kind === 'resource') {
-    // A resource node resolves its per-good draw the same way a building does: a layer-qualified ref
-    // (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the default yew) falls
-    // through to the `kindLayers.resource` tree layer (or the shared synthetic atlas) below. The
-    // reducer only emits a layer for a loaded family, so a layer-qualified miss is a real gap
-    // (placeholder), never a wrong-bob borrow from the tree atlas. A null draw is a data-pinned
-    // invisible level (the original's freshly-sown field) — draw nothing, not the placeholder.
-    const draw = resolveResourceDraw(sheet.bindings.resource, item);
-    if (draw === null) return [];
-    if (hasLoadedFamily(sheet, draw)) return layeredLayersWithShadow(sheet, 'resource', draw);
-    bobId = draw.bob;
-  } else if (item.kind === 'stockpile') {
-    return resolveStockpileLayers(sheet, item);
-  } else if (item.kind === 'signpost') {
-    // A signpost (post or one of its direction boards) draws its layer-qualified frame from the
-    // guidepost family atlas. Every signpost ref IS layer-qualified (human-sheet emits the binding only
-    // for loaded families), so a missing family here is a placeholder, never a bare-bob fall-through
-    // into the shared body atlas (a human frame drawn as a post).
-    const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
-    if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
-    const resolved = layeredLayerFor(sheet, 'signpost', draw);
-    return resolved === null ? null : [resolved];
-  } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
-    return resolveDecorLayers(sheet, item, item.kind);
-  } else {
-    bobId = resolveSpriteBobId(item, sheet.bindings, tick);
+  // building branch and appended to whichever body layer this frame draws.
+  let buildingExtras: readonly ResolvedLayer[] = NO_EXTRAS;
+  switch (item.kind) {
+    // Tiles bind by landscape typeId; a projectile has no decoded arrow bob (only character bodies are
+    // extracted) and always draws the pool's oriented-arrow marker instead (named gap).
+    case 'tile':
+    case 'projectile':
+      return null;
+    case 'settler':
+      // Per-job settler character (the `[jobbasegraphics]` join): the job's own body + one stable head
+      // pick + its own binding, resolved in that body's frame-id space. A sheet with no characters (the
+      // synthetic one) falls through to the sheet-global settler path.
+      if (sheet.characters !== undefined)
+        return resolveCharacterLayers(sheet.characters, item, tick, gaitClock);
+      bobId = resolveSpriteBobId(item, sheet.bindings, tick);
+      break;
+    case 'building': {
+      const branch = resolveBuildingLayers(sheet, item, tick);
+      if (branch.done) return branch.layers;
+      bobId = branch.bobId;
+      buildingExtras = branch.extras;
+      break;
+    }
+    case 'resource': {
+      // A resource node resolves its per-good draw the same way a building does: a layer-qualified ref
+      // (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the default yew) falls
+      // through to the `kindLayers.resource` tree layer (or the shared synthetic atlas) below. The
+      // reducer only emits a layer for a loaded family, so a layer-qualified miss is a real gap
+      // (placeholder), never a wrong-bob borrow from the tree atlas. A null draw is a data-pinned
+      // invisible level (the original's freshly-sown field) — draw nothing, not the placeholder.
+      const draw = resolveResourceDraw(sheet.bindings.resource, item);
+      if (draw === null) return [];
+      if (hasLoadedFamily(sheet, draw)) return layeredLayersWithShadow(sheet, 'resource', draw);
+      bobId = draw.bob;
+      break;
+    }
+    case 'stockpile':
+      return resolveStockpileLayers(sheet, item);
+    case 'signpost': {
+      // A signpost (post or one of its direction boards) draws its layer-qualified frame from the
+      // guidepost family atlas. Every signpost ref IS layer-qualified (human-sheet emits the binding only
+      // for loaded families), so a missing family here is a placeholder, never a bare-bob fall-through
+      // into the shared body atlas (a human frame drawn as a post).
+      const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
+      if (draw === null || !hasLoadedFamily(sheet, draw)) return null;
+      const resolved = layeredLayerFor(sheet, 'signpost', draw);
+      return resolved === null ? null : [resolved];
+    }
+    case 'grounddrop':
+    case 'stump':
+    case 'berrybush':
+      return resolveDecorLayers(sheet, item, item.kind);
+    default: {
+      // Exhaustiveness guard, the twin of `resolveSpriteBobId`'s: the two dispatches cannot silently
+      // disagree about a new DrawKind.
+      const _exhaustive: never = item.kind;
+      void _exhaustive;
+      return null;
+    }
   }
   if (bobId === null) return null;
 
-  const kindLayer: SpriteLayer | undefined = item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind];
-  if (kindLayer !== undefined && item.kind !== 'tile') {
+  const kindLayer = sheet.kindLayers?.[item.kind];
+  if (kindLayer !== undefined) {
     const frame = lookupFrame(kindLayer.atlas, bobId);
     if (frame === null) return null;
     const scale = sheet.kindScales?.[item.kind] ?? 1;

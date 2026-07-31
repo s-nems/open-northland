@@ -1,30 +1,32 @@
-# Unify sprite kind dispatch and route characters through the layer resolver
+# Route settler characters through the shared layer resolver
 
 **Area:** render (data/sprites, gpu/sprite-pool) · **Priority:** P3
 
-Two independent kind-dispatch chains encode the same routing rules and are documented as
-behaviourally divergent: `data/sprites/resolve.ts` (`resolveSpriteBobId`) and
-`gpu/sprite-pool/resolve-layers.ts` (`resolveLayers`). In production `resolveLayers` handles every
-kind first, so the only branch of `resolve.ts` still reachable is a settler on a sheet without
-`characters`; `resolveSpriteFrame` has no production caller at all (tests and the barrel only). A
-new draw kind must today be added to two chains that are allowed to disagree.
+Inside `gpu/sprite-pool/resolve-layers.ts`, `resolveCharacterLayers` bypasses the
+`sourceLayerFor` → `resolveFromLayer` helpers it sits beside. It calls `lookupFrame` directly and
+hardcodes `scale: 1` at both emit sites (body and head), so `kindScales.settler` is ignored exactly on
+the real-content path (sheets with `characters`) while honoured on the synthetic fall-through. The
+human branch also skips the shadow policy the animal branch above it applies.
 
-In the same file, `resolveCharacterLayers` bypasses the `sourceLayerFor` → `resolveFromLayer`
-helpers it sits beside: it calls `lookupFrame` directly, hardcodes `scale: 1` at both emit sites,
-and skips the shadow policy, so `kindScales.settler` is silently ignored exactly on the
-real-content path (sheets with `characters`) while honoured on the synthetic fall-through.
+Two smaller seams in the same dispatch: `resolveSpriteFrame` (`data/sprites/resolve.ts`) has no
+production caller, existing as a public barrel export used only as the bob-selection oracle by
+`test/sprites/atlas.test.ts`, `settler-animation.test.ts` and `synthetic-atlas.test.ts`. And the
+character branch passes `gaitClock` where the synthetic fall-through beside it drops it, an asymmetry
+that reads like a bug in one `case`.
 
 ## Scope
 
-- One kind → resolver table shared by both entry points, or delete the unreachable `resolve.ts`
-  branches plus `resolveSpriteFrame` and retarget their oracle tests at `resolveLayers`.
-- Route the character body/head through `resolveFromLayer` (generalize it to take atlas
-  dimensions if needed) so scale and shadow policy have one owner.
-- Non-goal: changing any currently drawn frame; no sheet currently sets `kindScales.settler`
-  (`content/sprite-sheet/human-sheet.ts` sets only `building`), so honouring it must not move
-  pixels.
+- Route the character body/head through `resolveFromLayer` (generalize it to carry atlas dimensions,
+  which the paletted mesh path needs) so scale and shadow policy have one owner.
+- Decide `resolveSpriteFrame`: keep it as the tested pure seam, or delete it and retarget those
+  assertions at `resolveSpriteBobId` + `lookupFrame`.
+- Keep both kind dispatches exhaustive over `DrawKind`. The kind → binding-key rule still has two
+  owners (`resolve.ts`'s grounddrop → `trunk` and `resolveDecorLayers`); a shared table is optional,
+  agreement is not.
+- Non-goal: changing any currently drawn frame. No sheet sets `kindScales.settler`
+  (`content/sprite-sheet/human-sheet.ts` sets only `building`), so honouring it must not move pixels.
 
 ## Verify
 
-`npm test` (retargeted resolver oracles), `npm run check`, `npm run build`. Human seam: settlers,
-resources, buildings, signposts, stockpiles in `?scene=sandbox` render unchanged.
+`npm test`, `npm run check`, `npm run build`. Human seam: settlers, resources, buildings, signposts,
+stockpiles in `?scene=sandbox` render unchanged.
