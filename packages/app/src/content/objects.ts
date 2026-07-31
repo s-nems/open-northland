@@ -186,10 +186,9 @@ export async function loadMapObjects(
     readonly farRow: number | undefined;
     /** False for the tree logic types (the measured full-bright exemption, {@link unshadedLogicTypeIds}). */
     readonly shaded: boolean;
-    /** The full-grown ground cells the object covers, relative to its node, whatever state this list
-     *  draws: what {@link footprintBrightness} grades it against, on the same conservative reading of
-     *  the state axis collision takes. */
-    readonly footprint: readonly FootprintCell[];
+    /** The ground cells the object's walk area covers, relative to its node: what
+     *  {@link footprintBrightness} grades it against. */
+    readonly walkFootprint: readonly FootprintCell[];
   }
   // One ResolvedType per (type, state list) — index [typeIndex][stateIndex]; empty lists collapse
   // to null so a placement whose state resolves nothing falls back to state 0 below.
@@ -199,7 +198,9 @@ export async function loadMapObjects(
     const key = servedAtlasStem(record);
     const layer = key !== undefined ? layers.get(key) : undefined;
     if (layer === undefined) return [];
-    const footprint = fullStateBlockAreaCells(record.walkBlockAreas);
+    // Per record: the full state's areas apply whatever state a list draws.
+    const walkFootprint = fullStateBlockAreaCells(record.walkBlockAreas);
+    const farRow = deckFarRow(record);
     return (record.frames ?? []).map((stateList) => {
       const paired = pairedStateFrames(layer, stateList.bobIds);
       if (paired === null) return null;
@@ -214,9 +215,9 @@ export async function loadMapObjects(
         frames: frames.slice(0, count),
         shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: drawsAsFlatDecor(record),
-        farRow: deckFarRow(record),
+        farRow,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
-        footprint,
+        walkFootprint,
       };
     });
   });
@@ -263,7 +264,7 @@ export async function loadMapObjects(
       // Named approximation: the engine's alpha blit folds the shade into the pixel alpha
       // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` colour multiplier below
       // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
-      ...(shade !== undefined ? { brightness: footprintBrightness(shade, hx, hy, type.footprint) } : {}),
+      ...(shade !== undefined ? { brightness: footprintBrightness(shade, hx, hy, type.walkFootprint) } : {}),
     };
     out.push(sprite);
     byPlacement.set(placement, sprite);

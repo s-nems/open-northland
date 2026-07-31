@@ -49,6 +49,10 @@ describe('paint order: flat decor vs the row an occluder sorts at', () => {
     expect(deckFarRow(bridge)).toBe(-2);
   });
 
+  it('keys the group case-insensitively, so a mod spelling cannot re-block a deck', () => {
+    expect(deckFarRow({ walkBlockAreas: deck, editGroups: ['Misc_Bridges'] })).toBe(-2);
+  });
+
   it('leaves every other object sorting at its own row', () => {
     // The group is the whole key: the same footprint in any other group still sorts at its node.
     expect(deckFarRow({ walkBlockAreas: deck, editGroups: ['misc_decor'] })).toBeUndefined();
