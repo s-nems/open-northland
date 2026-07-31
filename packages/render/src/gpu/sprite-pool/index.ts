@@ -18,5 +18,6 @@ export type { DrawnGeometry } from './pick.js';
 export { type PlaceholderBounds, placeholderBounds } from './placeholder.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
-export { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
+export { resolveLayers } from './resolve-layers.js';
+export type { ResolvedLayer } from './resolved-layer.js';
 export { type PoolFrame, type PortraitView, SpritePool } from './sprite-pool.js';
