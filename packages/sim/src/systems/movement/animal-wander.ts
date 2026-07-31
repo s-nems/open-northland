@@ -14,7 +14,9 @@ import {
   StayPoint,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
+import type { Entity } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { grazeLeashOf } from '../livestock/assignment.js';
@@ -29,6 +31,28 @@ export const ANIMAL_WANDER_PERIOD_TICKS = 5 * TICKS_PER_SECOND;
  *  penned stock beside the farm read as restless at the wild pace). */
 export const LIVESTOCK_WANDER_PERIOD_TICKS = 15 * TICKS_PER_SECOND;
 
+/** Sidestep candidates for a stacked stander, nearest first: the diagonal then axial node-Manhattan-2
+ *  spots (the nearest that read as separated sprites). Fixed order, so the pick is canonical. The
+ *  displacement (2) must stay at or below every recall leash - herding's `maximumleaderdistance`, the
+ *  claimed grazing leash (3), a territory radius - or a sidestep would ping-pong with the recall;
+ *  current content minima are 3. */
+const UNSTACK_OFFSETS: readonly (readonly [number, number])[] = [
+  [1, 1],
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [2, 0],
+  [-2, 0],
+  [0, 2],
+  [0, -2],
+];
+
+/** Per-tick scratch (cleared each pass): the lowest-id standing animal per node - the "keeper" that
+ *  holds a shared node - and the sidestep targets already claimed this tick. Module-level to avoid a
+ *  steady per-tick allocation; the system clears both before use. */
+const standerByNode = new Map<NodeId, Entity>();
+const unstackTaken = new Set<NodeId>();
+
 /** How far one grazing step may aim from where the creature stands (node Manhattan). Clamped down to the
  *  creature's own territory radius, so a species whose range is 2 or 3 nodes still has picks its leash
  *  accepts. Approximated (no readable step size). */
@@ -36,7 +60,9 @@ export const ANIMAL_WANDER_STEP_NODES = 4;
 
 /**
  * AnimalWanderSystem: the grazing drive. An idle creature occasionally steps to a spot near itself
- * instead of standing frozen where it spawned.
+ * instead of standing frozen where it spawned. It also keeps standers apart: walkers pass through each
+ * other (the separation system's soft tier un-merges them), but two animals STANDING on one node would
+ * sit merged forever, so the non-keeper sidesteps and no graze goal ever aims at an occupied node.
  *
  * The territory radius is a LEASH on where a step may end, not a bound on the step's length, so many
  * short hops drift a creature around its territory but never out of it. A creature displaced past its
@@ -66,7 +92,22 @@ export const animalWanderSystem: System = (world, ctx) => {
   // standing wildlife pays nothing).
   let blocked: BlockOverlay | undefined;
 
-  for (const e of canonicalById(world.query(StayPoint, Settler, Position))) {
+  // One canonical pass list shared by the occupancy pre-pass and the drive loop (membership cannot
+  // change between them - only MoveGoal writes happen here).
+  const animals = canonicalById(world.query(StayPoint, Settler, Position));
+
+  // The tick's standing occupancy: the lowest-id stander keeps a shared node (canonical order fills
+  // first), everyone else on it sidesteps below. A walker is not a stander, and a Resting animal is
+  // inside a building, off the field.
+  standerByNode.clear();
+  unstackTaken.clear();
+  for (const e of animals) {
+    if (world.has(e, Resting) || isTravelling(world, e)) continue;
+    const node = entityNode(world, terrain, e);
+    if (!standerByNode.has(node)) standerByNode.set(node, e);
+  }
+
+  for (const e of animals) {
     if (world.has(e, CurrentAtomic)) continue;
     // A processing visit owns the creature: no grazing inside (Resting), and no graze leg competing
     // with the visit system's walk to the door (LivestockVisit).
@@ -74,6 +115,19 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (isTravelling(world, e)) continue;
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
+
+    // Un-stack before any graze roll: an animal sharing its node with a lower-id stander steps to the
+    // nearest free spot (the keeper convention of collision/separation), leash ignored - getting off a
+    // shared node beats staying strictly inside the territory (user feedback: standing animals merged
+    // into one sprite). The sidestep itself consumes no rng draw (the `continue` does drop this
+    // animal's cadence roll for the tick - a deterministic function of world state either way).
+    const here = entityNode(world, terrain, e);
+    if (standerByNode.get(here) !== e) {
+      blocked ??= dynamicBlockOverlay(world, ctx, terrain);
+      const spot = sidestepTarget(terrain, blocked, here);
+      if (spot !== null) world.add(e, MoveGoal, { cell: spot });
+      continue; // this tick is the sidestep (or a blocked retry), never also a graze roll
+    }
 
     // Claimed livestock grazes on the short shared leash ({@link grazeLeashOf}) at a calm pace; wild
     // creatures keep their species' territory radius and the wild cadence. Both reads happen BEFORE
@@ -85,7 +139,6 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (range <= 0) continue; // no territory to range over: this creature holds its spot
     if (ctx.rng.int(claimed ? LIVESTOCK_WANDER_PERIOD_TICKS : ANIMAL_WANDER_PERIOD_TICKS) !== 0) continue;
 
-    const here = entityNode(world, terrain, e);
     const at = terrain.coordsOf(here);
     // A Manhattan diamond around the creature: `dx` first, then `dy` over what the step budget leaves.
     // Uniform per column rather than per node: a wander, not a sampled distribution.
@@ -106,9 +159,29 @@ export const animalWanderSystem: System = (world, ctx) => {
     // Across water from the creature: findPath would reject the goal outright, stranding it for the
     // planner's retry window and filling its unreachable-goal memo (the targets/food.ts pattern).
     if (terrain.componentOf(target) !== terrain.componentOf(here)) continue;
+    // Another animal stands there, or a sidestep claimed it this tick: don't graze into a stack.
+    if (standerByNode.has(target) || unstackTaken.has(target)) continue;
     blocked ??= dynamicBlockOverlay(world, ctx, terrain);
     if (blocked.has(target)) continue;
 
     world.add(e, MoveGoal, { cell: target });
   }
 };
+
+/** The first free {@link UNSTACK_OFFSETS} spot beside a shared node - walkable, same component, not
+ *  blocked, not another stander's node, and not already claimed by an earlier sidestep this tick -
+ *  or null when the creature is fully boxed in (it retries next tick). */
+function sidestepTarget(terrain: TerrainGraph, blocked: BlockOverlay, from: NodeId): NodeId | null {
+  const at = terrain.coordsOf(from);
+  for (const [dx, dy] of UNSTACK_OFFSETS) {
+    if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
+    const node = terrain.nodeAt(at.x + dx, at.y + dy);
+    if (!terrain.isWalkable(node)) continue;
+    if (terrain.componentOf(node) !== terrain.componentOf(from)) continue;
+    if (standerByNode.has(node) || unstackTaken.has(node)) continue;
+    if (blocked.has(node)) continue;
+    unstackTaken.add(node);
+    return node;
+  }
+  return null;
+}

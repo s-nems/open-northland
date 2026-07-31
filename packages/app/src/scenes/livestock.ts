@@ -1,6 +1,6 @@
 import { cellAnchorNode, components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_SCOUT } from '../catalog/jobs.js';
+import { JOB_HUNTER, JOB_SCOUT } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { ANIMAL_TRIBE_CATTLE, ANIMAL_TRIBE_SHEEP } from '../game/sandbox/content/catalog/animals.js';
 import {
@@ -16,8 +16,9 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The husbandry sign-off scene: wild sheep and cattle herds, two scouts standing among them, and a
- * staffed animal farm. The scouts claim the animals by contact (the faction heart appears over each),
- * the claimed stock marches to the farm door and grazes around it, and the two breeders run the feed
+ * staffed animal farm with the tribe's hunter beside it (the tech unlock for leather and meat). The
+ * scouts claim the animals by contact (the faction heart appears over each), the claimed stock
+ * marches to the farm door and grazes around it, and the two breeders run the feed
  * cycles - water + wheat + a visit's worth of animal life → the fed-animal token, then wool (sheep) or
  * leather (cattle), plus the meat byproduct. Headless proves the chain end to end; in the browser a
  * human judges the hearts, the march, the grazing ring around the farm, and the animals never reading
@@ -32,6 +33,10 @@ const RUN_TICKS = 1500;
 
 const FARM = { x: 26, y: 8 } as const;
 const BREEDERS = 2;
+/** The tribe's hunter, beside the farm: leather and meat are `jobEnablesGood` hunter unlocks (the
+ *  extracted tech graph), so without one alive the feed chain converts only wool. Out of hunt sight
+ *  (16 nodes) of both wild herds, and claimed stock is property, never prey - he only stands. */
+const HUNTER = { x: 24, y: 6 } as const;
 /** Herd birth points, far enough from the farm that the march to the door is visible. */
 const SHEEP_BIRTH = { x: 8, y: 20 } as const;
 const CATTLE_BIRTH = { x: 30, y: 21 } as const;
@@ -51,6 +56,7 @@ function build(sim: Simulation): void {
     s.amounts.set(goodBySlug(sim, 'wheat'), STARTER_WHEAT);
   });
   spawnWorkersAtDoor(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y, BREEDERS);
+  spawnSandboxSettler(sim, JOB_HUNTER, HUNTER.x, HUNTER.y, HUMAN_PLAYER);
 
   for (const herd of [
     { tribe: ANIMAL_TRIBE_SHEEP, at: SHEEP_BIRTH },

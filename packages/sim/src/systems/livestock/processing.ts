@@ -10,6 +10,7 @@ import {
   Position,
   Resting,
   Settler,
+  StayPoint,
   Stockpile,
 } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
@@ -18,7 +19,7 @@ import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { isLivestockWorkplaceType, livestockTribeOfGood } from '../readviews/index.js';
 import { isInside, stepIn, stepOut } from '../settlers/indoors.js';
-import { entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
+import { clearNavState, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
 import { recipesByProductOf } from '../stores/index.js';
 
 // The processing side of husbandry, staged as a VISIT the player can watch: the workplace SUMMONS one
@@ -85,18 +86,20 @@ export function admitLivestockForCycle(
     if (pick === null || e < pick) pick = e;
   }
   if (pick === null) return false;
-  world.remove(pick, MoveGoal);
+  // Full nav clear, not just the goal: an animal can count as arrived while its final path leg is
+  // still live (entityNode rounds to the door node), and an admitted body must hold no walk.
+  clearNavState(world, pick);
   stepIn(world, pick, building);
   return true;
 }
 
 /**
  * Let the completed feed batch's visitor out: the canonical (lowest-id) {@link LivestockVisit} holder
- * INSIDE this workplace ({@link Resting} - a summoned animal still outside belongs to the next batch)
- * steps out and pays the visit's life cost, clamped so the drain never takes it below the life floor
- * (its HP may have moved since admission: regen, or a fight). A batch whose visitor vanished
- * mid-cycle (died inside) releases nobody and charges nothing - an accepted free batch on a rare
- * edge.
+ * INSIDE this workplace ({@link Resting}) steps out, pays the visit's life cost, clamped so the drain
+ * never takes it below the life floor (its HP may have moved since admission: regen, or a fight), and
+ * walks straight back to its grazing spot rather than standing in the doorway until the next herding
+ * sweep. A batch whose visitor vanished mid-cycle (died inside) releases nobody and charges nothing -
+ * an accepted free batch on a rare edge.
  */
 export function releaseLivestockVisit(world: World, building: Entity, tribe: number): void {
   let visitor: Entity | null = null;
@@ -116,16 +119,17 @@ export function releaseLivestockVisit(world: World, building: Entity, tribe: num
   }
   world.remove(paying, LivestockVisit);
   stepOut(world, paying);
+  const stay = world.tryGet(paying, StayPoint);
+  if (stay !== undefined) world.add(paying, MoveGoal, { cell: stay.cell });
 }
 
 /**
- * LivestockVisitSystem - the summon-and-escort half of the visit. Every built livestock workplace
- * whose feed recipe has its input goods on hand keeps ONE animal per species summoned (the canonical
- * pen pick walks to the door and waits there - a calm one-at-a-time rhythm, not a stream); every
- * summoned animal still outside is escorted (re-aimed at the door - self-healing against a refused
- * route) or dropped where it stands when its workplace is gone. Runs after regen, so a topped-up
- * animal qualifies the same tick, and before production, which admits arrived visitors into starting
- * batches. Scale: one pass over buildings with a cheap type check, plus the booked-visitor store.
+ * LivestockVisitSystem - the summon-and-escort half of the visit: books animals onto workplaces
+ * ({@link summonToWorkplaces} - the one-visitor-per-species rule lives there), then escorts every
+ * booked animal still outside (re-aimed at the door - self-healing against a refused route) or drops
+ * it where it stands when its workplace is gone. Runs after regen, so a topped-up animal qualifies
+ * the same tick, and before production, which admits arrived visitors into starting batches. Scale:
+ * one pass over buildings with a cheap type check, plus the booked-visitor store.
  */
 export const livestockVisitSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -149,8 +153,11 @@ export const livestockVisitSystem: System = (world, ctx) => {
   }
 };
 
-/** One summoned (not yet admitted) animal per species and workplace: book the canonical pen pick for
- *  each input-stocked feed recipe that has no waiting visitor. */
+/** One visitor per species and workplace, across the WHOLE visit (summoned or already admitted): book
+ *  the canonical pen pick for each input-stocked feed recipe with no live visitor. The next animal is
+ *  called only after the current batch releases its one - during a batch the doorway stays empty
+ *  instead of queueing the successor there for the batch's whole length (user feedback: animals stood
+ *  in the door for no visible reason). */
 function summonToWorkplaces(world: World, ctx: SystemContext): void {
   for (const building of world.query(Building, Stockpile)) {
     const b = world.get(building, Building);
@@ -162,7 +169,7 @@ function summonToWorkplaces(world: World, ctx: SystemContext): void {
       const tribe = feedTribeOf(ctx, recipe);
       if (tribe === null) continue;
       if (!recipe.inputs.every((i) => (stock.get(i.goodType) ?? 0) >= i.amount)) continue;
-      if (hasWaitingVisitor(world, building, tribe)) continue;
+      if (hasVisitor(world, building, tribe)) continue;
       const { best } = scanFeedAnimals(world, ctx, building, tribe);
       if (best === null) continue;
       world.add(best, LivestockVisit, { at: building });
@@ -171,12 +178,12 @@ function summonToWorkplaces(world: World, ctx: SystemContext): void {
   }
 }
 
-/** Whether a summoned, not-yet-admitted visitor of this species already exists for the workplace. */
-function hasWaitingVisitor(world: World, building: Entity, tribe: number): boolean {
+/** Whether any visitor of this species - walking, waiting at the door, or admitted inside - already
+ *  belongs to the workplace. */
+function hasVisitor(world: World, building: Entity, tribe: number): boolean {
   for (const e of world.query(LivestockVisit, Settler)) {
     if (world.get(e, LivestockVisit).at !== building) continue;
-    if (world.get(e, Settler).tribe !== tribe) continue;
-    if (!world.has(e, Resting)) return true;
+    if (world.get(e, Settler).tribe === tribe) return true;
   }
   return false;
 }
