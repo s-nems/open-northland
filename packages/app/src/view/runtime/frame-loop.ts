@@ -9,6 +9,7 @@ import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
 import type {
+  computeConstructionSigns,
   computeDoorBadges,
   computeSettlerBubbles,
   FogGates,
@@ -46,6 +47,8 @@ export interface FrameLoopDeps {
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The door-badge projection, memoized + fog-filtered, by snapshot identity. */
   readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  /** The construction-sign projection (one stand per site door), memoized + fog-filtered, by snapshot identity. */
+  readonly constructionSignsFor: (snap: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   /** The settler-bubble projection (make-child / wedding), memoized + fog-filtered, by snapshot identity. */
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   /** The one live placement rule the click gate and the cursor ghost share. */
@@ -83,6 +86,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
+    constructionSignsFor,
     settlerBubblesFor,
     canPlaceAt,
     canPlaceSignpostAt,
@@ -217,6 +221,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
     const doorBadges = doorBadgesFor(snap); // memoized per tick, not per RAF
+    const constructionSigns = constructionSignsFor(snap); // memoized per tick, not per RAF
     const settlerBubbles = settlerBubblesFor(snap); // memoized per tick, not per RAF
     // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events — ingested
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
@@ -229,6 +234,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       selection: controls.selectedIds(),
       alpha: renderAlpha,
       doorBadges,
+      constructionSigns,
       settlerBubbles,
       flagged: controls.flaggedFlagIds(),
     });

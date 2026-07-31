@@ -26,6 +26,7 @@ const SLOTS = [
   'blood',
   'damageSmoke',
   'doorBadges',
+  'constructionSigns',
   'bubbles',
   'geometryDebug',
 ] as const satisfies readonly (keyof WorldSceneLayers)[];

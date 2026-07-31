@@ -9,6 +9,7 @@ import {
   isBuilding,
   isMakingLove,
   isSettler,
+  ownerPlayerOf,
   positionOf,
   settlerJobType,
   workplaceOf,
@@ -76,10 +77,12 @@ export function computeDoorBadges(
     const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
     const node = workerIconNode(info?.footprint, anchor, info?.id);
     const dpos = positionOfNode(node.hx, node.hy);
+    const player = ownerPlayerOf(e);
     out.push({
       id: e.id,
       x: dpos.x,
       y: dpos.y,
+      ...(player !== undefined ? { player } : {}),
       craftsmen: counts?.craftsmen ?? 0,
       carriers: counts?.carriers ?? 0,
       gatherers: counts?.gatherers ?? 0,

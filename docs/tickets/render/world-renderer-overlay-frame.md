@@ -2,10 +2,10 @@
 
 **Area:** render · **Priority:** P3
 
-`gpu/world-renderer/world-renderer.ts`'s `update` tail draws six transient overlays one by one, each
+`gpu/world-renderer/world-renderer.ts`'s `update` tail draws seven transient overlays one by one, each
 hand-threaded the same frame context. `selectionLayer`, `effects`, `collapses`, `damageSmoke`,
-`badgeLayer` and `bubbleLayer` all read some mix of `elevation`, the cull viewport, `tick + alpha` and
-the pool as `drawn`, in six different argument shapes.
+`badgeLayer`, `constructionSigns` and `bubbleLayer` all read some mix of `elevation`, the cull
+viewport, `tick + alpha` and the pool as `drawn`, in different argument shapes.
 
 Unlike the fog, these layers share no state: each owns its own. The win is the repeated context, not
 ownership, so the bar is that the call site gets simpler without a generic layer framework.
@@ -18,7 +18,7 @@ reordering a draw there is still caught only by eye.
 ## Scope
 
 - Keep `WorldRenderer` as the stable app-facing façade and retained scene-graph owner.
-- Give the six transient draws one typed frame context, preserving draw order and the explicit
+- Give the seven transient draws one typed frame context, preserving draw order and the explicit
   container wiring.
 - Do not create a generic layer framework, and do not allocate a fresh context object per frame.
 

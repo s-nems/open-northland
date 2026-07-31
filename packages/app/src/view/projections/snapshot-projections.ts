@@ -2,6 +2,7 @@ import { buildHud, fogTileVisible, type HudLayout, layoutHud, ONE } from '@open-
 import type { WorldSnapshot } from '@open-northland/sim';
 import { HUD_TRIBE } from '../../game/rules.js';
 import type { WorkerRole } from '../../game/sandbox/index.js';
+import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
@@ -37,6 +38,7 @@ export function createSnapshotProjections(
 ): {
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  readonly constructionSignsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
 } {
   return {
@@ -47,6 +49,11 @@ export function createSnapshotProjections(
       return fog === null
         ? badges
         : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
+    }),
+    constructionSignsFor: memoBySnapshot((snapshot) => {
+      const signs = computeConstructionSigns(snapshot, buildingsByType);
+      const fog = fogGates.current();
+      return fog === null ? signs : signs.filter((sign) => fogTileVisible(fog, sign.x / ONE, sign.y / ONE));
     }),
     settlerBubblesFor: memoBySnapshot((snapshot) => {
       const bubbles = computeSettlerBubbles(snapshot);

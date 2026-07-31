@@ -348,7 +348,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize, localPlayer);
   // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
-  const { hudFor, doorBadgesFor, settlerBubblesFor } = createSnapshotProjections(
+  const { hudFor, doorBadgesFor, constructionSignsFor, settlerBubblesFor } = createSnapshotProjections(
     buildingDoors,
     workerRoleOf,
     fogGates,
@@ -384,6 +384,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
+    constructionSignsFor,
     settlerBubblesFor,
     canPlaceAt,
     canPlaceSignpostAt,

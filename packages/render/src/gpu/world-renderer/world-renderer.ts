@@ -7,10 +7,12 @@ import { type BrightnessField, type ElevationField, makeElevationField } from '.
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
   BadgeLayer,
+  type BuildingSignGfx,
   CollapseLayer,
   CombatEffectsLayer,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
+  ConstructionSignLayer,
   DamageSmokeLayer,
   type GeometryDebugItem,
   GeometryDebugLayer,
@@ -35,6 +37,7 @@ import {
   NO_BADGES,
   NO_BUBBLES,
   NO_REFS,
+  NO_SIGNS,
   SPRITE_CULL_MARGIN,
   type WorldFrame,
   type WorldRendererOptions,
@@ -86,7 +89,9 @@ export class WorldRenderer {
    *  pure function of each building's current HP fraction. */
   private readonly damageSmoke = new DamageSmokeLayer();
   /** Stacked worker badges beside each staffed building's door. */
-  private readonly badgeLayer = new BadgeLayer();
+  private readonly badgeLayer: BadgeLayer;
+  /** Construction stands planted at each building site's sign post. */
+  private readonly constructionSigns: ConstructionSignLayer;
   /** Thought bubbles over a settler's head in a standing family state. Fed the decoded art by
    *  {@link setSettlerBubbleGfx}. */
   private readonly bubbleLayer = new SettlerBubbleLayer();
@@ -118,6 +123,8 @@ export class WorldRenderer {
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
+    this.badgeLayer = new BadgeLayer(opts?.playerColourOf);
+    this.constructionSigns = new ConstructionSignLayer(opts?.playerColourOf);
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.collapses = new CollapseLayer(this.spriteLayer, this.textureCache, opts?.sheet);
@@ -138,6 +145,7 @@ export class WorldRenderer {
       blood: this.effects.overlayContainer,
       damageSmoke: this.damageSmoke.container,
       doorBadges: this.badgeLayer.container,
+      constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbleLayer.container,
       geometryDebug: this.geometryDebug.container,
     });
@@ -240,6 +248,17 @@ export class WorldRenderer {
   }
 
   /**
+   * Provide (or clear) the decoded building-sign art ({@link BuildingSignGfx} — the per-player `ls_temp`
+   * pages + the frame each sign kind draws), read through the shared frame→texture cache. `null` (a
+   * checkout without `content/`) leaves the badge layer on its placeholder squares.
+   */
+  setBuildingSignGfx(gfx: BuildingSignGfx | null): void {
+    const signGfx = gfx === null ? undefined : { ...gfx, textures: this.textureCache };
+    this.badgeLayer.setGfx(signGfx);
+    this.constructionSigns.setGfx(signGfx);
+  }
+
+  /**
    * Remove one placed landscape object from the retained static layer — the handover seam: the moment a
    * virgin resource node is first worked (felled/mined/picked), its built-once static quad/sprite comes
    * out and the live sprite pool draws the entity from then on (shrinking levels, vanishing on destroy).
@@ -278,6 +297,7 @@ export class WorldRenderer {
       selection = NO_REFS,
       alpha = 1,
       doorBadges = NO_BADGES,
+      constructionSigns: signItems = NO_SIGNS,
       settlerBubbles = NO_BUBBLES,
       flagged = NO_REFS,
     } = frame;
@@ -340,6 +360,7 @@ export class WorldRenderer {
     // Door badges: the app tallies each building's bound workers and projects its door node; this layer
     // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
+    this.constructionSigns.draw(signItems, this.elevation, vp);
     // Settler bubbles: the app scans each settler's make-child / wedding state; this layer floats a
     // decoded bubble over the head.
     this.bubbleLayer.draw({ bubbles: settlerBubbles, drawn: this.pool, elevation: this.elevation }, vp);
@@ -468,6 +489,7 @@ export class WorldRenderer {
     this.selectionLayer.destroy();
     this.effects.destroy();
     this.badgeLayer.destroy();
+    this.constructionSigns.destroy();
     this.bubbleLayer.destroy();
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });

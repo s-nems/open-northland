@@ -25,6 +25,7 @@ export {
 } from './bubble-layer.js';
 export { CollapseLayer } from './collapse-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
+export { type ConstructionSign, ConstructionSignLayer } from './construction-sign-layer.js';
 export { DamageSmokeLayer } from './damage-smoke-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';
@@ -39,3 +40,4 @@ export {
 } from './placement-overlay.js';
 export { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
 export { SelectionLayer } from './selection-layer.js';
+export type { BuildingSignGfx, BuildingSignKind, BuildingSignSheet } from './sign-gfx.js';

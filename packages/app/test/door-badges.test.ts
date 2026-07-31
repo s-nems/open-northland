@@ -35,6 +35,7 @@ describe('computeDoorBadges', () => {
     expect(badges).toHaveLength(1);
     const badge = badges[0];
     expect(badge?.id).toBe(1);
+    expect(badge?.player).toBeUndefined(); // the fixture building is unowned — the layer draws slot 0
     expect(badge?.craftsmen).toBe(2);
     expect(badge?.carriers).toBe(1);
     expect(badge?.gatherers).toBe(1);
@@ -95,5 +96,15 @@ describe('computeDoorBadges', () => {
     const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
     expect(badge?.x).toBe(iconPos.x);
     expect(badge?.y).toBe(iconPos.y);
+  });
+
+  it("carries the building's owner slot so the layer picks that player's sign recolour", () => {
+    const owned = building(1, 7, 4, 4);
+    const snap = snapshotOf([
+      { ...owned, components: { ...owned.components, Owner: { player: 4 } } },
+      settler(2, CRAFTSMAN, 1),
+    ]);
+
+    expect(computeDoorBadges(snap, new Map(), roleOf)[0]?.player).toBe(4);
   });
 });

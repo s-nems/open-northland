@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Camera } from '../../data/projection/index.js';
-import type { DoorBadge, HudFrame, SettlerBubble } from '../overlays/index.js';
+import type { ConstructionSign, DoorBadge, HudFrame, SettlerBubble } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /**
@@ -46,6 +46,7 @@ export const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
 /** Shared empty ref set so the common no-selection / no-flagged `update` allocates nothing. */
 export const NO_REFS: ReadonlySet<number> = new Set();
 export const NO_BADGES: readonly DoorBadge[] = [];
+export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 
 /**
@@ -67,8 +68,10 @@ export interface WorldFrame {
   /** The fixed-timestep interpolation fraction (the loop's `FixedTimestep.advance` return): each entity
    *  draws `alpha` of the way from its previous tick anchor to its current one (default 1 = raw tick). */
   readonly alpha?: number | undefined;
-  /** Per-building door-badge tallies to stack over each door (default none). */
+  /** Per-building door badges - each carries its projection-ordered sign rows (default none). */
   readonly doorBadges?: readonly DoorBadge[] | undefined;
+  /** Per-site construction signs to plant at each site's sign post (default none). */
+  readonly constructionSigns?: readonly ConstructionSign[] | undefined;
   /** Per-settler thought bubbles to float over a settler's head (make-child / wedding; default none). */
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
