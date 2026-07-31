@@ -19,7 +19,7 @@ export interface SrcRect {
 /**
  * The render-local ground binding for one landscape typeId: which texture page + sub-rect to sample,
  * plus a flat-tint fallback colour (the logic-type `debugColor`) for when the page can't be loaded.
- * The app derives this from a `TerrainPattern` IR row; the renderer stays decoupled from `@open-northland/data`.
+ * The app derives this from a `TerrainPattern` IR row, so the type is declared structurally here.
  */
 export interface CellTexture {
   /** The texture page key (e.g. `text_003`) — the key into the loaded page sources. */
