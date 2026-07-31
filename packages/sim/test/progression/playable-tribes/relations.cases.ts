@@ -65,20 +65,23 @@ describe('mayAttack (the combat hostility relation)', () => {
 });
 
 describe('mayHunt (the hunter predation relation)', () => {
-  it('lets a HUNTER strike catchable prey, but a non-hunter / non-catchable target does not', () => {
+  it('lets a HUNTER strike huntable prey (a huntPrey row), but a non-hunter / non-prey target does not', () => {
     const content = tribeContent();
-    expect(mayHunt(content, HUNTER_JOB, 10)).toBe(true); // hunter -> catchable cow
+    expect(mayHunt(content, HUNTER_JOB, 10)).toBe(true); // hunter -> the cow's huntPrey row
     expect(mayHunt(content, 1, 10)).toBe(false); // a non-hunter trade does not hunt
     expect(mayHunt(content, null, 10)).toBe(false); // a jobless settler does not hunt
-    expect(mayHunt(content, HUNTER_JOB, 8)).toBe(false); // hunter -> aggressive bear (not catchable)
-    expect(mayHunt(content, HUNTER_JOB, 9)).toBe(false); // hunter -> wild wolf (no catchable flag)
+    expect(mayHunt(content, HUNTER_JOB, 8)).toBe(false); // hunter -> aggressive bear (no huntPrey row)
+    expect(mayHunt(content, HUNTER_JOB, 9)).toBe(false); // hunter -> wild wolf (no huntPrey row)
     expect(mayHunt(content, HUNTER_JOB, 1)).toBe(false); // a civilization is not huntable prey
   });
 
-  it('still exempts a cannotBeAttacked animal even if (somehow) catchable', () => {
+  it('still exempts a cannotBeAttacked animal even with a huntPrey row', () => {
     const content = parseContentSet({
       manifest: TEST_MANIFEST,
-      goods: [{ typeId: 0, id: 'none' }],
+      goods: [
+        { typeId: 0, id: 'none' },
+        { typeId: 21, id: 'meat', atomics: { harvest: 33 } },
+      ],
       jobs: [
         { typeId: 0, id: 'idle' },
         { typeId: HUNTER_JOB, id: 'hunter' },
@@ -88,9 +91,8 @@ describe('mayHunt (the hunter predation relation)', () => {
         { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },
         { typeId: 5, id: 'tame_bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
       ],
-      animals: [
-        { id: 'tame_bee', tribeType: 5, catchable: true, cannotBeAttacked: true, hitpointsAdult: 200 },
-      ],
+      animals: [{ id: 'tame_bee', tribeType: 5, cannotBeAttacked: true, hitpointsAdult: 200 }],
+      huntPrey: [{ tribeType: 5, yields: [{ goodType: 21, amount: 1 }] }],
     });
     // The cannotBeAttacked exemption holds for hunting too — a hunter can no more strike it than a soldier.
     expect(mayHunt(content, HUNTER_JOB, 5)).toBe(false);

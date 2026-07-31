@@ -11,7 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
 import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { isFighterJob, isScoutJob } from '../readviews/index.js';
+import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 
 /**
  * The per-player SIGNPOST NETWORK — which signposts exist, where, and which belong to one connected
@@ -239,7 +239,10 @@ function computeNavigationLimit(
   hx: number,
   hy: number,
 ): NavigationLimit | null {
-  if (isScoutJob(content, jobType) || isFighterJob(content, jobType)) return null;
+  // Scouts and fighters roam globally; so does the hunter — like the scout, it never gets lost
+  // (design rule, user-specified), its range bounded by its own work flag instead.
+  if (isScoutJob(content, jobType) || isFighterJob(content, jobType) || isHunterJob(content, jobType))
+    return null;
   const posts = signpostNetwork(world).get(player) ?? [];
   // Reachable groups: a group counts iff some member's nav circle intersects the local circle.
   const reachable = new Set<number>();

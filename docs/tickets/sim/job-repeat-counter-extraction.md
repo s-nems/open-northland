@@ -40,8 +40,9 @@ Remaining gaps:
   a seeded track or a documented fallback.
 - Applying it to the hunter and fisher IS a rebalance and will move gathering pacing. Measure both against
   the running original first; do not just multiply their durations by 5 and call it faithful. (The user
-  decided 2026-07-23 that hunter/fisher get NO experience effects — this ticket is about their BASE
-  stroke count only.)
+  reversed the 2026-07-23 no-experience decision on 2026-07-30: the hunter now accrues its extracted
+  `hunter_general` track through the ordinary work-XP seam on carcass harvests. This ticket remains
+  about the BASE stroke count only.)
 
 ## Verify
 

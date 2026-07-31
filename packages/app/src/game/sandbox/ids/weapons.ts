@@ -21,6 +21,7 @@ export const WEAPON_SWORD = 7;
 export const WEAPON_BROADSWORD = 8;
 export const WEAPON_SHORT_BOW = 16;
 export const WEAPON_LONG_BOW = 17;
+export const WEAPON_HUNTER_BOW = 19;
 
 /**
  * Soldier/hero `jobType` → the good id-slug carried in its `Equipment.weapon` slot, matching the body

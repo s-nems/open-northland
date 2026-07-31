@@ -126,7 +126,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   };
 
   // The reachability layers every field/sheaf pick is filtered through. A field sits on open ground a
-  // building can later cover, and it is worked from its own node (`FIELD_FOOTPRINT`), so a walled-in field is
+  // building can later cover, and it is worked from its own node (`ANCHOR_ONLY_FOOTPRINT`), so a walled-in field is
   // a goal `findPath` always rejects. Without this the nearest-first pick re-chooses that same doomed field
   // every replan and the farmer never advances past it. The static component check catches the far bank of a
   // river; walls are a DYNAMIC overlay and never split a component, so a field ringed by buildings is caught

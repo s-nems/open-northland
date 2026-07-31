@@ -1,7 +1,15 @@
-import { type ContentSet, type GoodType, hasFieldFarmAtomics, parseContentSet } from '@open-northland/data';
+import {
+  type ContentSet,
+  type GoodType,
+  hasFieldFarmAtomics,
+  parseContentSet,
+  type WeaponType,
+} from '@open-northland/data';
+import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
+import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { diag } from '../diag/index.js';
@@ -93,6 +101,27 @@ function withEquipClass(good: GoodType): GoodType {
   return equip !== undefined ? { ...good, equip } : good;
 }
 
+/** Give WOOL the carcass-harvest atomic a hunted sheep's carcass is worked with. In the source, wool is
+ *  purely a husbandry product (no harvest atomic, no gathering pipeline) — the hunter yielding wool off
+ *  a last-resort sheep kill is our own design (`catalog/hunting.ts`), so the atomic is a named
+ *  approximation mirroring leather/meat's extracted `atomicForHarvesting 33`. */
+function withWoolCarcassHarvest(good: GoodType): GoodType {
+  if (good.id !== 'wool' || good.atomics.harvest !== undefined) return good;
+  return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
+}
+
+/** Rein the hunter bow in under the short bow ({@link HUNTER_BOW_BALANCE} — a design override of the
+ *  extracted rows, which make it stronger). Every other weapon passes through untouched. */
+function withHunterBowBalance(weapon: WeaponType): WeaponType {
+  if (weapon.id !== 'hunter_bow') return weapon;
+  return {
+    ...weapon,
+    minRange: HUNTER_BOW_BALANCE.minRange,
+    maxRange: HUNTER_BOW_BALANCE.maxRange,
+    damage: { ...HUNTER_BOW_BALANCE.damage },
+  };
+}
+
 /** Overlay the clean-room felling/mining balance (chops-to-fell / yield / deposit size+levels) into the
  *  pipeline's zeroed gathering block, keyed by good id from the shared {@link GATHERING_BALANCE_BY_ID}
  *  (the mod data carries no chop count — `catalog/felling.ts`), preserving everything else real ships
@@ -139,7 +168,9 @@ export function mergeRealContent(
   goodNames?: ReadonlyMap<string, string>,
 ): RealContentMerge {
   const goods = real.goods.map((raw) =>
-    withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
+    withWoolCarcassHarvest(
+      withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
+    ),
   );
   // A gathered good (carries a `gathering` block) still lacking clean-room balance stays uncalibrated.
   const unbalancedGoods = goods
@@ -163,10 +194,25 @@ export function mergeRealContent(
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
+  // The hunter overlays (`catalog/hunting.ts`): the bow reined in under the short bow, and the authored
+  // prey/yield table resolved against this set's goods+tribes. Wool's carcass node rides the leather
+  // cadaver stage (landscape 79 / gfx 847) — the source has no wool cadaver, so a hunted sheep's wool
+  // reuses the hide's decal and footprint (named approximation, like the wool harvest atomic above).
+  const weapons = real.weapons.map(withHunterBowBalance);
+  const woolType = goods.find((g) => g.id === 'wool')?.typeId;
+  const leatherRow = real.gatheringPipeline.find((p) => p.goodId === 'leather');
+  const needsWoolRow =
+    woolType !== undefined &&
+    leatherRow !== undefined &&
+    !real.gatheringPipeline.some((p) => p.goodId === 'wool');
+  const gatheringPipeline = needsWoolRow
+    ? [...real.gatheringPipeline, { ...leatherRow, goodType: woolType, goodId: 'wool' }]
+    : real.gatheringPipeline;
+  const huntPrey = huntPreyRows(goods, tribes);
   // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
   // not deep in the sim.
   return {
-    content: parseContentSet({ ...real, goods, landscape, tribes }),
+    content: parseContentSet({ ...real, goods, landscape, tribes, weapons, gatheringPipeline, huntPrey }),
     unbalancedGoods,
     unfarmedFieldGoods,
     uncatalogedBuildings,

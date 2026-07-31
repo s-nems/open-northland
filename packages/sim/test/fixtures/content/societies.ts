@@ -162,10 +162,9 @@ export const societyContent = {
       hitpointsAdult: 1000,
       moveSpeed: 8,
     },
-    // The cow is CATCHABLE prey: `catchable` and fully passive (NOT aggressive, NOT getAngry). A hunter
-    // (job 15) may strike it; an ordinary civilization leaves it alone, and it never fights back. Its
-    // `maximumCadaverSize` (4, the real catchable-animal value) is the meat yield a hunter's killing
-    // blow harvests off the carcass (the `harvest_cadaver` follow-up).
+    // The cow is passive livestock (`catchable`, NOT aggressive, NOT getAngry): an ordinary
+    // civilization leaves it alone, it never fights back, and its huntability comes from the huntPrey
+    // row below, not this record.
     { id: 'cow', tribeType: 13, catchable: true, hitpointsAdult: 1000, maximumCadaverSize: 4 },
     // The deer is CATCHABLE AND PROVOKABLE: `catchable` + `getAngry` (NOT aggressive), `angryGameTime`
     // 10 — a hunter's strike provokes it (the provocation SOURCE), then it fights back for 10 ticks.
@@ -176,6 +175,20 @@ export const societyContent = {
       getAngry: true,
       angryGameTime: 10,
       hitpointsAdult: 1000,
+    },
+  ],
+  // The hunter's prey/yield table (authored, like the app catalog's): membership is huntability, so
+  // the wolves (9), bear (10) and bee (11) stay unhuntable with no row. The deer is normal game with a
+  // TWO-good carcass (the multi-node spawn shape); the cow is lastResort livestock — hunted only when
+  // no normal game is in the hunting ground (the target-tiering fixture).
+  huntPrey: [
+    { tribeType: 13, lastResort: true, yields: [{ goodType: 21, amount: 4 }] },
+    {
+      tribeType: 14,
+      yields: [
+        { goodType: 21, amount: 2 },
+        { goodType: 22, amount: 1 },
+      ],
     },
   ],
   atomicAnimations: [
@@ -236,6 +249,9 @@ export const societyContent = {
       experienceFactor: 10,
     },
     { typeId: 2, id: 'woodcutter_general', name: 'woodcutter general', jobType: 1, experienceFactor: 1 },
+    // The hunter's general track at its real row values (`humanjobexperiencetypes.ini` type 37): a
+    // carcass harvest accrues it through the ordinary work-XP seam (no good-specific hunter track).
+    { typeId: 37, id: 'hunter_general', name: 'hunter general', jobType: 15, experienceFactor: 200 },
     { typeId: 3, id: 'carpenter_general', name: 'carpenter general', jobType: 2, experienceFactor: 100 },
     {
       typeId: 4,

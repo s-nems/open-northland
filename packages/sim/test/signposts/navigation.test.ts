@@ -26,6 +26,7 @@ import { stampPost } from './support.js';
 
 const SCOUT = 27;
 const SOLDIER = 31; // a fighter trade — exempt from confinement
+const HUNTER = 15; // exempt like the scout — bounded by its work flag, never the signpost network
 const P0 = 0;
 
 function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Entity {
@@ -77,15 +78,20 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
     expect(ordered(sim, u)).toBe(true);
   });
 
-  it('ON: scouts and fighters are exempt', () => {
+  it('ON: scouts, fighters and hunters are exempt', () => {
     const sim = confinedSim();
     const scout = ownedUnit(sim, 2, 2, SCOUT);
     const soldier = ownedUnit(sim, 2, 4, SOLDIER);
+    const hunter = ownedUnit(sim, 2, 6, HUNTER);
     sim.enqueue({ kind: 'moveUnit', entity: scout, x: 220, y: 4 });
     sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 220, y: 8 });
+    sim.enqueue({ kind: 'moveUnit', entity: hunter, x: 220, y: 12 });
     sim.step();
     expect(ordered(sim, scout)).toBe(true);
     expect(ordered(sim, soldier)).toBe(true);
+    // The hunter never gets lost, like the scout (design rule, user-specified) — its range is bounded
+    // by its own work flag instead of the signpost network.
+    expect(ordered(sim, hunter)).toBe(true);
   });
 
   it('ON: a reachable signpost group extends the walkable area to its circles', () => {

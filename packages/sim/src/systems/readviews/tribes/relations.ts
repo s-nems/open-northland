@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { isHunterJob } from '../jobs.js';
-import { animalCannotBeAttacked, isAggressiveAnimal, isCatchableAnimal } from './animals.js';
+import { animalCannotBeAttacked, isAggressiveAnimal, isHuntablePrey } from './animals.js';
 import { isAnimalTribe } from './civilizations.js';
 
 /**
@@ -10,21 +10,23 @@ import { isAnimalTribe } from './civilizations.js';
  * hostility. The rules:
  *
  *  - The attacker must be a hunter ({@link isHunterJob}).
- *  - The target must be a {@link isCatchableAnimal} animal — huntable livestock per `animaltypes.ini`
- *    `catchable`. Wild-only fauna, a civilization, and an unknown tribe are not huntable prey.
+ *  - The target must be {@link isHuntablePrey} — a species with a hunt-yield row (game and the
+ *    last-resort livestock). Predators, decorative fauna, a civilization, and an unknown tribe are not
+ *    huntable prey. The last-resort ORDERING (livestock only when no game is near) is the target
+ *    search's tiering, not this pairwise relation.
  *  - A `cannotbeattacked` animal is still exempt (decorative bees) — the same target exemption
  *    {@link mayAttack} applies.
  *
- * Hunting is one direction only; a `catchable` `getAngry` prey struck by a hunter is provoked into fighting
+ * Hunting is one direction only; a huntable `getAngry` prey struck by a hunter is provoked into fighting
  * back through the combat `Anger` path (the AtomicSystem's `attack` effect), not through this relation.
  *
- * Source basis: the prey set is the verbatim `catchable` param and the hunter trade is read off the content's
- * job table; which prey a hunter picks and the absence of a walk-to-prey/harvest-cadaver follow-up are
- * approximated (source basis "Hunter strike on catchable prey").
+ * Source basis: the hunter trade is read off the content's job table; the prey set is the authored
+ * {@link HuntPrey} table (source basis "Hunter prey and carcass yields" — `animaltypes.ini` `catchable`
+ * marks livestock for husbandry, not game, so the species set is a named approximation).
  */
 export function mayHunt(content: ContentSet, attackerJobType: number | null, targetTribe: number): boolean {
   if (!isHunterJob(content, attackerJobType)) return false; // only a hunter hunts
-  if (!isCatchableAnimal(content, targetTribe)) return false; // only catchable prey is huntable
+  if (!isHuntablePrey(content, targetTribe)) return false; // only a hunt-yield species is huntable
   if (animalCannotBeAttacked(content, targetTribe)) return false; // decorative fauna stay exempt
   return true;
 }

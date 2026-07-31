@@ -209,6 +209,11 @@ export const plContent = {
       summary:
         'Niedźwiedzie, jelenie i wilki pojawiają się stadami na trawie, rysowane ciałami swoich gatunków wraz z cieniami.',
     },
+    hunting: {
+      title: 'Myśliwy przy pracy',
+      summary:
+        'Myśliwy przypisany do chorągiewki ustrzeli zające w jej pobliżu i po kawałku znosi mięso z ich trucheł do obozu, a po owce, trzymane do hodowli, sięga tylko w ostateczności.',
+    },
     equipment: {
       title: 'Okno ekwipunku',
       summary:

@@ -26,6 +26,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkTribes,
   checkWeaponsAndArmor,
   checkAnimals,
+  checkHuntPrey,
   checkLandscapeGfx,
   checkGoodLandscape,
   checkGatheringPipeline,
@@ -165,6 +166,25 @@ function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
   for (const a of set.animals) {
     if (!tribeIds.has(a.tribeType))
       errors.push(`animal "${a.id}" references unknown tribeType ${a.tribeType}`);
+  }
+  return errors;
+}
+
+// A hunt-prey row keys on the prey's tribe (like an animal record) and its yields name the goods a
+// carcass holds — both must resolve, and each yield good must carry a harvest atomic (the carcass is
+// a harvestable node; a good without one would stand unworkable forever).
+function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
+  const errors: string[] = [];
+  const goods = new Map(set.goods.map((g) => [g.typeId, g]));
+  for (const p of set.huntPrey) {
+    if (!tribeIds.has(p.tribeType)) errors.push(`huntPrey references unknown tribeType ${p.tribeType}`);
+    for (const y of p.yields) {
+      const good = goods.get(y.goodType);
+      if (good === undefined)
+        errors.push(`huntPrey tribe ${p.tribeType} yields unknown goodType ${y.goodType}`);
+      else if (good.atomics.harvest === undefined)
+        errors.push(`huntPrey tribe ${p.tribeType} yields good "${good.id}" with no harvest atomic`);
+    }
   }
   return errors;
 }

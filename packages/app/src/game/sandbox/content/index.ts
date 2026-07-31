@@ -1,4 +1,6 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { EXTENDED_GOODS } from '../../../catalog/goods.js';
+import { HUNTER_GENERAL_XP_TRACK, huntPreyRows } from '../../../catalog/hunting.js';
 import type { GoodRef } from '../../../content/settler-gfx/index.js';
 import { buildSandboxBuildings } from '../building-set.js';
 import { sandboxWeapons } from '../combat.js';
@@ -8,7 +10,7 @@ import {
   sandboxLandscapeGfx,
   type TerrainTypeIds,
 } from '../landscape.js';
-import { buildSandboxAnimals } from './catalog/animals.js';
+import { buildSandboxAnimals, SANDBOX_ANIMAL_TRIBES } from './catalog/animals.js';
 import { buildSandboxAtomicAnimations } from './catalog/atomic-animations.js';
 import { buildSandboxGoods } from './catalog/goods.js';
 import { buildSandboxJobs } from './catalog/jobs.js';
@@ -33,6 +35,10 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     weapons: sandboxWeapons(),
     tribes: [...tribes.values()],
     animals: buildSandboxAnimals(),
+    // The hunter's prey/yield table and XP track (`catalog/hunting.ts`), resolved against the stable
+    // sandbox id tables — the same authored balance the real-content merge applies.
+    huntPrey: huntPreyRows(EXTENDED_GOODS, SANDBOX_ANIMAL_TRIBES),
+    jobExperience: [HUNTER_GENERAL_XP_TRACK],
     atomicAnimations: buildSandboxAtomicAnimations(),
   });
 }

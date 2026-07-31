@@ -1,5 +1,5 @@
 import type { GoodFarming } from '@open-northland/data';
-import { Building, Crop, Position, Resource, type ResourceFootprintData } from '../../components/index.js';
+import { Building, Crop, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { coordHash } from '../../core/coord-hash.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -9,8 +9,7 @@ import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import {
   buildingBlockedCells,
   dynamicBlockOverlay,
-  stampResourceFootprint,
-  stampResourceFootprintData,
+  stampResourceFootprintOrFallback,
   unstampResourceFootprint,
 } from '../footprint/index.js';
 import { resourcesAtNode } from '../spatial/resources.js';
@@ -116,33 +115,6 @@ export function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
 }
 
 /**
- * The footprint a sown field falls back to when its good resolves no landscape record — the synthetic
- * content fixtures and the sandbox catalog, which carry no `[GfxLandscape]` for the farmed good. Real
- * content resolves the real record instead ({@link stampFieldFootprint}), so this is a stand-in, NOT a claim
- * about the original: the empty walk/build halves match the wheat lanes (`allowedonland 1`, no block
- * areas), but `work` listing the plant's own node is an invention, and the real record's work area is the
- * ring of neighbours AROUND it. Kept anchor-only so a fixture farmer can reach a field on a one-node map;
- * `docs/tickets/sim/clay-work-cell-real-content-resolution.md` tracks the divergence class.
- *
- * Declaring a footprint at all also moves a field from the placement rule's OBSTACLE channel to
- * RESOURCE_ANCHOR: it stops refusing a building (the point) and starts refusing a WORK FLAG on its own
- * node, like every other footprinted resource. Legal flag ground around a farm therefore shifts as the
- * plot turns over.
- */
-export const FIELD_FOOTPRINT: ResourceFootprintData = Object.freeze({
-  walk: [],
-  build: [],
-  work: [{ dx: 0, dy: 0 }],
-});
-
-/** Stamp a fresh field with its good's landscape-derived footprint, falling back to
- *  {@link FIELD_FOOTPRINT} for content that ships no record for the good. */
-function stampFieldFootprint(world: World, ctx: SystemContext, field: Entity, goodType: number): void {
-  if (stampResourceFootprint(world, ctx.content, field, goodType)) return;
-  stampResourceFootprintData(world, field, FIELD_FOOTPRINT);
-}
-
-/**
  * Apply a completed `sow` swing: plant a {@link Crop} field of `goodType` for `farm` at the half-cell
  * node `(x, y)`. The node may have been taken since the planner chose it (a competing farmer's field, a
  * fresh drop) — then the swing struck ploughed ground and plants nothing, the same raced-target no-op
@@ -173,7 +145,9 @@ export function applySow(
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));
   world.add(e, Resource, { goodType: effect.goodType, remaining: 0, harvestAtomic: spec.harvestAtomic });
-  stampFieldFootprint(world, ctx, e, effect.goodType);
+  // Landscape-derived on real content, the anchor-only stand-in on fixture/sandbox content (whose
+  // farmed good ships no record); either way the field stops refusing a building over its node.
+  stampResourceFootprintOrFallback(world, ctx.content, e, effect.goodType);
   world.add(e, Crop, {
     goodType: effect.goodType,
     farm: effect.farm,
@@ -201,7 +175,7 @@ export function applyWater(world: World, crop: Entity): void {
 
 /**
  * Destroy every field standing under `building`'s walls — the way raising a house over a plot takes the
- * plants with it. A field is worked from the node it stands on ({@link FIELD_FOOTPRINT}), so a wall over
+ * plants with it. A field is worked from the node it stands on (the anchor-only footprint), so a wall over
  * that node puts it permanently out of reach (`findPath` rejects a blocked goal) and it would hold one of
  * the farm's `maxFields` slots forever.
  *
