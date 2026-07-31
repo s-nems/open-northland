@@ -138,8 +138,8 @@ const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 
  * on a shared column. Purely geometric - text fits each rect at render time.
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
-  // Fractional scale (the building menu's convention) so the geometry agrees with the text runs,
-  // which draw at the same fractional uiscale - the long grant labels must not overrun the switches.
+  // Fractional scale, the HUD-wide rule owned by `tabbed-list/model.ts`, so the geometry agrees with the
+  // text runs, which draw at the same fractional uiscale - long grant labels must not overrun the switches.
   const s = Math.max(1, opts.scale);
   const { originX, originY, tab, state } = opts;
   const labels = messages().hud.extras;
