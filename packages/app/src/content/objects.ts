@@ -1,3 +1,4 @@
+import { type FootprintCell, fullStateBlockAreaCells } from '@open-northland/data';
 import {
   type AtlasFrame,
   type BrightnessField,
@@ -11,6 +12,7 @@ import { deckFarRow, drawsAsFlatDecor, servedAtlasStem, servedShadowStem } from 
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
+import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell
@@ -27,31 +29,6 @@ export interface MapObjectsData {
   readonly placements: readonly number[];
   /** Per-placement 1-based level (`lmlv`), counting up from the lowest state ({@link stateIndexForLevel}). Absent → the full state. */
   readonly levels?: readonly number[] | undefined;
-}
-
-/**
- * The `[landscapetype]` names whose objects the original draws full-bright, exempt from the baked
- * `embr` shading: standing + felled trees. Measured on the bridge-map corpus (source basis
- * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
- * across the lane, n=118), while mine decals, stones and grass track the lane (masked opaque-pixel
- * ratio ×0.58 → ×1.58). Only standing trees were measured; `tree falling` is grouped with them by
- * kinship (same art family mid-fall), not by measurement. The true engine rule is unknown, so this
- * name-pinned exemption is the measured boundary and an approximation beyond it.
- */
-const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
-
-/**
- * The logicType ids whose objects stay full-bright ({@link UNSHADED_LANDSCAPE_TYPES}), resolved from
- * the IR `[landscapetype]` table by name so no numeric id hardcodes. Pure; exported for unit tests.
- */
-export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): ReadonlySet<number> {
-  const ids = new Set<number>();
-  for (const t of landscape ?? []) {
-    if (t.typeId !== undefined && t.name !== undefined && UNSHADED_LANDSCAPE_TYPES.has(t.name)) {
-      ids.add(t.typeId);
-    }
-  }
-  return ids;
 }
 
 /**
@@ -207,8 +184,12 @@ export async function loadMapObjects(
     readonly decor: boolean;
     /** The bridge-deck depth row ({@link deckFarRow}), absent for everything that sorts at its anchor. */
     readonly farRow: number | undefined;
-    /** False for the tree logic types (the measured full-bright exemption — {@link UNSHADED_LANDSCAPE_TYPES}). */
+    /** False for the tree logic types (the measured full-bright exemption, {@link unshadedLogicTypeIds}). */
     readonly shaded: boolean;
+    /** The full-grown ground cells the object covers, relative to its node, whatever state this list
+     *  draws: what {@link footprintBrightness} grades it against, on the same conservative reading of
+     *  the state axis collision takes. */
+    readonly footprint: readonly FootprintCell[];
   }
   // One ResolvedType per (type, state list) — index [typeIndex][stateIndex]; empty lists collapse
   // to null so a placement whose state resolves nothing falls back to state 0 below.
@@ -218,6 +199,7 @@ export async function loadMapObjects(
     const key = servedAtlasStem(record);
     const layer = key !== undefined ? layers.get(key) : undefined;
     if (layer === undefined) return [];
+    const footprint = fullStateBlockAreaCells(record.walkBlockAreas);
     return (record.frames ?? []).map((stateList) => {
       const paired = pairedStateFrames(layer, stateList.bobIds);
       if (paired === null) return null;
@@ -234,6 +216,7 @@ export async function loadMapObjects(
         decor: drawsAsFlatDecor(record),
         farRow: deckFarRow(record),
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
+        footprint,
       };
     });
   });
@@ -256,9 +239,9 @@ export async function loadMapObjects(
     // its ground-mesh vertex, so trees sit on the warped ground). The lift is the draw offset only;
     // `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
     const lift = elevation?.liftAtNode(hx, hy) ?? 0;
-    // The baked `embr` multiplier at the anchor cell — the original shades landscape-object pixels
-    // with the ground's plane (measured: mines/stones/grass track it; trees stay full-bright, so the
-    // tree logic types omit the field — source basis "brightness").
+    // The baked `embr` multiplier over the ground this object covers: the original shades
+    // landscape-object pixels with the ground's plane (measured: mines/stones/grass track it; trees
+    // stay full-bright, so the tree logic types omit the field, source basis "brightness").
     const shade = brightness?.shaded && type.shaded ? brightness : undefined;
     const sprite: MapObjectSprite = {
       x: screen.x,
@@ -280,7 +263,7 @@ export async function loadMapObjects(
       // Named approximation: the engine's alpha blit folds the shade into the pixel alpha
       // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` colour multiplier below
       // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
-      ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
+      ...(shade !== undefined ? { brightness: footprintBrightness(shade, hx, hy, type.footprint) } : {}),
     };
     out.push(sprite);
     byPlacement.set(placement, sprite);

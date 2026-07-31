@@ -1,13 +1,12 @@
 import type { AtlasFrame } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { BRIDGE_EDIT_GROUP, deckFarRow, drawsAsFlatDecor } from '../src/content/ir/joins.js';
-import { pairedStateFrames, stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
+import { pairedStateFrames, stateIndexForLevel } from '../src/content/objects.js';
 
 /**
  * The landscape/object render bindings: the lmlv growth level → GfxFrames state-list index
- * (stateIndexForLevel), the tree full-bright exemption resolved by name (unshadedLogicTypeIds), the
- * paint-order split (drawsAsFlatDecor + deckFarRow), and the body/shadow frame pairing
- * (pairedStateFrames).
+ * (stateIndexForLevel), the paint-order split (drawsAsFlatDecor + deckFarRow), and the body/shadow
+ * frame pairing (pairedStateFrames).
  */
 
 describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index', () => {
@@ -25,24 +24,6 @@ describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index',
     expect(stateIndexForLevel(100, 5)).toBe(0);
     expect(stateIndexForLevel(0, 3)).toBe(0);
     expect(stateIndexForLevel(4, 3)).toBe(0);
-  });
-});
-
-describe('unshadedLogicTypeIds — the tree full-bright exemption resolves by NAME', () => {
-  it('collects exactly the tree logic-type ids from the IR landscape table', () => {
-    const ids = unshadedLogicTypeIds([
-      { typeId: 1, name: 'void' },
-      { typeId: 4, name: 'tree' },
-      { typeId: 5, name: 'tree falling' },
-      { typeId: 6, name: 'trunk' }, // a felled trunk lies ON the ground — shaded like stones
-      { typeId: 15, name: 'stones' },
-    ]);
-    expect([...ids].sort((a, b) => a - b)).toEqual([4, 5]);
-  });
-
-  it('is empty for an absent/nameless table (every object then shades — the safe default)', () => {
-    expect(unshadedLogicTypeIds(undefined).size).toBe(0);
-    expect(unshadedLogicTypeIds([{ typeId: 4 }]).size).toBe(0);
   });
 });
 
