@@ -79,9 +79,9 @@ function seedFrom(sourceId: number, tick: number): number {
 
 /**
  * Fold this frame's sim events into the live mark list: drop expired marks, then append a blood splatter for each
- * landed blow (`combatHit` melee / `projectileHit` ranged) and a bone pile for each death carrying a position
- * (`settlerDied.at`) and for each drained hunter's carcass (`resourceDepleted {carcass}` - see the sim's
- * `Carcass` component for the source basis). A miss emits no hit event, so it leaves no blood; a blow on a
+ * landed blow (`combatHit` melee / `projectileHit` ranged) and a bone pile for each HUMAN death carrying a
+ * position (`settlerDied.at`; an animal death leaves no bones - see the event's `animal` doc for the source
+ * basis). A miss emits no hit event, so it leaves no blood; a blow on a
  * building (`structure`) emits the event for its impact SFX but draws no blood - a wall doesn't bleed. The
  * list is capped at {@link MAX_ACTIVE_EFFECTS} (oldest-first drop). Returns a new array; pure over its inputs.
  */
@@ -101,21 +101,13 @@ export function foldCombatEffects(
         spawnTick: tick,
         seed: seedFrom(ev.target, tick),
       });
-    } else if (ev.kind === 'settlerDied' && ev.at !== undefined) {
+    } else if (ev.kind === 'settlerDied' && ev.at !== undefined && ev.animal !== true) {
       next.push({
         kind: 'bones',
         hx: ev.at.hx,
         hy: ev.at.hy,
         spawnTick: tick,
         seed: seedFrom(ev.entity, tick),
-      });
-    } else if (ev.kind === 'resourceDepleted' && ev.carcass === true) {
-      next.push({
-        kind: 'bones',
-        hx: ev.at.hx,
-        hy: ev.at.hy,
-        spawnTick: tick,
-        seed: seedFrom(ev.node, tick),
       });
     }
   }

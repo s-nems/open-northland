@@ -19,16 +19,6 @@ export const Resource = defineComponent<{
   gfxIndex?: number;
 }>('Resource');
 
-/**
- * Marks a {@link Resource} node as a hunter's carcass (`spawnCarcasses`) - what lets the deplete seam
- * tell a drained kill from a spent deposit and leave the skeleton behind (`resourceDepleted
- * {carcass: true}` → the render's bones decal). Grounded in `landscapetypes.ini`: an exhausted
- * cadaver's REMOVE transition substitutes landscape 81 `cadaver_skeleton` where it stood, while a
- * trunk's goes to void. The single owner of that source fact - the event, the deplete seam, and the
- * render fold all point here.
- */
-export const Carcass = defineComponent<Record<string, never>>('Carcass');
-
 /** One integer cell offset relative to a placed resource node's anchor tile. */
 export interface ResourceFootprintCell {
   readonly dx: number;

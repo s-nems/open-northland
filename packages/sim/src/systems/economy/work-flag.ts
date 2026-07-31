@@ -3,8 +3,10 @@ import {
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
+  HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
+  Settler,
   WorkFlag,
   YardDeliveryRoute,
 } from '../../components/index.js';
@@ -16,6 +18,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
+import { isHunterJob } from '../readviews/index.js';
 import { canonicalById, clearNavState, entityNode } from '../spatial/nodes.js';
 
 /**
@@ -26,8 +29,8 @@ import { canonicalById, clearNavState, entityNode } from '../spatial/nodes.js';
  * `DeliveryFlag` exists exactly while a live gatherer references it" holds in one place.
  *
  * A flag is a pure `Position + DeliveryFlag` marker (it stores no goods — the harvest piles on the ground
- * around it as separate heaps), referenced by its gatherer's {@link WorkFlag}. The work radius is the named
- * approximation {@link DEFAULT_WORK_FLAG_RADIUS} (the original's collector work-area size is not decoded).
+ * around it as separate heaps), referenced by its gatherer's {@link WorkFlag}. The work radius is the
+ * trade's ({@link workFlagRadiusFor} - named approximations, the original's work-area sizes are not decoded).
  * Auto-planting a flag the moment a settler becomes a gatherer ({@link plantWorkFlagAtFeet}) is an OpenNorthland
  * UX convention layered on that model (not observed original behavior).
  */
@@ -46,20 +49,37 @@ export function liveWorkFlag(
 }
 
 /**
+ * The work radius `jobType`'s flag gets: a hunter ranges wide ({@link HUNTER_WORK_FLAG_RADIUS}), every
+ * other gatherer works the {@link DEFAULT_WORK_FLAG_RADIUS} yard.
+ */
+function workFlagRadiusFor(ctx: SystemContext, jobType: number | null): number {
+  return isHunterJob(ctx.content, jobType) ? HUNTER_WORK_FLAG_RADIUS : DEFAULT_WORK_FLAG_RADIUS;
+}
+
+/**
  * Mint a fresh {@link DeliveryFlag} marker at `pos` and bind gatherer `e` to it — the one place a work flag is
  * created, shared by `setWorkFlag` (the player's Ctrl+Right-Click) and the profession-change auto-plant
- * ({@link plantWorkFlagAtFeet}). Re-points a stale {@link WorkFlag} (keeping the gatherer's radius) or adds a
- * new one at the {@link DEFAULT_WORK_FLAG_RADIUS}.
+ * ({@link plantWorkFlagAtFeet}). Re-points a stale {@link WorkFlag} or adds a new one; either way the radius
+ * is the trade's ({@link workFlagRadiusFor}).
  */
-export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed }): void {
+export function bindFreshFlag(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  pos: { x: Fixed; y: Fixed },
+): void {
   world.remove(e, YardDeliveryRoute);
   const flag = world.create();
   world.add(flag, Position, { x: pos.x, y: pos.y });
   world.add(flag, DeliveryFlag, {});
-  const wf = world.tryGet(e, WorkFlag);
-  if (wf !== undefined)
-    wf.flag = flag; // stale binding — re-point it, keeping the gatherer's radius
-  else world.add(e, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
+  const radius = workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
+  if (world.has(e, WorkFlag)) {
+    // Stale binding - re-point it through the write channel, like every other WorkFlag mutation.
+    world.write(e, WorkFlag, (wf) => {
+      wf.flag = flag;
+      wf.radius = radius;
+    });
+  } else world.add(e, WorkFlag, { flag, radius });
 }
 
 /**
@@ -175,13 +195,15 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
   if (jobCanHarvest(ctx, jobType) && !world.has(e, JobAssignment)) {
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
-      const selected = live.goodType;
-      if (selected !== undefined && !jobCanHarvestGood(ctx, jobType, selected)) {
-        world.write(e, WorkFlag, (binding) => {
+      // Keep the flag, but re-fit the binding to the new trade: the radius tracks the job (a hunter
+      // ranges wide, a returning gatherer shrinks back) and a filter the job can't harvest is dropped.
+      world.write(e, WorkFlag, (binding) => {
+        binding.radius = workFlagRadiusFor(ctx, jobType);
+        if (binding.goodType !== undefined && !jobCanHarvestGood(ctx, jobType, binding.goodType)) {
           delete binding.goodType;
-        });
-      }
-      return; // already carries a live flag — keep it, with a filter valid for the new trade
+        }
+      });
+      return;
     }
     plantWorkFlagAtFeet(world, ctx, e); // becoming a gatherer with no live flag — plant one at its feet
   } else {
@@ -202,7 +224,7 @@ function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void 
   const node = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(n.hx, n.hy));
   if (node === null) return;
   const c = terrain.coordsOf(node);
-  bindFreshFlag(world, e, positionOfNode(c.x, c.y));
+  bindFreshFlag(world, ctx, e, positionOfNode(c.x, c.y));
 }
 
 /**

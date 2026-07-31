@@ -52,6 +52,16 @@ export const Anger = defineComponent<{ until: number }>('Anger');
 export const Frightened = defineComponent<{ until: number; repathAt: number; from: NodeId }>('Frightened');
 
 /**
+ * A hunter's empty-search breather: stamped when its prey acquisition came up empty (a cleared ground,
+ * or every candidate suppressed - e.g. by the carcass gate mid-bank), read to skip the next searches
+ * until `until` (a monotonic tick). Purely a cost throttle - the hunter's ground is far wider than a
+ * soldier's sight, so a search that takes nothing must not ring-walk the full band every tick (the
+ * scaling budget, AGENTS.md rule 6). The carve-outs live at the read site (`huntSearchRests` in
+ * engage-combatant.ts).
+ */
+export const HuntRest = defineComponent<{ until: number }>('HuntRest');
+
+/**
  * A combat-engagement marker, present while a unit is swinging at or chasing an enemy and removed once no
  * valid enemy is in reach/sight. The PlannerSystem skips economy planning for an engaged unit but sits below
  * the needs drives, so hunger/fatigue/piety still pull it away. `repathAt` throttles the chase: a chaser

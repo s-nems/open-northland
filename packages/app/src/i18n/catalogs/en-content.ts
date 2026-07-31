@@ -211,7 +211,7 @@ export const enContent = {
     hunting: {
       title: 'Hunter at work',
       summary:
-        'A flag-bound hunter stalks the hares near its flag - shots can miss, every release scatters the herd, each kill is carried home before the next, sheep kept for husbandry fall only as a last resort, and a picked-clean carcass leaves its bones.',
+        'A flag-bound hunter stalks the hares near its flag - shots can miss, every release scatters the herd, each kill is picked clean and carried home before the next, and sheep kept for husbandry fall only as a last resort.',
     },
     equipment: {
       title: 'Equipment window',

@@ -1,5 +1,4 @@
 import {
-  Carcass,
   Crop,
   Felling,
   HarvestedBy,
@@ -230,14 +229,11 @@ function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
  * mushroom after its single pickup) and announce it (`resourceDepleted`) for audio/effects and the
  * collision-unblock seam. Unlike {@link fellNode} it leaves nothing behind — the yield already dropped as ore
  * piles / went onto the back — it just deletes the node so the planner never re-scans a spent deposit. The
- * one exception is a hunter's drained {@link Carcass}: the event carries `carcass: true` so the render leaves
- * its bones decal where the kill lay. The node's cell is read before the destroy (the component object is
- * dropped from its store by `world.destroy`).
+ * node's cell is read before the destroy (the component object is dropped from its store by `world.destroy`).
  */
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
   const pos = world.get(node, Position);
   const at = eventAt(pos.x, pos.y);
-  const carcass = world.has(node, Carcass);
   removeResourceNode(world, node);
-  ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at, ...(carcass ? { carcass: true } : {}) });
+  ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }

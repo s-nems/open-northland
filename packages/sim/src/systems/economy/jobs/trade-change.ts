@@ -8,6 +8,7 @@ import {
   EquipOrder,
   Fleeing,
   GatherSelection,
+  HuntRest,
   Owner,
   ownerOf,
   Position,
@@ -49,6 +50,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   world.remove(e, Engagement); // drop any auto-combat state; the new trade re-decides its stance
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
+  world.remove(e, HuntRest); // an ex-hunter's acquisition breather has nothing left to throttle
   // Owned-only, like the spawn stamp: an unowned settler keeps its content-relation combat behavior and
   // carries no Stance at all (the component's contract), so a neutral auto-hire must not gain one.
   if (world.has(e, Owner)) stampDefaultStance(world, ctx.content, e, jobType);
