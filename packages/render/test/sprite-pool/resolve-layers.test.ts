@@ -19,6 +19,23 @@ const frame = (
   { x: n, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 },
 ];
 
+describe('resolveLayers — kinds that bind no atlas layer', () => {
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 100, height: 10, frames: new Map([frame(1)]) },
+    bindings: { settler: 1, resource: 1, building: 1 },
+  };
+  const item = (kind: DrawItem['kind']): DrawItem => ({ kind, ref: 1, x: 0, y: 0, depth: 0 });
+
+  it('draws the placeholder for a terrain tile (tiles bind by landscape typeId)', () => {
+    expect(resolveLayers(sheet, item('tile'), 0)).toBeNull();
+  });
+
+  it('draws the placeholder for a projectile (no arrow bob is extracted)', () => {
+    expect(resolveLayers(sheet, item('projectile'), 0)).toBeNull();
+  });
+});
+
 describe('resolveLayers — the animated building overlay is bounds-exempt', () => {
   // A minimal mill sheet: the `miller` family atlas carries the bladeless body (bob 70), the still
   // blade (76) and one spin frame (85). The fake TextureSource is never touched — resolveLayers is a
