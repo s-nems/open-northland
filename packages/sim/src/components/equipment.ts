@@ -38,9 +38,11 @@ export interface EquipmentSlot {
  * `null` (empty). `misc` is a fixed-length array of {@link MISC_EQUIP_SLOTS} entries.
  *
  * This is the equipment INVENTORY/display axis, distinct from the combat {@link Weapon}/{@link Armor}
- * components (which carry the `weaponTypeId`/`armorClass` the CombatSystem resolves damage through):
- * wiring the two together (equipping a weapon good actually granting the combat `Weapon`) is a
- * deferred phase. For now a scene stamps both when it wants a unit that both displays and fights.
+ * components (which carry the `weaponTypeId`/`armorClass` the CombatSystem resolves damage through).
+ * The armor half is wired: a worn `armor` good overrides a stamped {@link Armor} tier at damage
+ * resolution (`conflict/weapons.ts` `targetMaterial`). Wiring the weapon half (equipping a weapon good
+ * granting the combat `Weapon`) is a deferred phase; a scene stamps both when it wants a unit that
+ * both displays and fights with one.
  *
  * It is a **separate optional component** (like {@link Weapon}/{@link Armor}/{@link JobAssignment}):
  * only an explicitly-equipped unit carries one, so a bare settler — every animal, every golden/slice

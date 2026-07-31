@@ -1,4 +1,4 @@
-import type { ContentSet, WeaponType } from '@open-northland/data';
+import type { ArmorType, ContentSet, WeaponType } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import { armorMaterialOf } from './classes/index.js';
 
@@ -71,6 +71,12 @@ export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
   return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.HOUSE);
 }
 
+/** An `[armortype]` record's damage column: its `materialType`, or its `typeId` where the record carries
+ *  none (the two coincide for the 4 base armors). */
+function materialOfRecord(armor: ArmorType): number {
+  return armorMaterialOf(armor) ?? armor.typeId;
+}
+
 /**
  * The armor material tier a worn `armorClass` (an {@link import('@open-northland/data').ArmorType} `typeId`)
  * resolves to — the column {@link weaponDamageVsMaterial} indexes, read off the class's `[armortype]` record.
@@ -81,7 +87,18 @@ export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
 export function armorMaterialForClass(content: ContentSet, armorClass: number): number {
   const armor = contentIndex(content).armor.get(armorClass);
   if (armor === undefined) return armorClass; // no record — the class value is its own column
-  return armorMaterialOf(armor) ?? armor.typeId; // materialType (== typeId for the 4 base armors)
+  return materialOfRecord(armor);
+}
+
+/**
+ * The armor material tier a worn armor GOOD presents: the `[armortype]` record whose `goodtype` is that
+ * good, resolved to its `materialType` column (the {@link armorMaterialForClass} fallback applies). Null
+ * when no record claims the good (a non-armor good in the slot); the caller decides what that presents.
+ */
+export function armorMaterialForGood(content: ContentSet, goodType: number): number | null {
+  const armor = contentIndex(content).armorByGoodType.get(goodType);
+  if (armor === undefined) return null;
+  return materialOfRecord(armor);
 }
 
 /**
@@ -134,7 +151,7 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
   // The armor materials a living target can wear: the unarmored material 0 + every armor record's
   // materialType.
   const materials = new Set<number>([ARMOR_MATERIAL.NONE]);
-  for (const armor of content.armor) materials.add(armorMaterialOf(armor) ?? armor.typeId);
+  for (const armor of content.armor) materials.add(materialOfRecord(armor));
   const sorted = [...materials].sort((a, b) => a - b);
 
   const profiles: CombatProfile[] = [];

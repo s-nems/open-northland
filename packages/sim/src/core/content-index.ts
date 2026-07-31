@@ -81,6 +81,9 @@ export interface ContentIndex {
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by `typeId` (the armor-class id — see readviews/combat.ts). */
   readonly armor: ReadonlyMap<number, ArmorType>;
+  /** Armor types by the good that IS the armor (`goodType`), how a worn `Equipment.armor` slot joins
+   *  its `[armortype]` record; first-wins, a record with no `goodType` is absent. */
+  readonly armorByGoodType: ReadonlyMap<number, ArmorType>;
   /** Good types that ARE a weapon or piece of armor — the `goodType` a {@link WeaponType}/{@link ArmorType}
    *  resolves into (the forged military items). Used to charge a smith's piety per weapon/armor cycle
    *  (ProductionSystem). The natural-weapon sentinel (`goodType` absent) contributes nothing. */
@@ -212,6 +215,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     commandBuildings: indexById(content.buildings),
     commandJobs: indexById(content.jobs),
     armor: byKey(content.armor, (a) => a.typeId),
+    armorByGoodType: byOptionalKey(content.armor, (a) => a.goodType),
     militaryGoods: militaryGoodTypes(content),
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),

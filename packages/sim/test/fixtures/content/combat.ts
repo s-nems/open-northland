@@ -1,8 +1,9 @@
 export const combatContent = {
   // A weapon for the viking woodcutter (tribe 1, job 1) — the CombatSystem resolves an attacker's
   // weapon by (tribeType, jobType). maxRange 2 (the attacker can strike an enemy up to 2 cells away),
-  // damage 50 vs an unarmored target (class "0") and 60 vs leather (class 1, mitigated by its
-  // blockingValue). Only a Health-bearing settler ever fights, so this is inert in the golden slice.
+  // damage 50 vs an unarmored target (material "0") and 60 vs leather (material 1; armor selects the
+  // column, nothing is subtracted). Only a Health-bearing settler ever fights, so this is inert in the
+  // golden slice.
   weapons: [
     {
       typeId: 7,
@@ -79,10 +80,10 @@ export const combatContent = {
     },
   ],
   armor: [
-    // Leather (class 1) mitigates 10 — so a 60-raw hit (test_axe `damage["1"]`) lands 50 net on a
-    // leather-clad target. Now consumed by the combat drive: a combatant stamped `Armor{armorClass:1}`
-    // resolves a hit through this record (the `damage[class] - blockingValue` join), and it makes the
-    // `combatDamage` read view exercise a real armor record alongside the unarmored class.
+    // Leather (class 1): a combatant stamped `Armor{armorClass:1}`, or wearing an `Equipment.armor`
+    // slot holding `goodType` 1, resolves hits through this record's material column (test_axe
+    // `damage["1"]` = 60; `blockingValue` is deliberately NOT subtracted, see readviews/combat.ts). It
+    // also makes the `combatDamage` read view exercise a real armor record alongside the unarmored class.
     { typeId: 1, id: 'leather', goodType: 1, blockingValue: 10 },
   ],
 };

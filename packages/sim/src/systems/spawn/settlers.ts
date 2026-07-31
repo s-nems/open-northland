@@ -108,8 +108,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   const tribeHitpoints = settlerHitpoints(content, spec.tribe);
   const hitpoints = override ?? (tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS);
   world.add(e, Health, { hitpoints, max: hitpoints });
-  // A combatant wearing armor carries an `Armor` class: an incoming hit is mitigated by that tier's
-  // `blockingValue` rather than landing on the unarmored class 0. Only a positive class is stamped.
+  // A combatant wearing armor carries an `Armor` class: an incoming hit selects that tier's damage
+  // column instead of the unarmored class 0 (`weaponDamageVsMaterial`). Only a positive class is stamped.
   if (spec.armorClass !== undefined && spec.armorClass > 0) {
     world.add(e, Armor, { armorClass: spec.armorClass });
   }
