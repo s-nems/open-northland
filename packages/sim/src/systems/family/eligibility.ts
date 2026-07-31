@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Age, Female, Marriage, Position, Settler, Wedding } from '../../components/index.js';
+import { Age, Female, Marriage, Position, Settler, TrainingOrder, Wedding } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -53,10 +53,12 @@ export function isMarried(world: World, e: Entity): boolean {
 }
 
 /** Whether `e` may enter a marriage right now: a living adult settler, unmarried
- *  ({@link isMarried}), not mid-wedding, and not away on a mission ({@link isOnMission}). */
+ *  ({@link isMarried}), not mid-wedding, not committed to a barracks drill (the trade is still
+ *  civilian mid-walk, but the drill's end would strand the spouse), and not away on a mission
+ *  ({@link isOnMission}). */
 export function mayMarry(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
-  if (world.has(e, Wedding)) return false;
+  if (world.has(e, Wedding) || world.has(e, TrainingOrder)) return false;
   if (isMarried(world, e)) return false;
   return !isOnMission(content, world.get(e, Settler).jobType);
 }

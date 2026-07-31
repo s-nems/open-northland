@@ -13,6 +13,7 @@ import {
   Residence,
   Settler,
   Stockpile,
+  TrainingOrder,
   Wedding,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -24,6 +25,7 @@ import {
   EAT_HUNGER_RESTORE,
   familiesOf,
   familyOf,
+  findPartnerFor,
   HUNGER_RISE_PER_TICK,
   KISS_ATOMIC_ID,
   KISSED_ATOMIC_ID,
@@ -243,6 +245,16 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The only man is a soldier (on a mission) — nobody to marry, the order dissolved into nothing.
     expect(sim.world.has(woman, Wedding)).toBe(false);
     expect(sim.world.has(woman, Marriage)).toBe(false);
+  });
+
+  it('a barracks recruit may not marry — the drill would strand the bride', () => {
+    const { sim, woman, man, home } = familySim(41);
+    expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBe(man());
+    // Committed to a drill the man is a soldier-to-be, even though his trade is civilian mid-walk:
+    // the wedding would outlive the walk and leave the bride married to a man who never comes home.
+    sim.world.add(man(), TrainingOrder, { house: home(), drillTicksLeft: 100 });
+    expect(mayMarry(sim.world, sim.content, man())).toBe(false);
+    expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBeNull();
   });
 
   it('a widow may remarry: the spouse dying removes the survivor Marriage', () => {
