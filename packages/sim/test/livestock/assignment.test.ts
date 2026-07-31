@@ -1,30 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import { StayPoint } from '../../src/components/index.js';
-import { livestockAssignmentSystem } from '../../src/systems/index.js';
+import { LivestockVisit, StayPoint } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { LIVESTOCK_GRAZE_RANGE_NODES, livestockAssignmentSystem } from '../../src/systems/index.js';
 import { cowAt, ctxOf, farmAt, HEADQUARTERS, livestockSim } from './support.js';
 
 const P0 = 0;
 const P1 = 1;
 
-/** The fixture buildings carry no door footprint, so the interaction node IS the anchor node. */
-function nodeAt(sim: ReturnType<typeof livestockSim>, hx: number, hy: number): number {
+/** Node Manhattan from an animal's StayPoint anchor to the door at (hx, hy) - the fixture buildings
+ *  carry no door footprint, so the interaction node IS the anchor node. */
+function ringDistance(sim: ReturnType<typeof livestockSim>, e: Entity, hx: number, hy: number): number {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('livestockSim always has a map');
-  return terrain.nodeAt(hx, hy);
+  const cell = sim.world.tryGet(e, StayPoint)?.cell;
+  if (cell === undefined) return Number.POSITIVE_INFINITY;
+  const door = terrain.coordsOf(terrain.nodeAt(hx, hy));
+  const spot = terrain.coordsOf(cell);
+  return Math.abs(spot.x - door.x) + Math.abs(spot.y - door.y);
 }
 
-describe('livestock assignment - claimed stock re-anchors onto farms or the HQ', () => {
-  it('anchors an owned cow onto its player-built farm door', () => {
+/** Beside the door - on the grazing ring, never in the doorway itself. */
+function onRing(distance: number): boolean {
+  return distance > 0 && distance <= LIVESTOCK_GRAZE_RANGE_NODES;
+}
+
+describe('livestock assignment - claimed stock grazes on a ring around farms or the HQ', () => {
+  it('anchors an owned cow onto a spot beside its player-built farm door, not the doorway', () => {
     const sim = livestockSim();
     farmAt(sim, 20, 20, { owner: P0 });
     const cow = cowAt(sim, 4, 4, { owner: P0 });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim)); // tick 0 - the period fires
 
-    expect(sim.world.tryGet(cow, StayPoint)?.cell).toBe(nodeAt(sim, 20, 20));
+    expect(onRing(ringDistance(sim, cow, 20, 20))).toBe(true);
   });
 
-  it('splits the herd round-robin across two farms in canonical order', () => {
+  it('splits the herd round-robin across two farms; same-farm members take distinct spots', () => {
     const sim = livestockSim();
     farmAt(sim, 20, 20, { owner: P0 });
     farmAt(sim, 40, 40, { owner: P0 });
@@ -34,9 +45,10 @@ describe('livestock assignment - claimed stock re-anchors onto farms or the HQ',
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.tryGet(first, StayPoint)?.cell).toBe(nodeAt(sim, 20, 20));
-    expect(sim.world.tryGet(second, StayPoint)?.cell).toBe(nodeAt(sim, 40, 40));
-    expect(sim.world.tryGet(third, StayPoint)?.cell).toBe(nodeAt(sim, 20, 20));
+    expect(onRing(ringDistance(sim, first, 20, 20))).toBe(true);
+    expect(onRing(ringDistance(sim, second, 40, 40))).toBe(true);
+    expect(onRing(ringDistance(sim, third, 20, 20))).toBe(true);
+    expect(sim.world.get(third, StayPoint).cell).not.toBe(sim.world.get(first, StayPoint).cell);
   });
 
   it('falls back to the headquarters while no farm stands', () => {
@@ -46,13 +58,24 @@ describe('livestock assignment - claimed stock re-anchors onto farms or the HQ',
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.tryGet(cow, StayPoint)?.cell).toBe(nodeAt(sim, 24, 24));
+    expect(onRing(ringDistance(sim, cow, 24, 24))).toBe(true);
   });
 
   it("never anchors onto another player's farm; with nothing of its own the leash stays put", () => {
     const sim = livestockSim();
     farmAt(sim, 20, 20, { owner: P1 });
     const cow = cowAt(sim, 4, 4, { owner: P0 });
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(cow, StayPoint)).toBe(false);
+  });
+
+  it('leaves a booked visitor alone - herding resumes when the batch releases it', () => {
+    const sim = livestockSim();
+    const farm = farmAt(sim, 20, 20, { owner: P0 });
+    const cow = cowAt(sim, 4, 4, { owner: P0 });
+    sim.world.add(cow, LivestockVisit, { at: farm });
 
     livestockAssignmentSystem(sim.world, ctxOf(sim));
 

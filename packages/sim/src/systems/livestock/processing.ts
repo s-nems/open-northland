@@ -1,24 +1,34 @@
 import type { Recipe } from '@open-northland/data';
 import {
+  Building,
   CurrentAtomic,
   Health,
   Livestock,
+  LivestockVisit,
   MoveGoal,
   ownerOf,
   Position,
+  Resting,
   Settler,
+  Stockpile,
 } from '../../components/index.js';
+import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
-import { livestockTribeOfGood } from '../readviews/index.js';
-import { entityNode, manhattan } from '../spatial/nodes.js';
+import { isLivestockWorkplaceType, livestockTribeOfGood } from '../readviews/index.js';
+import { isInside, stepIn, stepOut } from '../settlers/indoors.js';
+import { entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
+import { recipesByProductOf } from '../stores/index.js';
 
-// The processing side of husbandry: a FEED recipe (grain+water -> the species' fed-animal good) runs
-// only against a live penned animal, which pays for the cycle with part of its life. Consumed by the
-// ProductionSystem's cycle gate/start (economy/production/cycles.ts). Source basis: the recipes and
-// the animal-as-good model are the extracted content; the drain amount, life floor, and pen radius
-// are named approximations (no readable constant exists for any of them).
+// The processing side of husbandry, staged as a VISIT the player can watch: the workplace SUMMONS one
+// penned animal per species (it walks to the door and waits there), the feed batch begins only once it
+// has ARRIVED (the animal steps in with the starting operator - until then the feed recipe is not
+// startable, so an idle breeder waits outside too), and the completing batch lets it out with part of
+// its life paid. Consumed by the ProductionSystem's cycle gate/start/deposit
+// (economy/production/cycles.ts). Source basis: the recipes and the animal-as-good model are the
+// extracted content; the visit staging, drain amount, life floor, and pen radius are named
+// approximations (no readable constant exists for any of them).
 
 /** HP one processing visit drains - a quarter of the sheep/cow 1000-HP pool, so an animal sustains two
  *  visits before the life floor makes it graze and regenerate. */
@@ -39,11 +49,10 @@ function feedTribeOf(ctx: SystemContext, recipe: Recipe): number | null {
 }
 
 /**
- * How many cycles of `recipe` the penned livestock could pay for right now - `Infinity` for a non-feed
- * recipe (no animal requirement), else the count of eligible animals. An upper bound, not a strict
- * one-batch-per-animal pairing: each start re-drains and re-scans, so a full-pool animal can pay for
- * two same-tick batches before the life floor stops it. The livestock leg of `startableCycleCount`'s
- * gate.
+ * How many batches of `recipe` could begin right now - `Infinity` for a non-feed recipe (no animal
+ * requirement), else the count of summoned animals ARRIVED at the door ({@link arrivedVisitors}).
+ * The livestock leg of `startableCycleCount`'s gate: a feed batch never starts against an animal
+ * still walking, so the enter-together read holds.
  */
 export function feedAnimalsAvailable(
   world: World,
@@ -53,17 +62,17 @@ export function feedAnimalsAvailable(
 ): number {
   const tribe = feedTribeOf(ctx, recipe);
   if (tribe === null) return Number.POSITIVE_INFINITY;
-  return scanFeedAnimals(world, ctx, building, tribe).count;
+  return arrivedVisitors(world, ctx, building, tribe).length;
 }
 
 /**
- * Pay a starting feed cycle's life cost, or report that nothing can pay it. A non-feed recipe charges
- * nothing (true). A feed recipe drains {@link LIVESTOCK_PROCESS_DRAIN_HP} from the canonical pick -
- * the healthiest eligible animal (ties to the lowest id; order-independent, so no sort) - and walks it
- * to the workplace door (the original's animal-enters-the-farm read; skipped mid-atomic so a swing
- * isn't yanked). False when no animal is eligible - the caller must not begin the batch.
+ * Step the starting feed batch's animal inside, or report that none has arrived. A non-feed recipe
+ * admits nothing (true). A feed recipe steps the canonical arrived visitor (lowest id) in through the
+ * indoors seam - it enters together with the operator whose seat opened on the same arrival - and the
+ * batch's completion releases it ({@link releaseLivestockVisit}). False when no visitor stands at the
+ * door - the caller must not begin the batch.
  */
-export function chargeLivestockForCycle(
+export function admitLivestockForCycle(
   world: World,
   ctx: SystemContext,
   building: Entity,
@@ -71,26 +80,139 @@ export function chargeLivestockForCycle(
 ): boolean {
   const tribe = feedTribeOf(ctx, recipe);
   if (tribe === null) return true;
-  const { best } = scanFeedAnimals(world, ctx, building, tribe);
-  if (best === null) return false;
-  world.write(best, Health, (h) => {
-    h.hitpoints -= LIVESTOCK_PROCESS_DRAIN_HP;
-  });
-  if (ctx.terrain !== undefined && !world.has(best, CurrentAtomic)) {
-    const door = interactionNodeId(world, ctx, ctx.terrain, building);
-    if (door !== null) world.add(best, MoveGoal, { cell: door });
+  let pick: Entity | null = null;
+  for (const e of arrivedVisitors(world, ctx, building, tribe)) {
+    if (pick === null || e < pick) pick = e;
   }
+  if (pick === null) return false;
+  world.remove(pick, MoveGoal);
+  stepIn(world, pick, building);
   return true;
 }
 
 /**
+ * Let the completed feed batch's visitor out: the canonical (lowest-id) {@link LivestockVisit} holder
+ * INSIDE this workplace ({@link Resting} - a summoned animal still outside belongs to the next batch)
+ * steps out and pays the visit's life cost, clamped so the drain never takes it below the life floor
+ * (its HP may have moved since admission: regen, or a fight). A batch whose visitor vanished
+ * mid-cycle (died inside) releases nobody and charges nothing - an accepted free batch on a rare
+ * edge.
+ */
+export function releaseLivestockVisit(world: World, building: Entity, tribe: number): void {
+  let visitor: Entity | null = null;
+  for (const e of world.query(LivestockVisit, Settler)) {
+    if (world.get(e, LivestockVisit).at !== building) continue;
+    if (world.get(e, Settler).tribe !== tribe) continue;
+    if (!world.has(e, Resting)) continue;
+    if (visitor === null || e < visitor) visitor = e;
+  }
+  if (visitor === null) return;
+  const paying = visitor;
+  if (world.has(paying, Health)) {
+    world.write(paying, Health, (h) => {
+      const floor = Math.floor(h.max / LIVESTOCK_MIN_LIFE_DIVISOR);
+      h.hitpoints -= Math.min(LIVESTOCK_PROCESS_DRAIN_HP, Math.max(0, h.hitpoints - floor));
+    });
+  }
+  world.remove(paying, LivestockVisit);
+  stepOut(world, paying);
+}
+
+/**
+ * LivestockVisitSystem - the summon-and-escort half of the visit. Every built livestock workplace
+ * whose feed recipe has its input goods on hand keeps ONE animal per species summoned (the canonical
+ * pen pick walks to the door and waits there - a calm one-at-a-time rhythm, not a stream); every
+ * summoned animal still outside is escorted (re-aimed at the door - self-healing against a refused
+ * route) or dropped where it stands when its workplace is gone. Runs after regen, so a topped-up
+ * animal qualifies the same tick, and before production, which admits arrived visitors into starting
+ * batches. Scale: one pass over buildings with a cheap type check, plus the booked-visitor store.
+ */
+export const livestockVisitSystem: System = (world, ctx) => {
+  const terrain = ctx.terrain;
+  summonToWorkplaces(world, ctx);
+  for (const e of [...world.query(Livestock, LivestockVisit, Position)]) {
+    const building = world.get(e, LivestockVisit).at;
+    const b = world.tryGet(building, Building);
+    if (b === undefined || b.built < ONE) {
+      world.remove(e, LivestockVisit);
+      stepOut(world, e);
+      continue;
+    }
+    if (isInside(world, e, building)) continue; // admitted - the batch owns it until release
+    if (terrain === undefined) continue; // mapless sim: no door to reach
+    const door = interactionNodeId(world, ctx, terrain, building);
+    if (door === null) continue;
+    if (entityNode(world, terrain, e) === door) continue; // arrived - waits for its batch to begin
+    if (!isTravelling(world, e) && !world.has(e, CurrentAtomic)) {
+      world.add(e, MoveGoal, { cell: door });
+    }
+  }
+};
+
+/** One summoned (not yet admitted) animal per species and workplace: book the canonical pen pick for
+ *  each input-stocked feed recipe that has no waiting visitor. */
+function summonToWorkplaces(world: World, ctx: SystemContext): void {
+  for (const building of world.query(Building, Stockpile)) {
+    const b = world.get(building, Building);
+    if (b.built < ONE || !isLivestockWorkplaceType(ctx.content, b.buildingType)) continue;
+    const stock = world.get(building, Stockpile).amounts;
+    const recipes = recipesByProductOf(world, ctx, building);
+    if (recipes === undefined) continue;
+    for (const recipe of recipes.values()) {
+      const tribe = feedTribeOf(ctx, recipe);
+      if (tribe === null) continue;
+      if (!recipe.inputs.every((i) => (stock.get(i.goodType) ?? 0) >= i.amount)) continue;
+      if (hasWaitingVisitor(world, building, tribe)) continue;
+      const { best } = scanFeedAnimals(world, ctx, building, tribe);
+      if (best === null) continue;
+      world.add(best, LivestockVisit, { at: building });
+      walkToDoor(world, ctx, building, best);
+    }
+  }
+}
+
+/** Whether a summoned, not-yet-admitted visitor of this species already exists for the workplace. */
+function hasWaitingVisitor(world: World, building: Entity, tribe: number): boolean {
+  for (const e of world.query(LivestockVisit, Settler)) {
+    if (world.get(e, LivestockVisit).at !== building) continue;
+    if (world.get(e, Settler).tribe !== tribe) continue;
+    if (!world.has(e, Resting)) return true;
+  }
+  return false;
+}
+
+/** The workplace's summoned visitors of `tribe` standing ON the door (not yet admitted) - the animals
+ *  a feed batch may begin against. In a mapless sim every waiting visitor counts as arrived. */
+function arrivedVisitors(world: World, ctx: SystemContext, building: Entity, tribe: number): Entity[] {
+  const terrain = ctx.terrain;
+  const door = terrain === undefined ? null : interactionNodeId(world, ctx, terrain, building);
+  const arrived: Entity[] = [];
+  for (const e of world.query(LivestockVisit, Settler)) {
+    if (world.get(e, LivestockVisit).at !== building) continue;
+    if (world.get(e, Settler).tribe !== tribe) continue;
+    if (world.has(e, Resting)) continue;
+    if (terrain !== undefined && door !== null && entityNode(world, terrain, e) !== door) continue;
+    arrived.push(e);
+  }
+  return arrived;
+}
+
+/** Aim a freshly summoned animal at the workplace door (skipped mid-atomic so a swing isn't yanked;
+ *  {@link livestockVisitSystem} re-aims it every tick after). */
+function walkToDoor(world: World, ctx: SystemContext, building: Entity, e: Entity): void {
+  if (ctx.terrain === undefined || world.has(e, CurrentAtomic)) return;
+  const door = interactionNodeId(world, ctx, ctx.terrain, building);
+  if (door !== null) world.add(e, MoveGoal, { cell: door });
+}
+
+/**
  * One pass over the {@link Livestock} store (the herd, never the settler population): the
- * eligible-animal count and the canonical drain pick (highest HP, then lowest id - an explicit tuple
+ * eligible-animal count and the canonical summon pick (highest HP, then lowest id - an explicit tuple
  * compare, so raw query order cannot change the winner). Eligible means: the species' live creature,
- * above the life floor after the drain, penned within {@link LIVESTOCK_PROCESS_RANGE_NODES} of the
- * door (skipped in a mapless sim - no distance to measure), and - at an owned workplace - claimed by
- * the same player (a neutral scenario fixture accepts any animal in range; an owned farm never milks
- * wild or enemy stock).
+ * not already summoned ({@link LivestockVisit}), above the life floor after the coming drain, penned
+ * within {@link LIVESTOCK_PROCESS_RANGE_NODES} of the door (skipped in a mapless sim - no distance to
+ * measure), and - at an owned workplace - claimed by the same player (a neutral scenario fixture
+ * accepts any animal in range; an owned farm never milks wild or enemy stock).
  */
 function scanFeedAnimals(
   world: World,
@@ -106,6 +228,7 @@ function scanFeedAnimals(
   let count = 0;
   for (const e of world.query(Livestock, Settler, Health, Position)) {
     if (world.get(e, Settler).tribe !== tribe) continue;
+    if (world.has(e, LivestockVisit)) continue;
     if (buildingOwner !== undefined && ownerOf(world, e) !== buildingOwner) continue;
     const h = world.get(e, Health);
     if (h.hitpoints - LIVESTOCK_PROCESS_DRAIN_HP < Math.floor(h.max / LIVESTOCK_MIN_LIFE_DIVISOR)) continue;

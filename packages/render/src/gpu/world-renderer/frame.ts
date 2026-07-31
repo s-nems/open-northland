@@ -2,13 +2,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { TextureSource } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import type {
-  ConstructionSign,
-  DoorBadge,
-  HudFrame,
-  LifeHeart,
-  SettlerBubble,
-} from '../overlays/index.js';
+import type { ConstructionSign, DoorBadge, HudFrame, LifeHeart, SettlerBubble } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /**

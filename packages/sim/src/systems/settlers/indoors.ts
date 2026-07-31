@@ -7,9 +7,10 @@ import { atOrWalk } from './atomics/start.js';
  * Walk `e` to `door`, then step it inside `building` on arrival and run `then`: the tail of every errand
  * that ends indoors. The marker means "inside, and the render must not draw it", so it holds only while
  * something keeps the settler in - the planner sheds it on every re-plan (`planner/replan.ts`) unless the
- * FamilySystem owns the settler (`FamilyDuty`), and a firing needs drive sheds it (`drives/ladder.ts`)
- * unless the settler just got into its own bed. An errand outlasts both by running an atomic (a re-plan
- * skips a busy settler) and steps back out when it ends; {@link isInside} is the read.
+ * FamilySystem owns the settler (`FamilyDuty`) or a feed batch owns the visiting animal
+ * (`LivestockVisit` - `livestock/processing.ts` releases it), and a firing needs drive sheds it
+ * (`drives/ladder.ts`) unless the settler just got into its own bed. An errand outlasts both by running
+ * an atomic (a re-plan skips a busy settler) and steps back out when it ends; {@link isInside} is the read.
  */
 export function enterBuilding(
   world: World,

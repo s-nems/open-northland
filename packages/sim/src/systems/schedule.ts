@@ -18,6 +18,7 @@ import {
   livestockAssignmentSystem,
   livestockCaptureSystem,
   livestockRegenSystem,
+  livestockVisitSystem,
 } from './livestock/index.js';
 import { animalWanderSystem } from './movement/animal-wander.js';
 import { separationSystem } from './movement/collision/index.js';
@@ -62,11 +63,13 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
   // After the walk settles (movement + separation), so a scout's contact claim uses this tick's final
-  // nodes; assignment then re-anchors the freshly claimed stock, and regen tops livestock up before
-  // production's feed gate reads its HP later this tick.
+  // nodes; assignment then re-anchors the freshly claimed stock, regen tops livestock up BEFORE the
+  // visit summon reads its HP, and the summon/escort runs before production admits arrived visitors
+  // into starting batches later this tick.
   { name: 'livestockCapture', system: livestockCaptureSystem },
   { name: 'livestockAssign', system: livestockAssignmentSystem },
   { name: 'livestockRegen', system: livestockRegenSystem },
+  { name: 'livestockVisit', system: livestockVisitSystem },
   { name: 'atomic', system: atomicSystem },
   // Directly after the executor: an order parked behind a non-interruptible atomic applies the tick that
   // atomic completes, before any drive could see the freed settler (plannerSystem already ran this tick).

@@ -36,6 +36,7 @@ export function computeLivestockHearts(
     if (player === undefined) continue; // wild - no heart
     const tribe = settlerTribeOf(e);
     if (tribe === undefined || !isLivestockTribe(tribe)) continue; // an owned human/soldier
+    if (e.components.Resting !== undefined) continue; // inside the workplace - not drawn, so no heart
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const slot = playerColourOf?.(player) ?? player;

@@ -3,22 +3,27 @@ import { describe, expect, it } from 'vitest';
 import { JOB_BABY_MALE, JOB_CHILD_MALE, JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
+  BUILDING_ANIMAL_FARM,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
+  GOOD_CATTLE,
   GOOD_FLOUR,
   GOOD_GOLD,
   GOOD_IRON,
+  GOOD_LEATHER,
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_PLANK,
+  GOOD_SHEEP,
   GOOD_SHOES,
   GOOD_STONE,
   GOOD_TOOL_WOODEN,
   GOOD_WHEAT,
   GOOD_WOOD,
+  GOOD_WOOL,
 } from '../src/game/sandbox/ids/index.js';
 import { num } from '../src/game/snapshot.js';
 import {
@@ -763,5 +768,40 @@ describe('settler upcoming-unlock rows', () => {
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     expect(model.upcomingUnlocks).toEqual([]);
     expect(model.experience.length).toBeGreaterThan(0); // trained rows still show — only promises hide
+  });
+});
+
+describe('the animal farm panel - fed-animal tokens stay internal', () => {
+  it('hides the token stock rows and folds production into two chain rows with ware icons', () => {
+    const snapshot = snapshotOf([buildingEntity(1, BUILDING_ANIMAL_FARM)]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (model.kind !== 'building') throw new Error('expected a building model');
+
+    const stocked = model.stock.map((r) => r.goodType);
+    expect(stocked).not.toContain(GOOD_SHEEP);
+    expect(stocked).not.toContain(GOOD_CATTLE);
+    expect(stocked).toContain(GOOD_WOOL);
+
+    if (model.production?.kind !== 'recipe') throw new Error('expected recipe production');
+    expect(model.production.rows.map((r) => r.goodType)).toEqual([GOOD_SHEEP, GOOD_CATTLE]);
+    const [sheep, cattle] = model.production.rows;
+    expect(sheep?.goodId).toBe('meat'); // the chain's wares: meat byproduct + the converter's product
+    expect(sheep?.extraGoodIds).toEqual(['wool']);
+    expect(cattle?.extraGoodIds).toEqual(['leather']);
+    expect(sheep?.inputs.split('\n')).toHaveLength(3); // water + wheat + the penned animal itself
+  });
+
+  it("a breeder's craft toggles offer the chain wares, never the tokens or the slaughter row", () => {
+    const sim = createSceneSim(sandboxScene);
+    const slot = sim.content.buildings.find((b) => b.typeId === BUILDING_ANIMAL_FARM)?.workers[0];
+    if (slot === undefined) throw new Error('animal farm has no worker slots');
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_ANIMAL_FARM),
+      { id: 2, components: { Settler: { jobType: slot.jobType }, JobAssignment: { workplace: 1 } } },
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([GOOD_WOOL, GOOD_LEATHER]);
   });
 });

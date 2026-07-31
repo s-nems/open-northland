@@ -101,7 +101,10 @@ export function stockRows(
 ): StockRow[] {
   const live = liveAmounts(stockpile);
   const fractions = bonusFractions(productionBonus);
-  return (def?.stock ?? []).map((slot) => {
+  // The fed-animal token slots are workplace-internal (the feed batch's intermediate) - never a
+  // Magazyn row (user feedback: no "Owca"/"Wół" stock rows at the animal farm).
+  const slots = (def?.stock ?? []).filter((slot) => ctx.isLivestockGood?.(slot.goodType) !== true);
+  return slots.map((slot) => {
     const goodId = goodDef(ctx, slot.goodType)?.id;
     return {
       goodType: slot.goodType,

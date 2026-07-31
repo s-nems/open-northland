@@ -19,6 +19,9 @@ export interface ProductionRow {
   readonly goodType: number;
   /** The product's string id — the row's icon key (like {@link StockRow.goodId}). */
   readonly goodId?: string;
+  /** Further icon keys drawn beside {@link goodId} - a livestock chain row shows every ware the
+   *  species' visit yields (meat + wool, meat + leather). */
+  readonly extraGoodIds?: readonly string[];
   readonly label: string;
   /**
    * The row's bar: the FRONT-RUNNER batch of this product — the highest progress among the in-flight
@@ -118,19 +121,11 @@ export function productionModel(
       ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
     };
   }
+  const bestPct = cycleFrontRunners(ent);
+  const chainRows = livestockChainRows(ctx, def, bestPct);
+  if (chainRows.length > 0) return { kind: 'recipe', rows: chainRows };
   const outputs = recipeOutputs(ctx, def);
   if (outputs.length === 0) return null; // not a producer — no Produkcja window
-  // The front-runner batch per product: the highest progress among the cycles crafting that good
-  // (a completed batch deposits and leaves the list, so the bar hands over to the runner-up).
-  const production = ent.components.Production as { cycles?: unknown } | undefined;
-  const bestPct = new Map<number, number>();
-  for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
-    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
-    const good = num(cycle?.goodType);
-    if (good === undefined) continue;
-    const pct = pctRatio(num(cycle?.elapsed), num(cycle?.duration));
-    if (pct > (bestPct.get(good) ?? -1)) bestPct.set(good, pct);
-  }
   const inputsByProduct = new Map<number, string>();
   for (const recipe of visibleRecipes(ctx, def)) {
     const product = recipe.outputs[0]?.goodType;
@@ -148,6 +143,59 @@ export function productionModel(
     };
   });
   return { kind: 'recipe', rows };
+}
+
+/** The front-runner batch per product: the highest progress among the in-flight `Production.cycles`
+ *  crafting that good (a completed batch deposits and leaves the list, so the bar hands over). */
+function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
+  const production = ent.components.Production as { cycles?: unknown } | undefined;
+  const bestPct = new Map<number, number>();
+  for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
+    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
+    const good = num(cycle?.goodType);
+    if (good === undefined) continue;
+    const pct = pctRatio(num(cycle?.elapsed), num(cycle?.duration));
+    if (pct > (bestPct.get(good) ?? -1)) bestPct.set(good, pct);
+  }
+  return bestPct;
+}
+
+/**
+ * A livestock workplace's Produkcja: ONE row per species chain instead of one per good - the internal
+ * fed-animal token never shows. The row is named after the species (its token good's label, "Owca"),
+ * its icons are every ware the visit yields (meat byproduct + the converter's product), its bar is the
+ * chain's front-runner across both stages, and its hover lists the feed recipe's goods plus the live
+ * animal itself. Empty (fall through to the per-good rows) at any other workplace.
+ */
+function livestockChainRows(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  bestPct: ReadonlyMap<number, number>,
+): ProductionRow[] {
+  if (def === undefined || ctx.isLivestockWorkplace?.(def.typeId) !== true) return [];
+  const recipes = visibleRecipes(ctx, def);
+  const meat = ctx.livestockMeatGood ?? null;
+  const rows: ProductionRow[] = [];
+  for (const feed of recipes) {
+    const token = feed.outputs[0]?.goodType;
+    if (token === undefined || ctx.isLivestockGood?.(token) !== true) continue;
+    const product = recipes.find((r) => r.inputs.some((i) => i.goodType === token))?.outputs[0]?.goodType;
+    const icons = [meat, product ?? null]
+      .filter((g): g is number => g !== null)
+      .map((g) => goodDef(ctx, g)?.id)
+      .filter((id): id is string => id !== undefined);
+    const [goodId, ...extraGoodIds] = icons;
+    rows.push({
+      goodType: token,
+      label: goodLabel(ctx, token),
+      pct: Math.max(bestPct.get(token) ?? 0, product === undefined ? 0 : (bestPct.get(product) ?? 0)),
+      // The requirements hover: the feed recipe's goods, plus the penned animal the batch books.
+      inputs: `${recipeInputsLabel(ctx, feed.inputs)}\n- ${goodLabel(ctx, token)}`,
+      ...(goodId !== undefined ? { goodId } : {}),
+      ...(extraGoodIds.length > 0 ? { extraGoodIds } : {}),
+    });
+  }
+  return rows;
 }
 
 /** A recipe's inputs as the tooltip's ingredient lines — one "- Żelazo ×2" per line — or the

@@ -40,7 +40,8 @@ const CATTLE_BIRTH = { x: 30, y: 21 } as const;
 const STARTER_WATER = 10;
 const STARTER_WHEAT = 10;
 
-const { Building, Health, Owner, Position, Settler, StayPoint, Stockpile } = components;
+const { Building, Health, LivestockVisit, Owner, Position, Resting, Settler, StayPoint, Stockpile } =
+  components;
 
 function build(sim: Simulation): void {
   const farm = placeBuiltSandboxBuilding(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y, HUMAN_PLAYER);
@@ -93,14 +94,29 @@ export const livestockScene: SceneDefinition = {
         ownedOf(sim, ANIMAL_TRIBE_SHEEP).length >= 1 && ownedOf(sim, ANIMAL_TRIBE_CATTLE).length >= 1,
     },
     {
-      label: 'claimed stock re-anchored its leash onto the farm door',
+      label: 'claimed stock re-anchored its leash onto the grazing ring around the farm',
       predicate: (sim) => {
         const terrain = sim.terrain;
         if (terrain === undefined) return false;
         const door = buildingDoorNode(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y);
-        const cell = terrain.nodeAtClamped(door.hx, door.hy);
-        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)];
-        return claimed.length > 0 && claimed.every((e) => sim.world.tryGet(e, StayPoint)?.cell === cell);
+        const doorNode = terrain.nodeAtClamped(door.hx, door.hy);
+        const at = terrain.coordsOf(doorNode);
+        // An animal on a processing visit is skipped by the herding sweep - its leash is paused, so
+        // only the grazing herd is held to the ring.
+        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)].filter(
+          (e) => !sim.world.has(e, LivestockVisit),
+        );
+        return (
+          claimed.length > 0 &&
+          claimed.every((e) => {
+            const cell = sim.world.tryGet(e, StayPoint)?.cell;
+            if (cell === undefined) return false;
+            const spot = terrain.coordsOf(cell);
+            const distance = Math.abs(spot.x - at.x) + Math.abs(spot.y - at.y);
+            // Beside the door, never IN the doorway - the spread that keeps the entrance clickable.
+            return distance > 0 && distance <= systems.LIVESTOCK_GRAZE_RANGE_NODES;
+          })
+        );
       },
     },
     {
@@ -121,7 +137,10 @@ export const livestockScene: SceneDefinition = {
     {
       label: 'the heart projection marks exactly the claimed animals and mirrors their life',
       predicate: (sim) => {
-        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)];
+        // An animal inside the farm (a processing visit's Resting) is not drawn, so no heart either.
+        const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)].filter(
+          (e) => !sim.world.has(e, Resting),
+        );
         const poolOf = new Map<number, { hitpoints: number; max: number }>();
         for (const e of claimed) {
           const h = sim.world.tryGet(e, Health);

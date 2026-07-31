@@ -3,6 +3,7 @@ import { CraftSelection } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { livestockTribeOfGood } from '../../readviews/index.js';
 import { beginCycle, canStartCycle } from './cycles.js';
 
 // The per-operator product-ROTATION policy: which of its workplace's products a starting operator picks next.
@@ -27,7 +28,27 @@ export function craftablePool(
   const earned = (good: number): boolean => settlerMeetsNeed(world, ctx, subject, 'good', good);
   const picked =
     world.tryGet(operator, CraftSelection)?.goods.filter((g) => recipes.has(g) && earned(g)) ?? [];
-  return picked.length > 0 ? picked : [...recipes.keys()].filter(earned);
+  return picked.length > 0 ? withFeedStages(ctx, picked, recipes) : [...recipes.keys()].filter(earned);
+}
+
+/** A selected chain product implies its feed stage: crafting wool consumes the fed-sheep token, so the
+ *  token's own recipe joins the pool - the token is workplace-internal, never a player-facing choice
+ *  (the panel hides it), and must not silently starve the selected product. Deliberately skips the
+ *  `earned` gate: an internal stage is not a `needforgood` ware. */
+function withFeedStages(
+  ctx: SystemContext,
+  picked: readonly number[],
+  recipes: ReadonlyMap<number, Recipe>,
+): readonly number[] {
+  const pool = new Set(picked);
+  for (const good of picked) {
+    for (const input of recipes.get(good)?.inputs ?? []) {
+      if (livestockTribeOfGood(ctx.content, input.goodType) !== null && recipes.has(input.goodType)) {
+        pool.add(input.goodType);
+      }
+    }
+  }
+  return [...pool];
 }
 
 /**

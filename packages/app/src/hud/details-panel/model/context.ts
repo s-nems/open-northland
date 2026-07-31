@@ -32,6 +32,12 @@ export interface UnitPanelModelContext {
   /** The sim's livestock-workplace classification (`isLivestockWorkplaceType`), so the panel hides the
    *  slaughter recipe the sim's recipe table drops there. Absent = no filtering (tests, plain views). */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
+  /** The sim's livestock-good classification (`livestockTribeOfGood`): the internal fed-animal token
+   *  goods, hidden from every player-facing list (stock rows, product rows, craft toggles). */
+  readonly isLivestockGood?: ((goodType: number) => boolean) | undefined;
+  /** The meat byproduct good every completed feed batch lands (`livestockMeatGoodOf`) - the second
+   *  icon of a livestock chain row; null/absent without one in content. */
+  readonly livestockMeatGood?: number | null | undefined;
 }
 
 export interface Comp {
@@ -66,14 +72,17 @@ export function visibleRecipes(
   return recipes.filter((r) => r.inputs.length > 0);
 }
 
-/** A building def's production outputs: one line per per-product recipe (its first output), else a
- *  unit-amount entry per `produces` good, else empty — the one source the settler Praca product and
- *  the building Produkcja list must agree on. */
+/** A building def's production outputs: one line per per-product recipe (its first output), minus the
+ *  internal fed-animal tokens (`isLivestockGood` - a chain's real products are its converter's wares),
+ *  else a unit-amount entry per `produces` good, else empty - the one source the settler Praca product
+ *  and the building Produkcja list must agree on. */
 export function recipeOutputs(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
 ): { goodType: number; amount: number }[] {
-  const fromRecipes = visibleRecipes(ctx, def).flatMap((r) => r.outputs);
+  const fromRecipes = visibleRecipes(ctx, def)
+    .flatMap((r) => r.outputs)
+    .filter((o) => ctx.isLivestockGood?.(o.goodType) !== true);
   if (fromRecipes.length > 0) return fromRecipes;
   return def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }
