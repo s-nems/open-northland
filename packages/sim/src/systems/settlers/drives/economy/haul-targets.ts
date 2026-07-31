@@ -90,7 +90,7 @@ export function boundProducerOutputToHaul(
   if (binding === undefined) return null;
   const home = binding.workplace;
   // Only a farm's CARRIER (same tribe, a field producer, not the field worker) hauls output out — the
-  // role gate shared with `deliveryTargetFor` case 3, so pickup and delivery routing can't disagree.
+  // role gate shared with `toStorageOffFarm`, so pickup and delivery routing can't disagree.
   if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
   if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
   const stock = world.get(home, Stockpile).amounts;

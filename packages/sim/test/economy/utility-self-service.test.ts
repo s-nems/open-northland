@@ -277,13 +277,13 @@ describe('utility self-service — MODE 2: a posted utility carrier feeds nearby
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const well = buildingAt(sim, WELL, 5, 0);
     buildingAt(sim, BAKERY, 2, 0); // a recipe consumer of water, with room
-    buildingAt(sim, WAREHOUSE, 1, 0); // a NEARER warehouse that could also stock water
+    buildingAt(sim, WAREHOUSE, 4, 0); // strictly NEARER than the bakery, so a plain store pick would win it
     const porter = settlerAt(sim, 5, 0, CARRIER, well); // the well's posted carrier, holding drawn water
     sim.world.add(porter, Carrying, { goodType: WATER, amount: 1 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The water goes to the bakery (cell 2), NOT the nearer warehouse (cell 1) — consumers before storage.
+    // The water goes to the bakery (cell 2), NOT the nearer warehouse (cell 4) — consumers before storage.
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
 
@@ -291,13 +291,13 @@ describe('utility self-service — MODE 2: a posted utility carrier feeds nearby
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const well = buildingAt(sim, WELL, 5, 0);
     buildingAt(sim, BAKERY, 2, 0, [[WATER, 10]]); // its water slot is FULL (cap 10) — no room
-    buildingAt(sim, WAREHOUSE, 1, 0); // the warehouse fallback
+    buildingAt(sim, WAREHOUSE, 4, 0); // the warehouse fallback
     const porter = settlerAt(sim, 5, 0, CARRIER, well);
     sim.world.add(porter, Carrying, { goodType: WATER, amount: 1 });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The bakery can't take it, so the load banks in the warehouse (cell 1) instead.
-    expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 1, 0));
+    // The bakery can't take it, so the load banks in the warehouse (cell 4) instead.
+    expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 4, 0));
   });
 });

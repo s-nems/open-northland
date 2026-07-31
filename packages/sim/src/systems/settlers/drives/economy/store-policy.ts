@@ -15,7 +15,7 @@ function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, job
  * Whether `home` is a farm whose OUTPUT this settler hauls OUT to storage: the building is a field
  * producer of `tribe` (it carries a `farming` good — {@link farmWorkGood}) and the settler is its
  * CARRIER, not its field worker. The shared role gate of the farm haul-out twins — the pickup side
- * (`boundProducerOutputToHaul`) and the delivery-routing side (`deliveryTargetFor` case 3), which must
+ * (`boundProducerOutputToHaul`) and the delivery-routing side (`toStorageOffFarm`), which must
  * agree or a carrier lifts a farm's output and then can't route it. A farmer banks its reaped crop INTO
  * the farm; only the carrier clears it to central storage.
  */

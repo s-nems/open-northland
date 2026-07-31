@@ -70,7 +70,7 @@ const EMPTY_PRODUCES: readonly number[] = [];
  * Cross-system: the self-service input scan
  * ({@link import('../settlers/drives/economy/workshop/supply.js').nearestMissingInputSource}) lets a
  * consumer draw the good here when this utility is the nearest source, and the utility-carrier delivery
- * rung (delivery-targets.ts) uses it to feed the good to nearby consumers before central storage.
+ * rung (`toNearbyRecipeConsumer`) uses it to feed the good to nearby consumers before central storage.
  */
 export function typeProducesGoodWithoutInputs(
   ctx: SystemContext,
