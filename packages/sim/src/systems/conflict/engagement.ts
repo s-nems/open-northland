@@ -13,9 +13,10 @@ import {
 } from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
+import { hunterEngageSpec } from './hunting-ground.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
-import { ANIMAL_AGGRO_RADIUS_NODES, isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
+import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
 // military stance, and the near/far reach band + DEFEND anchor leash the chase respects. Internal to
@@ -72,11 +73,13 @@ export interface CombatantStance {
 
 /**
  * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter, the
- * near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
+ * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND
+ * post, a hunter's ground).
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
- *  - **IGNORE hunter** → accept only catchable prey ({@link isHuntTarget}) — the predation that survives the
- *    IGNORE gate — spotted within the sight radius.
+ *  - **IGNORE hunter** → the hunting-ground policy ({@link hunterEngageSpec}, ./hunting-ground.ts):
+ *    huntable prey only, bounded to the work-flag / workplace ground with the flag as chase anchor,
+ *    normal game before last-resort livestock, livestock gated on the ground holding no carcass work.
  *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within its
  *    {@link SIGHT_RADIUS_NODES} (it advances), a hostile wild animal within {@link ANIMAL_AGGRO_RADIUS_NODES}
  *    (the ambush lunge), an unowned civ only within weapon reach (swing-in-place).
@@ -101,6 +104,9 @@ export function engageSpec(
   const seesTarget = (t: Entity): boolean =>
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
   const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
+  // The default deprioritized tier: plain buildings fall behind units and high-value structures. The
+  // hunter overrides it with the last-resort-livestock tier below.
+  const lowPriorityBuildings = (t: Entity): boolean => isLowPriorityBuildingTarget(world, ctx, t);
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
@@ -117,7 +123,8 @@ export function engageSpec(
       minDist,
       searchRadius: DEFEND_RADIUS_NODES + DEFEND_LEASH_NODES,
       player,
-      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES },
+      lowPriority: lowPriorityBuildings,
+      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES, hold: true },
     };
   }
 
@@ -127,8 +134,9 @@ export function engageSpec(
     stance.mode === MILITARY_MODE.IGNORE &&
     isHunterJob(ctx.content, attacker.jobType)
   ) {
-    const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
-    return { accept, minDist, searchRadius: sight, player, defend: null }; // player is null (hunter)
+    // The hunting-ground policy (where a hunter hunts, the prey tiers, the livestock gate) lives in
+    // ./hunting-ground.ts; this dispatch only routes the stance to it.
+    return hunterEngageSpec(world, ctx, terrain, e, attacker.jobType, seesTarget, minDist, sight);
   }
 
   // An unowned HOSTILE ANIMAL (the only unowned animal that reaches here — a passive one disengaged at
@@ -145,12 +153,13 @@ export function engageSpec(
         : weapon.maxRange,
     player,
     animalSeeker,
+    lowPriority: lowPriorityBuildings,
     defend: null,
   };
 }
 
 /** How a combatant acquires + reaches a target this tick, derived from its stance ({@link engageSpec}). */
-interface EngageSpec {
+export interface EngageSpec {
   /** The ring-search per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
   /** Near reach — the ring search ignores anything closer (a ranged weapon's dead zone). */
@@ -164,8 +173,14 @@ interface EngageSpec {
   /** A hostile wild animal seeking — gates on {@link HostilePresence.civsWithin} instead (its accept
    *  admits only civilization settlers). */
   readonly animalSeeker?: boolean;
-  /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
-  readonly defend: { readonly anchorCell: NodeId; readonly leash: number } | null;
+  /** The deprioritized tier among accepted targets — searched only when the primary tier finds nothing
+   *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. */
+  readonly lowPriority: (t: Entity) => boolean;
+  /** Anchor leash: the chase never walks past `leash` of `anchorCell` (a DEFEND post, a hunter's
+   *  ground); null when the chase is unbounded. `hold` — with no target in sight, walk back to the
+   *  anchor and hold it (the DEFEND post duty); false hands the unit back to the economy instead (a
+   *  hunter's between-hunts time belongs to its carcass-harvest drive, not to standing a post). */
+  readonly defend: { readonly anchorCell: NodeId; readonly leash: number; readonly hold: boolean } | null;
 }
 
 /** The DEFEND anchor cell — the {@link Stance}'s captured `anchorCell` (the tile the stance was set on),
@@ -182,14 +197,14 @@ function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  *    it is a live, hostile target; a target that has died / become invalid drops the order and falls
  *    through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
  *  - otherwise → the nearest target the ring search finds within `[spec.minDist, spec.searchRadius]` that
- *    the stance's `spec.accept` filter admits, in TWO priority tiers: a unit or a high-value building
- *    (headquarters / defensive tower) always wins over a plain building — the low-priority `'other'`
- *    building tier is searched only when the first pass finds nothing in sight (the autofocus priority:
- *    HQ / towers / enemy units on par, other buildings only when none of those remain — user rule).
- *    General hostility for ATTACK/unowned and anchor-bounded DEFEND both admit an enemy building (a
- *    DEFEND guard autonomously batters a structure inside its radius — deliberate: a defensive post
- *    contests enemy construction on its ground); only an IGNORE hunter's catchable-prey filter never
- *    admits one — see {@link engageSpec}.
+ *    the stance's `spec.accept` filter admits, in TWO priority tiers split by `spec.lowPriority`: the
+ *    deprioritized tier is searched only when the first pass finds nothing in sight. For the soldier
+ *    stances that tier is the plain `'other'` building (the autofocus priority: HQ / towers / enemy
+ *    units on par, other buildings only when none of those remain — user rule); for the hunter it is
+ *    last-resort livestock (normal game always wins — user rule). General hostility for ATTACK/unowned
+ *    and anchor-bounded DEFEND both admit an enemy building (a DEFEND guard autonomously batters a
+ *    structure inside its radius — deliberate: a defensive post contests enemy construction on its
+ *    ground); only an IGNORE hunter's prey filter never admits one — see {@link engageSpec}.
  */
 export function resolveTarget(
   world: World,
@@ -224,23 +239,23 @@ export function resolveTarget(
   if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
   // The animal seeker's twin (see {@link HostilePresence}): no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
-  // Tier 1: units + HQ + towers (everything the stance admits that is NOT a low-priority building). A
-  // nearer plain building never preempts a unit or high-value structure in sight.
+  // Tier 1: everything the stance admits that is NOT deprioritized (units + HQ + towers for a soldier,
+  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight.
   const primary = index.nearest(
     x,
     y,
     spec.minDist,
     spec.searchRadius,
-    (t) => spec.accept(t) && !isLowPriorityBuildingTarget(world, ctx, t),
+    (t) => spec.accept(t) && !spec.lowPriority(t),
   );
   if (primary !== null) return { target: primary.entity, dist: primary.distance };
-  // Tier 2 (fallback): plain buildings, only when no tier-1 target was in sight.
+  // Tier 2 (fallback): the deprioritized targets, only when no tier-1 target was in sight.
   const fallback = index.nearest(
     x,
     y,
     spec.minDist,
     spec.searchRadius,
-    (t) => spec.accept(t) && isLowPriorityBuildingTarget(world, ctx, t),
+    (t) => spec.accept(t) && spec.lowPriority(t),
   );
   return fallback === null ? null : { target: fallback.entity, dist: fallback.distance };
 }

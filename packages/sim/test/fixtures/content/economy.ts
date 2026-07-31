@@ -115,6 +115,10 @@ export const economyContent = {
     // A second permanent weapon good: the fresh-swap shape - walking wears boots, so only a
     // non-wearing good still stows after the walk to its replacement.
     { typeId: 17, id: 'long_sword', weight: 1, equip: { category: 'weapon' } },
+    // The two carcass goods a hunter's kill leaves on the ground (real ids: meat 21, harvest_cadaver
+    // atomic 33). Direct-pickup nodes like the mushroom - no felling/deposit lifecycle.
+    { typeId: 21, id: 'meat', weight: 1, atomics: { harvest: 33 } },
+    { typeId: 22, id: 'leather', weight: 1, atomics: { harvest: 33 } },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
@@ -130,8 +134,10 @@ export const economyContent = {
     // (the filter only shows on a job that could harvest MORE than its workplace stores). Nothing in
     // the golden slice spawns it.
     { typeId: 7, id: 'collector', allowedAtomics: [24, 25] },
-    // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
-    { typeId: 15, id: 'hunter' },
+    // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — strikes huntable prey (the attack atomic 81)
+    // and works the carcass nodes its kills leave (the harvest_cadaver atomic 33), the real
+    // `jobtypes.ini 15` grant pair.
+    { typeId: 15, id: 'hunter', allowedAtomics: [33, 81] },
     // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the
     // data-driven gate the field-farmer drive (planFarmer) keys on.
     { typeId: 18, id: 'farmer', allowedAtomics: [29, 34, 35] },

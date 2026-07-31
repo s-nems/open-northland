@@ -7,8 +7,8 @@ import type { GoodFarming } from '@open-northland/data';
  *
  * Source split (see the sim's `GoodFarming` schema): {@link WHEAT_GROWTH_STAGES} and
  * {@link WHEAT_WORK_REPEATS} come from readable original data — {@link WHEAT_WORK_REPEATS} restated here
- * as a literal because this catalog also feeds the SANDBOX content set, whose `jobExperience` table is
- * empty (`ContentSet` defaults it to `[]`); on real content the same 2 is already extracted and indexed
+ * as a literal because this catalog also feeds the SANDBOX content set, whose `jobExperience` table
+ * carries only the hunter track (`catalog/hunting.ts`); on real content the same 2 is already extracted and indexed
  * (`ir.json` `jobExperience` type 46). Wiring the loop to read it is
  * docs/tickets/sim/job-repeat-counter-extraction.md. The rest is calibration observed in the running
  * original; the data carries no growth timing, field radius, or per-field yield.

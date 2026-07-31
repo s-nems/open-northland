@@ -1,21 +1,37 @@
 /**
- * The sandbox wildlife catalog: three `animaltypes.ini` records transcribed verbatim (values from the
+ * The sandbox wildlife catalog: `animaltypes.ini` records transcribed verbatim (values from the
  * decoded IR, `Data/logic/animaltypes.ini`) on their REAL tribe ids, so a scene's spawns hit the same
- * species rows the real-content browser run resolves art and behaviour by. Three deliberate picks: a
- * provokable solitary heavyweight (bear), a passive leader-following herd (stag), and an aggressive
- * pack with a data-pinned walking pace (wolf).
+ * species rows the real-content browser run resolves art and behaviour by. Deliberate picks: a
+ * provokable solitary heavyweight (bear), a passive leader-following herd (stag), an aggressive pack
+ * with a data-pinned walking pace (wolf), and the two hunting-tier species — small game (hare) and
+ * last-resort livestock (sheep) — the hunter scenes exercise (`catalog/hunting.ts`).
  */
 
-/** The real `TRIBE_TYPE_ANIMAL_*` ids of the transcribed species (= IR `tribes.typeId`). */
-export const ANIMAL_TRIBE_BEARS = 8;
-export const ANIMAL_TRIBE_STAGS = 11;
-export const ANIMAL_TRIBE_WOLVES = 20;
+import {
+  ANIMAL_TRIBE_BEARS,
+  ANIMAL_TRIBE_HARES,
+  ANIMAL_TRIBE_SHEEP,
+  ANIMAL_TRIBE_STAGS,
+  ANIMAL_TRIBE_WOLVES,
+} from '../../../../catalog/animal-tribes.js';
+
+// Re-exported for the sandbox consumers (scenes, the natural-weapon rows) that address the wildlife
+// through this catalog; the ids' single owner is `catalog/animal-tribes.ts`.
+export {
+  ANIMAL_TRIBE_BEARS,
+  ANIMAL_TRIBE_HARES,
+  ANIMAL_TRIBE_SHEEP,
+  ANIMAL_TRIBE_STAGS,
+  ANIMAL_TRIBE_WOLVES,
+};
 
 /** The wildlife tribe rows (id slugs = the IR `tribes` slugs). No `jobEnables`: an empty tech graph
  *  is what makes a tribe an animal tribe (`isAnimalTribe`). */
 export const SANDBOX_ANIMAL_TRIBES: readonly { typeId: number; id: string }[] = [
   { typeId: ANIMAL_TRIBE_BEARS, id: 'bears' },
   { typeId: ANIMAL_TRIBE_STAGS, id: 'stags' },
+  { typeId: ANIMAL_TRIBE_HARES, id: 'hares' },
+  { typeId: ANIMAL_TRIBE_SHEEP, id: 'sheep' },
   { typeId: ANIMAL_TRIBE_WOLVES, id: 'wolves' },
 ];
 
@@ -36,6 +52,7 @@ export interface SandboxAnimal {
   readonly maximumDistanceToBirthPoint?: number;
   readonly moveSpeed?: number;
   readonly runSpeed?: number;
+  readonly catchable?: boolean;
   readonly warrantable?: boolean;
 }
 
@@ -66,6 +83,34 @@ export function buildSandboxAnimals(): readonly SandboxAnimal[] {
       searchForLeader: true,
       maximumDistanceToStayPoint: 10,
       maximumDistanceToBirthPoint: 40,
+      warrantable: true,
+    },
+    {
+      id: 'hare',
+      tribeType: ANIMAL_TRIBE_HARES,
+      hitpointsAdult: 300,
+      hitpointsBaby: 150,
+      maximumGroupSize: 4,
+      maximumCadaverSize: 4,
+      maximumLeaderDistance: 3,
+      searchForLeader: true,
+      maximumDistanceToStayPoint: 3,
+      maximumDistanceToBirthPoint: 10,
+      moveSpeed: 6,
+      warrantable: true,
+    },
+    {
+      id: 'sheep',
+      tribeType: ANIMAL_TRIBE_SHEEP,
+      hitpointsAdult: 1000,
+      hitpointsBaby: 500,
+      maximumGroupSize: 6,
+      maximumCadaverSize: 4,
+      maximumLeaderDistance: 10,
+      searchForLeader: true,
+      maximumDistanceToStayPoint: 10,
+      maximumDistanceToBirthPoint: 80,
+      catchable: true,
       warrantable: true,
     },
     {

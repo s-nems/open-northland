@@ -6,6 +6,7 @@ import {
   BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
   EXERCISE_ATOMIC,
+  HARVEST_CADAVER_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
   LISTEN_ATOMIC,
@@ -20,6 +21,7 @@ import {
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_CIVILIST,
+  JOB_HUNTER,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
@@ -131,6 +133,15 @@ export function buildSandboxTribes(
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
+      // The hunter: the bow draw reuses the archer's short-bow clip and the carcass pluck the
+      // collector's mushroom pick (the real `viking_hunter_attack`/`..._harvest_cadaver` clips are
+      // not transcribed - a named sandbox approximation, like the saber bodies).
+      { jobType: JOB_HUNTER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
+      {
+        jobType: JOB_HUNTER,
+        atomicId: HARVEST_CADAVER_ATOMIC,
+        animation: 'viking_collector_harvest_mushroom',
+      },
       ...jobTypes.flatMap((jobType) => [
         { jobType, atomicId: STORE_PICKUP_ATOMIC, animation: STORE_PICKUP_ANIMATION },
         { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },

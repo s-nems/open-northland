@@ -1,7 +1,9 @@
 import type { EquipClass } from '@open-northland/data';
+import { HUNTER_BOW_BALANCE } from '../../catalog/hunting.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_HUNTER,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
@@ -13,6 +15,7 @@ import {
   EQUIP_GOODS,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
+  WEAPON_HUNTER_BOW,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
@@ -164,6 +167,21 @@ export function sandboxWeapons() {
       minRange: 4,
       maxRange: 23,
       damage: { '0': LONG_BOW_DAMAGE, '7': LONG_BOW_VS_BUILDING },
+    },
+    // The hunter's bow (job 15) at the design-override balance shared with the real-content merge
+    // (`catalog/hunting.ts` — weaker than the short bow). No `goodType`: the bow is the trade's own
+    // implement, outside the equipment economy, exactly as the extracted row ships.
+    {
+      typeId: WEAPON_HUNTER_BOW,
+      id: 'hunter_bow',
+      tribeType: PRIMARY_TRIBE,
+      jobType: JOB_HUNTER,
+      mainType: RANGED_MAIN_TYPE,
+      munitionType: ARROW_MUNITION,
+      speed: BOW_SPEED,
+      minRange: HUNTER_BOW_BALANCE.minRange,
+      maxRange: HUNTER_BOW_BALANCE.maxRange,
+      damage: { ...HUNTER_BOW_BALANCE.damage },
     },
     // The wildlife tribes' natural weapons (`weapons.ini` `bearfist`/`wolvefist`, bare-target column),
     // one row per animal tribe so a jobless animal binds its combat identity (the first-weapon-row

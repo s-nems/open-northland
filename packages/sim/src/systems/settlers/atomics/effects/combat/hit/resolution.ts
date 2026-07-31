@@ -7,8 +7,9 @@ import type { SystemContext } from '../../../../../context.js';
 import { tryDeathSaveDraught } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { entityNode, manhattan } from '../../../../../spatial/nodes.js';
+import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
-import { harvestCadaver, provokeAnger } from './reactions.js';
+import { provokeAnger } from './reactions.js';
 import { collectStagger, type PendingStagger } from './stagger.js';
 
 /**
@@ -101,8 +102,8 @@ function meleeTargetOutOfReach(
  * The four follow-ups a landed blow drives (all keyed on `attacker`, which a projectile's `tryGet` tolerates
  * as gone — a dead archer's arrow still lands): **provoke** an otherwise-passive `getAngry` animal
  * ({@link provokeAnger}); **fight XP** ({@link grantFightExperience}) on a damaging blow, into the weapon's
- * fight bucket (`weaponMainType`); **cadaver meat** ({@link harvestCadaver}) on a hunter's lethal strike on
- * catchable prey; **stagger** ({@link collectStagger}) when the target survives (collected for the deferred
+ * fight bucket (`weaponMainType`); **carcass** ({@link spawnCarcasses}) on a hunter's lethal strike on
+ * huntable prey; **stagger** ({@link collectStagger}) when the target survives (collected for the deferred
  * `applyPendingStaggers` the caller runs after its loop). A felled target isn't staggered (it's being reaped).
  */
 export function resolveCombatHit(
@@ -138,17 +139,20 @@ export function resolveCombatHit(
   // the drain so an overkill still counts as a damaging blow.
   const dealtDamage = damage > 0;
   const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
+  // Captured before the drain: the carcass spawns only on the alive→dead TRANSITION, so a second blow
+  // landing this tick on an already-felled target (two hunters' hit frames on one prey) never mints a
+  // second carcass — goods stay conserved.
+  const wasAlive = health.hitpoints > 0;
   // A KILLING blow (hitpoints > 0: a target already at 0, e.g. a debug kill awaiting cleanup, is not
   // revived) may be answered by the healing draught's death-save, which resets the pool itself; the
   // blow still counted (XP, anger).
-  const saved =
-    health.hitpoints > 0 && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
+  const saved = wasAlive && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
   // The outer max floors the pool itself (a hit never drives it below 0).
   if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType); // train the weapon class
   if (health.hitpoints <= 0) {
-    harvestCadaver(world, ctx, attacker, target); // a lethal blow may yield meat — no flinch (dying)
+    if (wasAlive) spawnCarcasses(world, ctx, attacker, target); // a hunter's kill leaves its carcass
   } else {
     collectStagger(world, ctx, target, pendingStaggers); // a survivor may flinch (applied after the loop)
   }

@@ -208,6 +208,11 @@ export const enContent = {
       summary:
         'Bears, stags and wolves spawn as herds on open grass, drawn with their species bodies and shadows.',
     },
+    hunting: {
+      title: 'Hunter at work',
+      summary:
+        'A flag-bound hunter shoots the hares near its flag, and carries the meat off their carcasses home pluck by pluck - while the sheep herd, kept for husbandry, is left as a last resort.',
+    },
     equipment: {
       title: 'Equipment window',
       summary:

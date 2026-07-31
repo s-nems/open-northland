@@ -7,6 +7,8 @@ import {
   type GatheringPipeline,
   type GoodType,
   type HumanJobExperienceType,
+  type HuntPrey,
+  indexById,
   type JobType,
   type LandscapeGfx,
   lastByTypeId,
@@ -91,6 +93,8 @@ export interface ContentIndex {
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
   /** Animal records by their `tribeType` (an animal's identity is its tribe). */
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
+  /** Hunt-prey rows by the prey's `tribeType` — membership IS huntability ({@link HuntPrey}). */
+  readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
@@ -218,6 +222,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     militaryGoods: militaryGoodTypes(content),
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
+    huntPreyByTribe: byKey(content.huntPrey, (p) => p.tribeType),
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobs,
     canonicalWorkerJobsByBuilding: canonicalWorkerJobLists(workerJobs),

@@ -157,11 +157,9 @@ export function spawnSettler(
   // its real feet and render/audio see the final spot.
   evictSettlerFromBlockedSpawn(world, ctx, e);
   // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
-  // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only searches its flag's
-  // radius, not the whole map. A non-gathering trade gets no flag. Source basis: a design rule (user-specified),
-  // approximating the original's observed collector-flag work-area model; the not-yet-wired half (a
-  // building-assigned gatherer delivering to its building) is tracked in
-  // docs/tickets/sim/building-assigned-gatherers.md.
+  // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only searches its
+  // flag's radius, not the whole map. A non-gathering trade gets no flag. Source basis: a design rule
+  // (user-specified), approximating the original's observed collector-flag work-area model.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   stampGatherGood(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });

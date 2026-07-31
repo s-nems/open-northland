@@ -1,51 +1,7 @@
-import { Anger, Carrying, Settler } from '../../../../../../components/index.js';
+import { Anger, Settler } from '../../../../../../components/index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
-import {
-  angryGameTimeOf,
-  cadaverYieldOf,
-  isAggressiveAnimal,
-  isCatchableAnimal,
-  isHunterJob,
-  isProvokableAnimal,
-  MEAT_GOOD,
-} from '../../../../../readviews/index.js';
-import { addCarry } from '../../goods/index.js';
-
-/**
- * The hunter's `harvest_cadaver` payoff — when a **hunter**'s lethal blow fells **catchable prey**, the
- * slayer gains the kill's meat onto its back. Models the original's `viking_hunter_attack` →
- * `viking_hunter_harvest_cadaver` (`setatomic 15 33 …`) chain *in place on the killing blow*: a hunter
- * ({@link isHunterJob}) who drains a {@link isCatchableAnimal} prey animal to 0 gains
- * {@link cadaverYieldOf} units (the prey's `maximumcadaversize`) of {@link MEAT_GOOD} via the same
- * {@link addCarry} carriers use — goods are conserved (the meat is created by the kill, exactly as the
- * original's harvest atomic yields it; the corpse leaves the field when `cleanupSystem` reaps it).
- *
- * No-ops unless every condition holds: the `attacker` is a hunter, the `target` is catchable prey, and
- * the yield is positive (a `maximumcadaversize` of 0 / a non-animal yields nothing). One guard worth
- * naming: {@link addCarry} THROWS if the hunter already carries a *different* good (a planner bug for a
- * harvester, but a fighting hunter never should) — so if the hunter is somehow already loaded with
- * another good, the meat is dropped (skipped) rather than crashing the tick; a hunter carrying meat
- * already merges the new units.
- *
- * source-basis: the meat **good** and **per-kill amount** are pinned params (the `meat` id + the prey's
- * `maximumcadaversize`); that the yield lands *on the killing blow* rather than via a separate
- * walk-to-corpse `harvest_cadaver` atomic, and the 1-cadaver-unit→1-meat-unit mapping, are approximated
- * (source basis "Hunter cadaver-harvest yield"). Pure over `content` + entity state, no RNG/wall-clock.
- */
-export function harvestCadaver(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
-  const hunter = world.tryGet(attacker, Settler);
-  if (hunter === undefined || !isHunterJob(ctx.content, hunter.jobType)) return; // hunters only
-  const prey = world.tryGet(target, Settler);
-  if (prey === undefined || !isCatchableAnimal(ctx.content, prey.tribe)) return; // only catchable prey
-  const cadaverYield = cadaverYieldOf(ctx.content, prey.tribe);
-  if (cadaverYield <= 0) return; // no readable cadaver size — nothing to harvest
-  // If the hunter is somehow already carrying a DIFFERENT good, `addCarry` would throw (its harvester-bug
-  // guard). A fighting hunter shouldn't be, but skip rather than crash the tick on that edge.
-  const held = world.tryGet(attacker, Carrying);
-  if (held !== undefined && held.goodType !== MEAT_GOOD) return;
-  addCarry(world, attacker, MEAT_GOOD, cadaverYield);
-}
+import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from '../../../../../readviews/index.js';
 
 /**
  * Provoke a struck **passive but `getAngry`** animal into temporary hostility — the provoked half of

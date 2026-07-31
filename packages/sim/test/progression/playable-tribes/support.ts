@@ -18,6 +18,7 @@ export function tribeContent(): ContentSet {
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 3, id: 'coin' }, // the good a frank's tech edge unlocks
+      { typeId: 21, id: 'meat', atomics: { harvest: 33 } }, // the cow's carcass yield (huntPrey)
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -66,10 +67,13 @@ export function tribeContent(): ContentSet {
         // ignorehouses — a bear barges through buildings (ignoresHousesAnimal); NOT warrantable (wild).
         ignoreHouses: true,
       },
-      // The cow (tribe 10) is CATCHABLE prey: passive (not aggressive/getAngry), tamable/huntable, and
-      // WARRANTABLE (owned penned livestock — isWarrantableAnimal); it does NOT ignore houses (paths
-      // around them like any settler).
+      // The cow (tribe 10) is CATCHABLE livestock: passive (not aggressive/getAngry), and WARRANTABLE
+      // (owned penned livestock — isWarrantableAnimal); it does NOT ignore houses (paths around them
+      // like any settler). Its huntability comes from the huntPrey row below, not this record.
       { id: 'cow', tribeType: 10, catchable: true, warrantable: true, hitpointsAdult: 1000 },
     ],
+    // The hunter's prey table: membership is huntability (`mayHunt`/`isHuntablePrey`), so the bears
+    // (8) and wolves (9) stay unhuntable with no row.
+    huntPrey: [{ tribeType: 10, yields: [{ goodType: 21, amount: 4 }] }],
   });
 }

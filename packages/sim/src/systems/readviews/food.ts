@@ -92,9 +92,8 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
  *
  * Scope: this resolves the mapping only. {@link carriedGoodForm} decides WHEN it applies (a lift out of the
  * producing house), so a good minted straight onto the back bypasses it entirely. Under shipped content the
- * one seam that mints an actual dish is a hunter's meat from `harvestCadaver`
- * (`atomics/effects/combat/hit/reactions.ts`); the bare-node pluck in `atomics/effects/goods/harvest.ts` is
- * the same seam structurally, but no bare-node good is a dish today. See
+ * one such seam is the bare-node pluck in `atomics/effects/goods/harvest.ts`, and the one dish it mints is
+ * the hunter's meat off a carcass node (`atomics/effects/combat/hit/carcass.ts`). See
  * docs/tickets/sim/dish-conversion-at-carry-mint.md.
  */
 export function exportedGoodForm(ctx: SystemContext, goodType: number): number {

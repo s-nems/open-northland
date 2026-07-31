@@ -82,8 +82,9 @@ export function engageCombatant(
   const spec = engageSpec(world, ctx, terrain, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
-    // A DEFEND unit holds its post when nothing is in its radius; everyone else returns to the economy.
-    if (spec.defend !== null) returnToAnchor(world, e, here, spec.defend.anchorCell);
+    // A DEFEND unit (`defend.hold`) walks back and holds its post when nothing is in its radius;
+    // everyone else — including a hunter between hunts — returns to the economy.
+    if (spec.defend?.hold) returnToAnchor(world, e, here, spec.defend.anchorCell);
     else disengage(world, e);
     return;
   }

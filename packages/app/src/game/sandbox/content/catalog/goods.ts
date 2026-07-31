@@ -3,6 +3,7 @@ import {
   CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
+  HARVEST_CADAVER_ATOMIC,
   IRON_HARVEST_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
@@ -12,6 +13,7 @@ import {
 import { FARMING_BALANCE_BY_ID } from '../../../../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../../../../catalog/gathering.js';
 import { EXTENDED_GOODS } from '../../../../catalog/goods.js';
+import { CARCASS_GOOD_SLUGS } from '../../../../catalog/hunting.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
   GOOD_COIN,
@@ -88,12 +90,17 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     },
     ...EXTENDED_GOODS.map((good) => {
       const equip = EQUIP_CLASS_BY_TYPE.get(good.typeId);
+      // The carcass goods a hunter's kill leaves as harvestable nodes (`catalog/hunting.ts`) carry the
+      // real carcass-harvest atomic, mirroring the extracted leather/meat rows (wool's is the same
+      // named approximation as the real-content overlay).
+      const carcassGood = (CARCASS_GOOD_SLUGS as readonly string[]).includes(good.id);
       return {
         typeId: good.typeId,
         id: good.id,
         name: extras.goodNames?.get(good.id) ?? good.name,
         weight: 1,
         ...(equip !== undefined ? { equip } : {}),
+        ...(carcassGood ? { atomics: { harvest: HARVEST_CADAVER_ATOMIC } } : {}),
         ...(good.typeId === GOOD_WHEAT
           ? {
               atomics: {

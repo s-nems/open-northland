@@ -43,11 +43,13 @@ export {
 // future collision); package siblings import them from ./geometry.js directly.
 export { resourceBlockedCells } from './resource-blocked-cache.js';
 export {
+  ANCHOR_ONLY_FOOTPRINT,
   createResourceNode,
   type ResourceNodeSpec,
   resourceFootprintForGood,
   stampResourceFootprint,
   stampResourceFootprintData,
+  stampResourceFootprintOrFallback,
   unstampResourceFootprint,
 } from './resources.js';
 export { ROUTE_REGION_POCKET_CAP, routeRegions } from './route-regions.js';

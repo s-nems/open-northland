@@ -56,9 +56,9 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` — huntable prey a hunter
- * ({@link mayHunt}) may strike to harvest, distinct from combat hostility (original's
- * `viking_hunter_attack` → `..._harvest_cadaver` chain; source basis "Hunter strike on catchable prey").
+ * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` — livestock a tribe can catch and
+ * pen (cattle, sheep). Only the two husbandry species carry it; huntability is the separate authored
+ * {@link HuntPrey} table ({@link isHuntablePrey}). Read by the deferred husbandry drive.
  */
 export function isCatchableAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.catchable ?? false;
@@ -66,7 +66,7 @@ export function isCatchableAnimal(content: ContentSet, tribeType: number): boole
 
 /**
  * Whether `tribeType`'s `animaltypes.ini` record sets `warrantable` — it can become a tribe's property
- * (penned livestock), distinct from {@link isCatchableAnimal} (huntable for meat). Read by the deferred
+ * (penned livestock), the ownership half of the `catchable` pair. Read by the deferred
  * livestock-ownership drive.
  */
 export function isWarrantableAnimal(content: ContentSet, tribeType: number): boolean {
@@ -149,18 +149,27 @@ export function locomotionOf(content: ContentSet, tribeType: number): Locomotion
 }
 
 /**
- * The good a felled animal's corpse yields when a hunter harvests it — `meat`, `goodtypes.ini` `type 21`
- * (verified in `Data/logic/goodtypes.ini`; distinct from the `cadaver_meat` landscape decal id 80, the
- * corpse object on the ground, not a stock good).
+ * Whether `tribeType` is huntable prey — it has a {@link HuntPrey} row. The authored prey table is the
+ * single huntability signal: game species (hares, birds, deer, boars) plus the last-resort livestock;
+ * predators and decorative fauna have no row (source basis "Hunter prey and carcass yields").
  */
-export const MEAT_GOOD = 21;
+export function isHuntablePrey(content: ContentSet, tribeType: number): boolean {
+  return contentIndex(content).huntPreyByTribe.has(tribeType);
+}
 
 /**
- * How many units of {@link MEAT_GOOD} a felled animal of `tribeType` yields when its cadaver is harvested
- * — its `animaltypes.ini` `maximumcadaversize`, or 0 when the tribe has no animal record. Approximated:
- * meat is awarded in place on the killing blow (no walk-to-corpse atomic yet) and one cadaver-size unit
- * maps to one meat unit (source basis "Hunter cadaver-harvest yield").
+ * Whether `tribeType` is prey a hunter takes only when no normal prey is in its hunting area — the
+ * {@link HuntPrey} `lastResort` species (cattle, sheep: livestock better kept for husbandry).
  */
-export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
-  return animalRecord(content, tribeType)?.maximumCadaverSize ?? 0;
+export function isLastResortPrey(content: ContentSet, tribeType: number): boolean {
+  return contentIndex(content).huntPreyByTribe.get(tribeType)?.lastResort ?? false;
+}
+
+/** The carcass contents a felled prey animal of `tribeType` leaves — its {@link HuntPrey} `yields`
+ *  (one harvestable carcass node per entry), or null when the tribe is not huntable prey. */
+export function huntYieldsOf(
+  content: ContentSet,
+  tribeType: number,
+): readonly { readonly goodType: number; readonly amount: number }[] | null {
+  return contentIndex(content).huntPreyByTribe.get(tribeType)?.yields ?? null;
 }

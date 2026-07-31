@@ -82,6 +82,35 @@ export function stampResourceFootprint(
   return true;
 }
 
+/**
+ * The stand-in footprint for a node whose good resolves no landscape record - the synthetic fixtures,
+ * the sandbox catalog, and real goods with no `[GfxLandscape]` stage (wool). Non-blocking (empty
+ * walk/build match the recorded lanes of the goods it stands in for), and `work` listing the node's
+ * own anchor is an invention - a real record's work area is the neighbour ring - kept anchor-only so a
+ * worker can reach the node on a one-node map; the divergence class is tracked in
+ * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. Declaring a footprint at all also
+ * moves the node from the placement rule's OBSTACLE channel to RESOURCE_ANCHOR: it admits a building
+ * over the node but refuses a work flag on it, like every footprinted resource.
+ */
+export const ANCHOR_ONLY_FOOTPRINT: ResourceFootprintData = Object.freeze({
+  walk: [],
+  build: [],
+  work: [{ dx: 0, dy: 0 }],
+});
+
+/** Stamp a node with its good's content-derived footprint, falling back to
+ *  {@link ANCHOR_ONLY_FOOTPRINT} when the content ships no record - the shared stamp of the two
+ *  effect-spawned node kinds (a sown field, a carcass). */
+export function stampResourceFootprintOrFallback(
+  world: World,
+  content: ContentSet,
+  resource: Entity,
+  goodType: number,
+): void {
+  if (stampResourceFootprint(world, content, resource, goodType)) return;
+  stampResourceFootprintData(world, resource, ANCHOR_ONLY_FOOTPRINT);
+}
+
 /** Remove a resource footprint through the incremental blocked-cell cache before destroying a node. */
 export function unstampResourceFootprint(world: World, resource: Entity): void {
   if (!world.has(resource, ResourceFootprint)) return;
@@ -129,10 +158,12 @@ export interface ResourceNodeSpec {
 /**
  * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}: a {@link Position} +
  * {@link Resource} carrying its yield/atomic, its content-derived footprint (from `good`), and the
- * {@link Felling}/{@link MineDeposit} lifecycle marker the spec asks for. This is the ONE place a
- * resource node is built — the scene-setup helpers (pre-tick-0, direct) and the `placeResource`
- * command handler (runtime, through the mutation seam) both route here, so a hand-placed tree and a
- * command-placed tree are byte-identical entities.
+ * {@link Felling}/{@link MineDeposit} lifecycle marker the spec asks for. Every PLACED node is built
+ * here — the scene-setup helpers (pre-tick-0, direct) and the `placeResource` command handler
+ * (runtime, through the mutation seam) both route here, so a hand-placed tree and a command-placed
+ * tree are byte-identical entities. The two EFFECT-spawned node kinds (a sown field, a hunter's
+ * carcass) assemble their own extra shape but stamp their footprint through the same seam
+ * ({@link stampResourceFootprintOrFallback}).
  *
  * Returns `null` — creating NOTHING, so no entity id is burned — when `good` has no resource footprint
  * record: a scene-setup caller treats that as a hard bug and throws; the command handler treats it as

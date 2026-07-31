@@ -18,9 +18,9 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
 - **62 `fisher` → `fish`** — `fish` carries no harvest atomic and `fisher` no harvest grant, so no work
   flag exists to narrow. Only actionable if fishing ever becomes flag work.
 - **38 `hunter` → `prey` / 13 `farmer` → `wheat`** — **no action needed, do not "fix" these.** `prey` is
-  the resource, not a good; the hunter falls back to every good it can harvest (`leather` + `meat`, both
-  harvest atomic 33), which is what hunting prey yields. A farmer is bound to its farm by the farming
-  rule (`jobCanHarvest`), never a flag gatherer.
+  the resource, not a good; the hunter falls back to every good it can harvest (`leather` + `meat` +
+  `wool`, all harvest atomic 33), which is what hunted carcasses yield. A farmer is bound to its farm by
+  the farming rule (`jobCanHarvest`), never a flag gatherer.
 
 ## Scope (the workshop half)
 

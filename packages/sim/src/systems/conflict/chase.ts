@@ -84,7 +84,7 @@ export function chase(
   target: ChaseTarget,
   weapon: { minRange: number; maxRange: number },
   stance: CombatantStance,
-  defend: { anchorCell: NodeId; leash: number } | null,
+  defend: { anchorCell: NodeId; leash: number; hold: boolean } | null,
 ): void {
   const engagement = world.add(e, Engagement, {
     repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
@@ -143,10 +143,13 @@ export function chase(
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return;
   }
-  // DEFEND leash: never step past `leash` tiles from the anchor to reach an enemy — a target hittable only by
-  // breaking the leash is left alone, and the defender walks back to its post.
+  // Anchor leash: never step past `leash` tiles from the anchor to reach an enemy — a target hittable only by
+  // breaking the leash is left alone. A post-holder (DEFEND, `hold`) walks back to its post; a hunter
+  // disengages instead — its between-hunts time belongs to the flag-gatherer drive, and a combat
+  // walk-back would fight that drive for the unit (see the engageSpec hunter branch).
   if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
-    returnToAnchor(world, e, here, defend.anchorCell);
+    if (defend.hold) returnToAnchor(world, e, here, defend.anchorCell);
+    else disengage(world, e);
     return;
   }
   if (dest === here && !travelling) {
