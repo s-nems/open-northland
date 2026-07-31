@@ -1,6 +1,5 @@
 import type { ToolButtonId } from './layout.js';
-
-export type ToolWindowId = 'menu' | 'goods' | 'extras' | 'stats';
+import type { ToolWindowId } from './windows.js';
 
 /**
  * What pressing a strip button does, or null for a button v1 draws but does not wire. A window button

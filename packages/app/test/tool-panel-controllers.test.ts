@@ -18,6 +18,7 @@ import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
+import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
 
 /**
@@ -52,24 +53,53 @@ const BUILDINGS: readonly MenuBuildingEntry[] = [
   { typeId: 23, label: 'Joinery', kind: 'workplace' },
 ];
 
+/** The stats window's placement, which `stats-window.ts` keeps private: past the menu column, dropped
+ *  below the strip top (design px). */
+const STATS_WIDTH = 150;
+const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
+const STATS_OFFSET_Y = 15;
+
 /** The centre of a rect (for synthetic clicks). */
 function centreOf(r: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
-describe('menu window controller', () => {
-  /** The same layout the controller computes internally (same origin formula + inputs): to the right of
-   *  the strip, dropping from the buildings button so it clears the top-left debug overlay. */
-  function expectedLayout(ctx: PanelContext) {
-    const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? ctx.layout.strip.y;
-    return layoutBuildingMenu(BUILDINGS, {
-      originX: ctx.layout.width + WIN_PAD * ctx.scale,
-      originY: buildingsY,
-      scale: ctx.scale,
-      selected: 'all',
-    });
-  }
+/** The same layout the build-menu controller computes internally (same origin formula + inputs): to the
+ *  right of the strip, dropping from the buildings button so it clears the top-left debug overlay. */
+function expectedMenuLayout(ctx: PanelContext) {
+  const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? ctx.layout.strip.y;
+  return layoutBuildingMenu(BUILDINGS, {
+    originX: ctx.layout.width + WIN_PAD * ctx.scale,
+    originY: buildingsY,
+    scale: ctx.scale,
+    selected: 'all',
+  });
+}
 
+// A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
+const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
+  typeId: 200 + i,
+  label: `B${i}`,
+  kind: 'workplace',
+}));
+
+/** A canvas point inside the build menu's first list row (past the headline + tab band). */
+function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
+  const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? 0;
+  return { x: ctx.layout.width + WIN_PAD * ctx.scale + 20, y: buildingsY + 45 * ctx.scale };
+}
+
+/** A HUD read-view: the volatile `tick` row the stats window excludes from its change key, then a tally. */
+const hud = (tick: number, wood: number): HudLayout => ({
+  width: 100,
+  height: 40,
+  rows: [
+    { x: 0, y: 0, text: `Tribe 1 · tick ${tick}` },
+    { x: 0, y: 12, text: `wood: ${wood}` },
+  ],
+});
+
+describe('menu window controller', () => {
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
     const { ctx } = stubContext();
     const menu = createMenuWindow({
@@ -78,7 +108,7 @@ describe('menu window controller', () => {
       container: new Container(),
       onPick: () => undefined,
     });
-    const geo = expectedLayout(ctx);
+    const geo = expectedMenuLayout(ctx);
 
     expect(menu.isOpen()).toBe(false);
     expect(menu.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
@@ -103,7 +133,7 @@ describe('menu window controller', () => {
       onPick: (typeId) => picks.push({ typeId, menuOpenAtPick: menu.isOpen() }),
     });
     menu.toggle();
-    const row = centreOf(expectedLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+    const row = centreOf(expectedMenuLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
 
     expect(menu.handleClick(row.x, row.y)).toBe(true);
     expect(picks).toEqual([{ typeId: 23, menuOpenAtPick: false }]);
@@ -121,18 +151,6 @@ describe('menu window controller', () => {
     expect(menu.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(menu.isOpen()).toBe(true);
   });
-
-  // A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
-  const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
-    typeId: 200 + i,
-    label: `B${i}`,
-    kind: 'workplace',
-  }));
-  /** A canvas point inside the first list row (past the headline + tab band). */
-  function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
-    const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? 0;
-    return { x: ctx.layout.width + WIN_PAD * ctx.scale + 20, y: buildingsY + 45 * ctx.scale };
-  }
 
   it('consumes the wheel over the open window and ignores it outside', () => {
     const { ctx } = stubContext();
@@ -243,14 +261,6 @@ describe('goods window controller', () => {
 });
 
 describe('stats window controller', () => {
-  const hud = (tick: number, wood: number): HudLayout => ({
-    width: 100,
-    height: 40,
-    rows: [
-      { x: 0, y: 0, text: `Tribe 1 · tick ${tick}` },
-      { x: 0, y: 12, text: `wood: ${wood}` },
-    ],
-  });
   it('rebuilds only when a tally row changes, never on the tick row alone', () => {
     const { ctx, made } = stubContext();
     const stats = createStatsWindow({ ctx, container: new Container() });
@@ -295,12 +305,120 @@ describe('stats window controller', () => {
     stats.refresh(() => hud(1, 5));
 
     // The drawn rect's origin mirrors the controller's own formula; probe just inside it.
-    const x = ctx.layout.width + (WIN_PAD + 150 + 3 * WIN_PAD) * ctx.scale + 1;
-    const y = ctx.layout.strip.y + 15 * ctx.scale + 1;
+    const x = ctx.layout.width + STATS_GAP_X * ctx.scale + 1;
+    const y = ctx.layout.strip.y + STATS_OFFSET_Y * ctx.scale + 1;
     expect(stats.claims(x, y)).toBe(true);
     expect(stats.handleClick(x, y)).toBe(true);
     expect(stats.isOpen()).toBe(false);
     expect(stats.claims(x, y)).toBe(false);
+  });
+});
+
+describe('tool windows registry', () => {
+  const GRANTS: ExtrasGrantsSeam = {
+    read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
+    set: () => true,
+  };
+  function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
+    const { ctx } = stubContext();
+    const picks: number[] = [];
+    const windows = createToolWindows({
+      ctx,
+      container: new Container(),
+      buildings,
+      goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
+      grants: GRANTS,
+      onPickBuilding: (typeId) => picks.push(typeId),
+      onPickGood: () => undefined,
+    });
+    return { ctx, windows, picks };
+  }
+
+  it('claims a point only while a pop-up is open under it', () => {
+    const { ctx, windows } = mountWindows();
+    const inside = centreOf(expectedMenuLayout(ctx).window);
+
+    expect(windows.claims(inside.x, inside.y)).toBe(false); // all closed → the world keeps the point
+    windows.byId.menu.toggle();
+    expect(windows.claims(inside.x, inside.y)).toBe(true);
+    expect(windows.claims(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
+  });
+
+  it('routes a click to the open pop-up under the point and passes on the rest', () => {
+    const { ctx, windows, picks } = mountWindows();
+    windows.byId.menu.toggle();
+    const row = centreOf(expectedMenuLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+
+    expect(windows.handleClick(row.x, row.y)).toBe(true);
+    expect(picks).toEqual([23]); // reached the build menu's pick → the panel's placement mode
+    // Nothing open under the point: the press falls through to placement / world picking.
+    expect(windows.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
+  });
+
+  // Pins the panel's current probe order, which is NOT draw order: statistics draws over the build menu
+  // yet is probed last (docs/tickets/app/tool-panel-window-click-order.md flips both this and PROBE_ORDER).
+  it('probes the pop-ups in the pinned order, so an overlap goes to the earlier one', () => {
+    const { ctx, windows } = mountWindows();
+    windows.byId.menu.toggle();
+    windows.byId.stats.toggle();
+    windows.refresh(() => hud(1, 5)); // the stats window draws (and gains its rect) on its first refresh
+
+    // The statistics window opens over the build menu's column: a point inside both.
+    const shared = {
+      x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1,
+      y: expectedMenuLayout(ctx).window.y + 1,
+    };
+    expect(windows.byId.menu.claims(shared.x, shared.y)).toBe(true);
+    expect(windows.byId.stats.claims(shared.x, shared.y)).toBe(true);
+
+    expect(windows.handleClick(shared.x, shared.y)).toBe(true);
+    expect(windows.byId.stats.isOpen()).toBe(true); // the menu consumed it first; stats never saw it
+  });
+
+  it('consumes the wheel over any open pop-up, list or not', () => {
+    const { ctx, windows } = mountWindows();
+    const overStats = {
+      x: ctx.layout.width + STATS_GAP_X * ctx.scale + 1,
+      y: ctx.layout.strip.y + STATS_OFFSET_Y * ctx.scale + 1,
+    };
+    expect(windows.handleWheel(overStats.x, overStats.y, 120)).toBe(false); // closed → the camera zooms
+
+    windows.byId.stats.toggle();
+    windows.refresh(() => hud(1, 5));
+    // The statistics window has no scrollable list, but the wheel must not page the document behind it.
+    expect(windows.handleWheel(overStats.x, overStats.y, 120)).toBe(true);
+  });
+
+  it('scrolls the build menu with the wheel it consumed', () => {
+    const { ctx, windows, picks } = mountWindows(MANY);
+    const p = firstRowPoint(ctx);
+
+    // Baseline: at rest the top row is the first building (a pick closes the menu).
+    windows.byId.menu.toggle();
+    windows.handleClick(p.x, p.y);
+    const top = picks.at(-1) ?? -1;
+
+    // Five wheels through the registry; the SAME point now clicks five buildings later.
+    windows.byId.menu.toggle();
+    for (let i = 0; i < 5; i++) expect(windows.handleWheel(p.x, p.y, 120)).toBe(true);
+    windows.handleClick(p.x, p.y);
+    expect(picks.at(-1)).toBe(top + 5);
+  });
+
+  it('pulls the HUD read-view in the per-frame pass only for an open window', () => {
+    const { windows } = mountWindows();
+    let builds = 0;
+    const pull = (): HudLayout => {
+      builds++;
+      return hud(1, 5);
+    };
+
+    windows.refresh(pull);
+    expect(builds).toBe(0); // a closed statistics window must not cost the frame its entity scan
+
+    windows.byId.stats.toggle();
+    windows.refresh(pull);
+    expect(builds).toBe(1);
   });
 });
 

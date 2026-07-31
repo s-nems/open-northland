@@ -4,7 +4,7 @@ import { messages } from '../../i18n/index.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
-import { createWindowShell } from './window-shell.js';
+import { createWindowShell, type ToolWindow } from './window-shell.js';
 
 /** Stats window width (design px) — sized to the read-view's longest tally rows. */
 const STATS_WIDTH = 150;
@@ -23,15 +23,9 @@ export interface StatsWindowDeps {
   readonly container: Container;
 }
 
-/** The pop-up statistics window: toggled by the strip button, refreshed each frame from the HUD read-view. */
-export interface StatsWindow {
-  isOpen(): boolean;
-  toggle(): void;
-  close(): void;
-  /** True when the point is over the open window (the HUD claims it before world picking). */
-  claims(x: number, y: number): boolean;
-  /** A click strictly inside the open window closes it (v1 has no window chrome controls). */
-  handleClick(x: number, y: number): boolean;
+/** The pop-up statistics window: toggled by the strip button, refreshed each frame from the HUD read-view.
+ *  A click strictly inside it closes it (v1 has no window chrome controls). */
+export interface StatsWindow extends ToolWindow {
   /** Per-frame while open: rebuild only when a tally row actually changed (see the change key). `hudFor`
    *  is pulled only while the window is open, because building it is an O(entities) scan. */
   refresh(hudFor: () => HudLayout): void;

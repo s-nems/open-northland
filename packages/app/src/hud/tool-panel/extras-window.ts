@@ -25,7 +25,7 @@ import {
   layoutExtrasMenu,
   toggleGrant,
 } from './extras-menu.js';
-import { createWindowShell } from './window-shell.js';
+import { createWindowShell, type ToolWindow } from './window-shell.js';
 
 /** Text sizes (design px) - the build menu's title/tab/row scale. */
 const TITLE_PX = 13;
@@ -67,14 +67,7 @@ export interface ExtrasWindowDeps {
 }
 
 /** The pop-up extras ("chest") window: the assistant/plans tabs and the assistant's controls. */
-export interface ExtrasWindow {
-  isOpen(): boolean;
-  toggle(): void;
-  close(): void;
-  /** True when the point is over the open window (the HUD claims it before world picking). */
-  claims(x: number, y: number): boolean;
-  /** Route a canvas-space click; returns true when the window consumed it. */
-  handleClick(x: number, y: number): boolean;
+export interface ExtrasWindow extends ToolWindow {
   /** Per-frame while open: re-place the text runs against the live canvas size. */
   place(): void;
 }

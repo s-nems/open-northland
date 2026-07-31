@@ -10,11 +10,10 @@ import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
-import { createExtrasWindow, type ExtrasGrantsSeam } from './extras-window.js';
+import type { ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
-import { createGoodsWindow } from './goods-window.js';
 import {
   buildToolPanelLayout,
   hitTestToolPanel,
@@ -22,12 +21,11 @@ import {
   TOOL_PANEL_STRIP,
   type ToolButtonId,
 } from './layout.js';
-import { createMenuWindow } from './menu-window.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
-import { createStatsWindow } from './stats-window.js';
 import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
+import { createToolWindows } from './windows.js';
 
 /**
  * The left in-game tool panel — the retained screen-space HUD that draws the original toolbar strip, the
@@ -42,11 +40,9 @@ import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip }
  * parchment when `content/` is absent). Text is the bundled vector serif (`hud/ui-text.ts`) — the crisp
  * shared HUD default, not the decoded `.fnt` bitmap face.
  *
- * The package splits by concern: the pure geometry / speed-state / menu models (`layout.ts`,
- * `game-speed.ts`, `building-menu.ts` — headlessly unit-tested) from the window controllers
- * (`menu-window.ts`, `goods-window.ts`, `stats-window.ts` on the shared `window-shell.ts` lifecycle, plus
- * `placement.ts` — each over the shared {@link PanelContext}); this module mounts the strip, owns the
- * speed button, and routes input.
+ * The package splits by concern: the pure geometry / speed-state / menu models (headlessly unit-tested),
+ * the pop-up window layer (`windows.ts`), and the held placement / good-drop modes, each over the shared
+ * {@link PanelContext}. This module mounts the strip, owns the speed button, and routes input into them.
  */
 
 export interface ToolPanelOptions {
@@ -152,7 +148,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   app.stage.addChild(root);
   const stripContainer = new Container();
   const hoverContainer = new Container();
-  const windowContainer = new Container(); // menu + stats windows
+  const windowContainer = new Container(); // the pop-up windows
   const bannerContainer = new Container(); // placement banner
   root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
 
@@ -209,12 +205,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     tribe: opts.tribe,
     owner: opts.owner,
   });
-  const menu = createMenuWindow({
-    ctx,
-    buildings: opts.buildings,
-    container: windowContainer,
-    onPick: (typeId) => placement.enter(typeId),
-  });
   const goodsDrop = createGoodsDropController({
     ctx,
     container: bannerContainer,
@@ -222,14 +212,15 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     enqueue,
     screenToTile: opts.screenToTile,
   });
-  const goodsWindow = createGoodsWindow({
+  const windows = createToolWindows({
     ctx,
-    goods: opts.goods,
     container: windowContainer,
-    onPick: (goodType) => goodsDrop.enter(goodType),
+    buildings: opts.buildings,
+    goods: opts.goods,
+    grants: opts.grants,
+    onPickBuilding: (typeId) => placement.enter(typeId),
+    onPickGood: (goodType) => goodsDrop.enter(goodType),
   });
-  const extras = createExtrasWindow({ ctx, container: windowContainer, grants: opts.grants });
-  const stats = createStatsWindow({ ctx, container: windowContainer });
 
   // --- The game-speed button (its own controller — see speed-button.ts) --------------------------------
   const speedButton = createSpeedButton({
@@ -246,7 +237,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   // --- Button actions -------------------------------------------------------------------------------
   const surfaces: ToolButtonSurfaces = {
-    windows: { menu, goods: goodsWindow, extras, stats },
+    windows: windows.byId,
     cancelHeld: () => {
       placement.cancel();
       goodsDrop.cancel();
@@ -264,13 +255,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
     if (pointOverToolPanel(layout, x, y)) return true;
-    if (menu.claims(x, y)) return true;
-    if (goodsWindow.claims(x, y)) return true;
-    if (extras.claims(x, y)) return true;
-    if (stats.claims(x, y)) return true;
+    if (windows.claims(x, y)) return true;
     // Placement / good-drop claim the whole canvas until placed/cancelled.
-    if (placement.isActive() || goodsDrop.isActive()) return true;
-    return false;
+    return placement.isActive() || goodsDrop.isActive();
   };
 
   const onMouseDown = (e: MouseEvent): void => {
@@ -296,18 +283,15 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     if (opts.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
     // Track whether the panel consumes this press; if so, stop it from also reaching world picking.
-    // Priority: strip button > open menu > open stats (close-on-inside) > active placement drop.
+    // Priority: strip button > open pop-up > active placement / good drop.
     let consumed = false;
     const btn = hitTestToolPanel(layout, x, y);
     if (btn !== null) {
       activateButton(btn);
       consumed = true;
     } else {
-      consumed = menu.handleClick(x, y);
+      consumed = windows.handleClick(x, y);
     }
-    if (!consumed) consumed = goodsWindow.handleClick(x, y);
-    if (!consumed) consumed = extras.handleClick(x, y);
-    if (!consumed) consumed = stats.handleClick(x, y);
     if (!consumed) consumed = placement.handleClick(e.clientX, e.clientY);
     if (!consumed) consumed = goodsDrop.handleClick(e.clientX, e.clientY);
     if (consumed) e.stopImmediatePropagation();
@@ -316,7 +300,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let hover: ToolButtonId | null = null;
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    menu.handleHover(x, y); // the open menu tracks its own row-hover highlight
+    windows.handleHover(x, y);
     const next = hitTestToolPanel(layout, x, y);
     if (next === hover) return;
     hover = next;
@@ -328,18 +312,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     }
   };
 
-  // Wheel scrolls the open building menu's list. Suppress the browser's default wheel action over any open
-  // pop-up (the menu scrolls; the stats window has no scroll yet but must not page the document behind the
-  // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
+  // A wheel over an open pop-up belongs to that window, and the browser's default must not page the
+  // document behind the canvas. The camera's pointer guard already skips zoom over these same windows.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    if (
-      menu.handleWheel(x, y, e.deltaY) ||
-      goodsWindow.claims(x, y) ||
-      extras.claims(x, y) ||
-      stats.claims(x, y)
-    )
-      e.preventDefault();
+    if (windows.handleWheel(x, y, e.deltaY)) e.preventDefault();
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -371,7 +348,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
-    return menu.claims(x, y) || goodsWindow.claims(x, y) || extras.claims(x, y) || stats.claims(x, y);
+    return windows.claims(x, y);
   };
 
   return {
@@ -380,12 +357,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     placementType: () => placement.activeType(),
     update(hudFor): void {
       // The strip is a static baked texture (a scene-graph sprite that batches + follows resizes for
-      // free) — no per-frame re-placement. The build menu's vector runs stay put too, so refresh() only
-      // reflows on a resize; the goods window (its own factory), stats window + placement banner re-place.
-      menu.refresh();
-      if (goodsWindow.isOpen()) goodsWindow.place();
-      if (extras.isOpen()) extras.place();
-      stats.refresh(hudFor);
+      // free), so no per-frame re-placement. The pop-ups and the held banners re-place themselves.
+      windows.refresh(hudFor);
       placement.placeBanner();
       goodsDrop.placeBanner();
     },

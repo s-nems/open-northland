@@ -2,6 +2,18 @@ import { type Container, Graphics } from 'pixi.js';
 import { contains, type Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 
+/** What every tool-panel pop-up presents to the panel, whatever it draws inside: a strip button toggles it,
+ *  and the panel probes it for pointer input. */
+export interface ToolWindow {
+  isOpen(): boolean;
+  toggle(): void;
+  close(): void;
+  /** True when the point is over the open window (the HUD claims it before world picking). */
+  claims(x: number, y: number): boolean;
+  /** Route a canvas-space click; true when this window consumed it. */
+  handleClick(x: number, y: number): boolean;
+}
+
 /**
  * The open/close plumbing every tool-panel pop-up window repeats: an open flag, the vector text runs, and
  * one `Graphics` buffer parented under the panel's window container. Each window keeps its own layout,
