@@ -223,5 +223,10 @@ export const enContent = {
       summary:
         'A colonist sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a colonist for whom the soldier trade stays shut.',
     },
+    armor: {
+      title: 'Armor parade',
+      summary:
+        'A parade grid of sword soldiers: one column per armor state (bare, wool, leather, chain, plate) and one row per player colour, every unit standing down so rival owners never fight. For judging the per-armor recolours across team colours.',
+    },
   },
 } as const;

@@ -20,10 +20,33 @@ import type {
  */
 
 /** The player-colour LUT the paletted settler meshes read team colours through; the full contract
- *  lives on {@link SpriteSheet.palette}. */
+ *  lives on {@link SpriteSheet.palette}. `colours` is the texture's total row count. The optional
+ *  armor axis maps a worn armor good to its recolor tier: the LUT then carries one `playerRows`-row
+ *  block per tier (`row = tier * playerRows + player`, tier 0 = the plain player rows), and
+ *  {@link paletteLutRow} resolves the row, falling back to the plain player row when the armor rows
+ *  are absent (a pre-armor 16-row LUT still loads). */
 export interface PlayerColourLut {
   readonly source: TextureSource;
   readonly colours: number;
+  /** Rows per armor-tier block (the player-colour count the LUT was composed with). */
+  readonly playerRows?: number;
+  /** Worn armor `goodType` → its recolor tier (`armortypes.ini` `type`, 1..4). */
+  readonly armorTierByGood?: ReadonlyMap<number, number>;
+}
+
+/** The LUT row a settler reads its colours through: the `(armor tier, player)` block row when the
+ *  worn `armorGood` resolves to a tier the texture actually carries, else the plain player row. */
+export function paletteLutRow(
+  palette: PlayerColourLut,
+  player: number | undefined,
+  armorGood: number | null | undefined,
+): number {
+  const base = player ?? 0; // an unowned settler reads row 0 (the base palette)
+  if (armorGood == null || palette.playerRows === undefined) return base;
+  const tier = palette.armorTierByGood?.get(armorGood);
+  if (tier === undefined) return base;
+  const row = tier * palette.playerRows + base;
+  return row < palette.colours ? row : base;
 }
 
 /** One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame

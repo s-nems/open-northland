@@ -293,7 +293,28 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     // Per-job settler looks (woman / soldier family / children via Age) — the sim-state → skin join.
     ...(characters !== undefined ? { characters } : {}),
     // Team-colour LUT: present ⇒ characters are the indexed atlas and the pool paints each per its player
-    // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites.
-    ...(lut !== undefined ? { palette: { source: lut, colours: lut.pixelHeight } } : {}),
+    // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites. The armor
+    // recolor axis rides along (row scheme owned by render's PlayerColourLut/paletteLutRow).
+    ...(lut !== undefined
+      ? {
+          palette: {
+            source: lut,
+            colours: lut.pixelHeight,
+            playerRows: PLAYER_COLOR_COUNT,
+            armorTierByGood: armorTiersByGood(ir),
+          },
+        }
+      : {}),
   };
+}
+
+/** The worn-armor recolor join: armor `goodType` → its `typeId` (the `TArmorType` tier, the LUT's
+ *  row-block index). Empty for synthetic content (no `armor` lane), which draws plain player rows. */
+function armorTiersByGood(ir: ContentIr | null): ReadonlyMap<number, number> {
+  const byGood = new Map<number, number>();
+  for (const record of ir?.armor ?? []) {
+    if (typeof record.goodType !== 'number' || typeof record.typeId !== 'number') continue;
+    if (!byGood.has(record.goodType)) byGood.set(record.goodType, record.typeId);
+  }
+  return byGood;
 }

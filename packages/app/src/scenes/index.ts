@@ -1,3 +1,4 @@
+import { armorScene } from './armor.js';
 import { barracksScene } from './barracks.js';
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
@@ -45,6 +46,7 @@ export const SCENES: readonly SceneDefinition[] = [
   equipmentScene,
   equipmentEffectsScene,
   barracksScene,
+  armorScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

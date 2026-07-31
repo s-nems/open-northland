@@ -121,9 +121,27 @@ export function readSettlerTribe(components: Readonly<Record<string, unknown>>):
 export function readEquipmentWeaponGood(
   components: Readonly<Record<string, unknown>>,
 ): number | null | undefined {
-  const eq = components.Equipment as { weapon?: { goodType?: unknown } | null } | undefined;
+  return readEquipSlotGood(components, 'weapon');
+}
+
+/** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, the armor-recolor LUT-row
+ *  key ({@link import('../draw-item.js').DrawItem.armorGood}), same tri-state. */
+export function readEquipmentArmorGood(
+  components: Readonly<Record<string, unknown>>,
+): number | null | undefined {
+  return readEquipSlotGood(components, 'armor');
+}
+
+/** The shared tri-state slot read behind the two readers above. */
+function readEquipSlotGood(
+  components: Readonly<Record<string, unknown>>,
+  slot: 'weapon' | 'armor',
+): number | null | undefined {
+  const eq = components.Equipment as
+    | Partial<Record<'weapon' | 'armor', { goodType?: unknown } | null>>
+    | undefined;
   if (eq === undefined) return undefined;
-  const goodType = eq.weapon?.goodType;
+  const goodType = eq[slot]?.goodType;
   return typeof goodType === 'number' ? goodType : null;
 }
 

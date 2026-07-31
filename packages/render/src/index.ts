@@ -93,11 +93,12 @@ export type {
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
 export { type EntityBounds, type ResolvedLayer, resolveLayers } from './gpu/sprite-pool/index.js';
-export type {
-  SettlerCharacter,
-  SettlerCharacterSet,
-  SpriteLayer,
-  SpriteSheet,
+export {
+  paletteLutRow,
+  type SettlerCharacter,
+  type SettlerCharacterSet,
+  type SpriteLayer,
+  type SpriteSheet,
 } from './gpu/sprite-sheet.js';
 export {
   bakeToFlippedSprite,

@@ -4,7 +4,14 @@
  * actual 256 colours.
  */
 
-import { findProps, getStr, normalizeAssetPath, normalizePaletteName, type RuleSection } from '../grammar.js';
+import {
+  findProp,
+  findProps,
+  getStr,
+  normalizeAssetPath,
+  normalizePaletteName,
+  type RuleSection,
+} from '../grammar.js';
 
 /**
  * One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
@@ -62,6 +69,36 @@ export function paletteAliasMap(aliases: readonly PaletteAlias[]): Map<string, s
   const byName = new Map<string, string>();
   for (const alias of aliases) {
     if (!byName.has(alias.name)) byName.set(alias.name, alias.gfxFile);
+  }
+  return byName;
+}
+
+/** One `[GfxPalette16]` sub-palette: a named 16-colour ramp cut out of a `[GfxPalette256]` source:
+ *  `gfxcolorrange "<source editname>" <range>` names the source palette and the 16-index range (the
+ *  index convention lives on `armor-palette.ts` `cutRamp`). Names normalized like {@link PaletteAlias}. */
+export interface RampAlias {
+  readonly name: string;
+  /** The `[GfxPalette256]` editname the ramp is cut from (resolve via {@link paletteAliasMap}). */
+  readonly source: string;
+  readonly range: number;
+}
+
+/** Extracts the `palettes.ini` `[GfxPalette16]` records built via `gfxcolorrange` into named-ramp
+ *  aliases (108 in the real file), the ramps a `[RandomPalette]` recipe patches onto a body palette.
+ *  A record missing its `editname`, source name, or range is skipped. First wins on a duplicate name. */
+export function rampAliasMap(sections: readonly RuleSection[]): Map<string, RampAlias> {
+  const byName = new Map<string, RampAlias>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxPalette16') continue;
+    const range = findProp(sec, 'gfxcolorrange');
+    const source = range?.values[0];
+    const index = Number.parseInt(range?.values[1] ?? '', 10);
+    const name = getStr(sec, 'editname');
+    if (name === undefined || source === undefined || Number.isNaN(index)) continue;
+    const key = normalizePaletteName(name);
+    if (!byName.has(key)) {
+      byName.set(key, { name: key, source: normalizePaletteName(source), range: index });
+    }
   }
   return byName;
 }

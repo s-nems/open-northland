@@ -158,6 +158,9 @@ export interface DrawItem {
    * `Equipment` at all (the {@link jobType} look stands, weapon and all - the pre-equip legacy read).
    */
   readonly weaponGood?: number | null;
+  /** {@link weaponGood}'s twin for the `Equipment.armor` slot, the armor-recolor key
+   *  ({@link import('../../gpu/sprite-sheet.js').paletteLutRow}), same tri-state. */
+  readonly armorGood?: number | null;
   /**
    * For a settler/signpost: the team-colour slot — the `PalettedSprite` reads its clothing-band
    * indices through this row of the `256×N` colour LUT (and a signpost picks its per-colour baked

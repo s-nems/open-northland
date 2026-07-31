@@ -1,23 +1,39 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+  ARMOR_PALETTE_TIERS,
+  applyArmorRecipe,
+  cutRamp,
+  extractArmorRecipes,
+} from '../decoders/armor-palette.js';
 import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
 import { buildPaletteLutImage } from '../decoders/image.js';
-import { type BmdPaletteBinding, normalizeAssetPath } from '../decoders/ini.js';
+import {
+  type BmdPaletteBinding,
+  extractPaletteIndex,
+  iniBytesToSections,
+  normalizeAssetPath,
+  paletteAliasMap,
+  rampAliasMap,
+} from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
+import type { SourceRoots } from '../roots.js';
 import type { OutTreeIndex } from './bmd/index.js';
 import { BOBS_DIR, writeAtlasBeside } from './content-tree.js';
+import { readSourceFile } from './source-files.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
  * Where that stage bakes one palette into each atlas, this stage keeps the human character bobs recolourable
  * per player: it emits (a) an indexed atlas per character `.bmd` (palette index in red, mask in alpha —
- * no colour applied) and (b) a single player-colour LUT PNG (256×16, one composed palette row per player)
- * plus a small descriptor JSON. The renderer reads each atlas index through the player's LUT row, so one
- * indexed atlas serves all 16 player colours (see `packages/render` palette-LUT shader + `source basis`).
+ * no colour applied) and (b) a single colour LUT PNG (256 wide, one composed palette row per
+ * (armor tier, player); see {@link convertPlayerColorLut}). The renderer reads each atlas index through
+ * the row, so one indexed atlas serves every player colour and armor recolor (see `packages/render`
+ * palette-LUT shader + `source basis`).
  *
  * Not the original's mechanism byte-for-byte (it composes a per-creature palette at spawn from
  * `randompalette.ini`); it is the same idea — the player colour is decided by the palette the `.bmd` index is
@@ -55,20 +71,70 @@ async function readCreaturePalette(outDir: string, tree: OutTreeIndex, file: str
   return pal;
 }
 
-/** The LUT stage's emitted path + how many player colours it composed. */
+/** The LUT stage's emitted path + how many player colours and armor tiers it composed. */
 export interface PlayerColorLutResult {
   readonly png: string;
   readonly colors: number;
+  /** Row blocks in the LUT: 1 = player rows only (armor recipes unreadable), else
+   *  {@link ARMOR_PALETTE_TIERS} (see {@link convertPlayerColorLut} for the row scheme). */
+  readonly armorTiers: number;
+}
+
+/** The `[RandomPalette]` recipe file naming the `human_armor_%3.3d` armor recolors. */
+const RANDOMPALETTE_INI = join('Data', 'engine2d', 'inis', 'humans', 'randompalette.ini');
+/** The named-palette graph (`[GfxPalette256]` files + `[GfxPalette16]` ramps) the recipes patch from. */
+const PALETTES_INI = join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini');
+
+/**
+ * The armor-tier recolor rows for one composed player palette: `[tier 1 .. tier 4]`, each the player
+ * palette with that `human_armor_00N` recipe's patches applied (see decoders/armor-palette.ts). Tier 0
+ * (unarmored) is the plain player palette: the original's `human_armor_000` mirror of the team band
+ * onto patches 9/11/12 is deliberately not applied, keeping today's unarmored looks byte-identical -
+ * a named approximation.
+ */
+async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) => Uint8Array[]> {
+  const paletteSections = iniBytesToSections(await readSourceFile(roots, PALETTES_INI));
+  const aliases = paletteAliasMap(extractPaletteIndex(paletteSections));
+  const ramps = rampAliasMap(paletteSections);
+  const recipes = extractArmorRecipes(iniBytesToSections(await readSourceFile(roots, RANDOMPALETTE_INI)));
+  const sources = new Map<string, Uint8Array>(); // decoded [GfxPalette256] palettes by .pcx path
+  const resolveRamp = (name: string): Uint8Array | undefined => {
+    const ramp = ramps.get(name);
+    const file = ramp === undefined ? undefined : aliases.get(ramp.source);
+    const palette = file === undefined ? undefined : sources.get(file);
+    return palette === undefined || ramp === undefined ? undefined : cutRamp(palette, ramp.range);
+  };
+  // Pre-read every ramp source .pcx once (the recipes reference 3 files between them).
+  for (const recipe of recipes) {
+    for (const patch of recipe.patches) {
+      if (patch.source.kind !== 'ramp') continue;
+      const file = ramps.get(patch.source.name)?.source;
+      const path = file === undefined ? undefined : aliases.get(file);
+      if (path === undefined || sources.has(path)) continue;
+      const palette = decodePcx(await readSourceFile(roots, path)).palette;
+      if (palette !== undefined) sources.set(path, palette);
+    }
+  }
+  const tiers = Array.from({ length: ARMOR_PALETTE_TIERS - 1 }, (_, i) => {
+    const recipe = recipes.find((r) => r.tier === i + 1);
+    if (recipe === undefined) throw new Error(`armor-palette: recipe human_armor_00${i + 1} missing`);
+    return recipe;
+  });
+  return (palette) => tiers.map((recipe) => applyArmorRecipe(palette, recipe, resolveRamp));
 }
 
 /**
- * Build the 16 per-player palettes (the original's 10 `playerNN.pcx` + 6 hue-rotated extras), stack them into
- * a `256×16` LUT PNG, and write it under `<out>`'s bobs dir. Reads the base + `playerNN.pcx` sources from the
- * same `<out>` tree (the pipeline unpacked them there). Throws on a missing base/reference palette — those are
- * required for any player colour to exist. The colours' names/ids live in code (`PLAYER_COLORS`, mirrored
- * app-side for the gallery labels) and the LUT row order is that slot order, so no sidecar descriptor is needed.
+ * Build the per-player palettes (the original's 10 `playerNN.pcx` + 6 hue-rotated extras) and their
+ * armor recolors, stack them into a `256×(16·tiers)` LUT PNG (`row = 16*armorTier + player`; rows
+ * 0-15 are the plain player rows, byte-identical to the pre-armor LUT), and write it under `<out>`'s
+ * bobs dir. Player sources come from the unpacked `<out>` tree; the armor recipes and ramp palettes
+ * are read from the game dir (`randompalette.ini`/`palettes.ini` ship as plaintext). Throws on a
+ * missing base/reference palette; unreadable armor recipes degrade to the 16-row player-only LUT
+ * (warned), never failing the stage. Row semantics are a code contract with the app (`PLAYER_COLORS`
+ * slot order, `ARMOR_PALETTE_TIERS` blocks), so no sidecar descriptor is needed.
  */
 export async function convertPlayerColorLut(
+  roots: SourceRoots,
   outDir: string,
   tree: OutTreeIndex,
 ): Promise<PlayerColorLutResult> {
@@ -82,10 +148,25 @@ export async function convertPlayerColorLut(
         : synthesizePlayerSource(reference, color.source.hue);
     palettes.push(composePlayerPalette(base, source));
   }
+  let armorTiers = 1;
+  try {
+    const armorRows = await armorRowsFor(roots);
+    const armored = palettes.map((palette) => armorRows(palette)); // [player] -> [tier 1..4]
+    for (let tier = 1; tier < ARMOR_PALETTE_TIERS; tier++) {
+      for (const rows of armored) {
+        const row = rows[tier - 1];
+        if (row === undefined) throw new Error(`armor-palette: tier ${tier} row missing`);
+        palettes.push(row);
+      }
+    }
+    armorTiers = ARMOR_PALETTE_TIERS;
+  } catch (err) {
+    console.warn(`[pipeline] armor recolor rows skipped: ${errorMessage(err)}`);
+  }
   await mkdir(join(outDir, BOBS_DIR), { recursive: true }); // bobs dir may not exist if no atlas landed there
   const pngRel = join(BOBS_DIR, 'player-lut.png');
   await writeFile(join(outDir, pngRel), encodePng(buildPaletteLutImage(palettes)));
-  return { png: pngRel, colors: palettes.length };
+  return { png: pngRel, colors: PLAYER_COLORS.length, armorTiers };
 }
 
 /**

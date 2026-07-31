@@ -4,7 +4,7 @@ import { cameraScreenX, cameraScreenY } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
-import type { SpriteSheet } from '../sprite-sheet.js';
+import { paletteLutRow, type SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
@@ -93,7 +93,8 @@ export class LayerBinder {
     const camScale = frame.camera.scale ?? 1;
     const originX = cameraScreenX(frame.camera, drawX);
     const originY = cameraScreenY(frame.camera, drawY);
-    const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
+    // The (armor tier, player) LUT row - worn armor recolors the clothing bands; unused on the plain path.
+    const playerRow = pe.paletted ? paletteLutRow(pe.palette, item.player, item.armorGood) : 0;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds,
     // for a mesh or a plain sprite alike, so the picker/selection ring reads one consistent box
