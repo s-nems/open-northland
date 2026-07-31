@@ -1,4 +1,4 @@
-import type { FootprintCell } from '@open-northland/data';
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import type { BrightnessField } from '@open-northland/render';
 import type { ContentIr } from './ir/rows.js';
 
@@ -43,6 +43,9 @@ export function footprintBrightness(
 ): number {
   if (footprint.length === 0) return field.brightnessAt(hx / 2, hy / 2);
   let sum = 0;
-  for (const cell of footprint) sum += field.brightnessAt((hx + cell.dx) / 2, (hy + cell.dy) / 2);
+  // The odd-row parity shift (`footprintCellDx`) keeps the sampled ground the cells the sim blocks.
+  for (const cell of footprint) {
+    sum += field.brightnessAt((hx + footprintCellDx(hy, cell)) / 2, (hy + cell.dy) / 2);
+  }
   return sum / footprint.length;
 }

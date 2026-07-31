@@ -1,4 +1,4 @@
-import type { FootprintCell } from '@open-northland/data';
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import type { HalfCellNode } from '@open-northland/sim';
 import { workerIconOffset } from '../../catalog/building-tweaks.js';
 
@@ -23,14 +23,14 @@ export interface DoorFootprint {
 }
 
 /**
- * The node settlers enter a building at: `anchor + footprint.door`, or the anchor itself when the
- * type carries no door — mirroring the sim's `interactionNode` fallback so a UI marker and the walk
- * target can never disagree on a doorless type.
+ * The node settlers enter a building at: `anchor + footprint.door` (with the odd-row parity shift,
+ * `footprintCellDx`), or the anchor itself when the type carries no door — mirroring the sim's
+ * `interactionNode` so a UI marker and the walk target can never disagree.
  */
 export function doorNode(footprint: DoorFootprint | undefined, anchor: HalfCellNode): HalfCellNode {
   const door = footprint?.door;
   if (door === undefined) return anchor;
-  return { hx: anchor.hx + door.dx, hy: anchor.hy + door.dy };
+  return { hx: anchor.hx + footprintCellDx(anchor.hy, door), hy: anchor.hy + door.dy };
 }
 
 /** The bottom anchor of the worker-icon stack: the door node shifted by the building's

@@ -1,3 +1,4 @@
+import { footprintCellDx } from '@open-northland/data';
 import {
   cellAnchorNode,
   components,
@@ -99,7 +100,8 @@ export function buildingDoorNode(
 ): { hx: number; hy: number } {
   const anchor = cellAnchorNode(x, y);
   const door = buildingDef(sim, typeId)?.footprint?.door;
-  return { hx: anchor.hx + (door?.dx ?? 0), hy: anchor.hy + (door?.dy ?? 0) };
+  if (door === undefined) return { hx: anchor.hx, hy: anchor.hy };
+  return { hx: anchor.hx + footprintCellDx(anchor.hy, door), hy: anchor.hy + door.dy };
 }
 
 /**

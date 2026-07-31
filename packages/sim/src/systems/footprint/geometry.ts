@@ -1,4 +1,10 @@
-import type { BuildingFootprint, ContentSet, FootprintCell } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type FootprintCell,
+  footprintCellDx,
+  footprintCellMaxAbsDx,
+} from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
@@ -65,8 +71,9 @@ export function buildingFootprintOf(
   return contentIndex(content).buildings.get(buildingType)?.footprint;
 }
 
-/** Translate a footprint cell list to a building anchor, dropping cells outside the terrain grid
- *  (a border-hugging building simply blocks/reserves fewer cells than its template). */
+/** Translate a footprint cell list to an anchor node (with the odd-row parity shift,
+ *  `footprintCellDx`), dropping cells outside the terrain grid (a border-hugging building simply
+ *  blocks/reserves fewer cells than its template). */
 export function translatedCells(
   terrain: TerrainGraph,
   cells: readonly FootprintCell[],
@@ -75,7 +82,7 @@ export function translatedCells(
 ): NodeId[] {
   const out: NodeId[] = [];
   for (const c of cells) {
-    const x = anchorX + c.dx;
+    const x = anchorX + footprintCellDx(anchorY, c);
     const y = anchorY + c.dy;
     if (terrain.inBounds(x, y)) out.push(terrain.nodeAt(x, y));
   }
@@ -168,6 +175,6 @@ export function reservedZoneOf(
   const zone = new Set<NodeId>(translatedCells(terrain, cells, anchorHx, anchorHy));
   if (zone.size === 0) return undefined;
   let reach = 0; // Chebyshev bound of the reserved cells → a provable superset the box query can't miss
-  for (const c of cells) reach = Math.max(reach, Math.abs(c.dx), Math.abs(c.dy));
+  for (const c of cells) reach = Math.max(reach, footprintCellMaxAbsDx(c), Math.abs(c.dy));
   return { zone, reach };
 }

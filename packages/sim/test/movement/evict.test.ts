@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   BerryBush,
@@ -50,8 +50,9 @@ import {
  * onto an already-standing body is pushed out, which is the case an authored map load hits. And work flags
  * (`evictWorkFlagsFromFootprint`): the placement gates ignore flags, so a house may legally land on one.
  * The HUT fixture's body is (0,0)+(1,0) with the door at (-1,0); anchored at (5,5) the body nodes are
- * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell (6,6) — reserved from level 0,
- * and walls to a flag though not to a walker, which is the flag/settler split these two suites pin.
+ * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell {1,1}, stamped at (7,6) — the
+ * odd anchor row shifts odd-dy cells one node +x (`footprintCellDx`) — reserved from level 0, and
+ * walls to a flag though not to a walker, which is the flag/settler split these two suites pin.
  */
 
 const PLAYER = 0;
@@ -412,10 +413,12 @@ describe('footprint displacement — a finish that seals a nook beside the body 
   const U_WALLS_DOORED = 23; // same walls, door on its own anchor — the nook cell becomes a designated stand
   const STONE = 1;
   const NOOK = { x: 7, y: 5 };
+  // Authored so the U anchored on the odd-row nook STAMPS (7,4), (8,5), (7,6) — the odd-dy rows
+  // carry the parity shift (`footprintCellDx`), so their authored dx is one less than the stamp.
   const U_BODY = [
-    { dx: 0, dy: -1 },
+    { dx: -1, dy: -1 },
     { dx: 1, dy: 0 },
-    { dx: 0, dy: 1 },
+    { dx: -1, dy: 1 },
   ];
 
   function nookContent() {
@@ -514,7 +517,10 @@ function flagAtNode(sim: Simulation, x: number, y: number): Entity {
 
 /** The HUT's family body anchored at ANCHOR: the level-0 walls plus the growth cell a level-0 house
  *  already reserves. Wider than BODY (the walk-block set) — flag legality is family-body-wide. */
-const FAMILY_BODY = HUT_FOOTPRINT.familyBody.map((c) => ({ x: ANCHOR.x + c.dx, y: ANCHOR.y + c.dy }));
+const FAMILY_BODY = HUT_FOOTPRINT.familyBody.map((c) => ({
+  x: ANCHOR.x + footprintCellDx(ANCHOR.y, c),
+  y: ANCHOR.y + c.dy,
+}));
 
 describe('footprint displacement — a work flag is never sealed inside a placed house', () => {
   it('a house placed onto a flag pushes it to a legal field it could be re-planted on', () => {
@@ -531,10 +537,11 @@ describe('footprint displacement — a work flag is never sealed inside a placed
   });
 
   it('evicts a flag on a growth cell the level-0 walls do not yet cover', () => {
-    // (6,6) is in familyBody but NOT in `blocked` — the settler twin's walk-block set would leave it.
-    // A flag there is still illegal ground (`workFlagPlacementBlocks` is family-body-wide), so it moves.
+    // The {1,1} family cell stamps at (7,6) — in familyBody but NOT in `blocked`, so the settler
+    // twin's walk-block set would leave it. A flag there is still illegal ground
+    // (`workFlagPlacementBlocks` is family-body-wide), so it moves.
     const sim = mappedSim();
-    const growth = { x: ANCHOR.x + 1, y: ANCHOR.y + 1 };
+    const growth = { x: ANCHOR.x + footprintCellDx(ANCHOR.y, { dx: 1, dy: 1 }), y: ANCHOR.y + 1 };
     expect(BODY).not.toContainEqual(growth); // the fixture proves itself: not walk-blocked…
     expect(FAMILY_BODY).toContainEqual(growth); // …but inside the family body
     const flag = flagAtNode(sim, growth.x, growth.y);

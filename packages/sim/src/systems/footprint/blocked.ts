@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
@@ -28,7 +28,8 @@ export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: Ter
     if (door === undefined) continue;
     const p = world.get(e, Position);
     const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-    if (terrain.inBounds(ax + door.dx, ay + door.dy)) doors.add(terrain.nodeAt(ax + door.dx, ay + door.dy));
+    const doorX = ax + footprintCellDx(ay, door);
+    if (terrain.inBounds(doorX, ay + door.dy)) doors.add(terrain.nodeAt(doorX, ay + door.dy));
   }
   return doors;
 }
@@ -58,7 +59,7 @@ export function constructionSitePlots(world: World, content: ContentSet): Constr
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
-    plots.push({ cells: body.map((c) => ({ col: hx + c.dx, row: hy + c.dy })) });
+    plots.push({ cells: body.map((c) => ({ col: hx + footprintCellDx(hy, c), row: hy + c.dy })) });
   }
   return plots;
 }
@@ -86,8 +87,9 @@ export function walkBlockedBodyOf(
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));
   const door = footprint.door;
-  if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
-    body.delete(terrain.nodeAt(ax + door.dx, ay + door.dy));
+  if (door !== undefined) {
+    const doorX = ax + footprintCellDx(ay, door);
+    if (terrain.inBounds(doorX, ay + door.dy)) body.delete(terrain.nodeAt(doorX, ay + door.dy));
   }
   return body.size === 0 ? null : body;
 }

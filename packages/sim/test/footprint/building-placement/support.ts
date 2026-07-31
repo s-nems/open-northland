@@ -4,7 +4,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx, parseContentSet } from '@open-northland/data';
 import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
@@ -134,14 +134,14 @@ export function referenceCanPlace(
     else if (channel === EXCLUSION) exclusions.add(`${bx},${by}`);
   });
   for (const c of footprint.reserved) {
-    const cx = x + c.dx;
+    const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false;
     if (obstacles.has(`${cx},${cy}`)) return false;
   }
   for (const c of footprint.familyBody) {
-    if (exclusions.has(`${x + c.dx},${y + c.dy}`)) return false;
+    if (exclusions.has(`${x + footprintCellDx(y, c)},${y + c.dy}`)) return false;
   }
   return true;
 }

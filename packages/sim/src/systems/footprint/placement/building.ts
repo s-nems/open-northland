@@ -1,4 +1,4 @@
-import type { BuildingFootprint, ContentSet } from '@open-northland/data';
+import { type BuildingFootprint, type ContentSet, footprintCellDx } from '@open-northland/data';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -58,7 +58,7 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
   // 1. Reserved zone: on the map, on buildable ground, clear of reserved-zone blockers (OBSTACLE nodes
   //    and other buildings' reserved zones — both stamped into the obstacle mask).
   for (const c of footprint.reserved) {
-    const cx = x + c.dx;
+    const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false; // zone off the map edge
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
@@ -67,7 +67,7 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
   // 2. Family body: clear of resource EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already
   //    proven in-bounds by loop 1 — the guard only shields a hand-authored footprint that breaks that.
   for (const c of footprint.familyBody) {
-    const cx = x + c.dx;
+    const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (cx >= 0 && cy >= 0 && cx < w && cy < h && exclusion[cy * w + cx] === 1) return false;
   }

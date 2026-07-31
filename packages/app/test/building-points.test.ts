@@ -11,8 +11,15 @@ function footprintWithDoor(dx: number, dy: number): BuildingFootprint {
 
 describe('doorNode', () => {
   it('translates the door offset to the anchor (plain vector addition on the node grid)', () => {
-    // The HQ's extracted door {dx:-1, dy:3} at an arbitrary anchor.
+    // The HQ's extracted door {dx:-1, dy:3} at an arbitrary even-row anchor.
     expect(doorNode(footprintWithDoor(-1, 3), { hx: 10, hy: 20 })).toEqual({ hx: 9, hy: 23 });
+  });
+
+  it('applies the odd-row parity shift to an odd-dy door, matching the sim interactionNode', () => {
+    // Odd anchor row + odd door dy: one node further +x (footprintCellDx) — the walk target's rule.
+    expect(doorNode(footprintWithDoor(-1, 3), { hx: 10, hy: 21 })).toEqual({ hx: 10, hy: 24 });
+    // Even door dy never shifts, whatever the anchor row.
+    expect(doorNode(footprintWithDoor(-1, 2), { hx: 10, hy: 21 })).toEqual({ hx: 9, hy: 23 });
   });
 
   it('falls back to the anchor itself for a doorless type (mirrors the sim interactionNode)', () => {

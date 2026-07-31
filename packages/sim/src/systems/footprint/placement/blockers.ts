@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -70,8 +70,8 @@ export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisi
     return;
   }
   visit(hx, hy, RESOURCE_ANCHOR);
-  for (const c of fp.walk) visit(hx + c.dx, hy + c.dy, OBSTACLE);
-  for (const c of fp.build) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+  for (const c of fp.walk) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
+  for (const c of fp.build) visit(hx + footprintCellDx(hy, c), hy + c.dy, EXCLUSION);
 }
 
 /** One standing building's (cell, channel) contributions (see {@link resourceBlockerCells}). */
@@ -88,8 +88,8 @@ export function buildingBlockerCells(
   const fp = buildingFootprintOf(content, b.buildingType);
   const body = buildingFlagBody(content, b.buildingType);
   const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
-  for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
-  for (const c of zone) visit(hx + c.dx, hy + c.dy, BUILDING_ZONE);
+  for (const c of body) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
+  for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
 }
 
 /** One signpost's contribution: its anchor is an OBSTACLE — no building's reserved zone and no

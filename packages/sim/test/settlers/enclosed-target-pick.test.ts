@@ -88,14 +88,15 @@ describe('the harvest pick against enclosed resource nodes', () => {
   it('walks past a pocket holding more enclosed trees than the failed-goal memo could remember', () => {
     // 12×4 cells = 24×8 nodes. The rectangle wall spans nodes x 3..15, y 1..5, sealing an 11×3-node
     // interior that holds 11 tree anchors — more than UNREACHABLE_GOAL_MEMO_SIZE, the count that made
-    // the memo-only pick cycle forever.
+    // the memo-only pick cycle forever. Anchored on an EVEN row so the offsets stamp literally
+    // (an odd-row anchor's odd-dy rows would parity-shift one node +x and crack the seal).
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     const UNTOUCHED = 5;
     const wallOffsets: Array<{ dx: number; dy: number }> = [];
-    for (let dx = 0; dx <= 12; dx++) wallOffsets.push({ dx, dy: 0 }, { dx, dy: 4 });
-    for (let dy = 1; dy <= 3; dy++) wallOffsets.push({ dx: 0, dy }, { dx: 12, dy });
-    wallAt(s, 3, 1, wallOffsets);
+    for (let dx = 0; dx <= 12; dx++) wallOffsets.push({ dx, dy: 1 }, { dx, dy: 5 });
+    for (let dy = 2; dy <= 4; dy++) wallOffsets.push({ dx: 0, dy }, { dx: 12, dy });
+    wallAt(s, 3, 0, wallOffsets);
     const enclosed: Entity[] = [];
     // Tiles (2..6, 1) anchor on nodes (5..13 odd, 2); tiles (2..7, 2) on nodes (4..14 even, 4).
     for (let x = 2; x <= 6; x++) enclosed.push(woodAt(s, x, 1, UNTOUCHED));

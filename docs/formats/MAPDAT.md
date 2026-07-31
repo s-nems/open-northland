@@ -75,9 +75,10 @@ The loader also exposes per-lane dimensions and dictionaries needed to resolve n
 ## Lanes not imported
 
 The remaining chunks are dropped on import. Meanings below follow the CulturesNation documentation,
-which reports replaying each derivable section byte-identically against original maps; none of them
-is independently verified here yet. "Derivable" sections can be recomputed from the imported lanes
-plus landscape data; "authored" ones carry map content we currently lose.
+which reports replaying each derivable section byte-identically against original maps; of these only
+the `lmwb`/`lmbb` derivation is independently verified here (see below). "Derivable" sections can be
+recomputed from the imported lanes plus landscape data; "authored" ones carry map content we
+currently lose.
 
 | Tag | Kind | Meaning |
 | --- | --- | --- |
@@ -85,7 +86,7 @@ plus landscape data; "authored" ones carry map content we currently lose.
 | `lmco`, `laco` | derivable | flood-filled continent id per node, plus the continent table (type, anchor, size) |
 | `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions |
 | `lmpr` | derivable | roughness 0..5 slowing movement; 1 on water and road nodes |
-| `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas |
+| `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |
 | `lmro`, `lmsb`, `lmhf`, `emm1` | derivable | road presence, walk-sector point marks, zeros, road-overlay visibility |
 | `lmao` | derivable | attach-point vector per node, encoded `(-dx - (dy << 8)) & 0xffff` |
 | `lasw` | derivable | pathfinding sector graph: 10x10-cell sectors, land and water planes, 52 bytes each |
@@ -100,6 +101,27 @@ overlays, so the renderer does not invent a terrain-transition algorithm.
 
 Landscape objects from `emla` are anchored on half-cell nodes. Their blocking offsets are stamped at
 that resolution before the terrain graph reaches placement and pathfinding.
+
+### Verified `lmwb`/`lmbb` derivation (byte-level, owned corpus)
+
+Replaying `lmwb` from `emla` + `lmlv` + the `landscapes.cif` block areas reproduces the owned maps
+byte-identically (129 of 130 decodable maps; the single residual bit is a provably stale cell where
+the map swapped a blocking object for its non-blocking variant after the section was computed). The
+verified stamp rule, per placement at half-cell `(x, y)` and per block-area row `[state, dx, dy, run]`:
+
+- rows are gated cumulatively by valency: a row stamps when `lmlv[y][x] >= state` (so a full-grown
+  object stamps every state's rows, a sapling only its lowest);
+- each row stamps `run` nodes starting at `(x + dx, y + dy)` along +x, clipped to the grid;
+- **odd-row parity shift**: when the anchor row `y` is odd and the target row `y + dy` is even, the
+  whole row lands one node further +x. That stamp rule is the verified fact; the consistent
+  geometric READING — offsets authored in the even-row frame, odd lattice rows half a node to +x
+  (matching `lmtw`'s parity-dependent 6-neighbour table) — is an interpretation, not yet verified
+  visually against the running original.
+
+`lmbb` follows the same rule; it replays byte-identically on most maps, with residues consistent with
+stale sections (several maps carry an empty or outdated `lmbb`). The engine's runtime stamping is what
+the sim mirrors (`footprintCellDx` in `packages/data`); the conservative full-state collapse
+(`fullStateBlockAreaCells`) remains a named approximation of the valency gate.
 
 ## Tests
 

@@ -50,12 +50,15 @@ export function rowStagger(row: number): number {
 }
 
 /**
- * Half-cell (hx,hy) → screen offset (before camera). The original's `emla` object lattice is a plain
- * rectangular grid at half-cell resolution — `(hx·TILE_HALF_W, hy·TILE_HALF_H/2)` — with the cell
- * stagger arising from which half-cells the cells occupy (cell `(c,r)` sits at half-cell
- * `(2c + (r&1), 2r)`; {@link tileToScreen} of an integer cell lands exactly here). Map objects
- * (trees/stones/waves) are authored at half-cells and must not get the fractional-row stagger
- * interpolation a walking entity gets, hence the dedicated mapping.
+ * Half-cell (hx,hy) → screen offset (before camera): a plain rectangular mapping,
+ * `(hx·TILE_HALF_W, hy·TILE_HALF_H/2)`, with the cell stagger arising from which half-cells the
+ * cells occupy (cell `(c,r)` sits at half-cell `(2c + (r&1), 2r)`; {@link tileToScreen} of an
+ * integer cell lands exactly here). That the original also draws odd half-cell rows at this
+ * rectangular spot is a NAMED APPROXIMATION under open question — byte evidence from the `lmwb`
+ * parity shift suggests odd rows sit a quarter cell further +x
+ * (docs/tickets/sim/odd-microrow-world-x-quarter-shift.md). Map objects (trees/stones/waves) are
+ * authored at half-cells and must not get the fractional-row stagger interpolation a walking entity
+ * gets, hence the dedicated mapping.
  */
 export function halfCellToScreen(hx: number, hy: number): { x: number; y: number } {
   return {

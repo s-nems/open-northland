@@ -1,3 +1,4 @@
+import { footprintCellDx } from '@open-northland/data';
 import { Container, Graphics, Text } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
@@ -27,7 +28,10 @@ export interface GeometryDebugCell {
   readonly dy: number;
 }
 
-/** One building's geometry, in anchor-relative half-cell offsets (the IR footprint's own space). */
+/** One building's geometry. The cell channels (`blocked`/`reserved`/`door`) are AUTHORED-frame
+ *  offsets from the IR footprint — the overlay applies the odd-row parity shift when drawing, the
+ *  same way the sim stamps them. `iconAnchor` is an already-resolved absolute node (the app computes
+ *  it through the door helpers), so it is drawn verbatim. */
 export interface GeometryDebugItem {
   /** The building's anchor node on the half-cell lattice. */
   readonly anchor: { readonly hx: number; readonly hy: number };
@@ -37,8 +41,8 @@ export interface GeometryDebugItem {
   readonly reserved: readonly GeometryDebugCell[];
   /** The settler entry cell (`footprint.door`). */
   readonly door?: GeometryDebugCell | undefined;
-  /** The worker-icon stack anchor (door + the building's worker-icon offset — the app resolves it). */
-  readonly iconAnchor?: GeometryDebugCell | undefined;
+  /** The worker-icon stack anchor as an ABSOLUTE node (door + worker-icon offset, app-resolved). */
+  readonly iconAnchor?: { readonly hx: number; readonly hy: number } | undefined;
   readonly label?: string | undefined;
 }
 
@@ -73,8 +77,14 @@ export class GeometryDebugLayer {
     const g = new Graphics();
     this.container.addChild(g);
     for (const item of items) {
+      // The same odd-row parity shift the sim stamps with (`footprintCellDx`), so the drawn
+      // diamonds are the cells the sim actually blocks.
       const at = (cell: GeometryDebugCell): { x: number; y: number } =>
-        projectNode(elevation, item.anchor.hx + cell.dx, item.anchor.hy + cell.dy);
+        projectNode(
+          elevation,
+          item.anchor.hx + footprintCellDx(item.anchor.hy, cell),
+          item.anchor.hy + cell.dy,
+        );
       for (const cell of item.reserved) {
         diamond(g, at(cell)).stroke({ width: 1, color: RESERVED_COLOR, alpha: 0.8 });
       }
@@ -89,7 +99,7 @@ export class GeometryDebugLayer {
           .stroke({ width: 2, color: DOOR_COLOR, alpha: 1 });
       }
       if (item.iconAnchor !== undefined) {
-        const p = at(item.iconAnchor);
+        const p = projectNode(elevation, item.iconAnchor.hx, item.iconAnchor.hy);
         g.circle(p.x, p.y, 4).fill({ color: ICON_ANCHOR_COLOR, alpha: 0.9 });
       }
       const a = projectNode(elevation, item.anchor.hx, item.anchor.hy);

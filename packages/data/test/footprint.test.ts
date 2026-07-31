@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fullStateBlockAreaCells } from '../src/index.js';
+import { footprintCellDx, footprintCellMaxAbsDx, fullStateBlockAreaCells } from '../src/index.js';
 
 /**
  * Locks the collision-footprint reading of a `[GfxLandscape]` block-area table: only the FULL
@@ -51,5 +51,43 @@ describe('fullStateBlockAreaCells', () => {
         [0, 5, 5, 0],
       ]),
     ).toEqual([{ dx: 0, dy: 0 }]);
+  });
+});
+
+/**
+ * Locks the original's odd-row parity shift: footprint offsets are authored in the even-row frame,
+ * and an odd-row anchor stamping onto an even row (odd dy) lands one node further +x. Verified by
+ * byte-identical `lmwb` replay of owned maps (docs/formats/MAPDAT.md).
+ */
+describe('footprintCellDx', () => {
+  it('keeps every offset unchanged from an even anchor row', () => {
+    expect(footprintCellDx(4, { dx: -2, dy: -1 })).toBe(-2);
+    expect(footprintCellDx(4, { dx: 3, dy: 0 })).toBe(3);
+    expect(footprintCellDx(0, { dx: 1, dy: 1 })).toBe(1);
+  });
+
+  it('keeps even-dy offsets unchanged from an odd anchor row', () => {
+    expect(footprintCellDx(5, { dx: -2, dy: 0 })).toBe(-2);
+    expect(footprintCellDx(5, { dx: 1, dy: 2 })).toBe(1);
+    expect(footprintCellDx(5, { dx: 1, dy: -2 })).toBe(1);
+  });
+
+  it('shifts odd-dy offsets one node +x from an odd anchor row', () => {
+    expect(footprintCellDx(5, { dx: -2, dy: 1 })).toBe(-1);
+    expect(footprintCellDx(5, { dx: 0, dy: -1 })).toBe(1);
+    expect(footprintCellDx(3, { dx: 2, dy: -3 })).toBe(3);
+  });
+});
+
+describe('footprintCellMaxAbsDx', () => {
+  it('is |dx| for even-dy cells (never shifted)', () => {
+    expect(footprintCellMaxAbsDx({ dx: -3, dy: 2 })).toBe(3);
+    expect(footprintCellMaxAbsDx({ dx: 2, dy: 0 })).toBe(2);
+  });
+
+  it('covers the shifted stamp of odd-dy cells', () => {
+    expect(footprintCellMaxAbsDx({ dx: 2, dy: 1 })).toBe(3); // odd anchor stamps at +3
+    expect(footprintCellMaxAbsDx({ dx: -3, dy: 1 })).toBe(3); // shift moves -3 to -2: |dx| still bounds
+    expect(footprintCellMaxAbsDx({ dx: 0, dy: -1 })).toBe(1); // anchor-column cell reaches +1
   });
 });

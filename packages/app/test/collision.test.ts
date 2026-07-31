@@ -42,9 +42,10 @@ function fixtureMap() {
     ground: { patterns: ['meadow 01', 'water 01', 'mountain 01', 'snow 01', 'sand 01'], a, b },
     objects: {
       types: ['tree deciduous 01'],
-      // One tree anchored at half-cell node (4, 6) — stamped VERBATIM on the 2W×2H grid.
-      placements: [4, 6, 0],
-      levels: [3],
+      // Two trees on the 2W×2H grid: one anchored on an EVEN half-cell row (4, 6) — stamped
+      // verbatim — and one on an ODD row (8, 3), whose odd-dy rows take the parity shift.
+      placements: [4, 6, 0, 8, 3, 0],
+      levels: [3, 3],
     },
   });
 }
@@ -70,7 +71,8 @@ const IR = {
     {
       editName: 'tree deciduous 01',
       // Full state 3: a 1-node trunk body + a 3-node build ring row above it (the real rows' shape;
-      // offsets are HALF-CELL offsets, applied verbatim to the anchor node).
+      // offsets are HALF-CELL offsets — even-row anchors stamp them verbatim, odd-row anchors
+      // parity-shift the odd-dy rows, which the two placements below pin).
       walkBlockAreas: [
         [3, 0, 0, 1],
         [1, 2, 0, 1], // a LOWER state's row on a DIFFERENT node — the full-state collapse must drop it
@@ -188,6 +190,18 @@ describe('buildCollisionTerrain', () => {
     expect(at(5, 5)).toBe(TERRAIN_MARGIN);
     expect(at(3, 6)).toBe(TERRAIN_MARGIN);
     expect(at(5, 6)).toBe(TERRAIN_MARGIN);
+  });
+
+  it("shifts an odd-row anchor's odd-dy rows one node +x (the original lmwb parity rule)", () => {
+    expect(at(8, 3)).toBe(TERRAIN_BLOCKED); // the trunk on its own anchor node (dy 0 — never shifts)
+    // The dy=-1 build row (odd dy) spans dx -1..1 but stamps at hx 8..10, one node +x.
+    expect(at(8, 2)).toBe(TERRAIN_MARGIN);
+    expect(at(9, 2)).toBe(TERRAIN_MARGIN);
+    expect(at(10, 2)).toBe(TERRAIN_MARGIN);
+    expect(at(7, 2)).toBe(TERRAIN_OPEN); // where the unshifted stamp would have landed
+    // The dy=0 build row (even dy) stays verbatim: hx 7 and 9 flank the trunk.
+    expect(at(7, 3)).toBe(TERRAIN_MARGIN);
+    expect(at(9, 3)).toBe(TERRAIN_MARGIN);
   });
 
   it('falls back to the pinned class split when the IR lacks the trianglePatternTypes lane', () => {
