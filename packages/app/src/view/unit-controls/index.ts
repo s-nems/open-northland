@@ -1,5 +1,5 @@
 import type { DoorBadge } from '@open-northland/render';
-import type { Entity } from '@open-northland/sim';
+import { type Entity, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
@@ -85,6 +85,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     jobs: opts.content.jobs,
     jobExperience: opts.content.jobExperience,
     tribes: opts.content.tribes,
+    // The sim's own classification, so the panel and the recipe table agree on the dropped slaughter row.
+    isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),

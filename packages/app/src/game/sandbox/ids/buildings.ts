@@ -17,6 +17,8 @@ export const BUILDING_FARM = 12;
 export const BUILDING_MILL = 13;
 /** The bakery (`houses.ini` logictype 14 — `work bakery 00`): water + flour → bread. */
 export const BUILDING_BAKERY = 14;
+/** The animal farm (`work_animal_farm`, "Hodowla"): the breeders' livestock workplace. */
+export const BUILDING_ANIMAL_FARM = 17;
 /** The tailor / clothier (`work_sewery_00`). */
 export const BUILDING_TAILOR = 18;
 /** The pottery (`work_pottery_00`). */

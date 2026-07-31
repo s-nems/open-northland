@@ -213,6 +213,11 @@ export const enContent = {
       summary:
         'A flag-bound hunter stalks the hares near its flag - shots can miss, every release scatters the herd, each kill is picked clean and carried home before the next, and sheep kept for husbandry fall only as a last resort.',
     },
+    livestock: {
+      title: 'Animal husbandry',
+      summary:
+        'A scout claims sheep and cattle (a faction-coloured heart appears), the herd marches to the animal farm, and the breeders turn water, wheat and a little animal life into wool, leather and meat.',
+    },
     equipment: {
       title: 'Equipment window',
       summary:

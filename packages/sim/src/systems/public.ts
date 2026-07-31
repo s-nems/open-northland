@@ -63,6 +63,17 @@ export {
   scoutJobType,
 } from './readviews/jobs.js';
 export { MILITARY_MODE } from './readviews/stances.js';
+// The catchable-species classification - the app's livestock-heart projection keys on the same
+// content read as the sim's capture drive.
+export { isCatchableAnimal } from './readviews/tribes/animals.js';
+// The livestock join - the details panel hides the slaughter recipe the sim's recipe table drops at
+// a livestock workplace, and the real-content suite pins the slug join on the extracted ids.
+export {
+  isLivestockWorkplaceType,
+  livestockGoodOfTribe,
+  livestockMeatGoodOf,
+  livestockTribeOfGood,
+} from './readviews/tribes/livestock.js';
 export {
   FATIGUE_BUBBLE_THRESHOLD,
   FATIGUE_SLEEP_THRESHOLD,

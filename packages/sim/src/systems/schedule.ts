@@ -14,6 +14,11 @@ import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs.js';
+import {
+  livestockAssignmentSystem,
+  livestockCaptureSystem,
+  livestockRegenSystem,
+} from './livestock/index.js';
 import { animalWanderSystem } from './movement/animal-wander.js';
 import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
@@ -56,6 +61,12 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
+  // After the walk settles (movement + separation), so a scout's contact claim uses this tick's final
+  // nodes; assignment then re-anchors the freshly claimed stock, and regen tops livestock up before
+  // production's feed gate reads its HP later this tick.
+  { name: 'livestockCapture', system: livestockCaptureSystem },
+  { name: 'livestockAssign', system: livestockAssignmentSystem },
+  { name: 'livestockRegen', system: livestockRegenSystem },
   { name: 'atomic', system: atomicSystem },
   // Directly after the executor: an order parked behind a non-interruptible atomic applies the tick that
   // atomic completes, before any drive could see the freed settler (plannerSystem already ran this tick).

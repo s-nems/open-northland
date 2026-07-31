@@ -44,7 +44,7 @@ export const AnimalType = z.strictObject({
   /** `runspeed` — the original's animal run gait; 0 when the source omits it. Extracted for
    *  fidelity but deliberately unconsumed by the sim — no run/sprint gait is modeled. */
   runSpeed: z.number().int().nonnegative().default(0),
-  /** `catchable` — can be tamed/captured by a hunter (cows/sheep) vs wild-only. */
+  /** `catchable` — livestock a scout claims by contact (cows/sheep) vs wild-only. */
   catchable: z.boolean().default(false),
   /** `warrantable` — can be claimed/owned (livestock vs wildlife). */
   warrantable: z.boolean().default(false),

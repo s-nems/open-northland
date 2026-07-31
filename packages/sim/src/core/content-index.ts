@@ -23,6 +23,7 @@ import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
+import { livestockTables } from './content-index/livestock.js';
 import {
   canonicalWorkerJobLists,
   inputlessProducerTypes,
@@ -94,6 +95,15 @@ export interface ContentIndex {
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
   /** Hunt-prey rows by the prey's `tribeType` - membership IS huntability ({@link HuntPrey}). */
   readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
+  /** Livestock species (`catchable` animal tribeType) → the good stocking one FED animal of that
+   *  species (the animal farm's feed-recipe product). See `content-index/livestock.ts` for the join. */
+  readonly livestockGoodByTribe: ReadonlyMap<number, number>;
+  /** Reverse of {@link livestockGoodByTribe}: livestock goodType → the species' animal tribeType. */
+  readonly livestockTribeByGood: ReadonlyMap<number, number>;
+  /** Building types with a feed recipe - the workplaces claimed livestock is herded to. */
+  readonly livestockWorkplaceTypes: ReadonlySet<number>;
+  /** The `meat` good (slug-resolved) - the feed-cycle byproduct target; null without one. */
+  readonly livestockMeatGood: number | null;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
@@ -207,6 +217,7 @@ function buildIndex(content: ContentSet): ContentIndex {
   const jobs = byKey(content.jobs, (j) => j.typeId);
   const roles = jobRoleSets(jobs);
   const tribes = byKey(content.tribes, (t) => t.typeId);
+  const livestock = livestockTables(content);
   return {
     buildings: byKey(content.buildings, (b) => b.typeId),
     goods: byKey(content.goods, (g) => g.typeId),
@@ -222,12 +233,16 @@ function buildIndex(content: ContentSet): ContentIndex {
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
     huntPreyByTribe: byKey(content.huntPrey, (p) => p.tribeType),
+    livestockGoodByTribe: livestock.goodByTribe,
+    livestockTribeByGood: livestock.tribeByGood,
+    livestockWorkplaceTypes: livestock.workplaceTypes,
+    livestockMeatGood: livestock.meatGood,
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobs,
     canonicalWorkerJobsByBuilding: canonicalWorkerJobLists(workerJobs),
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
-    recipeByProductByBuilding: recipeProductTables(content),
+    recipeByProductByBuilding: recipeProductTables(content, livestock.workplaceTypes),
     mergedRecipeByBuilding: mergedRecipes(content),
     inputlessProducersByGood: inputlessProducerTypes(content),
     atomicBindingsByTribe: atomicBindingTables(content),

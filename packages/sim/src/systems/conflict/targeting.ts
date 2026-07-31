@@ -68,6 +68,7 @@ export function isValidTarget(
 export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunterJob: number | null): boolean {
   if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
+  if (world.has(t, Owner)) return false; // claimed livestock is property, not prey (see mayTarget's predation note)
   return mayHunt(ctx.content, hunterJob, world.get(t, Settler).tribe);
 }
 
@@ -84,7 +85,8 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
  *  2. Otherwise (at least one side **unowned** — wildlife, an economy fixture, the golden path) the content
  *     relations decide, unchanged: the {@link mayAttack} **tribe hostility** (same-tribe friendly, civ-vs-civ
  *     enemies, civ→aggressive-animal, animals don't war on each other), the {@link mayHunt} **predation**
- *     (a hunter may strike huntable prey), and the per-entity **provoked-anger** override
+ *     (a hunter may strike UNOWNED huntable prey - claimed livestock is property), and the per-entity
+ *     **provoked-anger** override
  *     (a struck `getAngry` animal — a live {@link Anger} — makes a civ⇄animal fight valid in both directions).
  *
  * Determinism: a pure read of the two entities' `Owner`, plus `content` + the relevant `Anger` against
@@ -108,7 +110,9 @@ export function mayTarget(
   }
   // At least one side neutral/unowned: the content tribe/predation/anger relations (unchanged).
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static hostility
-  if (mayHunt(ctx.content, attackerJob, targetTribe)) return true; // a hunter striking huntable prey
+  // Predation stops at property: only an UNOWNED animal is prey (user rule) - enemy livestock falls to
+  // soldiers via the owner axis above, never to a hunter's game drive.
+  if (targetOwner === undefined && mayHunt(ctx.content, attackerJob, targetTribe)) return true;
   const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
   // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never civ-vs-civ.

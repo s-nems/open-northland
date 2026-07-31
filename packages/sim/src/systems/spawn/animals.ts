@@ -1,4 +1,12 @@
-import { Health, HerdMember, MoveSpeed, Position, Settler, StayPoint } from '../../components/index.js';
+import {
+  Health,
+  HerdMember,
+  Livestock,
+  MoveSpeed,
+  Position,
+  Settler,
+  StayPoint,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -6,7 +14,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
-import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
+import { animalHitpoints, herdParams, isCatchableAnimal, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
 
 /** Upper bound on one spawn command's herd size — the real `maximumgroupsize` values are 2..6, so any
@@ -93,6 +101,9 @@ export function spawnAnimalHerd(
       experience: new Map<number, number>(),
     });
     world.add(e, Health, { hitpoints, max: hitpoints });
+    // A catchable species is livestock: the marker mirrors the content flag so the husbandry systems
+    // (capture, assignment, regen, the feed gate) query this small store, never the whole population.
+    if (isCatchableAnimal(ctx.content, command.tribe)) world.add(e, Livestock, {});
     if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace });
     // The birth point or a scatter offset may name walk-blocked or already-taken ground (a tree's cell,
     // a house body, an earlier member's node) — push the creature off it before the born event, the same

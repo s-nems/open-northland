@@ -29,6 +29,9 @@ export interface UnitPanelModelContext {
   /** The content tribes — the Doświadczenie section's upcoming-unlock rows read a settler tribe's
    *  `needforjob` requirement table from here. */
   readonly tribes: readonly TribeDef[];
+  /** The sim's livestock-workplace classification (`isLivestockWorkplaceType`), so the panel hides the
+   *  slaughter recipe the sim's recipe table drops there. Absent = no filtering (tests, plain views). */
+  readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
 }
 
 export interface Comp {
@@ -51,11 +54,26 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
   return ctx.buildings.find((b) => b.typeId === typeId);
 }
 
+/** A building def's recipes minus the slaughter production the sim drops at a livestock workplace
+ *  (the `isLivestockWorkplace` seam mirrors the sim's recipe table, `core/content-index/production.ts`)
+ *  - so no panel row shows a production bar that no cycle can ever move. */
+export function visibleRecipes(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+): BuildingDef['recipes'] {
+  const recipes = def?.recipes ?? [];
+  if (def === undefined || ctx.isLivestockWorkplace?.(def.typeId) !== true) return recipes;
+  return recipes.filter((r) => r.inputs.length > 0);
+}
+
 /** A building def's production outputs: one line per per-product recipe (its first output), else a
  *  unit-amount entry per `produces` good, else empty — the one source the settler Praca product and
  *  the building Produkcja list must agree on. */
-export function recipeOutputs(def: BuildingDef | undefined): { goodType: number; amount: number }[] {
-  const fromRecipes = def?.recipes.flatMap((r) => r.outputs) ?? [];
+export function recipeOutputs(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+): { goodType: number; amount: number }[] {
+  const fromRecipes = visibleRecipes(ctx, def).flatMap((r) => r.outputs);
   if (fromRecipes.length > 0) return fromRecipes;
   return def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }

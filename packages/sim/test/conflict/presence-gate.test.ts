@@ -62,17 +62,30 @@ describe('combat presence gate — conservative boundaries', () => {
     expect(sim.world.has(fighter, Engagement)).toBe(true);
   });
 
-  it('an owned hunter still hunts prey owned by its OWN player (the gate never covers hunters)', () => {
+  it("an owned hunter leaves its own player's claimed livestock alone (property, not prey)", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
     // Hunters default to IGNORE with the prey-predation exemption; test_spear band is [3, 17].
     const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
     const cow = fighterAtNode(sim, 46, 40, COW, null); // catchable prey 6 nodes off, in the band
-    sim.world.add(cow, Owner, { player: P0 }); // penned livestock: prey owned by the hunter's player
+    sim.world.add(cow, Owner, { player: P0 }); // claimed livestock: carries the hunter's own Owner
 
     combatSystem(sim.world, ctxOf(sim));
 
-    // isHuntTarget is owner-blind, so same-player prey is valid — the presence gate must not skip it.
-    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+    // isHuntTarget stops at ANY Owner (predation stops at property), so the herd is safe from its keeper.
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+  });
+
+  it('an owned hunter leaves ENEMY-claimed livestock alone (predation stops at property)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const cow = fighterAtNode(sim, 46, 40, COW, null);
+    sim.world.add(cow, Owner, { player: P1 }); // an enemy's claimed animal - soldiers' business, not his
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
   });
 
   it('a gated soldier still engages a PROVOKED getAngry animal (angry classifies hostile, never passive)', () => {

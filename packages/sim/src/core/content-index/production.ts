@@ -5,17 +5,30 @@ import { isCarrierJobId } from './jobs.js';
 /** The per-building-type `product → recipe` tables
  *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) — first-wins per typeId
  *  like the other tables; a recipe's product key is its first output's goodType (per-product recipes carry
- *  exactly one output), first-wins on a duplicate product. Types without recipes are absent. */
-export function recipeProductTables(content: ContentSet): ReadonlyMap<number, ReadonlyMap<number, Recipe>> {
+ *  exactly one output), first-wins on a duplicate product. Types without recipes are absent.
+ *
+ *  At a livestock workplace (`livestockWorkplaces` - the feed-recipe types of the content-index
+ *  livestock join), an INPUT-LESS recipe is the original's slaughter production (`breeder_slay_*`
+ *  atomics: the breeder kills a penned animal for the good). It is dropped here - THE one home of the
+ *  no-slaughter rule (design decision, user-specified 2026-07-30): our breeder never slaughters, and
+ *  food arrives as the feed-cycle meat byproduct instead (`depositCycleOutput`). Dropping it at the
+ *  table hides it from every consumer at once (rotation, dormancy, planner sizing). A type whose every
+ *  recipe was dropped is absent, i.e. not a producing workplace. */
+export function recipeProductTables(
+  content: ContentSet,
+  livestockWorkplaces: ReadonlySet<number>,
+): ReadonlyMap<number, ReadonlyMap<number, Recipe>> {
   const map = new Map<number, ReadonlyMap<number, Recipe>>();
   for (const b of content.buildings) {
     if (map.has(b.typeId) || b.recipes.length === 0) continue;
+    const feeds = livestockWorkplaces.has(b.typeId);
     const byProduct = new Map<number, Recipe>();
     for (const recipe of b.recipes) {
+      if (feeds && recipe.inputs.length === 0) continue; // the slaughter production - see above
       const product = recipe.outputs[0]?.goodType;
       if (product !== undefined && !byProduct.has(product)) byProduct.set(product, recipe);
     }
-    map.set(b.typeId, byProduct);
+    if (byProduct.size > 0) map.set(b.typeId, byProduct);
   }
   return map;
 }

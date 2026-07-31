@@ -54,6 +54,20 @@ export function interactionNode(world: World, ctx: SystemContext, building: Enti
   return at;
 }
 
+/** {@link interactionNode} as a terrain {@link NodeId} - for the consumers that measure node distance
+ *  to the door or leash an animal onto it. Null for an unpositioned building or an off-map node (the
+ *  in-bounds fallback covers a terrain passed via `ctx`; this guards a caller's own graph). */
+export function interactionNodeId(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  building: Entity,
+): NodeId | null {
+  const at = interactionNode(world, ctx, building);
+  if (at === null || !terrain.inBounds(at.x, at.y)) return null;
+  return terrain.nodeAt(at.x, at.y);
+}
+
 /**
  * Walkable, dynamically unblocked nodes immediately outside a construction site's current body. Until
  * `LogicConstructionWorkArea` is extracted, the footprint perimeter is the named approximation: it lets

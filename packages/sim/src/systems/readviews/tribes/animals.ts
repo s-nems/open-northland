@@ -56,6 +56,15 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
 }
 
 /**
+ * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` — a scout may claim it by contact and
+ * a farm may pen it (the husbandry species set). Not the huntability signal: that is the authored
+ * {@link isHuntablePrey} table.
+ */
+export function isCatchableAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.catchable ?? false;
+}
+
+/**
  * Whether `tribeType`'s `animaltypes.ini` record sets `warrantable` — it can become a tribe's property
  * (penned livestock), the ownership half of the `catchable` pair. Read by the deferred
  * livestock-ownership drive.

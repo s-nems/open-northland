@@ -14,7 +14,8 @@ import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from '
  */
 describe('createSnapshotProjections — memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
-  const projectionsFor = () => createSnapshotProjections(new Map(), workerRoleOf, createFogGates());
+  const projectionsFor = () =>
+    createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), { isLivestockTribe: () => false });
   const snap = snapshotOf([building(10, HOME_TYPE, 1, 1), settler(1, 0, 10)]);
 
   it('returns the identical reference for the same snapshot, a fresh one for the next', () => {
@@ -56,13 +57,15 @@ describe('per-tick projections — one walk of the map between them', () => {
     for (let i = 0; i < SCENERY; i++) entities.push(tree(100 + i));
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
 
-    const { doorBadgesFor, settlerBubblesFor } = createSnapshotProjections(
+    const { doorBadgesFor, settlerBubblesFor, livestockHeartsFor } = createSnapshotProjections(
       new Map(),
       workerRoleOf,
       createFogGates(),
+      { isLivestockTribe: () => false },
     );
     doorBadgesFor(snapshot); // a tally pass, a projection pass, and the household grouping
     settlerBubblesFor(snapshot);
+    livestockHeartsFor(snapshot);
     forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
 
     // One shared pass builds the actor index; each projection then reads only that.

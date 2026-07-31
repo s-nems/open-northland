@@ -37,6 +37,14 @@ export const GOOD_BREAD = 119;
  *  slug prefix is what the sim's `isFood` recognizes as edible. */
 export const GOOD_FOOD_SIMPLE = 116;
 export const GOOD_FOOD_EXTRA = 117;
+// The husbandry goods (`goodtypes.ini` types 9/10/21/57/58, at the +100 catalog offset). Sheep and
+// cattle are the FED-ANIMAL tokens the animal farm stocks in-house (slug-joined to the livestock
+// tribes by the sim's content index), not storable wares.
+export const GOOD_LEATHER = 109;
+export const GOOD_WOOL = 110;
+export const GOOD_MEAT = 121;
+export const GOOD_SHEEP = 157;
+export const GOOD_CATTLE = 158;
 export const GOOD_SHOES = 130;
 export const GOOD_TOOL_WOODEN = 131;
 export const GOOD_TOOL_IRON = 132;
