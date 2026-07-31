@@ -21,8 +21,9 @@ joinery's wood" is the same complaint arriving from another rung.
 
 ## 2. Inputs go in to the brim and never come back out
 
-The delivery side deliberately fills consumers: `settlers/drives/economy/delivery-targets.ts` routes
-a utility carrier's output to the nearest recipe consumer before storage, `canStoreGood` accepts any
+The delivery side deliberately fills consumers: `toNearbyRecipeConsumer`
+(`settlers/drives/economy/delivery-rules.ts`) routes a utility carrier's output to the nearest
+recipe consumer before storage, `canStoreGood` accepts any
 consumer as a sink, and a bound workshop carrier tops each input slot to full `stockCapacity`. With
 the fetch side now closed, a slot that fills can only be drained by production. Projected from the
 slot capacities on the AI's own plan, that parks roughly 15 wood + 15 iron per smithy, 10 + 10 in

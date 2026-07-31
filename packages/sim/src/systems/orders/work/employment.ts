@@ -144,7 +144,7 @@ export function assignWorker(
  *
  * Deliberately NO signpost-confinement gate (unlike `assignWorker`): a pinned site is how the player
  * extends the network's frontier, and the builder drive treats the pinned site as a bound sink
- * (routing case 3c) so the crew can raise it from outside the walkable-area rule.
+ * (`toOwnCrewSite`) so the crew can raise it from outside the walkable-area rule.
  */
 export function assignBuilder(
   world: World,

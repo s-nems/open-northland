@@ -317,9 +317,10 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(far, Building).built).toBe(ONE);
   });
 
-  it('a PINNED builder routes its load to a site beyond the signpost area — the bound-site sink (3c)', () => {
+  it('a PINNED builder routes its load to a site beyond the signpost area — the bound-site sink', () => {
     // assignBuilder deliberately has no confinement gate (a pinned foundation is how the network's
-    // frontier grows) and routing treats the builder's own SiteAssignment as a bound sink (case 3c) —
+    // frontier grows) and routing treats the builder's own SiteAssignment as a bound sink
+    // (`toOwnCrewSite`) —
     // so a builder pinned far outside its local circle still fetches from an in-area store and ROUTES
     // the load to the pinned site instead of shedding it on "no in-area sink" (the old livelock).
     // The fixture HOUSE has no door and blocks its anchor. Construction routing must therefore use a
@@ -359,6 +360,27 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     }
     expect(delivered).toBe(true);
     expect(sim.world.has(builder, Carrying)).toBe(false);
+  });
+
+  it('a crew builder routes its load to its OWN site, not to a nearer site needing the same material', () => {
+    // Pins the bound crew site ABOVE the nearest-needing-site scan in the delivery ladder
+    // (`toOwnCrewSite` before `toNeedingConstructionSite`): the two rungs answer differently only when a
+    // foreign site is nearer, so without this the two could be swapped with the suite still green.
+    const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(60, 8) });
+    const nearer = siteAt(sim, HOUSE, 6, 1);
+    const own = siteAt(sim, HOUSE, 14, 1);
+    const builder = builderAt(sim, 2, 1);
+    sim.world.add(builder, Carrying, { goodType: STONE, amount: 1 });
+    sim.world.add(builder, SiteAssignment, { site: own, pinned: true });
+
+    let landed = false;
+    for (let t = 0; t < 1_000 && !landed; t++) {
+      sim.step();
+      landed = !sim.world.has(builder, Carrying);
+    }
+    expect(landed).toBe(true);
+    expect(sim.world.get(own, Stockpile).amounts.get(STONE)).toBe(1);
+    expect(sim.world.get(nearer, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
   });
 
   it("a builder raises only its OWN player's site — a same-tribe enemy foundation is left alone", () => {
