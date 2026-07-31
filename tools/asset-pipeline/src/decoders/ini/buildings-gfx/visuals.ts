@@ -4,7 +4,12 @@
  * record split; all but the graphics binding (which reuses the bindings kernel) share the body+palette
  * preamble ({@link readGfxHouseGraphicsRecord}).
  */
-import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@open-northland/data';
+import {
+  BuildingBob,
+  BuildingConstructionLayer,
+  BuildingFlagPoint,
+  BuildingOverlay,
+} from '@open-northland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
 import {
   findProps,
@@ -136,6 +141,48 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
     }
   });
   return overlays;
+}
+
+/**
+ * Extracts the `[GfxHouse]` sign-post anchors (`GfxFlagPoint <sizeIdx> <x> <y>`, screen pixels from
+ * the building bob's draw anchor, +y down) - where the original plants a building's occupancy/
+ * construction sign chain ({@link BuildingFlagPoint}). The `(sizeIdx → typeId)` join mirrors
+ * {@link extractBuildingBobs}; no palette fan-out (a pixel offset, not an atlas binding). Several
+ * source records repeat a level line, two of them with differing values (frank home lvl 0, saracen
+ * bakery lvl 1); the engine's resolution order is unobserved, so last-wins (the file's final word) is
+ * the chosen deterministic policy - a named approximation. A malformed line is skipped, never thrown.
+ */
+export function extractBuildingFlagPoints(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): BuildingFlagPoint[] {
+  const points: BuildingFlagPoint[] = [];
+  forEachGfxHouseRecord(sections, (rec, record) => {
+    const { tribeId, editName, typeByLevel } = record;
+    const byLevel = new Map<number, { x: number; y: number }>();
+    for (const p of findProps(rec, 'GfxFlagPoint')) {
+      const [level, x, y] = p.values.map((v) => Number.parseInt(v, 10));
+      if (level === undefined || x === undefined || y === undefined) continue;
+      if ([level, x, y].some((n) => Number.isNaN(n))) continue;
+      byLevel.set(level, { x, y });
+    }
+    for (const [level, point] of byLevel) {
+      const typeId = typeByLevel.get(level);
+      if (typeId === undefined) continue;
+      points.push(
+        BuildingFlagPoint.parse({
+          tribeId,
+          typeId,
+          level,
+          x: point.x,
+          y: point.y,
+          editName,
+          source: makeSource(src, 'GfxHouse'),
+        }),
+      );
+    }
+  });
+  return points;
 }
 
 /**

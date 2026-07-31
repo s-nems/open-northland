@@ -2,13 +2,14 @@ import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projections/index.js';
-import { building, resident, settler, snapshotOf } from './support/snapshot.js';
+import { building, type Ent, resident, settler, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeDoorBadges — the pure snapshot→door-badge projection the render layer draws. It reads the sim's
- * {@link JobAssignment} binding, so a badge appears for every worker bound to a building (auto-assigned
- * or player-assigned), split by worker role (craftsman / carrier / gatherer via `roleOf`), anchored on
- * the building's WORKER-ICON node (the door node shifted beside the doorway — `workerIconNode`).
+ * {@link JobAssignment} binding, so a badge row appears for every worker bound to a building
+ * (auto-assigned or player-assigned), split by worker role (craftsman / carrier / gatherer via
+ * `roleOf`). The projection owns the bottom-to-top stack order and each row's click-pick settler id;
+ * the anchor is the type's `GfxFlagPoint` when present, else the worker-icon node beside the door.
  */
 
 const CARRIER = 26; // a carrier job id
@@ -20,7 +21,7 @@ const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' =>
   jobType === CARRIER ? 'carrier' : jobType === GATHERER ? 'gatherer' : 'craftsman';
 
 describe('computeDoorBadges', () => {
-  it('tallies bound workers per building, split by role (craftsman/carrier/gatherer), at the door node', () => {
+  it('emits one row per bound worker - discs first, carrier pennants on top - with settler ids', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { footprint: { door: { dx: 0, dy: 2 } } }]]);
     const snap = snapshotOf([
       building(1, 7, 4, 4),
@@ -35,16 +36,36 @@ describe('computeDoorBadges', () => {
     expect(badges).toHaveLength(1);
     const badge = badges[0];
     expect(badge?.id).toBe(1);
-    expect(badge?.player).toBeUndefined(); // the fixture building is unowned — the layer draws slot 0
-    expect(badge?.craftsmen).toBe(2);
-    expect(badge?.carriers).toBe(1);
-    expect(badge?.gatherers).toBe(1);
+    expect(badge?.player).toBeUndefined(); // the fixture building is unowned - the layer draws slot 0
+    // Bottom-to-top: craftsmen, gatherers (both the worker disc), then the carrier always on top.
+    expect(badge?.rows).toEqual([
+      { role: 'craftsman', settler: 2 },
+      { role: 'craftsman', settler: 3 },
+      { role: 'gatherer', settler: 5 },
+      { role: 'carrier', settler: 4 },
+    ]);
     // Anchored on the worker-icon node = anchor + the type's door offset + the icon offset beside it.
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
     const icon = workerIconOffset(undefined);
     const iconPos = positionOfNode(anchor.hx + 0 + icon.dx, anchor.hy + 2 + icon.dy);
     expect(badge?.x).toBe(iconPos.x);
     expect(badge?.y).toBe(iconPos.y);
+    expect(badge?.dx).toBeUndefined(); // no flag point → node anchor, no px offset
+  });
+
+  it('anchors at the building position + GfxFlagPoint px offset when the type carries one', () => {
+    const types = new Map<number, BuildingDoorInfo>([
+      [7, { footprint: { door: { dx: 0, dy: 2 } }, flagPoint: { x: -6, y: 29 } }],
+    ]);
+    const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    // The anchor is the building's own position (the sprite draw anchor)…
+    expect(badge?.x).toBe(fx.fromInt(4));
+    expect(badge?.y).toBe(fx.fromInt(4));
+    // …and the flag point rides as a screen-px offset (the viking tower's real values).
+    expect(badge?.dx).toBe(-6);
+    expect(badge?.dy).toBe(29);
   });
 
   it('emits no badge for an unstaffed building, and ignores an unbound settler', () => {
@@ -82,20 +103,50 @@ describe('computeDoorBadges', () => {
     expect(badge?.y).toBe(iconPos.y);
   });
 
-  it('anchors a home’s occupancy dots a full field (two nodes) right of the door, clear of it', () => {
+  it("puts a home's family banner at the stack base, below its worker rows", () => {
     const types = new Map<number, BuildingDoorInfo>([
       [7, { id: 'home_level_00', footprint: { door: { dx: 0, dy: 2 } } }],
     ]);
-    const snap = snapshotOf([building(1, 7, 4, 4), resident(2, CRAFTSMAN, 1)]);
+    const lodger = resident(2, CRAFTSMAN, 1);
+    const snap = snapshotOf([
+      building(1, 7, 4, 4),
+      { ...lodger, components: { ...lodger.components, JobAssignment: { workplace: 1 } } },
+    ]);
 
     const badge = computeDoorBadges(snap, types, roleOf)[0];
-    expect(badge?.households).toEqual(['single']);
-    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
-    // A home pushes the marker a full field (two half-cell nodes) right of the door so the dots clear
-    // the wide house door graphic — the literal committed offset, not read back through the table.
-    const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
-    expect(badge?.x).toBe(iconPos.x);
-    expect(badge?.y).toBe(iconPos.y);
+    expect(badge?.rows).toEqual([
+      { role: 'single', settler: 2 }, // the banner at the base…
+      { role: 'craftsman', settler: 2 }, // …then the worker disc above it
+    ]);
+  });
+
+  it("a couple's banner clicks to the wife; a single's to its lone resident", () => {
+    const couple = (home: number, husbandId: number, wifeId: number): Ent[] => [
+      {
+        id: husbandId,
+        components: {
+          Settler: { jobType: CRAFTSMAN },
+          Residence: { home },
+          Marriage: { spouse: wifeId, child: null },
+        },
+      },
+      {
+        id: wifeId,
+        components: {
+          Settler: { jobType: CRAFTSMAN },
+          Residence: { home },
+          Female: {},
+          Marriage: { spouse: husbandId, child: null },
+        },
+      },
+    ];
+    const snap = snapshotOf([building(1, 7, 4, 4), ...couple(1, 2, 3), resident(9, CRAFTSMAN, 1)]);
+
+    const badge = computeDoorBadges(snap, new Map(), roleOf)[0];
+    expect(badge?.rows).toEqual([
+      { role: 'couple', settler: 3 }, // the wife (adult female), not the lower-id husband
+      { role: 'single', settler: 9 },
+    ]);
   });
 
   it("carries the building's owner slot so the layer picks that player's sign recolour", () => {

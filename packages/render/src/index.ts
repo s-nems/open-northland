@@ -65,6 +65,7 @@ export {
   type ElevationField,
   makeElevationField,
   patternSrcRect,
+  terrainLiftAt,
 } from './data/terrain/index.js';
 export {
   AnimationGallery,
@@ -75,24 +76,27 @@ export {
   type GalleryDirection,
 } from './gpu/gallery/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
-export type {
-  BuildingSignGfx,
-  BuildingSignKind,
-  BuildingSignSheet,
-  ConstructionSign,
-  DoorBadge,
-  GeometryDebugCell,
-  GeometryDebugItem,
-  HouseholdKind,
-  HudFrame,
-  HudStyle,
-  PlacementGhost,
-  PlacementOverlayCell,
-  PlacementOverlayFrame,
-  PortraitInsetFrame,
-  SettlerBubble,
-  SettlerBubbleGfx,
-  SettlerBubbleKind,
+export {
+  type BuildingSignGfx,
+  type BuildingSignKind,
+  type BuildingSignSheet,
+  type ConstructionSign,
+  type DoorBadge,
+  type DoorBadgeRole,
+  type DoorBadgeRow,
+  type GeometryDebugCell,
+  type GeometryDebugItem,
+  type HouseholdKind,
+  type HudFrame,
+  type HudStyle,
+  type PlacementGhost,
+  type PlacementOverlayCell,
+  type PlacementOverlayFrame,
+  type PortraitInsetFrame,
+  type SettlerBubble,
+  type SettlerBubbleGfx,
+  type SettlerBubbleKind,
+  signRowAt,
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';

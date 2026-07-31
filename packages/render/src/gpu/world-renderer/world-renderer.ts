@@ -248,7 +248,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Provide (or clear) the decoded building-sign art ({@link BuildingSignGfx} — the per-player `ls_temp`
+   * Provide (or clear) the decoded building-sign art ({@link BuildingSignGfx} - the per-player `ls_temp`
    * pages + the frame each sign kind draws), read through the shared frame→texture cache. `null` (a
    * checkout without `content/`) leaves the badge layer on its placeholder squares.
    */
@@ -357,7 +357,7 @@ export class WorldRenderer {
     // Damage smoke: plumes over the pool's culled damaged buildings, a pure function of each building's
     // current HP.
     this.damageSmoke.draw(this.pool.damagedBuildings(), this.pool, tick + alpha);
-    // Door badges: the app tallies each building's bound workers and projects its door node; this layer
+    // Door badges: the app projects each building's sign-post anchor and ordered rows; this layer
     // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
     this.constructionSigns.draw(signItems, this.elevation, vp);

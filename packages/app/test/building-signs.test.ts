@@ -3,7 +3,7 @@ import { resolveBuildingSignRefs } from '../src/content/building-signs.js';
 import type { ContentIr, LandscapeGfxRow } from '../src/content/ir/rows.js';
 
 /**
- * resolveBuildingSignRefs — the pure IR→sign-refs join: each player slot resolves its six `ls_temp`
+ * resolveBuildingSignRefs - the pure IR→sign-refs join: each player slot resolves its six `ls_temp`
  * sign records (worker disc, carrier pennant, three residence banners, construction stand) into one
  * served-stem + bob-per-kind ref, or `undefined` when any record is missing (the renderer then falls
  * back to slot 0's sheet or the placeholder squares).

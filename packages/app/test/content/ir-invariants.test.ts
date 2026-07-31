@@ -1,10 +1,11 @@
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
+import { flagPointByType, VIKING_TRIBE } from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
-import { WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
+import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
@@ -225,5 +226,21 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     refs.forEach((slot, i) => {
       expect(slot, `player slot ${i} unresolved`).toBeDefined();
     });
+  });
+
+  it('resolves a viking GfxFlagPoint sign-post anchor for most viking-skinned building types', () => {
+    // The sign chain anchors on the extracted `GfxFlagPoint`; if the lane goes missing the badge
+    // projection silently falls back to the derived door-side node for EVERY building (visibly wrong
+    // on the tower). The viking tower's own values are byte-verified against the mod source.
+    const ir = rawIrUnderTest() as ContentIr;
+    const points = flagPointByType(ir);
+    expect(points.get(BUILDING_WATCHTOWER)).toEqual({ x: -6, y: 29 });
+    const vikingBobTypes = new Set(
+      (ir.buildingBobs ?? []).filter((b) => b.tribeId === VIKING_TRIBE).map((b) => b.typeId),
+    );
+    const anchored = [...vikingBobTypes].filter((t) => points.has(t));
+    // Not every record carries the key (the source misses a handful), but a near-empty join means the
+    // lane or the tribe filter broke.
+    expect(anchored.length).toBeGreaterThan(vikingBobTypes.size / 2);
   });
 });

@@ -5,9 +5,9 @@ import { computeConstructionSigns } from '../src/view/projections/index.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * computeConstructionSigns — one player-coloured construction stand per building carrying
- * `UnderConstruction` (a fresh build or a running upgrade), planted at the DOOR node itself (not the
- * worker-icon node beside it — the stand marks the site entrance).
+ * computeConstructionSigns - one player-coloured construction stand per building carrying
+ * `UnderConstruction` (a fresh build or a running upgrade), planted at the type's `GfxFlagPoint` sign
+ * post when the content has one, else at the DOOR node itself (the stand marks the site entrance).
  */
 
 /** A building site at tile `(x, y)`: a Building + Position + UnderConstruction, optionally owned. */
@@ -34,6 +34,14 @@ describe('computeConstructionSigns', () => {
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
     const door = positionOfNode(anchor.hx + 0, anchor.hy + 2);
     expect(signs[0]).toEqual({ id: 1, x: door.x, y: door.y, player: 3 });
+  });
+
+  it('plants at the building position + GfxFlagPoint px offset when the type carries one', () => {
+    const types = new Map<number, BuildingDoorInfo>([
+      [7, { footprint: { door: { dx: 0, dy: 2 } }, flagPoint: { x: -6, y: 29 } }],
+    ]);
+    const signs = computeConstructionSigns(snapshotOf([site(1, 7, 4, 4, 3)]), types);
+    expect(signs).toEqual([{ id: 1, x: fx.fromInt(4), y: fx.fromInt(4), dx: -6, dy: 29, player: 3 }]);
   });
 
   it('emits nothing for a completed building, and anchors a doorless type at its anchor node', () => {

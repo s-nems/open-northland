@@ -4,58 +4,61 @@ import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js'
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 import {
-  type BuildingSignKind,
   type BuildingSignSheet,
+  chainedFrame,
+  type DoorBadgeRole,
   type HouseholdKind,
   IDENTITY_COLOUR,
+  SIGN_HEIGHT,
+  SIGN_STEP,
   type SignGfx,
   sheetFor,
+  signKindOf,
 } from './sign-gfx.js';
 
-// Re-exported so app-side DoorBadge producers keep importing it from the badge layer they feed.
-export type { HouseholdKind } from './sign-gfx.js';
+// Re-exported so app-side DoorBadge producers keep importing them from the badge layer they feed.
+export type { DoorBadgeRole, HouseholdKind } from './sign-gfx.js';
 
 /**
- * The door-badge layer - a stacked marker beside each staffed building's door showing how many settlers
- * work there (one sign per worker) and, for a home, its resident families, drawn in world space (a child
- * of the camera's `worldLayer`, above the sprite layer so it floats over the house) so it pans/zooms with
- * the building. Like the selection rings this is a client-side projection of the read-only snapshot, not
- * sim state. The app tallies each building's bound workers (the {@link DoorBadge} list) and this layer
- * projects them.
+ * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
+ * (one sign per settler) and, for a home, its resident families, drawn in world space (a child of the
+ * camera's `worldLayer`, above the sprite layer so it floats over the house) so it pans/zooms with the
+ * building. Like the selection rings this is a client-side projection of the read-only snapshot, not
+ * sim state: the app's `computeDoorBadges` resolves each building's anchor and its bottom-to-top
+ * {@link DoorBadgeRow} list; this layer only draws them.
  *
  * Retained, like the selection layer: one badge-stack {@link Container} per building id (a stable key),
- * rebuilt only when its counts, family banners, or owner change, otherwise just repositioned each frame;
- * a stack whose building left the badge list is destroyed. The stack anchors on the building's
- * worker-icon node - the app's `computeDoorBadges` resolves it beside the door, with the per-building
- * overrides - and is projected via {@link tileToScreen} + the terrain lift (the same math the selection
- * ring uses), growing upward from it - one sign per person.
+ * rebuilt only when its rows, family banners, or owner change, otherwise just repositioned each frame;
+ * a stack whose building left the badge list is destroyed.
  *
- * The badge art is the original's player-coloured `ls_temp` signs (the worker disc, the carrier pennant,
- * the three residence banners - see `sign-gfx.ts` for the shared contract and fallback rules); without
- * decoded art the layer draws the placeholder coloured squares/dots instead.
+ * The badge art is the original's player-coloured `ls_temp` signs (see `sign-gfx.ts` for the shared
+ * contract, chain layout, and fallback rules); without decoded art the layer draws the placeholder
+ * coloured squares/dots instead.
  */
 
-/** One building's badge data: its worker-icon anchor position (snapshot `Position` fixed-point units,
- *  projected here) and the counts of settlers bound to it, split by worker role - plus, for a home, its
- *  resident family banners and the make-love hearts. */
+/** One drawn sign row of a badge: its role (which sign it draws) and, when the marker stands for one
+ *  settler, that settler's entity id - the click-pick target the app resolves. */
+export interface DoorBadgeRow {
+  readonly role: DoorBadgeRole;
+  readonly settler?: number;
+}
+
+/** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
+ *  screen-px offset) and the bottom-to-top sign rows bound to it. */
 export interface DoorBadge {
   /** The building entity id - the retained-pool key (ids are monotonic, a stable key). */
   readonly id: number;
-  /** Worker-icon anchor position in fixed-point `Position` units (same space as a snapshot `Position`). */
+  /** Anchor position in fixed-point `Position` units (same space as a snapshot `Position`). */
   readonly x: number;
   readonly y: number;
+  /** Screen-px offset from the projected anchor - the original's `GfxFlagPoint` (+y down); absent = 0. */
+  readonly dx?: number;
+  readonly dy?: number;
   /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
   readonly player?: number;
-  /** In-workshop tradesmen (smith, joiner, ...) bound here - drawn as the worker disc. */
-  readonly craftsmen: number;
-  /** Carriers (haulers) bound here - drawn as the carrier pennant. */
-  readonly carriers: number;
-  /** Gatherers bound here (e.g. the joinery's demo woodcutter) - drawn as the worker disc too (the
-   *  original's one workplace sign covers every non-carrier trade). */
-  readonly gatherers: number;
-  /** The families living in this home - one residence banner each (`homeSize` counts families);
-   *  absent/empty = nobody lives here. */
-  readonly households?: readonly HouseholdKind[];
+  /** Bottom-to-top sign rows. The projection owns the order (families at the base, worker discs, then
+   *  carrier pennants on top); this layer draws them as given. */
+  readonly rows: readonly DoorBadgeRow[];
   /** True while the resident couple makes love here - draws the hearts over the house. */
   readonly hearts?: boolean;
 }
@@ -64,29 +67,21 @@ export interface DoorBadge {
 const SIZE = 9;
 const GAP = 3;
 /** px the placeholder stack's base sits below its anchor node, so the squares stack up the wall from
- *  ground level. Horizontal placement is the anchor's own (no x offset added here). */
+ *  ground level. */
 const STACK_BASE_DROP = 6;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
-const CRAFTSMAN_COLOR = 0x5ab6ff; // blue — a workshop tradesman
-const CARRIER_COLOR = 0xffbb33; // amber — a hauler (tragarz)
-const GATHERER_COLOR = 0x7ed957; // green — a raw-good gatherer
+const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>> = {
+  craftsman: 0x5ab6ff, // blue - a workshop tradesman
+  carrier: 0xffbb33, // amber - a hauler (tragarz)
+  gatherer: 0x7ed957, // green - a raw-good gatherer
+};
 const BORDER_COLOR = 0x1a1206;
-/** Placeholder household dot colours — one per family shape ({@link HouseholdKind}). */
+/** Placeholder household dot colours - one per family shape ({@link HouseholdKind}). */
 const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
   single: 0xd9d9d9, // grey — one settler lives here
   couple: 0xff7a9c, // pink — a married couple
   family: 0xffd24d, // gold — a couple raising a child
 };
-/**
- * Vertical world-px between stacked sign anchors. A sign frame is ~33 px tall with ~8 px of pole base
- * below its emblem; stepping less than the full height overlaps each sign's emblem onto the pole base
- * of the one below, so the stack reads as one connected chain of signs (the original plants them as
- * world objects; the chain layout is our approximation of its stacked occupancy emblems).
- */
-const SIGN_STEP = 20;
-/** World-px a sign's emblem tops out above its anchor (the frames author `offsetY` of about -25) - the
- *  hearts float relative to the stack's top emblem. */
-const SIGN_HEIGHT = 26;
 /** Hearts (make-love) drawing: colour, per-heart radius and the column they float in above the stack. */
 const HEART_COLOR = 0xff4d78;
 const HEART_RADIUS = 3.5;
@@ -97,11 +92,8 @@ const HEART_COUNT = 3;
 
 interface BadgeStack {
   readonly node: Container;
-  readonly craftsmen: number;
-  readonly carriers: number;
-  readonly gatherers: number;
-  /** The drawn family banners, joined into a change-detection key ('' = none). */
-  readonly households: string;
+  /** The drawn rows joined into a change-detection key ('' = none). */
+  readonly rows: string;
   readonly hearts: boolean;
   /** The player recolour the stack was built with (0 when drawing the player-agnostic placeholder
    *  squares, so an owner change never rebuilds a visually identical square stack). The art basis
@@ -112,14 +104,17 @@ interface BadgeStack {
   readonly baseDrop: number;
 }
 
-/** A badge's family-banner list as a change-detection key (order matters — it is the drawn order). */
-function householdsKey(badge: DoorBadge): string {
-  return badge.households?.join(',') ?? '';
+/** A badge's row roles as a change-detection key (order matters - it is the drawn order). A settler
+ *  swap behind an identical row list draws the same art, so ids stay out of the key. */
+function rowsKey(badge: DoorBadge): string {
+  let key = '';
+  for (const row of badge.rows) key += `${row.role},`;
+  return key;
 }
 
 export class BadgeLayer {
   readonly container = new Container();
-  /** One persistent badge-stack per building id; rebuilt only when its counts change, else repositioned. */
+  /** One persistent badge-stack per building id; rebuilt only when its rows change, else repositioned. */
   private readonly stacks = new Map<number, BadgeStack>();
   /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
   private readonly drawn = new Set<number>();
@@ -142,8 +137,8 @@ export class BadgeLayer {
   }
 
   /**
-   * Reconcile the badge stacks to `badges`: get-or-(re)build a stack per building whose counts changed,
-   * move it to the building's door node (projected + terrain-lifted), then destroy stacks for buildings
+   * Reconcile the badge stacks to `badges`: get-or-(re)build a stack per building whose rows changed,
+   * move it to the building's anchor (projected + terrain-lifted), then destroy stacks for buildings
    * no longer in the list. An empty list retires every stack. A `viewport` bounds the per-frame work to
    * the screen: a staffed building outside the framed box keeps its pooled stack (it scrolls back) but is
    * hidden and neither repositioned nor rebuilt, so cost tracks the screen, not the map's building count.
@@ -151,11 +146,7 @@ export class BadgeLayer {
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport): void {
     this.drawn.clear();
     for (const badge of badges) {
-      const empty =
-        badge.craftsmen + badge.carriers + badge.gatherers <= 0 &&
-        (badge.households === undefined || badge.households.length === 0) &&
-        badge.hearts !== true;
-      if (empty) continue;
+      if (badge.rows.length === 0 && badge.hearts !== true) continue;
       const tileX = badge.x / ONE;
       const tileY = badge.y / ONE;
       const p = tileToScreen(tileX, tileY);
@@ -172,12 +163,10 @@ export class BadgeLayer {
       const colour = this.colourOf(badge.player ?? 0);
       const sheet = this.gfx === undefined ? undefined : sheetFor(this.gfx, colour);
       const player = sheet === undefined ? 0 : colour;
+      const rows = rowsKey(badge);
       if (
         stack === undefined ||
-        stack.craftsmen !== badge.craftsmen ||
-        stack.carriers !== badge.carriers ||
-        stack.gatherers !== badge.gatherers ||
-        stack.households !== householdsKey(badge) ||
+        stack.rows !== rows ||
         stack.hearts !== (badge.hearts === true) ||
         stack.player !== player
       ) {
@@ -189,10 +178,7 @@ export class BadgeLayer {
         this.container.addChild(node);
         stack = {
           node,
-          craftsmen: badge.craftsmen,
-          carriers: badge.carriers,
-          gatherers: badge.gatherers,
-          households: householdsKey(badge),
+          rows,
           hearts: badge.hearts === true,
           player,
           baseDrop: sheet !== undefined ? 0 : STACK_BASE_DROP,
@@ -200,7 +186,7 @@ export class BadgeLayer {
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
-      stack.node.position.set(p.x, p.y - lift + stack.baseDrop);
+      stack.node.position.set(p.x + (badge.dx ?? 0), p.y + (badge.dy ?? 0) - lift + stack.baseDrop);
       this.drawn.add(badge.id);
     }
     // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).
@@ -213,23 +199,17 @@ export class BadgeLayer {
   }
 }
 
-/** The bottom-to-top sign kinds of a badge: a home's residence banners first (at the base), then the
- *  carrier pennants, then the worker discs (craftsmen + gatherers share the disc). */
-function stackKinds(badge: DoorBadge): BuildingSignKind[] {
-  return [
-    ...(badge.households ?? []),
-    ...new Array<BuildingSignKind>(badge.carriers).fill('carrier'),
-    ...new Array<BuildingSignKind>(badge.craftsmen + badge.gatherers).fill('worker'),
-  ];
-}
-
-/** A door badge stack drawn from the decoded sign art: one player-coloured sign sprite per marker,
- *  chained upward from the anchor ({@link SIGN_STEP}), with the make-love hearts floating above. */
+/** A door badge stack drawn from the decoded sign art: one player-coloured sign sprite per row,
+ *  chained upward from the anchor ({@link SIGN_STEP}) - rows above the base draw their base-cropped
+ *  variant ({@link chainedFrame}) so no rock clump lands on the emblem below - with the make-love
+ *  hearts floating above. */
 function makeSignStack(badge: DoorBadge, textures: TextureCache, sheet: BuildingSignSheet): Container {
   const c = new Container();
   let rows = 0;
-  for (const kind of stackKinds(badge)) {
-    const frame = sheet.frameByKind[kind];
+  for (const row of badge.rows) {
+    const kind = signKindOf(row.role);
+    const base = sheet.frameByKind[kind];
+    const frame = rows === 0 ? base : chainedFrame(kind, base);
     const s = new Sprite(textures.get(sheet.source, frame));
     s.position.set(frame.offsetX, -(rows * SIGN_STEP) + frame.offsetY);
     c.addChild(s);
@@ -244,31 +224,26 @@ function makeSignStack(badge: DoorBadge, textures: TextureCache, sheet: Building
   return c;
 }
 
-/** The placeholder stack (no decoded art): one square per bound worker, grouped by role bottom-to-top —
- *  `carriers` (amber), then `craftsmen` (blue), then `gatherers` (green) — growing up from the door
- *  anchor. A home's family dots stack at the base, one round dot per resident family (round, so they
- *  read apart from the squares), and the make-love hearts float in a short column above it all. */
+/** The placeholder stack (no decoded art): the same bottom-to-top rows as the sign chain, drawn as a
+ *  coloured square per worker ({@link ROLE_COLOR}) and a round dot per resident family (round, so they
+ *  read apart from the squares), growing up from the anchor, with the make-love hearts in a short
+ *  column above it all. */
 function makeSquareStack(badge: DoorBadge): Container {
   const c = new Container();
   let rows = 0;
-  for (const household of badge.households ?? []) {
+  for (const row of badge.rows) {
     const g = new Graphics();
-    const yCentre = -(rows + 1) * (SIZE + GAP) + SIZE / 2;
-    g.circle(SIZE / 2, yCentre, SIZE / 2)
-      .fill({ color: HOUSEHOLD_COLOR[household] })
-      .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
-    c.addChild(g);
-    rows++;
-  }
-  const colors = [
-    ...new Array<number>(badge.carriers).fill(CARRIER_COLOR),
-    ...new Array<number>(badge.craftsmen).fill(CRAFTSMAN_COLOR),
-    ...new Array<number>(badge.gatherers).fill(GATHERER_COLOR),
-  ];
-  for (const color of colors) {
-    const yTop = -(rows + 1) * (SIZE + GAP);
-    const g = new Graphics();
-    g.rect(0, yTop, SIZE, SIZE).fill({ color }).stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
+    if (row.role === 'single' || row.role === 'couple' || row.role === 'family') {
+      const yCentre = -(rows + 1) * (SIZE + GAP) + SIZE / 2;
+      g.circle(SIZE / 2, yCentre, SIZE / 2)
+        .fill({ color: HOUSEHOLD_COLOR[row.role] })
+        .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
+    } else {
+      const yTop = -(rows + 1) * (SIZE + GAP);
+      g.rect(0, yTop, SIZE, SIZE)
+        .fill({ color: ROLE_COLOR[row.role] })
+        .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
+    }
     c.addChild(g);
     rows++;
   }

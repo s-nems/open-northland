@@ -71,6 +71,28 @@ export const BuildingConstructionLayer = BuildingBobBase.extend({
 export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer>;
 
 /**
+ * One `[GfxHouse]` sign-post anchor: `GfxFlagPoint <sizeIdx> <x> <y>` - where the original plants a
+ * building's occupancy/construction sign chain. Byte-verified: the key sits in `the original`'s
+ * `[GfxHouse]` key list and the values come from the mod's plaintext `houses.ini`. The reading of
+ * `x y` as screen pixels from the building bob's draw anchor, +y down, is an approximation inferred
+ * from the sibling pixel keys' grammar (`GfxSmokePoint`, `GfxOverlay` - neither rendered here yet),
+ * pending observation against the running original. Not an atlas binding - no `(bmd, palette)` - so
+ * it stands alone rather than extending the bob-binding base.
+ */
+export const BuildingFlagPoint = z.strictObject({
+  tribeId: TypeId,
+  typeId: TypeId,
+  /** The growth/size level index (`GfxFlagPoint`'s leading int, joined to `typeId` via `LogicType`). */
+  level: z.number().int().nonnegative(),
+  /** Pixel offset from the building bob's draw anchor (+y down/toward the viewer). */
+  x: z.number().int(),
+  y: z.number().int(),
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+export type BuildingFlagPoint = z.infer<typeof BuildingFlagPoint>;
+
+/**
  * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` — an
  * extra sprite drawn on top of the finished body, with one frame list per state. The one type-4 user in
  * the source is the mill: its body bob has no rotor blades — state `0` is the single standing-still blade

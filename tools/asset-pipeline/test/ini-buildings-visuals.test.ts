@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractBuildingBobs,
+  extractBuildingFlagPoints,
   extractBuildingGraphics,
   extractBuildingOverlays,
   extractConstructionLayers,
@@ -92,6 +93,56 @@ describe('extractBuildingOverlays', () => {
 
   it('returns an empty array for sources with no [GfxHouse] records', () => {
     expect(extractBuildingOverlays(parseIniSections(HOUSES_INI), src)).toEqual([]);
+  });
+});
+
+// Mirrors the real viking-tower record's sign-post grammar (`GfxFlagPoint <sizeIdx> <x> <y>`, pixel
+// offsets from the bob draw anchor). The second record probes the repeated-level policy: the real
+// source repeats level lines in several records (two with differing values), and the extractor
+// resolves them last-wins - the fixture repeats with differing values so the policy is observable.
+const GFXHOUSE_FLAGPOINTS_INI = `[GfxHouse]
+EditName "viking tower"
+LogicTribeType 1
+LogicType 0 40
+LogicType 1 41
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking3.bmd"
+GfxPalette "house01"
+GfxBobId 0 15
+GfxBobId 1 20
+GfxFlagPoint 0 -6 29
+GfxFlagPoint 1 -4 38
+GfxFlagPoint 2 9 9
+EditName "Egypt Tower"
+LogicTribeType 5
+LogicType 0 40
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_egypt.bmd"
+GfxPalette "pyramid01"
+GfxBobId 0 3
+GfxFlagPoint 0 17 70
+GfxFlagPoint 0 17 72
+`;
+
+describe('extractBuildingFlagPoints', () => {
+  const src = { file: 'budynki12/houses/houses.ini', block: 'GfxHouse', layer: 'mod' as const };
+
+  it('joins flag points to typeIds by level, keeping the pixel offsets verbatim', () => {
+    const points = extractBuildingFlagPoints(parseIniSections(GFXHOUSE_FLAGPOINTS_INI), src);
+    expect(points.filter((p) => p.editName === 'viking tower')).toEqual([
+      { tribeId: 1, typeId: 40, level: 0, x: -6, y: 29, editName: 'viking tower', source: src },
+      { tribeId: 1, typeId: 41, level: 1, x: -4, y: 38, editName: 'viking tower', source: src },
+      // The level-2 line has no LogicType pairing → dropped, not guessed.
+    ]);
+  });
+
+  it('resolves a repeated level line last-wins (the chosen policy for the source duplicates)', () => {
+    const points = extractBuildingFlagPoints(parseIniSections(GFXHOUSE_FLAGPOINTS_INI), src);
+    expect(points.filter((p) => p.tribeId === 5)).toEqual([
+      { tribeId: 5, typeId: 40, level: 0, x: 17, y: 72, editName: 'Egypt Tower', source: src },
+    ]);
+  });
+
+  it('returns an empty array for sources with no [GfxHouse] records', () => {
+    expect(extractBuildingFlagPoints(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 

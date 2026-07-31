@@ -16,7 +16,13 @@
  * and `gpu/gallery` feature folders. Files inside the folder import their deps directly, not through
  * this barrel.
  */
-export { BadgeLayer, type DoorBadge, type HouseholdKind } from './badge-layer.js';
+export {
+  BadgeLayer,
+  type DoorBadge,
+  type DoorBadgeRole,
+  type DoorBadgeRow,
+  type HouseholdKind,
+} from './badge-layer.js';
 export {
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -40,4 +46,9 @@ export {
 } from './placement-overlay.js';
 export { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
 export { SelectionLayer } from './selection-layer.js';
-export type { BuildingSignGfx, BuildingSignKind, BuildingSignSheet } from './sign-gfx.js';
+export {
+  type BuildingSignGfx,
+  type BuildingSignKind,
+  type BuildingSignSheet,
+  signRowAt,
+} from './sign-gfx.js';

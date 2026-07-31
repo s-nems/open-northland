@@ -6,6 +6,7 @@ import {
   extractAtomicAnimations,
   extractBobSequences,
   extractBuildingBobs,
+  extractBuildingFlagPoints,
   extractBuildingFootprints,
   extractBuildingOverlays,
   extractBuildings,
@@ -70,6 +71,8 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const constructionLayers = [];
   // `[GfxHouse]` type-4 animated state overlays — the mill rotor (render-binding data, like buildingBobs).
   const buildingOverlays = [];
+  // `[GfxHouse]` GfxFlagPoint sign-post anchors (render-binding data, like buildingBobs).
+  const buildingFlagPoints = [];
 
   for (const { path, file, layer } of sources) {
     const sections = iniBytesToSections(await readFile(path));
@@ -91,6 +94,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
+    buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
     }
@@ -127,5 +131,6 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     footprints,
     constructionLayers,
     buildingOverlays,
+    buildingFlagPoints,
   };
 }

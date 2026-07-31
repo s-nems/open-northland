@@ -1,5 +1,11 @@
 import { indexById } from '@open-northland/data';
-import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
+import type {
+  DoorBadge,
+  ElevationField,
+  SceneTerrain,
+  SpriteSheet,
+  WorldRenderer,
+} from '@open-northland/render';
 import {
   type Command,
   type Entity,
@@ -10,6 +16,8 @@ import {
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
+import { flagPointByType } from '../../content/building-gfx/index.js';
+import { loadIr } from '../../content/ir/load.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
@@ -177,7 +185,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // skips it entirely) but starts disabled, so the game is silent until the user clicks the bottom
   // sound toggle — that click both unmutes and satisfies the browser autoplay gesture. A checkout
   // without `content/` (no sound bank) degrades to silence (no driver, no button).
-  const soundDriver = await mountGamePresentation(params, renderer);
+  const { sound: soundDriver, hasSignArt } = await mountGamePresentation(params, renderer);
 
   // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
@@ -270,6 +278,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // the frame loop keeps all per-frame work in the one RAF (no per-mousemove sim probing).
   const pointerAt = trackCanvasPointer(canvas);
 
+  // Door-badge click picking reads the fog-filtered badge projection built further down (it needs the
+  // fog gates + building index): late-bound like the minimap handle, and resolved long before any
+  // click. Stays unbound without the decoded sign art - the pick geometry is the sign chain's.
+  let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
+
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
   // Space for the action menu. Reads the camera + snapshot through closures, issues commands into the
   // sim. Harmless on scenes with no owned units (nothing is pickable).
@@ -290,6 +303,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: issueCommand,
     drawnItems: () => renderer.drawnItems(),
+    doorBadges: () => pickableDoorBadges?.() ?? [],
     equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
@@ -306,8 +320,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // admin spawn palette, so both read in the player's language; falls back to the good's id.
   const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
 
-  // One shared building index drives door badges and the optional geometry overlay.
-  const buildingDoors = indexById(sim.content.buildings);
+  // One shared building index drives door badges and the optional geometry overlay, each type carrying
+  // its extracted `GfxFlagPoint` sign-post anchor when the content has one (`loadIr` is memoized - the
+  // presentation mount above already resolved it).
+  const flagPoints = flagPointByType(await loadIr());
+  const buildingDoors = new Map(
+    [...indexById(sim.content.buildings)].map(([typeId, b]) => [
+      typeId,
+      { id: b.id, footprint: b.footprint, flagPoint: flagPoints.get(typeId) },
+    ]),
+  );
 
   // The developer overlays: the `?debug=geometry` diagram (ticked by the frame loop) + the admin spawn
   // palette. Mounted after the unit controls — an admin spawn click defers to their composed HUD claim.
@@ -353,6 +375,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     workerRoleOf,
     fogGates,
   );
+  if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   installDebugHandle({
     sim,

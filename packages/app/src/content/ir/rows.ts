@@ -91,6 +91,18 @@ export interface BuildingOverlayRow {
   readonly editName?: string;
 }
 
+/** One `[GfxHouse]` `GfxFlagPoint` row as it ships in `content/ir.json`'s `buildingFlagPoints` - where
+ *  the original plants the building's sign chain, in screen px from the building bob's draw anchor
+ *  (+y down). */
+export interface BuildingFlagPointRow {
+  readonly tribeId: number;
+  readonly typeId: number;
+  readonly level: number;
+  readonly x: number;
+  readonly y: number;
+  readonly editName?: string;
+}
+
 /** One `[GfxLandscape]` state's frame list as it ships in `content/ir.json`'s `landscapeGfx[].frames`. */
 export interface LandscapeGfxFramesRow {
   readonly state: number;
@@ -163,6 +175,7 @@ export interface ContentIr {
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
+  readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
   /** The `[landscapetype]` logic table — the {@link LandscapeGfxRow.logicType} join key. */

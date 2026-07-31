@@ -1,10 +1,15 @@
 import {
   type Camera,
+  type DoorBadge,
   type DrawItem,
   type ElevationField,
   type EntityBounds,
+  ONE,
+  signRowAt,
   TILE_HALF_H,
   TILE_HALF_W,
+  terrainLiftAt,
+  tileToScreen,
 } from '@open-northland/render';
 
 /**
@@ -192,6 +197,42 @@ export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number):
       best = t.ref;
       bestY = t.y;
       bestRef = t.ref;
+    }
+  }
+  return best;
+}
+
+/**
+ * The settler whose door-badge sign row sits under a world-px point, or `null` if none. Projects each
+ * badge's stack anchor exactly as the badge layer draws it (`tileToScreen` + the `GfxFlagPoint` px
+ * offset - the terrain lift at the anchor tile) and maps the click into a row via the shared chain
+ * layout (`signRowAt`), so a click lands on the row the player sees. Rows without a settler (an empty
+ * home banner edge case) don't hit; among overlapping stacks the larger anchor `y` wins - the iso
+ * frontmost convention (the drawn stacks are pooled in rebuild order, not y-sorted, so on a rare
+ * pixel-exact overlap the pixels may disagree).
+ */
+export function pickDoorBadgeRow(
+  badges: readonly DoorBadge[],
+  wx: number,
+  wy: number,
+  elevation?: ElevationField,
+): number | null {
+  let best: number | null = null;
+  let bestY = Number.NEGATIVE_INFINITY;
+  for (const badge of badges) {
+    if (badge.rows.length === 0) continue;
+    const tileX = badge.x / ONE;
+    const tileY = badge.y / ONE;
+    const p = tileToScreen(tileX, tileY);
+    const ax = p.x + (badge.dx ?? 0);
+    const ay = p.y + (badge.dy ?? 0) - terrainLiftAt(elevation, tileX, tileY);
+    const row = signRowAt(badge.rows.length, wx - ax, wy - ay);
+    if (row === null) continue;
+    const settler = badge.rows[row]?.settler;
+    if (settler === undefined) continue;
+    if (ay > bestY) {
+      best = settler;
+      bestY = ay;
     }
   }
   return best;

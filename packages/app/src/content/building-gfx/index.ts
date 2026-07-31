@@ -9,4 +9,5 @@
 
 export * from './construction.js';
 export * from './families.js';
+export * from './flag-points.js';
 export * from './overlays.js';

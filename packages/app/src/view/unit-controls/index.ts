@@ -1,8 +1,9 @@
+import type { DoorBadge } from '@open-northland/render';
 import type { Entity } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
-import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
+import { pickDoorBadgeRow, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
@@ -148,6 +149,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 
+  /** The human player's clickable door badges (an observer picks any) - an enemy building's sign chain
+   *  must not select its settler through the fog of ownership. */
+  const ownDoorBadges = (): readonly DoorBadge[] => {
+    const badges = opts.doorBadges?.() ?? [];
+    if (opts.observer === true) return badges;
+    return badges.filter((b) => b.player === opts.humanPlayer);
+  };
+
   // The armed click-to-pick modes (workplace / home / signpost): the panel/action buttons arm one, a
   // world click resolves it, and a selection change or Esc cancels it. See pick-mode.ts.
   const pickMode = createPickModeController({
@@ -235,9 +244,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      // A settler/building under the cursor wins; failing that, a gatherer's flag selects its gatherer,
+      // A door-badge sign row selects the settler it stands for - tested first, because the chain
+      // floats over the house body and the building's own pixel hit would swallow it. Then a
+      // settler/building under the cursor; failing that, a gatherer's flag selects its gatherer,
       // then an own signpost (direct click only — the marquee never grabs a post).
       const hit =
+        pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation) ??
         pickTopAt(unitTargets.owned(), w.x, w.y) ??
         pickTopAt(unitTargets.flags(), w.x, w.y) ??
         pickTopAt(unitTargets.signposts(), w.x, w.y);
