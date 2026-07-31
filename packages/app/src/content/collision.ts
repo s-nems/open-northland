@@ -34,6 +34,7 @@ import { forEachPlacement } from './map-placements.js';
  *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal).
  *    A skipped placement's collision is then the sim-content footprint (own-node), a named
  *    approximation of the IR area until real per-variant footprints enter the sim's content set.
+ *    Bridges are the other exception: they block building only ({@link BRIDGE_EDIT_GROUP}).
  *
  * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
@@ -61,6 +62,7 @@ export interface CollisionIrView {
   readonly landscapeGfx?:
     | readonly {
         readonly editName?: string | undefined;
+        readonly editGroups?: readonly string[] | undefined;
         readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[] | undefined;
         readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[] | undefined;
       }[]
@@ -100,6 +102,51 @@ function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
     // walk + build + plant → open: no entry (the grid default).
   }
   return table;
+}
+
+/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
+ *  Exported so the real-IR invariant pins the same join key this reads. */
+export const BRIDGE_EDIT_GROUP = 'misc_bridges';
+
+/** One object's blocking cells: `body` blocks walking and building, `margin` blocks building alone. */
+interface ObjectFootprint {
+  readonly body: readonly (readonly [number, number])[];
+  readonly margin: readonly (readonly [number, number])[];
+}
+
+/**
+ * `EditName` → footprint for every object that blocks something (harvestables skipped, module doc).
+ *
+ * A bridge contributes no body: its deck is authored in the GROUND lanes (the map paints a walkable
+ * strip under the sprite) and the original never bakes the object into its own half-cell landscape
+ * lane, so stamping the walk area would sever that authored strip. Its cells block building only.
+ */
+function objectFootprints(
+  rows: NonNullable<CollisionIrView['landscapeGfx']>,
+  skipObjectNames?: ReadonlySet<string>,
+): ReadonlyMap<string, ObjectFootprint> {
+  const key = ([dx, dy]: readonly [number, number]): string => `${dx},${dy}`;
+  const cells = (areas: readonly Readonly<LandscapeBlockArea>[] | undefined): [number, number][] =>
+    fullStateBlockAreaCells(areas).map((c) => [c.dx, c.dy]);
+  const out = new Map<string, ObjectFootprint>();
+  for (const g of rows) {
+    if (g.editName === undefined || skipObjectNames?.has(g.editName)) continue;
+    const walk = cells(g.walkBlockAreas);
+    const build = cells(g.buildBlockAreas);
+    if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
+    const body = g.editGroups?.includes(BRIDGE_EDIT_GROUP) === true ? [] : walk;
+    // Every cell the object blocks at all, minus the body: the two areas overlap, hence the set.
+    const claimed = new Set(body.map(key));
+    const margin: [number, number][] = [];
+    for (const cell of [...build, ...walk]) {
+      const k = key(cell);
+      if (claimed.has(k)) continue;
+      claimed.add(k);
+      margin.push(cell);
+    }
+    out.set(g.editName, { body, margin });
+  }
+  return out;
 }
 
 /** The worse of two ground classes (impassable > margin > barren > open) — a cell takes its worst
@@ -155,21 +202,7 @@ export function buildCollisionTerrain(
 
   // --- objects: each placement's walk-block body + build-block margin -------------------------------
   if (map.objects !== undefined && ir.landscapeGfx !== undefined) {
-    const gfxByName = new Map<string, { walk: [number, number][]; margin: [number, number][] }>();
-    for (const g of ir.landscapeGfx) {
-      if (g.editName === undefined) continue;
-      // A harvestable that spawns as a sim Resource blocks through the dynamic footprint overlay
-      // only (unstamped when felled/depleted) — never baked into this static grid (module doc).
-      if (skipObjectNames?.has(g.editName)) continue;
-      const walk = fullStateBlockAreaCells(g.walkBlockAreas).map((c): [number, number] => [c.dx, c.dy]);
-      const build = fullStateBlockAreaCells(g.buildBlockAreas).map((c): [number, number] => [c.dx, c.dy]);
-      if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
-      const walkKeys = new Set(walk.map(([dx, dy]) => `${dx},${dy}`));
-      gfxByName.set(g.editName, {
-        walk,
-        margin: build.filter(([dx, dy]) => !walkKeys.has(`${dx},${dy}`)),
-      });
-    }
+    const gfxByName = objectFootprints(ir.landscapeGfx, skipObjectNames);
     const stamp = (cx: number, cy: number, cls: number): void => {
       if (cx < 0 || cy < 0 || cx >= nodeW || cy >= nodeH) return;
       const i = cy * nodeW + cx;
@@ -187,7 +220,7 @@ export function buildCollisionTerrain(
       // Anchor the object's block-area offsets on its half-cell verbatim: the `emla` placement,
       // the `lmlt` blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H
       // grid (source basis: mapdat lane layout), so no flooring is needed.
-      for (const [dx, dy] of gfx.walk) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
+      for (const [dx, dy] of gfx.body) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
       for (const [dx, dy] of gfx.margin) stamp(hx + dx, hy + dy, TERRAIN_MARGIN);
     });
   }
