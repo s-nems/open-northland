@@ -17,6 +17,7 @@ import { fx, ONE, Simulation } from '../../src/index.js';
 import { cleanupSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { settlerAt } from '../fixtures/settler.js';
 
 /**
  * Unit + integration tests for the CleanupSystem — the death/cleanup half of the combat loop. It
@@ -24,6 +25,9 @@ import { ctxOf } from '../fixtures/context.js';
  * render/audio. Pairs with the AtomicSystem's `attack` effect (which drains hitpoints): attack drives
  * the pool to 0, cleanup reaps it.
  */
+
+/** Tribe 13 in the fixture content: passive livestock, no job enables - an `isAnimalTribe` tribe. */
+const ANIMAL_TRIBE = 13;
 
 describe('cleanupSystem — reaping 0-HP combatants', () => {
   it('destroys an entity whose hitpoints reached 0 and emits settlerDied', () => {
@@ -42,12 +46,15 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
 
   it('carries the death position + owner on settlerDied (for the cadaver marker + the owner-gated stinger)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const mine = sim.world.create();
-    sim.world.add(mine, Position, { x: fx.fromInt(6), y: fx.fromInt(4) });
+    const mine = settlerAt(sim, { jobType: null, position: { x: fx.fromInt(6), y: fx.fromInt(4) } });
     sim.world.add(mine, Owner, { player: 0 });
     sim.world.add(mine, Health, { hitpoints: 0, max: 1000 });
-    const wild = sim.world.create(); // an unowned wild animal — no Owner
-    sim.world.add(wild, Position, { x: fx.fromInt(2), y: fx.fromInt(9) });
+    // An unowned wild animal - no Owner, an animal tribe.
+    const wild = settlerAt(sim, {
+      jobType: null,
+      tribe: ANIMAL_TRIBE,
+      position: { x: fx.fromInt(2), y: fx.fromInt(9) },
+    });
     sim.world.add(wild, Health, { hitpoints: 0, max: 1000 });
     sim.events.clear();
 
@@ -57,7 +64,9 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
     const owned = evts.find((ev) => ev.entity === mine);
     const beast = evts.find((ev) => ev.entity === wild);
     expect(owned).toMatchObject({ player: 0, at: eventAt(fx.fromInt(6), fx.fromInt(4)) });
-    expect(beast).toMatchObject({ player: null, at: eventAt(fx.fromInt(2), fx.fromInt(9)) });
+    // The human death has no animal flag (its bones render); the animal one is flagged (no bones).
+    expect(owned).not.toHaveProperty('animal');
+    expect(beast).toMatchObject({ player: null, animal: true, at: eventAt(fx.fromInt(2), fx.fromInt(9)) });
   });
 
   it('leaves a living combatant (hitpoints > 0) untouched and emits nothing', () => {

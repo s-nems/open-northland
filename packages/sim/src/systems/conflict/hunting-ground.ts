@@ -1,5 +1,5 @@
 import {
-  DEFAULT_WORK_FLAG_RADIUS,
+  HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   Position,
   Resource,
@@ -31,16 +31,33 @@ import { isHuntTarget } from './targeting.js';
 export const HUNT_CHASE_SLACK_NODES = 4;
 
 /**
+ * How far (Manhattan nodes) past the ground's radius a hunter's carcass may lie and still be its work:
+ * the chase overshoot ({@link HUNT_CHASE_SLACK_NODES}) plus a drift margin for prey that keeps fleeing
+ * between the release and the arrow's contact. The carcass-gate probe and the hunter's harvest reach
+ * share it, so every kill the leash permits is also banked - never stranded past an invisible line.
+ */
+export const HUNT_CARCASS_SLACK_NODES = HUNT_CHASE_SLACK_NODES + 4;
+
+/**
+ * How long (ticks) a hunter's prey acquisition rests after a search that found nothing (`HuntRest` - the
+ * cost rationale lives on the component). 10 ticks ≈ 0.8 s: a ~10x amortization the player cannot see.
+ * Pure pacing, no source basis.
+ */
+export const HUNT_SEARCH_REST_TICKS = 10;
+
+/**
  * The hunter's target-acquisition spec: accept only huntable prey inside the hunting ground
- * ({@link huntingGround} - the work-flag area, or the bound workplace's default-radius circle), with
- * the ground anchor leashing the chase (never `hold` - an idle hunter belongs to its flag-gatherer
- * drive, and a combat walk-back would fight that drive for the unit every tick). ALL prey is
- * carcass-gated ({@link huntingGroundHoldsCarcass}): while the ground holds a harvestable carcass the
- * hunter takes no new target and the planner-owned harvest drive carries the kill home first - one
- * kill at a time (user rule), not a herd wiped out ahead of the banking. Last-resort livestock
- * (huntPrey `lastResort` - sheep, oxen kept for a future husbandry; user rule) is additionally
- * deprioritized (`lowPriority`: normal game always wins). A hunter with neither flag nor workplace
- * (an unposted fixture) hunts by plain sight, unanchored.
+ * ({@link huntingGround} - the work-flag area, or the {@link HUNTER_WORK_FLAG_RADIUS} circle around the
+ * bound workplace), with the ground anchor leashing the chase (never `hold` - an idle hunter belongs to
+ * its flag-gatherer drive, and a combat walk-back would fight that drive for the unit every tick). ALL
+ * prey is carcass-gated ({@link huntingGroundHoldsCarcass}): while the ground holds a harvestable
+ * carcass the hunter takes no new target and the planner-owned harvest drive carries the kill home
+ * first - one kill at a time (user rule), not a herd wiped out ahead of the banking. The carry leg
+ * after the LAST pickup (carcass gone, load on the back) is shielded a rung above this spec
+ * (`carriesKillHome` in engage-combatant.ts). Last-resort livestock (huntPrey `lastResort` - sheep,
+ * oxen kept for a future husbandry; user rule) is additionally deprioritized (`lowPriority`: normal
+ * game always wins). A hunter with neither flag nor workplace (an unposted fixture) hunts by plain
+ * sight, unanchored.
  */
 export function hunterEngageSpec(
   world: World,
@@ -94,7 +111,7 @@ export function hunterEngageSpec(
 /**
  * The area an owned hunter hunts: its work-flag circle (the same yard its carcass-harvest drive
  * works), or - employed at a stocking building instead ({@link JobAssignment}; the two are mutually
- * exclusive, see `syncWorkFlagToJob`) - the {@link DEFAULT_WORK_FLAG_RADIUS} circle around that
+ * exclusive, see `syncWorkFlagToJob`) - the {@link HUNTER_WORK_FLAG_RADIUS} circle around that
  * workplace. Null for a hunter with neither.
  */
 function huntingGround(
@@ -112,7 +129,7 @@ function huntingGround(
   if (workplace !== undefined && world.has(workplace, Position)) {
     const p = world.get(workplace, Position);
     const n = nodeOfPosition(p.x, p.y);
-    return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: DEFAULT_WORK_FLAG_RADIUS };
+    return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: HUNTER_WORK_FLAG_RADIUS };
   }
   return null;
 }
@@ -120,13 +137,17 @@ function huntingGround(
 /**
  * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's
  * probe: standing work means no new target. An existence-only box query over the resource
- * region index ({@link anyResourceNear}, reach = the ground's radius, a Manhattan superset), each hit
- * checked for units left, the job's atomic grant, and the exact in-ground distance. Hunters are a
- * handful per map and the probe memoizes per engage.
+ * region index ({@link anyResourceNear}, reach = the ground's radius plus the kill slack, a Manhattan
+ * superset), each hit checked for units left, the job's atomic grant, and the exact in-reach distance.
+ * Hunters are a handful per map and the probe memoizes per engage.
  *
  * The probe must not out-claim the harvest drive: a carcass the hunter provably cannot bank - across a
  * static terrain-component seam (a ranged kill over water), or on a cell its routes just failed on
  * ({@link unreachableGoals}) - counts as no work, else one stranded kill would stall all hunting.
+ *
+ * Cost: the memo is per-engage, so an active chase re-probes each tick, and a carcass-less probe tests
+ * every indexed resource in the {@link HUNTER_WORK_FLAG_RADIUS} box. Unmeasured; if a bench on a
+ * resource-dense ground shows it, bound it (docs/tickets/sim/combat-spatial-rebuild-per-tick.md).
  */
 function huntingGroundHoldsCarcass(
   world: World,
@@ -143,12 +164,14 @@ function huntingGroundHoldsCarcass(
   const hunterComponent = terrain.componentOf(entityNode(world, terrain, hunter));
   const ax = terrain.xOf(ground.anchorCell);
   const ay = terrain.yOf(ground.anchorCell);
-  return anyResourceNear(world, ax, ay, ground.radius, (node) => {
+  // The slack band: a kill the chase leash permitted may fall past the radius - still this hunter's work.
+  const reach = ground.radius + HUNT_CARCASS_SLACK_NODES;
+  return anyResourceNear(world, ax, ay, reach, (node) => {
     const res = world.get(node, Resource);
     if (res.remaining <= 0 || !allowed.has(res.harvestAtomic)) return false;
     const cell = entityNode(world, terrain, node);
     if (terrain.componentOf(cell) !== hunterComponent) return false;
     if (isUnreachableGoal(memo, cell)) return false;
-    return manhattan(terrain, ground.anchorCell, cell) <= ground.radius;
+    return manhattan(terrain, ground.anchorCell, cell) <= reach;
   });
 }

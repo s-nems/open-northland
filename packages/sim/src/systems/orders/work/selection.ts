@@ -40,7 +40,7 @@ const WORK_FLAG_SNAP_MAX_RADIUS = 6;
  * whose flag entity still exists, that flag is relocated to (x,y) — only the marker moves; the goods already
  * dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh flag — a pure
  * {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the ground around it, not into it) —
- * is created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the gatherer harvests only
+ * is created there and bound with the trade's radius ({@link workFlagRadiusFor}). From then on the gatherer harvests only
  * within that flag's radius, carries only what it dug, and banks it there ({@link planGatherer}).
  *
  * The clicked node is snapped to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}
@@ -89,7 +89,7 @@ export function setWorkFlag(
     return;
   }
   // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.
-  bindFreshFlag(world, e, pos);
+  bindFreshFlag(world, ctx, e, pos);
   clearNavState(world, e);
 }
 

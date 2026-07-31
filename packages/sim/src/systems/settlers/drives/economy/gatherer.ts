@@ -7,7 +7,9 @@ import {
 } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
+import { HUNT_CARCASS_SLACK_NODES } from '../../../conflict/hunting-ground.js';
 import { atomicDuration } from '../../../readviews/animations.js';
+import { isHunterJob } from '../../../readviews/index.js';
 import { workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
@@ -106,12 +108,14 @@ function planFlagGatherer(
   }
 
   // 2. Chop / mine the nearest FREE node within the flag's work radius (nothing beyond it; a node a
-  //    colleague already digs is claimed — one digger per node).
+  //    colleague already digs is claimed — one digger per node). A hunter's reach adds the kill slack:
+  //    a chased kill may fall past the radius, and a carcass the leash permitted must still be banked.
+  const slack = isHunterJob(ctx.content, plan.jobType) ? HUNT_CARCASS_SLACK_NODES : 0;
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     area: {
       center: flagCell,
-      radius: flag.radius,
+      radius: flag.radius + slack,
       ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
     },
   });

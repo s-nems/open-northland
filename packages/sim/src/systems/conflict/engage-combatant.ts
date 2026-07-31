@@ -1,10 +1,12 @@
 import {
   AttackOrder,
   Building,
+  Carrying,
   CurrentAtomic,
   Engagement,
   Fleeing,
   Health,
+  HuntRest,
   Owner,
   PlayerOrder,
   Settler,
@@ -20,6 +22,7 @@ import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../sp
 import { type ChaseTarget, chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
+import { HUNT_SEARCH_REST_TICKS } from './hunting-ground.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
@@ -64,6 +67,10 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
+  if (carriesKillHome(world, ctx, e, attacker, stance)) {
+    disengage(world, e);
+    return;
+  }
 
   const travelling = isTravelling(world, e);
   if (walksUnderAnotherDrive(world, e, travelling, ordered)) return;
@@ -78,10 +85,17 @@ export function engageCombatant(
     return;
   }
 
+  if (huntSearchRests(world, ctx, e, attacker, stance)) return;
+
   const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
+    // A hunting hunter's empty search rests the acquisition (HuntRest). Not under a DEFEND post: there
+    // the band is small and a rest would also skip the walk-back retry below for its duration.
+    if (isHunterJob(ctx.content, attacker.jobType) && spec.defend?.hold !== true && !world.has(e, HuntRest)) {
+      world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
+    }
     // A DEFEND unit (`defend.hold`) walks back and holds its post when nothing is in its radius;
     // everyone else — including a hunter between hunts — returns to the economy.
     if (spec.defend?.hold) returnToAnchor(world, e, here, spec.defend.anchorCell);
@@ -165,6 +179,42 @@ function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: Se
   return (
     stance.mode === MILITARY_MODE.IGNORE && !stance.ordered && !isHunterJob(ctx.content, attacker.jobType)
   );
+}
+
+/** A hunter with a load on its back finishes banking it before any new acquisition - the hunt cycle is
+ *  kill, pick the carcass clean, carry EVERY unit home, only then the next target (user rule). Without
+ *  this, the tick after the LAST pickup (carcass node gone, delivery not yet planned) reads as an idle
+ *  hunter and combat steals it mid-cycle, meat still on its back. Hunter-scoped (no other combatant
+ *  job carries goods) and stance-wide: even a DEFEND-posted hunter ignores an enemy while hauling -
+ *  only an explicit player attack order pierces it, like every rung here. */
+function carriesKillHome(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  attacker: SettlerIdentity,
+  stance: CombatantStance,
+): boolean {
+  return !stance.ordered && isHunterJob(ctx.content, attacker.jobType) && world.has(e, Carrying);
+}
+
+/** Whether a resting hunter ({@link HuntRest} - the empty-search breather) skips this tick's acquisition.
+ *  Reaps a lapsed rest as it reads it. Never rests an ordered focus or a live chase: the order rung
+ *  bypasses the ring search anyway, and an Engagement must keep re-resolving every tick so the chaser
+ *  swings the instant it is in reach. */
+function huntSearchRests(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  attacker: SettlerIdentity,
+  stance: CombatantStance,
+): boolean {
+  if (!isHunterJob(ctx.content, attacker.jobType)) return false;
+  if (stance.ordered || world.has(e, Engagement)) return false;
+  const rest = world.tryGet(e, HuntRest);
+  if (rest === undefined) return false;
+  if (ctx.tick < rest.until) return true;
+  world.remove(e, HuntRest);
+  return false;
 }
 
 /** A travelling unit that is neither engaged nor ordered walks under another drive (an economy walk, or a

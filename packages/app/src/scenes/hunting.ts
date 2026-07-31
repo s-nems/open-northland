@@ -12,15 +12,15 @@ import type { SceneDefinition } from './types.js';
  * flag, the paced shot (misses included), one kill carried home at a time, the carcass, and the
  * `hunter_general` XP accrual - plus the tiering: the hares are taken while the sheep herd outlives
  * the run. In the browser a human judges the bow-in-hand draw, the missed arrows, the herd bolting
- * off each release, the carcass decals and the bones left where a kill was picked clean, and the meat
- * heaping up around the hunter's flag.
+ * off each release, the carcass decals vanishing once a kill is picked clean (animals leave no
+ * bones - only humans do), and the meat heaping up around the hunter's flag.
  */
 
 const MAP_W = 26;
 const MAP_H = 20;
 
 const HUNTER_CELL = { x: 8, y: 8 };
-/** Both herds inside the hunter's auto-planted flag ground (default radius 24 nodes = 12 cells). */
+/** Both herds well inside the hunter's auto-planted flag ground (`HUNTER_WORK_FLAG_RADIUS`, 64 nodes). */
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
 

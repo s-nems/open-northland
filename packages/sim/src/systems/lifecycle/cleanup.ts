@@ -1,12 +1,13 @@
 import { Building, Health, Marriage, Owner, Position, Settler, Wedding } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
-import { ONE } from '../../core/fixed.js';
+import { type Fixed, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
+import { isAnimalTribe } from '../readviews/index.js';
 
 /**
  * CleanupSystem (the death/cleanup half of the combat loop) — destroy every entity whose
@@ -77,16 +78,19 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
 /** Announce a combatant's death (`settlerDied`, the render/audio cue) and remove it from the world. The event
  *  is emitted before the destroy so the entity id it carries is still that of a (just-)alive entity, and so its
  *  `Owner`/`Position` are still readable: `player` (owner slot, `null` when unowned) lets audio play the death
- *  stinger for the local player only, and `at` (the death node) lets render leave a cadaver/bones marker where
- *  it fell. */
+ *  stinger for the local player only, and `at` (the death node) lets render leave a bones marker where it fell
+ *  (humans only, which is what the `animal` flag tells apart - see the event's doc). */
 function reap(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
+  const settler = world.tryGet(e, Settler);
+  const animal = settler !== undefined && isAnimalTribe(ctx.content, settler.tribe);
   ctx.events.emit({
     kind: 'settlerDied',
     entity: e,
-    cause: causeOf(world, e),
+    cause: causeOf(settler),
     player: owner?.player ?? null,
+    ...(animal ? { animal: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
@@ -105,8 +109,7 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
  *  reaped with its hunger pinned at ONE reads as starved (the NeedsSystem's starvation bite is the only drain
  *  that requires that state) — a heuristic, since a swing can also land on a starving settler; the ambiguity is
  *  acceptable for a cue. Everything else is combat/attack damage. */
-function causeOf(world: World, e: Entity): string {
-  const settler = world.has(e, Settler) ? world.get(e, Settler) : undefined;
+function causeOf(settler: { hunger: Fixed } | undefined): string {
   return settler !== undefined && settler.hunger === ONE ? DEATH_CAUSE_STARVATION : DEATH_CAUSE_DAMAGE;
 }
 

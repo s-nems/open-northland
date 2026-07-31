@@ -66,3 +66,12 @@ export const YardDeliveryRoute = defineComponent<{
  * gatherer reaches a decent patch around its flag without roaming the whole map).
  */
 export const DEFAULT_WORK_FLAG_RADIUS = 24;
+
+/**
+ * The hunter's work radius (same integer node-distance): far wider than the gatherer default, because a
+ * hunter is not a stationary digger - it ranges around the base after mobile game that scatters on every
+ * shot (user rule; hunter-only, every other gatherer keeps the default). 64 nodes ≈ 32 tiles, the
+ * {@link import('../../systems/economy/berries.js').BERRY_FORAGE_RADIUS} scale. A named approximation -
+ * the original's hunter range is not decoded.
+ */
+export const HUNTER_WORK_FLAG_RADIUS = 64;

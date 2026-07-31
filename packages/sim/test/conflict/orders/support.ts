@@ -19,6 +19,7 @@ export const GRASS = 0;
 export const WOOD = 1;
 export const WOODCUTTER = 1;
 export const CARPENTER = 2;
+export { HUNTER } from '../combat-system/support.js';
 export const VIKING = 1;
 export const HEADQUARTERS = 1;
 export const HARVEST_ATOMIC = 24;

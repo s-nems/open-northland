@@ -5,6 +5,7 @@ import {
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
   Equipment,
+  HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
   MoveGoal,
   PathRequest,
@@ -21,7 +22,17 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition } from '../../../src/index.js';
 import { setJob } from '../../../src/systems/index.js';
 import { ctxOf } from '../../fixtures/context.js';
-import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOOD, WOODCUTTER, woodAt } from './support.js';
+import {
+  CARPENTER,
+  HUNTER,
+  orderMove,
+  ownedWoodcutter,
+  sim,
+  VIKING,
+  WOOD,
+  WOODCUTTER,
+  woodAt,
+} from './support.js';
 
 describe('setJob order', () => {
   it("changes an owned settler's profession and re-idles it (drops binding/action/order)", () => {
@@ -132,6 +143,21 @@ describe('setJob work-flag lifecycle', () => {
     expect(s.world.isAlive(wf.flag)).toBe(true);
     expect(s.world.has(wf.flag, DeliveryFlag)).toBe(true); // a pure marker …
     expect(s.world.has(wf.flag, Position)).toBe(true); // … planted on a tile the player can relocate
+  });
+
+  it("binds a hunter's flag at its wide radius; the kept flag shrinks back on a return to a yard trade", () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 2, 1);
+    s.enqueue({ kind: 'setJob', entity: e, jobType: HUNTER });
+    s.step();
+    expect(s.world.get(e, WorkFlag).radius).toBe(HUNTER_WORK_FLAG_RADIUS);
+
+    // The kept-flag path of the trade change: the same flag entity survives, the radius tracks the job.
+    const flag = s.world.get(e, WorkFlag).flag;
+    s.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    s.step();
+    expect(s.world.get(e, WorkFlag).flag).toBe(flag);
+    expect(s.world.get(e, WorkFlag).radius).toBe(DEFAULT_WORK_FLAG_RADIUS);
   });
 
   it('destroys the flag when a gatherer switches to a non-gathering trade', () => {

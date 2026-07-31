@@ -51,13 +51,18 @@ export type SimEvent =
        * dead unit's {@link import('../components/ownership.js').Owner} slot, read before the destroy (the
        * entity is gone by the snapshot, so a consumer can't look it up) — `null` for an unowned death
        * (wildlife / a neutral), so audio can play the "your settler died" stinger for the local player only.
-       * `at` is the death node (the reaped unit's last position), so render can leave a cadaver/bones marker
-       * there; omitted only if the dying entity somehow carried no `Position`.
+       * `at` is the death node (the reaped unit's last position), so render can leave a bones marker there
+       * (for humans only - see `animal`); omitted only if the dying entity somehow carried no `Position`.
        */
       readonly kind: 'settlerDied';
       readonly entity: Entity;
       readonly cause: string;
       readonly player: number | null;
+      /** Set when the dead unit was a wild/livestock animal - the render leaves NO bones for it (only
+       *  humans leave a bone pile; observed original behavior, user-reported, overruling the readable
+       *  drained-cadaver REMOVE transition to landscape 81 `cadaver_skeleton` in landscapetypes.ini).
+       *  Its remains, when a hunter felled it, are the carcass nodes `spawnCarcasses` drops instead. */
+      readonly animal?: boolean;
       readonly at?: HalfCellNode;
     }
   | {
@@ -221,9 +226,6 @@ export type SimEvent =
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
       readonly goodType: number;
-      /** Set when the drained node was a hunter's carcass - the render leaves its bones decal at `at`
-       *  (source basis on the {@link import('../components/economy/index.js').Carcass} component). */
-      readonly carcass?: boolean;
       readonly at: HalfCellNode;
     }
   | {
