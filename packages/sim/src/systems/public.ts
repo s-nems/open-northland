@@ -26,6 +26,8 @@ export {
   TICKS_PER_AGE_YEAR,
 } from './lifecycle/ageclass.js';
 export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
+// The herding ring bound - the livestock scene asserts claimed stock grazes AROUND the farm door.
+export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
 export {
   experienceBonus,
   experienceRepeats,

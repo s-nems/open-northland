@@ -32,4 +32,10 @@ describe('computeLivestockHearts - the life fraction', () => {
     expect(hearts(animal(2, { hitpoints: 5, max: 0 }))[0]?.life).toBe(1);
     expect(hearts(animal(3, { hitpoints: 1500, max: 1000 }))[0]?.life).toBe(1);
   });
+
+  it('an animal inside the workplace (Resting - not drawn) gets no heart', () => {
+    const visiting = animal(1);
+    const inside: Ent = { id: 1, components: { ...visiting.components, Resting: { at: 9 } } };
+    expect(hearts(inside)).toHaveLength(0);
+  });
 });

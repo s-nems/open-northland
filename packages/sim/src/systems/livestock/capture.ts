@@ -1,8 +1,17 @@
-import { HerdMember, Livestock, Owner, ownerOf, Position, Settler } from '../../components/index.js';
+import {
+  HerdMember,
+  Livestock,
+  LivestockVisit,
+  Owner,
+  ownerOf,
+  Position,
+  Resting,
+  Settler,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { isScoutJob } from '../readviews/index.js';
-import { entityNode, manhattan } from '../spatial/nodes.js';
+import { clearNavState, entityNode, manhattan } from '../spatial/nodes.js';
 
 /** Node-Manhattan contact distance at which a scout claims an animal - "walked onto it" read as the
  *  animal's own or an adjacent node. Approximated (observed original behaviour: the scout claims by
@@ -42,11 +51,18 @@ export const livestockCaptureSystem: System = (world, ctx) => {
     const at = entityNode(world, terrain, scout);
     for (const animal of herds) {
       if (ownerOf(world, animal) === player) continue; // already this player's stock
+      if (world.has(animal, Resting)) continue; // inside a workplace - out of reach until released
       if (manhattan(terrain, entityNode(world, terrain, animal), at) > LIVESTOCK_CAPTURE_RANGE_NODES) {
         continue;
       }
       world.add(animal, Owner, { player });
       world.remove(animal, HerdMember);
+      // A steal mid-walk abandons the booked visit - the batch releases nobody (an accepted free
+      // batch) - and drops the walk to the victim's door with it.
+      if (world.has(animal, LivestockVisit)) {
+        world.remove(animal, LivestockVisit);
+        clearNavState(world, animal);
+      }
       promoteWildLeader(world, animal);
     }
   }

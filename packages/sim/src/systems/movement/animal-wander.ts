@@ -4,8 +4,10 @@ import {
   CurrentAtomic,
   Engagement,
   Frightened,
+  LivestockVisit,
   MoveGoal,
   Position,
+  Resting,
   Settler,
   StayPoint,
 } from '../../components/index.js';
@@ -59,6 +61,9 @@ export const animalWanderSystem: System = (world, ctx) => {
 
   for (const e of canonicalById(world.query(StayPoint, Settler, Position))) {
     if (world.has(e, CurrentAtomic)) continue;
+    // A processing visit owns the creature: no grazing inside (Resting), and no graze leg competing
+    // with the visit system's walk to the door (LivestockVisit).
+    if (world.has(e, Resting) || world.has(e, LivestockVisit)) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing

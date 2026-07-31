@@ -13,11 +13,11 @@ import { ONE } from '../src/index.js';
 
 const heart = (life: number, colour = 0xff0000): LifeHeart => ({ id: 1, x: ONE, y: ONE, colour, life });
 
-/** Draw one heart and hand back its node's fill + mask (children: drained, fill, mask). */
+/** Draw one heart and hand back its node's fill + mask (children: outline, drained, fill, mask). */
 function drawnHeart(layer: LifeHeartLayer, h: LifeHeart): { fill: Graphics; mask: Graphics } {
   layer.draw({ hearts: [h] });
   const node = layer.container.children[0] as Container;
-  const [, fill, mask] = node.children as [Graphics, Graphics, Graphics];
+  const [, , fill, mask] = node.children as [Graphics, Graphics, Graphics, Graphics];
   return { fill, mask };
 }
 
@@ -46,15 +46,18 @@ describe('LifeHeartLayer - the fill level is the life fraction', () => {
     expect(drawnHeart(layer, heart(0)).fill.visible).toBe(false);
   });
 
-  it('one silhouette only - the drained shape sits unscaled under the fill, no backing heart', () => {
+  it('one silhouette plus a rim - drained and fill sit unscaled, no second full-size heart', () => {
     const layer = new LifeHeartLayer();
     layer.draw({ hearts: [heart(0.5)] });
     const node = layer.container.children[0] as Container;
-    expect(node.children).toHaveLength(3);
-    const [drained, fill] = node.children as [Graphics, Graphics, Graphics];
+    expect(node.children).toHaveLength(4);
+    const [outline, drained, fill] = node.children as [Graphics, Graphics, Graphics, Graphics];
     expect(drained.scale.x).toBe(1);
     expect(drained.scale.y).toBe(1);
     expect(fill.scale.x).toBe(1);
+    // The rim grows the silhouette a hair - a border, not the old 35%-larger backing heart.
+    expect(outline.scale.x).toBeGreaterThan(1);
+    expect(outline.scale.x).toBeLessThan(1.25);
   });
 
   it('a life change moves the mask on the retained node; only a colour change rebuilds it', () => {

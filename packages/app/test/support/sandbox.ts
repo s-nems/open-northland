@@ -1,11 +1,11 @@
-import { type EntitySnapshot, ONE, type Simulation, type WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, ONE, type Simulation, systems, type WorldSnapshot } from '@open-northland/sim';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../src/game/rules.js';
 import type { UnitPanelModelContext } from '../../src/hud/details-panel/index.js';
 import { createSceneSim } from '../../src/scenes/index.js';
 import { sandboxScene } from '../../src/scenes/sandbox/index.js';
 
 /** The details-panel model context a sim's content provides — the content half every
- *  `buildUnitPanelModel` assertion runs against. */
+ *  `buildUnitPanelModel` assertion runs against, livestock seams wired like `unit-controls`. */
 export function ctxOf(sim: Simulation): UnitPanelModelContext {
   return {
     buildings: sim.content.buildings,
@@ -13,6 +13,9 @@ export function ctxOf(sim: Simulation): UnitPanelModelContext {
     jobs: sim.content.jobs,
     jobExperience: sim.content.jobExperience,
     tribes: sim.content.tribes,
+    isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(sim.content, typeId),
+    isLivestockGood: (goodType) => systems.livestockTribeOfGood(sim.content, goodType) !== null,
+    livestockMeatGood: systems.livestockMeatGoodOf(sim.content),
   };
 }
 

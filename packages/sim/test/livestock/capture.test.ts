@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HerdMember, Owner } from '../../src/components/index.js';
+import { HerdMember, LivestockVisit, Owner, Resting } from '../../src/components/index.js';
 import { positionOfNode } from '../../src/index.js';
 import { livestockCaptureSystem } from '../../src/systems/index.js';
 import { settlerAt } from '../fixtures/settler.js';
-import { BEAR_TRIBE, cowAt, ctxOf, livestockSim, scoutAt } from './support.js';
+import { BEAR_TRIBE, cowAt, ctxOf, farmAt, livestockSim, scoutAt } from './support.js';
 
 const P0 = 0;
 const P1 = 1;
@@ -71,6 +71,38 @@ describe('livestock capture - a scout claims catchable animals by contact', () =
     // The lowest-id remaining member leads; both wild followers point at it.
     expect(sim.world.get(followerA, HerdMember).leader).toBe(followerA);
     expect(sim.world.get(followerB, HerdMember).leader).toBe(followerA);
+  });
+
+  it('cannot steal an animal inside a workplace; a steal mid-walk abandons its visit', () => {
+    const sim = livestockSim();
+    const farm = farmAt(sim, 20, 20, { owner: P1 });
+    scoutAt(sim, 10, 10, P0);
+    const inside = cowAt(sim, 11, 10, { owner: P1 });
+    sim.world.add(inside, LivestockVisit, { at: farm });
+    sim.world.add(inside, Resting, { at: farm });
+    const walking = cowAt(sim, 10, 11, { owner: P1 });
+    sim.world.add(walking, LivestockVisit, { at: farm });
+
+    livestockCaptureSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(inside, Owner).player).toBe(P1); // out of reach until released
+    expect(sim.world.get(walking, Owner).player).toBe(P0);
+    expect(sim.world.has(walking, LivestockVisit)).toBe(false);
+  });
+
+  it('the steal protection survives the full schedule (the planner must not shed a visitor Resting)', () => {
+    const sim = livestockSim();
+    const farm = farmAt(sim, 20, 20, { owner: P1 });
+    const cow = cowAt(sim, 20, 20, { owner: P1 });
+    sim.world.add(cow, LivestockVisit, { at: farm });
+    sim.world.add(cow, Resting, { at: farm });
+    scoutAt(sim, 21, 20, P0);
+
+    sim.step();
+
+    expect(sim.world.get(cow, Owner).player).toBe(P1);
+    expect(sim.world.has(cow, Resting)).toBe(true);
+    expect(sim.world.tryGet(cow, LivestockVisit)?.at).toBe(farm);
   });
 
   it('never claims a non-catchable animal (the bear stays wild)', () => {

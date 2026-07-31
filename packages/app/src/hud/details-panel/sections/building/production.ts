@@ -12,6 +12,8 @@ import { STOCK_AMOUNT_INSET, STOCK_ICON_W } from './shared.js';
 const PRODUCTION_BAR_LEFT = 150;
 /** Breathing room between the end of a row's label column and its bar (design px). */
 const PRODUCTION_LABEL_GAP = 6;
+/** Gap between a row's stacked product icons (design px) - a livestock chain row draws one per ware. */
+const EXTRA_ICON_GAP = 2;
 
 /**
  * Production window ('Produkcja' is a named approximation — no extracted title): a farm shows its live
@@ -57,9 +59,15 @@ export function drawProductionSection(
       const rowY = body.y + i * rowH;
       const icon = rowIcon(rowY);
       if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      // Icon, label, and bar all centre on the same row midline; the label shrinks to its column so a
+      let iconEnd = icon.x + icon.w;
+      for (const extra of row.extraGoodIds ?? []) {
+        const next = { ...icon, x: iconEnd + Math.round(EXTRA_ICON_GAP * s) };
+        chrome.goodIcon(extra, next);
+        iconEnd = next.x + next.w;
+      }
+      // Icons, label, and bar all centre on the same row midline; the label shrinks to its column so a
       // long product name ("Duża mikstura leczenia") never runs under the bar.
-      const labelX = icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s);
+      const labelX = iconEnd + Math.round(STOCK_AMOUNT_INSET * s);
       chrome.textLeftMiddle(
         row.label,
         labelX,

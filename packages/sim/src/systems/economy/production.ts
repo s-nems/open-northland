@@ -103,7 +103,7 @@ export const productionSystem: System = (world, ctx) => {
     const recipes = recipesByProductOf(world, ctx, e);
     if (recipes === undefined) continue; // not a producing workplace
     // Dormancy gate before the operator lookup: the per-recipe gates are cheap - O(recipe goods) stock
-    // reads, plus a scan of the small claimed-livestock store for a feed recipe - and don't depend on
+    // reads, plus a pass over the small summoned-visitor store for a feed recipe - and don't depend on
     // operators, so a starved/output-blocked workshop skips the per-building operator work (the
     // door-node lookup + content reads) entirely. It elides only a provably-empty start loop.
     if (!anyCycleStartable(world, ctx, e, recipes)) continue;

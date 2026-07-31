@@ -5,6 +5,7 @@ import {
   FamilyDuty,
   Fleeing,
   Frightened,
+  LivestockVisit,
   PathRequest,
   PlayerOrder,
   Stranded,
@@ -122,7 +123,9 @@ export function releaseStaleIntent(
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
-  if (!world.has(e, FamilyDuty)) stepOut(world, e);
+  // The FamilyDuty and LivestockVisit holds keep their Resting through a re-plan: the family drive and
+  // the feed batch's release own those exits (the indoors contract, settlers/indoors.ts).
+  if (!world.has(e, FamilyDuty) && !world.has(e, LivestockVisit)) stepOut(world, e);
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

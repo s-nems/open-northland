@@ -8,9 +8,10 @@ import { retireUndrawn } from './retained-pool.js';
 /**
  * The life-heart layer - the faction-coloured heart the original floats over a unit whose life the
  * player tracks (today the claimed livestock; settlers are the planned next feeder). The heart is a
- * gauge over ONE silhouette: the bottom `life` fraction wears the faction colour, the drained rest
- * above the horizontal boundary a darkened shade of the same colour - a full pool is simply one
- * solid faction heart. A client-side projection of the read-only snapshot, anchored and retained
+ * gauge over ONE silhouette (plus a thin black rim for contrast): the bottom `life` fraction wears
+ * the faction colour, the drained rest above the horizontal boundary a darkened shade of the same
+ * colour - a full pool is simply one solid faction heart. A client-side projection of the read-only
+ * snapshot, anchored and retained
  * exactly like the settler bubbles: the heart rides the pool's lerped sprite bounds (falling back
  * to the raw `Position` projection), is culled to the viewport, and is rebuilt only when its colour
  * changes (a re-capture). The heart art is a placeholder vector shape (two lobes + a point) until
@@ -42,6 +43,10 @@ const BACK_ABOVE_FEET = 26;
 const LOBE_RADIUS = 3;
 /** Channel multiplier of the drained top's shade - the faction colour, darkened to read as missing. */
 const DRAINED_SHADE = 0.35;
+/** The black rim: the silhouette grown a hair about its centre, so the heart reads on any ground
+ *  (user feedback: the rimless heart blended into the terrain; a thick rim read unnatural). */
+const OUTLINE_COLOUR = 0x000000;
+const OUTLINE_SCALE = 1.08;
 /** Lobe centres sit this many radii above the tip; the shape tops out one radius higher. */
 const LOBE_RAISE = 2.2;
 /** The shape's full height (world px): tip at 0 up to the lobes' top. */
@@ -112,11 +117,15 @@ function setFillLevel(entry: HeartNode, life: number): void {
 /** One heart node, tip anchored at the container origin so the shape reads above the unit. */
 function makeHeart(colour: number): HeartNode {
   const node = new Container();
+  const outline = heartShape(OUTLINE_COLOUR);
+  outline.scale.set(OUTLINE_SCALE);
+  // Grow about the shape's CENTRE (the tip is the local origin), so the rim stays even all round.
+  outline.position.y = (HEART_HEIGHT / 2) * (OUTLINE_SCALE - 1);
   const drained = heartShape(drainedShadeOf(colour));
   const fill = heartShape(colour);
   const fillMask = new Graphics().rect(0, 0, 1, 1).fill(0xffffff);
   fill.mask = fillMask;
-  node.addChild(drained, fill, fillMask);
+  node.addChild(outline, drained, fill, fillMask);
   return { node, colour, fill, fillMask };
 }
 

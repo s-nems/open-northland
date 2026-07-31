@@ -85,8 +85,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     jobs: opts.content.jobs,
     jobExperience: opts.content.jobExperience,
     tribes: opts.content.tribes,
-    // The sim's own classification, so the panel and the recipe table agree on the dropped slaughter row.
+    // The sim's own classifications, so the panel and the recipe table agree on the dropped slaughter
+    // row, the hidden fed-animal tokens, and the chain rows' meat icon.
     isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
+    isLivestockGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType) !== null,
+    livestockMeatGood: systems.livestockMeatGoodOf(opts.content),
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),

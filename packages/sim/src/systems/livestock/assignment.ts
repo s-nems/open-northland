@@ -2,6 +2,7 @@ import {
   Building,
   CurrentAtomic,
   Livestock,
+  LivestockVisit,
   MoveGoal,
   Owner,
   Position,
@@ -21,11 +22,38 @@ import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/n
  *  all converge within a period. Approximated (the original's herding cadence is not readable). */
 export const LIVESTOCK_ASSIGN_PERIOD_TICKS = 25;
 
+/** Node offsets ringing an anchor door - each herd member takes its own grazing spot BESIDE the
+ *  workplace instead of the doorway itself (user feedback: the herd stacked in the entrance and made
+ *  it unclickable). Mixed radii 3-6 read as loose grazing, not a formation. */
+const GRAZE_OFFSETS: readonly (readonly [number, number])[] = [
+  [3, 1],
+  [-3, -1],
+  [1, 3],
+  [-1, -3],
+  [4, -1],
+  [-4, 1],
+  [-1, 4],
+  [1, -4],
+  [5, 2],
+  [-5, -2],
+  [2, 5],
+  [-2, -5],
+  [6, 0],
+  [-6, 0],
+  [0, 6],
+  [0, -6],
+];
+
+/** Upper bound (node Manhattan) on how far a grazing spot sits from its door - the widest
+ *  {@link GRAZE_OFFSETS} entry; scene checks and tests assert against it. */
+export const LIVESTOCK_GRAZE_RANGE_NODES = 7;
+
 /**
  * LivestockAssignmentSystem - claimed animals herd themselves home. Each period, every player's owned
- * {@link Livestock} creatures re-anchor their {@link StayPoint} leash onto the player's built livestock
- * workplaces - split round-robin across the farm doors in canonical id order, so a two-farm player's
- * stock spreads evenly - or onto the headquarters door while no farm stands. An idle animal still
+ * {@link Livestock} creatures re-anchor their {@link StayPoint} leash onto grazing spots ringing the
+ * player's built livestock workplaces - split round-robin across the farm doors in canonical id order
+ * (so a two-farm player's stock spreads evenly), each member on its own {@link GRAZE_OFFSETS} spot -
+ * or ringing the headquarters door while no farm stands. An idle animal still
  * beyond its own leash walks straight home (a {@link MoveGoal} on the anchor - the original's claimed
  * stock marches to the HQ/farm rather than drifting); inside the leash the grazing drive
  * (`animalWanderSystem`) takes over. No farm and no HQ leaves the current territory untouched.
@@ -42,6 +70,7 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   const byPlayer = new Map<number, Entity[]>();
   for (const e of canonicalById(world.query(Livestock, Owner, Settler, Position))) {
+    if (world.has(e, LivestockVisit)) continue; // booked by a batch - herding resumes on release
     const player = world.get(e, Owner).player;
     const herd = byPlayer.get(player);
     if (herd === undefined) byPlayer.set(player, [e]);
@@ -51,8 +80,11 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     const anchors = anchorNodes(world, ctx, terrain, player);
     if (anchors.length === 0) continue;
     herd.forEach((e, i) => {
-      const cell = anchors[i % anchors.length];
-      if (cell === undefined) return; // unreachable: i % length indexes a non-empty array
+      const door = anchors[i % anchors.length];
+      if (door === undefined) return; // unreachable: i % length indexes a non-empty array
+      // Each member grazes on its own ring spot beside the door, never IN the doorway - the door
+      // node stays clear for the summoned visitor and the operators.
+      const cell = grazeAnchor(terrain, door, Math.floor(i / anchors.length));
       const stay = world.tryGet(e, StayPoint);
       if (stay === undefined) world.add(e, StayPoint, { cell });
       else if (stay.cell !== cell) {
@@ -70,6 +102,23 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     });
   }
 };
+
+/** The `k`-th grazing spot around `door`: the first walkable same-component ring offset starting at
+ *  `k` (wrapping - a herd deeper than the ring reuses spots), falling back to the door itself when
+ *  nothing beside it is standable (an island doorway). */
+function grazeAnchor(terrain: TerrainGraph, door: NodeId, k: number): NodeId {
+  const at = terrain.coordsOf(door);
+  for (let i = 0; i < GRAZE_OFFSETS.length; i++) {
+    const offset = GRAZE_OFFSETS[(k + i) % GRAZE_OFFSETS.length];
+    if (offset === undefined) continue; // unreachable: the index is taken modulo the table length
+    if (!terrain.inBounds(at.x + offset[0], at.y + offset[1])) continue;
+    const node = terrain.nodeAt(at.x + offset[0], at.y + offset[1]);
+    if (!terrain.isWalkable(node)) continue;
+    if (terrain.componentOf(node) !== terrain.componentOf(door)) continue;
+    return node;
+  }
+  return door;
+}
 
 /** The player's leash anchors: its built livestock-workplace doors (canonical id order), else its HQ
  *  door, else none. */
