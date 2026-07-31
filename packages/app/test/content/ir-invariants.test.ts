@@ -140,10 +140,8 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   });
 
   it('still ships bridges in the edit group the collision and draw joins key on', () => {
-    // `buildCollisionTerrain` reads this group to keep a bridge off the walk grid, and `loadMapObjects`
-    // to sort it at its deck's far row, since a bridge's crossing is authored in the ground lanes
-    // underneath it. A pipeline rename or a dropped `editGroups` lane would silently re-block every
-    // deck and sever river crossings again, with the synthetic fixtures still green.
+    // A pipeline rename or a dropped `editGroups` lane would silently re-block every deck and sever
+    // river crossings again, with the synthetic fixtures still green.
     const ir = rawIrUnderTest() as {
       landscapeGfx?: readonly { editGroups?: readonly string[]; walkBlockAreas?: readonly unknown[] }[];
     };

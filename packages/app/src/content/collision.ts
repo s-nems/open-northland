@@ -35,6 +35,7 @@ import { forEachPlacement } from './map-placements.js';
  *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal).
  *    A skipped placement's collision is then the sim-content footprint (own-node), a named
  *    approximation of the IR area until real per-variant footprints enter the sim's content set.
+ *    Bridges are the other exception, and {@link objectFootprints} holds why.
  *
  * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
@@ -116,6 +117,8 @@ interface ObjectFootprint {
  * A bridge contributes no body: its deck is authored in the GROUND lanes (the map paints a walkable
  * strip under the sprite) and the original never bakes the object into its own half-cell landscape
  * lane, so stamping the walk area would sever that authored strip. Its cells block building only.
+ * Approximation: the whole walk area goes, not just the deck strip, so a bridge's parapets and
+ * abutment stonework stop blocking as well.
  */
 function objectFootprints(
   rows: NonNullable<CollisionIrView['landscapeGfx']>,

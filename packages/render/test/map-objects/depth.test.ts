@@ -1,6 +1,6 @@
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { depthKey } from '../../src/data/projection/index.js';
+import { depthKey, TILE_HALF_H } from '../../src/data/projection/index.js';
 import type { AtlasFrame } from '../../src/data/sprites/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
@@ -46,8 +46,8 @@ describe('MapObjectLayer sort row (tall objects)', () => {
   });
 
   it('sorts a deck object at its override row instead, shadow included', () => {
-    // A deck whose far row sits three half-cell rows (57 px) behind the anchor.
-    const farRowY = ANCHOR.y - 57;
+    // A deck whose far row sits three half-cell rows behind the anchor.
+    const farRowY = ANCHOR.y - (3 * TILE_HALF_H) / 2;
     const { body, shadow } = sortedPair(tallObject(farRowY));
     expect(body).toBe(depthKey(ANCHOR.x, farRowY));
     expect(shadow).toBeLessThan(body);

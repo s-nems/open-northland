@@ -14,13 +14,15 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
 }
 
-/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
- *  Exported so the real-IR invariant pins the same join key the collision and draw joins read. */
+/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`). */
 export const BRIDGE_EDIT_GROUP = 'misc_bridges';
+const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
 
-/** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). */
+/** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). Matched
+ *  case-insensitively: the lane ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`),
+ *  so a mod's `EditGroups` spelling must not decide whether a deck is walkable. */
 export function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
-  return record.editGroups?.includes(BRIDGE_EDIT_GROUP) === true;
+  return record.editGroups?.some((g) => g.toLowerCase() === BRIDGE_GROUP_KEY) === true;
 }
 
 /** Whether a record draws as flat ground decor, below every entity: it carries no
@@ -34,8 +36,9 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
  * deck), `undefined` for every other record. Settlers cross ON a bridge deck (`content/collision.ts`
  * holds why), so sorting at the object's own row buries everyone on the far half of the span.
  *
- * One sort row for a deck up to 13 half-rows long is an approximation: an object standing between the
- * far row and the bridge's own row paints over the deck. No placement in the owned corpus does.
+ * One sort row for a deck up to 13 half-rows long is an approximation: an occluder anchored between the
+ * far row and the bridge's own row paints over the deck instead of under it. 36 placements in the owned
+ * corpus sit there, bank stones and trees beside an abutment.
  */
 export function deckFarRow(
   record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,
