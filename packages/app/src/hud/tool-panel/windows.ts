@@ -14,8 +14,9 @@ import type { ToolWindow } from './window-shell.js';
  * what a frame refreshes are answered from the same windows the strip buttons toggle by id.
  */
 
-/** The pop-ups in mount order, which is their draw order: each parents its layers under the panel's
- *  window container in turn, and a rebuild re-appends its text runs there. */
+/** The pop-ups in mount order, which is the draw order of their frames: each parents its layers under the
+ *  panel's window container in turn. Text runs are re-appended on rebuild, so they land above every frame
+ *  regardless of this order. */
 const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
@@ -40,7 +41,7 @@ export interface ToolWindows {
   /** Each pop-up by id, as a strip button toggles and closes them (see `button-effects.ts`). */
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
   claims(x: number, y: number): boolean;
-  /** Offer a click to the open pop-ups in probe order; true when one consumed it. */
+  /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
   handleClick(x: number, y: number): boolean;
   /** Scroll a list the point is over, and report whether an open pop-up owns the wheel there (a window
    *  with nothing to scroll still owns it). */
@@ -78,32 +79,28 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
-  // A press should probe the top-drawn window first, but the panel has always probed in mount order, so
-  // a click in an overlap lands on the window underneath
-  // (docs/tickets/app/tool-panel-window-click-order.md pins that until it is flipped).
-  const probed = mounted;
+  // Reverse mount order is top-drawn first: where two open pop-ups overlap, pointer input goes to the one
+  // the player can see, not to the window drawn underneath it.
+  const probed = [...mounted].reverse();
 
-  const claims = (x: number, y: number): boolean => {
-    for (const e of probed) {
-      if (e.window.claims(x, y)) return true;
-    }
-    return false;
-  };
+  const topAt = (x: number, y: number): ToolWindow | null =>
+    probed.find((e) => e.window.claims(x, y))?.window ?? null;
 
   return {
     byId: { menu, goods, extras, stats },
-    claims,
-    handleClick: (x, y): boolean => {
-      for (const e of probed) {
-        if (e.window.handleClick(x, y)) return true;
-      }
-      return false;
-    },
+    claims: (x, y) => topAt(x, y) !== null,
+    handleClick: (x, y): boolean => topAt(x, y)?.handleClick(x, y) ?? false,
     handleWheel: (x, y, deltaY): boolean => {
-      menu.handleWheel(x, y, deltaY); // the build menu is the only pop-up with a scrollable list
-      return claims(x, y);
+      const top = topAt(x, y);
+      if (top === null) return false;
+      // The build menu is the only pop-up with a scrollable list, and it scrolls only while uncovered.
+      if (top === menu) menu.handleWheel(x, y, deltaY);
+      return true;
     },
-    handleHover: (x, y): void => menu.handleHover(x, y),
+    handleHover: (x, y): void => {
+      if (topAt(x, y) === menu) menu.handleHover(x, y);
+      else menu.clearHover(); // no row highlight under a window that would take the press
+    },
     refresh: (hudFor): void => {
       for (const e of mounted) e.perFrame(hudFor);
     },
