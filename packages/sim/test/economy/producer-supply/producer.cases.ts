@@ -23,6 +23,7 @@ import {
   ctxOf,
   FARM,
   FOOD_SIMPLE,
+  FORGE,
   grassMap,
   HEADQUARTERS,
   PICKUP_ATOMIC,
@@ -191,6 +192,88 @@ describe('producer self-service — fetching a missing recipe input', () => {
     // Heads for the input source — never a pickup of the finished plank out of its own mill.
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it('fetches for its own CRAFT PICK, not the first shortfall on the whole shop’s shelf', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    // Both products of the two-product shop are starved, and the merged shop view lists wood before wheat
+    // (ascending goodType), so a shop-wide scan sends this food-pinned baker for wood it may never use and
+    // its own wheat only on the next trip. The wheat sits FARTHER, so the goal cell alone names the choice.
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+    buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
+    pileAt(sim, 5, 0, [[WHEAT, 5]]);
+    const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.add(baker, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it('narrows on the XP gate too: a junior with no pick fetches only for what it has EARNED', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    // The rotation's other axis, and the commoner one on real content: every multi-product workshop
+    // gates its secondary ware behind `needforgood`, so a junior's pool is a strict subset without any
+    // craft pick at all. This baker has not earned PLANK, so the shop's wood is not its errand.
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+    buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
+    pileAt(sim, 5, 0, [[WHEAT, 5]]);
+    const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it('keeps the whole shop’s view for an operator that may craft EVERY product', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    // The control for the two cases above: same starved shop, but no pick and every product earned, so
+    // this baker's own view IS the merged one and the nearer wood still wins.
+    const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+    buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
+    pileAt(sim, 5, 0, [[WHEAT, 5]]);
+    const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
+    sim.world.get(baker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 2, 0));
+  });
+
+  it('fetches ONE cycle’s worth of a shared input, not the sum over every product', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The forge's two products both eat wood, so the merged target is 2 where the pinned ware needs 1.
+    // Narrowing has to right-size the amount as well as pick the good.
+    const forge = buildingAt(sim, FORGE, 0, 0);
+    const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    const smith = settlerAt(sim, 3, 0, CARPENTER, forge); // standing on the source, so it lifts this tick
+    sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, CurrentAtomic).effect).toEqual({
+      kind: 'pickup',
+      goodType: WOOD,
+      amount: 1,
+      from: hq,
+    });
+  });
+
+  it('falls back to the whole shop’s view for an operator that has earned NOTHING here', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // An empty pool must not read as "no inputs needed": the seat gate has already freed this green
+    // carpenter, and stocking the mill for the colleague who CAN mill is still useful work.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0);
+    const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 3]]);
+    const green = settlerAt(sim, 3, 0, CARPENTER, mill); // no WOOD_TRACK XP: PLANK is out of reach
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(green, CurrentAtomic).effect).toMatchObject({
+      kind: 'pickup',
+      goodType: WOOD,
+      from: hq,
+    });
   });
 });
 
