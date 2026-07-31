@@ -41,6 +41,7 @@ export {
   isTemple,
 } from './buildings.js';
 export {
+  ARMOR_MAIN_TYPE,
   armorByClass,
   armorByMaterial,
   armorClassOf,

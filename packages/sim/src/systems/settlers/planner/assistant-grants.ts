@@ -54,8 +54,8 @@ import { anotherSystemOwns } from './replan.js';
 
 /** One settler's grant consideration beat, staggered by entity id (the field-reclaim idiom), so the
  *  per-tick scan cost is `settlers / period` and a freshly-freed slot is re-dressed within seconds.
- *  Our pacing (nothing decodable to match). */
-const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
+ *  Our pacing (nothing decodable to match); shared with the recruit-arming pass. */
+export const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
 
 /** The per-player cap on concurrent assistant fetch errands - the incremental-rollout brake. Small
  *  enough that switching a grant on in a living settlement reads as a steady trickle, large enough

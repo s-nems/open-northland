@@ -7,11 +7,17 @@ import type { TextRun } from '../src/hud/text-run.js';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import {
+  type AssistantCounterFace,
+  type AssistantCounterId,
   type AssistantGrantId,
   defaultAssistantState,
   layoutExtrasMenu,
 } from '../src/hud/tool-panel/extras-menu.js';
-import { createExtrasWindow, type ExtrasGrantsSeam } from '../src/hud/tool-panel/extras-window.js';
+import {
+  createExtrasWindow,
+  type ExtrasCountersSeam,
+  type ExtrasGrantsSeam,
+} from '../src/hud/tool-panel/extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
@@ -328,6 +334,27 @@ describe('stats window controller', () => {
   });
 });
 
+/** A stateful stand-in for the sim counter seam: `read()` serves what `set()` stored (as if the
+ *  command already applied), and `writes` records every absolute face the window pushed through. */
+function stubCountersSeam(): {
+  seam: ExtrasCountersSeam;
+  writes: [AssistantCounterId, number, boolean][];
+} {
+  const faces: Record<AssistantCounterId, AssistantCounterFace> = { ...defaultAssistantState().counters };
+  const writes: [AssistantCounterId, number, boolean][] = [];
+  return {
+    seam: {
+      read: () => ({ ...faces }),
+      set: (id, value, infinite) => {
+        writes.push([id, value, infinite]);
+        faces[id] = { value, infinite };
+        return true;
+      },
+    },
+    writes,
+  };
+}
+
 describe('tool windows registry', () => {
   const GRANTS: ExtrasGrantsSeam = {
     read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
@@ -357,6 +384,7 @@ describe('tool windows registry', () => {
       buildings,
       goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
       grants: GRANTS,
+      counters: stubCountersSeam().seam,
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });
@@ -620,7 +648,12 @@ describe('extras window controller', () => {
 
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
     const { ctx } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: stubCountersSeam().seam,
+    });
     const geo = expectedLayout(ctx);
 
     expect(extras.isOpen()).toBe(false);
@@ -636,19 +669,25 @@ describe('extras window controller', () => {
     expect(extras.isOpen()).toBe(false);
   });
 
-  it('steppers and switches mutate the drawn state, which survives close/reopen', () => {
+  it('steppers and switches write their seams; both faces read back on reopen', () => {
     const { ctx, made } = stubContext();
     const { seam, writes } = stubGrantsSeam();
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: seam });
+    const counters = stubCountersSeam();
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: seam,
+      counters: counters.seam,
+    });
     const geo = expectedLayout(ctx);
     extras.toggle();
 
-    // + on the first counter: the rebuilt window draws "1".
+    // + on the first counter: the rebuilt window draws "1" and one absolute face went to the sim.
     const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
     made.length = 0;
     expect(extras.handleClick(plus.x, plus.y)).toBe(true);
     expect(made).toContain('1');
-    expect(writes).toEqual([]); // a counter is UI-only, never a sim write
+    expect(counters.writes).toEqual([['extraWomen', 1, false]]);
 
     // The mead switch flips its face to OFF and writes the toggle through the seam.
     const sw = centreOf(geo.grants[3]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });
@@ -657,7 +696,7 @@ describe('extras window controller', () => {
     expect(made).toContain(messages().hud.extras.off);
     expect(writes).toEqual([['giveMead', false]]);
 
-    // Close and reopen: the counter persists locally, the mead switch reads back from the seam.
+    // Close and reopen: both blocks read back from their seams.
     extras.toggle();
     made.length = 0;
     extras.toggle();
@@ -665,10 +704,41 @@ describe('extras window controller', () => {
     expect(made).toContain(messages().hud.extras.off);
   });
 
+  it('Ctrl-click steps by ten and the infinity toggle writes the flag', () => {
+    const { ctx, made } = stubContext();
+    const counters = stubCountersSeam();
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: counters.seam,
+    });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+
+    const plus = centreOf(geo.counters[1]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    expect(extras.handleClick(plus.x, plus.y, { bigStep: true })).toBe(true);
+    expect(made).toContain('10');
+    expect(counters.writes).toEqual([['extraMen', 10, false]]);
+
+    // The infinity toggle keeps the stored value and flips the flag; a numeric step drops it again.
+    const infinity = centreOf(geo.counters[1]?.infinityRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(extras.handleClick(infinity.x, infinity.y)).toBe(true);
+    expect(counters.writes.at(-1)).toEqual(['extraMen', 10, true]);
+    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
+    expect(counters.writes.at(-1)).toEqual(['extraMen', 11, false]);
+  });
+
   it('a rejected write (a read-only session) leaves the switch face untouched', () => {
     const { ctx, made } = stubContext();
     const rejecting: ExtrasGrantsSeam = { read: stubGrantsSeam().seam.read, set: () => false };
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: rejecting });
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: rejecting,
+      counters: stubCountersSeam().seam,
+    });
     const geo = expectedLayout(ctx);
     extras.toggle();
 
@@ -681,7 +751,12 @@ describe('extras window controller', () => {
   it('reads the switch faces from the sim seam on every open', () => {
     const { ctx, made } = stubContext();
     const { seam } = stubGrantsSeam({ giveIronTools: false });
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: seam });
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: seam,
+      counters: stubCountersSeam().seam,
+    });
 
     extras.toggle();
     expect(made).toContain(messages().hud.extras.off); // the iron-tools switch mirrors the sim
@@ -695,7 +770,12 @@ describe('extras window controller', () => {
 
   it('the plans tab replaces the controls with the placeholder; clicks there are inert but consumed', () => {
     const { ctx, made } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: stubCountersSeam().seam,
+    });
     const geo = expectedLayout(ctx);
     extras.toggle();
 
@@ -714,7 +794,12 @@ describe('extras window controller', () => {
 
   it('does not consume clicks outside the open window', () => {
     const { ctx } = stubContext();
-    const extras = createExtrasWindow({ ctx, container: new Container(), grants: stubGrantsSeam().seam });
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: stubCountersSeam().seam,
+    });
     extras.toggle();
     expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(extras.isOpen()).toBe(true);

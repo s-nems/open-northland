@@ -7,6 +7,7 @@ import {
   hitTestExtrasMenu,
   layoutExtrasMenu,
   toggleGrant,
+  toggleInfinity,
 } from '../src/hud/tool-panel/extras-menu.js';
 import { messages } from '../src/i18n/index.js';
 
@@ -20,14 +21,24 @@ const OPTS = {
   state: defaultAssistantState(),
 } as const;
 
+const COUNTER_ROW_IDS = [
+  'extraWomen',
+  'extraMen',
+  'trainSoldiers',
+  'trainSwordsmen',
+  'trainSpearmen',
+  'trainArchers',
+] as const;
+
 function centreOf(r: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
 describe('assistant state', () => {
-  it('defaults to zero counters and every grant ON', () => {
+  it('defaults to six zeroed finite counters and every grant ON', () => {
     const s = defaultAssistantState();
-    expect(s.counters).toEqual({ extraWomen: 0, extraMen: 0, trainSoldiers: 0 });
+    expect(Object.keys(s.counters)).toEqual([...COUNTER_ROW_IDS]);
+    for (const id of COUNTER_ROW_IDS) expect(s.counters[id]).toEqual({ value: 0, infinite: false });
     expect(s.grants).toEqual({
       giveBoots: true,
       giveWoodenTools: true,
@@ -39,15 +50,37 @@ describe('assistant state', () => {
   it('steps a counter and clamps at both bounds (same state object on a clamped no-op)', () => {
     let s = defaultAssistantState();
     s = adjustCounter(s, 'extraWomen', 1);
-    expect(s.counters.extraWomen).toBe(1);
-    expect(s.counters.extraMen).toBe(0); // siblings untouched
+    expect(s.counters.extraWomen.value).toBe(1);
+    expect(s.counters.extraMen.value).toBe(0); // siblings untouched
 
     expect(adjustCounter(s, 'extraMen', -1)).toBe(s); // already at the floor
-    expect(adjustCounter(s, 'extraMen', -1).counters.extraMen).toBe(COUNTER_MIN);
+    expect(adjustCounter(s, 'extraMen', -1).counters.extraMen.value).toBe(COUNTER_MIN);
 
     for (let i = 0; i < COUNTER_MAX + 10; i++) s = adjustCounter(s, 'extraWomen', 1);
-    expect(s.counters.extraWomen).toBe(COUNTER_MAX);
+    expect(s.counters.extraWomen.value).toBe(COUNTER_MAX);
+    expect(COUNTER_MAX).toBe(100);
     expect(adjustCounter(s, 'extraWomen', 1)).toBe(s); // already at the cap
+  });
+
+  it('a coarse step lands mid-range and clamps at the cap, never overshooting', () => {
+    let s = defaultAssistantState();
+    for (let i = 0; i < 11; i++) s = adjustCounter(s, 'trainArchers', 10);
+    expect(s.counters.trainArchers.value).toBe(COUNTER_MAX);
+    expect(adjustCounter(s, 'trainArchers', -10).counters.trainArchers.value).toBe(COUNTER_MAX - 10);
+  });
+
+  it('toggles infinity on the queue rows, and stepping an infinite counter drops it', () => {
+    let s = toggleInfinity(defaultAssistantState(), 'trainSoldiers');
+    expect(s.counters.trainSoldiers).toEqual({ value: 0, infinite: true });
+    expect(toggleInfinity(s, 'trainSoldiers').counters.trainSoldiers.infinite).toBe(false);
+
+    s = adjustCounter(s, 'trainSoldiers', 1);
+    expect(s.counters.trainSoldiers).toEqual({ value: 1, infinite: false });
+  });
+
+  it('refuses infinity on extraWomen (it outranks the son queue)', () => {
+    const s = defaultAssistantState();
+    expect(toggleInfinity(s, 'extraWomen')).toBe(s);
   });
 
   it('flips a grant without touching its siblings', () => {
@@ -69,7 +102,7 @@ describe('extras menu layout', () => {
     expect(layout.tabs[1]?.rect.y).toBe(layout.tabs[0]?.rect.y);
     expect(layout.tabs[0]?.rect.y).toBe(layout.window.y + layout.titleRect.h);
 
-    expect(layout.counters.map((c) => c.id)).toEqual(['extraWomen', 'extraMen', 'trainSoldiers']);
+    expect(layout.counters.map((c) => c.id)).toEqual([...COUNTER_ROW_IDS]);
     expect(layout.grants.map((g) => g.id)).toEqual([
       'giveBoots',
       'giveWoodenTools',
@@ -79,7 +112,7 @@ describe('extras menu layout', () => {
     expect(layout.plansPlaceholder).toBeNull();
 
     // The grant block starts a visible gap below the last counter row (the requested "lekki odstęp").
-    const lastCounterY = layout.counters[2]?.rect.y ?? 0;
+    const lastCounterY = layout.counters[5]?.rect.y ?? 0;
     const firstGrantY = layout.grants[0]?.rect.y ?? 0;
     const counterRowH = (layout.counters[1]?.rect.y ?? 0) - (layout.counters[0]?.rect.y ?? 0);
     expect(firstGrantY - lastCounterY).toBeGreaterThan(counterRowH);
@@ -90,6 +123,7 @@ describe('extras menu layout', () => {
     for (const c of layout.counters) {
       expect(c.plusRect.x + c.plusRect.w).toBeLessThanOrEqual(right);
       expect(c.plusRect.y + c.plusRect.h).toBeLessThanOrEqual(bottom);
+      if (c.infinityRect !== null) expect(c.infinityRect.x).toBeGreaterThanOrEqual(layout.window.x);
     }
     for (const g of layout.grants) {
       expect(g.switchRect.x + g.switchRect.w).toBeLessThanOrEqual(right);
@@ -97,13 +131,32 @@ describe('extras menu layout', () => {
     }
   });
 
+  it('gives every queue row an infinity toggle left of its stepper - but not extraWomen', () => {
+    const layout = layoutExtrasMenu(OPTS);
+    for (const c of layout.counters) {
+      if (c.id === 'extraWomen') {
+        expect(c.infinityRect).toBeNull();
+        continue;
+      }
+      expect(c.infinityRect).not.toBeNull();
+      if (c.infinityRect !== null) {
+        expect(c.infinityRect.x + c.infinityRect.w).toBeLessThanOrEqual(c.minusRect.x);
+      }
+    }
+  });
+
   it('labels come from the active catalog and values/faces mirror the state', () => {
-    const state = toggleGrant(adjustCounter(defaultAssistantState(), 'trainSoldiers', 1), 'giveIronTools');
+    const state = toggleGrant(
+      toggleInfinity(adjustCounter(defaultAssistantState(), 'trainSoldiers', 1), 'trainArchers'),
+      'giveIronTools',
+    );
     const layout = layoutExtrasMenu({ ...OPTS, state });
     const hud = messages().hud.extras;
     expect(layout.counters[0]?.label).toBe(hud.extraWomen);
+    expect(layout.counters[3]?.label).toBe(hud.trainSwordsmen);
     expect(layout.grants[3]?.label).toBe(hud.giveMead);
     expect(layout.counters[2]?.value).toBe(1);
+    expect(layout.counters[5]?.infinite).toBe(true);
     expect(layout.grants[2]?.on).toBe(false);
     expect(layout.grants[0]?.on).toBe(true);
   });
@@ -121,7 +174,7 @@ describe('extras menu layout', () => {
 describe('extras menu hit-test', () => {
   const layout = layoutExtrasMenu(OPTS);
 
-  it('routes close, tabs, steppers and switches; the bare chrome is a consumed no-op', () => {
+  it('routes close, tabs, steppers, infinity toggles and switches; the bare chrome is a consumed no-op', () => {
     const close = centreOf(layout.closeRect);
     expect(hitTestExtrasMenu(layout, close.x, close.y)).toEqual({ kind: 'close' });
 
@@ -134,11 +187,17 @@ describe('extras menu hit-test', () => {
       id: 'extraMen',
       delta: -1,
     });
-    const plus = centreOf(layout.counters[2]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    const plus = centreOf(layout.counters[4]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(hitTestExtrasMenu(layout, plus.x, plus.y)).toEqual({
       kind: 'counter',
-      id: 'trainSoldiers',
+      id: 'trainSpearmen',
       delta: 1,
+    });
+
+    const infinity = centreOf(layout.counters[2]?.infinityRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    expect(hitTestExtrasMenu(layout, infinity.x, infinity.y)).toEqual({
+      kind: 'counterInfinity',
+      id: 'trainSoldiers',
     });
 
     const sw = centreOf(layout.grants[1]?.switchRect ?? { x: 0, y: 0, w: 0, h: 0 });

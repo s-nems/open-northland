@@ -4,7 +4,7 @@ import { EXTENDED_GOODS } from '../../../catalog/goods.js';
 import { HUNTER_GENERAL_XP_TRACK, huntPreyRows } from '../../../catalog/hunting.js';
 import type { GoodRef } from '../../../content/settler-gfx/index.js';
 import { buildSandboxBuildings } from '../building-set.js';
-import { sandboxWeapons } from '../combat.js';
+import { sandboxArmor, sandboxWeapons } from '../combat.js';
 import { GOOD_WHEAT, JOB_FARMER_SLOT } from '../ids/index.js';
 import {
   sandboxGatheringPipeline,
@@ -53,6 +53,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     landscapeGfx: sandboxLandscapeGfx(),
     gatheringPipeline: sandboxGatheringPipeline(),
     weapons: sandboxWeapons(),
+    armor: sandboxArmor(),
     tribes: [...tribes.values()],
     animals: buildSandboxAnimals(),
     // The hunter's prey/yield table and XP track (`catalog/hunting.ts`), resolved against the stable

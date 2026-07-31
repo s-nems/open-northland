@@ -146,7 +146,6 @@ export function experienceLabel(
   const weaponKey = WEAPON_XP_KEY.get(spec);
   if (weaponKey !== undefined) return messages().hud.weaponXp[weaponKey];
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) return jobDisplayName(ctx, JOB_SCOUT);
-  if (spec === systems.TRAINING_EXPERIENCE_TYPE) return messages().hud.trainingXp;
   return formatMessage(messages().hud.specialization, { id: spec });
 }
 
@@ -156,9 +155,6 @@ export function experienceLabel(
  * the scout bucket shows its vision gain (`scoutVisionBonusNodes` over the scout's base radius); a
  * carrier track shows none (its XP is display-only, mirroring the sim's carrier exclusions); every
  * other work track shows the shared curve, which IS its output/speed effect.
- *
- * The barracks-drill bucket shows none either: it buys admission to a trade, not a bonus, so its
- * repeats count is the whole story and a curve read here would invent an effect.
  */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
@@ -173,7 +169,6 @@ function experienceBonusPct(
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) {
     return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);
   }
-  if (spec === systems.TRAINING_EXPERIENCE_TYPE) return null;
   // A carrier's track has no percentage bonus to show.
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
   return Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);

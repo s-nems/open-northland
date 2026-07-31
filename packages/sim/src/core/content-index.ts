@@ -147,6 +147,9 @@ export interface ContentIndex {
   /** Weapons by `(tribeType, jobType)` - how a jobbed combatant binds its class weapon; first-wins
    *  per pair (source order). */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
+  /** Weapons by `(tribeType, goodType)` - which weapon a craftable good IS (`weapons.ini` `goodtype`),
+   *  the equip-drive's good→class join; first-wins per pair (source order). */
+  readonly weaponByTribeAndGoodType: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** The first weapon row of each tribe (source order) - a jobless animal's weapon (its combat identity is
    *  its tribe alone). */
   readonly firstWeaponByTribe: ReadonlyMap<number, WeaponType>;
@@ -267,6 +270,11 @@ function buildIndex(content: ContentSet): ContentIndex {
       content.weapons,
       (w) => w.tribeType,
       (w) => w.jobType,
+    ),
+    weaponByTribeAndGoodType: byPairKey(
+      content.weapons,
+      (w) => w.tribeType,
+      (w) => w.goodType,
     ),
     firstWeaponByTribe: byOptionalKey(content.weapons, (w) => w.tribeType),
   };

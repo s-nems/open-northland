@@ -1,5 +1,6 @@
 import {
   Armor,
+  AssistantRecruit,
   AttackOrder,
   Carrying,
   CraftSelection,
@@ -25,7 +26,12 @@ import type { SystemContext } from '../../context.js';
 // which imports this package's barrel, so routing the stance stamp through it would close an import cycle.
 import { stampDefaultStance } from '../../orders/combat.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { addCarry, isUsed, placeUnitOnTile } from '../../settlers/atomics/effects/goods/index.js';
+// Deliberately the leaves, not the goods barrel: that barrel re-exports the equip effect, which now
+// applies the good→class transform through this module, so routing these through it would close an
+// import cycle.
+import { addCarry } from '../../settlers/atomics/effects/goods/carry.js';
+import { placeUnitOnTile } from '../../settlers/atomics/effects/goods/piles.js';
+import { isUsed } from '../../settlers/atomics/effects/goods/wear.js';
 import { syncWorkFlagToJob } from '../work-flag.js';
 
 /**
@@ -62,6 +68,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
     world.remove(e, Armor);
     shedSlotGood(world, e, 'weapon', 'hands');
     shedSlotGood(world, e, 'armor', 'hands');
+    world.remove(e, AssistantRecruit); // leaving the fighter band cancels the assistant's booking
   }
   syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
   world.remove(e, GatherSelection); // the picks die with the employment they were made under

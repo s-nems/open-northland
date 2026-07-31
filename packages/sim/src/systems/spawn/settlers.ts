@@ -48,8 +48,9 @@ export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
 /** The idle/unemployed job sentinel - always a valid {@link createSettler} input, even on content whose
- *  job table starts at typeId 1 (real ir.json has no job 0). A settler spawned idle is then re-set to
- *  `jobType: null` (see the app's `spawnIdleSettler`). */
+ *  job table starts at typeId 1 (real ir.json has no job 0). It is the command wire form of `jobType:
+ *  null` (a command field can't carry null for "no trade"): the spawned settler lands trade-less, so
+ *  the JobSystem's assign pass and the assistant's draft both see it. */
 const IDLE_JOB_TYPE = 0;
 
 /**
@@ -76,7 +77,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Settler, {
     tribe: spec.tribe,
-    jobType: spec.jobType,
+    jobType: spec.jobType === IDLE_JOB_TYPE ? null : spec.jobType,
     hunger: rollInitialNeed(rng),
     fatigue: rollInitialNeed(rng),
     piety: rollInitialNeed(rng),

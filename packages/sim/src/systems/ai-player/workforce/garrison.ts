@@ -4,9 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { mayMarry } from '../../family/eligibility.js';
-import { drillTrainingGain } from '../../progression/index.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
-import { EXERCISE_ATOMIC_ID } from '../../settlers/atomics/start.js';
 import { drillDoorOpen } from '../../settlers/drives/training.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
@@ -15,7 +13,7 @@ import type { SpareForce } from './pool.js';
 
 /**
  * The garrison hire: send a true surplus man to the barracks, where the drill enlists him
- * (`settlers/drives/training.ts`) - the seat's only route to a soldier (`schoolingMet`).
+ * (`settlers/drives/training.ts`) - the seat's only route to a soldier.
  *
  * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound
  * is the breeding engine that grows the next recruits: a fighter neither marries nor fathers children
@@ -77,12 +75,11 @@ function garrisonHouse(world: World, ctx: SystemContext, player: number): Entity
 }
 
 /**
- * Whether a spare man may be sent to drill. Three exclusions, all about a hire that would repeat forever:
+ * Whether a spare man may be sent to drill. Two exclusions, both about a hire that would repeat forever:
  * a settler mid-action would have that action stomped by the order (the same hazard the scout hire
- * avoids); a settler whose tribe binds no schooling exercise clip banks nothing however long it drills;
- * and a settler the barracks door is shut to would be handed the errand only for the drill rung to
- * abandon it next tick. A man who drilled and was interrupted keeps his part-served schooling and is
- * eligible again - the next term finishes him.
+ * avoids), and a settler the barracks door is shut to would be handed the errand only for the drill rung
+ * to abandon it next tick. A man whose drill was interrupted is simply eligible again - the next full
+ * term enlists him.
  */
 function isDrillCandidate(
   world: World,
@@ -94,6 +91,5 @@ function isDrillCandidate(
   if (world.has(e, CurrentAtomic)) return false;
   const s = world.tryGet(e, Settler);
   if (s === undefined || isFighterJob(ctx.content, s.jobType)) return false;
-  if (drillTrainingGain(ctx.content, s, EXERCISE_ATOMIC_ID) <= 0) return false;
   return drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e));
 }

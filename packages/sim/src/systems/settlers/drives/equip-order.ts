@@ -14,6 +14,7 @@ import { atomicDuration } from '../../readviews/animations.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import { isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
+import { chainRecruitArmor } from '../planner/recruit-arming.js';
 import type { TargetCandidates } from '../targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
@@ -184,7 +185,19 @@ function planStow(errand: EquipErrand): boolean {
 /** The `return` stage: walk back to the issue node; arriving (or the way back proving unreachable) ends
  *  the errand and returns false so the economy re-tasks the settler this very tick. */
 function planReturn(errand: EquipErrand): boolean {
-  const { world, entity, order, here, avoid } = errand;
+  const { world, ctx, terrain, entity, order, here, gate, avoid, targets } = errand;
+  // An assistant weapon errand whose weapon just landed (the equip effect advances it here) chains its
+  // armor want from the store it stands at instead of walking home in between - one outing dresses the
+  // recruit (user rule 2026-08-01). The armor's own return falls through.
+  if (order.issuer === 'assistant' && order.group === 'weapon') {
+    const chained = chainRecruitArmor(world, ctx, terrain, targets, entity, here, gate ?? null, avoid);
+    if (chained !== null) {
+      order.group = 'armor';
+      order.goodType = chained;
+      order.stage = 'acquire';
+      return planFetch(errand, chained);
+    }
+  }
   if (here === order.returnTo || avoid?.(order.returnTo) === true) {
     world.remove(entity, EquipOrder);
     return false;

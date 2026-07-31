@@ -2,6 +2,12 @@ import { Container, Graphics } from 'pixi.js';
 import { contains, type Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 
+/** The modifier keys a click carried, for controls with a modified step (the counter steppers). */
+export interface ClickModifiers {
+  /** Ctrl (or Cmd) was held - step coarse controls by their big increment. */
+  readonly bigStep: boolean;
+}
+
 /** What every tool-panel pop-up presents to the panel, whatever it draws inside: a strip button toggles it,
  *  and the panel probes it for pointer input. */
 export interface ToolWindow {
@@ -11,7 +17,7 @@ export interface ToolWindow {
   /** True when the point is over the open window (the HUD claims it before world picking). */
   claims(x: number, y: number): boolean;
   /** Route a canvas-space click; true when this window consumed it. */
-  handleClick(x: number, y: number): boolean;
+  handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
 }
 
 /**

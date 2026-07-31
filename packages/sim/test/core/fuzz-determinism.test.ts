@@ -204,7 +204,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(41);
+  const roll = rng.int(42);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -544,6 +544,24 @@ function nextCommand(rng: Rng): Command {
         kind: 'trainSoldier',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 41:
+      // An assistant counter write: valid + out-of-range players and values (the clamp), every kind,
+      // and the infinite flag - the carrier lifecycle plus the birth/drill dispatchers and the
+      // recruit-arming pass (the sim's one new rng draw) then run under the fuzzed stream.
+      return {
+        kind: 'setAssistantCounter',
+        player: pick(rng, OWNERS),
+        counter: pick(rng, [
+          'extraWomen',
+          'extraMen',
+          'trainSoldiers',
+          'trainSword',
+          'trainSpear',
+          'trainBow',
+        ] as const),
+        value: rng.int(140) - 20,
+        infinite: rng.int(4) === 0,
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

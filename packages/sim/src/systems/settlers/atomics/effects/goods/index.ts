@@ -6,7 +6,7 @@
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
 export { drinkDraught } from './drink.js';
-export { equipFromStore, isUsed, unequipWornGood } from './equip.js';
+export { equipFromStore, unequipWornGood } from './equip.js';
 export { harvestFromNode } from './harvest.js';
 export {
   beginRestTail,
@@ -16,3 +16,4 @@ export {
 } from './harvest-burst.js';
 export { dropOrStackGood, placeUnitOnTile } from './piles.js';
 export { drawUtilityGood, pickupFromStore, pileupIntoStore } from './transfer.js';
+export { isUsed } from './wear.js';

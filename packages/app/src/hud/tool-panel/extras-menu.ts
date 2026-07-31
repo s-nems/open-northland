@@ -1,10 +1,12 @@
+import { components } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 
 /**
  * The extras ("chest") window model: the assistant/plans tabs, the assistant's counter and grant
  * controls, their layout and hit-test (pure, no Pixi/DOM). The grant switches drive the sim's
- * auto-equip (`setAssistantGrant` through the controller's seam); the counters are still UI-only.
+ * auto-equip (`setAssistantGrant` through the controller's seam); the counters drive its production
+ * queues (`setAssistantCounter` - births and barracks training).
  *
  * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
  * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500
@@ -16,36 +18,91 @@ import { contains, type Rect } from '../geometry.js';
 
 export type ExtrasTab = 'assistant' | 'plans';
 
-/** The assistant's three population counters (extra women / extra men / soldiers to train). */
-export type AssistantCounterId = 'extraWomen' | 'extraMen' | 'trainSoldiers';
+/** The assistant's six production counters - two birth queues and four training queues (the plain
+ *  soldier plus the three self-arming classes). Row order is this declaration order. */
+export type AssistantCounterId =
+  | 'extraWomen'
+  | 'extraMen'
+  | 'trainSoldiers'
+  | 'trainSwordsmen'
+  | 'trainSpearmen'
+  | 'trainArchers';
 
 /** The assistant's four "give everyone …" grant switches. */
 export type AssistantGrantId = 'giveBoots' | 'giveWoodenTools' | 'giveIronTools' | 'giveMead';
 
+/** One counter's face: the queued amount and whether the queue never drains. */
+export interface AssistantCounterFace {
+  readonly value: number;
+  readonly infinite: boolean;
+}
+
 export interface AssistantState {
-  readonly counters: Readonly<Record<AssistantCounterId, number>>;
+  readonly counters: Readonly<Record<AssistantCounterId, AssistantCounterFace>>;
   readonly grants: Readonly<Record<AssistantGrantId, boolean>>;
 }
 
-/** Counter bounds: never negative, capped where the two-digit value cell ends. */
-export const COUNTER_MIN = 0;
-export const COUNTER_MAX = 99;
+/** Counter bounds - the sim's own clamp (`setAssistantCounter`), mirrored so the steppers stop
+ *  where the command would. */
+export const COUNTER_MIN = components.ASSISTANT_COUNTER_MIN;
+export const COUNTER_MAX = components.ASSISTANT_COUNTER_MAX;
 
-/** Counters start at zero; the grant values are only the pre-read placeholder - the window
- *  overwrites them from the sim seam on every open, and the real default-ON rule lives in the map
+/** UI counter row → sim counter kind: the three class rows carry the display noun (swordsmen), the
+ *  sim the weapon class (sword); the other three share their name. The seam
+ *  (`view/assistant-counters.ts`) writes through this same map, so the join has one owner. */
+export const SIM_KIND_BY_COUNTER_ID: Readonly<Record<AssistantCounterId, components.AssistantCounterKind>> = {
+  extraWomen: 'extraWomen',
+  extraMen: 'extraMen',
+  trainSoldiers: 'trainSoldiers',
+  trainSwordsmen: 'trainSword',
+  trainSpearmen: 'trainSpear',
+  trainArchers: 'trainBow',
+};
+
+/** The rows carrying an infinity toggle - derived from the sim's own policy (every queue but
+ *  `extraWomen`, whose priority over `extraMen` would let an infinite value starve every son order),
+ *  so a policy change there cannot leave a dead toggle here. */
+export const INFINITE_COUNTER_IDS: ReadonlySet<AssistantCounterId> = new Set(
+  (Object.keys(SIM_KIND_BY_COUNTER_ID) as AssistantCounterId[]).filter((id) =>
+    components.INFINITE_COUNTER_KINDS.has(SIM_KIND_BY_COUNTER_ID[id]),
+  ),
+);
+
+/** Counters start at zero; both blocks are only the pre-read placeholder - the window overwrites
+ *  them from the sim seams on every open, and the real default-ON grant rule lives in the map
  *  entry's `grantAssistantDefaults` (view/assistant-grants.ts). */
 export function defaultAssistantState(): AssistantState {
+  const zero: AssistantCounterFace = { value: 0, infinite: false };
   return {
-    counters: { extraWomen: 0, extraMen: 0, trainSoldiers: 0 },
+    counters: {
+      extraWomen: zero,
+      extraMen: zero,
+      trainSoldiers: zero,
+      trainSwordsmen: zero,
+      trainSpearmen: zero,
+      trainArchers: zero,
+    },
     grants: { giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true },
   };
 }
 
-/** `state` with `id` stepped by `delta`, clamped to the counter bounds; identical state on a no-op. */
+/** `state` with `id` stepped by `delta`, clamped to the counter bounds; stepping an infinite
+ *  counter drops the infinity (the player asked for a concrete number). Identical state on a no-op. */
 export function adjustCounter(state: AssistantState, id: AssistantCounterId, delta: number): AssistantState {
-  const next = Math.min(COUNTER_MAX, Math.max(COUNTER_MIN, state.counters[id] + delta));
-  if (next === state.counters[id]) return state;
-  return { ...state, counters: { ...state.counters, [id]: next } };
+  const current = state.counters[id];
+  const next = Math.min(COUNTER_MAX, Math.max(COUNTER_MIN, current.value + delta));
+  if (next === current.value && !current.infinite) return state;
+  return { ...state, counters: { ...state.counters, [id]: { value: next, infinite: false } } };
+}
+
+/** `state` with `id`'s infinity flipped; identical state for a row without the toggle. */
+export function toggleInfinity(state: AssistantState, id: AssistantCounterId): AssistantState {
+  if (!INFINITE_COUNTER_IDS.has(id)) return state;
+  const current = state.counters[id];
+  return {
+    ...state,
+    counters: { ...state.counters, [id]: { value: current.value, infinite: !current.infinite } },
+  };
 }
 
 export function toggleGrant(state: AssistantState, id: AssistantGrantId): AssistantState {
@@ -89,8 +146,11 @@ export interface ExtrasCounterRow {
   readonly id: AssistantCounterId;
   readonly label: string;
   readonly value: number;
+  readonly infinite: boolean;
   /** The row's card slot (the controller insets it vertically into a plate, like the build menu). */
   readonly rect: Rect;
+  /** The infinity toggle left of the stepper; null on a row without one (`extraWomen`). */
+  readonly infinityRect: Rect | null;
   readonly minusRect: Rect;
   readonly valueRect: Rect;
   readonly plusRect: Rect;
@@ -129,12 +189,20 @@ export interface ExtrasMenuLayoutOptions {
   readonly state: AssistantState;
 }
 
-const COUNTER_IDS: readonly AssistantCounterId[] = ['extraWomen', 'extraMen', 'trainSoldiers'];
+/** The counter rows in display order - also the controller's iteration key set. */
+export const COUNTER_IDS: readonly AssistantCounterId[] = [
+  'extraWomen',
+  'extraMen',
+  'trainSoldiers',
+  'trainSwordsmen',
+  'trainSpearmen',
+  'trainArchers',
+];
 const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 'giveIronTools', 'giveMead'];
 
 /**
  * Resolve the window to screen rects: the rust headline + close X on top, the two tabs under it, then
- * (assistant tab) three counter cards and, after a wood gap, four grant cards - controls right-aligned
+ * (assistant tab) six counter cards and, after a wood gap, four grant cards - controls right-aligned
  * on a shared column. Purely geometric - text fits each rect at render time.
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
@@ -167,6 +235,9 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
     extraWomen: labels.extraWomen,
     extraMen: labels.extraMen,
     trainSoldiers: labels.trainSoldiers,
+    trainSwordsmen: labels.trainSwordsmen,
+    trainSpearmen: labels.trainSpearmen,
+    trainArchers: labels.trainArchers,
   };
   const grantLabels: Readonly<Record<AssistantGrantId, string>> = {
     giveBoots: labels.giveBoots,
@@ -187,11 +258,16 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
           const plusX = controlRight - stepper;
           const valueX = plusX - gap - valueW;
           const minusX = valueX - gap - stepper;
+          const infinityX = minusX - gap - stepper;
           return {
             id,
             label: counterLabels[id],
-            value: state.counters[id],
+            value: state.counters[id].value,
+            infinite: state.counters[id].infinite,
             rect: { x: originX + pad, y, w: width - 2 * pad, h: rowH },
+            infinityRect: INFINITE_COUNTER_IDS.has(id)
+              ? { x: infinityX, y: controlY, w: stepper, h: stepper }
+              : null,
             minusRect: { x: minusX, y: controlY, w: stepper, h: stepper },
             valueRect: { x: valueX, y: controlY, w: valueW, h: stepper },
             plusRect: { x: plusX, y: controlY, w: stepper, h: stepper },
@@ -249,18 +325,23 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
 export type ExtrasMenuHit =
   | { readonly kind: 'tab'; readonly tab: ExtrasTab }
   | { readonly kind: 'counter'; readonly id: AssistantCounterId; readonly delta: 1 | -1 }
+  | { readonly kind: 'counterInfinity'; readonly id: AssistantCounterId }
   | { readonly kind: 'grant'; readonly id: AssistantGrantId }
   | { readonly kind: 'close' }
   | { readonly kind: 'window' } // over the chrome but not an interactive element
   | null;
 
-/** Resolve a screen point against the open window (close > tab > stepper > switch > background > miss). */
+/** Resolve a screen point against the open window
+ *  (close > tab > infinity > stepper > switch > background > miss). */
 export function hitTestExtrasMenu(layout: ExtrasMenuLayout, x: number, y: number): ExtrasMenuHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
     if (contains(t.rect, x, y)) return { kind: 'tab', tab: t.tab };
   }
   for (const c of layout.counters) {
+    if (c.infinityRect !== null && contains(c.infinityRect, x, y)) {
+      return { kind: 'counterInfinity', id: c.id };
+    }
     if (contains(c.minusRect, x, y)) return { kind: 'counter', id: c.id, delta: -1 };
     if (contains(c.plusRect, x, y)) return { kind: 'counter', id: c.id, delta: 1 };
   }

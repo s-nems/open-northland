@@ -10,7 +10,7 @@ import {
   TrainingOrder,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
@@ -36,18 +36,31 @@ export function trainSoldier(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'trainSoldier' }>,
 ): void {
-  const e = command.entity;
-  const house = command.house;
-  if (!isTradeAssignable(world, e)) return;
-  if (!isBarracks(world, ctx, house)) return;
-  if (world.get(e, Settler).tribe !== world.get(house, Building).tribe) return;
-  if (!sameSide(world, e, house)) return;
-  if (world.tryGet(e, TrainingOrder)?.house === house) return; // already drilling here
+  if (!mayDrillAt(world, ctx, command.entity, command.house)) return;
+  startDrill(world, command.entity, command.house, BARRACKS_DRILL_TICKS);
+}
+
+/**
+ * Whether `e` may be sent to drill at `house` right now - every refusal the command doc lists, shared
+ * with the assistant's training dispatcher (`systems/assistant/`) so an auto-issued drill obeys
+ * exactly the player order's gates.
+ */
+export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
+  if (!isTradeAssignable(world, e)) return false;
+  if (!isBarracks(world, ctx, house)) return false;
+  if (world.get(e, Settler).tribe !== world.get(house, Building).tribe) return false;
+  if (!sameSide(world, e, house)) return false;
+  if (world.tryGet(e, TrainingOrder)?.house === house) return false; // already drilling here
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no door to walk to
+  if (terrain === undefined) return false; // mapless sim: no door to walk to
   const door = interactionCell(world, ctx, terrain, house);
-  if (!drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e))) return;
-  world.add(e, TrainingOrder, { house, drillTicksLeft: BARRACKS_DRILL_TICKS });
+  return drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e));
+}
+
+/** Stamp the drill errand and drop what it supersedes - the accepting half of {@link trainSoldier},
+ *  after {@link mayDrillAt} passed. `drillTicks` is the caller's serving length. */
+export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
+  world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // the drill executing now supersedes any earlier parked order
   world.remove(e, PlayerOrder);

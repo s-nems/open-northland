@@ -6,6 +6,7 @@ import { planAdult, planChild } from '../drives/ladder.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { navigationPlanner } from './navigation.js';
 import { beginPlannerPass } from './pass.js';
+import { dispatchRecruitArming } from './recruit-arming.js';
 import { releaseStaleIntent } from './replan.js';
 
 /**
@@ -30,8 +31,9 @@ export const plannerSystem: System = (world, ctx) => {
 /** Sweep every settler through the drive ladder, sharing one {@link beginPlannerPass} snapshot. */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   const pass = beginPlannerPass(world, ctx, terrain);
-  // The assistant's grant errands are stamped before the sweep, so a dispatched settler is planned
-  // onto its fetch the same tick (see ./assistant-grants.ts).
+  // The assistant's errands are stamped before the sweep, so a dispatched settler is planned onto
+  // its fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
+  dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
   // Canonical order (the pass's shared sort - see PlannerPass.settlers): the per-tick claim maps
   // hand out targets first-come-first-served, so the visit order is a pick, not a mere sweep.

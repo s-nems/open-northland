@@ -3,8 +3,8 @@ import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
+  JOB_CIVILIST,
   JOB_COLLECTOR,
-  JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
@@ -97,10 +97,12 @@ export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'longbow', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
 ];
 
-/** The civilian units: an idle townsperson, a carrier, and the collector (the one outdoor gatherer trade
- *  - every gathered good is worked by the same collector, so one preset, not one per good). */
+/** The civilian units: a townsperson (the civilist trade grown boys take - the JobSystem leaves him
+ *  loose, the assistant's train queues may draft him), a carrier, and the collector (the one outdoor
+ *  gatherer trade - every gathered good is worked by the same collector, so one preset, not one per
+ *  good). */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
-  { id: 'civilian', jobType: JOB_IDLE },
+  { id: 'civilian', jobType: JOB_CIVILIST },
   { id: 'carrier', jobType: JOB_CARRIER },
   { id: 'collector', jobType: JOB_COLLECTOR },
 ];

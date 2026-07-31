@@ -58,10 +58,10 @@ export type AtomicEffect =
    *  bigger leisure boost than enjoy's +100), so it resets `enjoyment` too. The need→satisfier drive is
    *  deferred for the same reason as `enjoy` (see source basis) - so for now this is the reset half only. */
   | { readonly kind: 'make_love' }
-  /** The settler runs one drill repetition inside a barracks: on completion it banks the clip's own
-   *  TRAINING experience (`event <at> 29 <value>`) into the bucket the `trainfor*` schooling gates read,
-   *  and charges the repetition against the errand's remaining drill time. No goods consumed - the
-   *  soldier's own train clip, which spends a coin, is a later slice. */
+  /** The settler runs one drill repetition inside a barracks: on completion it charges the repetition
+   *  against the errand's remaining drill time. Nothing else accrues and no goods are consumed - a
+   *  drill banks no experience stat, it only serves the term that unlocks the trade (user rule
+   *  2026-08-02). */
   | { readonly kind: 'exercise' }
   /** The settler swings at `target`: the blow subtracts `damage` from the target's `Health.hitpoints`,
    *  clamped at 0. `damage` is the resolved column damage - the planner looked it up from the weapon's

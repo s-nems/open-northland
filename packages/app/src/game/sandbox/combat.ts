@@ -1,4 +1,4 @@
-import type { EquipClass } from '@open-northland/data';
+import type { ArmorType, EquipClass } from '@open-northland/data';
 import { HUNTER_BOW_BALANCE } from '../../catalog/hunting.js';
 import {
   JOB_ARCHER,
@@ -13,6 +13,15 @@ import { PRIMARY_TRIBE } from '../rules.js';
 import { ANIMAL_TRIBE_BEARS, ANIMAL_TRIBE_WOLVES } from './content/catalog/animals.js';
 import {
   EQUIP_GOODS,
+  GOOD_ARMOR_CHAIN,
+  GOOD_ARMOR_LEATHER,
+  GOOD_ARMOR_PLATE,
+  GOOD_ARMOR_WOOL,
+  GOOD_BOW_LONG,
+  GOOD_BOW_SHORT,
+  GOOD_SPEAR_IRON,
+  GOOD_SWORD_LONG,
+  GOOD_SWORD_SHORT,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
   WEAPON_HUNTER_BOW,
@@ -32,7 +41,11 @@ import {
 
 /** Munition type 1 = arrow - what the bows fire. */
 const ARROW_MUNITION = 1;
-/** The ranged weapon main-type (projectile weapons). */
+/** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry (unarmed 1 / spear 2 /
+ *  sword 3 / bow 6) - the join the assistant's arming intents and the fight-XP buckets both key on. */
+const UNARMED_MAIN_TYPE = 1;
+const SPEAR_MAIN_TYPE = 2;
+const SWORD_MAIN_TYPE = 3;
 const RANGED_MAIN_TYPE = 6;
 /** The real short/long-bow projectile speed. */
 const BOW_SPEED = 8;
@@ -56,8 +69,7 @@ export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
 // Bare-target damage (`weapons.ini` `damagevalue 0`) per weapon, transcribed from the readable source like
 // the swing timings above, so sandbox combat runs on the real scale (a ~5000-HP fighter takes several
-// swings - see the battle scene). The per-armor-material columns stay in the extracted IR; the sandbox
-// models only the bare-target column each soldier job actually swings with.
+// swings - see the battle scene).
 const FIST_DAMAGE = 400; // fist
 const SWORD_DAMAGE = 1600; // short_sword
 const SPEAR_DAMAGE = 3800; // iron_spear
@@ -89,6 +101,17 @@ const BROADSWORD_VS_BUILDING = 2000;
 const SHORT_BOW_VS_BUILDING = 140;
 const LONG_BOW_VS_BUILDING = 200;
 
+// Per-armor-material columns (`damagevalue <material> <value>`, materials 1..4 = wool/leather/chain/
+// plate), transcribed from the same readable viking weapons.ini rows as the bare damages above, so a
+// worn armor selects its real column here too (the building column stays our siege balance). The
+// iron spear vs long sword chain/plate flip is the source's own data, not a typo.
+const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40 };
+const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090 };
+const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400 };
+const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950 };
+const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100 };
+const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360 };
+
 /** A good's full equip axis (slot, wear, effect numbers) per typeId, so `sandboxContent()` can merge
  *  it onto the global catalog good of the same typeId (an equippable good is declared once, in
  *  `EXTENDED_GOODS`). */
@@ -103,6 +126,53 @@ export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, EquipClass> = new Map(
 );
 
 /**
+ * The sandbox armor table - the four base tiers transcribed verbatim from the readable
+ * `armortypes.ini` (name/type/mainType/goodtype/materialType/weight/blockingValue), rebased onto the
+ * sandbox armor good ids. Worn armor then presents its real material column against the per-material
+ * damages above, and the two-tier `mainType` split feeds the assistant's armor preference.
+ */
+export function sandboxArmor(): ArmorType[] {
+  return [
+    {
+      typeId: 1,
+      id: 'armor_wool',
+      mainType: 1,
+      goodType: GOOD_ARMOR_WOOL,
+      materialType: 1,
+      weight: 1,
+      blockingValue: 5,
+    },
+    {
+      typeId: 2,
+      id: 'armor_leather',
+      mainType: 1,
+      goodType: GOOD_ARMOR_LEATHER,
+      materialType: 2,
+      weight: 0,
+      blockingValue: 5,
+    },
+    {
+      typeId: 3,
+      id: 'armor_chain',
+      mainType: 2,
+      goodType: GOOD_ARMOR_CHAIN,
+      materialType: 3,
+      weight: 3,
+      blockingValue: 5,
+    },
+    {
+      typeId: 4,
+      id: 'armor_plate',
+      mainType: 2,
+      goodType: GOOD_ARMOR_PLATE,
+      materialType: 4,
+      weight: 3,
+      blockingValue: 5,
+    },
+  ];
+}
+
+/**
  * The sandbox weapon set - each viking soldier job's weapon with its range band and synthetic damage.
  * Bound to `sandboxContent().weapons`; the melee weapons swing at range 1(-2), the bows fire arrows.
  */
@@ -113,36 +183,46 @@ export function sandboxWeapons() {
       id: 'viking_fist',
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_SOLDIER_UNARMED,
+      mainType: UNARMED_MAIN_TYPE,
       minRange: 1,
       maxRange: 1,
-      damage: { '0': FIST_DAMAGE, '7': FIST_VS_BUILDING },
+      damage: { '0': FIST_DAMAGE, ...FIST_VS_MATERIALS, '7': FIST_VS_BUILDING },
     },
+    // The armed classes carry the real `goodtype` binding, so equipping the good takes the class up
+    // (the sim's good→class join). The sandbox's one spear is the iron tier; the wooden spear good
+    // (`spear_wooden`) binds no sandbox class because job 32 is not in the sandbox job set.
     {
       typeId: WEAPON_SPEAR,
       id: 'viking_spear',
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_SOLDIER_SPEAR,
+      mainType: SPEAR_MAIN_TYPE,
+      goodType: GOOD_SPEAR_IRON,
       minRange: 1,
       maxRange: 2, // a spear pokes one cell further than a sword (the original's long-melee band)
-      damage: { '0': SPEAR_DAMAGE, '7': SPEAR_VS_BUILDING },
+      damage: { '0': SPEAR_DAMAGE, ...SPEAR_VS_MATERIALS, '7': SPEAR_VS_BUILDING },
     },
     {
       typeId: WEAPON_SWORD,
       id: 'viking_sword',
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_SOLDIER_SWORD,
+      mainType: SWORD_MAIN_TYPE,
+      goodType: GOOD_SWORD_SHORT,
       minRange: 1,
       maxRange: 1,
-      damage: { '0': SWORD_DAMAGE, '7': SWORD_VS_BUILDING },
+      damage: { '0': SWORD_DAMAGE, ...SWORD_VS_MATERIALS, '7': SWORD_VS_BUILDING },
     },
     {
       typeId: WEAPON_BROADSWORD,
       id: 'viking_broadsword',
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_SOLDIER_BROADSWORD,
+      mainType: SWORD_MAIN_TYPE,
+      goodType: GOOD_SWORD_LONG,
       minRange: 1,
       maxRange: 2, // the original's long sword reaches 1–2
-      damage: { '0': BROADSWORD_DAMAGE, '7': BROADSWORD_VS_BUILDING },
+      damage: { '0': BROADSWORD_DAMAGE, ...BROADSWORD_VS_MATERIALS, '7': BROADSWORD_VS_BUILDING },
     },
     {
       typeId: WEAPON_SHORT_BOW,
@@ -150,11 +230,12 @@ export function sandboxWeapons() {
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_ARCHER,
       mainType: RANGED_MAIN_TYPE,
+      goodType: GOOD_BOW_SHORT,
       munitionType: ARROW_MUNITION,
       speed: BOW_SPEED,
       minRange: 3,
       maxRange: 15,
-      damage: { '0': BOW_DAMAGE, '7': SHORT_BOW_VS_BUILDING },
+      damage: { '0': BOW_DAMAGE, ...SHORT_BOW_VS_MATERIALS, '7': SHORT_BOW_VS_BUILDING },
     },
     {
       typeId: WEAPON_LONG_BOW,
@@ -162,11 +243,12 @@ export function sandboxWeapons() {
       tribeType: PRIMARY_TRIBE,
       jobType: JOB_ARCHER_LONG,
       mainType: RANGED_MAIN_TYPE,
+      goodType: GOOD_BOW_LONG,
       munitionType: ARROW_MUNITION,
       speed: BOW_SPEED,
       minRange: 4,
       maxRange: 23,
-      damage: { '0': LONG_BOW_DAMAGE, '7': LONG_BOW_VS_BUILDING },
+      damage: { '0': LONG_BOW_DAMAGE, ...LONG_BOW_VS_MATERIALS, '7': LONG_BOW_VS_BUILDING },
     },
     // The hunter's bow (job 15) at the design-override balance shared with the real-content merge
     // (`catalog/hunting.ts` - weaker than the short bow). No `goodType`: the bow is the trade's own

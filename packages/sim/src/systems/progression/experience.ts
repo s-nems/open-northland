@@ -1,13 +1,8 @@
 import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
-import { Settler, type SettlerIdentity } from '../../components/index.js';
+import { Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import {
-  ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE,
-  atomicEventChannelDelta,
-  needAtomicAnimationName,
-} from '../readviews/animations.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
 import { isAnimalTribe, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
@@ -172,43 +167,14 @@ export function grantScoutExperience(world: World, content: ContentSet, settler:
 }
 
 /**
- * The TRAINING bucket every `trainfor*` requirement row reads - the schooling XP a barracks drill banks
- * (source basis: each tribe's `trainforjob`/`trainforgood` rows name expType 77 and nothing else does).
- * Like the fight buckets it backs no `HumanJobExperienceType` record, so it accrues at rate 1 and its raw
- * XP already is the repeat count a row's `amount` is compared against.
- *
- * It accrues permanently here. The original flushes it whenever the trained job or good changes (which
- * covers retraining onto another soldier class, not only the school's civilian trades); that only starts
- * to matter once a second training target exists - see docs/tickets/features/barracks-training.md.
+ * The TRAINING bucket every `trainfor*` requirement row reads (source basis: each tribe's
+ * `trainforjob`/`trainforgood` rows name expType 77 and nothing else does). NOTHING accrues it: a
+ * barracks drill banks no experience stat, it unlocks the soldier trade by flipping it directly at
+ * the drill's end (user rule 2026-08-02), so the rows naming this bucket act as an always-closed
+ * gate on every other door into a fighter trade (manual employment, the job system's openings) and
+ * the barracks stays the one route in.
  */
 export const TRAINING_EXPERIENCE_TYPE = 77;
-
-/**
- * The TRAINING one finished repetition of `atomicId` banks for this settler: the clip its tribe binds and
- * its own {@link ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE} event total. Today that is always the civilist
- * exercise clip's `+1` - the soldier's own `train` clip, worth `+25`, is a later slice. Zero for content
- * that binds no such clip or a clip carrying no such event, which is what "this tribe schools nobody"
- * looks like from here - the AI's garrison hire reads it so it never drafts a man its data cannot school.
- */
-export function drillTrainingGain(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
-  const clip = needAtomicAnimationName(content, settler, atomicId);
-  if (clip === undefined) return 0;
-  return Math.max(0, atomicEventChannelDelta(content, clip, ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE));
-}
-
-/** Grant a settler the schooling XP its finished drill repetition is worth ({@link drillTrainingGain});
- *  a settler gone mid-drill banks nothing. */
-export function grantTrainingExperience(
-  world: World,
-  ctx: SystemContext,
-  settler: Entity,
-  atomicId: number,
-): void {
-  const s = world.tryGet(settler, Settler);
-  if (s === undefined) return;
-  const xp = drillTrainingGain(ctx.content, s, atomicId);
-  if (xp > 0) accrueExperience(s, TRAINING_EXPERIENCE_TYPE, xp);
-}
 
 /**
  * The fight experience-type ids (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_FIGHT_*`, l.598-603) - the

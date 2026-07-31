@@ -8,6 +8,7 @@ import {
   toolButtonEffect,
 } from '../src/hud/tool-panel/button-effects.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
+import { defaultAssistantState } from '../src/hud/tool-panel/extras-menu.js';
 import { createGoodsDropController } from '../src/hud/tool-panel/goods-drop.js';
 import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
@@ -62,6 +63,10 @@ function mountSurfaces() {
     goods: [{ goodType: GOOD_WOOD, id: 'wood', label: 'Wood' }],
     grants: {
       read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
+      set: () => true,
+    },
+    counters: {
+      read: () => defaultAssistantState().counters,
       set: () => true,
     },
     onPickBuilding: (typeId) => placement.enter(typeId),

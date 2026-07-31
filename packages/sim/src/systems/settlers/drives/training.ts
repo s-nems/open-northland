@@ -1,10 +1,17 @@
-import { JobAssignment, Settler, type SettlerIdentity, TrainingOrder } from '../../../components/index.js';
+import {
+  AssistantRecruit,
+  consumeAssistantCounter,
+  JobAssignment,
+  ownerOf,
+  Settler,
+  type SettlerIdentity,
+  TrainingOrder,
+} from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { reidleAsJob } from '../../orders/work/index.js';
-import { grantTrainingExperience, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { needAtomicDuration } from '../../readviews/animations.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -16,8 +23,7 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 /**
  * How long a recruit stays inside the barracks before it comes back out a soldier - 15 s of game time
  * (design rule, user-specified 2026-07-27), drawn down per COMPLETED repetition by
- * {@link serveDrillRepetition}, so the last one always overruns. How much schooling that buys is the
- * data's business: see `docs/tickets/features/barracks-training.md`.
+ * {@link serveDrillRepetition}, so the last one always overruns.
  */
 export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
 
@@ -84,21 +90,15 @@ export function drillDoorOpen(
 }
 
 /**
- * One finished drill repetition: bank the clip's own TRAINING experience and charge its `ticks` against
- * the errand's remaining time. Called from the atomic executor, so a repetition cut short (a stagger, a
- * re-issued order) costs the recruit neither the schooling nor the time. The charge takes the executor's
- * own floor of one tick per repetition, so a zero-length clip cannot stall the drill forever.
+ * One finished drill repetition: charge its `ticks` against the errand's remaining time. Nothing else
+ * accrues - a drill banks no experience stat, it only serves the term that unlocks the trade (user
+ * rule 2026-08-02). Called from the atomic executor, so a repetition cut short (a stagger, a
+ * re-issued order) costs the recruit no time. The charge takes the executor's own floor of one tick
+ * per repetition, so a zero-length clip cannot stall the drill forever.
  */
-export function serveDrillRepetition(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  atomicId: number,
-  ticks: number,
-): void {
+export function serveDrillRepetition(world: World, e: Entity, ticks: number): void {
   const order = world.tryGet(e, TrainingOrder);
-  if (order === undefined) return; // the errand was called off mid-repetition - it schools nothing
-  grantTrainingExperience(world, ctx, e, atomicId);
+  if (order === undefined) return; // the errand was called off mid-repetition - it counts nothing
   world.write(e, TrainingOrder, (o) => {
     o.drillTicksLeft -= Math.max(1, ticks);
   });
@@ -113,10 +113,12 @@ function abandonDrill(world: World, e: Entity): boolean {
 
 /**
  * Enlist a settler that has served its drill: it takes the base soldier class ({@link baseSoldierJobType})
- * the schooling it just banked qualifies it for, dropping any workplace post like every other trade change.
- * A settler that already holds a fighter trade keeps it - an old hand only drills, banking TRAINING toward
- * the heavier weapon classes. The qualification is re-read rather than assumed, so a tribe whose data
- * schools no soldier simply gets a settler back out unchanged.
+ * unconditionally - the served term IS the qualification, the barracks only unlocks the trade and no
+ * schooling stat exists (user rule 2026-08-02). The `trainfor*` rows stay in the data as the closed
+ * gate on every OTHER door (manual employment, the job system's openings): nothing accrues their
+ * bucket, so the barracks remains the one route in. A settler that already holds a fighter trade
+ * keeps it - his drill is a plain no-op (the original's paid barracks retraining is deliberately not
+ * implemented). A tribe whose data names no soldier class gets its settler back out unchanged.
  *
  * The only trade change made from inside the planner sweep: `reidleAsJob` destroys the recruit's work flag
  * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either (today it indexes
@@ -126,7 +128,12 @@ function enlist(world: World, ctx: SystemContext, e: Entity): void {
   if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
   const jobType = baseSoldierJobType(ctx.content);
   if (jobType === null) return;
-  if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', jobType)) return;
   world.remove(e, JobAssignment); // re-employed by the JobSystem, as on any profession change
   reidleAsJob(world, ctx, e, jobType);
+  // A counter-funded recruit pays its counter here if the base class was the whole ask; a weapon-class
+  // booking is paid by the arming step instead (`planner/recruit-arming.ts`), so it stays marked.
+  if (world.tryGet(e, AssistantRecruit)?.intent === 'trainSoldiers') {
+    consumeAssistantCounter(world, ownerOf(world, e), 'trainSoldiers');
+    world.remove(e, AssistantRecruit);
+  }
 }
