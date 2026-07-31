@@ -7,7 +7,7 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
  * with more than one entry is a looping animation, offset per object by {@link phase}. `decor`
  * objects are flat ground decor (waves, grass, flowers, mine stains): they batch into per-chunk
  * meshes under the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
- * entities by their world-`y` feet anchor.
+ * entities by their world-`y` feet anchor, or by {@link depthY} where that row is wrong.
  */
 export interface MapObjectSprite {
   /** World-space feet anchor (px), already projected by the app (`halfCellToScreen` of the `emla` half-cell). */
@@ -28,6 +28,10 @@ export interface MapObjectSprite {
    * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
    */
   readonly lift?: number;
+  /** World-`y` (px) this object's sort key uses instead of the feet anchor {@link y}; the drawn
+   *  position, cull and fog lookup still use the anchor. Set by the app for an object settlers stand
+   *  ON rather than beside (a bridge deck), which must not sort at the row it is anchored to. */
+  readonly depthY?: number;
   /**
    * The baked `embr` luminance multiplier at this object's anchor cell (1 = neutral; the measured
    * curve in `data/terrain/brightness.ts`). The original shades landscape-object pixels with the ground's
@@ -44,7 +48,7 @@ export interface MapObjectSprite {
    * {@link frames}`[i]` (`undefined` = that pose casts none), so an animated loop's shadow follows the
    * pose. Only tall objects draw it ({@link import('./tall-blocks.js').TallObjectLayer}); flat decor
    * ignores the field even though the data holds real decor silhouettes (mushrooms, bushes, ground
-   * props) — a named gap, see `docs/tickets/render/remaining-shadow-casters.md`.
+   * props): a named gap.
    */
   readonly shadow?: {
     readonly source: TextureSource;

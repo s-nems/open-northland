@@ -1,11 +1,13 @@
 import type { AtlasFrame } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
+import { BRIDGE_EDIT_GROUP, deckFarRow, drawsAsFlatDecor } from '../src/content/ir/joins.js';
 import { pairedStateFrames, stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
 
 /**
  * The landscape/object render bindings: the lmlv growth level → GfxFrames state-list index
- * (stateIndexForLevel), the tree full-bright exemption resolved by name (unshadedLogicTypeIds), and
- * the body/shadow frame pairing (pairedStateFrames).
+ * (stateIndexForLevel), the tree full-bright exemption resolved by name (unshadedLogicTypeIds), the
+ * paint-order split (drawsAsFlatDecor + deckFarRow), and the body/shadow frame pairing
+ * (pairedStateFrames).
  */
 
 describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index', () => {
@@ -41,6 +43,37 @@ describe('unshadedLogicTypeIds — the tree full-bright exemption resolves by NA
   it('is empty for an absent/nameless table (every object then shades — the safe default)', () => {
     expect(unshadedLogicTypeIds(undefined).size).toBe(0);
     expect(unshadedLogicTypeIds([{ typeId: 4 }]).size).toBe(0);
+  });
+});
+
+describe('paint order: flat decor vs the row an occluder sorts at', () => {
+  // `[state, x, y, run]` walk-block lines: a deck spanning two half-cell rows either side of the node.
+  const deck: readonly (readonly [number, number, number, number])[] = [
+    [1, 0, -2, 3],
+    [1, 0, 0, 3],
+    [1, 0, 1, 3],
+  ];
+  const bridge = { walkBlockAreas: deck, editGroups: [BRIDGE_EDIT_GROUP] };
+
+  it('splits decor from occluders on the walk footprint alone', () => {
+    expect(drawsAsFlatDecor({ walkBlockAreas: deck })).toBe(false); // a tree occludes
+    expect(drawsAsFlatDecor({ walkBlockAreas: [] })).toBe(true); // a wave does not
+    expect(drawsAsFlatDecor({})).toBe(true);
+  });
+
+  it('keeps a bridge an occluder but moves it to the far deck row', () => {
+    // Both halves matter: a bridge that fell into the decor batches would lose its ordering against
+    // the ground decals around it, and one left on its own row would bury the settlers crossing it.
+    expect(drawsAsFlatDecor(bridge)).toBe(false);
+    expect(deckFarRow(bridge)).toBe(-2);
+  });
+
+  it('leaves every other object sorting at its own row', () => {
+    // The group is the whole key: the same footprint in any other group still sorts at its node.
+    expect(deckFarRow({ walkBlockAreas: deck, editGroups: ['misc_decor'] })).toBeUndefined();
+    expect(deckFarRow({ walkBlockAreas: deck })).toBeUndefined();
+    // A bridge record with no deck has no row to move to.
+    expect(deckFarRow({ editGroups: [BRIDGE_EDIT_GROUP] })).toBeUndefined();
   });
 });
 

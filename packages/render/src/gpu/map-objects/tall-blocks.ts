@@ -185,9 +185,11 @@ export class TallObjectLayer {
           continue;
         }
         if (po.sprite === null) {
+          // Sorted at the object's own row, or at the row the app overrode it to (a bridge deck).
+          const depth = depthKey(obj.x, obj.depthY ?? obj.y);
           po.sprite = new Sprite();
           po.sprite.scale.set(obj.scale);
-          po.sprite.zIndex = depthKey(obj.x, obj.y); // static — set once
+          po.sprite.zIndex = depth; // static: set once
           // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground).
           // A batch tint cannot brighten, so the lane's >1 half clamps at ×1 — a named approximation
           // (see MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
@@ -198,7 +200,7 @@ export class TallObjectLayer {
             // pixels — the fog/shading tints multiply to black anyway, so it never re-tints.
             po.shadowSprite = new Sprite();
             po.shadowSprite.scale.set(obj.scale);
-            po.shadowSprite.zIndex = depthKey(obj.x, obj.y) - SHADOW_DEPTH_EPS;
+            po.shadowSprite.zIndex = depth - SHADOW_DEPTH_EPS;
           }
         }
         // Explored-but-unwatched ground dims the object to the ghost grading; a pick between two

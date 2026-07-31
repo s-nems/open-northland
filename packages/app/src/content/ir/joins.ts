@@ -1,4 +1,4 @@
-import type { BuildingFootprint } from '@open-northland/data';
+import { type BuildingFootprint, fullStateBlockAreaCells } from '@open-northland/data';
 import { DOOR_SHIFTS } from '../../catalog/building-tweaks.js';
 import { diag } from '../../diag/index.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow, LandscapeGfxRow } from './rows.js';
@@ -12,6 +12,37 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
   if (bmd === undefined || bmd.trim() === '') return undefined;
   if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
+}
+
+/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
+ *  Exported so the real-IR invariant pins the same join key the collision and draw joins read. */
+export const BRIDGE_EDIT_GROUP = 'misc_bridges';
+
+/** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). */
+export function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
+  return record.editGroups?.includes(BRIDGE_EDIT_GROUP) === true;
+}
+
+/** Whether a record draws as flat ground decor, below every entity: it carries no
+ *  `LogicWalkBlockArea`, so it stands on no ground of its own (waves, grass, flowers, mine stains). */
+export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>): boolean {
+  return (record.walkBlockAreas ?? []).length === 0;
+}
+
+/**
+ * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
+ * deck), `undefined` for every other record. Settlers cross ON a bridge deck (`content/collision.ts`
+ * holds why), so sorting at the object's own row buries everyone on the far half of the span.
+ *
+ * One sort row for a deck up to 13 half-rows long is an approximation: an object standing between the
+ * far row and the bridge's own row paints over the deck. No placement in the owned corpus does.
+ */
+export function deckFarRow(
+  record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,
+): number | undefined {
+  if (!isBridgeRecord(record)) return undefined;
+  const rows = fullStateBlockAreaCells(record.walkBlockAreas).map((c) => c.dy);
+  return rows.length === 0 ? undefined : Math.min(...rows);
 }
 
 /** The served `/bobs/` stem of a shadow `.bmd`'s atlas (`<shadow-basename-minus-.bmd>.shadow`, the
