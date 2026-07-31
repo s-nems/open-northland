@@ -20,7 +20,7 @@ export interface ToolWindow {
  * rebuild, and hit-test; the shell owns only what they all share, so a new window inherits the
  * lifecycle instead of re-implementing it.
  *
- * A window with extra draw layers (the build menu's tiled `back` + hover `Graphics`) creates them itself
+ * A window with extra draw layers (the tabbed lists' tiled `back` + hover `Graphics`) creates them itself
  * around the shell — the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
  */
 export interface WindowShell {

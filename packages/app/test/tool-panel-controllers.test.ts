@@ -4,7 +4,7 @@ import { Container, Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
-import { layoutBuildingMenu, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
+import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import {
   type AssistantGrantId,
@@ -12,12 +12,15 @@ import {
   layoutExtrasMenu,
 } from '../src/hud/tool-panel/extras-menu.js';
 import { createExtrasWindow, type ExtrasGrantsSeam } from '../src/hud/tool-panel/extras-window.js';
-import { layoutGoodsMenu, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
-import { createGoodsWindow } from '../src/hud/tool-panel/goods-window.js';
-import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
-import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';
+import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
+import { buildToolPanelLayout, type ToolButtonId } from '../src/hud/tool-panel/layout.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
+import {
+  createTabbedListWindow,
+  layoutTabbedList,
+  type TabbedListSource,
+} from '../src/hud/tool-panel/tabbed-list/index.js';
 import { createToolWindows } from '../src/hud/tool-panel/windows.js';
 import { messages } from '../src/i18n/index.js';
 
@@ -64,17 +67,31 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
-/** The same layout the build-menu controller computes internally (same origin formula + inputs): to the
- *  right of the strip, dropping from the buildings button so it clears the top-left debug overlay. */
-function expectedMenuLayout(ctx: PanelContext, buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
-  const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? ctx.layout.strip.y;
-  return layoutBuildingMenu(buildings, {
+/** The y a pop-up drops from: its own strip button (the shared window's anchor rule). */
+function anchorY(ctx: PanelContext, anchor: ToolButtonId): number {
+  return ctx.layout.buttons.find((b) => b.id === anchor)?.placed.y ?? ctx.layout.strip.y;
+}
+
+/** The same layout the shared tabbed-list controller computes internally (same origin formula + inputs):
+ *  to the right of the strip, dropping from the button that opens it. These fixtures are shorter than the
+ *  stub screen's viewport, so the controller's row cap does not bind. */
+function expectedListLayout<Id, Item extends { readonly label: string }>(
+  ctx: PanelContext,
+  source: TabbedListSource<Id, Item>,
+) {
+  return layoutTabbedList({
     originX: ctx.layout.width + WIN_PAD * ctx.scale,
-    originY: buildingsY,
+    originY: anchorY(ctx, source.anchor),
     scale: ctx.scale,
-    selected: 'all',
+    tabs: source.tabs(),
+    tabColumns: source.tabColumns,
+    selected: source.initialTab,
+    items: source.items(source.initialTab),
   });
 }
+
+const expectedMenuLayout = (ctx: PanelContext, buildings: readonly MenuBuildingEntry[] = BUILDINGS) =>
+  expectedListLayout(ctx, buildingTabbedList(buildings));
 
 // A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
 const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
@@ -85,8 +102,20 @@ const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => 
 
 /** A canvas point inside the build menu's first list row (past the headline + tab band). */
 function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
-  const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? 0;
-  return { x: ctx.layout.width + WIN_PAD * ctx.scale + 20, y: buildingsY + 45 * ctx.scale };
+  return {
+    x: ctx.layout.width + WIN_PAD * ctx.scale + 20,
+    y: anchorY(ctx, 'buildings') + 45 * ctx.scale,
+  };
+}
+
+/** Build the shared tabbed-list window the panel mounts for the build menu. */
+function menuWindow(ctx: PanelContext, buildings: readonly MenuBuildingEntry[], onPick: (t: number) => void) {
+  return createTabbedListWindow({
+    ctx,
+    container: new Container(),
+    source: buildingTabbedList(buildings),
+    onPick: (b) => onPick(b.typeId),
+  });
 }
 
 /** A HUD read-view: the volatile `tick` row the stats window excludes from its change key, then a tally. */
@@ -111,15 +140,10 @@ const TALL_HUD: HudLayout = {
   })),
 };
 
-describe('menu window controller', () => {
+describe('tabbed-list window controller (build menu)', () => {
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
     const { ctx } = stubContext();
-    const menu = createMenuWindow({
-      ctx,
-      buildings: BUILDINGS,
-      container: new Container(),
-      onPick: () => undefined,
-    });
+    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
     const geo = expectedMenuLayout(ctx);
 
     expect(menu.isOpen()).toBe(false);
@@ -138,12 +162,9 @@ describe('menu window controller', () => {
   it('closes itself BEFORE handing a picked building to onPick', () => {
     const { ctx } = stubContext();
     const picks: Array<{ typeId: number; menuOpenAtPick: boolean }> = [];
-    const menu = createMenuWindow({
-      ctx,
-      buildings: BUILDINGS,
-      container: new Container(),
-      onPick: (typeId) => picks.push({ typeId, menuOpenAtPick: menu.isOpen() }),
-    });
+    const menu = menuWindow(ctx, BUILDINGS, (typeId) =>
+      picks.push({ typeId, menuOpenAtPick: menu.isOpen() }),
+    );
     menu.toggle();
     const row = centreOf(expectedMenuLayout(ctx).rows[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
 
@@ -153,12 +174,7 @@ describe('menu window controller', () => {
 
   it('does not consume clicks outside the open window', () => {
     const { ctx } = stubContext();
-    const menu = createMenuWindow({
-      ctx,
-      buildings: BUILDINGS,
-      container: new Container(),
-      onPick: () => undefined,
-    });
+    const menu = menuWindow(ctx, BUILDINGS, () => undefined);
     menu.toggle();
     expect(menu.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(menu.isOpen()).toBe(true);
@@ -166,12 +182,7 @@ describe('menu window controller', () => {
 
   it('consumes the wheel over the open window and ignores it outside', () => {
     const { ctx } = stubContext();
-    const menu = createMenuWindow({
-      ctx,
-      buildings: MANY,
-      container: new Container(),
-      onPick: () => undefined,
-    });
+    const menu = menuWindow(ctx, MANY, () => undefined);
     menu.toggle();
     const p = firstRowPoint(ctx);
     expect(menu.handleWheel(p.x, p.y, 120)).toBe(true); // over the window → scrolls, consumed
@@ -181,12 +192,7 @@ describe('menu window controller', () => {
   it('wheel-scrolls the overflowing list so a fixed point clicks the scrolled-in building', () => {
     const { ctx } = stubContext();
     const picks: number[] = [];
-    const menu = createMenuWindow({
-      ctx,
-      buildings: MANY,
-      container: new Container(),
-      onPick: (t) => picks.push(t),
-    });
+    const menu = menuWindow(ctx, MANY, (t) => picks.push(t));
     const p = firstRowPoint(ctx);
 
     // Baseline: at rest the top row is the first building.
@@ -202,31 +208,27 @@ describe('menu window controller', () => {
   });
 });
 
-describe('goods window controller', () => {
-  // Both sit in the default 'Surowce' tab (category 2, see stock-tabs.ts), so they list on open.
+describe('tabbed-list window controller (goods palette)', () => {
+  // Both sit in the default 'Surowce' tab (category 2, see good-categories.ts), so they list on open.
   const GOODS: readonly MenuGoodEntry[] = [
     { goodType: 10, id: 'wood', label: 'Drewno' },
     { goodType: 11, id: 'stone', label: 'Kamień' },
   ];
 
-  /** The same layout the controller builds internally (same origin formula + default category). */
-  function expectedLayout(ctx: PanelContext) {
-    return layoutGoodsMenu(GOODS, {
-      originX: ctx.layout.width + WIN_PAD * ctx.scale,
-      originY: ctx.layout.strip.y,
-      scale: ctx.scale,
-      selected: 2, // DEFAULT_CATEGORY (raw materials)
+  /** The same layout the controller builds internally — dropping from the palette's own strip button. */
+  const expectedLayout = (ctx: PanelContext) => expectedListLayout(ctx, goodsTabbedList(GOODS));
+
+  const goodsWindow = (ctx: PanelContext, onPick: (goodType: number) => void) =>
+    createTabbedListWindow({
+      ctx,
+      container: new Container(),
+      source: goodsTabbedList(GOODS),
+      onPick: (g) => onPick(g.goodType),
     });
-  }
 
   it('opens on toggle, claims the window rect, and closes on the close box', () => {
     const { ctx } = stubContext();
-    const goods = createGoodsWindow({
-      ctx,
-      goods: GOODS,
-      container: new Container(),
-      onPick: () => undefined,
-    });
+    const goods = goodsWindow(ctx, () => undefined);
     const geo = expectedLayout(ctx);
 
     expect(goods.isOpen()).toBe(false);
@@ -245,12 +247,7 @@ describe('goods window controller', () => {
   it('closes itself BEFORE handing a picked good to onPick', () => {
     const { ctx } = stubContext();
     const picks: Array<{ goodType: number; openAtPick: boolean }> = [];
-    const goods = createGoodsWindow({
-      ctx,
-      goods: GOODS,
-      container: new Container(),
-      onPick: (goodType) => picks.push({ goodType, openAtPick: goods.isOpen() }),
-    });
+    const goods = goodsWindow(ctx, (goodType) => picks.push({ goodType, openAtPick: goods.isOpen() }));
     goods.toggle();
     const row = centreOf(expectedLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
 
@@ -260,15 +257,20 @@ describe('goods window controller', () => {
 
   it('does not consume clicks outside the open window', () => {
     const { ctx } = stubContext();
-    const goods = createGoodsWindow({
-      ctx,
-      goods: GOODS,
-      container: new Container(),
-      onPick: () => undefined,
-    });
+    const goods = goodsWindow(ctx, () => undefined);
     goods.toggle();
     expect(goods.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(goods.isOpen()).toBe(true);
+  });
+
+  it('drops from the mission button that opens it, not from the strip top', () => {
+    const { ctx } = stubContext();
+    const goods = goodsWindow(ctx, () => undefined);
+    goods.toggle();
+    const x = ctx.layout.width + WIN_PAD * ctx.scale + 1;
+    expect(goods.claims(x, anchorY(ctx, 'mission') + 1)).toBe(true);
+    // Where the palette used to open: above its button, so nothing of it may reach up there.
+    expect(goods.claims(x, ctx.layout.strip.y + 1)).toBe(false);
   });
 });
 

@@ -1,12 +1,11 @@
 import type { HudLayout } from '@open-northland/render';
 import type { Container } from 'pixi.js';
-import type { MenuBuildingEntry } from './building-menu.js';
+import { buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createExtrasWindow, type ExtrasGrantsSeam } from './extras-window.js';
-import type { MenuGoodEntry } from './goods-menu.js';
-import { createGoodsWindow } from './goods-window.js';
-import { createMenuWindow } from './menu-window.js';
+import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import { createStatsWindow } from './stats-window.js';
+import { createTabbedListWindow, type TabbedListWindow } from './tabbed-list/index.js';
 import type { ToolWindow } from './window-shell.js';
 
 /**
@@ -52,24 +51,27 @@ export interface ToolWindows {
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const { ctx, container } = deps;
-  const menu = createMenuWindow({
+  const menu = createTabbedListWindow({
     ctx,
-    buildings: deps.buildings,
     container,
-    onPick: deps.onPickBuilding,
+    source: buildingTabbedList(deps.buildings),
+    onPick: (b) => deps.onPickBuilding(b.typeId),
   });
-  const goods = createGoodsWindow({ ctx, goods: deps.goods, container, onPick: deps.onPickGood });
+  const goods = createTabbedListWindow({
+    ctx,
+    container,
+    source: goodsTabbedList(deps.goods),
+    onPick: (g) => deps.onPickGood(g.goodType),
+  });
   const extras = createExtrasWindow({ ctx, container, grants: deps.grants });
   const stats = createStatsWindow({ ctx, container });
 
+  /** The pop-ups that own a scrollable, hoverable list — the wheel and hover routes. */
+  const lists: readonly TabbedListWindow[] = [menu, goods];
+
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: { window: menu, perFrame: () => menu.refresh() },
-    goods: {
-      window: goods,
-      perFrame: () => {
-        if (goods.isOpen()) goods.place();
-      },
-    },
+    goods: { window: goods, perFrame: () => goods.refresh() },
     extras: {
       window: extras,
       perFrame: () => {
@@ -93,13 +95,18 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     handleWheel: (x, y, deltaY): boolean => {
       const top = topAt(x, y);
       if (top === null) return false;
-      // The build menu is the only pop-up with a scrollable list, and it scrolls only while uncovered.
-      if (top === menu) menu.handleWheel(x, y, deltaY);
+      // Only a tabbed list scrolls, and only while it is the window the player can see at the point.
+      for (const list of lists) {
+        if (list === top) list.handleWheel(x, y, deltaY);
+      }
       return true;
     },
     handleHover: (x, y): void => {
-      if (topAt(x, y) === menu) menu.handleHover(x, y);
-      else menu.clearHover(); // no row highlight under a window that would take the press
+      const top = topAt(x, y);
+      for (const list of lists) {
+        if (list === top) list.handleHover(x, y);
+        else list.clearHover(); // no row highlight under a window that would take the press
+      }
     },
     refresh: (hudFor): void => {
       for (const e of mounted) e.perFrame(hudFor);
