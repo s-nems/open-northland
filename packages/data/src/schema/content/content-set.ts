@@ -9,7 +9,12 @@ import { GoodType } from '../economy/goods.js';
 import { HumanJobExperienceType, JobType } from '../economy/jobs.js';
 import { GfxAnimAtomic } from '../graphics/atomic-anims.js';
 import { BobSequenceSet } from '../graphics/bob-sequences.js';
-import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '../graphics/building-bobs.js';
+import {
+  BuildingBob,
+  BuildingConstructionLayer,
+  BuildingFlagPoint,
+  BuildingOverlay,
+} from '../graphics/building-bobs.js';
 import { GfxWalkAtomic } from '../graphics/walk-anims.js';
 import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
@@ -66,6 +71,8 @@ export const ContentSet = z.strictObject({
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor — render-binding data). */
   buildingOverlays: z.array(BuildingOverlay).default([]),
+  /** `[GfxHouse]` `GfxFlagPoint` sign-post anchors - where a building's sign chain plants (render-binding data). */
+  buildingFlagPoints: z.array(BuildingFlagPoint).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

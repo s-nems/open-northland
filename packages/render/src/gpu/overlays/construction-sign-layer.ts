@@ -6,8 +6,8 @@ import { IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
 /**
  * The construction-sign layer - one player-coloured `ls_temp` stand planted at each building site's
- * door node, drawn in world space like the door badges. A client-side projection of the read-only
- * snapshot: the app's `computeConstructionSigns` decides what counts as a site and where its door is.
+ * sign post, drawn in world space like the door badges. A client-side projection of the read-only
+ * snapshot: the app's `computeConstructionSigns` decides what counts as a site and where its post is.
  *
  * Retained per site id with the shared viewport-cull dance ({@link retainOffscreen} /
  * {@link retireUndrawn}); a sprite is rebuilt only when the site's owner changes, else repositioned.
@@ -15,9 +15,12 @@ import { IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 export interface ConstructionSign {
   /** The building entity id - the retained-pool key. */
   readonly id: number;
-  /** Door-node position in fixed-point `Position` units (same space as a snapshot `Position`). */
+  /** Anchor position in fixed-point `Position` units (same space as a snapshot `Position`). */
   readonly x: number;
   readonly y: number;
+  /** Screen-px offset from the projected anchor - the original's `GfxFlagPoint` (+y down); absent = 0. */
+  readonly dx?: number;
+  readonly dy?: number;
   /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
   readonly player?: number;
 }
@@ -82,7 +85,10 @@ export class ConstructionSignLayer {
           this.signs.set(sign.id, entry);
         }
         entry.node.visible = true;
-        entry.node.position.set(p.x, p.y - terrainLiftAt(elevation, tileX, tileY));
+        entry.node.position.set(
+          p.x + (sign.dx ?? 0),
+          p.y + (sign.dy ?? 0) - terrainLiftAt(elevation, tileX, tileY),
+        );
         this.drawn.add(sign.id);
       }
     }

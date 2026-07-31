@@ -48,6 +48,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     footprints,
     constructionLayers,
     buildingOverlays,
+    buildingFlagPoints,
   } = await extractIniTables(await resolveIniSources(roots));
   const maps = await decodeMapTree(roots);
   // Terrain ground graphics (`.cif`-only tables) → the approximated typeId→pattern map the renderer
@@ -130,6 +131,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingBobs,
     constructionLayers,
     buildingOverlays,
+    buildingFlagPoints,
     tribes,
     atomicAnimations,
     maps,

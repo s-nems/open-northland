@@ -9,10 +9,11 @@ import { workerIconOffset } from '../../catalog/building-tweaks.js';
  *
  * Source basis: the door is the extracted `LogicDoorPoint` (the cell a settler stands on entering —
  * `footprint.door`, the same offset the sim's `interactionNode` walks to; the committed per-building
- * door corrections are already applied upstream in `content/ir/joins.ts`). The worker-icon anchor has no
- * original counterpart — the original draws worker icons in the HUD, not at the building — so its
- * placement is our own approximation: one node right of the door by default, with per-building
- * overrides from the gallery review (`catalog/building-tweaks.ts`).
+ * door corrections are already applied upstream in `content/ir/joins.ts`). The original's sign-post
+ * anchor is the `[GfxHouse]` `GfxFlagPoint` pixel offset (the `buildingFlagPoints` IR lane), which the
+ * badge projection prefers; the worker-icon node here is the approximation used only when a type has no
+ * extracted flag point: one node right of the door by default, with per-building overrides from the
+ * gallery review (`catalog/building-tweaks.ts`).
  */
 
 /** The slice of a footprint these helpers read — structural, so a caller holding only a door-offset

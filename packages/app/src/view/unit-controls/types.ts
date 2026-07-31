@@ -2,6 +2,7 @@ import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type {
   BuildingHighlightItem,
   Camera,
+  DoorBadge,
   DrawItem,
   ElevationField,
   EntityBounds,
@@ -36,6 +37,9 @@ export interface UnitControlsOptions {
    *  what a click hit-tests against, so selection and attack targeting inherit the frame's viewport and
    *  fog culls instead of re-deriving them from the snapshot. */
   readonly drawnItems: () => readonly DrawItem[];
+  /** The frame's fog-filtered door badges - what a click on a building's sign chain hit-tests to select
+   *  the settler a row stands for. Absent (or empty, e.g. no decoded sign art) disables badge picking. */
+  readonly doorBadges?: () => readonly DoorBadge[];
   /** The sim's equip pick-list read seam (`Simulation.equipPickList`) - what the equipment panel's
    *  plus/swap buttons list. Absent (a shell with no live sim handle) leaves those buttons inert. */
   readonly equipPickList?: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];

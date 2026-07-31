@@ -1,6 +1,20 @@
-import { type Camera, halfCellToScreen, makeElevationField, tileToScreen } from '@open-northland/render';
+import {
+  type Camera,
+  type DoorBadge,
+  halfCellToScreen,
+  makeElevationField,
+  ONE,
+  tileToScreen,
+} from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { clampTile, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../src/view/picking.js';
+import {
+  clampTile,
+  pickDoorBadgeRow,
+  pickInRect,
+  pickTopAt,
+  screenToWorld,
+  worldToTile,
+} from '../src/view/picking.js';
 
 /**
  * Headless tests for the pure PICKING math (screen→world→node + the point/box hit-tests). This is the
@@ -206,5 +220,55 @@ describe('pickInRect', () => {
 
   it('returns an empty list when the box catches nothing', () => {
     expect(pickInRect(targets, 200, 200, 300, 300)).toEqual([]);
+  });
+});
+
+describe('pickDoorBadgeRow', () => {
+  const stack = (id: number, tileX: number, tileY: number, extra?: Partial<DoorBadge>): DoorBadge => ({
+    id,
+    x: tileX * ONE,
+    y: tileY * ONE,
+    rows: [
+      { role: 'single', settler: 40 },
+      { role: 'craftsman', settler: 41 },
+      { role: 'carrier', settler: 42 },
+    ],
+    ...extra,
+  });
+
+  it('maps a click on each chain band to that row’s settler, and misses beside/above the stack', () => {
+    const p = tileToScreen(3, 5);
+    const badges = [stack(1, 3, 5)];
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 10)).toBe(40); // base banner emblem
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 30)).toBe(41); // middle disc
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 50)).toBe(42); // carrier pennant on top
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 80)).toBeNull(); // above the chain
+    expect(pickDoorBadgeRow(badges, p.x + 30, p.y - 10)).toBeNull(); // beside it
+  });
+
+  it('applies the GfxFlagPoint px offset and the terrain lift at the anchor tile', () => {
+    const W = 4;
+    const H = 8;
+    const elev = new Array<number>(W * H).fill(0);
+    elev[6 * W + 1] = 160; // a hill under cell (col 1, row 6)
+    const field = makeElevationField(elev, W, H);
+    const p = tileToScreen(1, 6);
+    const badges = [stack(1, 1, 6, { dx: -6, dy: 29 })];
+    const ax = p.x - 6;
+    const ay = p.y + 29 - field.liftAt(1, 6);
+    expect(pickDoorBadgeRow(badges, ax, ay - 10, field)).toBe(40);
+    expect(pickDoorBadgeRow(badges, p.x, p.y - 10, field)).toBeNull(); // the unlifted spot misses
+  });
+
+  it('skips rows with no settler and picks the frontmost stack when two overlap', () => {
+    const p = tileToScreen(3, 5);
+    const bare = stack(1, 3, 5, { rows: [{ role: 'single' }] }); // an unresolvable banner - no hit
+    expect(pickDoorBadgeRow([bare], p.x, p.y - 10)).toBeNull();
+
+    // Two stacks anchored a fraction of a row apart, so both base bands cover the click point: the
+    // larger anchor y (the iso frontmost convention) wins.
+    const back = stack(1, 3, 4.8, { rows: [{ role: 'single', settler: 7 }] });
+    const front = stack(2, 3, 5, { rows: [{ role: 'single', settler: 8 }] });
+    expect(pickDoorBadgeRow([back, front], p.x, p.y - 10)).toBe(8);
   });
 });

@@ -67,9 +67,11 @@ describe('assignWorker → door badge, over sandbox content', () => {
       (bound?.components.JobAssignment as { workplace?: unknown } | undefined)?.workplace,
     );
     expect(workplace).toBe(building.id);
-    // … and a badge appears at its door — never a gatherer (the right-click never assigns one).
+    // … and a badge row appears at its door - never a gatherer (the right-click never assigns one).
     const badge = computeDoorBadges(snap1, doorTable, workerRoleOf).find((b) => b.id === building.id);
     expect(badge).toBeDefined();
-    expect((badge?.craftsmen ?? 0) + (badge?.carriers ?? 0)).toBeGreaterThan(0);
+    const roles = badge?.rows.map((r) => r.role) ?? [];
+    expect(roles.some((r) => r === 'craftsman' || r === 'carrier')).toBe(true);
+    expect(roles).not.toContain('gatherer');
   });
 });

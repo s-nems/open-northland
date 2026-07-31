@@ -25,6 +25,7 @@ export {
 } from './ini/bindings/index.js';
 export {
   extractBuildingBobs,
+  extractBuildingFlagPoints,
   extractBuildingFootprints,
   extractBuildingGraphics,
   extractBuildingOverlays,

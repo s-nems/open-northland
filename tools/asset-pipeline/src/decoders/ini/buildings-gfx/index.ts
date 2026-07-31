@@ -11,6 +11,7 @@ export {
 } from './structure.js';
 export {
   extractBuildingBobs,
+  extractBuildingFlagPoints,
   extractBuildingGraphics,
   extractBuildingOverlays,
   extractConstructionLayers,
