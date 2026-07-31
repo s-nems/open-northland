@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { paletteLutRow, type PlayerColourLut } from '../src/gpu/sprite-sheet.js';
+import { type PlayerColourLut, paletteLutRow } from '../src/gpu/sprite-sheet.js';
 
 /**
  * Pins the (armor tier, player) LUT row contract - the render half of the pipeline's row scheme
