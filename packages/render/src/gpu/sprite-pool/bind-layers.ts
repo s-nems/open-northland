@@ -14,7 +14,7 @@ import {
   type PlainPooledEntity,
   type PooledEntity,
 } from './pooled-entity.js';
-import type { ResolvedLayer } from './resolve-layers.js';
+import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
 
 /**

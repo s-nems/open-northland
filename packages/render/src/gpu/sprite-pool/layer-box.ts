@@ -1,4 +1,4 @@
-import type { ResolvedLayer } from './resolve-layers.js';
+import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
  * Where one resolved layer draws and the box its layers union into, in feet-local px about the container

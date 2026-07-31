@@ -1,27 +1,21 @@
-import type { TextureSource } from 'pixi.js';
-import { clamp01 } from '../../data/math.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import {
-  type AtlasFrame,
-  type BuildingDraw,
-  type BuildTimeSheet,
-  bobKey,
-  type ConstructionDraw,
-  finishedBuildingBobKeys,
   lookupFrame,
-  pickByJob,
-  resolveBuildingDraw,
-  resolveBuildingOverlayDraw,
-  resolveConstructionDraws,
   resolveResourceDraw,
-  resolveSettlerBobId,
   resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
-  resolveUpgradeDraws,
-  type SpriteKind,
 } from '../../data/sprites/index.js';
-import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
+import type { SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
+import { resolveBuildingLayers } from './building-layers.js';
+import { resolveCharacterLayers } from './character-layers.js';
+import {
+  hasLoadedFamily,
+  layeredLayerFor,
+  layeredLayersWithShadow,
+  shadowLayerFor,
+} from './layered-layers.js';
+import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
  * The layer-resolution step of the pool's per-frame update: which atlas layers (source + frame +
@@ -30,66 +24,9 @@ import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../sprite-sh
  * {@link SpriteSheet}.
  */
 
-/** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
- *  `atlasW`/`atlasH` (the source sheet's pixel size) ride along only for the paletted settler path — the
- *  {@link import('../paletted-sprite/index.js').PalettedSprite} mesh samples the indexed atlas by UV and needs
- *  the sheet dimensions; the plain {@link import('pixi.js').Sprite} path binds a cached sub-texture and
- *  ignores them. */
-export interface ResolvedLayer {
-  readonly source: TextureSource;
-  readonly frame: AtlasFrame;
-  readonly scale: number;
-  readonly atlasW?: number;
-  readonly atlasH?: number;
-  /**
-   * Construction reveal fraction (0..1 of `builtPct/100`) — present only on the stage stack of an
-   * under-construction building; the pool eases the displayed value toward it between the sim's
-   * per-swing `built` steps. With {@link times} (+ {@link revealWindow}) the reveal is per-pixel:
-   * each pixel appears once the eased progress, mapped into the window
-   * ({@link import('../../data/sprites/index.js').buildTimeThreshold}), reaches its baked TimeMask
-   * threshold. Without time data the layer falls back to the
-   * bottom-up top-crop approximation.
-   */
-  readonly reveal?: number;
-  /** The atlas's build-progress time sheet, when the loaded {@link import('../sprite-sheet.js').SpriteLayer}
-   *  carries one — enables the per-pixel reveal (see {@link reveal}). */
-  readonly times?: BuildTimeSheet;
-  /** The construction stage's `[fromPct, toPct]` progress window — set with {@link times} on a reveal
-   *  layer so the pool can map eased progress into this stage's own threshold scale. */
-  readonly revealWindow?: readonly [number, number];
-  /**
-   * Excluded from the entity's stamped {@link import('./pooled-entity.js').EntityBounds} — set on a
-   * building's animated state overlay (the mill's spinning rotor), whose per-frame rects differ in
-   * size and sit off the body's centre. The bounds feed the selection ring's size/centre and the
-   * details-panel portrait's fit-to-box framing, which must not breathe with the spin cycle. The
-   * overlay still draws and still pixel-hit-tests — it just doesn't move the box.
-   */
-  readonly boundsExempt?: boolean;
-  /**
-   * A cast-shadow layer ({@link shadowLayerFor}) — always also {@link boundsExempt}, and additionally
-   * excluded from the pixel hit test: clicking the darkened ground beside a caster must not select it
-   * (unlike the rotor overlay, which is a clickable part of the building).
-   */
-  readonly shadow?: true;
-}
-
 /** Shared empty extras list so a settler or projectile draw allocates nothing on its way through the
  *  kind dispatch (only a building ever replaces it). */
 const NO_EXTRAS: readonly ResolvedLayer[] = [];
-
-/**
- * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
- * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
- * on the tree and house `_s.bmd`s). Null when the layer has no shadow twin or the twin holds no visible
- * frame at that id (most bobs cast none — the data decides).
- */
-function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
-  const shadow = layer.shadow;
-  if (shadow === undefined) return null;
-  const frame = lookupFrame(shadow.atlas, bobId);
-  if (frame === null) return null;
-  return { source: shadow.source, frame, scale, boundsExempt: true, shadow: true };
-}
 
 /**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder — the family →
@@ -197,92 +134,6 @@ export function resolveLayers(
   return layers.length > 0 ? layers : null;
 }
 
-/** The building branch's outcome: either a finished stack it resolved on its own (`done`), or a
- *  fall-through carrying the default-layer `bobId` + the extra layers (state overlay / upgrade stack)
- *  the shared body block appends above the body. */
-type BuildingBranch =
-  | { readonly done: true; readonly layers: ResolvedLayer[] | null }
-  | { readonly done: false; readonly bobId: number; readonly extras: readonly ResolvedLayer[] };
-
-/**
- * Resolve a building's atlas layers. An under-construction building returns its active construction-stage
- * stack (grey foundation → stages → body, in stacking order); a finished building either returns its
- * named-family body [+ extras] directly, or falls through (`done: false`) with the default
- * building-layer `bobId` so the shared body block draws it. The extras drawn above the body are a
- * finished building's animated state overlay (the mill's rotor) or an UPGRADING building's revealing
- * next-tier stack ({@link resolveUpgradeDraws} — the old body keeps drawing; the new tier materialises
- * over it). Each stage/body resolves through the same family/default-layer decision
- * ({@link layeredLayerFor}).
- */
-function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number): BuildingBranch {
-  // A stage whose frame is missing/empty is skipped; if no stage resolves, fall through to the body.
-  const stack = resolveConstructionDraws(sheet.bindings.building, item);
-  if (stack !== null && typeof sheet.bindings.building !== 'number') {
-    // Each active stage reveals as the build progresses (the pool eases the displayed value between
-    // the sim's per-swing steps). A stage whose atlas carries a time sheet reveals per-pixel in its
-    // own [fromPct,toPct] window — the original's model, where even the finished-house bob listed as
-    // the stack's top stage materialises pixel by pixel. Without time data a stage falls back to the
-    // bottom-up crop, and a finished building sprite is excluded from that rise (it would creep up as
-    // a half-built cottage) — it snaps in at completion.
-    const layers = revealingStageLayers(sheet, stack, item.builtPct);
-    if (layers.length > 0) return { done: true, layers };
-  }
-  const draw = resolveBuildingDraw(sheet.bindings.building, item);
-  const extras: ResolvedLayer[] = [];
-  const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
-  if (overlayDraw !== null) {
-    const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
-    // The spin frames must not move the entity's box — see ResolvedLayer.boundsExempt.
-    if (resolved !== null) extras.push({ ...resolved, boundsExempt: true });
-  }
-  // An upgrading building keeps its old-tier body draw and reveals the next tier's stack above it —
-  // the same per-pixel/crop reveal rules as a construction stage, driven by `upgradePct`.
-  const upgradeStack = resolveUpgradeDraws(sheet.bindings.building, item);
-  if (upgradeStack !== null && typeof sheet.bindings.building !== 'number') {
-    extras.push(...revealingStageLayers(sheet, upgradeStack, item.upgradePct));
-  }
-  // A loaded named family resolves through the shared helper (missing/empty frame → placeholder); an
-  // unloaded one falls through to the default building layer (a deliberate difference from the
-  // construction path, which drops the stage instead).
-  if (hasLoadedFamily(sheet, draw)) {
-    const layers = layeredLayersWithShadow(sheet, 'building', draw);
-    if (layers === null) return { done: true, layers: null }; // a broken body never draws floating extras
-    layers.push(...extras);
-    return { done: true, layers };
-  }
-  return { done: false, bobId: draw.bob, extras };
-}
-
-/**
- * Resolve a stage stack's drawable layers at a rise progress (a from-scratch site's `builtPct` or an
- * upgrade's `upgradePct`): a stage whose atlas carries a time sheet reveals per-pixel in its own
- * window; one without time data crop-rises, except a finished-building sprite, which snaps in at
- * completion instead of creeping up ({@link finishedBuildingBobKeys}) — for an upgrade stack (whose
- * bobs ARE the next tier's finished body) that means the old body alone shows until the time-mask
- * atlas is available. A stage whose frame is missing/empty is skipped.
- */
-function revealingStageLayers(
-  sheet: SpriteSheet,
-  stack: readonly ConstructionDraw[],
-  progressPct: number | undefined,
-): ResolvedLayer[] {
-  const binding = sheet.bindings.building;
-  if (typeof binding === 'number') return [];
-  const finishedKeys = finishedBuildingBobKeys(binding);
-  const reveal = clamp01((progressPct ?? 0) / 100);
-  const layers: ResolvedLayer[] = [];
-  for (const draw of stack) {
-    const resolved = layeredLayerFor(sheet, 'building', draw);
-    if (resolved === null) continue;
-    if (resolved.times !== undefined) {
-      layers.push({ ...resolved, reveal, revealWindow: [draw.fromPct, draw.toPct] });
-    } else if (!finishedKeys.has(bobKey(draw))) {
-      layers.push({ ...resolved, reveal });
-    }
-  }
-  return layers;
-}
-
 /**
  * Resolve a ground pile / delivery flag's layers. It has no shared `kindLayers` layer of its own, so it
  * draws only from a loaded named family (the `ls_goods` pile / `ls_temp` flag atlases); a bare or
@@ -321,132 +172,4 @@ function resolveDecorLayers(
   if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
   if (draw.layer === undefined) return null; // no family → placeholder
   return layeredLayersWithShadow(sheet, kind, draw);
-}
-
-/**
- * {@link layeredLayerFor} plus the body's cast shadow: `[shadow, body]` when the draw's source layer
- * carries a {@link SpriteLayer.shadow} twin with a visible frame at the same bob id, else `[body]`;
- * null exactly when {@link layeredLayerFor} is. The construction stack keeps {@link layeredLayerFor}
- * directly — its stage shadows are a separate lane (the `shadowBobId` ticket).
- */
-function layeredLayersWithShadow(
-  sheet: SpriteSheet,
-  kind: SpriteKind,
-  draw: BuildingDraw,
-): ResolvedLayer[] | null {
-  const layer = sourceLayerFor(sheet, kind, draw);
-  if (layer === undefined) return null;
-  const body = resolveFromLayer(layer, sheet, kind, draw);
-  if (body === null) return null;
-  const shadow = shadowLayerFor(layer, draw.bob, body.scale);
-  return shadow === null ? [body] : [shadow, body];
-}
-
-/**
- * Resolve one layered draw (a finished building body / construction stage, or a per-good resource /
- * stockpile object) to its atlas layer — the family / dedicated-kind-layer decision shared by every
- * layered kind. Returns null for an unloaded family, a kind with no dedicated layer, or a
- * missing/empty frame (the caller skips or falls back to the placeholder).
- */
-function layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): ResolvedLayer | null {
-  const layer = sourceLayerFor(sheet, kind, draw);
-  return layer === undefined ? null : resolveFromLayer(layer, sheet, kind, draw);
-}
-
-/** Whether a layered draw names a family atlas the sheet actually loaded. A named-but-unloaded family
- *  is not, so the caller falls through to the bare bob instead. */
-function hasLoadedFamily(sheet: SpriteSheet, draw: BuildingDraw): boolean {
-  return draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined;
-}
-
-/**
- * The source atlas layer a layered draw reads: a `draw.layer` names a {@link SpriteSheet.families}
- * atlas, a bare draw uses the kind's own {@link SpriteSheet.kindLayers} layer. An unloaded named
- * family is `undefined` — never a wrong-bob borrow from the kind layer (their id spaces differ).
- */
-function sourceLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): SpriteLayer | undefined {
-  return draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.[kind];
-}
-
-/** {@link layeredLayerFor}'s frame/scale step over an already-picked source layer: the draw's bob frame
- *  at the family's `familyScales` entry, else the kind's `kindScales`, else native. The atlas's time
- *  sheet rides along so a construction stage can reveal per-pixel; ignored on every other draw. */
-function resolveFromLayer(
-  layer: SpriteLayer,
-  sheet: SpriteSheet,
-  kind: SpriteKind,
-  draw: BuildingDraw,
-): ResolvedLayer | null {
-  const frame = lookupFrame(layer.atlas, draw.bob);
-  if (frame === null) return null;
-  const scale =
-    (draw.layer !== undefined ? sheet.familyScales?.[draw.layer] : undefined) ??
-    sheet.kindScales?.[kind] ??
-    1;
-  return {
-    source: layer.source,
-    frame,
-    scale,
-    ...(layer.times !== undefined ? { times: layer.times } : {}),
-  };
-}
-
-/**
- * Resolve a per-job settler character's layers: the job's own body frame plus one stable head overlay
- * per individual (picked by entity id — ids are monotonic, never reused — so a crowd shows varied faces
- * without per-frame flicker, the render-side analogue of the original's per-individual random head).
- * The head may resolve through its OWN binding (the head-borrow case — a carry variant whose head bobs
- * are empty plays the base walk's head instead).
- */
-function resolveCharacterLayers(
-  characters: SettlerCharacterSet,
-  item: DrawItem,
-  tick: number,
-  gaitClock: number,
-): ResolvedLayer[] | null {
-  // A wildlife entity resolves ONLY through the species table - the binding contract (bound draws
-  // the species look, listed-but-unbound draws nothing) lives on {@link SettlerCharacterSet.animals}.
-  // One local fact: a BOUND tribe whose resolved bob has no frame is a real gap, so it falls to the
-  // placeholder like a human miss, never silently invisible.
-  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) {
-    const animal = characters.animals.byTribe[item.tribe];
-    if (animal === undefined) return [];
-    const bob = resolveSettlerBobId(animal.binding, item, tick, gaitClock);
-    const frame = lookupFrame(animal.body.atlas, bob);
-    if (frame === null) return null;
-    const body: ResolvedLayer = { source: animal.body.source, frame, scale: 1 };
-    const shadow = shadowLayerFor(animal.body, bob, 1);
-    return shadow === null ? [body] : [shadow, body];
-  }
-  const char = pickByJob(characters, item.jobType, item.young === true, item.weaponGood);
-  const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
-  const layers: ResolvedLayer[] = [];
-  const bodyFrame = lookupFrame(char.body.atlas, bob);
-  if (bodyFrame !== null) {
-    // atlasW/H ride along for the paletted mesh path — see ResolvedLayer.
-    layers.push({
-      source: char.body.source,
-      frame: bodyFrame,
-      scale: 1,
-      atlasW: char.body.atlas.width,
-      atlasH: char.body.atlas.height,
-    });
-  }
-  const heads = char.heads;
-  if (heads !== undefined && heads.length > 0) {
-    const head = heads[item.ref % heads.length];
-    const headBob =
-      char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
-    const headFrame = head === undefined ? null : lookupFrame(head.atlas, headBob);
-    if (head !== undefined && headFrame !== null) {
-      layers.push({
-        source: head.source,
-        frame: headFrame,
-        scale: 1,
-        atlasW: head.atlas.width,
-        atlasH: head.atlas.height,
-      });
-    }
-  }
-  return layers.length > 0 ? layers : null;
 }
