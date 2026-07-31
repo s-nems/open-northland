@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, Health, Position, Resource } from '../../../src/components/index.js';
+import { Carcass, Carrying, Health, Position, Resource } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
@@ -73,6 +73,10 @@ describe('atomicSystem - hunter kill leaves a harvestable carcass (spawnCarcasse
         position: positionOfNode(6, 0),
       },
     ]);
+    // The carcass marker: what lets the deplete seam leave bones where the kill lay.
+    for (const node of sim.world.query(Resource)) {
+      expect(sim.world.has(node, Carcass)).toBe(true);
+    }
     expect(sim.world.has(hunter, Carrying)).toBe(false);
   });
 

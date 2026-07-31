@@ -45,6 +45,14 @@ const died = (entity: number, withPos = true): SimEvent =>
   withPos
     ? { kind: 'settlerDied', entity: asEntity(entity), cause: 'damage', player: 0, at: at(8, 10) }
     : { kind: 'settlerDied', entity: asEntity(entity), cause: 'damage', player: 0 };
+const MEAT_GOOD = 21; // the carcass good the depleted node held (any good id works for the fold)
+const depleted = (node: number, carcass: boolean): SimEvent => ({
+  kind: 'resourceDepleted',
+  node: asEntity(node),
+  goodType: MEAT_GOOD,
+  ...(carcass ? { carcass } : {}),
+  at: at(12, 14),
+});
 
 describe('foldCombatEffects', () => {
   it('spawns a blood mark for a melee or ranged hit, and a bones mark for a positioned death', () => {
@@ -54,6 +62,12 @@ describe('foldCombatEffects', () => {
     // Blood sits at the victim's node, bones at the death node.
     expect(out[0]).toMatchObject({ hx: 4, hy: 6 });
     expect(out[2]).toMatchObject({ hx: 8, hy: 10 });
+  });
+
+  it("spawns a bones mark where a hunter's carcass was drained - and none for an ordinary deposit", () => {
+    const out = foldCombatEffects([], [depleted(7, true), depleted(8, false)], 100);
+    expect(out.map((e) => e.kind)).toEqual(['bones']);
+    expect(out[0]).toMatchObject({ hx: 12, hy: 14 }); // where the kill lay
   });
 
   it('leaves no blood for a blow on a building (structure) — a besieged wall does not bleed', () => {

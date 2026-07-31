@@ -1,8 +1,10 @@
 /**
- * A deterministic 32-bit hash of an integer grid coordinate pair — the sim's way to derive stable
- * per-location variation WITHOUT touching `world.rng`. Drawing such variation from the seeded RNG would
+ * A deterministic 32-bit hash of an integer pair - the sim's way to derive stable per-location (or
+ * per-event) variation WITHOUT touching `world.rng`. Drawing such variation from the seeded RNG would
  * couple it to the command stream (a different command order would shift every later draw), so anything
- * keyed by *where* it happened hashes the place instead and stays byte-stable across runs and replays.
+ * keyed by *where* or *when/who* it happened hashes that pair instead and stays byte-stable across runs
+ * and replays. {@link coordHash} keys a grid coordinate; {@link pairHash} is the same avalanche for a
+ * non-spatial pair (a tick and an entity id).
  *
  * Callers key on the LOW bits (`% bands`, `& 1`), so the combined word must be avalanched before it is
  * returned: without the murmur3 finalizer below, bit k of `imul(x,A) ^ imul(y,B)` depends only on bits
@@ -19,9 +21,13 @@ const HASH_Y = 0x85ebca6b;
 const FMIX_M1 = 0x85ebca6b;
 const FMIX_M2 = 0xc2b2ae35;
 
-export function coordHash(x: number, y: number): number {
-  let h = (Math.imul(x, HASH_X) ^ Math.imul(y, HASH_Y)) >>> 0;
+export function pairHash(a: number, b: number): number {
+  let h = (Math.imul(a, HASH_X) ^ Math.imul(b, HASH_Y)) >>> 0;
   h = Math.imul(h ^ (h >>> 16), FMIX_M1) >>> 0;
   h = Math.imul(h ^ (h >>> 13), FMIX_M2) >>> 0;
   return (h ^ (h >>> 16)) >>> 0;
+}
+
+export function coordHash(x: number, y: number): number {
+  return pairHash(x, y);
 }

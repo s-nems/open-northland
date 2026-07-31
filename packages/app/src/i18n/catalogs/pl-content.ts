@@ -212,7 +212,7 @@ export const plContent = {
     hunting: {
       title: 'Myśliwy przy pracy',
       summary:
-        'Myśliwy przypisany do chorągiewki ustrzeli zające w jej pobliżu i po kawałku znosi mięso z ich trucheł do obozu, a po owce, trzymane do hodowli, sięga tylko w ostateczności.',
+        'Myśliwy przypisany do chorągiewki poluje na zające w jej pobliżu - strzały potrafią chybić, płoszą stado, a każde truchło znosi do obozu zanim ruszy po następne; po owcach, trzymanych do hodowli, sięga tylko w ostateczności, a z obranego truchła zostają kości.',
     },
     equipment: {
       title: 'Okno ekwipunku',

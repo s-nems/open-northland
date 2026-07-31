@@ -12,6 +12,7 @@ import {
   CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
+  HARVEST_CADAVER_ATOMIC,
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
@@ -124,6 +125,7 @@ export async function loadCharacters(
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,
+      HARVEST_CADAVER_ATOMIC,
       STONE_HARVEST_ATOMIC,
       CLAY_HARVEST_ATOMIC,
       IRON_HARVEST_ATOMIC,

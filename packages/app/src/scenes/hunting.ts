@@ -9,10 +9,11 @@ import type { SceneDefinition } from './types.js';
 /**
  * The hunter sign-off scene: one flag-bound hunter on open grass between a hare herd (small game) and
  * a sheep herd (last-resort livestock). Headless, it proves the full loop - the auto-planted work
- * flag, the shot, the carcass, the pluck-by-pluck carry back to the flag, and the `hunter_general`
- * XP accrual - plus the tiering: the hares are taken while the sheep herd outlives the run. In the
- * browser a human judges the bow draw, the carcass decals where game fell, and the meat heaping up
- * around the hunter's flag.
+ * flag, the paced shot (misses included), one kill carried home at a time, the carcass, and the
+ * `hunter_general` XP accrual - plus the tiering: the hares are taken while the sheep herd outlives
+ * the run. In the browser a human judges the bow-in-hand draw, the missed arrows, the herd bolting
+ * off each release, the carcass decals and the bones left where a kill was picked clean, and the meat
+ * heaping up around the hunter's flag.
  */
 
 const MAP_W = 26;
@@ -68,7 +69,9 @@ export const huntingScene: SceneDefinition = {
   seed: 43,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 1300,
+  // Sized for the paced hunt: the 25-tick draw, the ~40% fresh hit rate, the herd scattering off every
+  // release, and the one-kill-at-a-time carry all stretch the four-hare bag far past the raw kill time.
+  runTicks: 2600,
   initialZoom: 0.8,
   checks: [
     {

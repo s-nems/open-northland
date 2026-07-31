@@ -26,3 +26,18 @@ export function readProjectileOrigin(components: Readonly<Record<string, unknown
   if (p === undefined || typeof p.originX !== 'number' || typeof p.originY !== 'number') return null;
   return { x: p.originX, y: p.originY };
 }
+
+/**
+ * A MISSED shot's frozen aim point (the sim `Projectile.missAim`, fixed-point), or `null` for a true
+ * homing shot. When set it replaces the live target position as the chord's end: the sim flies the
+ * missed arrow to this ground point, so aiming the drawn arrow at the (fleeing) target would bend its
+ * nose and stall its lob off the real flight.
+ */
+export function readProjectileMissAim(components: Readonly<Record<string, unknown>>): PositionValue | null {
+  const p = components.Projectile as { missAim?: unknown } | undefined;
+  const aim = p?.missAim as { x?: unknown; y?: unknown } | null | undefined;
+  if (aim === null || aim === undefined || typeof aim.x !== 'number' || typeof aim.y !== 'number') {
+    return null;
+  }
+  return { x: aim.x, y: aim.y };
+}

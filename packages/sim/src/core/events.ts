@@ -197,6 +197,20 @@ export type SimEvent =
     }
   | {
       /**
+       * A MISSED shot landed in the ground this tick - the arrow/rock `projectile` (loosed by `shooter`,
+       * `munitionType` 1 arrow / 2 rock) reached its frozen aim point `at` without striking anything and is
+       * destroyed the same tick. The no-hit cue hook (the original's `weapons.ini` carries per-terrain
+       * `soundtype_NoHit` tables - an arrow thudding into dirt); distinct from a silent expiry (target died
+       * mid-flight), which announces nothing.
+       */
+      readonly kind: 'projectileMissed';
+      readonly projectile: Entity;
+      readonly shooter: Entity;
+      readonly munitionType: number;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /**
        * A {@link import('../components/economy/index.js').Resource} node was EXHAUSTED and removed this tick —
        * a mined {@link import('../components/economy/index.js').MineDeposit} deposit whose last unit was chipped
        * off, or a trivial direct-pickup node (a mushroom) after its single harvest. Distinct from
@@ -207,6 +221,9 @@ export type SimEvent =
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
       readonly goodType: number;
+      /** Set when the drained node was a hunter's carcass - the render leaves its bones decal at `at`
+       *  (source basis on the {@link import('../components/economy/index.js').Carcass} component). */
+      readonly carcass?: boolean;
       readonly at: HalfCellNode;
     }
   | {

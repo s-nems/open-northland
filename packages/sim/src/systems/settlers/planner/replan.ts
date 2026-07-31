@@ -4,6 +4,7 @@ import {
   Engagement,
   FamilyDuty,
   Fleeing,
+  Frightened,
   PathRequest,
   PlayerOrder,
   Stranded,
@@ -40,6 +41,7 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
     world.has(e, PlayerOrder) ||
     world.has(e, Engagement) ||
     world.has(e, Fleeing) ||
+    world.has(e, Frightened) ||
     world.has(e, Wedding) ||
     world.has(e, Chat)
   );

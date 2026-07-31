@@ -2,7 +2,9 @@ import { Health, Position, Projectile } from '../../../../../../components/index
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
+import { frightenWildlifeNear } from '../../../../../conflict/fright.js';
 import type { SystemContext } from '../../../../../context.js';
+import { entityNode } from '../../../../../spatial/nodes.js';
 
 /**
  * Launch a {@link Projectile} at the shooter's ATTACK-event frame — the ranged branch of a swing (a bow
@@ -10,6 +12,10 @@ import type { SystemContext } from '../../../../../context.js';
  * projectile payload (the pre-resolved `damage`, the target it homes on, the weapon class for fight XP,
  * the ammo class + travel `speed`) and announces it (`projectileLaunched`) for render/audio. The
  * `projectileSystem` then flies it and lands the same `resolveCombatHit` on contact.
+ *
+ * A `missed` launch (the shooter's aim roll, decided by the caller at this same frame) freezes its aim at
+ * the target's CURRENT position instead: the arrow flies there ballistically and lands in the dirt - the
+ * flight is real, the blow never is.
  *
  * No shot if the shooter has no {@link Position} (it vanished mid-draw) or the target has already been
  * destroyed by the time the string is loosed (no live `Health` — the archer looses at nothing; mirrors the
@@ -21,6 +27,7 @@ export function launchProjectile(
   ctx: SystemContext,
   attacker: Entity,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
+  missed: boolean,
 ): void {
   if (effect.projectile === undefined) return; // not a ranged swing (defensive — the caller gates this)
   const from = world.tryGet(attacker, Position);
@@ -29,6 +36,8 @@ export function launchProjectile(
   // don't spend a projectile/launch cue on a corpse. Mirrors the projectileSystem's expiry test on arrival.
   const targetHealth = world.tryGet(effect.target, Health);
   if (targetHealth === undefined || targetHealth.hitpoints <= 0) return;
+  const targetPos = world.tryGet(effect.target, Position);
+  if (targetPos === undefined) return; // unpositioned target - nowhere to aim, hit or miss
   const shot = world.create();
   world.add(shot, Position, { x: from.x, y: from.y });
   world.add(shot, Projectile, {
@@ -41,6 +50,7 @@ export function launchProjectile(
     // The chord's start, frozen at release — the render's ballistic-arc parameter (never read in flight).
     originX: from.x,
     originY: from.y,
+    missAim: missed ? { x: targetPos.x, y: targetPos.y } : null,
   });
   ctx.events.emit({
     kind: 'projectileLaunched',
@@ -50,4 +60,9 @@ export function launchProjectile(
     munitionType: effect.projectile.munitionType,
     at: eventAt(from.x, from.y),
   });
+  // The scare is the RELEASE's, not the landing's: the herd around the mark bolts whether the arrow
+  // will hit or miss (the aim roll already decided, but the wildlife can't know).
+  if (ctx.terrain !== undefined) {
+    frightenWildlifeNear(world, ctx, ctx.terrain, entityNode(world, ctx.terrain, effect.target));
+  }
 }

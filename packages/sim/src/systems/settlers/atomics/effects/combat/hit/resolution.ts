@@ -7,6 +7,7 @@ import type { SystemContext } from '../../../../../context.js';
 import { tryDeathSaveDraught } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { entityNode, manhattan } from '../../../../../spatial/nodes.js';
+import { hunterShotMisses } from './aim.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
 import { provokeAnger } from './reactions.js';
@@ -26,9 +27,11 @@ export function resolveAttackHit(
   pendingStaggers: PendingStagger[],
 ): void {
   // A ranged swing launches a projectile at this frame instead of landing the blow in place — the arrow/rock
-  // flies (`projectileSystem`) and deals the same damage on contact. A melee swing resolves the hit here.
+  // flies (`projectileSystem`) and deals the same damage on contact. Whether it will MISS is decided here,
+  // at release ({@link hunterShotMisses} - the ranged twin of the melee whiff below): a missed arrow still
+  // flies, aimed at where the target stood, and lands in the dirt. A melee swing resolves the hit here.
   if (effect.projectile !== undefined) {
-    launchProjectile(world, ctx, attacker, effect);
+    launchProjectile(world, ctx, attacker, effect, hunterShotMisses(world, ctx, attacker));
     return;
   }
   // A melee swing swooshes at this strike frame — the audible twin of a bow's release. Fired before the reach

@@ -5,6 +5,7 @@ import {
   CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
+  HARVEST_CADAVER_ATOMIC,
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
@@ -31,6 +32,7 @@ import {
   JOB_HERO_SWORD,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
+  JOB_HUNTER,
   JOB_SCOUT,
   JOB_SOLDIER_AXE_BIG,
   JOB_SOLDIER_AXE_SMALL,
@@ -245,6 +247,38 @@ export const CHARACTER_SPECS = {
       [SLEEP_ATOMIC]: 'human_man_generic_sleep',
     },
   },
+  hunter: {
+    // The hunter: the generic man body under the civilist heads (the mod's `jobgraphics.ini` carries
+    // no `logicjob 15` record, so the original falls to the civilist look too) - distinguished by its
+    // own authored clips: the bow-in-hand walk and the action-81 bow draw.
+    rosterId: 'civilian',
+    headBmds: CIVILIST_JOB_HEADS,
+    // Job 6 for the carry table: the job-15 walk lane authors only the unloaded (`logicgoodtype 0`)
+    // gait, which the carry join drops - the loaded walks are the generic man's per-good cycles.
+    logicJob: JOB_CIVILIST,
+    walkSeq: 'human_man_hunter_walk',
+    waitSeq: 'human_man_generic_wait', // the body authors no hunter wait - the idle stance rests the bow
+    carryPrefix: 'human_man_generic_walk_',
+    attack: 'human_man_hunter_attack_bow',
+    atomics: {
+      [HARVEST_CADAVER_ATOMIC]: { seq: PICKUP_SEQ }, // the carcass pluck - a bend-and-pick
+      [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
+      [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+      [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
+      [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
+      [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
+      [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
+    },
+    dirListAtomics: {
+      // The carcass pluck (the action-33 records all bind the generic bend-and-pick list).
+      [HARVEST_CADAVER_ATOMIC]: PICKUP_SEQ,
+      [TALK_ATOMIC]: 'human_man_generic_speak',
+      [LISTEN_ATOMIC]: 'human_man_generic_speak',
+      [EAT_ATOMIC]: 'human_man_generic_eat',
+      [SLEEP_ATOMIC]: 'human_man_generic_sleep',
+    },
+  },
   woman: {
     rosterId: 'woman',
     logicJob: JOB_WOMAN,
@@ -410,6 +444,7 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_WOMAN]: 'woman',
   [JOB_SCOUT]: 'scout', // the generic man body under the hatted scout heads (80..83)
+  [JOB_HUNTER]: 'hunter', // the generic man body with the authored bow-in-hand walk and draw
   [JOB_SOLDIER_UNARMED]: 'warrior',
   [JOB_SOLDIER_SPEAR_WOODEN]: 'warrior-spear',
   [JOB_SOLDIER_SPEAR]: 'warrior-spear',

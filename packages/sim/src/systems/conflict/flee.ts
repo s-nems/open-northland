@@ -164,7 +164,7 @@ export function fleeDrive(
  *  distance from the threat over staying put, so a boxed-in unit (no away-cell walkable / in-bounds) returns
  *  its own cell (`here`) and stays rather than running toward the threat. Deterministic (fixed direction order
  *  + min-id tie-break), no RNG. */
-function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId): NodeId {
+export function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId): NodeId {
   const h = terrain.coordsOf(here);
   const t = terrain.coordsOf(threatCell);
   let best: NodeId = here;

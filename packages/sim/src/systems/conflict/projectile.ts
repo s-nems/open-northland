@@ -32,12 +32,14 @@ export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.f
  * runs step 1's {@link resolveCombatHit}, shared with melee).
  *
  * Per projectile (visited in canonical ascending-id order so a stagger tie-break is order-independent):
- *  1. **target gone / dead / unpositioned** → the projectile EXPIRES at its last position: it is destroyed
+ *  1. **missed at release** (`missAim` set - a hunter's failed aim roll) → it flies BALLISTICALLY to the
+ *     frozen aim point, never consulting the target, and lands in the dirt: `projectileMissed`, no blow;
+ *  2. **target gone / dead / unpositioned** → the projectile EXPIRES at its last position: it is destroyed
  *     with no hit (no re-target — the original's homing-vs-ballistic + always-hit behaviour is unreadable,
  *     so this approximates a homing shot that simply drops when its mark falls; source basis);
- *  2. **within one step of the target** → it ARRIVES: land {@link resolveCombatHit} (the same material-column
+ *  3. **within one step of the target** → it ARRIVES: land {@link resolveCombatHit} (the same material-column
  *     damage a melee swing deals — resolved on contact), announce `projectileHit`, and destroy it;
- *  3. **still short** → advance straight toward the target by one {@link projectileStep}, re-aiming next tick
+ *  4. **still short** → advance straight toward the target by one {@link projectileStep}, re-aiming next tick
  *     (homing). The step is >> a walking unit's, so it converges.
  *
  * Perf (golden rule 7): cost scales with the count of ACTIVE projectiles, not entities² — a projectile is a
@@ -56,7 +58,8 @@ export const projectileSystem: System = (world, ctx) => {
   applyPendingStaggers(world, pendingStaggers);
 };
 
-/** Advance one projectile: expire on a lost target, land the blow on arrival, else home one step closer. */
+/** Advance one projectile: a missed shot flies to its frozen aim point; a true shot expires on a lost
+ *  target, lands its blow on arrival, else homes one step closer. */
 function advanceProjectile(
   world: World,
   ctx: SystemContext,
@@ -64,6 +67,21 @@ function advanceProjectile(
   pendingStaggers: PendingStagger[],
 ): void {
   const proj = world.get(p, Projectile);
+  // A missed shot: ballistic to where the target stood at release - the target (even one that died or
+  // ran meanwhile) is never consulted, and the landing deals nothing.
+  if (proj.missAim !== null) {
+    if (flightStep(world, p, proj.missAim.x, proj.missAim.y, proj.speed)) {
+      ctx.events.emit({
+        kind: 'projectileMissed',
+        projectile: p,
+        shooter: proj.source,
+        munitionType: proj.munitionType,
+        at: eventAt(proj.missAim.x, proj.missAim.y),
+      });
+      world.destroy(p);
+    }
+    return;
+  }
   const targetHealth = world.tryGet(proj.target, Health);
   const targetPos = world.tryGet(proj.target, Position);
   // Target gone / already dead / unpositioned → the shot has nothing to land on: expire it in place (no
@@ -73,13 +91,7 @@ function advanceProjectile(
     return;
   }
 
-  const pos = world.get(p, Position);
-  const dx = fx.sub(targetPos.x, pos.x);
-  const dy = fx.sub(targetPos.y, pos.y);
-  const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
-  const step = projectileStep(proj.speed);
-
-  if (dist <= step) {
+  if (flightStep(world, p, targetPos.x, targetPos.y, proj.speed)) {
     // Arrived (this tick's step reaches / overshoots the target): land the blow with step 1's damage model
     // on contact, announce the impact, and destroy the spent projectile.
     resolveCombatHit(
@@ -102,15 +114,23 @@ function advanceProjectile(
       ...(world.has(proj.target, Building) ? { structure: true } : {}),
     });
     world.destroy(p);
-    return;
   }
+}
 
-  // Still in flight: step straight toward the target's current position (homing). `dist > step > 0` here,
-  // so the unit-vector division is safe (the `dist === 0` case is caught by the arrival branch above).
+/** Step projectile `p` one tick straight toward `(ax, ay)`; true when this tick's step reaches it. The
+ *  in-flight unit-vector division is safe: `dist > step > 0` on the stepping branch. */
+function flightStep(world: World, p: Entity, ax: Fixed, ay: Fixed, speed: number): boolean {
+  const pos = world.get(p, Position);
+  const dx = fx.sub(ax, pos.x);
+  const dy = fx.sub(ay, pos.y);
+  const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
+  const step = projectileStep(speed);
+  if (dist <= step) return true;
   const ux = fx.div(dx, dist);
   const uy = fx.div(dy, dist);
   pos.x = fx.add(pos.x, fx.mul(ux, step));
   pos.y = fx.add(pos.y, fx.mul(uy, step));
+  return false;
 }
 
 /** The per-tick tile step a projectile of extracted `speed` advances — `speed × {@link

@@ -1,3 +1,8 @@
+import {
+  HUNTER_BOW_DRAW_LENGTH,
+  HUNTER_BOW_RELEASE_FRAME,
+  HUNTER_HARVEST_CADAVER_LENGTH,
+} from '../../../../catalog/hunting.js';
 import { HARVEST_TICKS } from '../../../../content/settler-gfx/index.js';
 import {
   ATTACK_EVENT_TYPE,
@@ -122,6 +127,18 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       name: 'viking_bow_attack',
       length: SHORT_BOW_DRAW_LENGTH,
       events: [{ at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+    },
+    // The hunter's two trade clips, timed verbatim off the extraction (`catalog/hunting.ts`).
+    {
+      id: 'viking_hunter_attack',
+      name: 'viking_hunter_attack',
+      length: HUNTER_BOW_DRAW_LENGTH,
+      events: [{ at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+    },
+    {
+      id: 'viking_hunter_harvest_cadaver',
+      name: 'viking_hunter_harvest_cadaver',
+      length: HUNTER_HARVEST_CADAVER_LENGTH,
     },
     {
       id: 'viking_bow_long_attack',
