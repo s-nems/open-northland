@@ -7,15 +7,15 @@
  *
  *   +0x00 u32 marker   = 0x78696F68 ("hoix")
  *   +0x04 u32 id       = a 4-char subtag, stored low->high (disk bytes "zisl" => tag "lsiz")
- *   +0x08 u32 version
+ *   +0x08 u32 version  = constant per tag (0 group/terminator, 1 default, 2 lafm, 4 lasw)
  *   +0x0C u32 length   = payload size in bytes (0 for bracket/group chunks)
- *   +0x10 u32 depth    = nesting level (groups bracket sub-chunks; original MaxChunkDepth=5)
- *   +0x14 u32 checksum = XB_GetMemoryChecksum of the payload (not validated here)
+ *   +0x10 u32 depth    = 0 on every chunk of the owned corpus
+ *   +0x14 u32 checksum = of the payload (algorithm in docs/formats/MAPDAT.md; not validated here)
  *   +0x18 u32 / +0x1C u32 reserved
  *
  * Group/bracket chunks (`logi`,`lgmm`,`emmm`) and the `xend`/`tend` terminators carry length 0;
  * their sub-chunks follow immediately, so a single `offset += 0x20 + length` walk visits every
- * chunk — `depth` merely records the nesting.
+ * chunk.
  *
  * The container layout was established through byte-level inspection of owned map files and is
  * documented in `docs/formats/MAPDAT.md`.
@@ -44,9 +44,9 @@ export interface MapDatChunk {
   readonly version: number;
   /** Payload size in bytes (0 for group/terminator chunks). */
   readonly length: number;
-  /** Nesting level recorded in the header (groups bracket their sub-chunks). */
+  /** Header +0x10 field, 0 on every chunk of the owned corpus. */
   readonly depth: number;
-  /** Checksum field as stored (XB_GetMemoryChecksum of the payload; not validated here). */
+  /** Payload checksum as stored (algorithm in docs/formats/MAPDAT.md; not validated here). */
   readonly checksum: number;
   /** Absolute byte offset of the payload from the start of the file. */
   readonly payloadOffset: number;
