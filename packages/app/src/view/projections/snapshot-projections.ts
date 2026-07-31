@@ -6,6 +6,7 @@ import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
+import { computeLivestockHearts } from './livestock-hearts.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /**
@@ -35,11 +36,16 @@ export function createSnapshotProjections(
   buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
+  livestock: {
+    readonly isLivestockTribe: (tribe: number) => boolean;
+    readonly playerColourOf?: ((player: number) => number) | undefined;
+  },
 ): {
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   readonly constructionSignsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
+  readonly livestockHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLivestockHearts>;
 } {
   return {
     hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE), hudLabels())),
@@ -59,6 +65,11 @@ export function createSnapshotProjections(
       const bubbles = computeSettlerBubbles(snapshot);
       const fog = fogGates.current();
       return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
+    }),
+    livestockHeartsFor: memoBySnapshot((snapshot) => {
+      const hearts = computeLivestockHearts(snapshot, livestock.isLivestockTribe, livestock.playerColourOf);
+      const fog = fogGates.current();
+      return fog === null ? hearts : hearts.filter((h) => fogTileVisible(fog, h.x / ONE, h.y / ONE));
     }),
   };
 }

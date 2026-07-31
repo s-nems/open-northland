@@ -1,5 +1,5 @@
 import { lastByTypeId } from '@open-northland/data';
-import type { Simulation } from '@open-northland/sim';
+import { type Simulation, systems } from '@open-northland/sim';
 import { flagPointByType } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
@@ -16,6 +16,8 @@ export interface ViewReadModelDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly localPlayer: number;
   readonly fogGates: FogGates;
+  /** Owner slot → team-colour slot for the livestock hearts; absent = identity. */
+  readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
 /** What both readers of the index need: the geometry overlay's slice plus the sign chain's anchor.
@@ -56,6 +58,10 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingDoors,
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
-    ...createSnapshotProjections(buildingDoors, workerRoleOf, fogGates),
+    ...createSnapshotProjections(buildingDoors, workerRoleOf, fogGates, {
+      // The catchable-species classification - the same content read the sim's capture drive keys on.
+      isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
+      playerColourOf: deps.playerColourOf,
+    }),
   };
 }

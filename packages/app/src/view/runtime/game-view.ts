@@ -320,7 +320,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     doorBadgesFor,
     constructionSignsFor,
     settlerBubblesFor,
-  } = await createViewReadModels({ sim, mapSize: deps.mapSize, localPlayer, fogGates });
+    livestockHeartsFor,
+  } = await createViewReadModels({
+    sim,
+    mapSize: deps.mapSize,
+    localPlayer,
+    fogGates,
+    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+  });
   if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   // The developer overlays: the `?debug=geometry` diagram (ticked by the frame loop) + the admin spawn
@@ -388,6 +395,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     doorBadgesFor,
     constructionSignsFor,
     settlerBubblesFor,
+    livestockHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
     soundDriver,

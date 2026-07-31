@@ -148,6 +148,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     jobs: opts.jobs,
     jobExperience: opts.jobExperience,
     tribes: opts.tribes,
+    ...(opts.isLivestockWorkplace !== undefined ? { isLivestockWorkplace: opts.isLivestockWorkplace } : {}),
   };
 
   let selectedIds: ReadonlySet<number> = new Set();

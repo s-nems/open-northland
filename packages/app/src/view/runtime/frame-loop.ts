@@ -11,6 +11,7 @@ import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../place
 import type {
   computeConstructionSigns,
   computeDoorBadges,
+  computeLivestockHearts,
   computeSettlerBubbles,
   FogGates,
   GeometryDebugOverlay,
@@ -51,6 +52,8 @@ export interface FrameLoopDeps {
   readonly constructionSignsFor: (snap: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   /** The settler-bubble projection (make-child / wedding), memoized + fog-filtered, by snapshot identity. */
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
+  /** The livestock-heart projection (claimed animals), memoized + fog-filtered, by snapshot identity. */
+  readonly livestockHeartsFor: (snap: WorldSnapshot) => ReturnType<typeof computeLivestockHearts>;
   /** The one live placement rule the click gate and the cursor ghost share. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** The erect-signpost twin of {@link canPlaceAt} — gates the signpost cursor ghost. */
@@ -88,6 +91,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     doorBadgesFor,
     constructionSignsFor,
     settlerBubblesFor,
+    livestockHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
     soundDriver,
@@ -223,6 +227,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const doorBadges = doorBadgesFor(snap); // memoized per tick, not per RAF
     const constructionSigns = constructionSignsFor(snap); // memoized per tick, not per RAF
     const settlerBubbles = settlerBubblesFor(snap); // memoized per tick, not per RAF
+    const livestockHearts = livestockHeartsFor(snap); // memoized per tick, not per RAF
     // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events — ingested
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
     // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.
@@ -236,6 +241,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       doorBadges,
       constructionSigns,
       settlerBubbles,
+      livestockHearts,
       flagged: controls.flaggedFlagIds(),
     });
     pileTooltip.update(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)

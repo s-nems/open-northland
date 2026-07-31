@@ -214,6 +214,11 @@ export const plContent = {
       summary:
         'Myśliwy przypisany do chorągiewki poluje na zające w jej pobliżu - strzały potrafią chybić, płoszą stado, a każde truchło obiera i znosi do obozu w całości zanim ruszy po następne; po owcach, trzymanych do hodowli, sięga tylko w ostateczności.',
     },
+    livestock: {
+      title: 'Hodowla zwierząt',
+      summary:
+        'Zwiadowca zajmuje owce i krowy (serduszko w kolorze frakcji), stado idzie pod hodowlę, a hodowcy z wody, zboża i odrobiny życia zwierząt robią wełnę, skórę i mięso.',
+    },
     equipment: {
       title: 'Okno ekwipunku',
       summary:

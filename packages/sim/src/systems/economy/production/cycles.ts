@@ -10,7 +10,9 @@ import {
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { chargeLivestockForCycle, feedAnimalsAvailable } from '../../livestock/processing.js';
 import { goodEnabled } from '../../progression/index.js';
+import { livestockMeatGoodOf, livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
 // The production CYCLE model: the start gate (may another batch of this product begin?), the batch's birth,
@@ -32,6 +34,10 @@ import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
  * Exported so the AI planner can size the workplace's work seats ({@link workSeatCount}) with the exact
  * gate the ProductionSystem applies. Does not check `built >= ONE` or worker-presence (the caller
  * handles those). An input-less, output-less recipe reads as unbounded (`Infinity`).
+ *
+ * A FEED recipe (its product is a livestock good) is additionally capped by the penned animals that
+ * could pay its life cost ({@link feedAnimalsAvailable}) - checked after the cheap stock gates, so a
+ * starved or shelf-blocked farm never pays the (herd-sized) animal scan.
  */
 export function startableCycleCount(
   world: World,
@@ -41,10 +47,12 @@ export function startableCycleCount(
 ): number {
   if (!recipeUnlocked(world, ctx, building, recipe)) return 0;
   // Both halves are already >= 0, so the combined count needs no further clamp.
-  return Math.min(
+  const cycles = Math.min(
     inputStockForCycles(world, building, recipe),
     outputRoomForCycles(world, ctx, building, recipe),
   );
+  if (cycles <= 0) return cycles;
+  return Math.min(cycles, feedAnimalsAvailable(world, ctx, building, recipe));
 }
 
 /** Whether every output of `recipe` is tech-unlocked for the building's tribe (the `jobEnablesGood` gate). */
@@ -153,9 +161,19 @@ export function anyCycleStartable(
 }
 
 /** Consume `recipe`'s inputs (reserving them) and append the new batch — the caller has verified
- *  {@link canStartCycle}. `duration` is clamped to the `>= 1` the {@link ProductionCycle} documents, so the
- *  completion compare can read it plainly (validated content is already `ticks >= 1`). */
-export function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: number): void {
+ *  {@link canStartCycle}. A feed recipe first charges its life cost ({@link chargeLivestockForCycle}:
+ *  the drained animal walks to the door); the charge failing (no eligible animal - unreachable after
+ *  a same-pass `canStartCycle`, kept as a guard) starts nothing and consumes nothing. `duration` is
+ *  clamped to the `>= 1` the {@link ProductionCycle} documents, so the completion compare can read it
+ *  plainly (validated content is already `ticks >= 1`). */
+export function beginCycle(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipe: Recipe,
+  goodType: number,
+): void {
+  if (!chargeLivestockForCycle(world, ctx, building, recipe)) return;
   consumeGoods(world, building, recipe.inputs);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
   const prod = world.tryGet(building, Production);
@@ -173,7 +191,7 @@ export function startFirstStartable(
 ): void {
   for (const [good, recipe] of recipes) {
     if (!canStartCycle(world, ctx, building, recipe)) continue;
-    beginCycle(world, building, recipe, good);
+    beginCycle(world, ctx, building, recipe, good);
     return;
   }
 }
@@ -204,5 +222,18 @@ export function depositCycleOutput(
       goodType: output.goodType,
       amount: output.amount,
     });
+  }
+  // A completed FEED cycle (an animal paid it with life) also lands one meat - the no-slaughter
+  // design's food output (the rule's one home: the slaughter-recipe drop in
+  // core/content-index/production.ts). Tech-gated like a regular output; best-effort on room, since
+  // the shelf slot was never reserved - a full meat shelf forfeits the unit (named approximation).
+  const meat = livestockMeatGoodOf(ctx.content);
+  if (meat !== null && livestockTribeOfGood(ctx.content, cycle.goodType) !== null) {
+    const have = stock.get(meat) ?? 0;
+    const unlocked = goodEnabled(world, ctx, world.get(building, Building).tribe, meat);
+    if (unlocked && have < stockCapacity(world, ctx, building, meat)) {
+      setStockAmount(world, building, meat, have + 1);
+      ctx.events.emit({ kind: 'goodProduced', building, goodType: meat, amount: 1 });
+    }
   }
 }

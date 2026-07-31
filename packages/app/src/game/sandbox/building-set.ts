@@ -6,6 +6,7 @@ import { JOB_COLLECTOR } from '../../catalog/jobs.js';
 import { buildingConstructionCost, buildingHitpoints, buildingUpgradeTarget } from './construction.js';
 import type { SandboxContentExtras } from './content/types.js';
 import {
+  BUILDING_ANIMAL_FARM,
   BUILDING_BAKERY,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -17,19 +18,24 @@ import {
   BUILDING_WAREHOUSE_02,
   BUILDING_WELL,
   GOOD_BREAD,
+  GOOD_CATTLE,
   GOOD_COIN,
   GOOD_FLOUR,
   GOOD_FOOD_EXTRA,
   GOOD_FOOD_SIMPLE,
   GOOD_GOLD,
   GOOD_IRON,
+  GOOD_LEATHER,
+  GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_PLANK,
+  GOOD_SHEEP,
   GOOD_STONE,
   GOOD_WATER,
   GOOD_WHEAT,
   GOOD_WOOD,
+  GOOD_WOOL,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 
@@ -61,6 +67,12 @@ const WELL_WATER_CAPACITY = 1;
 const BAKERY_WATER_CAPACITY = 10;
 const BAKERY_FLOUR_CAPACITY = 10;
 const BAKERY_BREAD_CAPACITY = 20;
+// The animal farm's store - EXTRACTED: `logicstock` on the "work animal farm" block
+// (`DataCnmd/types/houses.ini`): water 10 + wheat 10 in, the fed-animal tokens (sheep/cattle) 20
+// in-house, wool/leather/meat 30 out.
+const ANIMAL_FARM_INPUT_CAPACITY = 10;
+const ANIMAL_FARM_TOKEN_CAPACITY = 20;
+const ANIMAL_FARM_OUTPUT_CAPACITY = 30;
 
 /** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
 export interface StockSlot {
@@ -195,6 +207,52 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
         outputs: [{ goodType: GOOD_FLOUR, amount: 1 }],
         ticks: DEFAULT_RECIPE_TICKS,
       },
+    ],
+  },
+  // The animal farm - EXTRACTED shape (`DataCnmd/types/houses.ini` "work animal farm"): water+wheat in,
+  // the FED-ANIMAL goods (sheep/cattle - `goodtypes.ini` 57/58 at the catalog offset) stocked in-house,
+  // wool/leather/meat out. All five recipes mirror the extracted table, including the input-less meat
+  // recipe (the original's slaughter production), authored for shape fidelity; how the sim gates the
+  // feed cycles and drops the slaughter recipe is owned by `sim/core/content-index/production.ts`.
+  [BUILDING_ANIMAL_FARM]: {
+    stock: [
+      { goodType: GOOD_WATER, capacity: ANIMAL_FARM_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_WHEAT, capacity: ANIMAL_FARM_INPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_SHEEP, capacity: ANIMAL_FARM_TOKEN_CAPACITY, initial: 0 },
+      { goodType: GOOD_CATTLE, capacity: ANIMAL_FARM_TOKEN_CAPACITY, initial: 0 },
+      { goodType: GOOD_WOOL, capacity: ANIMAL_FARM_OUTPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_LEATHER, capacity: ANIMAL_FARM_OUTPUT_CAPACITY, initial: 0 },
+      { goodType: GOOD_MEAT, capacity: ANIMAL_FARM_OUTPUT_CAPACITY, initial: 0 },
+    ],
+    produces: [GOOD_SHEEP, GOOD_CATTLE, GOOD_WOOL, GOOD_LEATHER, GOOD_MEAT],
+    recipes: [
+      {
+        inputs: [
+          { goodType: GOOD_WATER, amount: 1 },
+          { goodType: GOOD_WHEAT, amount: 2 },
+        ],
+        outputs: [{ goodType: GOOD_SHEEP, amount: 1 }],
+        ticks: DEFAULT_RECIPE_TICKS,
+      },
+      {
+        inputs: [
+          { goodType: GOOD_WATER, amount: 1 },
+          { goodType: GOOD_WHEAT, amount: 2 },
+        ],
+        outputs: [{ goodType: GOOD_CATTLE, amount: 1 }],
+        ticks: DEFAULT_RECIPE_TICKS,
+      },
+      {
+        inputs: [{ goodType: GOOD_SHEEP, amount: 1 }],
+        outputs: [{ goodType: GOOD_WOOL, amount: 1 }],
+        ticks: DEFAULT_RECIPE_TICKS,
+      },
+      {
+        inputs: [{ goodType: GOOD_CATTLE, amount: 1 }],
+        outputs: [{ goodType: GOOD_LEATHER, amount: 1 }],
+        ticks: DEFAULT_RECIPE_TICKS,
+      },
+      { inputs: [], outputs: [{ goodType: GOOD_MEAT, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS },
     ],
   },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted

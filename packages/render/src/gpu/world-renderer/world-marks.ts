@@ -13,6 +13,8 @@ import {
   type DoorBadge,
   type GeometryDebugItem,
   GeometryDebugLayer,
+  type LivestockHeart,
+  LivestockHeartLayer,
   SelectionLayer,
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -41,6 +43,7 @@ export type MarkSlots = Pick<
   | 'doorBadges'
   | 'constructionSigns'
   | 'bubbles'
+  | 'hearts'
   | 'geometryDebug'
 >;
 
@@ -61,6 +64,7 @@ export interface WorldMarksFrame {
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
+  readonly livestockHearts: readonly LivestockHeart[];
 }
 
 export class WorldMarks {
@@ -75,6 +79,8 @@ export class WorldMarks {
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
+  /** Faction-coloured life hearts over claimed livestock. */
+  private readonly hearts = new LivestockHeartLayer();
   /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;
@@ -96,6 +102,7 @@ export class WorldMarks {
       doorBadges: this.badges.container,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
+      hearts: this.hearts.container,
       geometryDebug: this.geometryDebug.container,
     };
   }
@@ -139,6 +146,7 @@ export class WorldMarks {
     this.badges.draw(frame.doorBadges, elevation, viewport);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
+    this.hearts.draw({ hearts: frame.livestockHearts, drawn, elevation }, viewport);
   }
 
   destroy(): void {
@@ -149,6 +157,7 @@ export class WorldMarks {
     this.badges.destroy();
     this.constructionSigns.destroy();
     this.bubbles.destroy();
+    this.hearts.destroy();
     this.geometryDebug.destroy();
   }
 }

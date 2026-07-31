@@ -11,6 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCraftingOperator, toolProductionBonus, wearWornTool } from '../../equipment/index.js';
 import { operatorProductionBonus } from '../../progression/index.js';
+import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
@@ -42,6 +43,9 @@ export function accrueBonusOutput(
       if (bonus <= ZERO) return;
       const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
       for (const output of outputs) {
+        // A fed-animal good is paid for in animal life at cycle start; a bonus fraction would mint it
+        // past that cost, so feed products earn none (their wool/leather conversions still do).
+        if (livestockTribeOfGood(ctx.content, output.goodType) !== null) continue;
         creditBonus(world, building, output.goodType, fx.mul(bonus, fx.fromInt(output.amount)));
       }
     });

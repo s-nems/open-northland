@@ -123,7 +123,7 @@ export function settlerWork(
       selectedCraftGoods: craft.selected,
     };
   }
-  const outputs = recipeOutputs(def);
+  const outputs = recipeOutputs(ctx, def);
   const product = outputs[0] === undefined ? undefined : goodLabel(ctx, outputs[0].goodType);
   return {
     place: buildingTitle(ctx, rawType),

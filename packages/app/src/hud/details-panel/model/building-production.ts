@@ -8,6 +8,7 @@ import {
   goodLabel,
   recipeOutputs,
   type UnitPanelModelContext,
+  visibleRecipes,
 } from './context.js';
 
 // The building's Produkcja model: a workshop's per-product recipe rows, or a farm's live field state.
@@ -117,7 +118,7 @@ export function productionModel(
       ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
     };
   }
-  const outputs = recipeOutputs(def);
+  const outputs = recipeOutputs(ctx, def);
   if (outputs.length === 0) return null; // not a producer — no Produkcja window
   // The front-runner batch per product: the highest progress among the cycles crafting that good
   // (a completed batch deposits and leaves the list, so the bar hands over to the runner-up).
@@ -131,7 +132,7 @@ export function productionModel(
     if (pct > (bestPct.get(good) ?? -1)) bestPct.set(good, pct);
   }
   const inputsByProduct = new Map<number, string>();
-  for (const recipe of def?.recipes ?? []) {
+  for (const recipe of visibleRecipes(ctx, def)) {
     const product = recipe.outputs[0]?.goodType;
     if (product === undefined || inputsByProduct.has(product)) continue;
     inputsByProduct.set(product, recipeInputsLabel(ctx, recipe.inputs));
