@@ -1,15 +1,11 @@
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Args } from './args.js';
 import { errorMessage } from './errors.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
-import { archiveRoots, resolveModRoot, type SourceRoots } from './roots.js';
-import {
-  convertBmdTree,
-  convertShadowBmdTree,
-  indexOutTree,
-  resolveGraphicsBindings,
-} from './stages/bmd/index.js';
+import { resolveModRoot, type SourceRoots, withArchiveLayer } from './roots.js';
+import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
@@ -22,6 +18,7 @@ import {
   convertIndexedCharacterAtlases,
   convertPlayerColorLut,
 } from './stages/player-colors.js';
+import { indexSourceAssets } from './stages/source-files.js';
 
 /**
  * Runs the full conversion of an owned game copy into the IR under `args.out` — the one pipeline
@@ -37,6 +34,9 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // A rerun over existing output must not keep the previous completion stamp: interrupted, the
   // mixed old/new tree would otherwise still read as a completed conversion.
   await clearPipelineManifest(args.out);
+  // The archive layer resolves against this directory from the unpack onwards, so it must exist even
+  // when the unpack writes nothing (a copy that ships no `.lib`).
+  await mkdir(args.out, { recursive: true });
 
   // Stages run in dependency order — unpack first, then the passes that read its output. Prefer the
   // mod's readable .ini sources over base .cif; docs/SOURCES.md carries the full source → decoder map.
@@ -45,32 +45,24 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   const extracted = await unpackLibTree(roots, args.out, progress?.item);
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
-  // Convert .pcx -> .png from both trees: the source roots (loose pictures shipped as files)
-  // mirrored into <out>, and the unpacked <out> tree itself (the .pcx the unpack stage just extracted
-  // from data0001.lib, converted in place to a .png sibling). The two walks are disjoint sources, so a
-  // picture is converted exactly once per location it exists; <game>==<out> is not a supported invocation.
+  // Every stage that joins the loose trees with the unpacked archive reads through this stack, so one
+  // path resolves the same way everywhere: mod, then base install, then the extracted members. The
+  // unpack above is its precondition; <game>==<out> is not a supported invocation.
+  const sources = withArchiveLayer(roots, args.out);
+
+  // Convert .pcx -> .png once per relative path, from whichever layer wins it.
   progress?.stage?.('pictures');
-  const loosePictures = await convertPcxTree(roots, args.out, progress?.item);
-  const embeddedPictures = await convertPcxTree(
-    archiveRoots(args.out),
-    args.out,
-    progress?.item === undefined ? undefined : (done) => progress.item?.(loosePictures.length + done),
-  );
-  const pictures = loosePictures.length + embeddedPictures.length;
-  console.log(
-    `[pipeline] pcx -> png: converted ${pictures} picture(s) into ${args.out} ` +
-      `(${loosePictures.length} loose, ${embeddedPictures.length} embedded)`,
-  );
+  const pictures = await convertPcxTree(sources, args.out, progress?.item);
+  console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
 
   // Convert every (bmd, palette) graphics binding (resolved by resolveGraphicsBindings) to an atlas PNG +
   // manifest JSON. A binding names its palette by editname, which palettes.ini resolves to the .pcx whose
-  // trailer colours the bobs; both the .bmd and .pcx are read from the just-unpacked <out> tree.
+  // trailer colours the bobs.
   progress?.stage?.('atlases');
   const graphics = await resolveGraphicsBindings(roots);
-  // One index of the unpacked tree for every atlas stage below: they only ever look up source .bmd/.pcx
-  // members, which the unpack stages above have all written by now.
-  const outTree = await indexOutTree(args.out);
-  const atlases = await convertBmdTree(graphics, args.out, outTree, progress?.item);
+  // One reference index for every atlas stage below; they only ever look up source .bmd/.pcx.
+  const assets = await indexSourceAssets(sources);
+  const atlases = await convertBmdTree(graphics, args.out, assets, progress?.item);
   const { bindings, palettes } = graphics;
   // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
   // distinct body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
@@ -84,7 +76,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
 
   // Shadow bob sets (the `GfxBobLibs`/`shadowlib` second value): each converts once into a palette-less
   // black translucent-silhouette atlas the renderer draws under its caster (bob ids parallel the body's).
-  const shadowAtlases = await convertShadowBmdTree(graphics, args.out, outTree);
+  const shadowAtlases = await convertShadowBmdTree(graphics, args.out, assets);
   console.log(
     `[pipeline] shadow bmd -> atlas: ${shadowAtlases.length} shadow atlas file(s) into ${args.out}`,
   );
@@ -93,14 +85,14 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // plus one 256×16 player-colour LUT, so one atlas serves all 16 players (the renderer reads each index
   // through the player's LUT row). See stages/player-colors.ts + packages/render's palette-LUT shader.
   progress?.stage?.('player-colors');
-  const indexed = await convertIndexedCharacterAtlases(bindings, args.out, outTree);
-  const lut = await convertPlayerColorLut(roots, args.out, outTree).catch((err: unknown) => {
+  const indexed = await convertIndexedCharacterAtlases(bindings, args.out, assets);
+  const lut = await convertPlayerColorLut(roots, args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${errorMessage(err)}`);
     return undefined;
   });
   // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
   // graded edge alpha survives — see stages/player-colors.ts convertGuidepostPlayerAtlases).
-  const guideAtlases = await convertGuidepostPlayerAtlases(args.out, outTree).catch((err: unknown) => {
+  const guideAtlases = await convertGuidepostPlayerAtlases(args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
   });
@@ -160,7 +152,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       ? [{ texture: t.texture, textureAlpha: t.textureAlpha }]
       : [],
   );
-  const masked = await composeMaskedTransitionPages(roots, args.out, maskedPairs);
+  const masked = await composeMaskedTransitionPages(sources, args.out, maskedPairs);
   console.log(
     `[pipeline] transitions: ${ir.gfxPatternTransitions.length} record(s) -> ` +
       `${masked.length} masked overlay page(s) into ${args.out}`,

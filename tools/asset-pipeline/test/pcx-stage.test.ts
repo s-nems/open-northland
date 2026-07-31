@@ -62,9 +62,9 @@ describe('convertPcxTree', () => {
     expect(Array.from(decoded.rgba)).toEqual(Array.from(expandToRgba(decodePcx(bytes)).rgba));
   });
 
-  it('converts in place when in/out are the same tree (the unpacked-embedded .pcx pass)', async () => {
-    // The pipeline runs convertPcxTree({ game: out, mod: undefined }, out) over the just-unpacked tree so embedded .pcx
-    // (extracted from a .lib into <out>) gain a .png sibling. Source==target must write alongside,
+  it('converts in place when a source layer is the out tree (the archive layer)', async () => {
+    // The pipeline's archive layer resolves inside <out>, so an embedded .pcx (extracted from a .lib)
+    // gains its .png sibling in the same tree it was read from. Source==target must write alongside,
     // not error, and must not re-walk its own output (a .png is never re-matched as a .pcx).
     const { bytes, width, height } = samplePcx();
     await mkdir(join(out, 'data', 'bobs'), { recursive: true });

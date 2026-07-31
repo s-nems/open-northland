@@ -22,9 +22,8 @@ import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { SourceRoots } from '../roots.js';
-import type { OutTreeIndex } from './bmd/index.js';
 import { BOBS_DIR, writeAtlasBeside } from './content-tree.js';
-import { readSourceFile } from './source-files.js';
+import { readSourceFile, type SourceAssetIndex } from './source-files.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
@@ -41,7 +40,7 @@ import { readSourceFile } from './source-files.js';
  * warned-and-skipped, never fatal, matching the other tree-walk stages.
  */
 
-/** Directory (relative to the unpacked tree) holding the creature `.pcx` palettes the LUT is built from. */
+/** Directory holding the creature `.pcx` palettes the LUT is built from. */
 const CREATURES_DIR = join('Data', 'engine2d', 'bin', 'palettes', 'creatures');
 /** The shared human body base palette (the mod's `gfxpalettebasebody`); its band is swapped per player. */
 const BASE_PALETTE_PCX = 'test_human_00.pcx';
@@ -57,16 +56,15 @@ const CHARACTER_BMD_RE = /(^|\/)cr_hum_/i;
 const GUIDEPOST_BMD = 'data/engine2d/bin/bobs/ls_guidepost.bmd';
 
 /**
- * Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree, resolved case-insensitively
- * via `tree` ({@link OutTreeIndex}) — the archive members keep their original (unpredictable) case, so a direct
- * `join` would miss on a case-sensitive filesystem (Linux CI), exactly why the bmd stage resolves the same way.
- * Throws if the file is absent from `<out>` or has no palette trailer.
+ * Read a `creatures/<file>.pcx` 768-byte trailer palette from the winning source layer, resolved
+ * case-insensitively via `tree` ({@link SourceAssetIndex}) — each layer keeps its own (unpredictable)
+ * case, so a direct `join` would miss on a case-sensitive filesystem (Linux CI), exactly why the bmd
+ * stage resolves the same way. Throws if the file is in no layer or has no palette trailer.
  */
-async function readCreaturePalette(outDir: string, tree: OutTreeIndex, file: string): Promise<Uint8Array> {
-  const key = normalizeAssetPath(join(CREATURES_DIR, file));
-  const onDisk = tree.get(key);
-  if (onDisk === undefined) throw new Error(`player-colors: ${file} not found under out`);
-  const pal = decodePcx(await readFile(join(outDir, onDisk))).palette;
+async function readCreaturePalette(tree: SourceAssetIndex, file: string): Promise<Uint8Array> {
+  const source = tree.get(normalizeAssetPath(join(CREATURES_DIR, file)));
+  if (source === undefined) throw new Error(`player-colors: ${file} not found in any source layer`);
+  const pal = decodePcx(await readFile(source.path)).palette;
   if (pal === undefined) throw new Error(`player-colors: ${file} has no 256-colour palette trailer`);
   return pal;
 }
@@ -127,8 +125,8 @@ async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) =
  * Build the per-player palettes (the original's 10 `playerNN.pcx` + 6 hue-rotated extras) and their
  * armor recolors, stack them into a `256×(16·tiers)` LUT PNG (`row = 16*armorTier + player`; rows
  * 0-15 are the plain player rows, byte-identical to the pre-armor LUT), and write it under `<out>`'s
- * bobs dir. Player sources come from the unpacked `<out>` tree; the armor recipes and ramp palettes
- * are read from the game dir (`randompalette.ini`/`palettes.ini` ship as plaintext). Throws on a
+ * bobs dir. Player sources come from the layer that wins each `.pcx`; the armor recipes and ramp
+ * palettes are read from the loose roots (`randompalette.ini`/`palettes.ini` ship as plaintext). Throws on a
  * missing base/reference palette; unreadable armor recipes degrade to the 16-row player-only LUT
  * (warned), never failing the stage. Row semantics are a code contract with the app (`PLAYER_COLORS`
  * slot order, `ARMOR_PALETTE_TIERS` blocks), so no sidecar descriptor is needed.
@@ -136,15 +134,15 @@ async function armorRowsFor(roots: SourceRoots): Promise<(palette: Uint8Array) =
 export async function convertPlayerColorLut(
   roots: SourceRoots,
   outDir: string,
-  tree: OutTreeIndex,
+  tree: SourceAssetIndex,
 ): Promise<PlayerColorLutResult> {
-  const base = await readCreaturePalette(outDir, tree, BASE_PALETTE_PCX);
-  const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
+  const base = await readCreaturePalette(tree, BASE_PALETTE_PCX);
+  const reference = await readCreaturePalette(tree, SYNTHETIC_REFERENCE_PCX);
   const palettes: Uint8Array[] = [];
   for (const color of PLAYER_COLORS) {
     const source =
       color.source.kind === 'pcx'
-        ? await readCreaturePalette(outDir, tree, color.source.file)
+        ? await readCreaturePalette(tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     palettes.push(composePlayerPalette(base, source));
   }
@@ -176,21 +174,23 @@ export async function convertPlayerColorLut(
  * graded edge alpha survives only the RGB bake; the atlases are tiny (19 small bobs), so 16 of them
  * cost nothing next to one house sheet. Returns the emitted per-player atlas count.
  */
-export async function convertGuidepostPlayerAtlases(outDir: string, tree: OutTreeIndex): Promise<number> {
-  const onDisk = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
-  if (onDisk === undefined) throw new Error('guidepost atlases: ls_guidepost.bmd not found under out');
-  const bmd = decodeBmd(await readFile(join(outDir, onDisk)));
-  const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
+export async function convertGuidepostPlayerAtlases(outDir: string, tree: SourceAssetIndex): Promise<number> {
+  const source = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
+  if (source === undefined) {
+    throw new Error('guidepost atlases: ls_guidepost.bmd not found in any source layer');
+  }
+  const bmd = decodeBmd(await readFile(source.path));
+  const reference = await readCreaturePalette(tree, SYNTHETIC_REFERENCE_PCX);
   let emitted = 0;
   for (const color of PLAYER_COLORS) {
     const palette =
       color.source.kind === 'pcx'
-        ? await readCreaturePalette(outDir, tree, color.source.file)
+        ? await readCreaturePalette(tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     // The `player_NN` suffix is a string contract with the app loader (`guidepostPlayerAtlas`,
     // packages/app/src/content/sprite-sheet/human-sheet.ts) — a drift falls back silently to bridge01.
     const suffix = `player_${String(color.id).padStart(2, '0')}`;
-    await writeAtlasBeside(outDir, onDisk, suffix, packBobAtlas(bmd, palette));
+    await writeAtlasBeside(outDir, source.rel, suffix, packBobAtlas(bmd, palette));
     emitted++;
   }
   return emitted;
@@ -198,14 +198,14 @@ export async function convertGuidepostPlayerAtlases(outDir: string, tree: OutTre
 
 /**
  * Emit an indexed atlas (`<bmd>.indexed.png` + `<bmd>.indexed.atlas.json`) for every human character `.bmd`
- * referenced by `bindings` (deduped — many bindings share one body). The `.bmd`s are read from the unpacked
- * `<out>` tree, resolved case-insensitively via {@link OutTreeIndex}. A missing/malformed `.bmd` is
- * warned-and-skipped. Returns the emitted PNG paths (relative to `<out>`).
+ * referenced by `bindings` (deduped — many bindings share one body). The `.bmd`s are read from the layer
+ * that wins each reference, resolved case-insensitively via {@link SourceAssetIndex}. A missing/malformed
+ * `.bmd` is warned-and-skipped. Returns the emitted PNG paths (relative to `<out>`).
  */
 export async function convertIndexedCharacterAtlases(
   bindings: readonly BmdPaletteBinding[],
   outDir: string,
-  tree: OutTreeIndex,
+  tree: SourceAssetIndex,
 ): Promise<string[]> {
   const characterBmds = new Set<string>();
   for (const b of bindings) {
@@ -213,14 +213,14 @@ export async function convertIndexedCharacterAtlases(
   }
   const done: string[] = [];
   for (const bmdRef of characterBmds) {
-    const onDisk = tree.get(bmdRef);
-    if (onDisk === undefined) {
-      console.warn(`[pipeline] skipped indexed ${bmdRef}: not found under out`);
+    const source = tree.get(bmdRef);
+    if (source === undefined) {
+      console.warn(`[pipeline] skipped indexed ${bmdRef}: not found in any source layer`);
       continue;
     }
     try {
-      const atlas = packIndexedBobAtlas(decodeBmd(await readFile(join(outDir, onDisk))));
-      const { png } = await writeAtlasBeside(outDir, onDisk, 'indexed', atlas);
+      const atlas = packIndexedBobAtlas(decodeBmd(await readFile(source.path)));
+      const { png } = await writeAtlasBeside(outDir, source.rel, 'indexed', atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped indexed ${bmdRef}: ${errorMessage(err)}`);
