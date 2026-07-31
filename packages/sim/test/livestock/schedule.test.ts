@@ -3,7 +3,7 @@ import { Health, LivestockVisit, Owner, Production, Resting, StayPoint } from '.
 import {
   LIVESTOCK_GRAZE_RANGE_NODES,
   LIVESTOCK_PROCESS_DRAIN_HP,
-  LIVESTOCK_REGEN_HP_PER_TICK,
+  LIVESTOCK_REGEN_HP,
 } from '../../src/systems/index.js';
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
 import { breederAt, COW_HP, cowAt, ctxOf, farmAt, livestockSim, scoutAt, WATER, WHEAT } from './support.js';
@@ -29,12 +29,12 @@ describe('livestock schedule relationships', () => {
       ],
     });
     breederAt(sim, 10, 10);
-    // One regen tick short of the summon's floor (hp - drain >= max/2): only the declared order -
-    // regen, then the summon, then production - lets this tick start the cycle. On the door node, so
-    // the summoned cow counts as arrived and the batch admits it the same tick.
+    // One regen pulse short of the summon's floor (hp - drain >= max/2): only the declared order -
+    // regen, then the summon, then production - lets this tick (0, a pulse tick) start the cycle. On
+    // the door node, so the summoned cow counts as arrived and the batch admits it the same tick.
     const cow = cowAt(sim, 10, 10, {
       owner: 0,
-      hp: COW_HP / 2 + LIVESTOCK_PROCESS_DRAIN_HP - LIVESTOCK_REGEN_HP_PER_TICK,
+      hp: COW_HP / 2 + LIVESTOCK_PROCESS_DRAIN_HP - LIVESTOCK_REGEN_HP,
     });
 
     const drives = SYSTEM_ORDER.filter(

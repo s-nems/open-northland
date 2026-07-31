@@ -50,16 +50,20 @@ export interface UnitTargets {
  * only the snapshot + the injected render frame data), so they live apart from the selection/order logic.
  */
 export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
-  // The id→owner map, memoized by snapshot identity: one gesture runs several builders (a click-release
-  // chains owned → flags → signposts) and `sim.snapshot()` is itself memoized per tick, so the
-  // O(entities) pass runs once per tick rather than once per builder.
+  // The id→owner map plus the livestock id set, memoized by snapshot identity: one gesture runs several
+  // builders (a click-release chains owned → flags → signposts) and `sim.snapshot()` is itself memoized
+  // per tick, so the O(entities) pass runs once per tick rather than once per builder.
   const ownersOf = memoBySnapshot((snap: WorldSnapshot) => {
     const ownerOf = new Map<number, number>();
+    // Livestock (any catchable-species animal): claimed stock belongs to the player but is property,
+    // not a unit - the herd drives itself, so it is neither pickable nor orderable.
+    const livestock = new Set<number>();
     for (const e of snap.entities) {
       const player = ownerPlayerOf(e);
       if (player !== undefined) ownerOf.set(e.id, player);
+      if (e.components.Livestock !== undefined) livestock.add(e.id);
     }
-    return ownerOf;
+    return { ownerOf, livestock };
   });
 
   /** Whether an entity with this owner belongs to the pickable "ours" set. */
@@ -88,20 +92,21 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
   return {
     owned(kind?: UnitTargetKind): Pickable[] {
-      const ownerOf = ownersOf(deps.snapshot());
+      const { ownerOf, livestock } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         const itemKind = unitKindOf(it);
         if (itemKind === null || (kind !== undefined && itemKind !== kind)) continue;
         if (!isHitTarget(it)) continue;
         if (!pickableOwner(ownerOf.get(it.ref))) continue;
+        if (livestock.has(it.ref)) continue; // see the livestock note on the memo
         out.push(hitTarget(it, itemKind));
       }
       return out;
     },
 
     enemies(): Pickable[] {
-      const ownerOf = ownersOf(deps.snapshot());
+      const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         // A unit OR a building is an attack target — a warrior can raze an enemy structure.
@@ -132,7 +137,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     },
 
     signposts(): Pickable[] {
-      const ownerOf = ownersOf(deps.snapshot());
+      const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
         // Only the post itself — its direction boards ride synthetic negative refs (see sprite-scene.ts).
@@ -148,6 +153,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const out: FormationUnit[] = [];
       for (const e of deps.snapshot().entities) {
         if (!refs.has(e.id) || !isSettler(e) || !pickableOwner(ownerPlayerOf(e))) continue;
+        if (e.components.Livestock !== undefined) continue; // see the livestock note on the memo
         const pos = positionOf(e);
         if (pos === undefined) continue;
         // Feet anchor only, projected straight from the position: no elevation lift and no cull, because

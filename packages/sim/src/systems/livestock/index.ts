@@ -1,5 +1,6 @@
 export {
   LIVESTOCK_ASSIGN_PERIOD_TICKS,
+  LIVESTOCK_GRAZE_LEASH_NODES,
   LIVESTOCK_GRAZE_RANGE_NODES,
   livestockAssignmentSystem,
 } from './assignment.js';
@@ -13,4 +14,4 @@ export {
   livestockVisitSystem,
   releaseLivestockVisit,
 } from './processing.js';
-export { LIVESTOCK_REGEN_HP_PER_TICK, livestockRegenSystem } from './regen.js';
+export { LIVESTOCK_REGEN_HP, LIVESTOCK_REGEN_PERIOD_TICKS, livestockRegenSystem } from './regen.js';
