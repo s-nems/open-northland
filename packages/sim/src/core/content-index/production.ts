@@ -20,25 +20,29 @@ export function recipeProductTables(content: ContentSet): ReadonlyMap<number, Re
   return map;
 }
 
+/** The union view over `recipes`: inputs summed per goodType and outputs merged per goodType, both
+ *  ascending; `ticks` is the max (a union never times a cycle, but the field is required). */
+export function mergeRecipes(recipes: readonly Recipe[]): Recipe {
+  const inputs = new Map<number, number>();
+  const outputs = new Map<number, number>();
+  let ticks = 1;
+  for (const recipe of recipes) {
+    for (const io of recipe.inputs) inputs.set(io.goodType, (inputs.get(io.goodType) ?? 0) + io.amount);
+    for (const io of recipe.outputs) outputs.set(io.goodType, (outputs.get(io.goodType) ?? 0) + io.amount);
+    if (recipe.ticks > ticks) ticks = recipe.ticks;
+  }
+  const lines = (m: Map<number, number>) =>
+    [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
+  return { inputs: lines(inputs), outputs: lines(outputs), ticks };
+}
+
 /** The per-building-type union recipes ({@link import('../content-index.js').ContentIndex.mergedRecipeByBuilding}):
- *  inputs summed per goodType and outputs merged per goodType across the type's per-product recipes, both
- *  ascending — the single-recipe view the supply AI plans against. First-wins per typeId; `ticks` is the max
- *  over the merged recipes (the union view never times a cycle, but the field is required). */
+ *  the single-recipe view the supply AI plans against. First-wins per typeId. */
 export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> {
   const map = new Map<number, Recipe>();
   for (const b of content.buildings) {
     if (map.has(b.typeId) || b.recipes.length === 0) continue;
-    const inputs = new Map<number, number>();
-    const outputs = new Map<number, number>();
-    let ticks = 1;
-    for (const recipe of b.recipes) {
-      for (const io of recipe.inputs) inputs.set(io.goodType, (inputs.get(io.goodType) ?? 0) + io.amount);
-      for (const io of recipe.outputs) outputs.set(io.goodType, (outputs.get(io.goodType) ?? 0) + io.amount);
-      if (recipe.ticks > ticks) ticks = recipe.ticks;
-    }
-    const lines = (m: Map<number, number>) =>
-      [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
-    map.set(b.typeId, { inputs: lines(inputs), outputs: lines(outputs), ticks });
+    map.set(b.typeId, mergeRecipes(b.recipes));
   }
   return map;
 }

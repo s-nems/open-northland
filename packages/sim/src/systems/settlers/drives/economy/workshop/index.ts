@@ -1,4 +1,5 @@
 import { CARRY_CAPACITY, Owner } from '../../../../../components/index.js';
+import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity } from '../../../../../ecs/world.js';
 import { shelfBlockedOutput } from '../../../../economy/production.js';
 import { planGossipIdle } from '../../../../social/index.js';
@@ -14,6 +15,7 @@ import { deliverableGoodProbe } from '../delivery-targets.js';
 import {
   type MissingInputSource,
   nearestMissingInputSource,
+  operatorRecipes,
   workplaceOutputToHaul,
   workSeatCount,
 } from './supply.js';
@@ -44,8 +46,9 @@ export function planProducer(
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
+  const own = operatorRecipes(world, ctx, workplace, plan.entity);
   const claimed = seatClaims.get(workplace) ?? 0;
-  if (claimed < workSeatCount(world, ctx, workplace, plan.entity)) {
+  if (claimed < workSeatCount(world, ctx, workplace, own)) {
     seatClaims.set(workplace, claimed + 1);
     holdInsideWorkplace(plan, workplace);
     return;
@@ -59,6 +62,12 @@ export function planProducer(
     return;
   }
 
+  // The scan takes the first input the workplace is short of, so it reads the operator's OWN rotation:
+  // on the whole-shop view a coin-pinned minter hauls six iron into `work_coin_mint` before its gold.
+  // An operator that has earned no product here keeps that shop view, since fetching for a colleague
+  // still serves the shop. The output haul below stays merged either way.
+  const supply = own.length === 0 ? recipe : mergeRecipes(own);
+
   // The nearest source of a missing input — a store that holds it (fetch) OR a shared utility that mints
   // it (draw, e.g. cranking the well for water), whichever is closer.
   const source = nearestMissingInputSource(
@@ -68,7 +77,7 @@ export function planProducer(
     terrain,
     here,
     workplace,
-    recipe,
+    supply,
     plan.owner,
     false,
     plan.limit ?? undefined,

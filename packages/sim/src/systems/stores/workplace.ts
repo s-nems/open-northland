@@ -16,8 +16,10 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
  * product — {@link import('../../core/content-index.js').ContentIndex.mergedRecipeByBuilding}), or
  * undefined if it has no Building/type or no recipes.
  *
- * Cross-system: the AI plans against it (recognise a workplace, fetch any input some product needs,
- * haul any product out); the ProductionSystem runs the per-product recipes ({@link recipesByProductOf}).
+ * Cross-system: the AI plans against it (recognise a workplace, stock any input some product needs, haul
+ * any product out); the ProductionSystem runs the per-product recipes ({@link recipesByProductOf}). An
+ * OPERATOR fetches against its own rotation's narrower view instead (`operatorRecipes`); the bound carrier
+ * keeps this one, since it supplies every operator.
  */
 export function mergedRecipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
   const b = world.tryGet(building, Building);

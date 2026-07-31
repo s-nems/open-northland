@@ -35,11 +35,32 @@ import { mayFetchGoodFrom } from '../store-policy.js';
 // (ascending entity-id, Manhattan + cell-id tie-break) so the winner never depends on store history.
 
 /**
- * How many WORK SEATS the workplace offers `operator` this tick: the number of operators whose staying
+ * The recipes an operator's rotation would actually pick at `workplace`: its {@link craftablePool} products
+ * resolved back to their per-product recipes, empty when it has earned none of them. Both producer rungs
+ * read it (the seat gate {@link workSeatCount} and the input scan), so `planProducer` resolves it once.
+ */
+export function operatorRecipes(
+  world: World,
+  ctx: SystemContext,
+  workplace: Entity,
+  operator: Entity,
+): readonly Recipe[] {
+  const recipes = recipesByProductOf(world, ctx, workplace);
+  if (recipes === undefined) return [];
+  const own: Recipe[] = [];
+  for (const good of craftablePool(world, ctx, operator, recipes)) {
+    const recipe = recipes.get(good);
+    if (recipe !== undefined) own.push(recipe);
+  }
+  return own;
+}
+
+/**
+ * How many WORK SEATS the workplace offers an operator this tick: the number of operators whose staying
  * on the station would actually run a batch. The cycles already grinding (each needs one present
  * operator to advance, see the ProductionSystem's FIFO rule, and any present operator may advance any
- * batch), plus the further cycles THIS operator could start: {@link startableCycleCount} (inputs on
- * hand, output room, tech gate) over the products its own rotation would pick ({@link craftablePool}).
+ * batch), plus the further cycles it could start: {@link startableCycleCount} (inputs on hand, output
+ * room, tech gate) over `own` ({@link operatorRecipes}).
  * Both halves of the ProductionSystem's start gate, so a FURTHER seat is never offered for a cycle this
  * worker's craft selection or XP would refuse to begin. It is the producer's "should I stay put?" gate,
  * per worker instead of per building: the planner hands out seats in its deterministic settler order,
@@ -52,16 +73,17 @@ import { mayFetchGoodFrom } from '../store-policy.js';
  * totals share the one per-workplace claim counter, so the worker denied is whichever the canonical
  * settler order reaches once the claims cover its own total.
  */
-export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity, operator: Entity): number {
+export function workSeatCount(
+  world: World,
+  ctx: SystemContext,
+  workplace: Entity,
+  own: readonly Recipe[],
+): number {
   const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
   const b = world.tryGet(workplace, Building);
   if (b === undefined || b.built < ONE) return running; // a construction site never starts a cycle
-  const recipes = recipesByProductOf(world, ctx, workplace);
-  if (recipes === undefined) return running;
   let startable = 0;
-  for (const good of craftablePool(world, ctx, operator, recipes)) {
-    const recipe = recipes.get(good);
-    if (recipe === undefined) continue;
+  for (const recipe of own) {
     startable = Math.max(startable, startableCycleCount(world, ctx, workplace, recipe));
   }
   return running + startable;
@@ -69,8 +91,8 @@ export function workSeatCount(world: World, ctx: SystemContext, workplace: Entit
 
 /**
  * Where a producer worker should go for a **missing recipe input**, or null when every input is already
- * stocked (or nothing reachable can supply one). Walks the recipe inputs in their (fixed content) order and,
- * for the FIRST input the workplace is short of, returns the single NEAREST source of EITHER kind:
+ * stocked (or nothing reachable can supply one). Walks `recipe`'s inputs in their fixed order and, for the
+ * FIRST one the workplace is short of, returns the single NEAREST source of EITHER kind:
  *  - `fetch`: a store that already holds the good — a warehouse, a flag pile, another workplace's output —
  *    with the amount still needed (so the trip carries exactly the shortfall, "tylko te wymagane");
  *  - `draw`: a built shared UTILITY that mints the good from no inputs (the well for water, the hive for

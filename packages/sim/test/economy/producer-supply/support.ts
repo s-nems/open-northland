@@ -42,6 +42,9 @@ export const SAWMILL = 2;
 export const TWIN_MILL = 8;
 /** Fixture 20: TWO products off different inputs — wood→plank and wheat→food (the upgraded bakery shape). */
 export const BAKEHOUSE = 20;
+/** Fixture 9: two products off the SAME input (wood→plank and wood→food), so the merged wood target is 2
+ *  where either product alone needs 1. The real smithy-2 shape. */
+export const FORGE = 9;
 /** Fixture 21: wood → bread, and the only store in the fixture with a bread slot. */
 export const KITCHEN = 21;
 export const FARMER = 18; // the farm's field-worker job (plant atomic 34) — never hauls the farm's output out
