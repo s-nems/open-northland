@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { actorsOf } from '../src/game/snapshot.js';
 import {
   boundWorkers,
   FAMILY_GAP_FRAC,
   groupedWorkers,
   MAX_WORKERS,
 } from '../src/hud/details-panel/worker-selection.js';
-import { type Ent, snapshotOf } from './support/snapshot.js';
+import { type Ent, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
 const BUILDING = 100;
 const OTHER = 200;
@@ -92,5 +93,37 @@ describe('groupedWorkers', () => {
       [6, 7, 8, 9, 10, 11],
     ]);
     expect(ids).toEqual(Array.from({ length: MAX_WORKERS }, (_, i) => i + 1));
+  });
+});
+
+/**
+ * Neither selector may add a walk of its own over a decoded map's scenery while a building is selected.
+ * Pinned here because nothing else fails when one silently goes back to `snapshot.entities`: the results
+ * are identical either way, only the per-tick cost changes.
+ */
+describe('cost follows the selection, not the map', () => {
+  const SCENERY = 400;
+  /** One bound worker among a decoded map's worth of scenery. */
+  const crowded = () =>
+    snapshotOf([
+      sett(1, { JobAssignment: { workplace: BUILDING } }),
+      ...Array.from({ length: SCENERY }, (_, i) => ({
+        id: i + 10,
+        components: { Resource: { goodType: 1 } },
+      })),
+    ]);
+
+  it('boundWorkers rides the snapshot-shared actors walk instead of adding one', () => {
+    const { snapshot, visits } = visitCountingSnapshot(crowded());
+    actorsOf(snapshot); // the walk the frame's other projections already paid for
+    const shared = visits();
+    expect(boundWorkers(snapshot, BUILDING, false)).toEqual([1]);
+    expect(visits()).toBe(shared);
+  });
+
+  it('groupedWorkers reads only the ids it was handed', () => {
+    const { snapshot, visits } = visitCountingSnapshot(crowded());
+    expect(groupedWorkers(snapshot, [[1]]).ids).toEqual([1]);
+    expect(visits()).toBeLessThan(SCENERY / 4);
   });
 });
