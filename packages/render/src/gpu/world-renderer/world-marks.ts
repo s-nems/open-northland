@@ -13,8 +13,8 @@ import {
   type DoorBadge,
   type GeometryDebugItem,
   GeometryDebugLayer,
-  type LivestockHeart,
-  LivestockHeartLayer,
+  type LifeHeart,
+  LifeHeartLayer,
   SelectionLayer,
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -64,7 +64,7 @@ export interface WorldMarksFrame {
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
-  readonly livestockHearts: readonly LivestockHeart[];
+  readonly livestockHearts: readonly LifeHeart[];
 }
 
 export class WorldMarks {
@@ -80,7 +80,7 @@ export class WorldMarks {
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   /** Faction-coloured life hearts over claimed livestock. */
-  private readonly hearts = new LivestockHeartLayer();
+  private readonly hearts = new LifeHeartLayer();
   /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;

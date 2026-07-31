@@ -119,15 +119,28 @@ export const livestockScene: SceneDefinition = {
       },
     },
     {
-      label: 'the heart projection marks exactly the claimed animals',
+      label: 'the heart projection marks exactly the claimed animals and mirrors their life',
       predicate: (sim) => {
         const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)];
+        const poolOf = new Map<number, { hitpoints: number; max: number }>();
+        for (const e of claimed) {
+          const h = sim.world.tryGet(e, Health);
+          if (h === undefined) return false;
+          poolOf.set(e, h);
+        }
         const hearts = computeLivestockHearts(
           sim.snapshot(),
           (tribe) => systems.isCatchableAnimal(sim.content, tribe),
           undefined,
         );
-        return hearts.length === claimed.length && claimed.length > 0;
+        return (
+          claimed.length > 0 &&
+          hearts.length === claimed.length &&
+          hearts.every((heart) => {
+            const pool = poolOf.get(heart.id);
+            return pool !== undefined && heart.life === pool.hitpoints / pool.max;
+          })
+        );
       },
     },
     {

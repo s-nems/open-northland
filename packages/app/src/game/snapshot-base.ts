@@ -34,6 +34,14 @@ export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefine
   return x !== undefined && y !== undefined ? { x: x as Fixed, y: y as Fixed } : undefined;
 }
 
+/** The entity's `Health` pool as plain numbers, or undefined when it carries none. */
+export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } | undefined {
+  const health = e.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  const hitpoints = num(health?.hitpoints);
+  const max = num(health?.max);
+  return hitpoints !== undefined && max !== undefined ? { hitpoints, max } : undefined;
+}
+
 /**
  * Whether the experience tech tree gates this settler's trades and wares — the app mirror of the sim's
  * `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated

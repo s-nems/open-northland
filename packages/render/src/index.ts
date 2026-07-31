@@ -89,7 +89,7 @@ export {
   type HouseholdKind,
   type HudFrame,
   type HudStyle,
-  type LivestockHeart,
+  type LifeHeart,
   type PlacementGhost,
   type PlacementOverlayCell,
   type PlacementOverlayFrame,

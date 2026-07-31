@@ -1,5 +1,5 @@
 import { constructionBillForType, type Fixed, fx } from '@open-northland/sim';
-import { num, type SnapshotEntity } from '../../../game/snapshot.js';
+import { healthOf, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { pctRatio } from './bars.js';
 import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
@@ -150,9 +150,7 @@ export function constructionModel(
 ): ConstructionModel | null {
   if (ent.components.UnderConstruction === undefined) return null;
   const live = liveAmounts(ent.components.Stockpile);
-  const health = ent.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
-  const hitpoints = num(health?.hitpoints);
-  const max = num(health?.max);
+  const health = healthOf(ent);
   const upgrading = ent.components.Upgrading !== undefined;
   const bill =
     def === undefined
@@ -171,7 +169,7 @@ export function constructionModel(
     };
   });
   return {
-    hpPct: hitpoints !== undefined && max !== undefined && max > 0 ? pctRatio(hitpoints, max) : null,
+    hpPct: health !== undefined && health.max > 0 ? pctRatio(health.hitpoints, health.max) : null,
     rows,
   };
 }

@@ -6,7 +6,7 @@ import type {
   ConstructionSign,
   DoorBadge,
   HudFrame,
-  LivestockHeart,
+  LifeHeart,
   SettlerBubble,
 } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -64,7 +64,7 @@ export const NO_REFS: ReadonlySet<number> = new Set();
 export const NO_BADGES: readonly DoorBadge[] = [];
 export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
-export const NO_HEARTS: readonly LivestockHeart[] = [];
+export const NO_HEARTS: readonly LifeHeart[] = [];
 
 /**
  * The per-frame inputs of {@link import('./world-renderer.js').WorldRenderer.update}, named rather than
@@ -92,7 +92,7 @@ export interface WorldFrame {
   /** Per-settler thought bubbles to float over a settler's head (make-child / wedding; default none). */
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   /** Faction-coloured life hearts to float over claimed livestock (default none). */
-  readonly livestockHearts?: readonly LivestockHeart[] | undefined;
+  readonly livestockHearts?: readonly LifeHeart[] | undefined;
   /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
 }
