@@ -35,13 +35,14 @@ export function computeGeometryDebugItems(
     const typeId = buildingTypeOf(e);
     const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
     const fp = info?.footprint;
-    const icon = workerIconNode(fp, anchor, info?.id);
     items.push({
       anchor,
       blocked: fp?.blocked ?? [],
       reserved: fp?.reserved ?? [],
       door: fp?.door,
-      iconAnchor: { dx: icon.hx - anchor.hx, dy: icon.hy - anchor.hy },
+      // Passed as an ABSOLUTE node — already door-resolved (parity shift included), so the overlay's
+      // authored-frame shift must not touch it (GeometryDebugItem's channel contract).
+      iconAnchor: workerIconNode(fp, anchor, info?.id),
       label: info?.id ?? (typeId !== undefined ? `#${typeId}` : undefined),
     });
   }

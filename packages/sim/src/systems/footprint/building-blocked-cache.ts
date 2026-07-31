@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Position } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -43,8 +43,9 @@ function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: 
       blocked.add(cell);
     }
     const door = footprint.door;
-    if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
-      doors.add(terrain.nodeAt(ax + door.dx, ay + door.dy));
+    if (door !== undefined) {
+      const doorX = ax + footprintCellDx(ay, door);
+      if (terrain.inBounds(doorX, ay + door.dy)) doors.add(terrain.nodeAt(doorX, ay + door.dy));
     }
   }
   for (const cell of doors) blocked.delete(cell);

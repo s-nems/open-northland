@@ -45,19 +45,21 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
-    // First hut reserved ring: x∈[4..7] × y∈[4..7].
-    // Anchor (3,5): reserved x∈[2..5] overlaps it (its body node (4,5) is inside too) — rejected.
+    // Odd-row anchors: a ring's odd-dy rows stamp one node +x (the parity shift). First hut ring:
+    // x∈[4..7] on rows 5/7, x∈[5..8] on rows 4/6.
+    // Anchor (3,5): its ring reaches x 5 (rows 5/7) and x 6 (rows 4/6) — overlaps on every row
+    // (the first hut's body node (5,5) is inside too) — rejected.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
-    // Anchor (8,5): the new body (x∈[8..9]) clears the first zone, but its reserved ring (x∈[7..10])
-    // still touches that zone at x=7 — the zone-vs-zone rule rejects it. (The old body-vs-zone rule
-    // allowed this; it is exactly the tight packing the widened clearance removes.)
+    // Anchor (8,5): the new body (x∈[8..9]) clears the first zone, but its ring starts at x 7 on
+    // rows 5/7 — touching that zone at x=7 — so the zone-vs-zone rule rejects it. (The old
+    // body-vs-zone rule allowed this; it is exactly the tight packing the widened clearance removes.)
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 8, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
-    // Anchor (9,5): reserved x∈[8..11] finally clears the first ring (≤7) — accepted, a full pair of
-    // margins apart (the two reserved zones are disjoint).
+    // Anchor (9,5): its ring starts at x 8 (rows 5/7) / x 9 (rows 4/6), past the first ring's
+    // per-row ends (7 and 8) — accepted, the two reserved zones are disjoint on every row.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2);
@@ -74,13 +76,13 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
 
   it('keeps the reserved zone clear of blocking terrain (minimum distance from water)', () => {
     const cells = grassCells(16, 16);
-    // A water CELL at (8,5) — nodes (16..17, 10..11): the hut's reserved ring at anchor (15,9)
-    // covers x∈[14..17] × y∈[8..11] — too close.
+    // A water CELL at (8,5) — nodes (16..17, 10..11): the hut's reserved ring at odd-row anchor
+    // (15,9) covers x∈[14..17] on even-dy rows and x∈[15..18] on shifted odd-dy rows — too close.
     cells.typeIds[5 * 16 + 8] = WATER;
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 15, 9)).toBe(false);
-    // Two nodes (one full cell) further west the ring (x∈[12..15]) misses the water — accepted.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 13, 9)).toBe(true);
+    // Three nodes further west the ring (x≤14, shifted rows x≤15) misses the water — accepted.
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 12, 9)).toBe(true);
     // And a zone hanging off the map edge is rejected, not clamped.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 0, 5)).toBe(false);
   });
@@ -258,22 +260,23 @@ describe('buildable terrain channel — walkable ground that rejects building', 
 
   it('rejects a footprint whose reserved zone touches a walkable-but-unbuildable cell', () => {
     const cells = grassCells(16, 16);
-    // One margin CELL at (7,5) — nodes (14..15, 10..11) — inside the hut's reserved ring at
-    // anchor (13,9) (ring spans x∈[12..15], y∈[8..11]).
+    // One margin CELL at (7,5) — nodes (14..15, 10..11) — inside the hut's reserved ring at odd-row
+    // anchor (13,9): x∈[12..15] on rows 9/11, x∈[13..16] on the parity-shifted rows 8/10.
     cells.typeIds[5 * 16 + 7] = MARGIN;
     const sim = new Simulation({ seed: 1, content: marginContent(), map: halfCellMapFromCells(cells) });
     const terrain = terrainOf(sim);
     expect(terrain.isWalkable(terrain.nodeAt(14, 10))).toBe(true); // nav still crosses it
     expect(terrain.isBuildable(terrain.nodeAt(14, 10))).toBe(false); // building may not
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 13, 9)).toBe(false);
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11)).toBe(true); // clear ground
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 13)).toBe(true); // clear ground
   });
 });
 
 describe('forced placement — authored map imports load as-is', () => {
   it('places a rejected footprint when force is set (the original loads scenario houses verbatim)', () => {
     // Water under the reserved ring → the interactive rule rejects this anchor: the water CELL at
-    // (5,5) covers nodes (10..11, 10..11), inside the ring of anchor (9,9) (x∈[8..11], y∈[8..11]).
+    // (5,5) covers nodes (10..11, 10..11), inside the ring of odd-row anchor (9,9) (x∈[8..11] on
+    // rows 9/11, x∈[9..12] on the parity-shifted rows 8/10).
     const cells = grassCells(16, 16);
     cells.typeIds[5 * 16 + 5] = WATER;
     const wetSim = new Simulation({
@@ -357,8 +360,9 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
 
   it('destroys a bush inside the reserved zone and spares one outside it', () => {
     const sim = mappedSim();
-    // HUT reserved ring at anchor (5,5) spans x∈[4..7] × y∈[4..7]. A bush at (6,6) sits inside it; a bush
-    // at (12,12) is well clear (a walkable bush is not a placement obstacle, so both land under/near a house).
+    // HUT reserved ring at odd-row anchor (5,5): rows 4..7, x∈[4..7] on rows 5/7 and x∈[5..8] on the
+    // parity-shifted rows 4/6. A bush at (6,6) sits inside it; a bush at (12,12) is well clear
+    // (a walkable bush is not a placement obstacle, so both land under/near a house).
     const inside = createBerryBush(sim.world, { x: 6, y: 6 });
     const outside = createBerryBush(sim.world, { x: 12, y: 12 });
     expect(survivingBushes(sim)).toBe(2);
@@ -399,8 +403,9 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
 
   it('destroys a stump inside the reserved zone and spares one outside it', () => {
     const sim = mappedSim();
-    // HUT reserved ring at anchor (5,5) spans x∈[4..7] × y∈[4..7]. A stump at (6,6) sits inside it; one at
-    // (12,12) is well clear (a stump is inert non-blocking decor, so both land under/near a house).
+    // HUT reserved ring at odd-row anchor (5,5): rows 4..7, x∈[4..7] on rows 5/7 and x∈[5..8] on the
+    // parity-shifted rows 4/6. A stump at (6,6) sits inside it; one at (12,12) is well clear
+    // (a stump is inert non-blocking decor, so both land under/near a house).
     const inside = placeStump(sim, 6, 6);
     const outside = placeStump(sim, 12, 12);
     expect(survivingStumps(sim)).toBe(2);

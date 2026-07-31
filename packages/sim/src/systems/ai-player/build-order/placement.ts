@@ -1,4 +1,4 @@
-import type { BuildingType } from '@open-northland/data';
+import { type BuildingType, footprintCellDx } from '@open-northland/data';
 import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -171,7 +171,7 @@ function groundAccepted(
   const footprint = buildingFootprintOf(ctx.content, type.typeId);
   if (footprint === undefined) return terrain.isPlantable(terrain.nodeAt(x, y));
   for (const c of footprint.reserved) {
-    const cx = x + c.dx;
+    const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy) || !terrain.isPlantable(terrain.nodeAt(cx, cy))) return false;
   }

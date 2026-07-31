@@ -1,4 +1,10 @@
-import { fullStateBlockAreaCells, type LandscapeBlockArea, type TerrainMapFile } from '@open-northland/data';
+import {
+  type FootprintCell,
+  footprintCellDx,
+  fullStateBlockAreaCells,
+  type LandscapeBlockArea,
+  type TerrainMapFile,
+} from '@open-northland/data';
 import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
 import {
   TERRAIN_BARREN,
@@ -107,8 +113,8 @@ function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
 
 /** One object's blocking cells: `body` blocks walking and building, `margin` blocks building alone. */
 interface ObjectFootprint {
-  readonly body: readonly (readonly [number, number])[];
-  readonly margin: readonly (readonly [number, number])[];
+  readonly body: readonly Readonly<FootprintCell>[];
+  readonly margin: readonly Readonly<FootprintCell>[];
 }
 
 /**
@@ -126,19 +132,17 @@ function objectFootprints(
   rows: NonNullable<CollisionIrView['landscapeGfx']>,
   skipObjectNames?: ReadonlySet<string>,
 ): ReadonlyMap<string, ObjectFootprint> {
-  const key = ([dx, dy]: readonly [number, number]): string => `${dx},${dy}`;
-  const cells = (areas: readonly Readonly<LandscapeBlockArea>[] | undefined): [number, number][] =>
-    fullStateBlockAreaCells(areas).map((c) => [c.dx, c.dy]);
+  const key = (c: Readonly<FootprintCell>): string => `${c.dx},${c.dy}`;
   const out = new Map<string, ObjectFootprint>();
   for (const g of rows) {
     if (g.editName === undefined || skipObjectNames?.has(g.editName)) continue;
-    const walk = cells(g.walkBlockAreas);
-    const build = cells(g.buildBlockAreas);
+    const walk = fullStateBlockAreaCells(g.walkBlockAreas);
+    const build = fullStateBlockAreaCells(g.buildBlockAreas);
     if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
     const body = isBridgeRecord(g) ? [] : walk;
     // Every cell the object blocks at all, minus the body: the two areas overlap, hence the set.
     const claimed = new Set(body.map(key));
-    const margin: [number, number][] = [];
+    const margin: FootprintCell[] = [];
     for (const cell of [...build, ...walk]) {
       const k = key(cell);
       if (claimed.has(k)) continue;
@@ -218,11 +222,11 @@ export function buildCollisionTerrain(
       const name = types[typeIndex];
       const gfx = name !== undefined ? gfxByName.get(name) : undefined;
       if (gfx === undefined) return;
-      // Anchor the object's block-area offsets on its half-cell verbatim: the `emla` placement,
-      // the `lmlt` blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H
-      // grid (source basis: mapdat lane layout), so no flooring is needed.
-      for (const [dx, dy] of gfx.body) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
-      for (const [dx, dy] of gfx.margin) stamp(hx + dx, hy + dy, TERRAIN_MARGIN);
+      // Anchor the object's block-area offsets on its half-cell: the `emla` placement, the `lmlt`
+      // blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H grid (source
+      // basis: mapdat lane layout), stamped with the odd-row parity shift (`footprintCellDx`).
+      for (const c of gfx.body) stamp(hx + footprintCellDx(hy, c), hy + c.dy, TERRAIN_BLOCKED);
+      for (const c of gfx.margin) stamp(hx + footprintCellDx(hy, c), hy + c.dy, TERRAIN_MARGIN);
     });
   }
 

@@ -1,3 +1,4 @@
+import { footprintCellDx } from '@open-northland/data';
 import {
   Building,
   GroundDrop,
@@ -48,7 +49,7 @@ export function interactionNode(world: World, ctx: SystemContext, building: Enti
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
   if (door === undefined) return { x: ax, y: ay };
-  const at = { x: ax + door.dx, y: ay + door.dy };
+  const at = { x: ax + footprintCellDx(ay, door), y: ay + door.dy };
   if (ctx.terrain !== undefined && !ctx.terrain.inBounds(at.x, at.y)) return { x: ax, y: ay };
   return at;
 }

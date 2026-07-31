@@ -38,8 +38,9 @@ describe('computeGeometryDebugItems', () => {
     expect(item?.blocked).toEqual([{ dx: 0, dy: 0 }]);
     expect(item?.reserved).toEqual([{ dx: 1, dy: 1 }]);
     expect(item?.door).toEqual({ dx: 0, dy: 2 });
-    // Default worker-icon offset: one node right of the door (the door-badge path's own composition).
-    expect(item?.iconAnchor).toEqual({ dx: 1, dy: 2 });
+    // Default worker-icon offset: one node right of the door node (8,10), as an ABSOLUTE node —
+    // the overlay draws it verbatim (the door-badge path's own composition).
+    expect(item?.iconAnchor).toEqual({ hx: 9, hy: 10 });
     expect(item?.label).toBe('work_well_00');
   });
 
@@ -47,7 +48,7 @@ describe('computeGeometryDebugItems', () => {
     const items = computeGeometryDebugItems(snapshotOf([building(1, 99, 4, 4)]), TYPES);
     const item = items[0];
     expect(item?.door).toBeUndefined();
-    expect(item?.iconAnchor).toEqual({ dx: 1, dy: 0 }); // anchor + the default offset — the badge draws here
+    expect(item?.iconAnchor).toEqual({ hx: 9, hy: 8 }); // anchor (8,8) + the default offset — the badge draws here
     expect(item?.label).toBe('#99');
   });
 
