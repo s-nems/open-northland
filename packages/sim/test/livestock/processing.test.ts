@@ -6,6 +6,7 @@ import {
   MoveGoal,
   Production,
   Resting,
+  StayPoint,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Simulation } from '../../src/index.js';
@@ -207,21 +208,29 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     expect(sim.world.has(cow, Resting)).toBe(false);
   });
 
-  it('a release never touches the NEXT summoned animal still outside', () => {
+  it('the successor is summoned only after the release - the doorway stays empty mid-batch', () => {
     const sim = livestockSim();
     const { farm, ctx, recipes, feed } = stockedFarm(sim);
     const inside = cowAt(sim, 10, 10);
     const next = cowAt(sim, 14, 10);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('livestockSim always has a map');
+    const spot = terrain.nodeAt(14, 14);
+    sim.world.add(inside, StayPoint, { cell: spot });
     livestockVisitSystem(sim.world, ctx); // summons the door-stander (healthiest tie -> lowest id)
     beginCycle(sim.world, ctx, farm, feed, COW_GOOD); // admits it
-    livestockVisitSystem(sim.world, ctx); // the waiting slot is free again: summons the next
+
+    livestockVisitSystem(sim.world, ctx); // batch grinding: the species slot is TAKEN, nobody queues
+    expect(sim.world.has(next, LivestockVisit)).toBe(false);
 
     const cycle = { elapsed: FEED_TICKS, duration: FEED_TICKS, goodType: COW_GOOD };
     depositCycleOutput(sim.world, ctx, farm, cycle, recipes);
-
-    expect(sim.world.has(inside, LivestockVisit)).toBe(false); // the inside one paid and left
+    expect(sim.world.has(inside, LivestockVisit)).toBe(false); // paid and left...
     expect(sim.world.get(inside, Health).hitpoints).toBe(COW_HP - LIVESTOCK_PROCESS_DRAIN_HP);
-    expect(sim.world.tryGet(next, LivestockVisit)?.at).toBe(farm); // still walking toward its own batch
+    expect(sim.world.tryGet(inside, MoveGoal)?.cell).toBe(spot); // ...straight back to its grazing spot
+
+    livestockVisitSystem(sim.world, ctx); // the slot is free again: the successor is called
+    expect(sim.world.tryGet(next, LivestockVisit)?.at).toBe(farm);
     expect(sim.world.get(next, Health).hitpoints).toBe(COW_HP);
   });
 

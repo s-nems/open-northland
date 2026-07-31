@@ -137,6 +137,51 @@ describe('animalWanderSystem: the grazing drive', () => {
     expect(goals).toBeGreaterThan(0); // it still grazes - the calm cadence idles, it doesn't freeze
   });
 
+  it('sidesteps standers off a shared node - the lowest id keeps the spot, the rest fan out', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const shared = terrain.nodeAt(10, 10);
+    const keeper = grazerAt(sim, 10, 10);
+    const second = grazerAt(sim, 10, 10);
+    const third = grazerAt(sim, 10, 10);
+
+    animalWanderSystem(sim.world, ctxOf(sim)); // one pass: the sidestep is immediate, no rng roll
+
+    expect(sim.world.has(keeper, MoveGoal)).toBe(false); // the keeper holds the spot
+    const secondGoal = sim.world.get(second, MoveGoal).cell;
+    const thirdGoal = sim.world.get(third, MoveGoal).cell;
+    for (const goal of [secondGoal, thirdGoal]) {
+      expect(goal).not.toBe(shared);
+      expect(manhattan(terrain, goal, shared)).toBeLessThanOrEqual(2);
+    }
+    expect(secondGoal).not.toBe(thirdGoal); // distinct spots - a sidestep never re-stacks
+  });
+
+  it('never grazes onto a node another animal is standing on', () => {
+    const sim = new Simulation({ seed: 11, content: testContent(), map: grassMap(30, 30) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    // The fixture BEE holds its node forever (no territory), a permanent stander in the bear's range.
+    const post = grazerAt(sim, 12, 10, { x: 12, y: 10 }, BEE);
+    const bear = grazerAt(sim, 10, 10);
+    const postNode = terrain.nodeAt(12, 10);
+
+    for (let i = 0; i < 2000; i++) {
+      animalWanderSystem(sim.world, ctxOf(sim));
+      expect(sim.world.has(post, MoveGoal)).toBe(false);
+      const goal = sim.world.tryGet(bear, MoveGoal);
+      if (goal === undefined) continue;
+      expect(goal.cell).not.toBe(postNode);
+      const c = terrain.coordsOf(goal.cell);
+      const p = sim.world.get(bear, Position);
+      const centre = positionOfNode(c.x, c.y);
+      p.x = centre.x;
+      p.y = centre.y;
+      sim.world.remove(bear, MoveGoal);
+    }
+  });
+
   it('lets a creature displaced past its leash step back toward the anchor', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(30, 30) });
     const terrain = sim.terrain;
