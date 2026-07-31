@@ -107,13 +107,15 @@ export function buildUnitPanelModel(
 ): UnitPanelModel {
   if (selected.size === 0) return { kind: 'empty' };
 
-  // One entity pass classifies the whole selection (never O(selected × entities) — a marquee can hold
-  // hundreds of ids). Ascending-id sort keeps the single-pick branches' winner deterministic.
+  // Resolved through the snapshot's own id index, so classifying a selection costs O(selected · log
+  // entities): a decoded map's scenery must not be walked once a tick just because something is picked.
+  // The sorts below, not the iteration order, keep the single-pick branches' winner deterministic.
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];
   const signpostIds: number[] = [];
-  for (const e of snapshot.entities) {
-    if (!selected.has(e.id)) continue;
+  for (const id of selected) {
+    const e = entityById(snapshot, id);
+    if (e === undefined) continue;
     if (isSettler(e)) settlerIds.push(e.id);
     else if (isBuilding(e)) buildingIds.push(e.id);
     else if (isSignpost(e)) signpostIds.push(e.id);

@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { isSettler, num } from '../../../game/snapshot.js';
+import { actorsOf, isSettler, num } from '../../../game/snapshot.js';
 import { type BuildingDef, type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 
 // The building's per-trade worker-slot rows: one filled/capacity line per declared `workers` slot.
@@ -18,7 +18,7 @@ export interface WorkerSlotRow {
 /** How many settlers are currently bound to `buildingId`, per job — the per-slot "filled" count. */
 function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<number, number> {
   const counts = new Map<number, number>();
-  for (const e of snapshot.entities) {
+  for (const e of actorsOf(snapshot)) {
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     if (num(assignment?.workplace) !== buildingId) continue;
