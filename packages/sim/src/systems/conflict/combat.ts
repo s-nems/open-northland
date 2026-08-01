@@ -3,9 +3,9 @@ import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe } from '../readviews/index.js';
 import { canonicalById, entityNode, NodeBuckets } from '../spatial/nodes.js';
-import type { MeleeSlots } from './chase.js';
 import { attackableBuildings, combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
+import { MeleeSlots } from './melee-slots.js';
 import { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes } from './target-node.js';
 
@@ -88,10 +88,7 @@ export const combatSystem: System = (world, ctx) => {
   // re-resolve every target's nodes (a building's whole wall ring) for nodes it has already been handed.
   const index = new NodeBuckets(world, targets, undefined, nodesOf, presence.addNode);
 
-  // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
-  // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is
-  // deterministic; the sets are per-tick derived state, never hashed.
-  const slots: MeleeSlots = { claimed: new Set() };
+  const slots = new MeleeSlots(world, ctx, terrain);
   for (const e of combatants) {
     engageCombatant(world, ctx, terrain, index, presence, slots, bodyNodes, e);
   }
