@@ -1,5 +1,5 @@
 import type { GuiColorKey } from '@open-northland/render';
-import { type Application, type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
+import { type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
 import { GENERIC_GOOD_ICON, type GoodIcon, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import type { GuiPaletteName } from '../../content/gui-gfx.js';
@@ -93,23 +93,17 @@ export interface Chrome extends TextKit, GlyphKit {
 
 export function createChrome(
   assets: DetailsPanelAssets,
-  app: Application,
   scale: number,
   layers: PanelLayers,
   /**
-   * The projection resolution the {@link PalettedSprite} meshes map native px into. Omitted for a direct
-   * on-canvas draw (the meshes project into `app.screen`); the supersample path passes the off-screen
-   * texture's size so the meshes rasterize into that target instead (see `bake.ts`).
+   * The off-screen texture's size, which the `PalettedSprite` meshes project native px into. The kit only
+   * ever draws into one (`bake.ts`), which is why every mesh renders upright (`flipY`): the panel then
+   * bakes without a whole-texture Y-flip its Pixi-native content (Graphics, the preview Sprite) can't share.
    */
-  resolution?: { readonly w: number; readonly h: number },
+  resolution: { readonly w: number; readonly h: number },
 ): Chrome {
   const { art, bitmaps } = assets;
   const { g } = layers;
-  const screen = () => resolution ?? { w: app.screen.width, h: app.screen.height };
-  // In texture mode (a resolution override), every PalettedSprite must render upright into the bottom-up
-  // render texture so the panel can bake without a whole-texture Y-flip its Pixi-native content (Graphics,
-  // the preview Sprite) can't share. See bake.ts / PalettedSprite.flipY.
-  const flipY = resolution !== undefined;
 
   // The self-contained sub-concerns of this kit: vector-text placement over the text layer (`text.ts`),
   // the rope-and-knot window border over the front sprite layer (`frame-border.ts`), and the flat button
@@ -119,7 +113,7 @@ export function createChrome(
     assets.uiFont.family,
     scale,
   );
-  const { frameBorder } = createFrameBorderKit({ art, front: layers.front, scale, flipY, screen });
+  const { frameBorder } = createFrameBorderKit({ art, front: layers.front, scale, resolution });
   const glyphs = createGlyphKit({ g, scale, bevelDark: INNER_BOX_DARK });
 
   const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean =>
@@ -137,9 +131,9 @@ export function createChrome(
         ? makeGuiSprite(art, gfx, { defaultPalette: 'context', colorKey })
         : makeGuiSprite(art, gfx, { defaultPalette: palette, colorKey, palette });
     if (made === null) return;
-    made.sprite.flipY = flipY;
+    made.sprite.flipY = true;
     layers.front.addChild(made.sprite);
-    const { w, h } = screen();
+    const { w, h } = resolution;
     const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * scale);
     const y = Math.round(r.y + r.h / 2 - (made.frame.offsetY + made.frame.height / 2) * scale);
     made.sprite.place(x, y, scale, w, h);
@@ -149,9 +143,9 @@ export function createChrome(
     if (assets.goods === null) return;
     const made = makeGoodSprite(assets.goods, icon);
     if (made === null) return;
-    made.sprite.flipY = flipY;
+    made.sprite.flipY = true;
     layers.front.addChild(made.sprite);
-    const { w, h } = screen();
+    const { w, h } = resolution;
     // The state-1 pile frames vary in native size (~12–26 px); fit each into the icon box (shrink only,
     // never upscale past the panel scale) so a big pile doesn't overrun the amount plate — the original's
     // row icons are compact, each its own natural size.

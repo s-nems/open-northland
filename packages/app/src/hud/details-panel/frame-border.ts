@@ -26,8 +26,8 @@ interface FrameBorderDeps {
   readonly art: DetailsPanelAssets['art'];
   readonly front: Container;
   readonly scale: number;
-  readonly flipY: boolean;
-  readonly screen: () => { readonly w: number; readonly h: number };
+  /** The off-screen texture's size, which the pieces project into; each renders upright for it (`chrome.ts`). */
+  readonly resolution: { readonly w: number; readonly h: number };
 }
 
 /**
@@ -35,7 +35,7 @@ interface FrameBorderDeps {
  * the only piece the window fill needs; the strip-tiling and per-piece placement stay private to this kit.
  */
 export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: Rect) => void } {
-  const { art, front, scale, flipY, screen } = deps;
+  const { art, front, scale, resolution } = deps;
 
   /**
    * A border piece placed at an exact screen rect through the `frame` palette. Corners draw at native
@@ -53,9 +53,9 @@ export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: 
     sprite.setFrame(art.layer.source, sub, art.layer.atlas.width, art.layer.atlas.height);
     sprite.player = guiPaletteRow('frame');
     sprite.colorKey = 'magenta';
-    sprite.flipY = flipY;
+    sprite.flipY = true;
     front.addChild(sprite);
-    const { w, h } = screen();
+    const { w, h } = resolution;
     sprite.stretchToRect(
       Math.round(r.x),
       Math.round(r.y),

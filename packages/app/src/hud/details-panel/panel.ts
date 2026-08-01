@@ -186,7 +186,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
     const texture = bakePanel({
       assets,
-      app,
       baker,
       view,
       hover,
