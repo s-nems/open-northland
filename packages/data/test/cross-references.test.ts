@@ -288,6 +288,27 @@ describe('validateCrossReferences', () => {
       overrides: { jobExperience: [{ typeId: 1, id: 'chop_xp', jobType: 1, goodType: UNKNOWN }] },
       error: /jobExperience "chop_xp" references unknown goodType 99/,
     },
+    // huntPrey
+    {
+      name: 'a huntPrey row whose yield goods carry differing harvest atomics',
+      overrides: {
+        goods: [
+          { typeId: 1, id: 'meat', atomics: { harvest: 33 } },
+          { typeId: 2, id: 'leather', atomics: { harvest: 34 } },
+        ],
+        tribes: [{ typeId: 7, id: 'deers' }],
+        huntPrey: [
+          {
+            tribeType: 7,
+            yields: [
+              { goodType: 1, amount: 1 },
+              { goodType: 2, amount: 1 },
+            ],
+          },
+        ],
+      },
+      error: /huntPrey tribe 7 yields goods with differing harvest atomics/,
+    },
   ];
 
   it.each(REJECT_CASES)('rejects $name', ({ overrides, error }) => {

@@ -171,20 +171,25 @@ function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
 }
 
 // A hunt-prey row keys on the prey's tribe (like an animal record) and its yields name the goods a
-// carcass holds — both must resolve, and each yield good must carry a harvest atomic (the carcass is
-// a harvestable node; a good without one would stand unworkable forever).
+// carcass holds - both must resolve, and every yield good must carry the SAME harvest atomic: the
+// carcass is ONE node re-armed good-to-good in place, and the sim's resource dormancy index captures
+// a node's atomic once at spawn, so a mid-body atomic change would hide the carcass from its hunter.
 function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
   const errors: string[] = [];
   const goods = new Map(set.goods.map((g) => [g.typeId, g]));
   for (const p of set.huntPrey) {
     if (!tribeIds.has(p.tribeType)) errors.push(`huntPrey references unknown tribeType ${p.tribeType}`);
+    const atomics = new Set<number>();
     for (const y of p.yields) {
       const good = goods.get(y.goodType);
       if (good === undefined)
         errors.push(`huntPrey tribe ${p.tribeType} yields unknown goodType ${y.goodType}`);
       else if (good.atomics.harvest === undefined)
         errors.push(`huntPrey tribe ${p.tribeType} yields good "${good.id}" with no harvest atomic`);
+      else atomics.add(good.atomics.harvest);
     }
+    if (atomics.size > 1)
+      errors.push(`huntPrey tribe ${p.tribeType} yields goods with differing harvest atomics`);
   }
   return errors;
 }
