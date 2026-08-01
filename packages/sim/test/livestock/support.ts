@@ -40,10 +40,34 @@ export const FEED_TICKS = 10;
 /** Deliberately tiny meat shelf, so the byproduct's full-shelf forfeit is testable. */
 export const MEAT_CAPACITY = 2;
 
-export function livestockContent(): ContentSet {
+/** Options threaded into the fixture content: `woolGateJob` adds a `jobEnablesGood` edge locking WOOL
+ *  behind that job being alive - the fixture twin of the real hunter→leather gate. */
+export interface LivestockContentOptions {
+  readonly woolGateJob?: number;
+}
+
+/** The societies fixture's civilization (the farm's tribe) - the one whose tech graph gates goods. */
+const VIKING_TRIBE = 1;
+
+export function livestockContent(opts: LivestockContentOptions = {}): ContentSet {
+  const tribes =
+    opts.woolGateJob === undefined
+      ? societyContent.tribes
+      : societyContent.tribes.map((t) =>
+          t.typeId === VIKING_TRIBE
+            ? {
+                ...t,
+                jobEnables: [
+                  ...(t.jobEnables ?? []),
+                  { jobType: opts.woolGateJob, kind: 'good', targetId: WOOL } as const,
+                ],
+              }
+            : t,
+        );
   return parseContentSet({
     manifest: TEST_MANIFEST,
     ...societyContent,
+    tribes,
     ...combatContent,
     ...economyContent,
     goods: [
@@ -52,7 +76,13 @@ export function livestockContent(): ContentSet {
       { typeId: COW_GOOD, id: 'test_cow' },
       { typeId: WOOL, id: 'test_wool' },
     ],
-    jobs: [...economyContent.jobs, { typeId: BREEDER, id: 'breeder' }],
+    jobs: [
+      ...economyContent.jobs,
+      { typeId: BREEDER, id: 'breeder' },
+      // The gating trade must exist for cross-reference validation; nobody holds it unless a test
+      // spawns a settler with it.
+      ...(opts.woolGateJob === undefined ? [] : [{ typeId: opts.woolGateJob, id: 'test_wool_gate' }]),
+    ],
     buildings: [
       ...economyContent.buildings,
       {
@@ -90,8 +120,8 @@ export function livestockContent(): ContentSet {
   });
 }
 
-export function livestockSim(): Simulation {
-  return new Simulation({ seed: 1, content: livestockContent(), map: grassCellMap(32, 32) });
+export function livestockSim(opts: LivestockContentOptions = {}): Simulation {
+  return new Simulation({ seed: 1, content: livestockContent(opts), map: grassCellMap(32, 32) });
 }
 
 /** A built farm-type building anchored on half-cell node (hx, hy), optionally owned and stocked. */

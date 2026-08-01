@@ -8,6 +8,7 @@ import {
   MoveGoal,
   ownerOf,
   Position,
+  Production,
   Resting,
   Settler,
   StayPoint,
@@ -17,10 +18,18 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
+import { recipeOutputsEnabled } from '../progression/index.js';
 import { isLivestockWorkplaceType, livestockTribeOfGood } from '../readviews/index.js';
 import { isInside, stepIn, stepOut } from '../settlers/indoors.js';
-import { clearNavState, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
-import { recipesByProductOf } from '../stores/index.js';
+import {
+  canonicalById,
+  clearNavState,
+  entityNode,
+  isTravelling,
+  manhattan,
+  NodeBuckets,
+} from '../spatial/nodes.js';
+import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 
 // The processing side of husbandry, staged as a VISIT the player can watch: the workplace SUMMONS one
 // penned animal per species (it walks to the door and waits there), the feed batch begins only once it
@@ -153,29 +162,124 @@ export const livestockVisitSystem: System = (world, ctx) => {
   }
 };
 
-/** One visitor per species and workplace, across the WHOLE visit (summoned or already admitted): book
- *  the canonical pen pick for each input-stocked feed recipe with no live visitor. The next animal is
- *  called only after the current batch releases its one - during a batch the doorway stays empty
- *  instead of queueing the successor there for the batch's whole length (user feedback: animals stood
- *  in the door for no visible reason). */
+/**
+ * Book animals onto workplaces - one visitor per species across the WHOLE visit, and only when the
+ * batch could begin the moment it arrives (user feedback: an animal standing at the door with no
+ * batch to enter reads as blocking it). Beyond the body's per-gate comments, two facts: a stocked
+ * token means the seat's next batch is the conversion, not another feed - that is what paces feeding
+ * to the farm's real throughput - and a booked animal owns its operator seat until the batch starts
+ * (the holdback in economy/production.ts keeps it open through the walk).
+ */
 function summonToWorkplaces(world: World, ctx: SystemContext): void {
+  // Shared lazily across farms: built only when a farm passes every cheap gate (most ticks none does).
+  let operatorsByNode: NodeBuckets | undefined;
   for (const building of world.query(Building, Stockpile)) {
     const b = world.get(building, Building);
     if (b.built < ONE || !isLivestockWorkplaceType(ctx.content, b.buildingType)) continue;
     const stock = world.get(building, Stockpile).amounts;
     const recipes = recipesByProductOf(world, ctx, building);
     if (recipes === undefined) continue;
+    let seatsLeft: number | null = null;
     for (const recipe of recipes.values()) {
       const tribe = feedTribeOf(ctx, recipe);
       if (tribe === null) continue;
       if (!recipe.inputs.every((i) => (stock.get(i.goodType) ?? 0) >= i.amount)) continue;
+      const token = recipe.outputs[0]?.goodType;
+      if (token !== undefined && (stock.get(token) ?? 0) > 0) continue; // backlog first
+      if (token !== undefined && !tokenConsumable(world, ctx, b.tribe, token, recipes)) continue;
       if (hasVisitor(world, building, tribe)) continue;
+      if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue;
+      // Pen scan before the seat read: the scan walks the small Livestock store, while the seat
+      // count needs the settler node index - an empty pen (the common stall) never builds it.
       const { best } = scanFeedAnimals(world, ctx, building, tribe);
       if (best === null) continue;
+      if (seatsLeft === null) {
+        operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+        seatsLeft = spareSeatCount(world, ctx, building, operatorsByNode);
+      }
+      if (seatsLeft <= 0) continue;
       world.add(best, LivestockVisit, { at: building });
       walkToDoor(world, ctx, building, best);
+      seatsLeft -= 1;
     }
   }
+}
+
+/** Whether any recipe of this workplace both consumes `token` and has its outputs tech-unlocked. A
+ *  feed whose whole chain is locked (no hunter: no leather) is not worth an animal's life - the
+ *  summon skips it instead of letting a token sit against a converter that can never start. A
+ *  summon-only gate: a chain whose enabler dies mid-walk still runs its one arrived batch (accepted
+ *  single-batch edge; the stranded token then blocks further summons). */
+function tokenConsumable(
+  world: World,
+  ctx: SystemContext,
+  tribe: number,
+  token: number,
+  recipes: ReadonlyMap<number, Recipe>,
+): boolean {
+  for (const recipe of recipes.values()) {
+    if (!recipe.inputs.some((i) => i.goodType === token)) continue;
+    if (recipeOutputsEnabled(world, ctx, tribe, recipe)) return true;
+  }
+  return false;
+}
+
+/** Operator seats a new visit could still claim: present operators minus the batches already grinding
+ *  and the visitors already booked. */
+function spareSeatCount(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operatorsByNode: NodeBuckets,
+): number {
+  const seats = operatorCountOf(presentOperators(world, ctx, building, operatorsByNode));
+  const running = world.tryGet(building, Production)?.cycles.length ?? 0;
+  return seats - running - unadmittedVisitorCount(world, building);
+}
+
+/** The workplace's booked visitors still outside (walking or waiting at the door). */
+function unadmittedVisitorCount(world: World, building: Entity): number {
+  let count = 0;
+  for (const e of world.query(LivestockVisit, Settler)) {
+    if (world.get(e, LivestockVisit).at !== building) continue;
+    if (!world.has(e, Resting)) count += 1;
+  }
+  return count;
+}
+
+/** The booked-but-outside visitors whose feed could still start on arrival (inputs on hand) - what
+ *  the production start pass's holdback reads (economy/production.ts). A visitor whose inputs were
+ *  consumed mid-walk holds no seat; it waits out the refetch at the door. */
+export function heldSeatCount(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+): number {
+  const stock = world.get(building, Stockpile).amounts;
+  let held = 0;
+  for (const e of world.query(LivestockVisit, Settler)) {
+    if (world.get(e, LivestockVisit).at !== building) continue;
+    if (world.has(e, Resting)) continue;
+    const recipe = feedRecipeOfTribe(ctx, recipes, world.get(e, Settler).tribe);
+    if (recipe === undefined) continue;
+    if (!recipe.inputs.every((i) => (stock.get(i.goodType) ?? 0) >= i.amount)) continue;
+    held += 1;
+  }
+  return held;
+}
+
+/** The feed recipe of `recipes` whose product feeds `tribe`, or undefined when the workplace has
+ *  none for that species. */
+function feedRecipeOfTribe(
+  ctx: SystemContext,
+  recipes: ReadonlyMap<number, Recipe>,
+  tribe: number,
+): Recipe | undefined {
+  for (const recipe of recipes.values()) {
+    if (feedTribeOf(ctx, recipe) === tribe) return recipe;
+  }
+  return undefined;
 }
 
 /** Whether any visitor of this species - walking, waiting at the door, or admitted inside - already
@@ -217,8 +321,9 @@ function walkToDoor(world: World, ctx: SystemContext, building: Entity, e: Entit
  * eligible-animal count and the canonical summon pick (highest HP, then lowest id - an explicit tuple
  * compare, so raw query order cannot change the winner). Eligible means: the species' live creature,
  * not already summoned ({@link LivestockVisit}), above the life floor after the coming drain, penned
- * within {@link LIVESTOCK_PROCESS_RANGE_NODES} of the door (skipped in a mapless sim - no distance to
- * measure), and - at an owned workplace - claimed by the same player (a neutral scenario fixture
+ * within {@link LIVESTOCK_PROCESS_RANGE_NODES} of the door on the door's terrain component (both
+ * skipped in a mapless sim - no distance to measure), and - at an owned workplace - claimed by the
+ * same player (a neutral scenario fixture
  * accepts any animal in range; an owned farm never milks wild or enemy stock).
  */
 function scanFeedAnimals(
@@ -240,7 +345,11 @@ function scanFeedAnimals(
     const h = world.get(e, Health);
     if (h.hitpoints - LIVESTOCK_PROCESS_DRAIN_HP < Math.floor(h.max / LIVESTOCK_MIN_LIFE_DIVISOR)) continue;
     if (terrain !== undefined && door !== null) {
-      if (manhattan(terrain, entityNode(world, terrain, e), door) > LIVESTOCK_PROCESS_RANGE_NODES) continue;
+      const node = entityNode(world, terrain, e);
+      if (manhattan(terrain, node, door) > LIVESTOCK_PROCESS_RANGE_NODES) continue;
+      // Across water from the door it could never arrive: booking it would wedge the species slot
+      // and hold an operator seat open forever (the escort re-aims a refused walk indefinitely).
+      if (terrain.componentOf(node) !== terrain.componentOf(door)) continue;
     }
     count += 1;
     if (h.hitpoints > bestHp || (h.hitpoints === bestHp && (best === null || e < best))) {
