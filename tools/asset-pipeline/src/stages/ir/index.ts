@@ -42,13 +42,10 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     gfxAtomics,
     gfxWalkAtomics,
     buildingBobs,
-    constructionCosts,
-    hitpoints,
-    upgradeTargets,
-    footprints,
     constructionLayers,
     buildingOverlays,
     buildingFlagPoints,
+    buildingGraphicsOverlays,
   } = await extractIniTables(await resolveIniSources(roots));
   const maps = await decodeMapTree(roots);
   // Terrain ground graphics (`.cif`-only tables) → the approximated typeId→pattern map the renderer
@@ -85,14 +82,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     ambient: [],
     jingles: [],
   });
-  // Overlay the graphics-table cost/hitpoints/upgrade-chain/footprint onto the logic buildings
-  // (joined by `typeId`).
-  const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, {
-    constructionCosts,
-    hitpoints,
-    upgradeTargets,
-    footprints,
-  });
+  const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
   // Vehicles are not goods (they are built on a yard, not crafted into a stockpile) — strip them from
   // every stock/produces list before the recipe join (temporary; see stripVehicleGoods).
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
