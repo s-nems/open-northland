@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { BuildingFootprint } from '@open-northland/data';
+import type { BuildingFootprint, GoodQuantity } from '@open-northland/data';
 import {
   extractAnimals,
   extractArmor,
@@ -26,14 +26,20 @@ import {
   iniBytesToSections,
   type SourceRef,
 } from '../../decoders/ini.js';
+import type { BuildingGraphicsOverlays } from './building-overlays.js';
 import type { IniSource } from './sources.js';
+
+/** Folds one source's overlay rows into the accumulated map: a later source wins per typeId. */
+function foldOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): void {
+  for (const [typeId, value] of rows) into.set(typeId, value);
+}
 
 /**
  * Reads + parses every resolved `.ini` source and runs the typed extractors over it, returning one
- * table per record kind. Decoding stays pure (`iniBytesToSections`/`extract*` take bytes/text, not
- * the filesystem); the only I/O here is reading the resolved files. Each extractor
- * pulls only its own `[section]`s from a file, so passing every file's sections to every extractor is
- * correct and order-independent.
+ * table per record kind plus the {@link BuildingGraphicsOverlays} group. Decoding stays pure
+ * (`iniBytesToSections`/`extract*` take bytes/text, not the filesystem); the only I/O here is reading
+ * the resolved files. Each extractor pulls only its own `[section]`s from a file, so passing every
+ * file's sections to every extractor is correct.
  *
  * These are the per-source tables only. The cross-table joins over them live in {@link buildIr}.
  */
@@ -52,27 +58,16 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const bobSequences = [];
   const gfxAtomics = [];
   const gfxWalkAtomics = [];
-  // The `[GfxHouse]` building-type -> house-bob join (the data-pinned twin of the renderer's
-  // transcribed per-type table) — render-binding data the sim ignores. See `extractBuildingBobs`.
   const buildingBobs = [];
-  // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
-  // logic-table buildings (the logic table carries no construction cost — see `resolveIniSources`).
-  const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
-  // typeId -> max hitpoints, the graphics-table `logichitpoints` overlay onto the logic buildings —
-  // the building's full life pool the ConstructionSystem ramps up as it rises (see `extractHouseHitpoints`).
-  const hitpoints = new Map<number, number>();
-  // typeId -> the next size level's typeId in the same record — the real level-chain join
-  // (see `extractUpgradeTargets`).
-  const upgradeTargets = new Map<number, number>();
-  // typeId -> ground footprint (collision body / build-exclusion zone / door), the second graphics-table
-  // overlay onto the logic buildings (see `extractBuildingFootprints`).
-  const footprints = new Map<number, BuildingFootprint>();
-  // `[GfxHouse]` construction-stage layers (render-binding data, like buildingBobs).
   const constructionLayers = [];
-  // `[GfxHouse]` type-4 animated state overlays — the mill rotor (render-binding data, like buildingBobs).
   const buildingOverlays = [];
-  // `[GfxHouse]` GfxFlagPoint sign-post anchors (render-binding data, like buildingBobs).
   const buildingFlagPoints = [];
+  const buildingGraphicsOverlays = {
+    constructionCosts: new Map<number, GoodQuantity[]>(),
+    hitpoints: new Map<number, number>(),
+    upgradeTargets: new Map<number, number>(),
+    footprints: new Map<number, BuildingFootprint>(),
+  } satisfies BuildingGraphicsOverlays;
 
   for (const { path, file, layer } of sources) {
     const sections = iniBytesToSections(await readFile(path));
@@ -95,18 +90,10 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
     buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
-    for (const [typeId, cost] of extractConstructionCosts(sections)) {
-      constructionCosts.set(typeId, cost);
-    }
-    for (const [typeId, hp] of extractHouseHitpoints(sections)) {
-      hitpoints.set(typeId, hp);
-    }
-    for (const [typeId, target] of extractUpgradeTargets(sections)) {
-      upgradeTargets.set(typeId, target);
-    }
-    for (const [typeId, footprint] of extractBuildingFootprints(sections)) {
-      footprints.set(typeId, footprint);
-    }
+    foldOverlay(buildingGraphicsOverlays.constructionCosts, extractConstructionCosts(sections));
+    foldOverlay(buildingGraphicsOverlays.hitpoints, extractHouseHitpoints(sections));
+    foldOverlay(buildingGraphicsOverlays.upgradeTargets, extractUpgradeTargets(sections));
+    foldOverlay(buildingGraphicsOverlays.footprints, extractBuildingFootprints(sections));
   }
 
   return {
@@ -125,12 +112,9 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     gfxAtomics,
     gfxWalkAtomics,
     buildingBobs,
-    constructionCosts,
-    hitpoints,
-    upgradeTargets,
-    footprints,
     constructionLayers,
     buildingOverlays,
     buildingFlagPoints,
+    buildingGraphicsOverlays,
   };
 }
