@@ -1,34 +1,16 @@
 import { AttackOrder, Engagement, EquipOrder, MoveGoal, PathRequest } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay } from '../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { nearestCell } from '../footprint/geometry.js';
-import { dynamicBlockOverlay } from '../footprint/index.js';
-import { standingFighterNodes } from '../movement/collision/index.js';
 import { clearNavState, closer, isTravelling, manhattan, redirectRoute } from '../spatial/nodes.js';
 import type { CombatantStance } from './engagement.js';
+import type { MeleeSlots, WeaponBand } from './melee-slots.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a
 // distinct contact cell (the melee-slot rule that forms ranks, not a pile), respect the DEFEND leash, and drop
 // engagement state when the unit hands back to the economy. Internal to conflict/; {@link combatSystem} drives
 // it. See ./engagement.ts for target acquisition.
-
-/** Per-combat-tick melee-slot state: the lazily-built standing-body node set, the goals en-route chasers
- *  already own (a slot dealt in an EARLIER tick stays taken while its owner is still walking to it — else
- *  two chasers dealt across ticks converge on one cell and stack), this tick's claimed cells, the lazily
- *  composed dynamic walk-block view (a slot under another building's body or a resource is statically
- *  walkable but unroutable — dealing it would fail the route and cancel an attack order), and the
- *  per-building×weapon-band memo of encircle candidates (a building never moves within a tick, so the band
- *  scan runs once and every chaser — including a full-perimeter holder re-asking each cadence — only
- *  filters taken slots over it). */
-export interface MeleeSlots {
-  standing?: ReadonlySet<NodeId>;
-  enRoute?: ReadonlySet<NodeId>;
-  readonly claimed: Set<NodeId>;
-  blocked?: BlockOverlay;
-  bands?: Map<string, readonly NodeId[]>;
-}
 
 /** The chase's pre-resolved target: the entity (the encircle-band memo key), the combat node the reach
  *  check measured (its own node for a unit, its nearest wall for a building), and a building's full wall
@@ -72,7 +54,7 @@ export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell
  * can't resolve gives the order up (the "becomes unreachable" end of an attack order). `target` carries the
  * caller's pre-resolved combat node (so the chase closes on the same cell the reach check measured) and a
  * building target's full wall list, which lets a chaser whose nearest face is fully manned encircle to a free
- * slot on another face ({@link encircleCandidates}) instead of holding behind the first rank.
+ * slot on another face ({@link MeleeSlots.encircleCandidates}) instead of holding behind the first rank.
  */
 export function chase(
   world: World,
@@ -82,7 +64,7 @@ export function chase(
   e: Entity,
   here: NodeId,
   target: ChaseTarget,
-  weapon: { minRange: number; maxRange: number },
+  weapon: WeaponBand,
   stance: CombatantStance,
   defend: { anchorCell: NodeId; leash: number; hold: boolean } | null,
 ): void {
@@ -104,36 +86,20 @@ export function chase(
   const travelling = isTravelling(world, e);
   if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route — don't re-path
 
-  // The unit's own live goal is NOT a taken slot to itself — a cadence repath may re-choose (and keep) it.
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
-  const isTaken = (cell: NodeId): boolean => {
-    slots.standing ??= standingFighterNodes(world, ctx.content, terrain);
-    if (slots.standing.has(cell) || slots.claimed.has(cell)) return true;
-    slots.enRoute ??= enRouteChaseGoals(world);
-    return slots.enRoute.has(cell) && cell !== ownGoal;
-  };
-  // A dealable slot must also be free of the DYNAMIC walk-block (another building's body, a resource):
-  // such cells are statically walkable but unroutable, and routing denies a stand-in for a dynamically
-  // blocked goal — dealing one would fail the route and cancel an ordered unit's whole attack order.
-  const isOpen = (cell: NodeId): boolean => {
-    if (!terrain.isWalkable(cell)) return false;
-    slots.blocked ??= dynamicBlockOverlay(world, ctx, terrain);
-    return !slots.blocked.has(cell);
-  };
-  // A building's slots are dealt against its whole wall list ({@link encircleCandidates}): reach is
-  // measured to the NEAREST wall (so its own wall/interior cells are never dealt as slots), and a chaser
-  // whose nearest face is fully manned spills around the perimeter to the next open face instead of
+  // A building's slots are dealt against its whole wall list ({@link MeleeSlots.encircleCandidates}), so a
+  // chaser whose nearest face is fully manned spills around the perimeter to the next open face instead of
   // holding behind the first rank.
   const dest =
     target.body !== null && target.body.length > 0
       ? // The untaken candidate nearest the unit — null when every slot is taken, the full-perimeter hold.
         nearestCell(
           terrain,
-          encircleCandidates(terrain, slots, target, weapon, isOpen),
+          slots.encircleCandidates(target.entity, target.body, weapon),
           here,
-          (cell) => !isTaken(cell),
+          (cell) => !slots.isTaken(cell, ownGoal),
         )
-      : approachCell(terrain, here, target.node, weapon.minRange, weapon.maxRange, isOpen, isTaken);
+      : approachCell(terrain, here, target.node, weapon, slots, ownGoal);
   if (dest === null) {
     // Every walkable cell of the target's reach band is a taken slot (a standing body, or dealt to an earlier
     // chaser this tick): stand fast as a second rank — a stationary body, not a walker grinding into the first
@@ -165,30 +131,27 @@ export function chase(
     return;
   }
   redirectRoute(world, e, dest); // keep the live route — dropping it reset the gait (chase stutter)
-  slots.claimed.add(dest); // this slot is dealt — the tick's later chasers aim at the next free cell
+  slots.claim(dest);
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }
 
-/** The cell a chaser should walk to in order to bring `target` into its weapon band: the free walkable cell
- *  (not a taken melee slot — `isTaken`: a standing body, or already dealt to an earlier chaser this tick) whose
- *  Manhattan distance to the target is in `[minRange, maxRange]` and which is closest to the unit (`from`),
- *  canonical (min distance, then min cell id). So a melee unit stops one cell short of the enemy (hittable)
- *  instead of walking onto it (distance 0, below every weapon's near reach — which would deadlock), and a mass
- *  of chasers is dealt distinct contact cells around the target instead of all converging on one — the
- *  melee-slot rule that spreads a large fight along the band. `isOpen` is the composed walkability (static
- *  terrain + the dynamic walk-block). Returns `null` when the band has open cells but every one is taken (a
- *  full front — the chaser should hold as a second rank); falls back to the target's own cell when no in-band
- *  cell is open at all (a boxed-in target; the chase then closes and the swing/disengage logic re-decides). A
- *  bounded scan of the band box — O((2·maxRange+1)²), tiny for melee — deterministic (fixed order + min-id
- *  tie-break). */
+/** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link
+ *  MeleeSlots.isOpen open}, untaken cell whose Manhattan distance to the target is in the band and which is
+ *  closest to the unit (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell
+ *  short of the enemy (hittable) instead of walking onto it (distance 0, below every weapon's near reach —
+ *  which would deadlock), and a mass of chasers is dealt distinct contact cells around the target instead of
+ *  all converging on one — the melee-slot rule that spreads a large fight along the band. Returns `null` when
+ *  the band has open cells but every one is taken (a full front — the chaser should hold as a second rank);
+ *  falls back to the target's own cell when no in-band cell is open at all (a boxed-in target; the chase then
+ *  closes and the swing/disengage logic re-decides). A bounded scan of the band box — O((2·maxRange+1)²), tiny
+ *  for melee — deterministic (fixed order + min-id tie-break). */
 function approachCell(
   terrain: TerrainGraph,
   from: NodeId,
   targetCell: NodeId,
-  minRange: number,
-  maxRange: number,
-  isOpen: (cell: NodeId) => boolean,
-  isTaken: (cell: NodeId) => boolean,
+  weapon: WeaponBand,
+  slots: MeleeSlots,
+  ownGoal: NodeId | undefined,
 ): NodeId | null {
   const t = terrain.coordsOf(targetCell);
   const f = terrain.coordsOf(from);
@@ -196,17 +159,17 @@ function approachCell(
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   let anyOpen = false;
-  for (let dy = -maxRange; dy <= maxRange; dy++) {
-    for (let dx = -maxRange; dx <= maxRange; dx++) {
+  for (let dy = -weapon.maxRange; dy <= weapon.maxRange; dy++) {
+    for (let dx = -weapon.maxRange; dx <= weapon.maxRange; dx++) {
       const band = Math.abs(dx) + Math.abs(dy);
-      if (band < minRange || band > maxRange) continue; // not in the target's reach band
+      if (band < weapon.minRange || band > weapon.maxRange) continue; // not in the target's reach band
       const x = t.x + dx;
       const y = t.y + dy;
       if (!terrain.inBounds(x, y)) continue;
       const cell = terrain.nodeAt(x, y);
-      if (!isOpen(cell)) continue;
+      if (!slots.isOpen(cell)) continue;
       anyOpen = true;
-      if (isTaken(cell)) continue; // an occupied melee slot — someone already fights (or was dealt) here
+      if (slots.isTaken(cell, ownGoal)) continue; // someone already fights (or was dealt) here
       const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
       if (closer(d, cell, bestDist, bestCell)) {
         best = cell;
@@ -217,69 +180,6 @@ function approachCell(
   }
   if (best !== null) return best;
   return anyOpen ? null : targetCell;
-}
-
-/**
- * The open in-band contact cells around a building — the encircle form of the slot deal's search space: every
- * cell (deduped union of the band boxes around each wall cell) that is open ({@link chase}'s composed
- * walkability) and whose distance to the body's NEAREST wall is in the weapon band (the same nearest-wall
- * rule the reach check uses, so a body cell — reach 0 — is never dealt). Memoized per (building × weapon
- * band) in {@link MeleeSlots.bands}: the building never moves within the tick, so the O(bandCells × body)
- * scan runs once and every chaser (and every full-perimeter holder re-asking at the chase cadence) pays only
- * the untaken-slot {@link nearestCell} pick over it.
- */
-function encircleCandidates(
-  terrain: TerrainGraph,
-  slots: MeleeSlots,
-  target: ChaseTarget,
-  weapon: { minRange: number; maxRange: number },
-  isOpen: (cell: NodeId) => boolean,
-): readonly NodeId[] {
-  const body = target.body ?? [];
-  const key = `${target.entity}:${weapon.minRange}:${weapon.maxRange}`;
-  slots.bands ??= new Map();
-  const cached = slots.bands.get(key);
-  if (cached !== undefined) return cached;
-  const visited = new Set<NodeId>();
-  const candidates: NodeId[] = [];
-  for (const wall of body) {
-    const t = terrain.coordsOf(wall);
-    for (let dy = -weapon.maxRange; dy <= weapon.maxRange; dy++) {
-      for (let dx = -weapon.maxRange; dx <= weapon.maxRange; dx++) {
-        if (Math.abs(dx) + Math.abs(dy) > weapon.maxRange) continue;
-        const x = t.x + dx;
-        const y = t.y + dy;
-        if (!terrain.inBounds(x, y)) continue;
-        const cell = terrain.nodeAt(x, y);
-        if (visited.has(cell)) continue; // adjacent walls' band boxes overlap — evaluate each cell once
-        visited.add(cell);
-        if (!isOpen(cell)) continue;
-        const reach = distanceToBody(terrain, cell, body);
-        if (reach < weapon.minRange || reach > weapon.maxRange) continue; // reach is to the NEAREST wall
-        candidates.push(cell);
-      }
-    }
-  }
-  slots.bands.set(key, candidates);
-  return candidates;
-}
-
-/** The chase destinations en-route chasers already own — every {@link Engagement}-carrying unit's live
- *  {@link MoveGoal} cell. Membership-only (never iterated for a decision), rebuilt lazily per combat tick
- *  like {@link MeleeSlots.standing}; conservatively stale within the tick (a goal redirected later this
- *  tick stays marked), which only delays a slot's reuse by one tick. */
-function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
-  const out = new Set<NodeId>();
-  for (const e of world.query(Engagement, MoveGoal)) out.add(world.get(e, MoveGoal).cell);
-  return out;
-}
-
-/** Manhattan distance from `cell` to the nearest cell of `body` — how the combat reach to a building is
- *  measured (the same nearest-wall rule as {@link import('./target-node.js').combatTargetNode}). */
-function distanceToBody(terrain: TerrainGraph, cell: NodeId, body: readonly NodeId[]): number {
-  let min = Number.POSITIVE_INFINITY;
-  for (const wall of body) min = Math.min(min, manhattan(terrain, cell, wall));
-  return min;
 }
 
 /** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and the
