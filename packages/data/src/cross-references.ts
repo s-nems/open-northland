@@ -1,3 +1,4 @@
+import { firstByTypeId } from './lookup.js';
 import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
 
 /**
@@ -247,11 +248,10 @@ function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[]
 
 // A job's `baseJob` (`jobtypes` `baseatomics`) is the parent it inherits atomics from, so it must name
 // a job in this table and the chain must terminate: `resolveJobAtomics` tolerates both faults by
-// inheriting nothing, leaving the job quietly short of atomics. Walks the first-wins rows it reads.
+// inheriting nothing, leaving the job quietly short of atomics.
 function checkJobs(set: ContentSet, { jobIds }: IdSets): string[] {
   const errors: string[] = [];
-  const firstRows = new Map<number, ContentSet['jobs'][number]>();
-  for (const j of set.jobs) if (!firstRows.has(j.typeId)) firstRows.set(j.typeId, j);
+  const firstRows = firstByTypeId(set.jobs);
   for (const j of firstRows.values()) {
     if (j.baseJob === undefined) continue;
     if (!jobIds.has(j.baseJob)) {

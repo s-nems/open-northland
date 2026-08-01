@@ -15,7 +15,7 @@ import { workerIconNode } from './building-points.js';
 
 /** The slice of a building type the projection needs: the full footprint (the overlay draws every
  *  channel, where the door-badge path needs only the door) plus the stable `id` — the worker-icon
- *  override key and the diagram label. game-view passes the one `indexById(sim.content.buildings)`
+ *  override key and the diagram label. game-view passes the one `lastByTypeId(sim.content.buildings)`
  *  map to this and the badge projection alike. */
 export interface GeometryBuildingInfo {
   readonly id?: string | undefined;

@@ -1,4 +1,4 @@
-import { indexById } from '@open-northland/data';
+import { lastByTypeId } from '@open-northland/data';
 import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { resolveVikingBuilding } from '../src/catalog/buildings.js';
@@ -33,7 +33,7 @@ describe('assignWorker → door badge, over sandbox content', () => {
     spawnSandboxSettler(sim, JOB_COLLECTOR, EXTRA.x - 3, EXTRA.y);
     sim.step();
 
-    const doorTable = indexById(sim.content.buildings);
+    const doorTable = lastByTypeId(sim.content.buildings);
     const potteryType = resolveVikingBuilding('work_pottery_00').typeId;
 
     const snap0 = sim.snapshot();

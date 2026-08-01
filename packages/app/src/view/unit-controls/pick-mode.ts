@@ -1,4 +1,4 @@
-import { type ContentSet, indexById } from '@open-northland/data';
+import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem, ElevationField } from '@open-northland/render';
 import type { Command, Entity, WorldSnapshot } from '@open-northland/sim';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
@@ -50,7 +50,7 @@ export interface PickModeController {
 
 /** Own the armed click-to-pick modes (workplace / home / signpost) and resolve their world click. */
 export function createPickModeController(deps: PickModeDeps): PickModeController {
-  const buildingsByType = indexById(deps.content.buildings);
+  const buildingsByType = lastByTypeId(deps.content.buildings);
   let pickMode: PickMode | null = null;
   let pickVersion = 0;
   const setMode = (next: PickMode | null): void => {

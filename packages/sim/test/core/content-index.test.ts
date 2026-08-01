@@ -4,7 +4,7 @@ import { contentIndex } from '../../src/core/content-index.js';
 import { testContent } from '../fixtures/content.js';
 
 describe('contentIndex command-boundary tables', () => {
-  it('preserves indexById last-wins semantics without changing first-wins read tables', () => {
+  it('keeps the last content row at the command boundary while the read tables keep the first', () => {
     const base = testContent();
     const firstBuilding = base.buildings[0];
     const firstJob = base.jobs[0];

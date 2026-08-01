@@ -1,4 +1,4 @@
-import { indexById } from '@open-northland/data';
+import { lastByTypeId } from '@open-northland/data';
 import type {
   DoorBadge,
   ElevationField,
@@ -325,7 +325,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // presentation mount above already resolved it).
   const flagPoints = flagPointByType(await loadIr());
   const buildingDoors = new Map(
-    [...indexById(sim.content.buildings)].map(([typeId, b]) => [
+    [...lastByTypeId(sim.content.buildings)].map(([typeId, b]) => [
       typeId,
       { id: b.id, footprint: b.footprint, flagPoint: flagPoints.get(typeId) },
     ]),
