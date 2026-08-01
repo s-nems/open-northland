@@ -1,5 +1,5 @@
 import type { ReusableBaker, SupersampledTexture } from '@open-northland/render';
-import { type Application, Container, Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
@@ -32,7 +32,6 @@ export function panelDrawGeometry(panel: Rect, scale: number, ss: number): Panel
 
 export interface PanelBakeOptions {
   readonly assets: DetailsPanelAssets;
-  readonly app: Application;
   readonly baker: ReusableBaker;
   readonly view: DrawableView;
   readonly hover: PanelHover;
@@ -54,10 +53,10 @@ function makeLayers(into: Container): PanelLayers {
 }
 
 export function bakePanel(opts: PanelBakeOptions): SupersampledTexture {
-  const { assets, app, baker, view, hover, ui, activeStockTab, scale, ss } = opts;
+  const { assets, baker, view, hover, ui, activeStockTab, scale, ss } = opts;
   const { toDraw, texW, texH } = panelDrawGeometry(view.layout.panel, scale, ss);
   const offscreen = new Container();
-  const chrome = createChrome(assets, app, ss, makeLayers(offscreen), { w: texW, h: texH });
+  const chrome = createChrome(assets, ss, makeLayers(offscreen), { w: texW, h: texH });
   switch (view.kind) {
     case 'building': {
       const draw = mapLayout(view.layout, toDraw);
