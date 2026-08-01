@@ -1,23 +1,19 @@
-import { formatMessage, messages } from '../i18n/index.js';
+import type { ContentStatus } from '../content-state.js';
+import { messages } from '../i18n/index.js';
 import type { DesktopState, GameFolderCandidate, ModEvent } from '../ipc.js';
 import { el } from './dom.js';
 import { createModPanel } from './mod-panel.js';
+import { type Probe, pickView } from './pick-view.js';
 
 /**
  * The wizard's first phase: choose the original game folder (typed, browsed, or auto-detected), get
  * a usable culturesnation mod alongside it, and hand a validated game path to the conversion. Owns
  * the `#pick` section — including the mod step nested inside it — and every piece of state that
- * section's wording depends on.
+ * section's wording depends on; {@link pickView} turns that state into the section's view.
  */
 
 /** Pause after the last keystroke before probing the typed path — one probe per pause, not per key. */
 const PROBE_DEBOUNCE_MS = 300;
-
-/** What the current probe found, kept so the note can be re-worded on a language switch. */
-type Probe =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'no-archives' }
-  | { readonly kind: 'valid'; readonly path: string; readonly hasMod: boolean };
 
 export interface PickPanelView {
   /** Adopt the shell's startup state: the installed content's status and any mod already available. */
@@ -47,51 +43,27 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   const playNowButton = el<HTMLButtonElement>('play-now');
 
   let probe: Probe = { kind: 'idle' };
-  /** A mod root outside the game folder (downloaded into the data root, or hand-picked). */
   let externalModRoot: string | undefined;
   /** Remembered so a language switch can re-derive the phase without re-fetching the shell state. */
-  let contentStatus: DesktopState['contentStatus'] = 'missing';
+  let contentStatus: ContentStatus = 'missing';
 
   const modPanel = createModPanel((root) => {
     externalModRoot = root;
-    refreshPick();
+    render();
   });
 
-  /** The active locale's probe note for the current find. */
-  function renderProbe(): void {
-    const t = messages().setup;
-    switch (probe.kind) {
-      case 'idle':
-        probeNote.textContent = '';
-        return;
-      case 'no-archives':
-        probeNote.textContent = t.probe.noArchives;
-        return;
-      case 'valid':
-        probeNote.textContent = probe.hasMod
-          ? t.probe.withMod
-          : externalModRoot !== undefined
-            ? formatMessage(t.probe.externalMod, { path: externalModRoot })
-            : t.probe.noMod;
-        return;
-      default: {
-        const exhaustive: never = probe;
-        throw new Error(`unhandled probe state ${JSON.stringify(exhaustive)}`);
-      }
-    }
-  }
-
-  /** Re-word the probe note + install/mod-panel visibility for the current game/mod availability. */
-  function refreshPick(): void {
-    if (probe.kind !== 'valid') {
-      installButton.disabled = true;
-      modPanel.setVisible(false);
-    } else {
-      const modReady = probe.hasMod || externalModRoot !== undefined;
-      modPanel.setVisible(!modReady);
-      installButton.disabled = !modReady;
-    }
-    renderProbe();
+  /** Paint the section from the derived view; every state change comes back through here. */
+  function render(): void {
+    const view = pickView({ probe, externalModRoot, contentStatus });
+    probeNote.textContent = view.probeNote;
+    modPanel.setVisible(view.modPanelVisible);
+    installButton.disabled = view.installDisabled;
+    installButton.textContent = view.installLabel;
+    statusNote.textContent = view.statusNote?.text ?? '';
+    statusNote.classList.toggle('hidden', view.statusNote === undefined);
+    statusNote.classList.toggle('blocking', view.statusNote?.blocking === true);
+    playNowButton.textContent = view.playNowLabel ?? '';
+    playNowButton.classList.toggle('hidden', view.playNowLabel === undefined);
   }
 
   /** `fillInput` is off when the probe echoes what the user is typing — never fight the caret. */
@@ -100,7 +72,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     probe = candidate.probe.hasArchives
       ? { kind: 'valid', path: candidate.path, hasMod: candidate.probe.hasMod }
       : { kind: 'no-archives' };
-    refreshPick();
+    render();
   }
 
   let probeGeneration = 0;
@@ -110,40 +82,12 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     const typed = pathInput.value.trim();
     if (typed === '') {
       probe = { kind: 'idle' };
-      refreshPick();
+      render();
       return;
     }
     const candidate = await window.desktop.probeGamePath(typed);
     if (generation !== probeGeneration) return; // a newer keystroke's probe is already in flight
     applyCandidate(candidate, false);
-  }
-
-  /** Word the phase for the content status: first install vs recommended vs required regeneration. */
-  function applyContentStatus(): void {
-    if (contentStatus === 'missing') return;
-    const t = messages().setup;
-    statusNote.classList.remove('hidden');
-    installButton.textContent = t.regenerate;
-    switch (contentStatus) {
-      case 'ready':
-        statusNote.textContent = t.status.ready;
-        playNowButton.classList.remove('hidden');
-        return;
-      case 'stale-revision':
-        // Also the face of an interrupted conversion (no stamp survives one), hence "incomplete".
-        statusNote.textContent = t.status.staleRevision;
-        playNowButton.textContent = t.playAnyway;
-        playNowButton.classList.remove('hidden');
-        return;
-      case 'stale-schema':
-        statusNote.textContent = t.status.staleSchema;
-        statusNote.classList.add('blocking');
-        return;
-      default: {
-        const exhaustive: never = contentStatus;
-        throw new Error(`unhandled content status ${JSON.stringify(exhaustive)}`);
-      }
-    }
   }
 
   /** Wire the phase's controls. Deferred to {@link PickPanelView.start} so no click can land on
@@ -197,11 +141,8 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
       pathInput.placeholder = t.pathPlaceholder;
       el('browse').textContent = t.browse;
       el('detected-label').textContent = t.detected;
-      installButton.textContent = t.install;
-      playNowButton.textContent = t.play;
       modPanel.applyLabels();
-      refreshPick();
-      applyContentStatus();
+      render();
     },
   };
 }
