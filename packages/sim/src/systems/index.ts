@@ -22,6 +22,7 @@ export * from './movement/collision/index.js';
 export * from './movement/evict.js';
 export * from './movement/herding.js';
 export * from './movement/routing.js';
+export * from './movement/spacing.js';
 export * from './movement/system.js';
 export * from './orders/index.js';
 export * from './progression/index.js';

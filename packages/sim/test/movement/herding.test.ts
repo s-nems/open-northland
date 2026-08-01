@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../src/components/index.js';
+import {
+  CurrentAtomic,
+  HerdMember,
+  MoveGoal,
+  Position,
+  Settler,
+  StayPoint,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
-import { herdingSystem } from '../../src/systems/index.js';
+import { ANIMAL_SPACING_NODES, herdingSystem, manhattan } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -11,9 +18,10 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  * Tests for the HerdingSystem — the follow-the-leader movement drive. A herding animal carries a
  * `HerdMember` pointing at its pack's leader (set at spawn by `spawnAnimalHerd`); a strayed follower
  * (farther than `maximumleaderdistance` from its leader — a HALF-CELL NODE Manhattan distance, the
- * data range consumed verbatim on the node lattice) is sent back via a `MoveGoal` toward the
- * leader's node. The leader itself (leader === self) and a solitary animal (no `HerdMember`) run no
- * drive. The fixture's BEAR (tribe 10) has `maximumLeaderDistance` 3 (see fixtures/content.ts).
+ * data range consumed verbatim on the node lattice) is sent back via a `MoveGoal` to a free spot
+ * BESIDE the leader (never onto an occupied field - two animals on one node draw as one sprite). The
+ * leader itself (leader === self) and a solitary animal (no `HerdMember`) run no drive. The
+ * fixture's BEAR (tribe 10) has `maximumLeaderDistance` 3 (see fixtures/content.ts).
  * All scenario coordinates here are node coords (Positions minted via `positionOfNode`).
  */
 
@@ -38,8 +46,10 @@ function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'
 }
 
 describe('herdingSystem — follow-the-leader cohesion', () => {
-  it('sends a strayed follower back toward the leader cell with a MoveGoal', () => {
+  it('sends a strayed follower back BESIDE the leader - inside the radius, never onto its node', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
     const leader = herderAt(sim, 0, 0, 'self');
     const follower = herderAt(sim, 8, 0, leader); // 8 nodes away — beyond maximumLeaderDistance 3
 
@@ -47,8 +57,43 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
 
     expect(sim.world.has(follower, MoveGoal)).toBe(true);
     const goalCell = sim.world.get(follower, MoveGoal).cell;
-    expect(goalCell).toBe(sim.terrain?.nodeAt(0, 0)); // heading to the leader's node
+    const gap = manhattan(terrain, goalCell, terrain.nodeAt(0, 0));
+    expect(gap).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES); // beside the leader, not merged into it
+    expect(gap).toBeLessThanOrEqual(LEADER_DISTANCE); // and inside the cohesion radius
     expect(sim.world.has(leader, MoveGoal)).toBe(false); // the leader follows no one
+  });
+
+  it('two strayed followers are recalled to DISTINCT spots beside the leader', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 4) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const leader = herderAt(sim, 0, 0, 'self');
+    const first = herderAt(sim, 8, 0, leader);
+    const second = herderAt(sim, 8, 2, leader);
+
+    herdingSystem(sim.world, ctxOf(sim));
+
+    const a = sim.world.get(first, MoveGoal).cell;
+    const b = sim.world.get(second, MoveGoal).cell;
+    // Each lands on its own field: the spots hold the stander spacing from each other too.
+    expect(manhattan(terrain, a, b)).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
+  });
+
+  it('recalls around a standing animal parked on the nearest ring spot', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 4) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const leader = herderAt(sim, 0, 0, 'self');
+    // A stander (StayPoint marks it for the occupied-field scan) holding the first ring spot (1,1).
+    const bystander = herderAt(sim, 1, 1, 'self');
+    sim.world.add(bystander, StayPoint, { cell: terrain.nodeAt(1, 1) });
+    const follower = herderAt(sim, 8, 0, leader);
+
+    herdingSystem(sim.world, ctxOf(sim));
+
+    const goal = sim.world.get(follower, MoveGoal).cell;
+    expect(manhattan(terrain, goal, terrain.nodeAt(1, 1))).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
+    expect(manhattan(terrain, goal, terrain.nodeAt(0, 0))).toBeLessThanOrEqual(LEADER_DISTANCE);
   });
 
   it('leaves a follower already within maximumLeaderDistance alone (no MoveGoal)', () => {

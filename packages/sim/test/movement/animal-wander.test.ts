@@ -15,6 +15,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import {
+  ANIMAL_SPACING_NODES,
   ANIMAL_WANDER_PERIOD_TICKS,
   ANIMAL_WANDER_STEP_NODES,
   animalWanderSystem,
@@ -152,13 +153,28 @@ describe('animalWanderSystem: the grazing drive', () => {
     const secondGoal = sim.world.get(second, MoveGoal).cell;
     const thirdGoal = sim.world.get(third, MoveGoal).cell;
     for (const goal of [secondGoal, thirdGoal]) {
-      expect(goal).not.toBe(shared);
+      expect(manhattan(terrain, goal, shared)).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
       expect(manhattan(terrain, goal, shared)).toBeLessThanOrEqual(2);
     }
-    expect(secondGoal).not.toBe(thirdGoal); // distinct spots - a sidestep never re-stacks
+    // Distinct fields, not merely distinct nodes - the spots themselves hold the spacing.
+    expect(manhattan(terrain, secondGoal, thirdGoal)).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
   });
 
-  it('never grazes onto a node another animal is standing on', () => {
+  it('sidesteps an animal standing half a cell from another - adjacent nodes read as one field', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 20) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const keeper = grazerAt(sim, 10, 10);
+    const crowding = grazerAt(sim, 11, 10); // Manhattan 1: inside the keeper's field
+
+    animalWanderSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(keeper, MoveGoal)).toBe(false); // the keeper holds the field
+    const goal = sim.world.get(crowding, MoveGoal).cell;
+    expect(manhattan(terrain, goal, terrain.nodeAt(10, 10))).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
+  });
+
+  it("never grazes into a standing animal's field (the node or its half-cell surroundings)", () => {
     const sim = new Simulation({ seed: 11, content: testContent(), map: grassMap(30, 30) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
@@ -172,7 +188,7 @@ describe('animalWanderSystem: the grazing drive', () => {
       expect(sim.world.has(post, MoveGoal)).toBe(false);
       const goal = sim.world.tryGet(bear, MoveGoal);
       if (goal === undefined) continue;
-      expect(goal.cell).not.toBe(postNode);
+      expect(manhattan(terrain, goal.cell, postNode)).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
       const c = terrain.coordsOf(goal.cell);
       const p = sim.world.get(bear, Position);
       const centre = positionOfNode(c.x, c.y);
@@ -267,7 +283,10 @@ describe('animalWanderSystem: the grazing drive', () => {
 
     for (let i = 0; i < SETTLE_TICKS; i++) {
       for (const drive of drives) drive(sim.world, ctxOf(sim));
-      expect(sim.world.get(follower, MoveGoal).cell).toBe(leaderCell);
+      // Recalled beside the leader (inside the cohesion radius), and grazing never re-aimed it.
+      expect(manhattan(terrain, sim.world.get(follower, MoveGoal).cell, leaderCell)).toBeLessThanOrEqual(
+        LEADER_DISTANCE,
+      );
       sim.world.remove(follower, MoveGoal); // stand it back up, still out of range, for a fresh trial
     }
   });
@@ -286,7 +305,10 @@ describe('animalWanderSystem: the grazing drive', () => {
     let recalls = 0;
     for (let i = 0; i < SETTLE_TICKS; i++) {
       sim.step();
-      if (sim.world.tryGet(follower, MoveGoal)?.cell === terrain.nodeAt(10, 10)) recalls++;
+      const goal = sim.world.tryGet(follower, MoveGoal);
+      if (goal !== undefined && manhattan(terrain, goal.cell, terrain.nodeAt(10, 10)) <= LEADER_DISTANCE) {
+        recalls++;
+      }
     }
     expect(recalls).toBeGreaterThan(0); // the recall actually ran
     // It closed on the leader instead of grazing off. The steady state is the cohesion radius plus one
