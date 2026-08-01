@@ -34,7 +34,9 @@ export const HUNT_CHASE_SLACK_NODES = 4;
  * How far (Manhattan nodes) past the ground's radius a hunter's carcass may lie and still be its work:
  * the chase overshoot ({@link HUNT_CHASE_SLACK_NODES}) plus a drift margin for prey that keeps fleeing
  * between the release and the arrow's contact. The carcass-gate probe and the hunter's harvest reach
- * share it, so every kill the leash permits is also banked - never stranded past an invisible line.
+ * share it, so a kill the leash permits is banked. Not airtight: the uninterruptible draw plus the
+ * flight can carry a runner past even this band - a rare stranded decal, never a wedge (the gate
+ * cannot see past the band either).
  */
 export const HUNT_CARCASS_SLACK_NODES = HUNT_CHASE_SLACK_NODES + 4;
 
@@ -46,18 +48,14 @@ export const HUNT_CARCASS_SLACK_NODES = HUNT_CHASE_SLACK_NODES + 4;
 export const HUNT_SEARCH_REST_TICKS = 10;
 
 /**
- * The hunter's target-acquisition spec: accept only huntable prey inside the hunting ground
- * ({@link huntingGround} - the work-flag area, or the {@link HUNTER_WORK_FLAG_RADIUS} circle around the
- * bound workplace), with the ground anchor leashing the chase (never `hold` - an idle hunter belongs to
- * its flag-gatherer drive, and a combat walk-back would fight that drive for the unit every tick). ALL
- * prey is carcass-gated ({@link huntingGroundHoldsCarcass}): while the ground holds a harvestable
- * carcass the hunter takes no new target and the planner-owned harvest drive carries the kill home
- * first - one kill at a time (user rule), not a herd wiped out ahead of the banking. The carry leg
- * after the LAST pickup (carcass gone, load on the back) is shielded a rung above this spec
- * (`carriesKillHome` in engage-combatant.ts). Last-resort livestock (huntPrey `lastResort` - sheep,
- * oxen kept for a future husbandry; user rule) is additionally deprioritized (`lowPriority`: normal
- * game always wins). A hunter with neither flag nor workplace (an unposted fixture) hunts by plain
- * sight, unanchored.
+ * The hunter's target-acquisition spec, and the owner of the ONE-KILL-AT-A-TIME rule (user rule): while
+ * the ground holds a harvestable carcass ({@link huntingGroundHoldsCarcass}) the hunter takes no new
+ * target - the harvest drive carries the kill home first - and the carry leg after the last pickup is
+ * shielded a rung above (`carriesKillHome`). Accepts only huntable prey inside the hunting ground
+ * ({@link huntingGround}), the ground anchor leashing the chase; never `hold` - an idle hunter belongs
+ * to its flag-gatherer drive. Last-resort livestock (huntPrey `lastResort`; user rule) is deprioritized
+ * (`lowPriority`: normal game always wins). A hunter with neither flag nor workplace (an unposted
+ * fixture) hunts by plain sight, unanchored.
  */
 export function hunterEngageSpec(
   world: World,
@@ -136,18 +134,13 @@ function huntingGround(
 
 /**
  * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's
- * probe: standing work means no new target. An existence-only box query over the resource
- * region index ({@link anyResourceNear}, reach = the ground's radius plus the kill slack, a Manhattan
- * superset), each hit checked for units left, the job's atomic grant, and the exact in-reach distance.
- * Hunters are a handful per map and the probe memoizes per engage.
- *
- * The probe must not out-claim the harvest drive: a carcass the hunter provably cannot bank - across a
- * static terrain-component seam (a ranged kill over water), or on a cell its routes just failed on
- * ({@link unreachableGoals}) - counts as no work, else one stranded kill would stall all hunting.
- *
- * Cost: the memo is per-engage, so an active chase re-probes each tick, and a carcass-less probe tests
- * every indexed resource in the {@link HUNTER_WORK_FLAG_RADIUS} box. Unmeasured; if a bench on a
- * resource-dense ground shows it, bound it (docs/tickets/sim/hunter-scan-costs-bench.md).
+ * probe: standing work means no new target. An existence-only box query over the resource region index
+ * ({@link anyResourceNear}, reach = the ground's radius plus the kill slack, a Manhattan superset),
+ * each hit checked for units left, the job's atomic grant, and the exact in-reach distance. It must not
+ * out-claim the harvest drive: a carcass the hunter provably cannot bank - across a static terrain
+ * component seam, or on a cell its routes just failed on ({@link unreachableGoals}) - counts as no
+ * work, else one stranded kill would stall all hunting. Cost is unmeasured
+ * (docs/tickets/sim/hunter-scan-costs-bench.md).
  */
 function huntingGroundHoldsCarcass(
   world: World,

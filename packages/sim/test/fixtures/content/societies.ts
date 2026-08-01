@@ -179,7 +179,7 @@ export const societyContent = {
   ],
   // The hunter's prey/yield table (authored, like the app catalog's): membership is huntability, so
   // the wolves (9), bear (10) and bee (11) stay unhuntable with no row. The deer is normal game with a
-  // TWO-good carcass (the multi-node spawn shape); the cow is lastResort livestock — hunted only when
+  // TWO-good carcass (the multi-node spawn shape); the cow is lastResort livestock - hunted only when
   // no normal game is in the hunting ground (the target-tiering fixture).
   huntPrey: [
     { tribeType: 13, lastResort: true, yields: [{ goodType: 21, amount: 4 }] },

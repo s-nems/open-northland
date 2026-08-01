@@ -50,7 +50,7 @@ export const ContentSet = z.strictObject({
   weapons: z.array(WeaponType).default([]),
   armor: z.array(ArmorType).default([]),
   animals: z.array(AnimalType).default([]),
-  /** Authored hunter prey/yield table ({@link HuntPrey}) — joined onto `animals` by `tribeType`. */
+  /** Authored hunter prey/yield table ({@link HuntPrey}) - joined onto `animals` by `tribeType`. */
   huntPrey: z.array(HuntPrey).default([]),
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),

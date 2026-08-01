@@ -16,25 +16,17 @@ import { huntYieldsOf, isHunterJob } from '../../../../../readviews/index.js';
 
 /**
  * The hunter's kill payoff - a **hunter**'s lethal blow on huntable prey leaves ONE carcass on the
- * ground: a harvestable {@link Resource} node holding the body's whole yield table (user rule: one
- * body, one decal - the hunter pulls its different goods out of the same carcass). The extraction
- * order interleaves the yield goods per unit and the node re-arms itself between goods
- * ({@link ResourceLayers} - the original's alternating cadaver stages carry the source basis). The
- * hunter works it with each good's own harvest atomic (`harvest_cadaver`, the original's
- * `setatomic 15 33` chain) through the ordinary gatherer machinery: one unit per pluck, carried off
- * over several trips, the node reaped when the last layer drains.
+ * ground (user rule: one body, one decal): a harvestable {@link Resource} node holding the head of the
+ * body's yield table, the rest queued as {@link ResourceLayers} (which owns the alternating-cadaver
+ * source basis). The hunter works it through the ordinary gatherer machinery - one unit per pluck,
+ * carried off over several trips, the node reaped when the last layer drains - and each layer carries
+ * its good's cadaver decal index (`Resource.gfxIndex`, opaque to the sim), so the decal flips between
+ * stages as the hunter works down the body.
  *
- * Placement: where the prey fell, or its first free walkable neighbour when something already stands
- * there ({@link sowNodeOccupied} + the walk overlay), falling back to the kill node when hemmed in.
- * Carcasses are unowned, like every standing resource - a kill on shared ground is shared game.
- *
- * Each layer carries its good's cadaver decal index as its render-variant tag when its pipeline stage
- * names one (`Resource.gfxIndex` - opaque to the sim): the decal flips between the stages as the
- * hunter works down the body, and the merged real content's wool row, which rides the leather cadaver
- * stage, draws the right decal even though the render's per-good binding has no wool entry.
- *
- * No-ops unless the attacker is a hunter and the target is a huntable-prey animal; mapless worlds
- * (fixture combat tests) spawn nothing. Pure over content + entity state - no RNG, no wall-clock.
+ * Placement: where the prey fell, or its first free walkable neighbour, falling back to the kill node
+ * when hemmed in. Carcasses are unowned - a kill on shared ground is shared game. No-ops unless the
+ * attacker is a hunter and the target huntable prey; mapless worlds (fixture combat tests) spawn
+ * nothing. Pure over content + entity state - no RNG, no wall-clock.
  */
 export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const hunter = world.tryGet(attacker, Settler);

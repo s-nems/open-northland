@@ -8,7 +8,6 @@ import {
   ignoresHousesAnimal,
   isAggressiveAnimal,
   isAnimalTribe,
-  isCatchableAnimal,
   isPlayableTribe,
   isWarrantableAnimal,
   locomotionOf,
@@ -90,7 +89,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
 // The last two unconsumed animaltypes fields — `warrantable` (livestock-ownership) and `ignorehouses`
 // (pathing-through-buildings) — now each have a read view, closing the animal-record consumer coverage
 // (every extracted animaltypes.ini field is now surfaced to the sim). Both are the same boolean-flag
-// pattern as isCatchableAnimal/animalCannotBeAttacked, read straight off the record (false when absent).
+// pattern as animalCannotBeAttacked, read straight off the record (false when absent).
 
 describe('isWarrantableAnimal / ignoresHousesAnimal (the last animaltypes flag read views)', () => {
   it('isWarrantableAnimal reads the `warrantable` flag (owned livestock) off the record', () => {
@@ -186,16 +185,5 @@ describe('locomotionOf (the animal pace read view)', () => {
     // The cow record (tribe 10) sets no movespeed; the read view passes the schema's
     // source-omitted 0 through verbatim — no inference of a default pace.
     expect(locomotionOf(tribeContent(), 10)).toEqual({ walkSpeed: 0 });
-  });
-});
-
-describe('isCatchableAnimal (the catchable prey read view)', () => {
-  it('is true for a catchable animal, false for non-catchable / civ / unknown', () => {
-    const content = tribeContent();
-    expect(isCatchableAnimal(content, 10)).toBe(true); // cow — catchable
-    expect(isCatchableAnimal(content, 8)).toBe(false); // bear — aggressive, not catchable
-    expect(isCatchableAnimal(content, 9)).toBe(false); // wolves — no animaltypes record
-    expect(isCatchableAnimal(content, 1)).toBe(false); // viking — a civilization
-    expect(isCatchableAnimal(content, 99)).toBe(false); // unknown tribe
   });
 });

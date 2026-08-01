@@ -169,7 +169,7 @@ export function sandboxWeapons() {
       damage: { '0': LONG_BOW_DAMAGE, '7': LONG_BOW_VS_BUILDING },
     },
     // The hunter's bow (job 15) at the design-override balance shared with the real-content merge
-    // (`catalog/hunting.ts` — weaker than the short bow). No `goodType`: the bow is the trade's own
+    // (`catalog/hunting.ts` - weaker than the short bow). No `goodType`: the bow is the trade's own
     // implement, outside the equipment economy, exactly as the extracted row ships.
     {
       typeId: WEAPON_HUNTER_BOW,

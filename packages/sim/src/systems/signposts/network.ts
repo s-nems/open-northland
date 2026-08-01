@@ -239,7 +239,7 @@ function computeNavigationLimit(
   hx: number,
   hy: number,
 ): NavigationLimit | null {
-  // Scouts and fighters roam globally; so does the hunter — like the scout, it never gets lost
+  // Scouts and fighters roam globally; so does the hunter - like the scout, it never gets lost
   // (design rule, user-specified), its range bounded by its own work flag instead.
   if (isScoutJob(content, jobType) || isFighterJob(content, jobType) || isHunterJob(content, jobType))
     return null;

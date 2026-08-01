@@ -134,7 +134,7 @@ export const economyContent = {
     // (the filter only shows on a job that could harvest MORE than its workplace stores). Nothing in
     // the golden slice spawns it.
     { typeId: 7, id: 'collector', allowedAtomics: [24, 25] },
-    // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — strikes huntable prey (the attack atomic 81)
+    // The hunter (job 15 - `JOB_TYPE_HUMAN_HUNTER`) - strikes huntable prey (the attack atomic 81)
     // and works the carcass nodes its kills leave (the harvest_cadaver atomic 33), the real
     // `jobtypes.ini 15` grant pair.
     { typeId: 15, id: 'hunter', allowedAtomics: [33, 81] },

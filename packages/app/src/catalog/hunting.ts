@@ -19,12 +19,11 @@ import { JOB_HUNTER } from './jobs.js';
 
 /**
  * The hunter's clean-room balance: which animal species are game, what each carcass yields, and the
- * hunter-bow band/damage. AUTHORED (user decisions) - no readable source carries a per-species yield
- * (`animaltypes.ini` has only the near-uniform `maximumcadaversize`, and its `catchable` flag marks
- * the two livestock species for husbandry, not game), so the species set and amounts are a named
- * approximation (source basis "Hunter prey and carcass yields"). Shared by the real-content merge and
- * the sandbox catalog, keyed by the real animal tribe ids and good id-slugs so one table serves both
- * id spaces.
+ * hunter-bow band/damage. AUTHORED (user decisions) - no readable source carries a per-species yield,
+ * so the species set and amounts are a named approximation (source basis "Hunter prey and carcass
+ * yields"; the {@link HuntPrey} schema doc owns why `catchable` is not the signal). Shared by the
+ * real-content merge and the sandbox catalog, keyed by the real animal tribe ids and good id-slugs so
+ * one table serves both id spaces.
  */
 
 /** The carcass goods a species can yield, by good id-slug (resolved per content set). */

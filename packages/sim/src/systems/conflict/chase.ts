@@ -143,9 +143,9 @@ export function chase(
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return;
   }
-  // Anchor leash: never step past `leash` tiles from the anchor to reach an enemy — a target hittable only by
+  // Anchor leash: never step past `leash` tiles from the anchor to reach an enemy - a target hittable only by
   // breaking the leash is left alone. A post-holder (DEFEND, `hold`) walks back to its post; a hunter
-  // disengages instead — its between-hunts time belongs to the flag-gatherer drive, and a combat
+  // disengages instead - its between-hunts time belongs to the flag-gatherer drive, and a combat
   // walk-back would fight that drive for the unit (see the engageSpec hunter branch).
   if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
     if (defend.hold) returnToAnchor(world, e, here, defend.anchorCell);

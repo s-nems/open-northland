@@ -97,7 +97,7 @@ export function engageCombatant(
       world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
     }
     // A DEFEND unit (`defend.hold`) walks back and holds its post when nothing is in its radius;
-    // everyone else — including a hunter between hunts — returns to the economy.
+    // everyone else - including a hunter between hunts - returns to the economy.
     if (spec.defend?.hold) returnToAnchor(world, e, here, spec.defend.anchorCell);
     else disengage(world, e);
     return;
@@ -173,7 +173,7 @@ function resolveFleeState(
 }
 
 /** The passive stance (IGNORE, and the unset NONE {@link stanceMode} normalizes to it) never auto-engages.
- *  A hunter is exempt: its catchable-prey predation is an economic drive independent of the military mode,
+ *  A hunter is exempt: its huntable-prey predation is an economic drive independent of the military mode,
  *  so it falls through to the engage path under a predation-only filter ({@link engageSpec}). */
 function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   return (
@@ -181,12 +181,10 @@ function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: Se
   );
 }
 
-/** A hunter with a load on its back finishes banking it before any new acquisition - the hunt cycle is
- *  kill, pick the carcass clean, carry EVERY unit home, only then the next target (user rule). Without
- *  this, the tick after the LAST pickup (carcass node gone, delivery not yet planned) reads as an idle
- *  hunter and combat steals it mid-cycle, meat still on its back. Hunter-scoped (no other combatant
- *  job carries goods) and stance-wide: even a DEFEND-posted hunter ignores an enemy while hauling -
- *  only an explicit player attack order pierces it, like every rung here. */
+/** The carry leg of the one-kill cycle (`hunterEngageSpec` owns the rule): a loaded hunter banks its
+ *  kill before any new acquisition. Without this, the tick after the LAST pickup (carcass node gone,
+ *  delivery not yet planned) reads as an idle hunter and combat steals it mid-cycle. Hunter-scoped and
+ *  stance-wide; only an explicit player attack order pierces it, like every rung here. */
 function carriesKillHome(
   world: World,
   ctx: SystemContext,

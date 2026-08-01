@@ -104,7 +104,7 @@ export function grantWorkExperience(
 /** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
  *  work- and fight-XP grants (and the single seam a future accrual cap/curve would land in). */
 function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
-  if (amount <= 0) return; // a zero-rate track plants no phantom map key (state-hash noise)
+  if (amount <= 0) return; // a zero-rate track plants no zero-value bucket (a hash-visible key with no meaning)
   s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
 }
 

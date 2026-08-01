@@ -126,7 +126,7 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *    `projectileSystem` maps it onto a per-tick tile step via a named calibration constant;
  *  - `originX`/`originY` — the shooter's Position at the release frame (fixed-point, frozen at launch), read
  *    only by the render, which needs the chord's start to place the shot on its ballistic arc (the original
- *    visibly lobs arrows — observed, height approximated);
+ *    visibly lobs arrows - observed, height approximated);
  *  - `missAim` - a MISSED shot's aim point (the target's position frozen at release): the flight steers here
  *    instead of homing, and lands in the dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot.
  */

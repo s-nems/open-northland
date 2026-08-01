@@ -144,7 +144,7 @@ export function resolveCombatHit(
   const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
   // Captured before the drain: the carcass spawns only on the alive→dead TRANSITION, so a second blow
   // landing this tick on an already-felled target (two hunters' hit frames on one prey) never mints a
-  // second carcass — goods stay conserved.
+  // second carcass - goods stay conserved.
   const wasAlive = health.hitpoints > 0;
   // A KILLING blow (hitpoints > 0: a target already at 0, e.g. a debug kill awaiting cleanup, is not
   // revived) may be answered by the healing draught's death-save, which resets the pool itself; the
