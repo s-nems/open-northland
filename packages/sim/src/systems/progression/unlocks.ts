@@ -3,6 +3,7 @@ import type {
   JobEnablesKind,
   JobRequirement,
   JobRequirementTarget,
+  Recipe,
   VehicleType,
 } from '@open-northland/data';
 import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
@@ -52,6 +53,21 @@ export function buildingEnabled(
 export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goodType: number): boolean {
   if (!professionProgressionEnabled(world)) return true; // free start: goods are civilian, no carve-out
   return tribeUnlockEnabled(world, ctx, tribe, 'good', goodType);
+}
+
+/** Whether every output of `recipe` is tech-unlocked for `tribe` (the {@link goodEnabled} gate over a
+ *  whole recipe) - shared by the cycle-start gate and the livestock summon, which must not call an
+ *  animal to a workplace whose batch the tech-graph would refuse. */
+export function recipeOutputsEnabled(
+  world: World,
+  ctx: SystemContext,
+  tribe: number,
+  recipe: Recipe,
+): boolean {
+  for (const output of recipe.outputs) {
+    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false;
+  }
+  return true;
 }
 
 /**

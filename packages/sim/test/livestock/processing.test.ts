@@ -4,12 +4,13 @@ import {
   Health,
   LivestockVisit,
   MoveGoal,
+  Position,
   Production,
   Resting,
   StayPoint,
   Stockpile,
 } from '../../src/components/index.js';
-import type { Simulation } from '../../src/index.js';
+import { positionOfNode, type Simulation } from '../../src/index.js';
 import {
   beginCycle,
   canStartCycle,
@@ -23,6 +24,7 @@ import {
   startableCycleCount,
 } from '../../src/systems/index.js';
 import { recipesByProductOf } from '../../src/systems/stores/index.js';
+import { settlerAt } from '../fixtures/settler.js';
 import {
   breederAt,
   COW_GOOD,
@@ -42,7 +44,8 @@ import {
 const P0 = 0;
 const P1 = 1;
 
-/** A farm stocked for two feed batches, anchored on node (10, 10) - its door/interaction node. */
+/** A farm stocked for two feed batches, anchored on node (10, 10) - its door/interaction node - with
+ *  one breeder on station (the summon requires a spare operator seat). */
 function stockedFarm(sim: Simulation, opts: { owner?: number } = {}) {
   const farm = farmAt(sim, 10, 10, {
     stock: [
@@ -51,12 +54,13 @@ function stockedFarm(sim: Simulation, opts: { owner?: number } = {}) {
     ],
     ...opts,
   });
+  const breeder = breederAt(sim, 10, 10);
   const ctx = ctxOf(sim);
   const recipes = recipesByProductOf(sim.world, ctx, farm);
   if (recipes === undefined) throw new Error('fixture farm always has recipes');
   const feed = recipes.get(COW_GOOD);
   if (feed === undefined) throw new Error('fixture farm always has the feed recipe');
-  return { farm, ctx, recipes, feed };
+  return { farm, breeder, ctx, recipes, feed };
 }
 
 describe('livestock processing - the visit: summon, arrive, enter with the batch, pay on release', () => {
@@ -208,7 +212,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     expect(sim.world.has(cow, Resting)).toBe(false);
   });
 
-  it('the successor is summoned only after the release - the doorway stays empty mid-batch', () => {
+  it('the successor waits for the release AND the token conversion - the doorway stays empty', () => {
     const sim = livestockSim();
     const { farm, ctx, recipes, feed } = stockedFarm(sim);
     const inside = cowAt(sim, 10, 10);
@@ -229,9 +233,108 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     expect(sim.world.get(inside, Health).hitpoints).toBe(COW_HP - LIVESTOCK_PROCESS_DRAIN_HP);
     expect(sim.world.tryGet(inside, MoveGoal)?.cell).toBe(spot); // ...straight back to its grazing spot
 
-    livestockVisitSystem(sim.world, ctx); // the slot is free again: the successor is called
+    // Seat free again (the batch list is cleared), but the deposited token still awaits conversion:
+    // the next feed is not the seat's next batch, so nobody is called to the door yet.
+    sim.world.remove(farm, Production);
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.has(next, LivestockVisit)).toBe(false);
+
+    // Token converted: the backlog is drained and the successor is called.
+    sim.world.get(farm, Stockpile).amounts.set(COW_GOOD, 0);
+    livestockVisitSystem(sim.world, ctx);
     expect(sim.world.tryGet(next, LivestockVisit)?.at).toBe(farm);
     expect(sim.world.get(next, Health).hitpoints).toBe(COW_HP);
+  });
+
+  it('summons only for a spare operator seat - a deserted or fully busy farm calls nobody', () => {
+    const sim = livestockSim();
+    // Deserted: stocked inputs, an eligible cow, but no breeder on station.
+    const farm = farmAt(sim, 10, 10, {
+      stock: [
+        [WATER, 2],
+        [WHEAT, 4],
+      ],
+    });
+    const ctx = ctxOf(sim);
+    const cow = cowAt(sim, 14, 10);
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.has(cow, LivestockVisit)).toBe(false);
+
+    // Staffed, but the lone seat is grinding a batch: still nobody is called mid-batch.
+    breederAt(sim, 10, 10);
+    sim.world.add(farm, Production, {
+      cycles: [{ elapsed: 0, duration: FEED_TICKS, goodType: WOOL }],
+    });
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.has(cow, LivestockVisit)).toBe(false);
+
+    // The batch done, the seat spare: the walk to the door finally starts.
+    sim.world.remove(farm, Production);
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.tryGet(cow, LivestockVisit)?.at).toBe(farm);
+  });
+
+  it('never summons for a chain whose converter is tech-locked - no batch is worth the life', () => {
+    // WOOL locked behind a job nobody holds (the fixture twin of the real hunter→leather gate): the
+    // token's only consumer can't start, so feeding would strand the token and waste the cow's life.
+    const WOOL_GATE_JOB = 99;
+    const sim = livestockSim({ woolGateJob: WOOL_GATE_JOB });
+    farmAt(sim, 10, 10, {
+      stock: [
+        [WATER, 2],
+        [WHEAT, 4],
+      ],
+    });
+    breederAt(sim, 10, 10);
+    const ctx = ctxOf(sim);
+    const cow = cowAt(sim, 14, 10);
+
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.has(cow, LivestockVisit)).toBe(false);
+
+    // The enabling settler appears: the chain is convertible again and the summon resumes.
+    settlerAt(sim, { jobType: WOOL_GATE_JOB, position: positionOfNode(5, 5) });
+    livestockVisitSystem(sim.world, ctx);
+    expect(sim.world.has(cow, LivestockVisit)).toBe(true);
+  });
+
+  it('a spare seat waits for its walking animal instead of starting a conversion batch', () => {
+    const sim = livestockSim();
+    const { farm, ctx } = stockedFarm(sim);
+    const walking = cowAt(sim, 14, 10); // summoned below, still four nodes from the door
+    sim.world.get(farm, Stockpile).amounts.set(COW_GOOD, 1); // a token the rotation could convert
+    sim.world.add(walking, LivestockVisit, { at: farm });
+
+    productionSystem(sim.world, ctx);
+    // The seat is held for the walker: no batch of any kind begins.
+    expect(sim.world.has(farm, Production)).toBe(false);
+
+    // The animal reaches the door: the very next pass starts ITS feed, not the token conversion.
+    const at = sim.world.get(walking, Position);
+    const door = positionOfNode(10, 10);
+    at.x = door.x;
+    at.y = door.y;
+    productionSystem(sim.world, ctx);
+    expect(sim.world.get(farm, Production).cycles.map((c) => c.goodType)).toEqual([COW_GOOD]);
+    expect(sim.world.tryGet(walking, Resting)?.at).toBe(farm);
+  });
+
+  it('a walking visitor whose inputs vanished stops holding its seat - the operator converts', () => {
+    const sim = livestockSim();
+    const { farm, ctx } = stockedFarm(sim);
+    const walking = cowAt(sim, 14, 10);
+    sim.world.add(walking, LivestockVisit, { at: farm });
+    const stock = sim.world.get(farm, Stockpile).amounts;
+    stock.set(COW_GOOD, 1); // a token the rotation can convert
+    stock.set(WATER, 0); // the feed's inputs are gone mid-walk
+    stock.set(WHEAT, 0);
+
+    productionSystem(sim.world, ctx);
+
+    // No seat is held for a feed that cannot start: the wool conversion runs instead, and the
+    // visitor waits out the refetch at the door.
+    expect(sim.world.get(farm, Production).cycles.map((c) => c.goodType)).toEqual([WOOL]);
+    expect(sim.world.has(walking, LivestockVisit)).toBe(true);
   });
 
   it('a completed feed cycle deposits its product plus one meat, forfeited on a full shelf', () => {
@@ -261,9 +364,8 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
 
   it('a wool-only craft selection still runs the feed stage (the token recipe is implied)', () => {
     const sim = livestockSim();
-    const { farm, ctx } = stockedFarm(sim);
+    const { farm, breeder, ctx } = stockedFarm(sim);
     cowAt(sim, 10, 10);
-    const breeder = breederAt(sim, 10, 10);
     sim.world.add(breeder, CraftSelection, { goods: [WOOL], cursor: 0 });
 
     for (let i = 0; i <= 2 * (FEED_TICKS + 1) + 2; i++) {
@@ -276,9 +378,8 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
 
   it('a staffed farm turns water+wheat and cow life into wool and meat through the system loop', () => {
     const sim = livestockSim();
-    const { farm, ctx } = stockedFarm(sim);
+    const { farm, ctx } = stockedFarm(sim); // one breeder on the interaction node runs the craft
     const cow = cowAt(sim, 10, 10); // grazing on the door node - summoned and admitted in place
-    breederAt(sim, 10, 10); // on the interaction node - the operator that runs the craft
 
     // One operator runs the chain serially: feed (10 ticks, the cow inside, drained on release,
     // +1 meat byproduct), then the rotation converts the fed-cow good to wool (10 more).

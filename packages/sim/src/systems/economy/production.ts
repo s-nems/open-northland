@@ -1,11 +1,17 @@
 import { Building, Position, Production, Settler, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
+import { heldSeatCount } from '../livestock/processing.js';
 import { grantProductionExperience } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
 import { accrueBonusOutput } from './production/bonus-output.js';
-import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './production/cycles.js';
+import {
+  anyCycleStartable,
+  depositCycleOutput,
+  startArrivedFeedCycle,
+  startFirstStartable,
+} from './production/cycles.js';
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
 
@@ -114,9 +120,18 @@ export const productionSystem: System = (world, ctx) => {
       if (running < operatorCountOf(staffing)) startFirstStartable(world, ctx, e, recipes);
       continue;
     }
-    // The spare operators (indices past the running batches) each try their own product choice; a
-    // failed choice skips just that operator. A deserted workplace has none, so it starts nothing.
-    for (const operator of staffing.operators.slice(running)) {
+    // The spare operators (indices past the running batches): animals at the door first, then each
+    // remaining seat's own product choice; a failed choice skips just that operator. A deserted
+    // workplace has none, so it starts nothing.
+    const spares = staffing.operators.slice(running);
+    let served = 0;
+    while (served < spares.length && startArrivedFeedCycle(world, ctx, e, recipes)) served++;
+    // THE HOLDBACK (the invariant's one home): a seat stays open per summoned animal still walking
+    // whose feed remains input-startable ({@link heldSeatCount}) - its summon proved the seat spare,
+    // and the batch must begin on arrival rather than find every operator mid-rotation and park the
+    // animal at the door for a whole batch (user feedback: an animal always stood in the doorway).
+    const holdback = Math.min(spares.length - served, heldSeatCount(world, ctx, e, recipes));
+    for (const operator of spares.slice(served, spares.length - holdback)) {
       startCycleFor(world, ctx, e, operator, recipes);
     }
   }

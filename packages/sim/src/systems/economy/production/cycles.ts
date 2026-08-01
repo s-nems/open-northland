@@ -15,7 +15,7 @@ import {
   feedAnimalsAvailable,
   releaseLivestockVisit,
 } from '../../livestock/processing.js';
-import { goodEnabled } from '../../progression/index.js';
+import { goodEnabled, recipeOutputsEnabled } from '../../progression/index.js';
 import { livestockMeatGoodOf, livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
@@ -50,7 +50,7 @@ export function startableCycleCount(
   building: Entity,
   recipe: Recipe,
 ): number {
-  if (!recipeUnlocked(world, ctx, building, recipe)) return 0;
+  if (!recipeOutputsEnabled(world, ctx, world.get(building, Building).tribe, recipe)) return 0;
   // Both halves are already >= 0, so the combined count needs no further clamp.
   const cycles = Math.min(
     inputStockForCycles(world, building, recipe),
@@ -58,15 +58,6 @@ export function startableCycleCount(
   );
   if (cycles <= 0) return cycles;
   return Math.min(cycles, feedAnimalsAvailable(world, ctx, building, recipe));
-}
-
-/** Whether every output of `recipe` is tech-unlocked for the building's tribe (the `jobEnablesGood` gate). */
-function recipeUnlocked(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
-  const tribe = world.get(building, Building).tribe;
-  for (const output of recipe.outputs) {
-    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false;
-  }
-  return true;
 }
 
 /** How many cycles of `recipe` the stocked INPUTS cover — the input half of {@link startableCycleCount}. */
@@ -128,7 +119,7 @@ export function shelfBlockedOutput(world: World, ctx: SystemContext, building: E
   const stock = world.get(building, Stockpile).amounts;
   let blocked: number | null = null;
   for (const recipe of recipes.values()) {
-    if (!recipeUnlocked(world, ctx, building, recipe)) continue; // locked: shipping a unit would not help
+    if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
     if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null; // still startable — not blocked
     blocked ??= stockedOutput(stock, recipe);
@@ -185,6 +176,28 @@ export function beginCycle(
   const prod = world.tryGet(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);
+}
+
+/**
+ * Start the first feed cycle whose summoned animal has ARRIVED at the door, or report none. Consulted
+ * BEFORE the per-operator rotation ({@link startCycleFor}): an animal standing at the door is a
+ * physical queue, and the seat its summon reserved must take it now rather than wander off onto a
+ * rotation pick and leave it parked there for a whole batch. Content order, so the pick is canonical;
+ * the rotation cursor is untouched (a feed stage is workplace-internal, never a player-facing choice).
+ */
+export function startArrivedFeedCycle(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipes: ReadonlyMap<number, Recipe>,
+): boolean {
+  for (const [good, recipe] of recipes) {
+    if (livestockTribeOfGood(ctx.content, good) === null) continue;
+    if (!canStartCycle(world, ctx, building, recipe)) continue; // arrival is part of the start gate
+    beginCycle(world, ctx, building, recipe, good);
+    return true;
+  }
+  return false;
 }
 
 /** Start one cycle of the first startable product in content order — the unstaffed-by-design path
