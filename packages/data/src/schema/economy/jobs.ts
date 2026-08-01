@@ -41,7 +41,8 @@ export const HumanJobExperienceType = z.strictObject({
   goodType: TypeId.optional(),
   /** `experiencefactor` — how fast XP accrues on this track (raw; the curve is the ProgressionSystem's). */
   experienceFactor: z.number().int().nonnegative().default(0),
-  /** `baserepeatcounter` — the original's repeat-count tuning for the track (raw), when present. */
+  /** `baserepeatcounter` - strokes per completed work action on the track (raw; the sim's
+   *  `workRepeatsFor` owns the reading), when present. */
   baseRepeatCounter: z.number().int().nonnegative().optional(),
   source: Provenance.optional(),
 });

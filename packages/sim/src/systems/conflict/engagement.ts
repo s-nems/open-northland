@@ -173,11 +173,11 @@ export interface EngageSpec {
   /** A hostile wild animal seeking — gates on {@link HostilePresence.civsWithin} instead (its accept
    *  admits only civilization settlers). */
   readonly animalSeeker?: boolean;
-  /** The deprioritized tier among accepted targets — searched only when the primary tier finds nothing
+  /** The deprioritized tier among accepted targets - searched only when the primary tier finds nothing
    *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. */
   readonly lowPriority: (t: Entity) => boolean;
   /** Anchor leash: the chase never walks past `leash` of `anchorCell` (a DEFEND post, a hunter's
-   *  ground); null when the chase is unbounded. `hold` — with no target in sight, walk back to the
+   *  ground); null when the chase is unbounded. `hold` - with no target in sight, walk back to the
    *  anchor and hold it (the DEFEND post duty); false hands the unit back to the economy instead (a
    *  hunter's between-hunts time belongs to its carcass-harvest drive, not to standing a post). */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number; readonly hold: boolean } | null;
@@ -200,11 +200,11 @@ function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  *    the stance's `spec.accept` filter admits, in TWO priority tiers split by `spec.lowPriority`: the
  *    deprioritized tier is searched only when the first pass finds nothing in sight. For the soldier
  *    stances that tier is the plain `'other'` building (the autofocus priority: HQ / towers / enemy
- *    units on par, other buildings only when none of those remain — user rule); for the hunter it is
- *    last-resort livestock (normal game always wins — user rule). General hostility for ATTACK/unowned
+ *    units on par, other buildings only when none of those remain - user rule); for the hunter it is
+ *    last-resort livestock (normal game always wins - user rule). General hostility for ATTACK/unowned
  *    and anchor-bounded DEFEND both admit an enemy building (a DEFEND guard autonomously batters a
- *    structure inside its radius — deliberate: a defensive post contests enemy construction on its
- *    ground); only an IGNORE hunter's prey filter never admits one — see {@link engageSpec}.
+ *    structure inside its radius - deliberate: a defensive post contests enemy construction on its
+ *    ground); only an IGNORE hunter's prey filter never admits one - see {@link engageSpec}.
  */
 export function resolveTarget(
   world: World,

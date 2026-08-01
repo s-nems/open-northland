@@ -3,8 +3,8 @@
  * decoded IR, `Data/logic/animaltypes.ini`) on their REAL tribe ids, so a scene's spawns hit the same
  * species rows the real-content browser run resolves art and behaviour by. Deliberate picks: a
  * provokable solitary heavyweight (bear), a passive leader-following herd (stag), an aggressive pack
- * with a data-pinned walking pace (wolf), and the two hunting-tier species — small game (hare) and
- * last-resort livestock (sheep) — the hunter scenes exercise (`catalog/hunting.ts`).
+ * with a data-pinned walking pace (wolf), and the two hunting-tier species - small game (hare) and
+ * last-resort livestock (sheep) - the hunter scenes exercise (`catalog/hunting.ts`).
  */
 
 import {

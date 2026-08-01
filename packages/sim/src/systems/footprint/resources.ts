@@ -159,7 +159,7 @@ export interface ResourceNodeSpec {
  * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}: a {@link Position} +
  * {@link Resource} carrying its yield/atomic, its content-derived footprint (from `good`), and the
  * {@link Felling}/{@link MineDeposit} lifecycle marker the spec asks for. Every PLACED node is built
- * here — the scene-setup helpers (pre-tick-0, direct) and the `placeResource` command handler
+ * here - the scene-setup helpers (pre-tick-0, direct) and the `placeResource` command handler
  * (runtime, through the mutation seam) both route here, so a hand-placed tree and a command-placed
  * tree are byte-identical entities. The two EFFECT-spawned node kinds (a sown field, a hunter's
  * carcass) assemble their own extra shape but stamp their footprint through the same seam

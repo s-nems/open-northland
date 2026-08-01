@@ -32,8 +32,8 @@ export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.f
  * runs step 1's {@link resolveCombatHit}, shared with melee).
  *
  * Per projectile (visited in canonical ascending-id order so a stagger tie-break is order-independent):
- *  1. **missed at release** (`missAim` set - a hunter's failed aim roll) → it flies BALLISTICALLY to the
- *     frozen aim point, never consulting the target, and lands in the dirt: `projectileMissed`, no blow;
+ *  1. **missed at release** (`missAim` set) → it flies to the frozen aim point and lands in the dirt:
+ *     `projectileMissed`, no blow;
  *  2. **target gone / dead / unpositioned** → the projectile EXPIRES at its last position: it is destroyed
  *     with no hit (no re-target — the original's homing-vs-ballistic + always-hit behaviour is unreadable,
  *     so this approximates a homing shot that simply drops when its mark falls; source basis);

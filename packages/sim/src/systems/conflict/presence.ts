@@ -28,7 +28,7 @@ interface PresenceCell {
  * hostile-now or as hunter prey), so a `false` proves the ring search would find nothing and
  * skipping it cannot change a winner. Seekers whose filter breaks that superset are ungated via a
  * null `EngageSpec.player` (or the flee drive's own hunter exemption): unowned ones (valid targets
- * can share the "unowned" class) and hunters (owner-blind prey filter admits passive catchable
+ * can share the "unowned" class) and hunters (owner-blind prey filter admits passive huntable
  * animals). The passive share may only shrink within the tick (Anger is stamped by the earlier
  * atomic damage pass and only reaped here), so the build-time count stays conservative. Filled each
  * combat tick from the same walk as the ring-search index; derived state, never hashed.

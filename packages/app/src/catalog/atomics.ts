@@ -18,7 +18,7 @@ export const GOLD_HARVEST_ATOMIC = 28;
 export const WHEAT_HARVEST_ATOMIC = 29;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
 /** The hunter's carcass-harvest action (`goodtypes.ini` leather/meat `atomicForHarvesting 33`;
- *  `jobtypes.ini` 15 `allowatomic 33` — `viking_hunter_harvest_cadaver`). */
+ *  `jobtypes.ini` 15 `allowatomic 33` - `viking_hunter_harvest_cadaver`). */
 export const HARVEST_CADAVER_ATOMIC = 33;
 
 /** The farmer's sowing action (`goodtypes.ini` wheat `atomicForPlanting 34`; `setatomic 18 34

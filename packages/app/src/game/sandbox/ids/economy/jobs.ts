@@ -11,7 +11,7 @@ import {
 /**
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own
  * functional job band (idle 0, builder 7, collector 8, carrier 24, soldiers 31..41, the picker
- * professions — all < 1000). A rebased slot job is `BASE + originalId`; the carrier and the hunter
+ * professions - all < 1000). A rebased slot job is `BASE + originalId`; the carrier and the hunter
  * keep their own ids. See {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed.
  */
 export const WORKER_SLOT_JOB_BASE = 1000;

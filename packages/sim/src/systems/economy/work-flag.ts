@@ -74,7 +74,7 @@ export function bindFreshFlag(
   world.add(flag, DeliveryFlag, {});
   const radius = workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
   if (world.has(e, WorkFlag)) {
-    // Stale binding - re-point it through the write channel, like every other WorkFlag mutation.
+    // Stale binding - re-point it at the job's current flag.
     world.write(e, WorkFlag, (wf) => {
       wf.flag = flag;
       wf.radius = radius;

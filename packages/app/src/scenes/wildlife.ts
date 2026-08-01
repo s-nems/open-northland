@@ -35,7 +35,7 @@ const HERDS: readonly { tribe: number; x: number; y: number }[] = [
   { tribe: ANIMAL_TRIBE_WOLVES, x: 11, y: 14 },
 ];
 
-/** The spawn-count floor per herd this scene places (the catalog carries more species — the hunter
+/** The spawn-count floor per herd this scene places (the catalog carries more species - the hunter
  *  scene's game), read off the records so the check cannot drift. */
 const EXPECTED_COUNTS: readonly { tribe: number; count: number }[] = buildSandboxAnimals()
   .filter((a) => HERDS.some((h) => h.tribe === a.tribeType))

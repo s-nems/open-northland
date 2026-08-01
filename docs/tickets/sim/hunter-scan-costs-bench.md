@@ -15,6 +15,9 @@ merged the index/presence walk).
 - The hunter's two-tier `resolveTarget` when only last-resort livestock remains in ground: the tier-1
   `nearest` walks the whole `dist+radius` band with zero accepts every chase tick before the fallback
   finds the sheep (`HuntRest` never rests it, since the search succeeds).
+- The employed roamer's banked-form good filter (`drives/economy/gatherer.ts`): rebuilds a Set over all
+  content goods per plan call for every building-employed gatherer - a steady planner-path allocation;
+  memoize per (content, workplace stock shape) if it shows.
 
 ## Verify
 

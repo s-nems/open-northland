@@ -8,7 +8,6 @@ import {
   type GoodType,
   type HumanJobExperienceType,
   type HuntPrey,
-  indexById,
   type JobType,
   type LandscapeGfx,
   lastByTypeId,
@@ -93,7 +92,7 @@ export interface ContentIndex {
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
   /** Animal records by their `tribeType` (an animal's identity is its tribe). */
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
-  /** Hunt-prey rows by the prey's `tribeType` — membership IS huntability ({@link HuntPrey}). */
+  /** Hunt-prey rows by the prey's `tribeType` - membership IS huntability ({@link HuntPrey}). */
   readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;

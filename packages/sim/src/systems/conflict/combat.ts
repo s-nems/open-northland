@@ -36,7 +36,7 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *    so a player's mixed-tribe army never fights itself. Binary: no diplomacy/alliances.
  *  - Tribe hostility + predation + provoked anger (`mayAttack`/`mayHunt`/{@link Anger}) — the
  *    content relations for any pair where at least one side is unowned: civ-vs-civ by tribe,
- *    civ⇄aggressive-animal, hunter→catchable-prey, and a struck `getAngry` animal fighting back.
+ *    civ⇄aggressive-animal, hunter→huntable-prey, and a struck `getAngry` animal fighting back.
  *
  * Two reach radii: the weapon's extracted `[minRange, maxRange]` band is where a swing lands, while the
  * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on. A

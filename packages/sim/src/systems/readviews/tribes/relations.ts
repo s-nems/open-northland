@@ -10,7 +10,7 @@ import { isAnimalTribe } from './civilizations.js';
  * hostility. The rules:
  *
  *  - The attacker must be a hunter ({@link isHunterJob}).
- *  - The target must be {@link isHuntablePrey} — a species with a hunt-yield row (game and the
+ *  - The target must be {@link isHuntablePrey} - a species with a hunt-yield row (game and the
  *    last-resort livestock). Predators, decorative fauna, a civilization, and an unknown tribe are not
  *    huntable prey. The last-resort ORDERING (livestock only when no game is near) is the target
  *    search's tiering, not this pairwise relation.
@@ -21,8 +21,8 @@ import { isAnimalTribe } from './civilizations.js';
  * back through the combat `Anger` path (the AtomicSystem's `attack` effect), not through this relation.
  *
  * Source basis: the hunter trade is read off the content's job table; the prey set is the authored
- * {@link HuntPrey} table (source basis "Hunter prey and carcass yields" — `animaltypes.ini` `catchable`
- * marks livestock for husbandry, not game, so the species set is a named approximation).
+ * {@link HuntPrey} table (source basis "Hunter prey and carcass yields"; its schema doc owns why
+ * `catchable` is not the huntability signal).
  */
 export function mayHunt(content: ContentSet, attackerJobType: number | null, targetTribe: number): boolean {
   if (!isHunterJob(content, attackerJobType)) return false; // only a hunter hunts
@@ -44,8 +44,8 @@ export function mayHunt(content: ContentSet, attackerJobType: number | null, tar
  *    and a valid enemy (the three-truth-states rule — see AGENTS.md `[fe2470f]`: `!isPlayableTribe` ≠
  *    `isAnimalTribe`).
  *  - Civilization → animal → yes only if the animal is {@link isAggressiveAnimal} and not
- *    {@link animalCannotBeAttacked}. A civ engages a hostile animal but not passive prey (hunting is the
- *    separate `catchable`/hunter mechanic); a `cannotbeattacked` animal (bees) is exempt entirely.
+ *    {@link animalCannotBeAttacked}. A civ engages a hostile animal but not passive prey (hunting is {@link mayHunt}'s
+ *    separate job-gated predation); a `cannotbeattacked` animal (bees) is exempt entirely.
  *  - Animal attacker must be aggressive. A passive animal attacks nothing — so an aggressive animal →
  *    civilization is the unprovoked aggression driver (a bear/wolf attacks a nearby settler). This makes
  *    `mayAttack` self-contained (it gates the attacker side itself); `cannotbeattacked` gates only being a

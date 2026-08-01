@@ -56,15 +56,6 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` — livestock a tribe can catch and
- * pen (cattle, sheep). Only the two husbandry species carry it; huntability is the separate authored
- * {@link HuntPrey} table ({@link isHuntablePrey}). Read by the deferred husbandry drive.
- */
-export function isCatchableAnimal(content: ContentSet, tribeType: number): boolean {
-  return animalRecord(content, tribeType)?.catchable ?? false;
-}
-
-/**
  * Whether `tribeType`'s `animaltypes.ini` record sets `warrantable` — it can become a tribe's property
  * (penned livestock), the ownership half of the `catchable` pair. Read by the deferred
  * livestock-ownership drive.
@@ -149,7 +140,7 @@ export function locomotionOf(content: ContentSet, tribeType: number): Locomotion
 }
 
 /**
- * Whether `tribeType` is huntable prey — it has a {@link HuntPrey} row. The authored prey table is the
+ * Whether `tribeType` is huntable prey - it has a {@link HuntPrey} row. The authored prey table is the
  * single huntability signal: game species (hares, birds, deer, boars) plus the last-resort livestock;
  * predators and decorative fauna have no row (source basis "Hunter prey and carcass yields").
  */
@@ -158,14 +149,14 @@ export function isHuntablePrey(content: ContentSet, tribeType: number): boolean 
 }
 
 /**
- * Whether `tribeType` is prey a hunter takes only when no normal prey is in its hunting area — the
+ * Whether `tribeType` is prey a hunter takes only when no normal prey is in its hunting area - the
  * {@link HuntPrey} `lastResort` species (cattle, sheep: livestock better kept for husbandry).
  */
 export function isLastResortPrey(content: ContentSet, tribeType: number): boolean {
   return contentIndex(content).huntPreyByTribe.get(tribeType)?.lastResort ?? false;
 }
 
-/** The carcass contents a felled prey animal of `tribeType` leaves — its {@link HuntPrey} `yields`
+/** The carcass contents a felled prey animal of `tribeType` leaves - its {@link HuntPrey} `yields`
  *  (one harvestable carcass node per entry), or null when the tribe is not huntable prey. */
 export function huntYieldsOf(
   content: ContentSet,

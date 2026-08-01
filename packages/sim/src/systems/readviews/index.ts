@@ -104,7 +104,6 @@ export {
   ignoresHousesAnimal,
   isAggressiveAnimal,
   isAnimalTribe,
-  isCatchableAnimal,
   isHuntablePrey,
   isLastResortPrey,
   isPlayableTribe,

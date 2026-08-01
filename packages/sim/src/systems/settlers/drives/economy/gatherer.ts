@@ -119,11 +119,10 @@ function planFlagGatherer(
   }
 
   // 2. Chop / mine the nearest FREE node within the flag's work radius (nothing beyond it; a node a
-  //    colleague already digs is claimed - one digger per node). A hunter's reach adds the kill slack
-  //    (a chased kill may fall past the radius, and a carcass the leash permitted must still be
-  //    banked), and its flag's good filter is IGNORED: a layered carcass re-arms through its goods in
-  //    turn, so a meat-only pick would strand the body at its leather stage while the one-kill gate
-  //    (`huntingGroundHoldsCarcass`, filter-blind) held forever - the whole body is the hunter's work.
+  //    colleague already digs is claimed - one digger per node). A hunter's reach adds the kill slack,
+  //    and its flag's good filter is IGNORED: a layered carcass re-arms through its goods in turn, so a
+  //    meat-only pick would strand the body at its leather stage while the filter-blind one-kill gate
+  //    (`huntingGroundHoldsCarcass`) held forever - the whole body is the hunter's work.
   const hunter = isHunterJob(ctx.content, plan.jobType);
   const slack = hunter ? HUNT_CARCASS_SLACK_NODES : 0;
   const node = nearestHarvestableFor(plan, {

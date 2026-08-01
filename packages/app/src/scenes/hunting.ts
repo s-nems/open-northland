@@ -1,8 +1,9 @@
 import { cellAnchorNode, components, type Entity, type Simulation } from '@open-northland/sim';
 import { ANIMAL_TRIBE_HARES, ANIMAL_TRIBE_SHEEP } from '../catalog/animal-tribes.js';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUNTER_GENERAL_XP_TRACK } from '../catalog/hunting.js';
+import { HUNT_PREY_BALANCE, HUNTER_GENERAL_XP_TRACK } from '../catalog/hunting.js';
 import { JOB_HUNTER } from '../catalog/jobs.js';
+import { buildSandboxAnimals } from '../game/sandbox/content/catalog/animals.js';
 import { spawnSandboxSettler } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -24,8 +25,11 @@ const HUNTER_CELL = { x: 8, y: 8 };
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
 
-/** The sandbox hare herd: 4 members × 1 meat each - the floor the yard check waits for. */
-const HARE_MEAT_TOTAL = 4;
+/** Every hare's meat banked - herd size x per-hare yield, read off the catalogs so the floor the
+ *  yard check waits for cannot drift from what the scene actually spawns. */
+const HARE_MEAT_TOTAL =
+  (buildSandboxAnimals().find((a) => a.tribeType === ANIMAL_TRIBE_HARES)?.maximumGroupSize ?? 0) *
+  (HUNT_PREY_BALANCE.find((s) => s.tribeType === ANIMAL_TRIBE_HARES)?.yields.meat ?? 0);
 
 const { Settler, Stockpile, WorkFlag } = components;
 

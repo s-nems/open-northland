@@ -51,7 +51,7 @@ export function isMilitaryMode(mode: number): mode is MilitaryMode {
  *  - **scout** ({@link isScoutJob}) → {@link MILITARY_MODE.IGNORE} (explores without fighting);
  *  - **hunter** ({@link isHunterJob}) → {@link MILITARY_MODE.IGNORE} toward humans — it does not auto-fight
  *    enemy players, but its animal-hunting predation drive is separate and stays (the CombatSystem exempts a
- *    hunter's catchable-prey acquisition from the IGNORE gate);
+ *    hunter's huntable-prey acquisition from the IGNORE gate);
  *  - **every other civilian job** (and a jobless/idle settler, `jobType` 0 or null) → {@link MILITARY_MODE.FLEE}
  *    (civilians run from danger).
  *

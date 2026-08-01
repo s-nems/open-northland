@@ -38,7 +38,7 @@ export function tribeContent(): ContentSet {
       { typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'house', targetId: 4 }] },
       // bears (typeId 8) — another animal, even though it has many bindings it has no tech graph.
       { typeId: 8, id: 'bears', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'bear_walk' }] },
-      // cows (typeId 10) — a CATCHABLE prey animal (the `mayHunt`/`isCatchableAnimal` fixture).
+      // cows (typeId 10) - a huntable prey animal (the `mayHunt` fixture).
       { typeId: 10, id: 'cows', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'cow_walk' }] },
     ],
     // animaltypes records (keyed on tribeType): the bears (8) are aggressive with a HP pool; the
@@ -68,7 +68,7 @@ export function tribeContent(): ContentSet {
         ignoreHouses: true,
       },
       // The cow (tribe 10) is CATCHABLE livestock: passive (not aggressive/getAngry), and WARRANTABLE
-      // (owned penned livestock — isWarrantableAnimal); it does NOT ignore houses (paths around them
+      // (owned penned livestock - isWarrantableAnimal); it does NOT ignore houses (paths around them
       // like any settler). Its huntability comes from the huntPrey row below, not this record.
       { id: 'cow', tribeType: 10, catchable: true, warrantable: true, hitpointsAdult: 1000 },
     ],

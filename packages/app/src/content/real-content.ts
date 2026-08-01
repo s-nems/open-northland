@@ -102,7 +102,7 @@ function withEquipClass(good: GoodType): GoodType {
 }
 
 /** Give WOOL the carcass-harvest atomic a hunted sheep's carcass is worked with. In the source, wool is
- *  purely a husbandry product (no harvest atomic, no gathering pipeline) — the hunter yielding wool off
+ *  purely a husbandry product (no harvest atomic, no gathering pipeline) - the hunter yielding wool off
  *  a last-resort sheep kill is our own design (`catalog/hunting.ts`), so the atomic is a named
  *  approximation mirroring leather/meat's extracted `atomicForHarvesting 33`. */
 function withWoolCarcassHarvest(good: GoodType): GoodType {
@@ -110,7 +110,7 @@ function withWoolCarcassHarvest(good: GoodType): GoodType {
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Rein the hunter bow in under the short bow ({@link HUNTER_BOW_BALANCE} — a design override of the
+/** Rein the hunter bow in under the short bow ({@link HUNTER_BOW_BALANCE} - a design override of the
  *  extracted rows, which make it stronger). Every other weapon passes through untouched. */
 function withHunterBowBalance(weapon: WeaponType): WeaponType {
   if (weapon.id !== 'hunter_bow') return weapon;
@@ -195,9 +195,9 @@ export function mergeRealContent(
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
   // The hunter overlays (`catalog/hunting.ts`): the bow reined in under the short bow, and the authored
-  // prey/yield table resolved against this set's goods+tribes. Wool's carcass node rides the leather
-  // cadaver stage (landscape 79 / gfx 847) — the source has no wool cadaver, so a hunted sheep's wool
-  // reuses the hide's decal and footprint (named approximation, like the wool harvest atomic above).
+  // prey/yield table resolved against this set's goods+tribes. Wool's pipeline row is leather's whole
+  // row re-keyed: the cadaver stage (landscape 79 / gfx 847), its footprint, AND the store-pile stage,
+  // so a wool heap draws the hide pile's decal (the same named approximation as the harvest atomic).
   const weapons = real.weapons.map(withHunterBowBalance);
   const woolType = goods.find((g) => g.id === 'wool')?.typeId;
   const leatherRow = real.gatheringPipeline.find((p) => p.goodId === 'leather');
