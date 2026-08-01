@@ -19,6 +19,10 @@ export type DrawKind =
   | 'signpost'
   | 'projectile';
 
+/** The kinds drawn as sprites — every {@link DrawKind} a marker component can classify an entity as.
+ *  Terrain tiles are the exception: they come from the grid, not an entity, and bind separately. */
+export type SpriteKind = Exclude<DrawKind, 'tile'>;
+
 /**
  * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
  * `tribetypes` `setatomic` maps an atomic → its animation). Derived purely from the snapshot's

@@ -229,24 +229,37 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
       state,
     };
     // Per-kind dispatch; each helper documents the fields its kind carries (`collect-fields.ts`).
-    if (kind === 'settler') {
-      assignSettlerFields(item, components, actingAtomic, targetFacing);
-    } else if (kind === 'building') {
-      assignBuildingFields(item, components);
-    } else if (kind === 'resource') {
-      assignStaticFields(item, 'resource', components);
-    } else if (kind === 'stump') {
-      assignStaticFields(item, 'stump', components);
-    } else if (kind === 'berrybush') {
-      assignBerryBushFields(item, components);
-    } else if (kind === 'signpost') {
-      pushSignpostItems(items, liveRefs, snapshot, item, components, tileX, tileY, lift, playerColourOf);
-    } else if (kind === 'projectile') {
-      // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
-      arcLift = assignProjectileArc(item, components, screen, posByRef);
-    } else {
-      // stockpile | grounddrop
-      assignStockpileFields(item, components, isFlag);
+    switch (kind) {
+      case 'settler':
+        assignSettlerFields(item, components, actingAtomic, targetFacing);
+        break;
+      case 'building':
+        assignBuildingFields(item, components);
+        break;
+      case 'resource':
+      case 'stump':
+        assignStaticFields(item, kind, components);
+        break;
+      case 'berrybush':
+        assignBerryBushFields(item, components);
+        break;
+      case 'signpost':
+        pushSignpostItems(items, liveRefs, snapshot, item, components, tileX, tileY, lift, playerColourOf);
+        break;
+      case 'projectile':
+        // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
+        arcLift = assignProjectileArc(item, components, screen, posByRef);
+        break;
+      case 'stockpile':
+      case 'grounddrop':
+        assignStockpileFields(item, components, isFlag);
+        break;
+      default: {
+        // Exhaustiveness guard: a new SpriteKind fails to assign to `never` here instead of silently
+        // taking the stockpile branch's fields.
+        const _exhaustive: never = kind;
+        void _exhaustive;
+      }
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;

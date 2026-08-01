@@ -1,12 +1,10 @@
-import type { DrawKind } from '../draw-item.js';
+import type { SpriteKind } from '../draw-item.js';
 
 /**
  * The marker-classification step: which drawable kind a snapshot entity is, decided by which marker
- * component it carries (in a fixed priority order). Terrain tiles are classified separately.
+ * component it carries, in the fixed priority order below.
  */
-
-/** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
-export function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
+export function classify(components: Readonly<Record<string, unknown>>): SpriteKind | null {
   // An in-flight munition (a bare Projectile + Position entity, the ranged-combat shot) — drawn as the
   // minimal oriented arrow (no decoded arrow bob exists in the extracted [bobseq] lanes; a named gap).
   if ('Projectile' in components) return 'projectile';

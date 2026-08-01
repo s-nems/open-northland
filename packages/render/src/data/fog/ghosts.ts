@@ -1,6 +1,6 @@
 import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../projection/index.js';
-import type { DrawKind, StaticDrawFields } from '../scene/draw-item.js';
+import type { DrawKind, SpriteKind, StaticDrawFields } from '../scene/draw-item.js';
 import { assignStaticFields, classify, readPosition } from '../scene/snapshot-readers/index.js';
 import { fogCellOfTile } from './mask.js';
 
@@ -40,7 +40,7 @@ export type FogGhost = Readonly<StaticDrawFields> & {
 };
 
 /** Whether a classified snapshot entity is a ghosting static. */
-function isGhostKind(kind: DrawKind | null): kind is FogGhostKind {
+function isGhostKind(kind: SpriteKind | null): kind is FogGhostKind {
   return kind === 'building' || kind === 'resource' || kind === 'stump';
 }
 
