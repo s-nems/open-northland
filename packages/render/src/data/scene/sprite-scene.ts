@@ -12,7 +12,7 @@ import {
   pushSignpostItems,
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
-import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
+import type { MutableSpriteDrawItem, SpriteDrawItem, SpriteState } from './draw-item.js';
 import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {
   assignStaticFields,
@@ -50,7 +50,7 @@ export interface LiveRefs {
  *  produced in one pass over the snapshot — or over the spatial index's viewport buckets when the
  *  caller retains one (see {@link collectSpriteScene}). */
 export interface SpriteScene {
-  readonly items: DrawItem[];
+  readonly items: SpriteDrawItem[];
   /** Membership over every drawable entity before the cull — the view the retained pool reconciles
    *  against (a ref answering false has died; one answering true but not in {@link items} is merely
    *  off-screen). Valid for this build's frame only: the index-backed view reads shared mutable state
@@ -134,7 +134,7 @@ export interface DrawListOptions extends SpriteSceneOptions {
  * (`setTerrain`), so only moving/animated entities flow through here. An item is kept iff its screen anchor
  * is inside the already margin-inflated `viewport` box.
  */
-export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions = {}): DrawItem[] {
+export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions = {}): SpriteDrawItem[] {
   return collectScene(snapshot, opts).items;
 }
 
@@ -165,7 +165,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     portraitRef,
     playerColourOf,
   } = opts;
-  const items: MutableDrawItem[] = [];
+  const items: MutableSpriteDrawItem[] = [];
   // Refs collected while emitting. In the walk modes this IS the liveness set; in the index mode it
   // only carries what the index cannot answer (signpost board refs, fog-ghost refs, this frame's
   // emitted candidates) and the map-wide answer is the membership view built at the bottom.
@@ -240,7 +240,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     // A projectile's ballistic height (set in its branch below) rides the same lift channel as terrain:
     // a pure draw offset the depth key never sees, so the lob can't reshuffle occlusion mid-flight.
     let arcLift = 0;
-    const item: MutableDrawItem = {
+    const item: MutableSpriteDrawItem = {
       kind,
       ref: entity.id,
       x: drawX,

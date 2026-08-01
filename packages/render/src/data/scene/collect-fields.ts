@@ -3,7 +3,7 @@ import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
-import type { MutableDrawItem } from './draw-item.js';
+import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
 import { projectileArc } from './projectile-arc.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import {
@@ -144,10 +144,10 @@ export function assignStockpileFields(
  * post itself is mapped there).
  */
 export function pushSignpostItems(
-  items: MutableDrawItem[],
+  items: MutableSpriteDrawItem[],
   liveRefs: Set<number>,
   snapshot: WorldSnapshot,
-  item: MutableDrawItem,
+  item: MutableSpriteDrawItem,
   components: Readonly<Record<string, unknown>>,
   tileX: number,
   tileY: number,
@@ -159,7 +159,7 @@ export function pushSignpostItems(
   for (const bucket of signpostBoardsOf(snapshot).get(item.ref) ?? []) {
     const boardRef = -(item.ref * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
     liveRefs.add(boardRef);
-    const board: MutableDrawItem = {
+    const board: MutableSpriteDrawItem = {
       kind: 'signpost',
       ref: boardRef,
       x: item.x,
@@ -212,7 +212,7 @@ export function assignProjectileArc(
  * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
  */
 export function pushGhostItems(
-  items: MutableDrawItem[],
+  items: MutableSpriteDrawItem[],
   liveRefs: Set<number>,
   ghosts: readonly FogGhost[],
   viewport: Viewport | undefined,
@@ -224,7 +224,7 @@ export function pushGhostItems(
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
     // Statics are always `idle`; the shared StaticDrawFields were frozen at capture.
-    const item: MutableDrawItem = {
+    const item: MutableSpriteDrawItem = {
       kind: g.kind,
       ref: g.ref,
       x: screen.x,

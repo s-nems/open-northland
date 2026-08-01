@@ -9,7 +9,7 @@
  *  - {@link import('./terrain-scene.js')} — the terrain-grid shapes + map projection + headless oracle.
  */
 export { SHADOW_DEPTH_EPS, screenDepth } from './depth.js';
-export type { DrawItem, DrawKind, SpriteKind, SpriteState } from './draw-item.js';
+export type { DrawItem, DrawKind, SpriteDrawItem, SpriteKind, SpriteState } from './draw-item.js';
 export { PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX } from './projectile-arc.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
 export { SpriteSpatialIndex } from './spatial-index.js';
