@@ -22,6 +22,7 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { grazeLeashOf } from '../livestock/assignment.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
+import { nearHeld, SPACING_PROBES } from './spacing.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
  *  cadence is not readable), paced to read as grazing rather than a patrol. */
@@ -47,11 +48,29 @@ const UNSTACK_OFFSETS: readonly (readonly [number, number])[] = [
   [0, -2],
 ];
 
-/** Per-tick scratch (cleared each pass): the lowest-id standing animal per node - the "keeper" that
- *  holds a shared node - and the sidestep targets already claimed this tick. Module-level to avoid a
- *  steady per-tick allocation; the system clears both before use. */
+/** Per-tick scratch (cleared each pass): the elected keeper per node - the animal that holds that
+ *  field ({@link keeperNear}) - and the sidestep targets already claimed this tick. Module-level to
+ *  avoid a steady per-tick allocation; the system clears both before use. */
 const standerByNode = new Map<NodeId, Entity>();
 const unstackTaken = new Set<NodeId>();
+
+/** The keeper holding `node` or any node closer than the stander spacing to it
+ *  ({@link SPACING_PROBES}), or undefined when the field is free. */
+function keeperNear(terrain: TerrainGraph, node: NodeId): Entity | undefined {
+  const at = terrain.coordsOf(node);
+  for (const [dx, dy] of SPACING_PROBES) {
+    if (!terrain.inBounds(at.x + dx, at.y + dy)) continue;
+    const keeper = standerByNode.get(terrain.nodeAt(at.x + dx, at.y + dy));
+    if (keeper !== undefined) return keeper;
+  }
+  return undefined;
+}
+
+/** Whether `node` sits closer than the stander spacing to a kept field or to a sidestep target
+ *  already claimed this tick - the rejection every standing-goal pick (graze or sidestep) applies. */
+function fieldContested(terrain: TerrainGraph, node: NodeId): boolean {
+  return keeperNear(terrain, node) !== undefined || nearHeld(terrain, node, unstackTaken);
+}
 
 /** How far one grazing step may aim from where the creature stands (node Manhattan). Clamped down to the
  *  creature's own territory radius, so a species whose range is 2 or 3 nodes still has picks its leash
@@ -96,15 +115,15 @@ export const animalWanderSystem: System = (world, ctx) => {
   // change between them - only MoveGoal writes happen here).
   const animals = canonicalById(world.query(StayPoint, Settler, Position));
 
-  // The tick's standing occupancy: the lowest-id stander keeps a shared node (canonical order fills
-  // first), everyone else on it sidesteps below. A walker is not a stander, and a Resting animal is
-  // inside a building, off the field.
+  // The tick's standing occupancy: the first stander in canonical order to reach a field becomes its
+  // keeper; anyone standing within the spacing of a kept field sidesteps below. A walker is not a
+  // stander, and a Resting animal is inside a building, off the field.
   standerByNode.clear();
   unstackTaken.clear();
   for (const e of animals) {
     if (world.has(e, Resting) || isTravelling(world, e)) continue;
     const node = entityNode(world, terrain, e);
-    if (!standerByNode.has(node)) standerByNode.set(node, e);
+    if (keeperNear(terrain, node) === undefined) standerByNode.set(node, e);
   }
 
   for (const e of animals) {
@@ -116,9 +135,9 @@ export const animalWanderSystem: System = (world, ctx) => {
     if (world.has(e, Engagement) || world.has(e, Anger) || world.has(e, AttackOrder)) continue;
     if (world.has(e, Frightened)) continue; // a scattering animal is the fright drive's, not grazing
 
-    // Un-stack before any graze roll: an animal sharing its node with a lower-id stander steps to the
+    // Un-stack before any graze roll: an animal standing inside another keeper's field steps to the
     // nearest free spot (the keeper convention of collision/separation), leash ignored - getting off a
-    // shared node beats staying strictly inside the territory (user feedback: standing animals merged
+    // shared field beats staying strictly inside the territory (user feedback: standing animals merged
     // into one sprite). The sidestep itself consumes no rng draw (the `continue` does drop this
     // animal's cadence roll for the tick - a deterministic function of world state either way).
     const here = entityNode(world, terrain, e);
@@ -159,8 +178,9 @@ export const animalWanderSystem: System = (world, ctx) => {
     // Across water from the creature: findPath would reject the goal outright, stranding it for the
     // planner's retry window and filling its unreachable-goal memo (the targets/food.ts pattern).
     if (terrain.componentOf(target) !== terrain.componentOf(here)) continue;
-    // Another animal stands there, or a sidestep claimed it this tick: don't graze into a stack.
-    if (standerByNode.has(target) || unstackTaken.has(target)) continue;
+    // Inside a stander's field, or a sidestep claimed it this tick: don't graze into a stack. The
+    // creature's OWN field rejects too - a distance-1 pick is a half-cell shuffle, not a graze step.
+    if (fieldContested(terrain, target)) continue;
     blocked ??= dynamicBlockOverlay(world, ctx, terrain);
     if (blocked.has(target)) continue;
 
@@ -168,9 +188,9 @@ export const animalWanderSystem: System = (world, ctx) => {
   }
 };
 
-/** The first free {@link UNSTACK_OFFSETS} spot beside a shared node - walkable, same component, not
- *  blocked, not another stander's node, and not already claimed by an earlier sidestep this tick -
- *  or null when the creature is fully boxed in (it retries next tick). */
+/** The first free {@link UNSTACK_OFFSETS} spot beside a shared field - walkable, same component, not
+ *  blocked, and clear of every kept field and every sidestep already claimed this tick
+ *  ({@link fieldContested}) - or null when the creature is fully boxed in (it retries next tick). */
 function sidestepTarget(terrain: TerrainGraph, blocked: BlockOverlay, from: NodeId): NodeId | null {
   const at = terrain.coordsOf(from);
   for (const [dx, dy] of UNSTACK_OFFSETS) {
@@ -178,7 +198,7 @@ function sidestepTarget(terrain: TerrainGraph, blocked: BlockOverlay, from: Node
     const node = terrain.nodeAt(at.x + dx, at.y + dy);
     if (!terrain.isWalkable(node)) continue;
     if (terrain.componentOf(node) !== terrain.componentOf(from)) continue;
-    if (standerByNode.has(node) || unstackTaken.has(node)) continue;
+    if (fieldContested(terrain, node)) continue;
     if (blocked.has(node)) continue;
     unstackTaken.add(node);
     return node;
