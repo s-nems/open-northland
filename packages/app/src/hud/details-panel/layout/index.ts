@@ -50,7 +50,7 @@ const SIGNPOST_BUTTON_PAD = 2;
 /**
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
  * supersample draw layout is derived from the on-canvas hit layout this way — scaled by the oversample /
- * display ratio and re-origined to the texture (see `panel.ts`) — so the drawn geometry equals the
+ * display ratio and re-origined to the texture (see `panelDrawGeometry`) - so the drawn geometry equals the
  * hit-tested geometry by construction, never by two independent layout passes agreeing on rounding.
  */
 export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => Rect): T {
