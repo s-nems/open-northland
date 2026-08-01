@@ -14,7 +14,7 @@ import {
 } from './i18n/index.js';
 import type { GameFolderCandidate, IpcInvokeChannel, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
-import { findModRootUnder, installCnMod } from './mod-install/index.js';
+import { findModRootUnder, installCnMod, isFinalModEvent } from './mod-install/index.js';
 import type { PipelineHost } from './pipeline-host.js';
 import { gameUrlForLocale } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
@@ -97,15 +97,9 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   });
   handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());
 
-  // The installer ticks per chunk/per extracted file (tens of thousands of events); warnings and
-  // each phase's final tick always reach the renderer, the rest ride the shared throttle.
   const modEvents = createEventThrottle();
   const forwardModEvent = (event: ModEvent): void => {
-    const final =
-      event.kind === 'mod-warning' ||
-      (event.kind === 'mod-download' && event.total !== undefined && event.received >= event.total) ||
-      (event.kind === 'mod-extract' && event.done >= event.total);
-    if (!modEvents.shouldEmit(final)) return;
+    if (!modEvents.shouldEmit(isFinalModEvent(event))) return;
     if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.modEvent, event);
   };
   handleFromAppFrame(IPC_CHANNELS.downloadMod, async () => {
