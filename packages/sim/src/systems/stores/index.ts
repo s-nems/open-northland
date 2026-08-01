@@ -11,6 +11,13 @@ export {
   upgradeTierOf,
 } from './construction.js';
 export {
+  isWorkplaceOperator,
+  operatorCountOf,
+  presentOperatorCount,
+  presentOperators,
+  type WorkplaceOperators,
+} from './operators.js';
+export {
   collectInboundSupply,
   type InboundSupplyTally,
   inboundSupplyOf,
@@ -22,14 +29,9 @@ export {
   buildingWorkerJobs,
   canonicalBuildingWorkerJobs,
   isCarrierJob,
-  isWorkplaceOperator,
   mergedRecipeOf,
-  operatorCountOf,
-  presentOperatorCount,
-  presentOperators,
   producesGoodWithoutInputs,
   recipesByProductOf,
   typeProducesGoodWithoutInputs,
-  type WorkplaceOperators,
   workplaceStoredGoods,
 } from './workplace.js';
