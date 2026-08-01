@@ -6,7 +6,7 @@ import {
   SMOKE_PUFFS_PER_EMITTER,
   smokePuff,
 } from '../../data/effects/index.js';
-import type { DrawnGeometry } from '../sprite-pool/index.js';
+import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /** The pale ash-grey a puff draws in — one flat circle per puff; density comes from the overlap.
@@ -35,7 +35,7 @@ export class DamageSmokeLayer {
    * to `drawn` (a building not drawn this frame retires its node and re-mints it on scroll-back, cheap for
    * a handful of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks.
    */
-  draw(damaged: readonly { ref: number; hpFrac: number }[], drawn: DrawnGeometry, tick: number): void {
+  draw(damaged: readonly DamagedBuilding[], drawn: DrawnGeometry, tick: number): void {
     this.seen.clear();
     for (const { ref, hpFrac } of damaged) {
       const emitters = damageSmokeEmitters(hpFrac);
