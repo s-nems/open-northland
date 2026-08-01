@@ -1,4 +1,3 @@
-import { lastByTypeId } from '@open-northland/data';
 import type {
   DoorBadge,
   ElevationField,
@@ -16,11 +15,8 @@ import {
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
-import { flagPointByType } from '../../content/building-gfx/index.js';
-import { loadIr } from '../../content/ir/load.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
-import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
 import { currentLocale } from '../../i18n/index.js';
@@ -36,8 +32,7 @@ import {
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
-import { createFogGates, createSnapshotProjections } from '../projections/index.js';
+import { createFogGates } from '../projections/index.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls } from '../unit-controls/index.js';
@@ -48,6 +43,7 @@ import { mountGamePresentation } from './game-presentation.js';
 import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
+import { createViewReadModels } from './read-models.js';
 
 /**
  * The shared in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
@@ -315,21 +311,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     tooltip: createTooltip(),
   });
 
-  // The good display label by sim goodType — the one localized name source (the scene entry seeded
-  // `sim.content.goods` names from the `?locale` language). Shared by the ground-pile tooltip below and the
-  // admin spawn palette, so both read in the player's language; falls back to the good's id.
-  const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
-
-  // One shared building index drives door badges and the optional geometry overlay, each type carrying
-  // its extracted `GfxFlagPoint` sign-post anchor when the content has one (`loadIr` is memoized - the
-  // presentation mount above already resolved it).
-  const flagPoints = flagPointByType(await loadIr());
-  const buildingDoors = new Map(
-    [...lastByTypeId(sim.content.buildings)].map(([typeId, b]) => [
-      typeId,
-      { id: b.id, footprint: b.footprint, flagPoint: flagPoints.get(typeId) },
-    ]),
-  );
+  const {
+    goodLabel,
+    buildingDoors,
+    overlayFrame,
+    signpostOverlayFrame,
+    hudFor,
+    doorBadgesFor,
+    constructionSignsFor,
+    settlerBubblesFor,
+  } = await createViewReadModels({ sim, mapSize: deps.mapSize, localPlayer, fogGates });
+  if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   // The developer overlays: the `?debug=geometry` diagram (ticked by the frame loop) + the admin spawn
   // palette. Mounted after the unit controls — an admin spawn click defers to their composed HUD claim.
@@ -345,7 +337,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     clientToScreen,
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
-    goodLabel: (typeId) => goodLabelByType.get(typeId),
+    goodLabel,
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer. A
@@ -356,26 +348,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     renderer,
     camera: () => cameraCtl.camera(),
     clientToScreen,
-    goodLabel: (typeId) => goodLabelByType.get(typeId),
+    goodLabel,
     pointer: pointerAt,
     suppressed: (clientX, clientY) =>
       toolPanel.controller.placementType() !== null ||
       toolPanel.claimPointer(clientX, clientY) ||
       controls.claimsPointer(clientX, clientY),
   });
-
-  // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view — and its
-  // erect-signpost twin (shown while the scout's placement click is pending).
-  const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize, localPlayer);
-  const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize, localPlayer);
-  // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
-  // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
-  const { hudFor, doorBadgesFor, constructionSignsFor, settlerBubblesFor } = createSnapshotProjections(
-    buildingDoors,
-    workerRoleOf,
-    fogGates,
-  );
-  if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   installDebugHandle({
     sim,
