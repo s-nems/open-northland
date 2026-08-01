@@ -1,4 +1,3 @@
-import type { EquipCategory } from '@open-northland/data';
 import {
   Carrying,
   Equipment,
@@ -19,30 +18,34 @@ import type { TargetCandidates } from '../targets/index.js';
 import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 
+type EquipOrderState = NonNullable<(typeof EquipOrder)['__value']>;
+
+/** What one errand's stage handlers share, resolved once per plan call. */
+interface EquipErrand {
+  readonly world: World;
+  readonly ctx: SystemContext;
+  readonly terrain: TerrainGraph;
+  readonly entity: Entity;
+  readonly settler: SettlerIdentity;
+  /** The live order component - {@link endErrand} advances its `stage` through this reference. */
+  readonly order: EquipOrderState;
+  readonly here: NodeId;
+  readonly gate: NavigationLimit | undefined;
+  readonly avoid: ((cell: NodeId) => boolean) | undefined;
+  /** The settler's owning player - the errand fetches and stows only through same-side stores. */
+  readonly owner: number | undefined;
+  readonly targets: TargetCandidates;
+}
+
+const EXCLUDE_PRODUCERS = false;
+
 /**
- * The planner's EQUIP-ERRAND rung: drive a settler's live {@link EquipOrder} one step forward. Sits
- * above the economy rungs (a player errand outranks work) and below the needs drives and the
- * fight/flee/player-walk gates, like the other soft overrides. Stage by stage:
- *
- *  - `acquire`: free the hands first (a player order sets a leftover job load down where the settler
- *    stands, the `moveUnit` idiom; an assistant errand is dropped instead), then fetch - walk to the
- *    nearest reachable store/pile holding the wanted good and run the `equip` atomic there (the unit
- *    lands straight on the body, a fresh swap-out on the back, a used one destroyed - the take-off
- *    rule). Nothing to fetch anywhere reachable → skip to `return` (the errand ends, faithful to "no
- *    source, no order"). A take-off order (`goodType` null) runs the `unequip` atomic AT the store the
- *    unit will land in, so the item stays visibly worn for the walk (user rule 2026-07-23); only a
- *    part-used unit (destroyed on the spot) or a unit no store can take (dropped by the stow leg)
- *    comes off in place.
- *  - `stow`: a carried good (the swap-out / a taken-off unit no store could take) goes into the
- *    nearest store that can take it; when none can, it is set down on the ground where the settler
- *    stands (user-specified fallback). Partial deposits re-plan until the hands are free.
- *  - `return`: walk back to the node the order was issued on; arriving (or the way back proving
- *    unreachable) ends the errand and hands the settler to the economy the same tick.
+ * The planner's EQUIP-ERRAND rung: drive a settler's live {@link EquipOrder} one step forward.
  *
  * The fetch/deposit gestures reuse the generic goods-handling animation ({@link PICKUP_ATOMIC_ID} /
  * {@link PILEUP_ATOMIC_ID}) - no decoded equip clip exists (named approximation, like the drop). No
- * source-side reservation: two settlers sent for the last unit race it, the loser re-searches and
- * walks home empty-handed (the whiffing `equip` effect keeps goods conserved).
+ * source-side reservation: two settlers sent for the last unit race it, the loser re-searches and walks
+ * home empty-handed (the whiffing `equip` effect keeps goods conserved).
  */
 export function planEquipOrder(
   world: World,
@@ -56,166 +59,174 @@ export function planEquipOrder(
 ): boolean {
   const order = world.tryGet(e, EquipOrder);
   if (order === undefined) return false;
-  const gate = limit ?? undefined;
-  const avoid = unreachableGoalVeto(world, ctx, e);
-  const owner = ownerOf(world, e); // the errand fetches/stows only through same-side stores
-
-  if (order.stage === 'acquire') {
-    const worn = world.tryGet(e, Equipment);
-    if (order.goodType === null) {
-      // Take-off: the slot may have emptied since the order (a swap raced it) - then just walk home.
-      const takenOff = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
-      if (takenOff === null) {
-        order.stage = 'return';
-        return planReturn(world, e, order.returnTo, here, avoid);
-      }
-      if (world.has(e, Carrying)) {
-        startDrop(world, ctx, e); // free the hands first - the taken-off good may need the back
-        return true;
-      }
-      // sink null = take off in place: a part-used unit destroys, an unstowable one gets ground-dropped.
-      const sink = isUsed(takenOff)
-        ? null
-        : nearestStoreFor(
-            targets.stockpileCells,
-            world,
-            ctx,
-            here,
-            takenOff.goodType,
-            owner,
-            false,
-            gate,
-            avoid,
-          );
-      if (sink === null) {
-        startUnequip(world, ctx, e, settler, order.group, order.slot, null);
-        return true;
-      }
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, sink, here), () =>
-        startUnequip(world, ctx, e, settler, order.group, order.slot, sink),
-      );
-      return true;
-    }
-    // Already wearing a FRESH unit of the wanted good (a re-issued order): nothing worth fetching. A
-    // part-used one is still replaced - "boots at 20%, fetch me a new pair" is the swap the menu offers,
-    // and the worn pair goes the way of any swapped-out part-used item.
-    const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
-    if (held !== null && held.goodType === order.goodType && !isUsed(held)) {
-      order.stage = 'return';
-      return planReturn(world, e, order.returnTo, here, avoid);
-    }
-    if (world.has(e, Carrying)) {
-      // The player's own order sets a leftover job load down where the settler stands; the assistant's
-      // hand-out never costs a delivery, so its errand is dropped rather than held across a delivery of
-      // unbounded length: a held `acquire` order pins one cap slot and one reserved unit of its player's
-      // hand-out. A later stride beat re-dispatches the settler once its hands are free.
-      if (order.issuer === 'assistant') {
-        world.remove(e, EquipOrder);
-        return false;
-      }
-      startDrop(world, ctx, e);
-      return true;
-    }
-    const goodType = order.goodType;
-    const src = nearestStoreHolding(
-      targets.stockpileCells,
-      world,
-      ctx,
-      terrain,
-      here,
-      goodType,
-      owner,
-      gate,
-      avoid,
-    );
-    if (src === null) {
-      order.stage = 'return'; // nothing reachable holds the good - give up and walk home
-      return planReturn(world, e, order.returnTo, here, avoid);
-    }
-    const { group, slot } = order;
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
-      startAtomic(
-        world,
-        e,
-        PICKUP_ATOMIC_ID,
-        { kind: 'equip', from: src, goodType, group, slot },
-        atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
-        src,
-      ),
-    );
-    return true;
+  const errand: EquipErrand = {
+    world,
+    ctx,
+    terrain,
+    entity: e,
+    settler,
+    order,
+    here,
+    gate: limit ?? undefined,
+    avoid: unreachableGoalVeto(world, ctx, e),
+    owner: ownerOf(world, e),
+    targets,
+  };
+  switch (order.stage) {
+    case 'acquire':
+      return order.goodType === null ? planTakeOff(errand) : planFetch(errand, order.goodType);
+    case 'stow':
+      return planStow(errand);
+    case 'return':
+      return planReturn(errand);
   }
-
-  if (order.stage === 'stow') {
-    const load = world.tryGet(e, Carrying);
-    if (load === undefined || load.amount <= 0) {
-      order.stage = 'return';
-      return planReturn(world, e, order.returnTo, here, avoid);
-    }
-    const sink = nearestStoreFor(
-      targets.stockpileCells,
-      world,
-      ctx,
-      here,
-      load.goodType,
-      owner,
-      false,
-      gate,
-      avoid,
-    );
-    if (sink === null) {
-      startDrop(world, ctx, e); // no store can take it - onto the ground where the settler stands
-      return true;
-    }
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, sink, here), () =>
-      startAtomic(
-        world,
-        e,
-        PILEUP_ATOMIC_ID,
-        { kind: 'pileup', store: sink },
-        atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID),
-        sink,
-      ),
-    );
-    return true;
-  }
-
-  return planReturn(world, e, order.returnTo, here, avoid);
 }
 
-/** Walk back to the issue node; arriving (or the way back proving unreachable) ends the errand and
- *  returns false so the economy re-tasks the settler this very tick. */
-function planReturn(
-  world: World,
-  e: Entity,
-  returnTo: NodeId,
-  here: NodeId,
-  avoid: ((cell: NodeId) => boolean) | undefined,
-): boolean {
-  if (here === returnTo || avoid?.(returnTo) === true) {
-    world.remove(e, EquipOrder);
-    return false;
+/**
+ * The `acquire` stage of a take-off order: run the `unequip` atomic AT the store the unit will land in,
+ * so the item stays visibly worn for the walk (user rule 2026-07-23). Only a part-used unit (destroyed)
+ * or one no store can take (ground-dropped by the stow leg) comes off in place.
+ */
+function planTakeOff(errand: EquipErrand): boolean {
+  const { world, ctx, entity, order } = errand;
+  const worn = world.tryGet(entity, Equipment);
+  const takenOff = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+  if (takenOff === null) return endErrand(errand); // the slot emptied since the order - a swap raced it
+  if (world.has(entity, Carrying)) {
+    startDrop(world, ctx, entity); // free the hands first - the taken-off good may need the back
+    return true;
   }
-  world.add(e, MoveGoal, { cell: returnTo });
+  const sink = isUsed(takenOff) ? null : stowSink(errand, takenOff.goodType);
+  if (sink === null) {
+    startUnequip(errand, null);
+    return true;
+  }
+  atOrWalkTo(errand, sink, () => startUnequip(errand, sink));
   return true;
 }
 
-/** The take-off atomic: the generic goods-handling gesture with the `unequip` effect - aimed at the
- *  stow store when the unit deposits there, self-directed (`sink` null) for a destroy/ground-drop. */
-function startUnequip(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  settler: SettlerIdentity,
-  group: EquipCategory,
-  slot: number,
-  sink: Entity | null,
-): void {
+/**
+ * The `acquire` stage of a wear order: free the hands, then walk to the nearest reachable store or pile
+ * holding `goodType` and run the `equip` atomic there. Nothing to fetch anywhere reachable ends the
+ * errand, faithful to "no source, no order".
+ */
+function planFetch(errand: EquipErrand, goodType: number): boolean {
+  const { world, ctx, terrain, entity, settler, order, here, owner, gate, avoid, targets } = errand;
+  const worn = world.tryGet(entity, Equipment);
+  const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
+  // A part-used unit is still replaced - "boots at 20%, fetch me a new pair" is the swap the menu
+  // offers, and the worn pair goes the way of any swapped-out part-used item.
+  if (held !== null && held.goodType === goodType && !isUsed(held)) return endErrand(errand);
+  if (world.has(entity, Carrying)) {
+    // The assistant's hand-out is dropped rather than held across a delivery of unbounded length: a
+    // held `acquire` order pins one cap slot and one reserved unit of its player's hand-out, and a
+    // later stride beat re-dispatches the settler. A player order instead sets the load down here.
+    if (order.issuer === 'assistant') {
+      world.remove(entity, EquipOrder);
+      return false;
+    }
+    startDrop(world, ctx, entity);
+    return true;
+  }
+  const src = nearestStoreHolding(
+    targets.stockpileCells,
+    world,
+    ctx,
+    terrain,
+    here,
+    goodType,
+    owner,
+    gate,
+    avoid,
+  );
+  if (src === null) return endErrand(errand);
+  const { group, slot } = order;
+  atOrWalkTo(errand, src, () =>
+    startAtomic(
+      world,
+      entity,
+      PICKUP_ATOMIC_ID,
+      { kind: 'equip', from: src, goodType, group, slot },
+      atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
+      src,
+    ),
+  );
+  return true;
+}
+
+/**
+ * The `stow` stage: the carried good goes into the nearest store that can take it; when none can, it is
+ * set down where the settler stands (user-specified fallback). A partial deposit leaves the stage in
+ * place, so the errand re-plans until the hands are free.
+ */
+function planStow(errand: EquipErrand): boolean {
+  const { world, ctx, entity, settler } = errand;
+  const load = world.tryGet(entity, Carrying);
+  if (load === undefined || load.amount <= 0) return endErrand(errand);
+  const sink = stowSink(errand, load.goodType);
+  if (sink === null) {
+    startDrop(world, ctx, entity); // no store can take it - onto the ground where the settler stands
+    return true;
+  }
+  atOrWalkTo(errand, sink, () =>
+    startAtomic(
+      world,
+      entity,
+      PILEUP_ATOMIC_ID,
+      { kind: 'pileup', store: sink },
+      atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID),
+      sink,
+    ),
+  );
+  return true;
+}
+
+/** The `return` stage: walk back to the issue node; arriving (or the way back proving unreachable) ends
+ *  the errand and returns false so the economy re-tasks the settler this very tick. */
+function planReturn(errand: EquipErrand): boolean {
+  const { world, entity, order, here, avoid } = errand;
+  if (here === order.returnTo || avoid?.(order.returnTo) === true) {
+    world.remove(entity, EquipOrder);
+    return false;
+  }
+  world.add(entity, MoveGoal, { cell: order.returnTo });
+  return true;
+}
+
+function endErrand(errand: EquipErrand): boolean {
+  errand.order.stage = 'return';
+  return planReturn(errand);
+}
+
+/** The nearest same-side store that can take `goodType`, or null when no reachable one can. */
+function stowSink(errand: EquipErrand, goodType: number): Entity | null {
+  const { world, ctx, here, owner, gate, avoid, targets } = errand;
+  return nearestStoreFor(
+    targets.stockpileCells,
+    world,
+    ctx,
+    here,
+    goodType,
+    owner,
+    EXCLUDE_PRODUCERS,
+    gate,
+    avoid,
+  );
+}
+
+function atOrWalkTo(errand: EquipErrand, target: Entity, act: () => void): void {
+  const { world, ctx, terrain, entity, here } = errand;
+  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, target, here), act);
+}
+
+/** The take-off atomic: aimed at the stow store, or self-directed (`sink` null) for a destroy/drop. */
+function startUnequip(errand: EquipErrand, sink: Entity | null): void {
+  const { world, ctx, entity, settler, order } = errand;
   startAtomic(
     world,
-    e,
+    entity,
     PICKUP_ATOMIC_ID,
-    { kind: 'unequip', group, slot, sink },
+    { kind: 'unequip', group: order.group, slot: order.slot, sink },
     atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
     sink,
   );
