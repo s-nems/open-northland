@@ -218,6 +218,81 @@ describe('resolveGraphicsBindings', () => {
     expect([...buildTimeBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
   });
 
+  it('merges every binding skin in source-table order, guidepost last', async () => {
+    const inis = join('Data', 'engine2d', 'inis');
+    for (const dir of ['animals', 'vehicles', 'humans', 'landscapes']) {
+      await mkdir(join(game, inis, dir), { recursive: true });
+    }
+    for (const dir of [
+      join('types', 'humanstype'),
+      join('types', 'vehiclestype'),
+      join('budynki12', 'houses'),
+    ]) {
+      await mkdir(join(game, 'DataCnmd', dir), { recursive: true });
+    }
+    await writeFile(
+      join(game, inis, 'animals', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\Animal.bmd"\ngfxpalettebody "Animal01"\n',
+    );
+    await writeFile(
+      join(game, inis, 'vehicles', 'jobgraphics.cif'),
+      buildStringCif([
+        { level: 1, text: 'jobgraphics' },
+        { level: 2, text: 'gfxbobmanagerbody "Data\\Bobs\\BaseCart.bmd"' },
+        { level: 2, text: 'gfxpalettebody "BaseCart01"' },
+      ]),
+    );
+    await writeFile(
+      join(game, inis, 'humans', 'jobgraphics.cif'),
+      buildStringCif([
+        { level: 1, text: 'jobbasegraphics' },
+        { level: 2, text: 'gfxbobmanagerbody 0 "Data\\Bobs\\BaseBody.bmd"' },
+        { level: 2, text: 'gfxpalettebasebody "BaseBody01"' },
+      ]),
+    );
+    await writeFile(
+      join(game, inis, 'landscapes', 'landscapes.cif'),
+      buildStringCif([
+        { level: 1, text: 'GfxLandscape' },
+        { level: 2, text: 'EditName "yew 01"' },
+        { level: 2, text: 'GfxBobLibs "Data\\Bobs\\Trees.bmd"' },
+        { level: 2, text: 'GfxPalette "Tree01"' },
+        // A second species sharing the same bob+palette - dropped by the landscape leg's own dedupe.
+        { level: 1, text: 'GfxLandscape' },
+        { level: 2, text: 'EditName "fir 01"' },
+        { level: 2, text: 'GfxBobLibs "Data\\Bobs\\Trees.bmd"' },
+        { level: 2, text: 'GfxPalette "Tree01"' },
+      ]),
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'types', 'humanstype', 'jobgraphics.ini'),
+      '[jobbasegraphics]\ngfxbobmanagerbody 0 "Data\\Bobs\\ModBody.bmd"\ngfxpalettebasebody "ModBody01"\n',
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'types', 'vehiclestype', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\ModCart.bmd"\ngfxpalettebody "ModCart01"\n',
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'budynki12', 'houses', 'houses.ini'),
+      '[GfxHouse]\nEditName "viking home"\n' + 'GfxBobLibs "Data\\Bobs\\Houses.bmd"\nGfxPalette "House01"\n',
+    );
+
+    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ game, mod: game });
+
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/animal.bmd', 'animal01'],
+      ['data/bobs/basecart.bmd', 'basecart01'],
+      ['data/bobs/basebody.bmd', 'basebody01'],
+      ['data/bobs/trees.bmd', 'tree01'],
+      ['data/bobs/modbody.bmd', 'modbody01'],
+      ['data/bobs/modcart.bmd', 'modcart01'],
+      ['data/bobs/houses.bmd', 'house01'],
+      GUIDEPOST_BINDING,
+    ]);
+    // Only the [GfxHouse] leg claims a build-time bake.
+    expect([...buildTimeBmds]).toEqual(['data/bobs/houses.bmd']);
+  });
+
   it('returns only the hand-authored guidepost with a warning when every source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

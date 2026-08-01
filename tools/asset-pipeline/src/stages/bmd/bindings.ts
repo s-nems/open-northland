@@ -34,24 +34,18 @@ export function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName
 }
 
 /**
- * Appends `records` to `target`, dropping `(bmd, palette)` duplicates within `records`: the landscape
- * and house tables repeat a bob across variants, and the repeats carry no extra cross-refs worth
- * keeping in the binding list. Each call dedups only its own records, not the bindings already
- * accumulated. `onEach` runs for every record before the dedup, duplicates included.
+ * Drops `(bmd, palette)` duplicates within one source's records, keeping the first: the repeats carry
+ * no extra cross-refs worth keeping in the binding list. Scoped to the source, not to the bindings
+ * already accumulated - a pair a later source repeats is kept and dedups again at conversion.
  */
-function pushDeduped(
-  target: BmdPaletteBinding[],
-  records: Iterable<BmdPaletteBinding>,
-  onEach?: (binding: BmdPaletteBinding) => void,
-): void {
+function dedupeBindings(records: readonly BmdPaletteBinding[]): BmdPaletteBinding[] {
   const seen = new Set<string>();
-  for (const binding of records) {
-    onEach?.(binding);
+  return records.filter((binding) => {
     const key = bindingKey(binding);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return false;
     seen.add(key);
-    target.push(binding);
-  }
+    return true;
+  });
 }
 
 /**
@@ -94,126 +88,136 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
   return bindings;
 }
 
+/** One binding skin: where it lives, how its records reach the flat {@link BmdPaletteBinding} shape,
+ *  and the per-source handling {@link resolveGraphicsBindings} applies to them. */
+interface GraphicsBindingSource {
+  /** Path under the game root, or under `DataCnmd/` for the mod's readable twins (golden rule #4). */
+  readonly path: string;
+  readonly encrypted?: true;
+  readonly read: (sections: readonly RuleSection[]) => readonly BmdPaletteBinding[];
+  readonly dedupe?: true;
+  /** The source's `.bmd`s bake construction-progress thresholds rather than coverage - see
+   *  {@link import('../../decoders/atlas.js').AtlasAlphaMode}. */
+  readonly buildTime?: true;
+}
+
+const INIS = join('Data', 'engine2d', 'inis');
+
+/** Both `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (per-job equipment skin) layers
+ *  of a human graphics file, flattened onto the one binding shape the conversion consumes. */
+function readHumanJobGraphics(sections: readonly RuleSection[]): BmdPaletteBinding[] {
+  return [
+    ...jobBaseGraphicsToBindings(extractJobBaseGraphics(sections)),
+    ...jobBaseGraphicsToBindings(extractJobChangeGraphics(sections)),
+  ];
+}
+
+/** The binding skins, in the order their records enter the binding list. */
+const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
+  { path: join(INIS, 'animals', 'jobgraphics.ini'), read: extractGraphicsBindings },
+  /** Carts and ships. Same flat `[jobgraphics]` grammar as the animals `.ini`, differing only in
+   *  cross-ref key (`logicvehicle`, which leaves `jobId` undefined). */
+  {
+    path: join(INIS, 'vehicles', 'jobgraphics.cif'),
+    encrypted: true,
+    read: extractGraphicsBindings,
+  },
+  /** The human body/head bob sets, `.cif`-only (no readable twin). */
+  {
+    path: join(INIS, 'humans', 'jobgraphics.cif'),
+    encrypted: true,
+    read: readHumanJobGraphics,
+  },
+  /** The map's pre-placed landscape-object bobs (trees, bushes, signs, wonders, harbours) - the leg
+   *  that makes `ls_trees.bmd` an atlas. The ~99 tree species share a dozen palettes, so records
+   *  repeat a `(bmd, palette)` pair. */
+  {
+    path: join(INIS, 'landscapes', 'landscapes.cif'),
+    encrypted: true,
+    read: extractLandscapeGraphics,
+    dedupe: true,
+  },
+  /** The mod's readable human twin. */
+  { path: join(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini'), read: readHumanJobGraphics },
+  /** The mod carries the broader per-tribe cart/ship set (22 records across tribes 1..4 vs the base
+   *  `.cif`'s 6 across tribes 1 and 4 only); the base pairs are a strict subset and dedup at
+   *  conversion, while the extra rows carry their own `logicvehicle` cross-refs. */
+  {
+    path: join(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'),
+    read: extractGraphicsBindings,
+  },
+  /** Every settlement house bound to its `ls_houses_*.bmd` body + palette. One record commonly repeats
+   *  a bob+palette across tribes and levels (the ~25 viking-home records all bind `ls_houses_viking` +
+   *  `house01`/`house02`). The only source claiming build-time `.bmd`s, so a run whose mod lacks it
+   *  bakes the house family per-pixel - acceptable while the conversion requires the mod
+   *  (`resolveModRoot`). */
+  {
+    path: join(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'),
+    read: extractBuildingGraphics,
+    dedupe: true,
+    buildTime: true,
+  },
+];
+
+/** The palette `editname` index every binding's `paletteName` resolves against. */
+const PALETTE_INDEX_INI = join(INIS, 'palettes', 'palettes.ini');
+
 /**
- * Reads the graphics-binding sources and extracts the `.bmd`→palette pairing from every binding skin,
- * merging them for {@link import('./convert.js').convertBmdTree}:
+ * The scout's guidepost is bound by the ENGINE, not by any data table - "guidepost" appears in no
+ * decodable binding (landscapes.cif and palettes.ini both checked), only in the executables - so it is
+ * hand-authored here. Frame layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20°
+ * angular steps around the post top. `bridge01` is the single-colour fallback - a plausible wooden
+ * palette, a named approximation; the per-player atlases the engine actually draws are baked by
+ * `convertGuidepostPlayerAtlases` (stages/player-colors.ts). `convertBmdTree` skips this binding
+ * silently when unresolvable.
+ */
+const GUIDEPOST_BINDING: BmdPaletteBinding = {
+  bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
+  shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',
+  paletteName: 'bridge01',
+  tribeId: undefined,
+  jobId: undefined,
+};
+
+/** Decodes one source into sections, or warns and yields nothing so a partial install still converts. */
+async function readSections(
+  roots: SourceRoots,
+  relPath: string,
+  encrypted = false,
+): Promise<RuleSection[] | undefined> {
+  try {
+    const path = await resolveSourceFile(roots, relPath);
+    if (path === undefined) throw new Error('unresolved');
+    const bytes = await readFile(path);
+    return encrypted ? cifBytesToSections(bytes) : iniBytesToSections(bytes);
+  } catch {
+    console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${relPath}`);
+    return undefined;
+  }
+}
+
+/**
+ * Reads every {@link GRAPHICS_BINDING_SOURCES} skin and merges their `.bmd`→palette pairings into the
+ * one flat list {@link import('./convert.js').convertBmdTree} consumes, followed by the
+ * {@link GUIDEPOST_BINDING}.
  *
- *  - base `Data/engine2d/inis/animals/jobgraphics.ini` `[jobgraphics]` (the one binding file shipped as
- *    plain `.ini`);
- *  - base `.../vehicles/jobgraphics.cif` `[jobgraphics]` (carts/ships) — same flat grammar as the animals
- *    `.ini`, differing only in cross-ref key (`logicvehicle`, left `undefined`), so it reuses
- *    {@link extractGraphicsBindings}; ships only as encrypted `.cif`;
- *  - base `.../humans/jobgraphics.cif` `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]`
- *    (per-job equipment skin) — the human body/head bob sets, `.cif`-only (no readable twin), decoded via
- *    {@link cifBytesToSections} into the same {@link RuleSection} model;
- *  - base `.../landscapes/landscapes.cif` `[GfxLandscape]` — the map's pre-placed landscape-object bobs;
- *  - the mod's readable twins under `DataCnmd/` (golden rule #4): `types/humanstype/jobgraphics.ini`,
- *    `types/vehiclestype/jobgraphics.ini` (broader per-tribe cart/ship recolours), and
- *    `budynki12/houses/houses.ini` `[GfxHouse]` building bindings ({@link extractBuildingGraphics}).
- *
- * All human/vehicle sources flatten via {@link jobBaseGraphicsToBindings}/{@link extractGraphicsBindings}
- * into one flat shape; landscape and house bindings dedup on `(bmd, palette)` (see the push sites). The
- * palette index comes from `.../palettes/palettes.ini`. A missing/corrupt file contributes nothing
- * (with a warning) so a partial install still runs the rest of the pipeline.
- *
- * The goods graphics table (`goods/goodgraphics.cif`) is intentionally not read: its `[goodgraphics]`
- * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so there
- * is no bob set to atlas (carried-good sprites live in the human/vehicle sheets, tinted at runtime).
+ * The goods graphics table (`goods/goodgraphics.cif`) is deliberately absent: its `[goodgraphics]`
+ * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so
+ * there is no bob set to atlas (carried-good sprites live in the human/vehicle sheets, tinted at
+ * runtime).
  */
 export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
-  const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
-    try {
-      const path = await resolveSourceFile(roots, rel);
-      if (path === undefined) throw new Error('unresolved');
-      return iniBytesToSections(await readFile(path));
-    } catch {
-      console.warn(`[pipeline] graphics binding source not found, skipping: ${rel}`);
-      return undefined;
-    }
-  };
-  const readCif = async (rel: string): Promise<RuleSection[] | undefined> => {
-    try {
-      const path = await resolveSourceFile(roots, rel);
-      if (path === undefined) throw new Error('unresolved');
-      return cifBytesToSections(await readFile(path));
-    } catch {
-      console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${rel}`);
-      return undefined;
-    }
-  };
-  const jobgraphics = await readIni(join('Data', 'engine2d', 'inis', 'animals', 'jobgraphics.ini'));
-  const vehiclesCif = await readCif(join('Data', 'engine2d', 'inis', 'vehicles', 'jobgraphics.cif'));
-  const humansCif = await readCif(join('Data', 'engine2d', 'inis', 'humans', 'jobgraphics.cif'));
-  const landscapesCif = await readCif(join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif'));
-  const palettesIni = await readIni(join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini'));
-  const bindings: BmdPaletteBinding[] = jobgraphics ? extractGraphicsBindings(jobgraphics) : [];
-  // Vehicles use the identical flat [jobgraphics] grammar as the animals .ini (carts/ships), so the
-  // same extractor applies; only the cross-ref differs (logicvehicle, left undefined as jobId).
-  if (vehiclesCif) bindings.push(...extractGraphicsBindings(vehiclesCif));
-  if (humansCif) {
-    // The base humans .cif carries both layers: [jobbasegraphics] (base appearance) and
-    // [jobchangegraphics] (per-job equipment skins). Both flatten through the same path.
-    bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humansCif)));
-    bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humansCif)));
-  }
-  if (landscapesCif) {
-    // The base-only [GfxLandscape] table (.cif, no .ini twin): the map's pre-placed landscape-object
-    // bobs (trees `ls_trees.bmd`, bushes, signs, wonders, harbours, …) bound to their palette editname —
-    // the leg that makes `ls_trees.bmd` (the woodcutter's tree) an atlas. The ~99 tree species share a
-    // dozen palettes and decor records repeat one bob across variants, so the records dedup on (bmd, palette).
-    pushDeduped(bindings, extractLandscapeGraphics(landscapesCif));
-  }
-  // The `.bmd`s claimed by a [GfxHouse] record bake `'build-time'` (`convertBmdTree`'s `buildTimeBmds`):
-  // a house bob's Double8Bit second bytes are measured construction-progress thresholds, not coverage
-  // (they span ~0–255 and are strongly row-correlated bottom-up — foundation low, roof high; read as
-  // alpha they draw the solid buildings as 40% ghosts). The colour plane bakes opaque (the engine's
-  // plain PrintBob blit) and the thresholds bake into the sibling `.build.png` the renderer's
-  // per-pixel construction reveal reads (PrintBob_UsingTimeMask semantics; the oracle has no call
-  // sites, so the routing is inferred from the measurements). Keyed on the `.bmd` path alone so every
-  // palette variant — including the [GfxLandscape] residence/wonder twins — bakes the same way.
-  // Caveat: [GfxHouse] is read only from the mod's houses.ini, so a run whose mod lacks it bakes
-  // house-family bmds per-pixel — acceptable while the conversion requires the mod (resolveModRoot).
+  const bindings: BmdPaletteBinding[] = [];
   const buildTimeBmds = new Set<string>();
-  const humanGraphics = await readIni(join(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini'));
-  if (humanGraphics) {
-    bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
-    bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humanGraphics)));
+  for (const source of GRAPHICS_BINDING_SOURCES) {
+    const sections = await readSections(roots, source.path, source.encrypted);
+    if (sections === undefined) continue;
+    const records = source.read(sections);
+    if (source.buildTime) for (const record of records) buildTimeBmds.add(record.bmd);
+    bindings.push(...(source.dedupe ? dedupeBindings(records) : records));
   }
-  // The mod ships a readable [jobgraphics] twin of the base vehicles .cif (golden rule #4):
-  // `types/vehiclestype/jobgraphics.ini` overlays the base cart/ship recolours, and the
-  // culturesnation mod carries the broader per-tribe set (22 records across tribes 1..4 vs the
-  // base .cif's 6 across tribes 1 & 4 only). The flat [jobgraphics] grammar is identical, so the
-  // same extractor applies; the base bindings' (bmd, palette) pairs, a strict subset of the
-  // mod's, dedup at conversion, while the mod's extra tribe-2/3 rows carry the per-tribe
-  // logicvehicle cross-refs.
-  const vehicleGraphics = await readIni(join(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'));
-  if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
-  // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement
-  // house bound to its `ls_houses_*.bmd` body + palette — the leg that turns the house bobs into
-  // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, a house
-  // record commonly repeats one bob+palette across tribes/levels (the ~25 viking-home records all bind
-  // `ls_houses_viking` + `house01`/`house02`), so the records dedup on (bmd, palette).
-  const buildingGraphics = await readIni(join(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'));
-  if (buildingGraphics) {
-    pushDeduped(bindings, extractBuildingGraphics(buildingGraphics), (b) => buildTimeBmds.add(b.bmd));
-  }
-  // The scout's guidepost (the signpost object) is bound by the ENGINE, not by any data table —
-  // "guidepost" appears in no decodable binding (landscapes.cif and palettes.ini both checked), only in
-  // the executables — so this one binding is hand-authored, appended last, to emit its atlas. Frame
-  // layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20° angular steps around
-  // the post top. The engine draws the guidepost through the OWNER'S full player palette (the
-  // board-text indices 23–30 sit inside the `playerNN.pcx` player ramp) — served as 16 per-player BAKED
-  // atlases (`convertGuidepostPlayerAtlases`, stages/player-colors.ts; the indexed+LUT path would
-  // flatten the sprite's graded edge alpha). This baked `bridge01` variant stays as the single-colour
-  // fallback (a plausible wooden palette, a named approximation). Skipped silently by convertBmdTree on
-  // an install with no such file/palette.
-  bindings.push({
-    bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
-    shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',
-    paletteName: 'bridge01',
-    tribeId: undefined,
-    jobId: undefined,
-  });
+  bindings.push(GUIDEPOST_BINDING);
+  const palettesIni = await readSections(roots, PALETTE_INDEX_INI);
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
