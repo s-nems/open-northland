@@ -148,11 +148,59 @@ export class TallObjectLayer {
     return true;
   }
 
+  private mint(po: PooledObject): Sprite {
+    const obj = po.obj;
+    // Sorted at the object's own row, or at the row the app overrode it to (a bridge deck).
+    const depth = depthKey(obj.x, obj.depthY ?? obj.y);
+    const sprite = new Sprite();
+    sprite.scale.set(obj.scale);
+    sprite.zIndex = depth;
+    // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground). A batch
+    // tint cannot brighten, so the lane's >1 half clamps at ×1 — a named approximation (see
+    // MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
+    po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
+    po.ghostTint = fogGhostTint(po.baseTint);
+    if (obj.shadow !== undefined) {
+      // The cast shadow, sorted just under its caster (see SHADOW_DEPTH_EPS). Pre-baked black pixels —
+      // the fog/shading tints multiply to black anyway, so it never re-tints.
+      po.shadowSprite = new Sprite();
+      po.shadowSprite.scale.set(obj.scale);
+      po.shadowSprite.zIndex = depth - SHADOW_DEPTH_EPS;
+    }
+    po.sprite = sprite;
+    return sprite;
+  }
+
+  /** Bind the pose at `clock` onto a member's sprites. False when that pose has no frame, which leaves
+   *  the member untouched — the caller's `continue` then skips both `lastWatched` and the attach. */
+  private bindPose(po: PooledObject, sprite: Sprite, clock: number): boolean {
+    const obj = po.obj;
+    const frameIndex = objectFrameIndexAt(obj, clock);
+    const frame = obj.frames[frameIndex];
+    if (frame === undefined) return false;
+    // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
+    const lift = obj.lift ?? 0;
+    sprite.texture = this.textures.get(obj.source, frame);
+    sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y - lift + frame.offsetY * obj.scale);
+    if (po.shadowSprite !== null && obj.shadow !== undefined) {
+      const shadowFrame = obj.shadow.frames[frameIndex];
+      po.shadowSprite.visible = shadowFrame !== undefined; // a pose with no silhouette just hides it
+      if (shadowFrame !== undefined) {
+        po.shadowSprite.texture = this.textures.get(obj.shadow.source, shadowFrame);
+        po.shadowSprite.position.set(
+          obj.x + shadowFrame.offsetX * obj.scale,
+          obj.y - lift + shadowFrame.offsetY * obj.scale,
+        );
+      }
+    }
+    return true;
+  }
+
   /**
    * Advance the tall objects for one frame: block-cull to the viewport, then per-member point-test the
    * visible blocks — the scan cost tracks the visible blocks, not the map. A member's sprite is minted on
    * first visibility and depth-sorted against entities by its feet anchor (the same world-`y` key the
-   * entity containers use); its texture is refreshed only on attach or an animation-tick advance.
+   * entity containers use).
    *
    * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`): a tall
    * object (a tree/stone — a strategic resource) on unexplored ground is treated exactly like a
@@ -164,8 +212,7 @@ export class TallObjectLayer {
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     const animAdvanced = tick !== this.lastAnimTick;
     for (const block of this.blocks) {
-      const blockVisible = aabbIntersects(vp, block);
-      if (!blockVisible) {
+      if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
           for (const po of block.objects) this.detach(po);
           block.attachedCount = 0;
@@ -179,72 +226,24 @@ export class TallObjectLayer {
         const cell = screenToCell(obj.x, obj.y);
         const fogState =
           fogStateOfCell === undefined ? FOG_STATE.VISIBLE : fogStateOfCell(cell.col, cell.row);
-        const visible = isVisible(vp, obj.x, obj.y) && fogState !== FOG_STATE.UNEXPLORED;
-        if (!visible) {
+        if (!isVisible(vp, obj.x, obj.y) || fogState === FOG_STATE.UNEXPLORED) {
           if (this.detach(po)) block.attachedCount--;
           continue;
         }
-        if (po.sprite === null) {
-          // Sorted at the object's own row, or at the row the app overrode it to (a bridge deck).
-          const depth = depthKey(obj.x, obj.depthY ?? obj.y);
-          po.sprite = new Sprite();
-          po.sprite.scale.set(obj.scale);
-          po.sprite.zIndex = depth; // static: set once
-          // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground).
-          // A batch tint cannot brighten, so the lane's >1 half clamps at ×1 — a named approximation
-          // (see MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
-          po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
-          po.ghostTint = fogGhostTint(po.baseTint);
-          if (obj.shadow !== undefined) {
-            // The cast shadow, sorted just under its caster (see SHADOW_DEPTH_EPS). Pre-baked black
-            // pixels — the fog/shading tints multiply to black anyway, so it never re-tints.
-            po.shadowSprite = new Sprite();
-            po.shadowSprite.scale.set(obj.scale);
-            po.shadowSprite.zIndex = depth - SHADOW_DEPTH_EPS;
-          }
-        }
-        // Explored-but-unwatched ground dims the object to the ghost grading; a pick between two
-        // cached colours, assigned only on change — Pixi's tint setter allocates (a Color.shared
-        // round-trip) even for an unchanged value, and this runs per visible object per frame.
-        // Unexplored never reaches here (detached above), so visible is the one live state.
+        const sprite = po.sprite ?? this.mint(po);
+        // Explored-but-unwatched ground dims to the ghost grading. Assigned only on change: Pixi's tint
+        // setter allocates (a Color.shared round-trip) even for an unchanged value, and this runs per
+        // visible object per frame.
         const watched = fogState === FOG_STATE.VISIBLE;
         const tint = watched ? po.baseTint : po.ghostTint;
-        if (po.sprite.tint !== tint) po.sprite.tint = tint;
-        // A ghosted object's animation freezes: unwatched frames bind at a fixed clock, live ones
-        // advance; a watched↔ghosted flip rebinds once so the pose switches with the tint.
-        if (
-          !po.attached ||
-          watched !== po.lastWatched ||
-          (watched && animAdvanced && obj.frames.length > 1)
-        ) {
-          const frameIndex = objectFrameIndexAt(obj, watched ? tick : 0);
-          const frame = obj.frames[frameIndex];
-          if (frame === undefined) continue;
-          po.sprite.texture = this.textures.get(obj.source, frame);
-          // Draw at the lifted feet; the zIndex above kept the pre-lift `obj.y` so depth is by map row.
-          po.sprite.position.set(
-            obj.x + frame.offsetX * obj.scale,
-            obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale,
-          );
-          // The shadow binds the same pose index, so an animated loop's shadow follows the body; a
-          // pose with no silhouette (`undefined`) just hides it.
-          if (po.shadowSprite !== null && obj.shadow !== undefined) {
-            const shadowFrame = obj.shadow.frames[frameIndex];
-            if (shadowFrame === undefined) {
-              po.shadowSprite.visible = false;
-            } else {
-              po.shadowSprite.visible = true;
-              po.shadowSprite.texture = this.textures.get(obj.shadow.source, shadowFrame);
-              po.shadowSprite.position.set(
-                obj.x + shadowFrame.offsetX * obj.scale,
-                obj.y - (obj.lift ?? 0) + shadowFrame.offsetY * obj.scale,
-              );
-            }
-          }
-        }
+        if (sprite.tint !== tint) sprite.tint = tint;
+        // A watched↔ghosted flip rebinds once, so the frozen/live pose switches with the tint.
+        const rebind =
+          !po.attached || watched !== po.lastWatched || (watched && animAdvanced && obj.frames.length > 1);
+        if (rebind && !this.bindPose(po, sprite, watched ? tick : 0)) continue;
         po.lastWatched = watched;
         if (!po.attached) {
-          this.spriteLayer.addChild(po.sprite);
+          this.spriteLayer.addChild(sprite);
           if (po.shadowSprite !== null) this.spriteLayer.addChild(po.shadowSprite);
           po.attached = true;
           block.attachedCount++;
