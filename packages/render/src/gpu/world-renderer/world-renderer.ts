@@ -1,21 +1,14 @@
 import type { FogView, SimEvent } from '@open-northland/sim';
-import { type Application, Container, type TextureSource } from 'pixi.js';
+import { type Application, Container } from 'pixi.js';
 import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem, SceneTerrain } from '../../data/scene/index.js';
-import type { AtlasFrame } from '../../data/sprites/index.js';
 import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
-  BadgeLayer,
   type BuildingSignGfx,
-  CollapseLayer,
-  CombatEffectsLayer,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
-  ConstructionSignLayer,
-  DamageSmokeLayer,
   type GeometryDebugItem,
-  GeometryDebugLayer,
   HudLayer,
   type PlacementGhost,
   PlacementGhostLayer,
@@ -23,9 +16,7 @@ import {
   PlacementOverlayLayer,
   type PortraitInsetFrame,
   PortraitInsetLayer,
-  SelectionLayer,
   type SettlerBubbleGfx,
-  SettlerBubbleLayer,
 } from '../overlays/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
@@ -33,6 +24,7 @@ import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import {
   type BuildingHighlightItem,
+  type CombatBonesGfx,
   EMPTY_HIGHLIGHT,
   NO_BADGES,
   NO_BUBBLES,
@@ -45,6 +37,7 @@ import {
 import { mountPainterOrder } from './painter-order.js';
 import { WorldChrome } from './world-chrome.js';
 import { WorldFog } from './world-fog.js';
+import { WorldMarks } from './world-marks.js';
 
 /**
  * The retained-mode world renderer — a thin orchestrator over the sub-layers it composes. It owns a
@@ -58,6 +51,8 @@ import { WorldFog } from './world-fog.js';
  * entities share one depth-sorted `spriteLayer` so they interleave in a single painter order. Per frame
  * the *drawn* work is O(visible) with near-zero allocation; the cull itself is still an O(entities)
  * visibility pass (a spatial index making the query O(visible) is a future seam, see `AGENTS.md`).
+ * Three folder-internal collaborators own the rest: {@link WorldMarks} (everything drawn on the
+ * entities), {@link WorldFog} (the viewer's fog) and {@link WorldChrome} (the screen-space quads).
  */
 export class WorldRenderer {
   private readonly app: Application;
@@ -78,25 +73,8 @@ export class WorldRenderer {
   private readonly constructionPlots = new ConstructionPlotLayer();
   /** The build-mode cursor ghost (the held building's translucent sprite, inside the sprite layer). */
   private readonly placementGhost: PlacementGhostLayer;
-  /** Feet rings under the currently-selected entities. */
-  private readonly selectionLayer = new SelectionLayer();
-  /** Transient combat marks — blood on hits, bones on deaths. Fed by {@link ingestCombatEffects}. */
-  private readonly effects = new CombatEffectsLayer();
-  /** A razed/demolished building's sink-into-the-ground transient (nodes live inside the depth-sorted
-   *  sprite layer). Fed by {@link ingestCombatEffects} alongside the marks. */
-  private readonly collapses: CollapseLayer;
-  /** Smoke plumes over damaged buildings — driven per frame from the pool's culled damaged list, a
-   *  pure function of each building's current HP fraction. */
-  private readonly damageSmoke = new DamageSmokeLayer();
-  /** Stacked worker badges beside each staffed building's door. */
-  private readonly badgeLayer: BadgeLayer;
-  /** Construction stands planted at each building site's sign post. */
-  private readonly constructionSigns: ConstructionSignLayer;
-  /** Thought bubbles over a settler's head in a standing family state. Fed the decoded art by
-   *  {@link setSettlerBubbleGfx}. */
-  private readonly bubbleLayer = new SettlerBubbleLayer();
-  /** The `?debug=geometry` footprint overlay. */
-  private readonly geometryDebug = new GeometryDebugLayer();
+  /** Everything drawn on the entities rather than as entities. See {@link WorldMarks}. */
+  private readonly marks: WorldMarks;
   /** The workplace-assignment highlight: candidate building id → assignable (green) / not (red), while the
    *  player is choosing a workplace for the selected settler. Applied as a soft tint on the building sprite
    *  itself (not a cell wash), so the building reads "lekko zielony / lekko czerwony". See {@link setBuildingHighlight}. */
@@ -123,11 +101,9 @@ export class WorldRenderer {
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
-    this.badgeLayer = new BadgeLayer(opts?.playerColourOf);
-    this.constructionSigns = new ConstructionSignLayer(opts?.playerColourOf);
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
-    this.collapses = new CollapseLayer(this.spriteLayer, this.textureCache, opts?.sheet);
+    this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the depth-sorted sprite layer so it occludes like the real house would.
@@ -139,15 +115,8 @@ export class WorldRenderer {
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
       placementWash: this.placementOverlay.container,
-      selection: this.selectionLayer.container,
-      bones: this.effects.groundContainer,
       sprites: this.spriteLayer,
-      blood: this.effects.overlayContainer,
-      damageSmoke: this.damageSmoke.container,
-      doorBadges: this.badgeLayer.container,
-      constructionSigns: this.constructionSigns.container,
-      bubbles: this.bubbleLayer.container,
-      geometryDebug: this.geometryDebug.container,
+      ...this.marks.slots,
     });
     app.stage.addChild(this.worldLayer);
     // Stage z-order: world → vignette → pause wash → HUD. The chrome mounts its two quads here, between
@@ -209,53 +178,36 @@ export class WorldRenderer {
     this.mapObjects.set(objects);
   }
 
-  /**
-   * Feed this frame's sim events (accumulated across every fixed-timestep sub-step) into the combat-marks
-   * layer: a landed blow leaves blood, a death leaves bones. Call before {@link update} each frame, which
-   * draws the marks. `tick` is the current sim tick — marks decay against it, so a paused game or a
-   * `?shot` capture reproduces exactly.
-   */
+  /** Feed this frame's sim events (accumulated across every fixed-timestep sub-step) to the marks that
+   *  spawn from them. Call before {@link update} each frame, which draws them. See {@link WorldMarks.ingest}. */
   ingestCombatEffects(events: readonly SimEvent[], tick: number): void {
-    this.effects.ingest(events, tick);
-    this.collapses.ingest(events, tick);
+    this.marks.ingest(events, tick);
   }
 
   /**
    * Provide (or clear) the decoded bone-pile art so a death draws the `cadaver human bones` sprite
-   * instead of the procedural pile — the app resolves the atlas `source` + interchangeable `frames`
-   * (`ls_skeletons.bmd`), the renderer supplies its shared frame→texture cache. `null` reverts to procedural
-   * (a checkout without `content/`). `scale` defaults to the native landscape-object scale (1).
+   * instead of the procedural pile — the app resolves the atlas ({@link CombatBonesGfx}), the renderer
+   * supplies its shared frame→texture cache.
    */
-  setCombatBonesGfx(
-    gfx: {
-      readonly source: TextureSource;
-      readonly frames: readonly AtlasFrame[];
-      readonly scale?: number;
-    } | null,
-  ): void {
-    this.effects.setBonesGfx(
-      gfx === null ? undefined : { ...gfx, scale: gfx.scale ?? 1, textures: this.textureCache },
-    );
+  setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
+    this.marks.setBonesGfx(gfx);
   }
 
   /**
    * Provide (or clear) the decoded settler-bubble art ({@link SettlerBubbleGfx} — the `ls_gui_bubbles` page
-   * + the frame each kind draws), which the layer reads through the shared frame→texture cache. `null` (a
-   * checkout without `content/`) leaves the bubble layer drawing nothing.
+   * + the frame each kind draws), which the layer reads through the shared frame→texture cache.
    */
   setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
-    this.bubbleLayer.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textureCache });
+    this.marks.setBubbleGfx(gfx);
   }
 
   /**
    * Provide (or clear) the decoded building-sign art ({@link BuildingSignGfx} - the per-player `ls_temp`
-   * pages + the frame each sign kind draws), read through the shared frame→texture cache. `null` (a
-   * checkout without `content/`) leaves the badge layer on its placeholder squares.
+   * pages + the frame each sign kind draws), read through the shared frame→texture cache. Without it the
+   * badge layer stays on its placeholder squares.
    */
   setBuildingSignGfx(gfx: BuildingSignGfx | null): void {
-    const signGfx = gfx === null ? undefined : { ...gfx, textures: this.textureCache };
-    this.badgeLayer.setGfx(signGfx);
-    this.constructionSigns.setGfx(signGfx);
+    this.marks.setSignGfx(gfx);
   }
 
   /**
@@ -282,7 +234,7 @@ export class WorldRenderer {
 
   /**
    * Draw one frame: apply the camera, cull the terrain, advance the map objects, reconcile the sprite
-   * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
+   * pool to the (culled, depth-sorted) list, draw the marks over it, repaint the HUD, and render once.
    * `selection` is transient view state like the camera, never sim state.
    * `alpha` is the fixed-timestep interpolation fraction (the app loop's `FixedTimestep.advance`
    * return): the pool draws each entity `alpha` of the way from its previous tick anchor to its current
@@ -343,27 +295,21 @@ export class WorldRenderer {
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),
     });
-    // The `drawn: this.pool` seams below read what the reconcile above just stamped — see `DrawnGeometry`
-    // in `sprite-pool/pick.ts` for the ordering they depend on.
-    this.selectionLayer.draw({ snapshot, drawn: this.pool, elevation: this.elevation }, selection, flagged);
-    // Combat ground marks: reposition + fade the blood/bones fed by `ingestCombatEffects`, culled to the
-    // same viewport as the sprites so a battlefield's litter cost tracks the screen, not the casualty count.
-    // Fed interpolated render time (`tick + alpha`) so the blood-fall animation and fades are smooth at any
-    // frame rate; the fold's decay membership uses the integer sim tick from `ingest`, so this stays render-only.
-    this.effects.draw(this.elevation, vp, tick + alpha);
-    // Collapsing buildings: crop/sink each razed body inside the depth-sorted sprite layer — same
-    // interpolated clock, so the sink glides between sim ticks.
-    this.collapses.draw(this.elevation, vp, tick + alpha);
-    // Damage smoke: plumes over the pool's culled damaged buildings, a pure function of each building's
-    // current HP.
-    this.damageSmoke.draw(this.pool.damagedBuildings(), this.pool, tick + alpha);
-    // Door badges: the app projects each building's sign-post anchor and ordered rows; this layer
-    // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
-    this.badgeLayer.draw(doorBadges, this.elevation, vp);
-    this.constructionSigns.draw(signItems, this.elevation, vp);
-    // Settler bubbles: the app scans each settler's make-child / wedding state; this layer floats a
-    // decoded bubble over the head.
-    this.bubbleLayer.draw({ bubbles: settlerBubbles, drawn: this.pool, elevation: this.elevation }, vp);
+    // The marks read what the reconcile above just stamped — see `DrawnGeometry` in `sprite-pool/pick.ts`
+    // for the ordering they depend on.
+    this.marks.draw({
+      snapshot,
+      drawn: this.pool,
+      elevation: this.elevation,
+      viewport: vp,
+      renderTime: tick + alpha,
+      damaged: this.pool.damagedBuildings(),
+      selection,
+      flagged,
+      doorBadges,
+      constructionSigns: signItems,
+      settlerBubbles,
+    });
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
     this.app.render();
@@ -461,7 +407,7 @@ export class WorldRenderer {
    * app computed from sim content. Rebuilt only when the building set changes, never per frame.
    */
   setGeometryDebug(items: readonly GeometryDebugItem[] | null): void {
-    this.geometryDebug.set(items, this.elevation);
+    this.marks.setGeometryDebug(items, this.elevation);
   }
 
   /**
@@ -480,18 +426,11 @@ export class WorldRenderer {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
-    this.collapses.destroy();
-    this.damageSmoke.destroy();
+    this.marks.destroy();
     this.fog.destroy();
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();
     this.placementGhost.destroy();
-    this.selectionLayer.destroy();
-    this.effects.destroy();
-    this.badgeLayer.destroy();
-    this.constructionSigns.destroy();
-    this.bubbleLayer.destroy();
-    this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
     this.hud.destroy();
     this.chrome.destroy(); // its quads + the borrowed atlas pages' sampling

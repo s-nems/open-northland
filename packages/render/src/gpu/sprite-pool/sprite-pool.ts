@@ -8,7 +8,7 @@ import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { LayerBinder } from './bind-layers.js';
 import { trackMotion } from './motion.js';
-import { anchorOf, boundsOf, pixelHit } from './pick.js';
+import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { animationClock, easeReveal, revealedItem, walkPose } from './presentation.js';
@@ -98,7 +98,7 @@ export class SpritePool {
   private lastItems: readonly DrawItem[] = [];
   /** This frame's drawn (culled) damaged finished buildings — {@link DrawItem.hpFrac} carriers, rebuilt
    *  each {@link reconcile} for the damage-smoke overlay ({@link damagedBuildings}). */
-  private readonly damaged: { ref: number; hpFrac: number }[] = [];
+  private readonly damaged: DamagedBuilding[] = [];
   /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
    *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
   private readonly portrait: PortraitSubject;
@@ -232,7 +232,7 @@ export class SpritePool {
 
   /** This frame's drawn damaged finished buildings (ref + remaining HP fraction) — the damage-smoke
    *  overlay's input, valid until the next {@link reconcile}. */
-  damagedBuildings(): readonly { ref: number; hpFrac: number }[] {
+  damagedBuildings(): readonly DamagedBuilding[] {
     return this.damaged;
   }
 

@@ -1,11 +1,13 @@
 import type { WorldSnapshot } from '@open-northland/sim';
+import type { TextureSource } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { ConstructionSign, DoorBadge, HudFrame, SettlerBubble } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /**
- * The world renderer's public data contract: what the app constructs it with, what it hands it per
- * frame, and the shared defaults the no-op cases fall back to.
+ * The world renderer's public data contract: what the app constructs it with, what it hands it per frame
+ * or through a setter, and the shared defaults the no-op cases fall back to.
  */
 
 /** One candidate building's workplace-assignment verdict: its entity id and whether the selected settler
@@ -38,6 +40,14 @@ export interface WorldRendererOptions {
    * Absent = identity.
    */
   readonly playerColourOf?: ((player: number) => number) | undefined;
+}
+
+/** The decoded bone-pile art the app resolves for a death mark (`ls_skeletons.bmd`): the atlas page plus
+ *  its interchangeable frames. `scale` defaults to the native landscape-object scale (1). */
+export interface CombatBonesGfx {
+  readonly source: TextureSource;
+  readonly frames: readonly AtlasFrame[];
+  readonly scale?: number | undefined;
 }
 
 /** Shared empty highlight so clearing the assign-mode tint allocates nothing. */

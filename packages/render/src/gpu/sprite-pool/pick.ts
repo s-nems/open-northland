@@ -21,6 +21,12 @@ export interface DrawnGeometry {
   readonly anchorOf: (ref: number) => { x: number; y: number } | undefined;
 }
 
+/** One drawn, damaged finished building: its ref and the remaining Health fraction the smoke reads. */
+export interface DamagedBuilding {
+  readonly ref: number;
+  readonly hpFrac: number;
+}
+
 /**
  * The world-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
  * drawn (off-screen / not in the snapshot). The picker uses it for an exact "click the graphic" hit test
