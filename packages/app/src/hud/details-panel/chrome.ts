@@ -8,24 +8,19 @@ import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import { createFrameBorderKit } from './frame-border.js';
 import { drawGauge, PRODUCTION_BAR_FILL, rampColor } from './gauge.js';
+import { createGlyphKit, type GlyphKit } from './glyphs.js';
 import { createTextKit, type TextKit } from './text.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
  * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, tiled as an
- * OpenNorthland composition choice to avoid squashing the texture), the rope-and-knot window borders (edge strips tiled along
- * their length — stretching smears the rope pattern — with the knot corners at native size), headline
- * strips, buttons, bars, text, and the building preview.
+ * OpenNorthland composition choice to avoid squashing the texture), the rope-and-knot window borders,
+ * headline strips, buttons, bars, text, glyph faces, and the building preview.
  * Every piece degrades to the flat parchment Graphics look when `content/` is absent (`assets.art ===
  * null`, bitmaps `undefined`). The bitmap `Texture`s come pre-minted from `assets.ts`, so a rebuild mints
  * no bitmap-texture wrappers (they'd leak resize listeners on the shared source); the per-line Pixi `Text`
  * objects are minted per rebuild, but the bake disposes them (and their text textures) with the offscreen
  * root each rebuild (see `panel.ts` / `supersample.ts`).
- *
- * Text draws in the bundled vector serif (`content/ui-font.ts`, always present), not the original bitmap
- * `.fnt`: a larger `title` size for headlines/buttons/the building name, a `body` size for everything else.
- * Lines are placed by Pixi `Text` anchors (top-left / centred / right) rather than the bitmap face's
- * baseline metrics.
  */
 
 /** The selected-name underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
@@ -43,12 +38,6 @@ const SLOT_FILL = 0x4a2b1d;
  *  plates use as their no-bitmap fallback, so the round gather/assign controls read as the same material. */
 const ROUND_BUTTON_FILL = 0x4a2b1d;
 const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
-/** Cream tones of the assign glyph — lit vs. dimmed, matching the button label's gold-cream / grey pair. */
-const GLYPH_LIGHT = 0xead9a0;
-const GLYPH_DIM = 0x8b7a55;
-/** The four good tones of the "Wszystko" (gather-everything) tile — stone / wood / gold / herb — so it
- *  reads as a mix, distinct from any single good's pile. */
-const ALL_GLYPH_TILES = [0xb8b0a0, 0x9a6a34, 0xe0b455, 0x7f9a2a] as const;
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -58,8 +47,9 @@ export interface PanelLayers {
   readonly text: Container;
 }
 
-/** The drawing kit: the {@link TextKit} placement primitives plus the panel's original-art pieces. */
-export interface Chrome extends TextKit {
+/** The drawing kit: the {@link TextKit} placement primitives and the {@link GlyphKit} button faces, plus
+ *  the panel's original-art pieces. */
+export interface Chrome extends TextKit, GlyphKit {
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
   tile(texture: Texture | undefined, r: Rect, target?: Container): boolean;
   /** A GUI-sheet sprite centered in `r` at its native size. */
@@ -67,9 +57,6 @@ export interface Chrome extends TextKit {
   /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`.
    *  No-op when the good has no bound icon (non-map goods) or the goods art is absent. */
   goodIcon(goodId: string, r: Rect): void;
-  /** A 2×2 grid of mixed-good tiles centered in `r` — the "gather everything" round button's face, drawn
-   *  distinct from any single good's pile so it never reads as one specific good. */
-  glyphAll(r: Rect): void;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
@@ -89,16 +76,6 @@ export interface Chrome extends TextKit {
    *  raised rim, brightened when `active` (hovered or selected) and darkened when disabled. The caller
    *  overlays the face (a good icon / the assign glyph) centered in `r`. */
   roundButton(r: Rect, enabled: boolean, active: boolean): void;
-  /** A small house glyph centered in `r` — the assign-workplace round button's face (assign this settler
-   *  to a building); `enabled` picks the lit vs. dimmed cream. */
-  glyphHouse(r: Rect, enabled: boolean): void;
-  /** A plus glyph centered in `r` - an empty equip slot's "put an item on" button face. Always lit:
-   *  the per-slot order buttons are never disabled (see `EquipActionHit`). */
-  glyphPlus(r: Rect): void;
-  /** Two opposing horizontal arrows centered in `r` - a worn equip slot's "swap the item" button face. */
-  glyphSwap(r: Rect): void;
-  /** A diagonal cross centered in `r` - a worn equip slot's "take the item off" button face. */
-  glyphCross(r: Rect): void;
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
@@ -134,15 +111,16 @@ export function createChrome(
   // the preview Sprite) can't share. See panel.ts / PalettedSprite.flipY.
   const flipY = resolution !== undefined;
 
-  // The vector-text placement primitives (`text.ts`) over the panel's text layer, and the rope-and-knot
-  // window border (`frame-border.ts`) over its front sprite layer — the two self-contained sub-concerns
-  // of this kit. Headlines/buttons place text through the former; the window fill draws the latter.
+  // The self-contained sub-concerns of this kit: vector-text placement over the text layer (`text.ts`),
+  // the rope-and-knot window border over the front sprite layer (`frame-border.ts`), and the flat button
+  // faces over the shared `Graphics` (`glyphs.ts`).
   const { textAt, textCentered, textLeftMiddle, textRight } = createTextKit(
     layers.text,
     assets.uiFont.family,
     scale,
   );
   const { frameBorder } = createFrameBorderKit({ art, front: layers.front, scale, flipY, screen });
+  const glyphs = createGlyphKit({ g, scale, bevelDark: INNER_BOX_DARK });
 
   const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean =>
     tileBitmap(target, texture, r, scale);
@@ -189,23 +167,6 @@ export function createChrome(
   const goodIcon = (goodId: string, r: Rect): void =>
     placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
 
-  const glyphAll = (r: Rect): void => {
-    const cell = Math.max(2, Math.round(r.w * 0.34));
-    const gap = Math.max(1, Math.round(r.w * 0.12));
-    const block = cell * 2 + gap;
-    const x0 = Math.round(r.x + (r.w - block) / 2);
-    const y0 = Math.round(r.y + (r.h - block) / 2);
-    const line = Math.max(1, Math.round(scale));
-    // Four distinct good tones (stone / wood / gold / herb) so the tile reads as "a mix of everything",
-    // never as one specific good.
-    ALL_GLYPH_TILES.forEach((color, i) => {
-      const tx = x0 + (i % 2) * (cell + gap);
-      const ty = y0 + Math.floor(i / 2) * (cell + gap);
-      g.rect(tx, ty, cell, cell).fill(color);
-      g.rect(tx, ty, cell, cell).stroke({ color: INNER_BOX_DARK, width: line, alpha: 0.6 });
-    });
-  };
-
   // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
   // `card` fill (the original's selected-item card), not the warm brown `bg` — that stays the button
   // plates' disabled fallback; only the headline strips above the cards keep the warm brown.
@@ -250,74 +211,6 @@ export function createChrome(
     g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.9 });
     if (!enabled) g.circle(cx, cy, rad).fill({ color: 0x000000, alpha: 0.28 });
     else if (active) g.circle(cx, cy, rad).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
-  };
-
-  const glyphHouse = (r: Rect, enabled: boolean): void => {
-    const color = enabled ? GLYPH_LIGHT : GLYPH_DIM;
-    const cx = r.x + r.w / 2;
-    const pad = r.w * 0.28;
-    const x0 = r.x + pad;
-    const x1 = r.x + r.w - pad;
-    const y0 = r.y + pad;
-    const y1 = r.y + r.h - pad;
-    const eaveY = y0 + (y1 - y0) * 0.42;
-    const wallW = x1 - x0;
-    // Roof gable, then the wall box, then a punched door in the plate's dark tone.
-    g.moveTo(x0, eaveY).lineTo(cx, y0).lineTo(x1, eaveY).closePath().fill(color);
-    g.rect(x0 + wallW * 0.12, eaveY, wallW * 0.76, y1 - eaveY).fill(color);
-    g.rect(cx - wallW * 0.11, y1 - (y1 - eaveY) * 0.55, wallW * 0.22, (y1 - eaveY) * 0.55).fill({
-      color: INNER_BOX_DARK,
-      alpha: 0.85,
-    });
-  };
-
-  const glyphPlus = (r: Rect): void => {
-    const color = GLYPH_LIGHT;
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
-    const arm = r.w * 0.22;
-    const th = Math.max(1, Math.round(r.w * 0.14));
-    g.rect(cx - arm, cy - th / 2, arm * 2, th).fill(color);
-    g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(color);
-  };
-
-  const glyphSwap = (r: Rect): void => {
-    const color = GLYPH_LIGHT;
-    const x0 = r.x + r.w * 0.22;
-    const x1 = r.x + r.w * 0.78;
-    const cy = r.y + r.h / 2;
-    // Two opposed arrow lanes around the centre line: top shaft points right, bottom shaft points left.
-    const lane = r.h * 0.14;
-    const th = Math.max(1, Math.round(r.w * 0.1));
-    const head = r.w * 0.16;
-    g.moveTo(x0, cy - lane)
-      .lineTo(x1 - head, cy - lane)
-      .stroke({ color, width: th });
-    g.moveTo(x1, cy - lane)
-      .lineTo(x1 - head, cy - lane - head)
-      .lineTo(x1 - head, cy - lane + head)
-      .closePath()
-      .fill(color);
-    g.moveTo(x1, cy + lane)
-      .lineTo(x0 + head, cy + lane)
-      .stroke({ color, width: th });
-    g.moveTo(x0, cy + lane)
-      .lineTo(x0 + head, cy + lane - head)
-      .lineTo(x0 + head, cy + lane + head)
-      .closePath()
-      .fill(color);
-  };
-
-  const glyphCross = (r: Rect): void => {
-    const color = GLYPH_LIGHT;
-    const pad = r.w * 0.3;
-    const th = Math.max(1, Math.round(r.w * 0.14));
-    const x0 = r.x + pad;
-    const x1 = r.x + r.w - pad;
-    const y0 = r.y + pad;
-    const y1 = r.y + r.h - pad;
-    g.moveTo(x0, y0).lineTo(x1, y1).stroke({ color, width: th });
-    g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color, width: th });
   };
 
   const headline = (r: Rect, title: string): void => {
@@ -425,6 +318,7 @@ export function createChrome(
   };
 
   return {
+    ...glyphs,
     textAt,
     textCentered,
     textLeftMiddle,
@@ -432,15 +326,10 @@ export function createChrome(
     tile,
     guiCentered,
     goodIcon,
-    glyphAll,
     window: windowBox,
     innerBox,
     slotSocket,
     roundButton,
-    glyphHouse,
-    glyphPlus,
-    glyphSwap,
-    glyphCross,
     headline,
     selectedUnderline,
     scrim,
