@@ -3,6 +3,7 @@ import * as components from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import {
+  anyResourceNear,
   canonicalResources,
   resourceHarvestAtomics,
   resourcesAtNode,
@@ -45,6 +46,27 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     expect(near).toEqual([b, c]); // ascending id, both border-straddling nodes present
     expect(near).not.toContain(far);
     expect(near).not.toContain(beyond);
+  });
+
+  it('anyResourceNear agrees with resourcesNearNode over the same box, edge nodes included', () => {
+    const sim = newSim();
+    const straddling = nodeAt(sim, 31, 31); // one side of the 32-node region border
+    const onEdge = nodeAt(sim, 37, 32); // exactly `reach` away — in the box only if the bound is inclusive
+    const justOutside = nodeAt(sim, 38, 32); // one node past the edge, in a region the scan still walks
+    // The existence twin must answer "does the box hold one that passes?" exactly as the collecting scan
+    // does; the `onEdge` / `justOutside` predicates are what catch a divergent bound.
+    for (const [label, test] of [
+      ['any at all', () => true],
+      ['only the edge node', (e: number) => e === onEdge],
+      ['only the node just past the edge', (e: number) => e === justOutside],
+      ['only the region-straddling node', (e: number) => e === straddling],
+      ['none', () => false],
+    ] as const) {
+      const collected = resourcesNearNode(sim.world, 32, 32, 5).some(test);
+      expect(anyResourceNear(sim.world, 32, 32, 5, test), label).toBe(collected);
+    }
+    // Pin the box itself, so the agreement above is agreement on the RIGHT set.
+    expect(resourcesNearNode(sim.world, 32, 32, 5)).toEqual([straddling, onEdge]);
   });
 
   it('refreshes when a resource is created or destroyed (Resource store generation)', () => {
