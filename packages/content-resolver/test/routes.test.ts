@@ -124,6 +124,39 @@ describe('resolveContentRequest', () => {
     expect(resolveContentRequest('/maps/%zz.json', contentRoot)).toBeUndefined();
     expect(resolveContentRequest('/maps/%.json', contentRoot)).toBeUndefined();
   });
+
+  it('claims every pathname it can resolve, so no hit is left to a host catch-all', async () => {
+    await put('ir.json');
+    await put('maps/campaign01.json');
+    await put('maps/two words.json');
+    await put('Data/engine2d/bin/bobs/ls_trees.tree01.atlas.json');
+    const probed = [
+      '/ir.json',
+      '/maps-index',
+      '/bobs-index',
+      '/maps/campaign01.json',
+      '/maps/two%20words.json',
+      '/bobs/ls_trees.tree01.atlas.json',
+      '/maps/missing.json',
+      '/bobs/notes.json',
+      '/bobs/%2e%2e/maps/campaign01.json',
+      '/maps/%zz.json',
+      '/',
+      '/maps',
+      '/src/main.ts',
+      '/secret.json',
+    ];
+    const resolvable = probed.filter((p) => resolveContentRequest(p, contentRoot) !== undefined);
+    expect(resolvable).toEqual([
+      '/ir.json',
+      '/maps-index',
+      '/bobs-index',
+      '/maps/campaign01.json',
+      '/maps/two%20words.json',
+      '/bobs/ls_trees.tree01.atlas.json',
+    ]);
+    for (const pathname of resolvable) expect(isContentRoute(pathname)).toBe(true);
+  });
 });
 
 describe('isContentRoute', () => {
