@@ -1,4 +1,12 @@
-import { Anger, Frightened, PathRequest, Position, Settler, StayPoint } from '../../components/index.js';
+import {
+  Anger,
+  Frightened,
+  PathRequest,
+  Position,
+  Resting,
+  Settler,
+  StayPoint,
+} from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
@@ -44,6 +52,7 @@ export function frightenWildlifeNear(
     const s = world.get(e, Settler);
     if (isAggressiveAnimal(ctx.content, s.tribe)) continue;
     if (world.has(e, Anger)) continue;
+    if (world.has(e, Resting)) continue; // indoors (a farm's feed batch owns it): walls, not open ground
     if (manhattan(terrain, atNode, entityNode(world, terrain, e)) > FRIGHT_RADIUS_NODES) continue;
     const fright = world.tryGet(e, Frightened);
     if (fright !== undefined) {
@@ -76,6 +85,9 @@ export const animalFrightSystem: System = (world, ctx) => {
       clearNavState(world, e);
       continue;
     }
+    // Frightened on its way in, then admitted: the scare keeps ticking down, but an animal indoors runs
+    // nowhere - routing it would walk the body out of the building it is marked inside.
+    if (world.has(e, Resting)) continue;
     if (world.tryGet(e, PathRequest)?.failed) {
       clearNavState(world, e); // the last away-route was unreachable - re-aim now
     } else if (isTravelling(world, e) && ctx.tick < f.repathAt) {

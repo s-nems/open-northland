@@ -13,6 +13,7 @@ export {
 export {
   isWorkplaceOperator,
   operatorCountOf,
+  operatorSlotCapacity,
   presentOperatorCount,
   presentOperators,
   type WorkplaceOperators,

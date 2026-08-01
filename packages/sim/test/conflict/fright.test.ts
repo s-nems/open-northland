@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Frightened, HerdMember, StayPoint } from '../../src/components/index.js';
+import { Frightened, HerdMember, Resting, StayPoint } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import {
@@ -48,6 +48,18 @@ describe('frightenWildlifeNear - who the scare reaches', () => {
     expect(sim.world.has(bear, Frightened)).toBe(false);
     expect(sim.world.has(far, Frightened)).toBe(false);
     expect(sim.world.has(plain, Frightened)).toBe(false);
+  });
+
+  it('leaves an animal inside a building alone - a shot outdoors must not walk it out', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const indoors = wildAtNode(sim, 41, 40, COW); // one node off the mark, but on a farm's feed batch
+    sim.world.add(indoors, Resting, { at: sim.world.create() });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('test map missing');
+
+    frightenWildlifeNear(sim.world, ctxOf(sim), terrain, terrain.nodeAt(40, 40));
+
+    expect(sim.world.has(indoors, Frightened)).toBe(false);
   });
 });
 

@@ -45,7 +45,10 @@ export function livestockTables(content: ContentSet): LivestockTables {
   for (const b of content.buildings) {
     if (seen.has(b.typeId)) continue;
     seen.add(b.typeId);
-    const feeds = b.recipes.some((r) => tribeByGood.has(r.outputs[0]?.goodType ?? -1));
+    const feeds = b.recipes.some((r) => {
+      const product = r.outputs[0]?.goodType;
+      return product !== undefined && tribeByGood.has(product);
+    });
     if (feeds) workplaceTypes.add(b.typeId);
   }
   return { goodByTribe, tribeByGood, workplaceTypes, meatGood: goodBySlug.get('meat') ?? null };

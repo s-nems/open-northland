@@ -2,6 +2,7 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   CurrentAtomic,
+  Frightened,
   Health,
   Livestock,
   LivestockVisit,
@@ -29,7 +30,12 @@ import {
   manhattan,
   NodeBuckets,
 } from '../spatial/nodes.js';
-import { operatorCountOf, presentOperators, recipesByProductOf } from '../stores/index.js';
+import {
+  operatorCountOf,
+  operatorSlotCapacity,
+  presentOperators,
+  recipesByProductOf,
+} from '../stores/index.js';
 
 // The processing side of husbandry, staged as a VISIT the player can watch: the workplace SUMMONS one
 // penned animal per species (it walks to the door and waits there), the feed batch begins only once it
@@ -173,12 +179,15 @@ export const livestockVisitSystem: System = (world, ctx) => {
 function summonToWorkplaces(world: World, ctx: SystemContext): void {
   // Shared lazily across farms: built only when a farm passes every cheap gate (most ticks none does).
   let operatorsByNode: NodeBuckets | undefined;
-  for (const building of world.query(Building, Stockpile)) {
+  for (const building of canonicalById(world.query(Building, Stockpile))) {
     const b = world.get(building, Building);
     if (b.built < ONE || !isLivestockWorkplaceType(ctx.content, b.buildingType)) continue;
     const stock = world.get(building, Stockpile).amounts;
     const recipes = recipesByProductOf(world, ctx, building);
     if (recipes === undefined) continue;
+    // The DECLARED seats first: an upper bound on the on-station count, so the steady "every operator
+    // busy" farm answers no summon without paying for the settler node index the exact count needs.
+    if (spareSeats(world, building, operatorSlotCapacity(world, ctx, building)) <= 0) continue;
     let seatsLeft: number | null = null;
     for (const recipe of recipes.values()) {
       const tribe = feedTribeOf(ctx, recipe);
@@ -191,11 +200,15 @@ function summonToWorkplaces(world: World, ctx: SystemContext): void {
       if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue;
       // Pen scan before the seat read: the scan walks the small Livestock store, while the seat
       // count needs the settler node index - an empty pen (the common stall) never builds it.
-      const { best } = scanFeedAnimals(world, ctx, building, tribe);
+      const best = feedAnimalPick(world, ctx, building, tribe);
       if (best === null) continue;
       if (seatsLeft === null) {
         operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
-        seatsLeft = spareSeatCount(world, ctx, building, operatorsByNode);
+        seatsLeft = spareSeats(
+          world,
+          building,
+          operatorCountOf(presentOperators(world, ctx, building, operatorsByNode)),
+        );
       }
       if (seatsLeft <= 0) continue;
       world.add(best, LivestockVisit, { at: building });
@@ -224,15 +237,11 @@ function tokenConsumable(
   return false;
 }
 
-/** Operator seats a new visit could still claim: present operators minus the batches already grinding
- *  and the visitors already booked. */
-function spareSeatCount(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  operatorsByNode: NodeBuckets,
-): number {
-  const seats = operatorCountOf(presentOperators(world, ctx, building, operatorsByNode));
+/** Seats a new visit could still claim out of `seats` on offer: minus the batches already grinding and
+ *  the visitors already booked. Passing the type's DECLARED seats bounds the answer from above (the
+ *  on-station count is clamped to them), which is what lets the summon gate cheaply before counting who
+ *  actually stands at the door. */
+function spareSeats(world: World, building: Entity, seats: number): number {
   const running = world.tryGet(building, Production)?.cycles.length ?? 0;
   return seats - running - unadmittedVisitorCount(world, building);
 }
@@ -261,6 +270,7 @@ export function heldSeatCount(
   for (const e of world.query(LivestockVisit, Settler)) {
     if (world.get(e, LivestockVisit).at !== building) continue;
     if (world.has(e, Resting)) continue;
+    if (world.has(e, Frightened)) continue; // scattered, so not arriving this batch: see arrivedVisitors
     const recipe = feedRecipeOfTribe(ctx, recipes, world.get(e, Settler).tribe);
     if (recipe === undefined) continue;
     if (!recipe.inputs.every((i) => (stock.get(i.goodType) ?? 0) >= i.amount)) continue;
@@ -292,8 +302,14 @@ function hasVisitor(world: World, building: Entity, tribe: number): boolean {
   return false;
 }
 
-/** The workplace's summoned visitors of `tribe` standing ON the door (not yet admitted) - the animals
- *  a feed batch may begin against. In a mapless sim every waiting visitor counts as arrived. */
+/**
+ * The workplace's summoned visitors of `tribe` standing ON the door (not yet admitted) - the animals a
+ * feed batch may begin against. In a mapless sim every waiting visitor counts as arrived.
+ *
+ * A scattered animal ({@link Frightened}) is never one of them, even standing on the door: it is
+ * running from a scare, and admitting it would carry the fright inside, where the scatter drive would
+ * walk the body back out of the building. The same reading paces {@link heldSeatCount}.
+ */
 function arrivedVisitors(world: World, ctx: SystemContext, building: Entity, tribe: number): Entity[] {
   const terrain = ctx.terrain;
   const door = terrain === undefined ? null : interactionNodeId(world, ctx, terrain, building);
@@ -301,7 +317,7 @@ function arrivedVisitors(world: World, ctx: SystemContext, building: Entity, tri
   for (const e of world.query(LivestockVisit, Settler)) {
     if (world.get(e, LivestockVisit).at !== building) continue;
     if (world.get(e, Settler).tribe !== tribe) continue;
-    if (world.has(e, Resting)) continue;
+    if (world.has(e, Resting) || world.has(e, Frightened)) continue;
     if (terrain !== undefined && door !== null && entityNode(world, terrain, e) !== door) continue;
     arrived.push(e);
   }
@@ -317,27 +333,20 @@ function walkToDoor(world: World, ctx: SystemContext, building: Entity, e: Entit
 }
 
 /**
- * One pass over the {@link Livestock} store (the herd, never the settler population): the
- * eligible-animal count and the canonical summon pick (highest HP, then lowest id - an explicit tuple
- * compare, so raw query order cannot change the winner). Eligible means: the species' live creature,
- * not already summoned ({@link LivestockVisit}), above the life floor after the coming drain, penned
- * within {@link LIVESTOCK_PROCESS_RANGE_NODES} of the door on the door's terrain component (both
- * skipped in a mapless sim - no distance to measure), and - at an owned workplace - claimed by the
- * same player (a neutral scenario fixture
- * accepts any animal in range; an owned farm never milks wild or enemy stock).
+ * The canonical summon pick from one pass over the {@link Livestock} store (the herd, never the settler
+ * population): highest HP, then lowest id - an explicit tuple compare, so raw query order cannot change
+ * the winner. Eligible means: the species' live creature, not already summoned ({@link LivestockVisit}),
+ * above the life floor after the coming drain, penned within {@link LIVESTOCK_PROCESS_RANGE_NODES} of
+ * the door on the door's terrain component (both skipped in a mapless sim - no distance to measure),
+ * and - at an owned workplace - claimed by the same player (a neutral scenario fixture accepts any
+ * animal in range; an owned farm never milks wild or enemy stock).
  */
-function scanFeedAnimals(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  tribe: number,
-): { best: Entity | null; count: number } {
+function feedAnimalPick(world: World, ctx: SystemContext, building: Entity, tribe: number): Entity | null {
   const terrain = ctx.terrain;
   const door = terrain === undefined ? null : interactionNodeId(world, ctx, terrain, building);
   const buildingOwner = ownerOf(world, building);
   let best: Entity | null = null;
   let bestHp = -1;
-  let count = 0;
   for (const e of world.query(Livestock, Settler, Health, Position)) {
     if (world.get(e, Settler).tribe !== tribe) continue;
     if (world.has(e, LivestockVisit)) continue;
@@ -351,11 +360,10 @@ function scanFeedAnimals(
       // and hold an operator seat open forever (the escort re-aims a refused walk indefinitely).
       if (terrain.componentOf(node) !== terrain.componentOf(door)) continue;
     }
-    count += 1;
     if (h.hitpoints > bestHp || (h.hitpoints === bestHp && (best === null || e < best))) {
       best = e;
       bestHp = h.hitpoints;
     }
   }
-  return { best, count };
+  return best;
 }

@@ -68,7 +68,7 @@ export function isValidTarget(
 export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunterJob: number | null): boolean {
   if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
-  if (world.has(t, Owner)) return false; // claimed livestock is property, not prey (see mayTarget's predation note)
+  if (world.has(t, Owner)) return false; // property, not prey - the predation rule of mayTarget below
   return mayHunt(ctx.content, hunterJob, world.get(t, Settler).tribe);
 }
 
@@ -110,8 +110,7 @@ export function mayTarget(
   }
   // At least one side neutral/unowned: the content tribe/predation/anger relations (unchanged).
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static hostility
-  // Predation stops at property: only an UNOWNED animal is prey (user rule) - enemy livestock falls to
-  // soldiers via the owner axis above, never to a hunter's game drive.
+  // a hunter striking huntable prey, and only UNOWNED prey (rule 2 above)
   if (targetOwner === undefined && mayHunt(ctx.content, attackerJob, targetTribe)) return true;
   const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
