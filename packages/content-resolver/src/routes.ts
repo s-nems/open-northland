@@ -87,6 +87,31 @@ function servedExtension(file: string, allowed: readonly ServedExtension[]): Ser
   return best;
 }
 
+/** Which route a pathname claims, before anything on disk is consulted. */
+type RouteMatch =
+  | { readonly kind: 'ir' }
+  | { readonly kind: 'index'; readonly route: IndexRoute }
+  | { readonly kind: 'file'; readonly route: FileRoute; readonly relative: string };
+
+/**
+ * The single table walk behind both exports, so "this pathname is ours" and "this pathname resolves"
+ * can never answer from different route sets.
+ */
+function matchRoute(rawPathname: string): RouteMatch | undefined {
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(rawPathname);
+  } catch {
+    return undefined;
+  }
+  if (pathname === IR_PATHNAME) return { kind: 'ir' };
+  const index = INDEX_ROUTES.find((route) => pathname === route.pathname);
+  if (index !== undefined) return { kind: 'index', route: index };
+  const file = FILE_ROUTES.find((route) => pathname.startsWith(route.prefix));
+  if (file === undefined) return undefined;
+  return { kind: 'file', route: file, relative: pathname.slice(file.prefix.length) };
+}
+
 /**
  * Whether a pathname belongs to the content namespace, even when nothing resolves there. A host with
  * its own catch-all page route (Vite's SPA fallback) must answer a real 404 for an in-namespace miss:
@@ -94,41 +119,32 @@ function servedExtension(file: string, allowed: readonly ServedExtension[]): Ser
  * absence check (`!res.ok`) would mis-read the missing file as bytes.
  */
 export function isContentRoute(rawPathname: string): boolean {
-  let pathname: string;
-  try {
-    pathname = decodeURIComponent(rawPathname);
-  } catch {
-    return false;
-  }
-  if (pathname === IR_PATHNAME) return true;
-  if (INDEX_ROUTES.some((route) => pathname === route.pathname)) return true;
-  return FILE_ROUTES.some((route) => pathname.startsWith(route.prefix));
+  return matchRoute(rawPathname) !== undefined;
 }
 
 /** Resolve a request path (the raw URL pathname, query already stripped) against the content dir. */
 export function resolveContentRequest(rawPathname: string, contentRoot: string): ContentHit | undefined {
-  let pathname: string;
-  try {
-    pathname = decodeURIComponent(rawPathname);
-  } catch {
-    return undefined;
+  const match = matchRoute(rawPathname);
+  if (match === undefined) return undefined;
+  switch (match.kind) {
+    case 'ir': {
+      const file = join(contentRoot, 'ir.json');
+      return existsSync(file) ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] } : undefined;
+    }
+    case 'index': {
+      const root = join(contentRoot, match.route.root);
+      return existsSync(root) ? { kind: 'json', body: () => match.route.build(root) } : undefined;
+    }
+    case 'file': {
+      const root = resolve(contentRoot, match.route.root);
+      const file = resolveFileUnderRoot(root, match.relative);
+      if (file === undefined) return undefined;
+      const ext = servedExtension(file, match.route.extensions);
+      return ext === undefined ? undefined : { kind: 'file', path: file, contentType: CONTENT_TYPES[ext] };
+    }
+    default: {
+      const exhaustive: never = match;
+      throw new Error(`unhandled route match ${JSON.stringify(exhaustive)}`);
+    }
   }
-  if (pathname === IR_PATHNAME) {
-    const file = join(contentRoot, 'ir.json');
-    return existsSync(file) ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] } : undefined;
-  }
-  for (const route of INDEX_ROUTES) {
-    if (pathname !== route.pathname) continue;
-    const root = join(contentRoot, route.root);
-    return existsSync(root) ? { kind: 'json', body: () => route.build(root) } : undefined;
-  }
-  for (const route of FILE_ROUTES) {
-    if (!pathname.startsWith(route.prefix)) continue;
-    const root = resolve(contentRoot, route.root);
-    const file = resolveFileUnderRoot(root, pathname.slice(route.prefix.length));
-    if (file === undefined) return undefined;
-    const ext = servedExtension(file, route.extensions);
-    return ext === undefined ? undefined : { kind: 'file', path: file, contentType: CONTENT_TYPES[ext] };
-  }
-  return undefined;
 }
