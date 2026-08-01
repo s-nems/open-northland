@@ -1,4 +1,4 @@
-import { type ContentSet, indexById } from '@open-northland/data';
+import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -80,7 +80,7 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
     const sim = createSceneSim(scene);
     sim.step();
     const snapshot = sim.snapshot();
-    const buildingsByType = indexById(sim.content.buildings);
+    const buildingsByType = lastByTypeId(sim.content.buildings);
 
     const settler = snapshot.entities.find(
       (e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER && settlerJobType(e) !== undefined,
@@ -138,7 +138,7 @@ describe('pick-mode highlight cost', () => {
     if (scene === undefined) throw new Error('sandbox scene missing');
     const sim = createSceneSim(scene);
     sim.step();
-    const buildingsByType = indexById(sim.content.buildings);
+    const buildingsByType = lastByTypeId(sim.content.buildings);
     // Two settlers of DIFFERENT trades, so the wash they each produce differs.
     const owned = sim.snapshot().entities.filter((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER);
     const settler = owned[0];

@@ -7,9 +7,9 @@ import {
   type GatheringPipeline,
   type GoodType,
   type HumanJobExperienceType,
-  indexById,
   type JobType,
   type LandscapeGfx,
+  lastByTypeId,
   type Recipe,
   resolveJobAtomics,
   type TribeType,
@@ -74,10 +74,9 @@ export interface ContentIndex {
   readonly enablingJobsByTribe: EnablingJobTables;
   /** Vehicle types by `typeId`. */
   readonly vehicles: ReadonlyMap<number, VehicleType>;
-  /** Command-boundary building lookup with `indexById`'s last-wins duplicate semantics. Runtime
-   *  validation used to rebuild this map for every command. */
+  /** Command-boundary building lookup - last-wins on a duplicate typeId, unlike {@link buildings}. */
   readonly commandBuildings: ReadonlyMap<number, BuildingType>;
-  /** Command-boundary job lookup with `indexById`'s last-wins duplicate semantics. */
+  /** Command-boundary job lookup - last-wins on a duplicate typeId, unlike {@link jobs}. */
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by `typeId` (the armor-class id — see readviews/combat.ts). */
   readonly armor: ReadonlyMap<number, ArmorType>;
@@ -212,8 +211,8 @@ function buildIndex(content: ContentSet): ContentIndex {
     tribes,
     enablingJobsByTribe: enablingJobTables(tribes),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
-    commandBuildings: indexById(content.buildings),
-    commandJobs: indexById(content.jobs),
+    commandBuildings: lastByTypeId(content.buildings),
+    commandJobs: lastByTypeId(content.jobs),
     armor: byKey(content.armor, (a) => a.typeId),
     armorByGoodType: byOptionalKey(content.armor, (a) => a.goodType),
     militaryGoods: militaryGoodTypes(content),

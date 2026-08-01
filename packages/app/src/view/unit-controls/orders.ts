@@ -1,4 +1,4 @@
-import { type ContentSet, indexById } from '@open-northland/data';
+import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import {
   type Command,
@@ -34,7 +34,7 @@ export interface UnitOrderController {
 
 /** Route right-click RTS intent into the one-way sim command seam. */
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
-  const buildingsByType = indexById(deps.content.buildings);
+  const buildingsByType = lastByTypeId(deps.content.buildings);
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
