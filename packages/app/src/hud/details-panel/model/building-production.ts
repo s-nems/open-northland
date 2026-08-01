@@ -60,20 +60,39 @@ export type ProductionModel =
       readonly ripe: number;
     };
 
-/** Count a farm's fields in the snapshot: every `Crop` whose `farm` is this building, split into still
- *  growing vs ripe (`stage >= stages`). One entity pass, shared shape with the other snapshot scans. */
-function fieldCounts(snapshot: WorldSnapshot, buildingId: number): { growing: number; ripe: number } {
-  let growing = 0;
-  let ripe = 0;
+interface FieldCounts {
+  readonly growing: number;
+  readonly ripe: number;
+}
+
+/** {@link fieldCountsByFarm} keyed by snapshot, like the `snapshot-base.ts` memos: the panel re-derives
+ *  its model every tick a farm stays selected, and `Crop` is outside `actorsOf`, so without this the
+ *  full-entity crops walk would repeat per derive. */
+const FIELD_COUNTS = new WeakMap<WorldSnapshot, ReadonlyMap<number, FieldCounts>>();
+
+/** Every farm's field tally in one entity pass: each `Crop` grouped by its `farm`, split into still
+ *  growing vs ripe (`stage >= stages`). */
+function fieldCountsByFarm(snapshot: WorldSnapshot): ReadonlyMap<number, FieldCounts> {
+  const cached = FIELD_COUNTS.get(snapshot);
+  if (cached !== undefined) return cached;
+  const byFarm = new Map<number, { growing: number; ripe: number }>();
   for (const e of snapshot.entities) {
     const crop = e.components.Crop as { farm?: unknown; stage?: unknown; stages?: unknown } | undefined;
-    if (crop === undefined || num(crop.farm) !== buildingId) continue;
+    if (crop === undefined) continue;
+    const farm = num(crop.farm);
+    if (farm === undefined) continue;
+    let counts = byFarm.get(farm);
+    if (counts === undefined) {
+      counts = { growing: 0, ripe: 0 };
+      byFarm.set(farm, counts);
+    }
     const stage = num(crop.stage) ?? 0;
     const stages = num(crop.stages) ?? Number.POSITIVE_INFINITY;
-    if (stage >= stages) ripe++;
-    else growing++;
+    if (stage >= stages) counts.ripe++;
+    else counts.growing++;
   }
-  return { growing, ripe };
+  FIELD_COUNTS.set(snapshot, byFarm);
+  return byFarm;
 }
 
 export function productionModel(
@@ -88,7 +107,7 @@ export function productionModel(
   // the sim farms, the panel must show live field state, never a dead recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
-    const { growing, ripe } = fieldCounts(snapshot, ent.id);
+    const { growing, ripe } = fieldCountsByFarm(snapshot).get(ent.id) ?? { growing: 0, ripe: 0 };
     return {
       kind: 'fields',
       label: fieldGood.name ?? fieldGood.id,
