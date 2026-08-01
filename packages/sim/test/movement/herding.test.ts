@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   CurrentAtomic,
   HerdMember,
+  LivestockVisit,
   MoveGoal,
   Position,
+  Resting,
   Settler,
   StayPoint,
 } from '../../src/components/index.js';
@@ -61,6 +63,20 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
     expect(gap).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES); // beside the leader, not merged into it
     expect(gap).toBeLessThanOrEqual(LEADER_DISTANCE); // and inside the cohesion radius
     expect(sim.world.has(leader, MoveGoal)).toBe(false); // the leader follows no one
+  });
+
+  it('leaves a workplace visit alone - no recall out of a building, none across the walk to its door', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
+    const leader = herderAt(sim, 0, 0, 'self');
+    const inside = herderAt(sim, 8, 0, leader);
+    sim.world.add(inside, Resting, { at: leader }); // stands in a building, off the field
+    const walking = herderAt(sim, 9, 0, leader);
+    sim.world.add(walking, LivestockVisit, { at: leader }); // booked: the escort owns its walk
+
+    herdingSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(inside, MoveGoal)).toBe(false);
+    expect(sim.world.has(walking, MoveGoal)).toBe(false);
   });
 
   it('two strayed followers are recalled to DISTINCT spots beside the leader', () => {

@@ -37,15 +37,17 @@ export const LIVESTOCK_CAPTURE_RANGE_NODES = 1;
 export const livestockCaptureSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return;
   const terrain = ctx.terrain;
+  // The candidate store first, so a map carrying no livestock never walks the settler population. No
+  // canonical sort: every in-range animal is claimed (no first-found winner), so order cannot change
+  // the result.
+  const herds = [...world.query(Livestock, Position)];
+  if (herds.length === 0) return;
   const scouts: Entity[] = [];
   for (const e of world.query(Settler, Owner, Position)) {
     if (isScoutJob(ctx.content, world.get(e, Settler).jobType)) scouts.push(e);
   }
   if (scouts.length === 0) return;
   scouts.sort((a, b) => a - b);
-  // No canonical sort of the candidates: every in-range animal is claimed (no first-found winner), so
-  // iteration order cannot change the result.
-  const herds = [...world.query(Livestock, Position)];
   for (const scout of scouts) {
     const player = world.get(scout, Owner).player;
     const at = entityNode(world, terrain, scout);
@@ -55,6 +57,9 @@ export const livestockCaptureSystem: System = (world, ctx) => {
       if (manhattan(terrain, entityNode(world, terrain, animal), at) > LIVESTOCK_CAPTURE_RANGE_NODES) {
         continue;
       }
+      // Only an animal still in a wild herd can have followers pointing at it, so a re-claim (the
+      // enemy tug-of-war) skips the successor scans below.
+      const wasHerded = world.has(animal, HerdMember);
       world.add(animal, Owner, { player });
       world.remove(animal, HerdMember);
       // A steal mid-walk abandons the booked visit - the batch releases nobody (an accepted free
@@ -63,7 +68,7 @@ export const livestockCaptureSystem: System = (world, ctx) => {
         world.remove(animal, LivestockVisit);
         clearNavState(world, animal);
       }
-      promoteWildLeader(world, animal);
+      if (wasHerded) promoteWildLeader(world, animal);
     }
   }
 };

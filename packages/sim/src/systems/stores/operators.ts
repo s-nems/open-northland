@@ -119,6 +119,14 @@ export function operatorCountOf(operators: WorkplaceOperators): number {
   }
 }
 
+/** The seats a workplace type DECLARES — the ceiling {@link presentOperators} clamps its on-station
+ *  list to, read from content alone (no settler scan). */
+export function operatorSlotCapacity(world: World, ctx: SystemContext, building: Entity): number {
+  const jobs = operatorJobsOf(world, ctx, building);
+  if (jobs.size === 0) return UNSTAFFED_OPERATOR_COUNT;
+  return operatorSlotHeadcount(world, ctx, building, jobs);
+}
+
 /** The operator headcount on station at `building` — {@link operatorCountOf} of its {@link presentOperators}. */
 export function presentOperatorCount(
   world: World,
