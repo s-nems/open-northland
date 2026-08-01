@@ -20,7 +20,7 @@ import { createTextKit, type TextKit } from './text.js';
  * null`, bitmaps `undefined`). The bitmap `Texture`s come pre-minted from `assets.ts`, so a rebuild mints
  * no bitmap-texture wrappers (they'd leak resize listeners on the shared source); the per-line Pixi `Text`
  * objects are minted per rebuild, but the bake disposes them (and their text textures) with the offscreen
- * root each rebuild (see `panel.ts` / `supersample.ts`).
+ * root each rebuild (see `bake.ts` / `supersample.ts`).
  */
 
 /** The selected-name underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
@@ -99,7 +99,7 @@ export function createChrome(
   /**
    * The projection resolution the {@link PalettedSprite} meshes map native px into. Omitted for a direct
    * on-canvas draw (the meshes project into `app.screen`); the supersample path passes the off-screen
-   * texture's size so the meshes rasterize into that target instead (see `panel.ts`).
+   * texture's size so the meshes rasterize into that target instead (see `bake.ts`).
    */
   resolution?: { readonly w: number; readonly h: number },
 ): Chrome {
@@ -108,7 +108,7 @@ export function createChrome(
   const screen = () => resolution ?? { w: app.screen.width, h: app.screen.height };
   // In texture mode (a resolution override), every PalettedSprite must render upright into the bottom-up
   // render texture so the panel can bake without a whole-texture Y-flip its Pixi-native content (Graphics,
-  // the preview Sprite) can't share. See panel.ts / PalettedSprite.flipY.
+  // the preview Sprite) can't share. See bake.ts / PalettedSprite.flipY.
   const flipY = resolution !== undefined;
 
   // The self-contained sub-concerns of this kit: vector-text placement over the text layer (`text.ts`),

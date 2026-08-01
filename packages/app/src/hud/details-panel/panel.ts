@@ -5,17 +5,16 @@ import {
   type SupersampledTexture,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type Application, Container, Graphics } from 'pixi.js';
+import { type Application, Container } from 'pixi.js';
 import { uiStringLookup } from '../../content/gui-gfx.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
-import { createChrome, type PanelLayers } from './chrome.js';
+import { bakePanel } from './bake.js';
 import { tooltipTextAt } from './hit-test.js';
-import { type EquipSlotRef, mapLayout, ROW_H } from './layout/index.js';
+import { type EquipSlotRef, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
-import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
@@ -24,8 +23,8 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
  * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
  * extracted original art. `model/` decides what is shown, `layout/` where, `sections/`+`chrome.ts` how,
- * `pointer-intent.ts` what a click means, `rebuild-gate.ts` when it re-bakes — this module owns the Pixi
- * state that wires them to the app.
+ * `bake.ts` draws it into the panel texture, `pointer-intent.ts` decides what a click means,
+ * `rebuild-gate.ts` when it re-bakes — this module owns the Pixi state that wires them to the app.
  */
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
@@ -168,16 +167,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  "Wszystkie" view (held goods, fullest first) so a general store shows its contents at a glance. */
   let activeStockTab = ALL_STOCK_TAB;
 
-  /** Fresh draw-order layers over an off-screen container (baked to a texture): fills, graphics, frames, glyphs. */
-  const makeLayers = (into: Container): PanelLayers => {
-    const g = new Graphics();
-    const back = new Container();
-    const front = new Container();
-    const text = new Container();
-    into.addChild(back, g, front, text);
-    return { g, back, front, text };
-  };
-
   const rebuild = (model: UnitPanelModel): void => {
     panelEpoch++;
     baked?.dispose();
@@ -195,54 +184,18 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     root.visible = true;
 
-    // Draw layout: the hit layout scaled by the oversample/display ratio and re-origined to (0,0), so it
-    // fills a tight off-screen texture drawn at `ss`. Deriving it from the hit layout (rather than a second
-    // layout pass at `ss`) keeps the drawn geometry equal to the hit-tested geometry — two independent
-    // roundings at different scales would drift ~1 px and accumulate down the button column.
-    const k = ss / scale;
-    const origin = view.layout.panel;
-    const toDraw = (r: Rect): Rect => ({
-      x: (r.x - origin.x) * k,
-      y: (r.y - origin.y) * k,
-      w: r.w * k,
-      h: r.h * k,
+    const texture = bakePanel({
+      assets,
+      app,
+      baker,
+      view,
+      hover,
+      ui: uiString,
+      activeStockTab,
+      scale,
+      ss,
     });
-    const texW = Math.max(1, Math.round(view.layout.panel.w * k));
-    const texH = Math.max(1, Math.round(view.layout.panel.h * k));
-
-    const offscreen = new Container();
-    const chrome = createChrome(assets, app, ss, makeLayers(offscreen), { w: texW, h: texH });
-    switch (view.kind) {
-      case 'building': {
-        const draw = mapLayout(view.layout, toDraw);
-        drawBuilding(chrome, draw, view.model, uiString, hover.action, activeStockTab, ss);
-        break;
-      }
-      case 'settler': {
-        const draw = mapLayout(view.layout, toDraw);
-        drawSettler(
-          chrome,
-          draw,
-          view.model,
-          uiString,
-          hover.action,
-          hover.choiceGood,
-          hover.equipAction,
-          ss,
-        );
-        break;
-      }
-      case 'compact':
-        drawCompact(chrome, mapLayout(view.layout, toDraw), view.model, uiString, ss);
-        break;
-      case 'signpost':
-        drawSignpost(chrome, mapLayout(view.layout, toDraw), uiString, hover.action);
-        break;
-    }
-
-    // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright — display
-    // unflipped, anchored at the panel's screen top-left.
-    const texture = baker.bake(offscreen, texW, texH, scale / ss);
+    // Displayed unflipped: the bake is already upright.
     texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
     root.addChild(texture.display);
     baked = texture;
