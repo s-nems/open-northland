@@ -12,12 +12,16 @@ import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
 import {
+  type BlockerChannel,
   type BlockerVisit,
   BUILDING_ZONE,
   buildingBlockerCells,
   EXCLUSION,
   eachBlockerCell,
+  MARKER,
   markerBlockerCells,
+  OBSTACLE,
+  RESOURCE_ANCHOR,
   resourceBlockerCells,
   signpostBlockerCells,
 } from '../blockers.js';
@@ -25,9 +29,8 @@ import {
 // The incrementally-maintained work-flag blocked set — the refcounted per-world cache behind
 // ../work-flag's placement queries, with its journal replay, rebuild, and coherence verifier.
 
-/** One blocker's blocked nodes (in-bounds, every channel but the margin zones EXCLUSION/BUILDING_ZONE;
- *  duplicates kept so add and removal replay symmetrically). Captured at admit time — the entity may be
- *  destroyed by removal. */
+/** One blocker's blocked nodes ({@link BLOCKS_WORK_FLAG}, in bounds; duplicates kept so add and removal
+ *  replay symmetrically). Captured at admit time — the entity may be destroyed by removal. */
 type BlockedCells = readonly NodeId[];
 
 /**
@@ -70,12 +73,22 @@ interface StaticBlockerSource {
   readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => NodeId[];
 }
 
+/** Which blocker channels block a work flag: every channel but the margin zones, which stay open ground
+ *  for a flag. Exhaustive over {@link BlockerChannel}, so a channel added later must state its own
+ *  answer here instead of inheriting one. */
+const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
+  [OBSTACLE]: true,
+  [RESOURCE_ANCHOR]: true,
+  [MARKER]: true,
+  [EXCLUSION]: false,
+  [BUILDING_ZONE]: false,
+};
+
 /** The entity's blocked nodes under `run`'s visitor — the shared channel/bounds filter of every capturer. */
 function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void): NodeId[] {
   const cells: NodeId[] = [];
   run((x, y, channel) => {
-    if (channel === EXCLUSION || channel === BUILDING_ZONE) return; // a margin zone is open ground for a flag
-    if (terrain.inBounds(x, y)) cells.push(terrain.nodeAt(x, y));
+    if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) cells.push(terrain.nodeAt(x, y));
   });
   return cells;
 }
@@ -224,8 +237,8 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
 }
 
 /** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
- *  markers' cells — every {@link eachBlockerCell} channel except the margin zones ({@link EXCLUSION}
- *  and {@link BUILDING_ZONE}), since a resource/building margin remains valid open ground for a flag.
+ *  markers' cells — the {@link eachBlockerCell} channels {@link BLOCKS_WORK_FLAG} admits, since a
+ *  resource/building margin remains valid open ground for a flag.
  *  Backed by the incremental {@link IncrementalBlocks} state, so reads share one refcounted set that
  *  changes cost O(own footprint), and the returned view reads that live state rather than a copy of it:
  *  read it fresh within a decision, never hold it across sim mutations. The `ignoreFlag` variant (a
@@ -294,8 +307,7 @@ function buildBlocks(
     world,
     content,
     (x, y, channel) => {
-      if (channel === EXCLUSION || channel === BUILDING_ZONE) return; // a margin zone is open ground for a flag
-      if (terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
+      if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
     },
     { ignoreFlag },
   );
