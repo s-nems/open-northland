@@ -263,3 +263,9 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
  *  conditionally assigned instead of conditionally spread — a spread per optional field allocates a
  *  throwaway object each, a real per-frame GC cost at thousands of sprites × 60 fps). */
 export type MutableDrawItem = { -readonly [K in keyof DrawItem]: DrawItem[K] };
+
+export interface SpriteDrawItem extends DrawItem {
+  readonly kind: SpriteKind;
+}
+
+export type MutableSpriteDrawItem = { -readonly [K in keyof SpriteDrawItem]: SpriteDrawItem[K] };

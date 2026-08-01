@@ -6,6 +6,7 @@ import {
   collectSpriteScene,
   type DrawItem,
   type LiveRefs,
+  type SpriteDrawItem,
   SpriteSpatialIndex,
   screenDepth,
 } from '../../data/scene/index.js';
@@ -104,7 +105,7 @@ export class SpritePool {
   private frameId = 0;
   /** The last {@link reconcile}'s culled, depth-sorted draw list — retained so read-only per-frame
    *  consumers (the ground-pile hover targets) reuse it instead of building the scene a second time. */
-  private lastItems: readonly DrawItem[] = [];
+  private lastItems: readonly SpriteDrawItem[] = [];
   /** This frame's drawn (culled) damaged finished buildings — {@link DrawItem.hpFrac} carriers, rebuilt
    *  each {@link reconcile} for the damage-smoke overlay ({@link damagedBuildings}). */
   private readonly damaged: DamagedBuilding[] = [];
@@ -162,9 +163,6 @@ export class SpritePool {
       if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
         this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
       }
-      // The sprite scene never emits terrain tiles (they draw in the terrain layer); asserting it here
-      // narrows item.kind to SpriteKind for the rest of the loop instead of casting.
-      if (item.kind === 'tile') continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
         pe = this.binder.create(item.kind, item);
