@@ -1,7 +1,7 @@
 import { mkdir, open, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, sep } from 'node:path';
 import type { ModEvent } from '../ipc.js';
-import { readZipEntries, readZipEntryData } from '../zip.js';
+import { readZipEntries, readZipEntryData } from './zip.js';
 
 /** Unpacks the downloaded mod archive, refusing any member that would write outside the target dir. */
 
