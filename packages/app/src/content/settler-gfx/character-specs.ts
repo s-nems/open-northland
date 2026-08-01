@@ -434,10 +434,9 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
  * family: woman 5 → the woman body; the soldier jobs 31..41 → the armoured `cr_hum_body_05`, each
  * weapon class animating its weapon's walk (the axe jobs 38/39 borrow the closest two-hander, the
  * broadsword — the body authors no axe set; the sabers 36/37 borrow the sword/broadsword one-handers).
- * The named heroes 42..47 borrow the warrior body of their `baseatomics` soldier class
+ * Named approximation: heroes 42..47 borrow the warrior body of their `baseatomics` soldier class
  * (`jobtypes.ini`: 42→31, 43→33, 44→34, 45→35, 46→39, 47→41) until their own bodies
- * (`jobgraphics.ini` binds e.g. `CR_Hum_Body_60`/`_64` for jobs 44/45) are extracted —
- * docs/tickets/render/hero-character-bodies.md.
+ * (`jobgraphics.ini` binds e.g. `CR_Hum_Body_60`/`_64` for jobs 44/45) are extracted.
  * Every unmapped job (all civilian trades — they share the generic man body in the original) falls to
  * the `civilian` default.
  */

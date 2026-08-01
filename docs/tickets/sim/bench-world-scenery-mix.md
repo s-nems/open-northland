@@ -1,6 +1,6 @@
 # Give the synthetic benchmark independent population, map, and scenery axes
 
-**Area:** sim tooling · **Priority:** P3
+**Area:** sim, tooling · **Priority:** P3
 
 `packages/app/bench/world.ts` grows map area with settlement count and spawns settlers/fighters but no
 resources, berry bushes, or crops. It cannot distinguish population scaling from map-area scaling, so

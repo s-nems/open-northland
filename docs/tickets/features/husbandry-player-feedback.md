@@ -5,7 +5,9 @@
 Two verified stalls at the animal farm read as "production is broken" because the panel names
 neither. The sim side is done - the summon gate (`summonToWorkplaces`,
 `packages/sim/src/systems/livestock/processing.ts`) already refuses to call an animal for a starved,
-seatless, token-backlogged, or tech-locked chain - so what remains is naming the reason in the UI:
+seatless, token-backlogged, or tech-locked chain - so what remains is naming the reason in the UI.
+
+## Scope
 
 1. **No animal in the pen.** A staffed farm with full water/wheat but no penned animal shows 0%
    production bars with no reason surfaced; unlike input starvation this gate is not even inferable

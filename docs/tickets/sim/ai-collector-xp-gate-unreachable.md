@@ -1,6 +1,8 @@
-# Decide whether an AI collector still earns its XP-gated goods
+# Align AI collector staffing with the chosen XP-gate rule
 
 **Area:** sim · **Priority:** P3
+**Needs user:** choose whether AI collectors bypass civilian good-experience gates with the rest of
+the AI economy.
 
 `experienceGatesApply` (`packages/sim/src/systems/progression/unlocks.ts`) exempts every AI seat from
 the experience tree on civilian targets, so `settlerMeetsNeed(..., 'good', ...)` is constant `true`
@@ -20,7 +22,7 @@ describing behaviour a real seat cannot reach.
 
 ## Scope
 
-Decide which side is right and make the code say it:
+Apply the chosen rule consistently:
 
 - if the exemption stands, delete `meetsNeed`, `needsVeteran` and the veteran repost, and rewrite the
   two tests against what an AI seat actually does;

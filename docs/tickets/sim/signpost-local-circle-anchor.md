@@ -1,6 +1,6 @@
 # Anchor the signpost local circle to something stationary
 
-**Area:** sim (signposts) · **Priority:** P2
+**Area:** sim · **Focus:** signposts · **Priority:** P2
 **Needs user:** observe what anchors the local navigation area in the running original.
 
 `navigationLimitFor` (`packages/sim/src/systems/signposts/network.ts`) centres the settler's LOCAL

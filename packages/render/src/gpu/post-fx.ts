@@ -7,9 +7,8 @@ import { readable2dContext } from './drawable-resource.js';
  * grade baked into its gradient. Deliberately NOT a Pixi `Filter` on the world layer: the team-colour
  * `PalettedSprite` meshes hand-roll their screen→clip projection (see `gpu/paletted-sprite/`), so a
  * layer filter's render-texture pass would draw every settler upside-down unless the whole `uFlip`
- * machinery were threaded through the main render. A true contrast/saturation grade needs that work —
- * a filed follow-up (docs/tickets/render/post-grade-filter.md); this sprite is the safe first pass:
- * zero batching impact, one extra draw call, trivially absent from the deterministic `?shot` capture.
+ * machinery were threaded through the main render. This sprite avoids that path: zero batching
+ * impact, one extra draw call, and no effect on the deterministic `?shot` capture.
  *
  * All constants are tuned by eye (named enhancement, human pass pending).
  */

@@ -1,6 +1,6 @@
 # Correct the final sethouse column and preserve its behaviour id
 
-**Area:** pipeline + data · **Priority:** P2
+**Area:** pipeline, data · **Priority:** P2
 
 The map decoder exposes the final `sethouse` column as optional `rot`, and `TerrainEntities` documents
 it as rotation. The readable corpus contradicts that name: values include 401–405 and mission scripts

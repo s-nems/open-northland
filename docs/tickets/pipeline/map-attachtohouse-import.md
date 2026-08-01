@@ -1,6 +1,6 @@
 # Import authored settler-to-house attachments
 
-**Area:** pipeline + app · **Priority:** P2
+**Area:** pipeline, app · **Priority:** P2
 
 `staticobjects.inc` places `attachtohouse <hx> <hy> <slot>` inside `sethuman` blocks, but
 `extractStaticObjects` drops it. Imported settlers therefore lose authored homes and workplaces.

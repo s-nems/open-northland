@@ -5,9 +5,9 @@
 [![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-Open Northland is an independent, cross-platform engine for the Viking-era *Cultures* strategy
-games. It combines a deterministic TypeScript simulation, a PixiJS renderer, and an offline asset
-pipeline.
+Open Northland is an independent, cross-platform engine for *Cultures - 8th Wonder of the World*, a
+Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
+an offline asset pipeline.
 
 The repository does not include game files or decoded assets. To play with the original maps,
 graphics, and audio, provide your own copy of *Cultures - 8th Wonder of the World* and generate a
@@ -21,13 +21,14 @@ Open Northland is pre-alpha. The current build has a playable settlement economy
 gathering, production, progression, combat, fog, population systems, and a basic computer player.
 It can load decoded maps and render terrain, buildings, settlers, effects, and the HUD.
 
-Campaign scripting, save games, multiplayer, and desktop distribution still need work. The open
-work is tracked in [`docs/tickets/`](docs/tickets/).
+Campaign scripting, save games, and multiplayer are not complete. Desktop development builds exist,
+but stable signed releases do not. Current actionable work lives in [`docs/tickets/`](docs/tickets/).
 
 ## Requirements
 
-- Node.js 20.19.x or 22.12 and newer
+- Node.js `^20.19.0` or `>=22.12.0`
 - A legally obtained copy of *Cultures - 8th Wonder of the World* for playable content
+- The free CulturesNation mod; CnMod 1.3.1 is the current verified input
 
 ## Build and test
 
@@ -50,8 +51,9 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 npm run dev
 ```
 
-The pipeline also needs the free [CulturesNation](https://culturesnation.pl/) mod. It detects a
-`DataCnmd/` folder inside the game directory. If the mod is elsewhere, add `--mod-root <dir>`.
+The pipeline detects the CulturesNation `DataCnmd/` folder inside the game directory. If the mod is
+elsewhere, add `--mod-root <dir>`. A newer mod release must be verified before replacing the 1.3.1
+baseline.
 
 Generated content is ignored by Git. Do not commit or redistribute it.
 

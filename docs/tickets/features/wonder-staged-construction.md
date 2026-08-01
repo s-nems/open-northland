@@ -1,6 +1,6 @@
 # Render wonder construction in authored stages
 
-**Area:** features (render + sim) · **Priority:** P3
+**Area:** render, sim · **Priority:** P3
 **Needs user:** observe whether wonder stages have separate material bills in the running original.
 
 The eight wonders are separate single buildings (typeIds 47..54, one `kind: 'wonder'` each — the

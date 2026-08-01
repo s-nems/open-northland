@@ -1,6 +1,6 @@
 # Generalize the details panel's work buttons into a control list
 
-**Area:** app (hud/details-panel) · **Priority:** P3
+**Area:** app · **Focus:** hud/details-panel · **Priority:** P3
 
 The settler panel's three work controls (assign-workplace, assign-home, unassign-home) are one
 control shape (round glyph button + label + enabled + tooltip + callback) tripled by hand at every

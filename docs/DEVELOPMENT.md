@@ -15,7 +15,8 @@ npm test -- scenario    # tests matching a name
 npm run test:watch      # watch mode
 npm run check           # Biome formatting and lint checks
 npm run check:fix       # apply safe formatting and lint fixes
-npm run check:docs      # validate documentation links and ticket metadata
+npm run check:docs      # validate Markdown and ticket links/contracts
+npm run tickets:list    # priority-sorted ticket view
 ```
 
 Use `npm install` only when dependencies or the lockfile need to change.
@@ -29,7 +30,9 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 ```
 
 The pipeline detects `DataCnmd/` inside the game directory. Pass `--mod-root <dir>` when the
-CulturesNation mod is unpacked elsewhere. The generated `content/` tree is ignored by Git.
+CulturesNation mod is unpacked elsewhere. CnMod 1.3.1 is the current verified input; treat a newer
+release as unverified until the real pipeline and content gates pass. The generated `content/` tree
+is ignored by Git.
 
 Local content gates:
 

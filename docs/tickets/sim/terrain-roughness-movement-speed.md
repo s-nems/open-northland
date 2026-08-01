@@ -1,6 +1,7 @@
-# Terrain roughness does not slow movement
+# Apply authored terrain roughness to movement speed
 
 **Area:** sim · **Priority:** P3
+**Needs user:** measure the roughness-to-speed curve in the running original.
 
 The original stores a per-node roughness value (`lmpr`, 0..5) that slows units crossing it. Per the
 CulturesNation dat-format derivation (`Cultures2-dat-format/sections/arrays/roughness.py`, replayed

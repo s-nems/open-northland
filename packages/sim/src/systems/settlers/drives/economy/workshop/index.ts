@@ -88,9 +88,8 @@ export function planProducer(
     return;
   }
 
-  // A craftsman with no seat and no input to fetch carries its own output out, even when the workshop
-  // staffs a carrier: that carrier is the settlement's porter too and reaches its own workshop only
-  // rarely (docs/tickets/sim/workshop-carrier-plans-rarely.md).
+  // A craftsman with no seat and no input to fetch carries its own output out. A workshop carrier also
+  // serves the settlement, so it may not return before the output stock fills.
   if (haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
   // no production — it may loiter beside the door rather than stand on it.

@@ -2,10 +2,10 @@
 
 **Area:** sim · **Priority:** P3
 
-Three hunter/wildlife-shaped scans are honest-but-unmeasured. Bench them on a wildlife-rich,
-resource-dense ground with posted hunters (and archer volleys for the first) before optimizing any of
-them - the successor of the executed combat-spatial ticket's "adjacent candidates" note (`ba93cb31`
-merged the index/presence walk).
+Four hunter and wildlife scans are unmeasured. Bench them on a wildlife-rich, resource-dense ground
+with posted hunters, plus archer volleys for the first case, before optimizing them.
+
+## Scope
 
 - `frightenWildlifeNear` (`conflict/fright.ts`): a linear pass over all map wildlife per ranged
   launch; a wildlife candidate list off the combat index walk would bound it under volleys.

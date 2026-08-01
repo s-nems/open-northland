@@ -9,10 +9,9 @@ import type { Camera } from '@open-northland/render';
 /**
  * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
  * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
- * + bob count (and thus frame cost), not a whole-map fit — a mid-size decoded map must NOT fit on screen
- * whole (hands-on feedback + the measured zoomed-out allocation churn,
- * `docs/tickets/render/zoom-out-allocation-churn.md`). `0.35` (~3× out) still frames a battle or a
- * settlement cluster; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
+ * + bob count (and thus frame cost), not a whole-map fit — a mid-size decoded map must not fit on
+ * screen whole. The `0.35` bound follows hands-on feedback and the measured zoomed-out allocation
+ * cost; it still frames a battle or settlement cluster. Lower it only with a zoom-out LOD.
  */
 export const MIN_ZOOM = 0.35;
 export const MAX_ZOOM = 8;

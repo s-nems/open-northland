@@ -1,6 +1,6 @@
 # Resume edge-scroll after refocus when the cursor is already over the canvas
 
-**Area:** app (view/camera) · **Priority:** P3
+**Area:** app · **Focus:** view/camera · **Priority:** P3
 
 `createCameraController` (`packages/app/src/view/camera/controller.ts`) enables the RTS screen-edge pan only while
 `pointerInside` is true, and `pointerInside` flips true **only** on a `mouseenter` boundary crossing
@@ -8,9 +8,8 @@
 resting over the canvas, no `mouseenter` fires on return, and a plain `mousemove` does not set
 `pointerInside` — edge-scroll stays dead until the cursor physically leaves the canvas and re-enters.
 
-Observed by both reviewers on fix/camera-startup-edge-drift as a pre-existing quirk, distinct from the
-top-left-drift bug that branch fixed (that fix added `pointerMoved` and neither caused nor worsened
-this). Low impact — the player can nudge the cursor off-canvas and back — but it reads as unresponsive.
+The player can recover by moving the cursor out of the canvas and back, but the camera appears
+unresponsive after every affected refocus.
 
 ## Scope
 

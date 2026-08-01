@@ -1,6 +1,6 @@
 # Drive need changes from atomic-animation events
 
-**Area:** sim + pipeline · **Priority:** P2
+**Area:** sim, pipeline · **Priority:** P2
 **Needs user:** observe the original to pin the reserve span for each need channel.
 
 Need drain and recovery use uniform fixed constants. The readable atomic-animation data instead

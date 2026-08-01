@@ -130,5 +130,7 @@ Load the relevant file when working in that area:
 - `packages/render/AGENTS.md`
 - `packages/audio/AGENTS.md`
 - `packages/app/AGENTS.md`
+- `packages/data/AGENTS.md`
+- `packages/content-resolver/AGENTS.md`
 - `packages/desktop/AGENTS.md`
 - `tools/asset-pipeline/AGENTS.md`

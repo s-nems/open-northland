@@ -16,7 +16,18 @@ Do not copy or translate code from another engine implementation. Do not paste o
 test fixture. Record enough evidence for another contributor to reproduce a format or behavior
 decision from the allowed sources above.
 
+Third-party reverse-engineering notes and code may suggest a probe, but they are not implementation
+evidence. Re-check the claim against the owned files, readable configuration, or the running original.
+Credit a lead that shaped the probe; do not translate its implementation.
+
 The project-wide legal and trademark notice is in [`LEGAL.md`](LEGAL.md).
+
+## Evidence baseline
+
+Corpus counts in the current documentation use an English-locale extraction from an owned
+*8th Wonder of the World* installation with CnMod 1.3.1. State a different input beside any claim that
+uses one. When the baseline changes, re-run the affected counts instead of carrying the old numbers
+forward.
 
 ## Source precedence
 

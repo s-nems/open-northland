@@ -1,6 +1,6 @@
 # Re-enable building unlocks as a complete player-visible rule
 
-**Area:** sim + app · **Priority:** P1
+**Area:** sim, app · **Priority:** P1
 
 `BUILDING_UNLOCK_GATE_ENABLED = false` makes `buildingEnabled` a no-op across placement, upgrades, job
 openings, and AI targets. The extracted `jobEnablesHouse` graph is therefore unused. The gate was disabled

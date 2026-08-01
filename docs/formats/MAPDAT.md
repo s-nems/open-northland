@@ -7,7 +7,7 @@ The facts below come from byte-level comparisons across owned maps, rendered pro
 decoder tests. Facts credited to the CulturesNation
 [`Cultures2-dat-format`](https://github.com/Mikulus6/Cultures2-dat-format) documentation are marked
 as such; everything marked "verified" was re-checked against the owned corpus (130 map files, 5184
-chunks).
+chunks). [`SOURCES.md`](../SOURCES.md#evidence-baseline) defines that corpus.
 
 ## Chunk stream
 
@@ -79,6 +79,8 @@ which reports replaying each derivable section byte-identically against original
 the `lmwb`/`lmbb` derivation is independently verified here (see below). "Derivable" sections can be
 recomputed from the imported lanes plus landscape data; "authored" ones carry map content we
 currently lose.
+
+Treat these meanings as probe targets, not implementation evidence, until they are re-checked.
 
 | Tag | Kind | Meaning |
 | --- | --- | --- |
