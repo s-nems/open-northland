@@ -30,11 +30,63 @@ export type DrawKind =
 export type SpriteState = 'idle' | 'moving' | 'acting';
 
 /**
+ * The subset of a building / resource / stump's draw fields that a fog
+ * {@link import('../fog/index.js').FogGhost} keeps from its last sighting. Mutable so the readers assign
+ * in place; `DrawItem` re-exposes them readonly. A kind's live-only extras (a building's
+ * `working`/`upgradePct`/`hpFrac`) stay on `DrawItem`, so a ghost carries none.
+ */
+export interface StaticDrawFields {
+  /**
+   * The type id a per-type binding picks its frame by: a terrain tile's landscape typeId, or a
+   * building's `Building.buildingType` (the `[GfxHouse]` `LogicType` →
+   * {@link import('../sprites/index.js').BuildingTypeBinding}). Omitted for settler/resource.
+   */
+  typeId?: number;
+  /**
+   * For an under-construction building: build progress as a whole percent (0..99, floored
+   * `Building.built`). The construction-stage binding
+   * ({@link import('../sprites/index.js').BuildingTypeBinding.constructionByType}) picks which `[GfxHouse]`
+   * layers show at this progress (grey foundation at 0, rising stages after). Omitted for a finished
+   * building (`built >= ONE`) and non-building kinds.
+   */
+  builtPct?: number;
+  /**
+   * A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds — the key a
+   * per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
+   * {@link import('../sprites/index.js').StockpileBinding} draws by. Omitted for a delivery flag
+   * ({@link DrawItem.isFlag}) and an empty pile (both draw the flag, not a heap).
+   */
+  goodType?: number;
+  /**
+   * For a mined resource node ({@link import('@open-northland/sim').MineDeposit}) or a crop: its visual
+   * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties — a
+   * {@link import('../sprites/index.js').ResourceTypeBinding} indexes the fill-state frames by it (the node
+   * twin of a pile's {@link DrawItem.fill}). Omitted for a plain node, which draws its full-state frame.
+   */
+  level?: number;
+  /**
+   * The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). The resolver
+   * rescales the ladder onto the bound record's own authored frame count when they differ — a map's
+   * deposit is sized from that record and matches, a record-less scene/admin one carries the catalog
+   * count instead — so a full deposit always draws its fullest frame. Travels with {@link level}: a
+   * ghost holding the level without its denominator would redraw at a different frame.
+   */
+  levels?: number;
+  /**
+   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (`Resource.gfxIndex` —
+   * a map's own species variant, "pine 02", "stones 05 grey"). A
+   * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins over the per-good
+   * representative, so a map keeps its variety. Omitted for an admin/scene-spawned node.
+   */
+  gfxIndex?: number;
+}
+
+/**
  * One item to draw, already projected to isometric screen space (before the camera transform). The
  * GPU layer draws these in array order; `depth` is the sort key it was ordered by (kept for debug /
  * stable-sort proofs). Floats are deliberate (render-only).
  */
-export interface DrawItem {
+export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly kind: DrawKind;
   /** Source entity id, or the cell id for a terrain tile (so a click can map a pixel back). */
   readonly ref: number;
@@ -43,19 +95,6 @@ export interface DrawItem {
   readonly y: number;
   /** The world-space sort key the item was ordered by (see {@link import('./terrain-scene.js').buildScene}). */
   readonly depth: number;
-  /**
-   * The type id a per-type binding picks its frame by: a terrain tile's landscape typeId, or a
-   * building's `Building.buildingType` (the `[GfxHouse]` `LogicType` →
-   * {@link import('../sprites/index.js').BuildingTypeBinding}). Omitted for settler/resource.
-   */
-  readonly typeId?: number;
-  /**
-   * A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds — the key a
-   * per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
-   * {@link import('../sprites/index.js').StockpileBinding} draws by. Omitted for a delivery flag
-   * ({@link isFlag}) and an empty pile (both draw the flag, not a heap).
-   */
-  readonly goodType?: number;
   /**
    * For a stockpile pile: units of {@link goodType} held — a
    * {@link import('../sprites/index.js').StockpileBinding} maps it to a per-fill heap frame so the pile
@@ -78,27 +117,6 @@ export interface DrawItem {
    * the nail-point pivot).
    */
   readonly boardIndex?: number;
-  /**
-   * For a mined resource node ({@link import('@open-northland/sim').MineDeposit}) or a crop: its visual
-   * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties — a
-   * {@link import('../sprites/index.js').ResourceTypeBinding} indexes the fill-state frames by it (the node
-   * twin of a pile's {@link fill}). Omitted for a plain node, which draws its full-state frame.
-   */
-  readonly level?: number;
-  /**
-   * The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). The resolver
-   * rescales the ladder onto the bound record's own authored frame count when they differ — a map's
-   * deposit is sized from that record and matches, a record-less scene/admin one carries the catalog
-   * count instead — so a full deposit always draws its fullest frame. Omitted with {@link level}.
-   */
-  readonly levels?: number;
-  /**
-   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (`Resource.gfxIndex` —
-   * a map's own species variant, "pine 02", "stones 05 grey"). A
-   * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins over the per-good
-   * representative, so a map keeps its variety. Omitted for an admin/scene-spawned node.
-   */
-  readonly gfxIndex?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
@@ -177,14 +195,6 @@ export interface DrawItem {
    */
   readonly young?: boolean;
   /**
-   * For an under-construction building: build progress as a whole percent (0..99, floored
-   * `Building.built`). The construction-stage binding
-   * ({@link import('../sprites/index.js').BuildingTypeBinding.constructionByType}) picks which `[GfxHouse]`
-   * layers show at this progress (grey foundation at 0, rising stages after). Omitted for a finished
-   * building (`built >= ONE`) and non-building kinds.
-   */
-  readonly builtPct?: number;
-  /**
    * For a building being UPGRADED into its next level (`Upgrading` beside the site marker): upgrade
    * progress as a whole percent (0..99, floored `Building.built`). Distinct from {@link builtPct} —
    * an upgrading building keeps its finished old-tier body draw, and the upgrade-overlay binding
@@ -205,7 +215,7 @@ export interface DrawItem {
    * For a FINISHED building that has taken damage: its remaining Health fraction (0..1, exclusive of 1 —
    * undamaged omits it). The damage-smoke overlay's drive: each fifth of the pool lost adds a smoke
    * plume, and an HP rise sheds them (a pure function of the current pool —
-   * {@link import('../snapshot-readers/static-readers.js').readHpFraction}). Omitted for sites,
+   * {@link import('./snapshot-readers/static-readers.js').readHpFraction}). Omitted for sites,
    * upgrades, and non-building kinds.
    */
   readonly hpFrac?: number;

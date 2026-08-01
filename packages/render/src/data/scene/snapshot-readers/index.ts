@@ -7,7 +7,7 @@
  *  - {@link import('./classify.js')} — the marker → {@link import('../draw-item.js').DrawKind} classification;
  *  - {@link import('./facing.js')} — the projected-heading facing geometry;
  *  - {@link import('./unit-readers.js')} — the per-settler reads (state, carry, atomic, job, owner);
- *  - {@link import('./static-readers.js')} — building / resource / stump / bush draw fields + assignStaticFields;
+ *  - {@link import('./static-readers.js')} — the building / resource / stump / bush reads + assignStaticFields;
  *  - {@link import('./stockpile-readers.js')} — the ground-pile good + fill read;
  *  - {@link import('./projectile-readers.js')} — the in-flight shot's target + origin.
  *
@@ -34,7 +34,6 @@ export {
   readHpFraction,
   readProducing,
   readUpgradePct,
-  type StaticDrawFields,
 } from './static-readers.js';
 export { readStockpile } from './stockpile-readers.js';
 export {

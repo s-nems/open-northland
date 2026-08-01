@@ -1,10 +1,11 @@
 import { clamp } from '../../math.js';
 import { ONE } from '../../projection/index.js';
 import { readNumField } from '../../snapshot/index.js';
+import type { StaticDrawFields } from '../draw-item.js';
 
 /**
- * Per-static-object component reads — the draw fields a building, resource node, stump or berry bush
- * carries (type, build progress, good, fill level, render variant), plus {@link assignStaticFields}.
+ * Per-static-object component reads — how a building, resource node, stump or berry bush fills the
+ * {@link StaticDrawFields} it draws by, plus {@link assignStaticFields}.
  */
 
 /**
@@ -177,20 +178,6 @@ export function readBerryBushLevel(components: Readonly<Record<string, unknown>>
  */
 export function readBerryBushGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'BerryBush', 'gfxIndex');
-}
-
-/** The static per-kind draw fields a building / resource / stump carries: the exact subset shared by
- *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog/index.js').FogGhost}. Each kind's
- *  live-only extras (a building's `working`/`upgradePct`/`hpFrac`) are added by the scene builder outside
- *  this set, so a fog ghost carries none of them. `level`/`levels` are one ladder and travel together —
- *  a ghost holding the level without its denominator would redraw at a different frame. */
-export interface StaticDrawFields {
-  typeId?: number;
-  builtPct?: number;
-  goodType?: number;
-  level?: number;
-  levels?: number;
-  gfxIndex?: number;
 }
 
 const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex'] as const;

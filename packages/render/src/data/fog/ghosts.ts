@@ -1,12 +1,7 @@
 import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../projection/index.js';
-import type { DrawKind } from '../scene/draw-item.js';
-import {
-  assignStaticFields,
-  classify,
-  readPosition,
-  type StaticDrawFields,
-} from '../scene/snapshot-readers/index.js';
+import type { DrawKind, StaticDrawFields } from '../scene/draw-item.js';
+import { assignStaticFields, classify, readPosition } from '../scene/snapshot-readers/index.js';
 import { fogCellOfTile } from './mask.js';
 
 /**
@@ -60,8 +55,6 @@ function capture(
   const ghost: {
     -readonly [K in keyof FogGhost]: FogGhost[K];
   } = { ref: id, kind, tileX: pos.x / ONE, tileY: pos.y / ONE };
-  // Fill the shared StaticDrawFields the same way the live scene build does; a ghost carries none of the
-  // live-only extras (see assignStaticFields).
   assignStaticFields(ghost, kind, components);
   return ghost;
 }
