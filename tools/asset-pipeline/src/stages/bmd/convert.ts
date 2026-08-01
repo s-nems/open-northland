@@ -74,12 +74,11 @@ function paletteSlug(name: string): string {
  * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd`s convert separately
  * ({@link convertShadowBmdTree} — no palette, one atlas per shadow `.bmd`).
  *
- * `buildTimeBmds` (the `.bmd` paths claimed by a `[GfxHouse]` record — see
- * {@link resolveGraphicsBindings}, which documents why their second bytes are build-time thresholds,
- * not alpha) bake `'build-time'` instead of per-pixel alpha. Keyed on the `.bmd` path alone, not
- * `(bmd, palette)`: the second bytes live in the bob geometry the recolours share, so every palette
- * variant of a claimed `.bmd` must bake the same way. Required (no default) because an
- * accidentally-empty set silently ghosts every building.
+ * `buildTimeBmds` (the `.bmd` paths claimed by a `[GfxHouse]` record - see {@link AtlasAlphaMode} for
+ * why their second bytes are build-time thresholds, not alpha) bake `'build-time'` instead of
+ * per-pixel alpha. Keyed on the `.bmd` path alone, not `(bmd, palette)`: the second bytes live in the
+ * bob geometry the recolours share, so every palette variant of a claimed `.bmd` must bake the same
+ * way. Required (no default) because an accidentally-empty set silently ghosts every building.
  */
 export async function convertBmdTree(
   graphics: GraphicsBindingSet,
