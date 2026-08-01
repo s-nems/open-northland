@@ -42,7 +42,9 @@ Use imperative titles. State the required outcome; do not delegate an avoidable 
 decision to the implementer. Keep scope at the behavior or boundary level unless one implementation
 detail is load-bearing.
 
-Every ticket has an area and priority near the top:
+Every ticket has an area and priority near the top. `Area` is a comma-separated list drawn from
+`app`, `audio`, `content-resolver`, `data`, `desktop`, `pipeline`, `render`, `sim`, and `tooling`.
+Use optional `Focus` metadata for a narrower folder or subsystem instead of encoding it in `Area`.
 
 - `P1`: a verified legal/release blocker or broken core path that prevents a correct playable game;
 - `P2`: a current correctness defect, clear player value, or measured scale problem;
@@ -68,7 +70,7 @@ remove the dependency as soon as the prerequisite is complete.
 ```markdown
 # <imperative outcome>
 
-**Area:** <package(s)> · **Priority:** <P1|P2|P3>
+**Area:** <package(s)> · **Focus:** <optional subsystem> · **Priority:** <P1|P2|P3>
 **Needs user:** <only when execution requires it>
 **Blocked by:** [<ticket>](<relative path>)
 
@@ -84,3 +86,6 @@ remove the dependency as soon as the prerequisite is complete.
 ```
 
 Run `npm run check:docs` after editing tickets.
+
+Run `npm run tickets:list` for a priority-sorted view. It prints active worktree branches separately;
+check those before selecting a task.

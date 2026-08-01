@@ -39,9 +39,9 @@ are cheaper to fix when their code is next touched. Zero new tickets is a valid 
 
 ## File and report
 
-Use the template in `docs/tickets/README.md`. Put player-visible slices in `features/` and technical
-work in the owning area. Update an existing ticket when the candidate is a duplicate with better
-evidence.
+Use the template in `docs/tickets/README.md`. Add to the owner-curated `features/` backlog only when
+the user explicitly asked for feature planning. Put technical work in the owning area. Update an
+existing ticket when the candidate is a duplicate with better evidence.
 
 Do not change production code or commit unless asked. Report filed or updated tickets by value, then
 list rejected candidates with a short reason.

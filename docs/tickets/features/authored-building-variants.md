@@ -1,6 +1,6 @@
 # Draw authored buildings with their authored EditName bob variant
 
-**Area:** app + render · **Priority:** P2
+**Area:** app, render · **Priority:** P2
 
 Authored placements collapse to `{typeId, tribe, x, y}` (`packages/app/src/slice/
 authored-placements.ts`) and every typeId draws its canonical bob

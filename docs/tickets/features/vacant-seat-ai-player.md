@@ -1,6 +1,6 @@
 # Distinguish scripted, autonomous, idle, and closed map seats
 
-**Area:** sim + app · **Priority:** P2
+**Area:** sim, app · **Priority:** P2
 **Blocked by:** [authored HAI toggles](../pipeline/aidata-hai-toggles.md)
 
 The roster currently reduces every unclaimed seat to Idle or AI. That cannot represent the map's own

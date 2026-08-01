@@ -1,6 +1,6 @@
 # Commit a desktop end-to-end harness
 
-**Area:** desktop/tooling · **Priority:** P3
+**Area:** desktop, tooling · **Priority:** P3
 
 The shell's wizard → pipeline → game-boot flow was verified with ad-hoc Playwright `_electron`
 sessions that lived in a scratchpad and are gone. Regressions in that flow (protocol routing, IPC,
@@ -23,11 +23,9 @@ staleness routing, the cancel path) currently surface only when a human runs the
 `electron.launch` must pass `--user-data-dir=<temp dir>`. `main.ts` gates startup on
 `app.requestSingleInstanceLock()` and calls `app.quit()` when it loses — the process then exits 0
 with no window and no output, which reads exactly like a crashed harness. The lock keys off
-Electron's `userData`, NOT `OPEN_NORTHLAND_DATA_DIR`, so setting the data root alone does not isolate
-a run: any other instance on the same profile takes it, including the developer's own installed
-OpenNorthland.app. Verified 2026-07-17 during the content-resolver/desktop cleanup — a scratchpad
-`_electron` harness failed this way until the flag was added, and the same run then passed 16 checks
-(pick phase, IPC round-trips, a real game-folder probe, install → run phase → cancel).
+Electron's `userData`, not `OPEN_NORTHLAND_DATA_DIR`, so setting the data root alone does not isolate
+a run. Any other instance on the same profile takes the lock and makes the harness exit without a
+window.
 
 ## Verify
 

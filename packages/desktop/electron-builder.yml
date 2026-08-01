@@ -1,6 +1,6 @@
-# Packaging for the desktop shell. Unsigned on every platform for now — code signing (SignPath on
-# Windows, notarization on macOS) is docs/tickets/tooling/desktop-code-signing.md; release CI is
-# docs/tickets/tooling/desktop-release-ci.md.
+# Packaging for the desktop shell. Builds stay unsigned until
+# docs/tickets/tooling/desktop-code-signing.md is complete. Release CI lives in
+# .github/workflows/desktop-build.yml.
 appId: org.opennorthland.desktop
 productName: OpenNorthland
 # electron-builder needs an exact Electron release to fetch platform binaries; keep in lockstep

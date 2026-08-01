@@ -16,7 +16,7 @@ understand. Falling back serves a plausible but incorrect roster:
 - `aiAllowed` falls back to `true`, so the 47 Human/Closed-only rows across 15 maps grow a bogus
   Idle/AI toggle.
 
-Counts verified against the 125 decoded `.script.json` sidecars in `content/maps` (2026-07-17).
+Counts come from the current CnMod 1.3.1 generated corpus: 125 `.script.json` sidecars.
 
 ## Scope
 

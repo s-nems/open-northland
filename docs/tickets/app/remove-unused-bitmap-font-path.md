@@ -1,6 +1,6 @@
 # Remove the unused bitmap-font runtime path
 
-**Area:** app + pipeline · **Priority:** P3
+**Area:** app, pipeline · **Priority:** P3
 
 `packages/app/src/hud/bitmap-text.ts` has no production importer. Its glyph-run factory and the related
 `.fnt` loaders in `content/font-gfx.ts` are exercised only by their own tests, while the live HUD uses

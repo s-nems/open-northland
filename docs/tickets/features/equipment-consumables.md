@@ -1,6 +1,6 @@
 # Implement the consume/drink drive for potions and mead
 
-**Area:** sim + app · **Priority:** P2
+**Area:** sim, app · **Priority:** P2
 **Blocked by:** [equipment extraction](../pipeline/equipment-consumables-extraction.md)
 
 The equipment component axis exists but the consumption behavior does not: the consume/drink drive

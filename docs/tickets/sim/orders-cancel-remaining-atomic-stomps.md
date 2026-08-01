@@ -3,11 +3,9 @@
 **Area:** sim · **Priority:** P3
 
 `moveUnit`, `setJob`, and `placeSignpost` now park behind a non-interruptible atomic
-(`deferOrderDuringAtomic` + `DeferredOrder` + `deferredOrderSystem`). Verified remaining sites that
-still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
+(`deferOrderDuringAtomic` + `DeferredOrder` + `deferredOrderSystem`). The remaining employment and
+work-selection handlers still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
 
-- `attackUnit` (`systems/orders/combat.ts`) - deliberately left out: deferral changes combat feel and
-  the melee test suites; decide whether an attack order should wait out the issuer's own swing.
 - `assignWorker` (`systems/orders/work/employment.ts`, via `reidleAsJob`) and `assignBuilder` - the
   employment twins of the gated `setJob`; the mechanism extends by adding their kinds to
   `DeferrableOrderCommand` plus a gate call and a dispatch case.
@@ -18,7 +16,19 @@ still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
   employment twins above; the AI's garrison hire already skips a mid-action man to avoid the stomp
   (`ai-player/workforce/garrison.ts`), which a gate here would make unnecessary.
 
+Attack orders have a separate player-control decision in
+[attack-order-atomic-interruption](attack-order-atomic-interruption.md).
+
+## Scope
+
+- Add `assignWorker`, `assignBuilder`, and `trainSoldier` to the existing deferred-order path.
+- Release `setGatherGood` at the current swing boundary without postponing the selection itself.
+- Remove the AI garrison workaround made redundant by the command gate.
+- Leave `attackUnit` unchanged.
+
 ## Verify
 
-- One headless case per newly gated handler: a settler mid-uninterruptible atomic keeps it; the order
-  applies at completion. Watch the melee move-order suites for `attackUnit`.
+- One headless case per newly gated handler: a settler keeps the current atomic and the order applies
+  at completion.
+- Existing melee order behavior and goldens remain unchanged; run `npm test`, `npm run check`, and
+  `npm run build`.

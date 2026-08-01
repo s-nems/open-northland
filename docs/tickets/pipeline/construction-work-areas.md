@@ -1,13 +1,13 @@
 # Extract LogicConstructionWorkArea and stand builders on the data's work cells
 
-**Area:** pipeline + sim (+ data schema) · **Priority:** P2
+**Area:** pipeline, sim, data · **Priority:** P2
 
 Builder work slots use the walkable perimeter of the current building footprint as a placeholder:
 `constructionWorkCells` derives the candidate cells and `claimWorkCell` assigns the nearest free one.
 This lets crews approach any side without treating the finished building's door as a construction
 position, but the original pins per-building stand cells.
 
-**Source basis (verified against the real data 2026-07-12):** `[GfxHouse]` records carry
+**Source basis:** verified `[GfxHouse]` records carry
 `LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` — 3745 rows across 165 records in
 `Cultures 8th Wonder/EdytorByRemik/ejkfhsnkjehbhouses.ini`, co-located with the
 `LogicWalkBlockArea`/`LogicDoorPoint` keys the pipeline already parses, same run encoding. The

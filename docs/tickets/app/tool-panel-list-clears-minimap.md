@@ -1,6 +1,6 @@
 # Bound a tool-panel list window by the minimap, not just by the screen foot
 
-**Area:** app (hud/tool-panel, hud/minimap) · **Priority:** P2
+**Area:** app · **Focus:** hud/tool-panel, hud/minimap · **Priority:** P2
 
 `tabbed-list/window.ts`'s `listRows()` fits the list to `screenHeight - origin.y - (chrome +
 LIST_BOTTOM_MARGIN)`. That clears the screen foot but not the minimap, which is a fixed-size overlay

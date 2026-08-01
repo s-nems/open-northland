@@ -1,6 +1,7 @@
 # Extract the animal ambient-sound binding and play it
 
-**Area:** pipeline + audio · **Priority:** P3
+**Area:** pipeline, audio · **Priority:** P3
+**Needs user:** observe the original cadence and perform the final listening pass.
 
 `Data/engine2d/inis/animals/sounds.ini` (plaintext under a CIF header line, like `animaltypes.ini`)
 is not referenced anywhere in `tools/asset-pipeline/src/`. It maps each animal tribe to its ambient

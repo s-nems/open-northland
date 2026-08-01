@@ -1,6 +1,6 @@
 # Decide the details panel's defence section from content, not the fallback catalog
 
-**Area:** app (hud/details-panel), data · **Priority:** P3
+**Area:** app, data · **Focus:** hud/details-panel · **Priority:** P3
 **Needs user:** whether a defence flag is worth adding to the building row, or the section should
 follow the building's `kind` alone.
 
@@ -9,9 +9,6 @@ follow the building's `kind` alone.
 reads the live def from `ctx`. On decoded content whose headquarters carries another id, or whose
 typeIds do not line up with the fallback catalog, the defence section disappears with no error and
 no failing test.
-
-The carrier half of the original ticket is done: the transport trade is classified once, by the sim's
-`isCarrierJobRow`, and the panel reads that (`model/context.ts` `isCarrierJob`).
 
 ## Scope
 

@@ -1,11 +1,12 @@
-# Odd micro-rows likely sit a quarter cell right of where we place them
+# Verify the odd-microrow quarter-cell shift
 
-**Area:** sim + render · **Priority:** P3
+**Area:** sim, render · **Priority:** P3
+**Needs user:** compare odd-row landscape placement with the running original.
 
 Byte-level evidence from the `lmwb` replay (docs/formats/MAPDAT.md) implies the original's world
 geometry: block-area offsets are authored in the even-row frame and odd-row anchors shift odd-`dy`
 rows one node +x, which is only geometrically consistent if odd micro-rows sit half a node
-(a quarter cell, 17 px) further +x than even rows. Two community sources corroborate: the
+(a quarter cell, 17 px) further +x than even rows. Two community sources suggest the probe: the
 CulturesNation `lmtw` derivation uses a parity-dependent 6-neighbour table (a staggered/hex micro
 lattice), and cultures2-gl draws `emla` landscape sprites at `x + (y % 2) * 0.5` half-cells.
 

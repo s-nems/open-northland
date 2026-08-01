@@ -1,6 +1,6 @@
 # Add deterministic skirmish victory and defeat
 
-**Area:** sim + app · **Priority:** P1
+**Area:** sim, app · **Priority:** P1
 
 The sim has no terminal game state. Eliminating every settler on one side leaves the match running
 indefinitely, commands remain accepted, and the app cannot show an outcome. Authored campaign goals

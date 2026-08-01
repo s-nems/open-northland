@@ -1,6 +1,6 @@
-# A lone farmer falls ~25% short of the per-farmer rate a bigger crew reaches
+# Restore linear per-farmer farm throughput
 
-**Area:** sim · **Origin:** farm pacing calibration review, 2026-07-20 · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 The original was measured at a straight-line ladder: 1 farmer ≈ 10 grain per 10 minutes of ×1 game
 time, 2 ≈ 20, 3 ≈ 30, 4 ≈ 40. OpenNorthland does not reproduce the first rung.
@@ -26,10 +26,6 @@ bottom instead of running straight.
 `WHEAT_TICKS_PER_STAGE` window, so its fields spend part of each stage standing thirsty — growth,
 not labor, binds at crew 1. Add a second farmer and the circuit closes, which is why the rate jumps
 rather than doubling smoothly.
-
-This surfaced only after the `coordHash` avalanche fix (same commit): the un-mixed hash could reach
-just the fast half of the growth band, so fields grew ~12% quicker than nominal and masked the
-shortfall. The earlier reported ladder (12/24/36/47) was that artifact.
 
 ## Scope
 

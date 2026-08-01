@@ -1,9 +1,8 @@
 /**
  * The app-wide diagnostics logger — one backbone with named channels and severity levels, two sinks:
  * the browser console (dev-readable, level-filtered) and a bounded in-memory ring of plain
- * JSON-serializable entries. The ring is the artifact a future diagnostics bundle serializes, so a
- * tester report can carry everything that was logged before a failure (see
- * docs/tickets/app/crash-capture-diagnostics-bundle.md).
+ * JSON-serializable entries. The diagnostics bundle serializes the ring so a tester report includes
+ * everything logged before a failure.
  *
  * App-local by design: `packages/sim` stays log-free (purity — sim facts enter the log at the app
  * boundary), and render/audio get access only when a real second caller appears. The core is

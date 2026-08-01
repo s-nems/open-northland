@@ -1,6 +1,6 @@
 # Give each tool-panel pop-up its own container so text draws with its window
 
-**Area:** app (hud/tool-panel) · **Priority:** P2
+**Area:** app · **Focus:** hud/tool-panel · **Priority:** P2
 
 Every pop-up parents its frame layers under the shared `windowContainer` at construction, in
 `MOUNT_ORDER`, but parents its text runs there at open/rebuild time. Child order is draw order, so

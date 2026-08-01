@@ -1,6 +1,6 @@
 # Extract original building names for the details panel
 
-**Area:** pipeline + app · **Priority:** P2
+**Area:** pipeline, app · **Priority:** P2
 
 The details panel already shows Polish building names, but from a **hand-authored stopgap** table
 (`packages/app/src/catalog/building-i18n.ts` `localizedBuildingName`, e.g. barracks → "Koszary";

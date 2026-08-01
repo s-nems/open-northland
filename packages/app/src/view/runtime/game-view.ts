@@ -108,15 +108,12 @@ export interface GameViewDeps {
 }
 
 /**
- * A running game session — the one owner of "a running game" (this view plus its RAF loop) above the
- * per-entry mounts. {@link destroy} is the single teardown seam quit-to-menu and a future
- * load-game/restart share instead of each re-deriving how to stop the loop.
+ * A running game session — the owner of this view and its RAF loop above the per-entry mounts.
+ * {@link destroy} is the shared teardown seam for quit-to-menu and in-page session replacement.
  */
 export interface GameSession {
-  /** Stop the running game: halt the frame loop so no second loop steps the stage once a new game
-   *  starts, and remove this session's own overlays. Idempotent. Full-page navigation (the v1
-   *  transition) unloads the rest; per-subsystem teardown for an in-page transition is a follow-up
-   *  (docs/tickets/app/game-session-teardown.md). */
+  /** Stop the frame loop and remove overlays owned by this session. Idempotent. Full-page navigation
+   *  unloads the remaining DOM, Pixi, and listener state; in-page replacement must tear those down. */
   destroy(): void;
 }
 
@@ -137,10 +134,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // mounts so the system menu sees an active recording.
   const profile = installSessionInstruments(sim, params);
 
-  // `destroy` halts the loop and drops this session's overlays so a later game never runs a second loop
-  // over the same stage; `quitToMenu` then navigates back. Full-page navigation is the v1 transition —
-  // the browser unloads the DOM/Pixi/listeners the per-subsystem teardown does not yet cover (see
-  // docs/tickets/app/game-session-teardown.md).
+  // `destroy` halts the loop and drops this session's overlays so a later game cannot run a second
+  // loop over the same stage. `quitToMenu` then lets full-page navigation unload the rest.
   let loop: RafLoop | null = null;
   let destroyed = false;
   const systemMenu = createSystemMenu({ onQuit: () => quitToMenu() });

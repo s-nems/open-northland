@@ -1,13 +1,13 @@
 # Build vehicles physically on workshop yards
 
-**Area:** sim + app + pipeline · **Priority:** P2
+**Area:** sim, app, pipeline · **Priority:** P2
 
 The extracted content lists the vehicle goods (`handcart`, `oxcart`, `ship_small`, `ship_big`,
 `catapult`) as ordinary workshop wares: joinery levels 2–3 `produces` them and their `logicstock`
 slots store them, so they appeared in the Produkcja rows and the Magazyn panel like a loaf of bread.
 That is wrong. In the original a vehicle is not a stockpiled good; the workshop constructs it
 **physically on a yard tile beside the building** (it appears standing on the map, like a construction),
-and it then acts as a unit/transport, not a ware (user decision 2026-07-16).
+and it then acts as a unit or transport, not a ware.
 
 ## Current state (temporary block)
 

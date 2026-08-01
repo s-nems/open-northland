@@ -1,6 +1,7 @@
 # Shorten the farm's cold start — a lone farmer ploughs 24 fields before watering any
 
-**Area:** sim · **Origin:** farm pacing calibration, 2026-07-20 · **Priority:** P3
+**Area:** sim · **Priority:** P3
+**Needs user:** observe how the original sequences sowing and watering on a new farm.
 
 The farmer drive orders its ladder `reap > carry > sow > water > wait`
 (`packages/sim/src/systems/settlers/drives/farming/drive.ts`). Sow beats the can, so a farm starting on

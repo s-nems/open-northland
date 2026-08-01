@@ -38,11 +38,10 @@ const MODAL_BUTTON_STYLE = [
 ].join(';');
 
 /**
- * The in-game system menu behind the tool panel's `options` button: a small centred DOM overlay (the
- * same DOM-over-canvas pattern as the perf and admin panels) whose one action returns to the main menu.
- * A thin first slice — the decoded options window (game settings, help) is a separate ticket
- * (docs/tickets/app/hud-missing-windows.md); this just gives a running session a visible way out.
- * Localized via `messages().hud`.
+ * The in-game system menu behind the tool panel's `options` button: a small centred DOM overlay using
+ * the same DOM-over-canvas pattern as the perf and admin panels. It returns to the main menu and
+ * exposes diagnostic downloads; it does not implement the original settings and help window.
+ * Localized through `messages().hud`.
  */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const copy = messages().hud;
@@ -79,8 +78,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   quit.style.cssText = MODAL_BUTTON_STYLE;
   quit.addEventListener('click', deps.onQuit);
 
-  // The "something looks wrong" report path: the same bundle the crash banner offers, reachable
-  // without a crash (see docs/tickets/app/crash-capture-diagnostics-bundle.md's manual trigger).
+  // The same report path the crash banner offers, also reachable without a crash.
   const diagnostics = document.createElement('button');
   diagnostics.type = 'button';
   diagnostics.textContent = copy.downloadDiagnostics;

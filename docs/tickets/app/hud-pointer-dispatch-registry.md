@@ -1,6 +1,6 @@
 # Route HUD pointer input through one ordered surface registry
 
-**Area:** app (hud, view/runtime) · **Priority:** P3
+**Area:** app · **Focus:** hud, view/runtime · **Priority:** P3
 
 Two competing mechanisms arbitrate the same canvas mousedown. The tool panel and the minimap each
 register their own listener and win by registration order plus `stopImmediatePropagation` (the

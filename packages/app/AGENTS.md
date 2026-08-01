@@ -2,7 +2,8 @@
 
 `packages/app` is the browser shell. It translates input into sim commands, runs the fixed-timestep
 loop, and gives snapshots and events to render, audio, and the HUD. It is the only package allowed to
-depend on both sim and render.
+own both a live simulation and a renderer. Audio may use the pure `@open-northland/render/data`
+projection helpers.
 
 The root [`AGENTS.md`](../../AGENTS.md) still applies.
 

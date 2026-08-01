@@ -1,6 +1,6 @@
 # Keep spacing drives off doors and sealed nooks
 
-**Area:** sim (movement/settlers) · **Priority:** P3
+**Area:** sim · **Focus:** movement/settlers · **Priority:** P3
 
 The footprint eviction pass now refuses to LAND a displaced settler on a building's door node or on a
 sealed nook (a walkable cell whose every orthogonal neighbour is walk-blocked) — see

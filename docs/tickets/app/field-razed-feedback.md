@@ -1,6 +1,6 @@
 # Signal the crops a building site will destroy
 
-**Area:** app + render · **Priority:** P2
+**Area:** app, render · **Priority:** P2
 **Needs user:** observe whether the original destroys, keeps, or warns about wheat under a new building.
 
 A field declares no build area, so a building site over standing wheat is accepted like any other. The

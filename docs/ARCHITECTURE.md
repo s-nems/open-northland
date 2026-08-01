@@ -31,7 +31,9 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
 - `packages/desktop` serves the browser build through Electron and runs first-use content setup.
 - `tools/asset-pipeline` converts an owned game installation into local, validated content.
 
-The app is the only runtime package that ties the simulation and presentation layers together.
+The app owns runtime orchestration: it advances the sim and hands snapshots and events to the sinks.
+Audio shares pure camera and projection helpers from `@open-northland/render/data`; it does not own a
+renderer or mutate the sim.
 
 ## Runtime data flow
 

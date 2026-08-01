@@ -1,6 +1,6 @@
 # Cover the goods-stage emit and `writeIr` orchestrators
 
-**Area:** pipeline tests · **Priority:** P3
+**Area:** pipeline · **Focus:** tests · **Priority:** P3
 
 Two pipeline orchestrators have no direct test coverage. Their pure inner joins are tested, but the
 emit/assembly wrappers around them are only exercised by a full `npm run pipeline` run against the

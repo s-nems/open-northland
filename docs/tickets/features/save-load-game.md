@@ -1,6 +1,6 @@
 # Persist and restore simulation state
 
-**Area:** sim + data · **Priority:** P1
+**Area:** sim, data · **Priority:** P1
 
 The project has deterministic replay for diagnostics, but no persisted save format or load API.
 Replaying `{content, seed, map, commandLog}` can rebuild a short session and prove determinism. It is

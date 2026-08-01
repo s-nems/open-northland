@@ -1,6 +1,6 @@
 # Route settler characters through the shared layer resolver
 
-**Area:** render (data/sprites, gpu/sprite-pool) · **Priority:** P3
+**Area:** render · **Focus:** data/sprites, gpu/sprite-pool · **Priority:** P3
 
 `resolveCharacterLayers` (`gpu/sprite-pool/character-layers.ts`) resolves its frames by hand instead of
 through the `sourceLayerFor` → `resolveFromLayer` pair that every other layered kind shares (both

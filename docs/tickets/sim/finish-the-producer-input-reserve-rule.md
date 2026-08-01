@@ -1,6 +1,6 @@
 # Finish the producer input-reserve rule: the other fetch rungs, and the way back out
 
-**Area:** sim (settlers/drives/economy) · **Priority:** P2
+**Area:** sim · **Focus:** settlers/drives/economy · **Priority:** P2
 
 `mayFetchGoodFrom` (`systems/settlers/drives/economy/store-policy.ts`) stops a consumer from lifting a good
 that the holder's own recipe consumes. Only `nearestMissingInputSource` consults it, and nothing

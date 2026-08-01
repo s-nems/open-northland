@@ -1,4 +1,4 @@
-# `jobtypes.ini` per-job flags are not extracted
+# Extract the per-job flags from jobtypes.ini
 
 **Area:** pipeline · **Priority:** P3
 
@@ -24,9 +24,8 @@ Two consumers already approximate what these state outright:
   owned copy first (they are case-sensitive and not all 55 sections carry every key).
 - Replace `boundWorkplaceTarget`'s hardcoded finished-workhouse gate with the extracted flag, and
   record whether the real values change its behaviour.
-- Decide whether `ignoresHomeHouseFlag` is worth joining into the role derivation given it does not
-  separate soldier from hero; leaving `jobRoleOfId` as the approximation is an acceptable outcome, as
-  long as the decision is recorded there.
+- Keep `jobRoleOfId` as the named slug approximation: `ignoresHomeHouseFlag` does not distinguish the
+  soldier, hero, or hunter roles it needs.
 
 ## Verify
 

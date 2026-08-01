@@ -4,10 +4,11 @@ Describe the outcome and why it belongs in Open Northland.
 
 ## Verification
 
-- [ ] `npm run check`
-- [ ] `npm run build`
-- [ ] `npm test`
-- [ ] I ran any additional pipeline, browser, visual, or audio checks required by this change.
+List the commands you ran and their result. Use the matching gates from `docs/TESTING.md`; mark a
+local-content or human check as not available when another person must perform it.
+
+- Commands:
+- Browser, visual, or audio check:
 
 ## Source and asset check
 

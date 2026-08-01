@@ -1,6 +1,6 @@
 # Cover the terrain-map file invariants at their own loader boundary
 
-**Area:** data (tests) · **Priority:** P2
+**Area:** data · **Focus:** tests · **Priority:** P2
 
 `parseTerrainMap` is the loader boundary that must reject a malformed map rather than let it become an
 out-of-bounds read in `buildTerrainGraph`. Its ten cross-lane rules live in the `INVARIANTS` table of

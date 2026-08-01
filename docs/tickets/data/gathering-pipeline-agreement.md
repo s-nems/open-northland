@@ -1,6 +1,6 @@
 # Reconcile the gathering pipeline with the goods it is derived from
 
-**Area:** data (+ pipeline) · **Priority:** P2
+**Area:** data, pipeline · **Priority:** P2
 
 `GatheringPipeline` (`packages/data/src/schema/landscape/objects.ts`) restates four facts that
 `GoodType` already owns, and nothing checks that the two agree:

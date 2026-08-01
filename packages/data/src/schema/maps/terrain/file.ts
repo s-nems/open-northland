@@ -55,8 +55,8 @@ const TerrainMapFields = z.strictObject({
    * cell. Observed byte values are 0..7 on the owned corpus, but the band SEMANTICS are unconfirmed:
    * it is NOT a water mask (waterless maps carry the same 1..7 bands over meadow, and band 7 sits
    * mostly under land patterns on river maps — probed 2026-07-16), so the render keys water off
-   * ground-pattern names instead (`packages/render/src/data/water.ts`). Decoded for the shore-foam
-   * follow-up (`docs/tickets/features/water-fx-and-shore.md`); no consumer yet.
+   * ground-pattern names instead (`packages/render/src/data/water.ts`). Retained as raw probe data;
+   * no runtime system consumes it.
    */
   shore: CellLane.optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */

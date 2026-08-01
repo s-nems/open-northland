@@ -1,6 +1,6 @@
 # Report the job classifications a content set fails to resolve
 
-**Area:** app (content), sim · **Priority:** P3
+**Area:** app, sim · **Focus:** content · **Priority:** P3
 
 Several job classifications key on the extracted `jobtypes.ini` id slug, because no readable field flags
 the role: `core/content-index/jobs.ts` (fighter/scout/hunter), `stores/workplace.ts` `isCarrierJob`

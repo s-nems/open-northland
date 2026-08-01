@@ -1,6 +1,6 @@
 # Apply authored `setproducedgood` picks to workshop craft selections
 
-**Area:** sim + app · **Priority:** P3
+**Area:** sim, app · **Priority:** P3
 **Blocked by:** [authored house attachments](../pipeline/map-attachtohouse-import.md)
 
 `setproducedgood` is the original's per-human **produced good**, not only a gatherer's resource pick, and
@@ -22,7 +22,7 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
   `wool`, all harvest atomic 33), which is what hunted carcasses yield. A farmer is bound to its farm by
   the farming rule (`jobCanHarvest`), never a flag gatherer.
 
-## Scope (the workshop half)
+## Scope
 
 - `setCraftGoods` (`packages/sim/src/systems/orders/work/selection.ts`) already models a per-settler product
   selection as `CraftSelection` — the natural home for `baker` → `bread`.

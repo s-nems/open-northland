@@ -1,6 +1,6 @@
 # Pin the simple/extra split for the five non-candy dishes
 
-**Area:** packages/sim · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 `EDIBLE_FORM_BY_DISH` (`systems/readviews/food.ts`) maps each dish good to the edible it becomes when
 anyone outside the good's own harvest trade lifts it (`carriedGoodForm`), or when it banks into a store

@@ -1,6 +1,6 @@
 # Calibrate combat constants against the running original (interactive session)
 
-**Area:** sim (data swaps) · **Priority:** P2
+**Area:** sim · **Focus:** data swaps · **Priority:** P2
 **Needs user:** a live comparison with the running original, so this is not autonomously runnable.
 **Blocked by:** [barracks recruitment](barracks-recruitment.md),
 [barracks training](barracks-training.md), and [tower defence](tower-defence-mode.md)

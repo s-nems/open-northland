@@ -1,6 +1,6 @@
 # Split the GUI chrome pipeline out of PalettedSprite
 
-**Area:** render (gpu/paletted-sprite) · **Priority:** P3
+**Area:** render · **Focus:** gpu/paletted-sprite · **Priority:** P3
 
 `PalettedSprite` is the world team-colour mesh for characters (its own doc says to keep it to
 characters; the sprite pool uses only `setFrame`, `place`, `player`). App HUD code has since

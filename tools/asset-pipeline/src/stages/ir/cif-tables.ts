@@ -8,8 +8,8 @@ import { resolveSourceFile, type SourceRoots } from '../../roots.js';
  * returning `fallback` when the file is absent. Collapses the five identical load→guard→extract
  * triples buildIr does for the pattern, triangle, transition, landscape, and sound tables.
  *
- * An absent table degrades to `fallback`; a *present but undecodable* one throws and aborts the run
- * (see docs/tickets/pipeline/cif-table-decode-degrade.md).
+ * An absent table degrades to `fallback`. A present but undecodable table aborts the run so corrupt
+ * input is not mistaken for absent input.
  */
 export async function loadCifTable<T>(
   roots: SourceRoots,

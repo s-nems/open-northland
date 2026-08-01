@@ -1,6 +1,6 @@
 # Keep manual ground drops out of vehicle holds
 
-**Area:** sim (goods effects) · **Priority:** P3
+**Area:** sim · **Focus:** goods effects · **Priority:** P3
 
 `dropOrStackGood` (`packages/sim/src/systems/settlers/atomics/effects/goods/piles.ts`) excludes a `GroundDrop`
 trunk and a `Building` store from its stack candidates, but not a `Vehicle`. A boat hull is

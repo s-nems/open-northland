@@ -51,6 +51,8 @@ The document also contains a manifest:
 ```
 
 The remaining arrays are omitted from this example. Read the schema for the current complete list.
+The `generatedFrom` paths are local provenance. Do not paste the manifest into an issue or diagnostic
+report without removing them.
 
 `parseContentSet(raw)` performs Zod validation and cross-reference checks. `IR_VERSION` records the
 current schema version, and the manifest gate rejects any other stamp - older or newer - before the
