@@ -1,4 +1,4 @@
-import type { DrawKind } from '../scene/index.js';
+import type { SpriteKind } from '../scene/index.js';
 import type {
   BuildingTypeBinding,
   ResourceTypeBinding,
@@ -15,8 +15,7 @@ import type { SettlerStateBinding } from './settler-bindings.js';
  * it. Keeping the vocabulary separate from the resolution logic keeps both under a readable size.
  */
 
-/** Atlas-frame kinds the scene binds — the drawable {@link DrawKind}s (terrain tiles bind separately). */
-export type SpriteKind = Exclude<DrawKind, 'tile'>;
+export type { SpriteKind };
 
 /**
  * Which atlas bob id draws a given drawable kind. The minimal binding is one representative still

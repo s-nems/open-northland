@@ -4,7 +4,7 @@
  * build progress, …). Split out of `scene.ts` so the *reads* live apart from the *scene assembly*
  * (projection + depth sort) that consumes them, and grouped by concern so each stays changeable on its own:
  *  - {@link import('../../snapshot/index.js')} — position + the numeric-field decode primitives;
- *  - {@link import('./classify.js')} — the marker → {@link import('../draw-item.js').DrawKind} classification;
+ *  - {@link import('./classify.js')} — the marker → {@link import('../draw-item.js').SpriteKind} classification;
  *  - {@link import('./facing.js')} — the projected-heading facing geometry;
  *  - {@link import('./unit-readers.js')} — the per-settler reads (state, carry, atomic, job, owner);
  *  - {@link import('./static-readers.js')} — the building / resource / stump / bush reads + assignStaticFields;
