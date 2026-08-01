@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { collectSpriteScene } from '../../src/data/scene/index.js';
+import { collectSpriteScene, type SpriteScene } from '../../src/data/scene/index.js';
 import { buildSpriteScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
-/** Unit tests for {@link collectSpriteScene} — the single-pass draw list + pre-cull liveness set the
+/** Unit tests for {@link collectSpriteScene} — the single-pass draw list + pre-cull liveness view the
  *  retained pool reconciles against (viewport / fog / static-ref culling, ghost adoption). */
+
+/** The subset of `ids` the scene reports live — `liveRefs` is a membership view, so exact-set
+ *  assertions probe it over the fixture's full id universe. */
+const liveOf = (scene: SpriteScene, ids: readonly number[]): number[] =>
+  ids.filter((id) => scene.liveRefs.has(id));
 
 describe('collectSpriteScene — the single-pass draw list + liveness set', () => {
   // The retained pool's destroy-vs-cull rule hangs on this invariant: a viewport-CULLED entity must
@@ -23,7 +28,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
       { viewport },
     );
     expect(scene.items.map((d) => d.ref)).toEqual([1]);
-    expect([...scene.liveRefs].sort()).toEqual([1, 2]);
+    expect(liveOf(scene, [1, 2])).toEqual([1, 2]);
   });
 
   it('excludes non-drawable entities from BOTH items and liveRefs (they were never pooled)', () => {
@@ -34,7 +39,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
       ]),
     );
     expect(scene.items.map((d) => d.ref)).toEqual([1]);
-    expect([...scene.liveRefs]).toEqual([1]);
+    expect(liveOf(scene, [1, 2])).toEqual([1]);
   });
 
   // The `?map=` static→dynamic handover rule: a virgin map resource is drawn by the RETAINED static
@@ -47,7 +52,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     ]);
     const withStatic = collectSpriteScene(snapshot, { staticRefs: new Set([1]) });
     expect(withStatic.items.map((d) => d.ref)).toEqual([2]);
-    expect([...withStatic.liveRefs]).toEqual([2]);
+    expect(liveOf(withStatic, [1, 2])).toEqual([2]);
     const released = collectSpriteScene(snapshot, { staticRefs: new Set() });
     expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
   });
@@ -86,7 +91,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     );
     const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
     expect(drawnSettlers.sort()).toEqual([3, 4]); // the two inside (1, 2) are not drawn…
-    expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 10, 11, 12]); // …but stay live
+    expect(liveOf(scene, [1, 2, 3, 4, 10, 11, 12])).toEqual([1, 2, 3, 4, 10, 11, 12]); // …but stay live
   });
 
   it('hides a settler RESTING inside its workplace (waiting between chores), keeping it live', () => {
@@ -98,7 +103,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
       ]),
     );
     expect(scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref)).toEqual([2]);
-    expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 10]);
+    expect(liveOf(scene, [1, 2, 10])).toEqual([1, 2, 10]);
   });
 
   // The details panel's worker field opts INTO drawing a building's indoor occupants: `keepIndoorSettlers`

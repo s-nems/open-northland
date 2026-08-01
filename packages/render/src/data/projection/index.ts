@@ -21,6 +21,8 @@ export {
   TILE_HALF_H,
   TILE_HALF_W,
   tileToScreen,
+  tileToScreenX,
+  tileToScreenY,
 } from './iso.js';
 export {
   aabbIntersects,

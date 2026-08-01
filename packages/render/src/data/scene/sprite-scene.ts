@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
@@ -24,27 +24,38 @@ import {
   readSpriteState,
   readStoreExchangeRef,
 } from './snapshot-readers/index.js';
+import type { SpriteSpatialIndex } from './spatial-index.js';
 
 /**
- * The pure sprite-scene builder: turns a {@link WorldSnapshot} into a flat, depth-sorted list of sprite
- * draw items in isometric screen space (plain data, no Pixi), plus the pre-cull liveness set the retained
+ * The sprite-scene builder: turns a {@link WorldSnapshot} into a flat, depth-sorted list of sprite
+ * draw items in isometric screen space (plain data, no Pixi), plus the pre-cull liveness view the retained
  * pool reconciles against. This module owns the projection, the cull, and the depth order; the component
  * reads live in {@link import('./snapshot-readers/index.js')}, the per-snapshot pre-scan memos in
- * {@link import('./snapshot-index.js')}, and the per-kind item tagging in
- * {@link import('./collect-fields.js')}.
+ * {@link import('./snapshot-index.js')}, the retained viewport index in {@link import('./spatial-index.js')},
+ * and the per-kind item tagging in {@link import('./collect-fields.js')}.
  *
  * Floats are fine here: `render` is a pure consumer of sim state (docs/ARCHITECTURE.md). The snapshot's
  * `Fixed` position (a scaled integer) is divided by ONE to a float tile coordinate; nothing feeds back
  * into the sim.
  */
 
-/** One frame's sprite scene: the culled, depth-sorted draw list plus the pre-cull liveness set,
- *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
+/** The membership face of {@link SpriteScene.liveRefs}: "is this ref alive (drawable) this frame?".
+ *  A `ReadonlySet` satisfies it; the index-backed build serves it without materializing the map-wide
+ *  set, which is why it is not a set type. */
+export interface LiveRefs {
+  has(ref: number): boolean;
+}
+
+/** One frame's sprite scene: the culled, depth-sorted draw list plus the pre-cull liveness view,
+ *  produced in one pass over the snapshot — or over the spatial index's viewport buckets when the
+ *  caller retains one (see {@link collectSpriteScene}). */
 export interface SpriteScene {
   readonly items: DrawItem[];
-  /** Ids of every drawable entity before the cull — the set the retained pool reconciles against
-   *  (an id missing here has died; one present but not in {@link items} is merely off-screen). */
-  readonly liveRefs: ReadonlySet<number>;
+  /** Membership over every drawable entity before the cull — the view the retained pool reconciles
+   *  against (a ref answering false has died; one answering true but not in {@link items} is merely
+   *  off-screen). Valid for this build's frame only: the index-backed view reads shared mutable state
+   *  (the spatial index's generation, the caller's `staticRefs`). */
+  readonly liveRefs: LiveRefs;
 }
 
 /** The optional inputs of a scene build. Every field accepts an explicit `undefined` so callers can
@@ -55,8 +66,16 @@ export interface SpriteSceneOptions {
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) —
-   *  skipped entirely: no draw item, not in {@link SpriteScene.liveRefs}. */
+   *  skipped entirely: no draw item, excluded from {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
+  /**
+   * The caller's retained {@link SpriteSpatialIndex}: with a `viewport`, the build walks only the index's
+   * buckets under it instead of every snapshot entity, and {@link SpriteScene.liveRefs} becomes a
+   * membership view over the index (never a materialized map-wide set). The build updates the index to
+   * this snapshot itself, so a caller only holds the instance. Ignored without a `viewport` or with
+   * `onlyRefs`.
+   */
+  readonly index?: SpriteSpatialIndex | undefined;
   /** The fog-of-war cull (`data/fog/mask.ts` over the viewer's `FogView`); absent = no fog. An entity whose tile
    *  it rejects is treated like a viewport-culled one — no draw item, but kept live so its pooled sprite
    *  survives until the fog lifts. */
@@ -93,10 +112,11 @@ export interface SpriteSceneOptions {
 }
 
 /**
- * The extra input only the draw-list entry point accepts. `onlyRefs` skips every unlisted entity before it
- * is classified, which also keeps it out of {@link SpriteScene.liveRefs} — safe here because
- * {@link buildSpriteScene} discards that set, and unavailable to {@link collectSpriteScene} (the retained
- * pool's reconcile) which would read a narrowed set as "everything else died" and destroy the map's sprites.
+ * The extra input only the draw-list entry point accepts. `onlyRefs` resolves each listed ref by
+ * `entityById` instead of walking the snapshot, which also keeps unlisted entities out of
+ * {@link SpriteScene.liveRefs} — safe here because {@link buildSpriteScene} discards that view, and
+ * unavailable to {@link collectSpriteScene} (the retained pool's reconcile) which would read a narrowed
+ * set as "everything else died" and destroy the map's sprites.
  */
 export interface DrawListOptions extends SpriteSceneOptions {
   /**
@@ -119,14 +139,14 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
 }
 
 /**
- * Build the depth-sorted sprite draw list and the pre-cull liveness set in one pass over the snapshot's
- * entities — the shared core of {@link import('./terrain-scene.js').buildScene}, {@link buildSpriteScene}
- * and the retained pool's per-frame reconcile, which needs both and would otherwise classify every entity
- * twice per frame. Each drawable entity is projected to its feet anchor and tagged with the render-side
- * reads (state/facing/carrying/atomic/buildingType) a per-kind binding needs; the per-kind reads run only
- * for items that survive the cull. Sorted by feet anchor `(y, x)` then entity id — a total, stable order,
- * so culling only removes items without reshuffling the survivors. Each option is documented on
- * {@link SpriteSceneOptions}.
+ * Build the depth-sorted sprite draw list and the pre-cull liveness view in one pass — the shared core
+ * of {@link import('./terrain-scene.js').buildScene}, {@link buildSpriteScene} and the retained pool's
+ * per-frame reconcile, which needs both and would otherwise classify every entity twice per frame. Each
+ * drawable entity is projected to its feet anchor and tagged with the render-side reads (state/facing/
+ * carrying/atomic/buildingType) a per-kind binding needs; the per-kind reads run only for items that
+ * survive the cull. Sorted by feet anchor `(y, x)` then entity id — a total, stable order, so both
+ * culling and the entity source (full walk vs the spatial index's arbitrary bucket order) leave the
+ * emitted list identical. Each option is documented on {@link SpriteSceneOptions}.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   return collectScene(snapshot, opts);
@@ -137,6 +157,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     viewport,
     elevation,
     staticRefs,
+    index,
     onlyRefs,
     fogVisible,
     ghosts,
@@ -145,22 +166,23 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     playerColourOf,
   } = opts;
   const items: MutableDrawItem[] = [];
-  const liveRefs = new Set<number>();
+  // Refs collected while emitting. In the walk modes this IS the liveness set; in the index mode it
+  // only carries what the index cannot answer (signpost board refs, fog-ghost refs, this frame's
+  // emitted candidates) and the map-wide answer is the membership view built at the bottom.
+  const collected = new Set<number>();
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
   // reused across the frames that render it (see targetPositionsOf), empty when no actor needs it.
   const posByRef = targetPositionsOf(snapshot);
   const enterableStores = enterableStoresOf(snapshot);
-  for (const entity of snapshot.entities) {
-    // Both skips come before classifying: a decoded map carries 40k+ placements, and neither a statically
-    // drawn one nor an unlisted one is worth a classify + position read.
-    if (onlyRefs !== undefined && !onlyRefs.has(entity.id)) continue;
-    // Drawn by the retained static layer instead (a virgin map resource).
-    if (staticRefs?.has(entity.id)) continue;
+
+  const emit = (entity: EntitySnapshot): void => {
+    // Drawn by the retained static layer instead (a virgin map resource) — not worth a classify.
+    if (staticRefs?.has(entity.id)) return;
     const components = entity.components;
     const kind = classify(components);
-    if (kind === null) continue;
+    if (kind === null) return;
     const pos = readPosition(components);
-    if (pos === null) continue;
+    if (pos === null) return;
     // The details-panel portrait's subject is force-emitted through every cull below, so its live cutout
     // never blanks off-screen or when it steps inside a building.
     const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
@@ -172,13 +194,13 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
       const store = readStoreExchangeRef(components);
       indoorSettler = 'Resting' in components || (store !== null && enterableStores.has(store));
       if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) {
-        liveRefs.add(entity.id);
-        continue;
+        collected.add(entity.id);
+        return;
       }
     }
     // Read here, not in the stockpile branch below, so it folds into the depth key.
     const isFlag = 'DeliveryFlag' in components;
-    liveRefs.add(entity.id);
+    collected.add(entity.id);
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
@@ -205,12 +227,12 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     // cover a tall sprite's extent, so a building straddling the edge still draws. The portrait subject is
     // never culled — it must stay drawn for its cutout even when scrolled off-screen.
     const offscreen = viewport !== undefined && !isVisible(viewport, drawX, drawY);
-    if (offscreen && !isPortrait) continue;
+    if (offscreen && !isPortrait) return;
     // Fog-of-war cull: an entity on ground the viewer does not currently see stays pooled but draws
     // nothing, the same contract as the viewport cull. After the viewport cull on purpose: the fog probe
     // costs a mask lookup per call, so it runs for the few on-screen entities, not the map.
     const fogged = fogVisible !== undefined && !fogVisible(tileX, tileY);
-    if (fogged && !isPortrait) continue;
+    if (fogged && !isPortrait) return;
     // Terrain lift at the feet (bilinear over the elevation lane) is the draw offset, not the depth key:
     // the anchor and `depth` below stay pre-lift so occlusion sorts by map row, not by lifted screen y.
     // A flat map (`maxLift === 0`) skips the sampler entirely.
@@ -244,7 +266,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
         assignBerryBushFields(item, components);
         break;
       case 'signpost':
-        pushSignpostItems(items, liveRefs, snapshot, item, components, tileX, tileY, lift, playerColourOf);
+        pushSignpostItems(items, collected, snapshot, item, components, tileX, tileY, lift, playerColourOf);
         break;
       case 'projectile':
         // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
@@ -274,8 +296,36 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
       item.player = playerColourOf(item.player);
     }
     items.push(item);
+  };
+
+  // In the walk modes `collected` IS the liveness set. The index mode never walks the map, so its
+  // answer becomes a view: the frame's own refs (boards, ghosts, emitted candidates — `collected` is
+  // probed live, so the ghost refs pushed below are covered) plus the index's drawables minus the
+  // statically drawn.
+  let liveRefs: LiveRefs = collected;
+  if (index !== undefined && viewport !== undefined && onlyRefs === undefined) {
+    // Screen-bounded source: only the index buckets under the viewport; each candidate still runs the
+    // exact per-item cull above, so the emitted set matches the full walk's.
+    index.update(snapshot);
+    for (const entity of index.query(viewport)) emit(entity);
+    // The force-emitted portrait subject may sit outside the queried buckets — resolve it by id.
+    if (portraitRef !== undefined && !collected.has(portraitRef)) {
+      const subject = entityById(snapshot, portraitRef);
+      if (subject !== undefined) emit(subject);
+    }
+    liveRefs = { has: (ref) => collected.has(ref) || (index.has(ref) && staticRefs?.has(ref) !== true) };
+  } else if (onlyRefs !== undefined) {
+    // A handful of known refs (the worker field's ≤8 settlers): resolve each by binary search instead
+    // of walking a decoded map's tens of thousands of entities per tick.
+    for (const ref of onlyRefs) {
+      const entity = entityById(snapshot, ref);
+      if (entity !== undefined) emit(entity);
+    }
+  } else {
+    for (const entity of snapshot.entities) emit(entity);
   }
-  if (ghosts !== undefined) pushGhostItems(items, liveRefs, ghosts, viewport, elevation);
+
+  if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation);
   // Stable, total order: (y, x) via `depth`, then the entity-id tie-break for two sprites on one tile.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };

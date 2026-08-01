@@ -119,7 +119,7 @@ describe('collectSpriteScene — ghost emission', () => {
     expect(scene.items).toHaveLength(1);
     expect(scene.items[0]).toMatchObject({ ref: 9, kind: 'building', ghost: true, typeId: 7 });
     // The pooled sprite of a dead-but-remembered entity must not be destroyed.
-    expect([...scene.liveRefs]).toEqual([9]);
+    expect(scene.liveRefs.has(9)).toBe(true);
   });
 
   it('viewport-culls a ghost like a live sprite, but its ref stays in liveRefs', () => {
@@ -132,7 +132,7 @@ describe('collectSpriteScene — ghost emission', () => {
     };
     const scene = collectSpriteScene(snapshotOf([]), { viewport: elsewhere, ghosts: [GHOST] });
     expect(scene.items).toEqual([]);
-    expect([...scene.liveRefs]).toEqual([9]);
+    expect(scene.liveRefs.has(9)).toBe(true);
   });
 
   it('depth-sorts a ghost among live sprites by the same feet-anchor key', () => {

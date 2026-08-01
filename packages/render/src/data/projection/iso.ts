@@ -33,10 +33,18 @@ export const TILE_HALF_H = 38;
  * the same diagonal a unit walks along the original's mesh edges.
  */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
-  return {
-    x: (2 * col + rowStagger(row)) * TILE_HALF_W,
-    y: row * TILE_HALF_H,
-  };
+  return { x: tileToScreenX(col, row), y: tileToScreenY(row) };
+}
+
+/** The X half of {@link tileToScreen}, split like {@link cameraScreenX} so a per-entity hot loop
+ *  (the sprite spatial index's re-bucketing) allocates no `{x,y}` per call. */
+export function tileToScreenX(col: number, row: number): number {
+  return (2 * col + rowStagger(row)) * TILE_HALF_W;
+}
+
+/** {@link tileToScreenX} for the Y axis (row-only: a column step is purely horizontal). */
+export function tileToScreenY(row: number): number {
+  return row * TILE_HALF_H;
 }
 
 /**

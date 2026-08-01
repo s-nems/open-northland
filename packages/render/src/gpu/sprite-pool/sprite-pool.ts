@@ -2,7 +2,13 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { FogGhost } from '../../data/fog/index.js';
 import { type Camera, cameraScreenX, cameraScreenY, type Viewport } from '../../data/projection/index.js';
-import { collectSpriteScene, type DrawItem, screenDepth } from '../../data/scene/index.js';
+import {
+  collectSpriteScene,
+  type DrawItem,
+  type LiveRefs,
+  SpriteSpatialIndex,
+  screenDepth,
+} from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -84,6 +90,9 @@ export interface PortraitView {
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
+  /** The retained viewport index the scene build walks instead of every snapshot entity — kept across
+   *  frames so an unchanged entity costs one pointer compare per snapshot (see {@link SpriteSpatialIndex}). */
+  private readonly spatial = new SpriteSpatialIndex();
   /** The pooled entities currently attached to {@link spriteLayer} (drawn this frame). The detach and
    *  paletted-placement passes iterate this instead of the whole pool so their per-frame cost tracks the
    *  screen (O(visible)), never every entity ever seen — the pool only shrinks on death. Kept in sync with
@@ -129,12 +138,14 @@ export class SpritePool {
    * ({@link reap}) rather than the whole pool.
    */
   reconcile(frame: PoolFrame): void {
-    // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
-    // destroy step needs — classifying every entity a second time per frame would double the scan.
+    // One indexed pass yields both the culled draw list and the pre-cull liveness view the destroy
+    // step needs — the retained `spatial` index keeps the build walking the buckets under the
+    // viewport, not the map (a decoded map's ~40k placements per frame).
     const scene = collectSpriteScene(frame.snapshot, {
       viewport: frame.viewport,
       elevation: frame.elevation,
       staticRefs: frame.staticRefs,
+      index: this.spatial,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
@@ -211,7 +222,7 @@ export class SpritePool {
    * {@link reapCursor} yields and free any that left the snapshot (died); a still-live culled entity is in
    * `liveRefs`, so it is kept to scroll back. `reconcileSprites` is the pure, tested death test on the slice.
    */
-  private reap(liveRefs: ReadonlySet<number>): void {
+  private reap(liveRefs: LiveRefs): void {
     const swept: number[] = [];
     for (let i = 0; i < POOL_REAP_BUDGET; i++) {
       if (this.reapCursor === undefined) this.reapCursor = this.pool.keys();
