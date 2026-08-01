@@ -94,8 +94,32 @@ export interface RegionIndex<Extra> {
   extra(world: World): Extra;
 }
 
+/** Pack a region coordinate pair into a map key. Both axes are >= 0 (an anchor is an in-bounds node),
+ *  which is what keeps the packing collision-free and lets a box scan clamp its min bounds to 0. */
+function regionKey(rx: number, ry: number): number {
+  return rx * REGION_KEY_STRIDE + ry;
+}
+
 function regionKeyOf(hx: number, hy: number): number {
-  return Math.floor(hx / REGION_NODES) * REGION_KEY_STRIDE + Math.floor(hy / REGION_NODES);
+  return regionKey(Math.floor(hx / REGION_NODES), Math.floor(hy / REGION_NODES));
+}
+
+/** The inclusive region range covering the box `reach` nodes around `(hx, hy)`. */
+function boxRegionRange(
+  hx: number,
+  hy: number,
+  reach: number,
+): { readonly minRx: number; readonly maxRx: number; readonly minRy: number; readonly maxRy: number } {
+  return {
+    minRx: Math.floor(Math.max(0, hx - reach) / REGION_NODES),
+    maxRx: Math.floor((hx + reach) / REGION_NODES),
+    minRy: Math.floor(Math.max(0, hy - reach) / REGION_NODES),
+    maxRy: Math.floor((hy + reach) / REGION_NODES),
+  };
+}
+
+function inBox(m: RegionMember, hx: number, hy: number, reach: number): boolean {
+  return Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach;
 }
 
 /** The minted node layer's held-versus-fresh leg. It rides its own insert/remove calls beside `byRegion`,
@@ -219,18 +243,13 @@ export function createRegionIndex<Extra, Capture>(
     extra: (world) => memo.read(world).extra,
     near: (world, hx, hy, reach) => {
       const index = memo.read(world);
-      const minRx = Math.floor(Math.max(0, hx - reach) / REGION_NODES);
-      const maxRx = Math.floor((hx + reach) / REGION_NODES);
-      const minRy = Math.floor(Math.max(0, hy - reach) / REGION_NODES);
-      const maxRy = Math.floor((hy + reach) / REGION_NODES);
+      const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
       const out: Entity[] = [];
       for (let rx = minRx; rx <= maxRx; rx++) {
         for (let ry = minRy; ry <= maxRy; ry++) {
-          const bucket = index.byRegion.get(rx * REGION_KEY_STRIDE + ry);
+          const bucket = index.byRegion.get(regionKey(rx, ry));
           if (bucket === undefined) continue;
-          for (const m of bucket) {
-            if (Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach) out.push(m.e);
-          }
+          for (const m of bucket) if (inBox(m, hx, hy, reach)) out.push(m.e);
         }
       }
       // Region lists are each ascending, but cross-region concatenation is not — restore the canonical
@@ -251,17 +270,12 @@ export function createRegionIndex<Extra, Capture>(
     },
     someNear: (world, hx, hy, reach, test) => {
       const index = memo.read(world);
-      const minRx = Math.floor(Math.max(0, hx - reach) / REGION_NODES);
-      const maxRx = Math.floor((hx + reach) / REGION_NODES);
-      const minRy = Math.floor(Math.max(0, hy - reach) / REGION_NODES);
-      const maxRy = Math.floor((hy + reach) / REGION_NODES);
+      const { minRx, maxRx, minRy, maxRy } = boxRegionRange(hx, hy, reach);
       for (let rx = minRx; rx <= maxRx; rx++) {
         for (let ry = minRy; ry <= maxRy; ry++) {
-          const bucket = index.byRegion.get(rx * REGION_KEY_STRIDE + ry);
+          const bucket = index.byRegion.get(regionKey(rx, ry));
           if (bucket === undefined) continue;
-          for (const m of bucket) {
-            if (Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach && test(m.e)) return true;
-          }
+          for (const m of bucket) if (inBox(m, hx, hy, reach) && test(m.e)) return true;
         }
       }
       return false;
