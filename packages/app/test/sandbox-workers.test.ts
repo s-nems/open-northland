@@ -1,6 +1,6 @@
 import { DEFAULT_RECIPE_TICKS } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER } from '../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_HUNTER } from '../src/catalog/jobs.js';
 import {
   BUILDING_JOINERY,
   BUILDING_MILL,
@@ -46,14 +46,17 @@ describe('sandbox building worker slots', () => {
     }
   });
 
-  it('rebases every extracted slot job clear of the native sandbox bands — the id-collision guard', () => {
+  it('rebases every extracted slot job clear of the native sandbox bands - the id-collision guard', () => {
     // The original `logicworker` ids overlap the sandbox's own bands (22 = mud gatherer, 40/41 = archers,
     // 24 = carrier), so before the rebase an HQ slot silently read as a native gatherer/soldier. Every
-    // extracted slot must now be the carrier or a rebased id (>= the base) — never a raw native-band id.
+    // extracted slot must now be the carrier or the hunter (both rebase-exempt: the sandbox band defines
+    // those trades itself) or a rebased id (>= the base) - never any other raw native-band id.
     for (const b of content.buildings) {
       if (b.typeId === BUILDING_JOINERY) continue; // its demo worker is a DELIBERATE native gatherer (below)
       for (const w of b.workers)
-        expect(w.jobType === JOB_CARRIER || w.jobType >= WORKER_SLOT_JOB_BASE).toBe(true);
+        expect(
+          w.jobType === JOB_CARRIER || w.jobType === JOB_HUNTER || w.jobType >= WORKER_SLOT_JOB_BASE,
+        ).toBe(true);
     }
     // The HQ dispatches gatherers (collector/fisher/hunter) and carriers — 9 gatherers + 3 carriers, no
     // in-workshop craftsman. The player can only hand-assign its carriers (a gatherer is never a PPM target).
@@ -63,6 +66,14 @@ describe('sandbox building worker slots', () => {
     expect(headcount('carrier')).toBe(3);
     expect(headcount('gatherer')).toBe(9);
     expect(headcount('craftsman')).toBe(0);
+  });
+
+  it('employs the hunter trade ITSELF on a building hunter slot (rebase-exempt), so an HQ hunter hunts', () => {
+    // A rebased `worker_1015` id would strip the `hunter` slug that `jobRoleOfId` keys on: no shooting,
+    // no workplace hunting ground, no signpost exemption - a dead slot. The slot must BE job 15.
+    const hq = byType.get(1)?.workers ?? [];
+    expect(hq.some((w) => w.jobType === JOB_HUNTER)).toBe(true);
+    expect(content.jobs.find((j) => j.typeId === JOB_HUNTER)?.id).toBe('hunter');
   });
 
   it('keeps the joinery demo worker a gatherer (its plank production is fed by a woodcutter)', () => {

@@ -45,6 +45,7 @@ const VIKING = 1;
 const CARPENTER = 2; // the sawmill's worker job
 const WOODCUTTER = 1; // the HQ's worker job
 const CARRIER = 36; // the HQ's transport-slot job
+const HUNTER = 15; // the fixture's armed hunting trade (id `hunter`) - never auto-drafted
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
 const GENERAL_TRACK = 2; // the woodcutter-general track (factor 1), fed alongside the wood track
 const WOOD_GOOD = 1; // the woodcutter's specific track trains on it; a pinned gatherer collects it
@@ -163,6 +164,24 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(idle, Settler).jobType).toBe(WOODCUTTER); // not CARRIER, the first-declared slot
+  });
+
+  it('never auto-drafts an idle settler into a hunter slot (the armed trade is player-assigned)', () => {
+    // Mutated before the Simulation, because the content index is memoized per ContentSet. The hunter
+    // job is tech-open in the fixture, so only the auto-draft exclusion keeps the settler off the bow.
+    const content = testContent();
+    const sawmill = content.buildings.find((b) => b.typeId === SAWMILL);
+    if (sawmill === undefined) throw new Error('fixture has no sawmill');
+    sawmill.workers.push({ jobType: HUNTER, count: 1 });
+    const sim = new Simulation({ seed: 1, content });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    const first = settler(sim, null);
+    const second = settler(sim, null);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(first, Settler).jobType).toBe(CARPENTER); // the civilian slot still staffs
+    expect(sim.world.get(second, Settler).jobType).toBeNull(); // the bow is never auto-taken
   });
 
   it('never report-in binds a non-carrier trade (only adopt-on-station binds the pre-employed)', () => {
