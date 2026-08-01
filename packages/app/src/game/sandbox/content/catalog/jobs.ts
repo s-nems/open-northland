@@ -40,8 +40,8 @@ export interface SandboxJob {
   readonly allowedAtomics?: number[];
 }
 
-/** The hunter's grant pair (jobtypes.ini 15 `allowatomic 33/81`), shared by the picker trade and its
- *  rebased worker slot. */
+/** The hunter's grant pair (jobtypes.ini 15 `allowatomic 33/81`); the building hunter slot shares it
+ *  by identity (rebase-exempt, see `rebaseSlotJob`). */
 const HUNTER_JOB_ATOMICS = [HARVEST_CADAVER_ATOMIC, ATTACK_ATOMIC];
 
 /** Build every functional, picker and worker-slot job the sandbox content references. */
@@ -108,11 +108,11 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       jobs.set(profession.jobType, { typeId: profession.jobType, id: profession.key });
     }
   }
-  // The collector's harvest atomics — every gathered good's harvest atomic (fell/mine/pick). Shared by
-  // the gatherer worker-slot trades below so a settler hand-assigned to a building's collector/hunter/
-  // fisher slot can actually harvest and bank into the building (the building is its flag). The hunter
-  // slot carries the hunter's own grant pair instead; reusing the collector's set for the fisher stays
-  // a named approximation (the sandbox has no fish resources).
+  // The collector's harvest atomics - every gathered good's harvest atomic (fell/mine/pick). Shared by
+  // the gatherer worker-slot trades below so a settler hand-assigned to a building's collector/fisher
+  // slot can actually harvest and bank into the building (the building is its flag). The hunter slot
+  // needs nothing here - it is rebase-exempt, so the picker trade above IS the slot job; reusing the
+  // collector's set for the fisher stays a named approximation (the sandbox has no fish resources).
   const gathererAtomics = GATHERERS.map((gatherer) => gatherer.atomic);
   for (const slots of Object.values(BUILDING_WORKER_SLOTS)) {
     for (const worker of slots) {
@@ -123,11 +123,10 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
           id: `worker_${jobType}`,
           name: workerSlotName(worker.jobType),
         };
-        // A gatherer slot (original collector 8 / hunter 15 / fisher 22) is a real harvest trade: it
-        // gathers a raw good on the map and delivers into its building, so it needs the harvest atomics.
+        // A gatherer slot (original collector 8 / fisher 22) is a real harvest trade: it gathers a
+        // raw good on the map and delivers into its building, so it needs the harvest atomics.
         if (EXTRACTED_GATHERER_TRADES.has(worker.jobType)) {
-          const atomics = worker.jobType === JOB_HUNTER ? HUNTER_JOB_ATOMICS : gathererAtomics;
-          jobs.set(jobType, { ...job, allowedAtomics: atomics });
+          jobs.set(jobType, { ...job, allowedAtomics: gathererAtomics });
         } else jobs.set(jobType, job);
       }
     }

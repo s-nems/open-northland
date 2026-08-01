@@ -3,6 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled, jobEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
+import { isHunterJob } from '../../readviews/index.js';
 import { buildingWorkerJobs, canonicalBuildingWorkerJobs } from '../../stores/index.js';
 
 /** Bound-settler headcount per (building, jobType) — see the jobSystem tally comment. */
@@ -138,6 +139,10 @@ function resolveOpenWorkerJob(
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // building-unlock gate (disabled — see buildingEnabled)
   for (const jobType of orderedJobs) {
     if (!jobUnderstaffed(query, building, jobType)) continue;
+    // The hunter is never auto-drafted: the one armed civilian trade is taken deliberately (picker or
+    // hand assignment - playerDirected still offers it). Also keeps a stocking building's idle draft
+    // on its carrier slots (the hunter's low job id precedes the carrier's in canonical order).
+    if (mode.kind === 'automatic' && isHunterJob(ctx.content, jobType)) continue;
     // A player-directed assignment skips only the TRIBE-tech gate — see openWorkerJobFromList.
     if (mode.kind === 'automatic' && !jobEnabled(world, ctx, tribe, jobType)) continue; // jobEnablesJob
     if (!settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue; // XP gate (needforjob)
