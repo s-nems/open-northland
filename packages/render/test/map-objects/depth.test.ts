@@ -55,4 +55,24 @@ describe('MapObjectLayer sort row (tall objects)', () => {
     // a genuine row apart.
     expect(shadow).toBeGreaterThan(depthKey(ANCHOR.x, farRowY - 1));
   });
+
+  it('draws a hill object at its scaled, offset, lifted feet but sorts it at the pre-lift row', () => {
+    const LIFT = 24;
+    const SCALE = 2;
+    // Offsets and a scale that are all distinguishable, so every term of the placement is pinned.
+    const OFFSET_FRAME: AtlasFrame = { x: 0, y: 0, width: 8, height: 8, offsetX: 3, offsetY: -7 };
+    const spriteLayer = new Container();
+    const layer = new MapObjectLayer(spriteLayer, new TextureCache());
+    layer.set([{ ...tallObject(), frames: [OFFSET_FRAME], scale: SCALE, lift: LIFT }]);
+    layer.update(WIDE, 0);
+
+    const [body, shadow] = tallSprites(spriteLayer);
+    expect(body?.x).toBe(ANCHOR.x + OFFSET_FRAME.offsetX * SCALE);
+    expect(body?.y).toBe(ANCHOR.y - LIFT + OFFSET_FRAME.offsetY * SCALE);
+    expect(shadow?.x).toBe(ANCHOR.x + SHADOW_0.offsetX * SCALE);
+    expect(shadow?.y).toBe(ANCHOR.y - LIFT + SHADOW_0.offsetY * SCALE);
+    // The lift is a draw offset only, so a tree baked up a hill still occludes by its map row rather
+    // than jumping in front of the settler standing beside it.
+    expect(body?.zIndex).toBe(depthKey(ANCHOR.x, ANCHOR.y));
+  });
 });

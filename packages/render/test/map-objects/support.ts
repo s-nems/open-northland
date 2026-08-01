@@ -37,8 +37,11 @@ export function decorUVs(layer: MapObjectLayer): Float32Array {
   return decorBatchGeometry(layer).uvs;
 }
 
-/** One tall object's pooled sprite as the specs read it: its fog tint, bound pose, sort key, visibility. */
+/** One tall object's pooled sprite as the specs read it: drawn position, fog tint, bound pose, sort key
+ *  and visibility. */
 export interface TallSprite {
+  readonly x: number;
+  readonly y: number;
   readonly tint: number;
   readonly frameX: number;
   readonly zIndex: number;
@@ -48,7 +51,21 @@ export interface TallSprite {
 /** The tall sprites attached to the layer's sprite container, in child order (empty while hidden). */
 export function tallSprites(spriteLayer: Container): TallSprite[] {
   return spriteLayer.children.map((c) => {
-    const spr = c as unknown as { tint: number; texture: Texture; zIndex: number; visible: boolean };
-    return { tint: spr.tint, frameX: spr.texture.frame.x, zIndex: spr.zIndex, visible: spr.visible };
+    const spr = c as unknown as {
+      x: number;
+      y: number;
+      tint: number;
+      texture: Texture;
+      zIndex: number;
+      visible: boolean;
+    };
+    return {
+      x: spr.x,
+      y: spr.y,
+      tint: spr.tint,
+      frameX: spr.texture.frame.x,
+      zIndex: spr.zIndex,
+      visible: spr.visible,
+    };
   });
 }
