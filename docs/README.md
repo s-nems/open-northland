@@ -15,6 +15,7 @@ Other references:
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, and trademark rules
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
 - [`formats/`](formats/): notes about decoded file formats
+- [`design/main-menu/`](design/main-menu/README.md): accepted design for the new menu flow
 
 ## Work tracker
 
