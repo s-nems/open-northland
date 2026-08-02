@@ -139,15 +139,16 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('still ships bridges in the edit group the collision and draw joins key on', () => {
-    // A pipeline rename or a dropped `editGroups` lane would silently re-block every deck and sever
-    // river crossings again, with the synthetic fixtures still green.
+  it('still ships bridges in the edit group the draw join keys on', () => {
+    // `deckFarRow` sorts a deck at its far row so settlers crossing it are not buried; a pipeline
+    // rename or a dropped `editGroups` lane would silently paint every span over its traffic, with
+    // the synthetic fixtures still green.
     const ir = rawIrUnderTest() as {
       landscapeGfx?: readonly { editGroups?: readonly string[]; walkBlockAreas?: readonly unknown[] }[];
     };
     const bridges = (ir.landscapeGfx ?? []).filter((g) => g.editGroups?.includes(BRIDGE_EDIT_GROUP));
     expect(bridges.length, `no landscapeGfx row in '${BRIDGE_EDIT_GROUP}'`).toBeGreaterThan(0);
-    // Vacuity guard: the rule only does anything for a bridge that would otherwise stamp a body.
+    // Vacuity guard: the sort row is read off the walk area, so a deck with none is not a deck.
     expect(bridges.some((g) => (g.walkBlockAreas?.length ?? 0) > 0)).toBe(true);
   });
 

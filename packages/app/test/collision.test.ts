@@ -19,8 +19,8 @@ import { buildCollisionTerrain } from '../src/content/collision.js';
  * lands in its semantic terrain class.
  */
 
-/** A 6×4-cell map (a 12×8 half-cell collision grid): meadow ground except one water, one mountain,
- *  one snow and one sand cell, plus one placed tree. */
+/** A 6×4-cell map (a 12×8 half-cell collision grid): meadow ground except one all-water, one
+ *  half-water, one mountain, one snow and one sand cell, plus one placed tree. */
 function fixtureMap() {
   const W = 6;
   const H = 4;
@@ -31,7 +31,9 @@ function fixtureMap() {
   const sand = 4;
   const a = new Array<number>(W * H).fill(meadow);
   const b = new Array<number>(W * H).fill(meadow);
-  a[1 * W + 1] = water; // only triangle A is water — the whole cell must still block
+  a[1 * W + 1] = water; // both triangles water: the cell is impassable
+  b[1 * W + 1] = water;
+  a[1 * W + 2] = water; // half-water shoreline: triangle B is still land
   b[2 * W + 4] = mountain;
   a[0 * W + 4] = snow;
   a[3 * W + 1] = sand; // walk+build but no biocanplanton — the whole cell must reject the plough
@@ -85,16 +87,19 @@ const IR = {
   ],
 } satisfies CollisionIrView;
 
-/** The bridge fixture's placement node: the west end of the authored strip. */
-const BRIDGE_HX = 4;
-/** The strip's upper node row (cell row 1's 2×2 block spans node rows 2..3). */
-const STRIP_NODE_Y = 2;
+/** The bridge fixture's placement column: the west abutment. */
+const BRIDGE_HX = 3;
+/** The corridor's node row, and the placement's own (cell row 1's 2×2 block spans node rows 2..3).
+ *  EVEN, so the parapet rows stamp verbatim — the parity shift has its own test above. */
+const CORRIDOR_NODE_Y = 2;
+/** The south parapet's node row: the bridge's walk body, one row off the corridor. */
+const PARAPET_NODE_Y = 3;
 
 /**
- * `specjalna_mosty_na_rzece` in miniature: two land banks split by a water column, crossed by the
- * one land cell the mapmaker painted under the bridge sprite. The walk area is deliberately solid
- * over that strip, the worst case for the exception; the real records are hollow parapet outlines
- * whose corridor the shoreline ticket restores.
+ * `specjalna_mosty_na_rzece` in miniature: two land banks split by a water column, crossed at cell
+ * row 1 by the half-water cell the mapmaker painted under the bridge sprite. The bridge's walk area
+ * is a parapet outline like the real records — two rails with the crossing corridor open between
+ * them — so the crossing survives only when a half-water cell stays walkable.
  */
 function bridgeMap() {
   const W = 5;
@@ -107,12 +112,13 @@ function bridgeMap() {
     a[row * W + 2] = water;
     b[row * W + 2] = water;
   }
+  a[1 * W + 2] = water; // the crossing cell: water on triangle A, land on B
   return parseTerrainMap({
     width: W,
     height: H,
     typeIds: new Array(W * H).fill(1),
     ground: { patterns: ['meadow 01', 'water 01'], a, b },
-    objects: { types: ['bridge stone'], placements: [BRIDGE_HX, STRIP_NODE_Y, 0], levels: [1] },
+    objects: { types: ['bridge stone'], placements: [BRIDGE_HX, CORRIDOR_NODE_Y, 0], levels: [1] },
   });
 }
 
@@ -123,17 +129,16 @@ const BRIDGE_IR = {
     {
       editName: 'bridge stone',
       editGroups: ['misc_bridges'],
-      // A walk area inside a build area that reaches one node row past each end, as the real
-      // records nest them.
+      // The two parapet rails (dy ±1), leaving the anchor's own row open — the hollow outline the
+      // real `LogicWalkBlockArea` records draw. The build area covers the corridor as well.
       walkBlockAreas: [
-        [1, 0, 0, 2],
-        [1, 0, 1, 2],
+        [1, 0, -1, 4],
+        [1, 0, 1, 4],
       ],
       buildBlockAreas: [
-        [1, 0, -1, 2],
-        [1, 0, 0, 2],
-        [1, 0, 1, 2],
-        [1, 0, 2, 2],
+        [1, 0, -1, 4],
+        [1, 0, 0, 4],
+        [1, 0, 1, 4],
       ],
     },
   ],
@@ -165,10 +170,17 @@ describe('buildCollisionTerrain', () => {
     expect(at(11, 7)).toBe(TERRAIN_OPEN); // cell (5,3)'s far corner node
   });
 
-  it('blocks a cell when EITHER triangle is a no-walk ground class (water)', () => {
+  it('blocks a cell whose BOTH triangles are a no-walk ground class (water)', () => {
     // Water cell (1,1) stamps its whole 2×2 node block (2..3, 2..3).
-    expect(at(2, 2)).toBe(TERRAIN_IMPASSABLE); // water on triangle A only
+    expect(at(2, 2)).toBe(TERRAIN_IMPASSABLE);
     expect(at(3, 3)).toBe(TERRAIN_IMPASSABLE);
+  });
+
+  it('keeps a half-water shoreline cell walkable but unbuildable', () => {
+    // Cell (2,1) is water on triangle A, meadow on B: the original walks it (a walkable triangle
+    // wins its node), and the build refusal stays conservative.
+    expect(at(4, 2)).toBe(TERRAIN_MARGIN);
+    expect(at(5, 3)).toBe(TERRAIN_MARGIN);
   });
 
   it('classes walkable-but-unbuildable ground (mountain, snow) as margin, not impassable', () => {
@@ -208,36 +220,30 @@ describe('buildCollisionTerrain', () => {
     const { trianglePatternTypes: _dropped, ...withoutLane } = IR;
     const g = buildCollisionTerrain(fixtureMap(), withoutLane);
     const gAt = (x: number, y: number): number => g.typeIds[y * g.width + x] as number;
-    expect(gAt(2, 2)).toBe(TERRAIN_IMPASSABLE); // water
+    expect(gAt(2, 2)).toBe(TERRAIN_IMPASSABLE); // water on both triangles
+    expect(gAt(4, 2)).toBe(TERRAIN_MARGIN); // half-water — still walkable under the fallback flags
     expect(gAt(8, 4)).toBe(TERRAIN_MARGIN); // mountain — the fallback pins the same real flags
     expect(gAt(8, 0)).toBe(TERRAIN_MARGIN); // snow
     expect(gAt(2, 6)).toBe(TERRAIN_BARREN); // sand — walk+build in the fallback too, still no plough
   });
 
-  it('keeps a bridge off the walk grid so its authored ground strip still crosses the water', () => {
+  it('routes a crossing through the bridge corridor, not over its parapet', () => {
     const g = buildCollisionTerrain(bridgeMap(), BRIDGE_IR);
     const graph = buildTerrainGraph(collisionContent(), g);
     const componentAt = (x: number, y: number): number => graph.componentOf(graph.nodeAt(x, y));
-    // The strip's own nodes stay walkable, and the deck still refuses a building.
-    expect(g.typeIds[STRIP_NODE_Y * g.width + BRIDGE_HX]).toBe(TERRAIN_MARGIN);
-    // West bank and east bank are one component: the bridge does not sever the strip. Guarding the
-    // label against -1 first, or two unwalkable banks would satisfy the equality vacuously.
-    const westBank = componentAt(0, STRIP_NODE_Y);
-    expect(westBank).toBeGreaterThanOrEqual(0);
-    expect(componentAt(g.width - 1, STRIP_NODE_Y)).toBe(westBank);
+    const nodeAt = (x: number, y: number): number => g.typeIds[y * g.width + x] as number;
 
-    // Same map, same block areas, but the object is not in the bridge edit group: it stamps a body
-    // across the strip and the two banks fall apart.
-    const asPlainObject = {
-      ...BRIDGE_IR,
-      landscapeGfx: BRIDGE_IR.landscapeGfx.map((row) => ({ ...row, editGroups: ['misc_decor'] })),
-    };
-    const split = buildCollisionTerrain(bridgeMap(), asPlainObject);
-    const splitGraph = buildTerrainGraph(collisionContent(), split);
-    expect(split.typeIds[STRIP_NODE_Y * split.width + BRIDGE_HX]).toBe(TERRAIN_BLOCKED);
-    expect(splitGraph.componentOf(splitGraph.nodeAt(0, STRIP_NODE_Y))).not.toBe(
-      splitGraph.componentOf(splitGraph.nodeAt(split.width - 1, STRIP_NODE_Y)),
-    );
+    // The parapet is a walk body like any other object's: settlers do not stand on the rail.
+    expect(nodeAt(BRIDGE_HX, PARAPET_NODE_Y)).toBe(TERRAIN_BLOCKED);
+    // The corridor between the rails walks and refuses a building, over the half-water cell too.
+    expect(nodeAt(BRIDGE_HX, CORRIDOR_NODE_Y)).toBe(TERRAIN_MARGIN);
+    expect(nodeAt(BRIDGE_HX + 1, CORRIDOR_NODE_Y)).toBe(TERRAIN_MARGIN);
+
+    // West bank and east bank are one component. Guarding the label against -1 first, or two
+    // unwalkable banks would satisfy the equality vacuously.
+    const westBank = componentAt(0, CORRIDOR_NODE_Y);
+    expect(westBank).toBeGreaterThanOrEqual(0);
+    expect(componentAt(g.width - 1, CORRIDOR_NODE_Y)).toBe(westBank);
   });
 
   it('degrades to all-open when the map carries no ground/object lanes', () => {

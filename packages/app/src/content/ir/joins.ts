@@ -23,8 +23,8 @@ const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
 
 /** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). Matched
  *  case-insensitively: the lane ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`),
- *  so a mod's `EditGroups` spelling must not decide whether a deck is walkable. */
-export function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
+ *  so a mod's `EditGroups` spelling must not decide where a deck depth-sorts. */
+function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
   return record.editGroups?.some((g) => g.toLowerCase() === BRIDGE_GROUP_KEY) === true;
 }
 
@@ -36,8 +36,8 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
 
 /**
  * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
- * deck), `undefined` for every other record. Settlers cross a bridge's span (`content/collision.ts`
- * holds why), so sorting at the object's own row buries everyone on the far half of it.
+ * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the
+ * object's own row buries everyone on the far half of it.
  *
  * One sort row for a deck up to 13 half-rows long is an approximation: anything anchored between the
  * far row and the bridge's own row paints over the deck instead of under it. 36 static placements in
