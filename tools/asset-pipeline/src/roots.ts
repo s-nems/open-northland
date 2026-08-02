@@ -105,9 +105,13 @@ export async function findPathCaseInsensitiveInDirs(
  * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively
  * ({@link findPathCaseInsensitive}), or undefined in neither. The pipeline's one source-path rule;
  * every loose-file read resolves through this.
+ *
+ * Both separators split: callers pass either a `join`ed constant (platform `sep`) or an ini-borne
+ * reference already forward-slashed by `normalizeAssetPath`. Splitting on the platform `sep` alone
+ * left the other shape as one unsplittable segment, so every normalized reference missed on Windows.
  */
 export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
-  return findPathCaseInsensitiveInDirs(rootsInOrder(roots), rel.split(sep));
+  return findPathCaseInsensitiveInDirs(rootsInOrder(roots), rel.split(/[\\/]+/));
 }
 
 /** One root's walked files, before the cross-root union. */

@@ -120,6 +120,17 @@ describe('source roots', () => {
         join(game, 'Data', 'logic', 'goodtypes.ini'),
       );
     });
+
+    // Callers pass both shapes on every platform: `join`ed constants carry the platform separator,
+    // ini-borne references arrive forward-slashed from `normalizeAssetPath`. Splitting on the
+    // platform `sep` alone silently missed the other shape (armor rows degraded on Windows only).
+    it('splits either separator, whichever the caller built the reference with', async () => {
+      await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
+      const roots: SourceRoots = { game, mod: undefined };
+      const resolved = join(game, 'Data', 'logic', 'goodtypes.ini');
+      expect(await resolveSourceFile(roots, 'data/logic/goodtypes.ini')).toBe(resolved);
+      expect(await resolveSourceFile(roots, 'data\\logic\\goodtypes.ini')).toBe(resolved);
+    });
   });
 
   describe('collectSourceFilesNamed', () => {
