@@ -174,8 +174,8 @@ export function nearestHarvestableFor(
     return { cell, payload: null };
   });
   // No same-side onSide arg: a standing Resource (tree/deposit/clay) is never Owner-stamped - forests are
-  // shared map features. Gating here would add an always-true owner lookup over the map-sized resource list
-  // per gatherer per tick (the collectable-pile scan below, over real drops, is the one that gates).
+  // shared map features, as are the ground drops they fall as. Gating here would add an always-true owner
+  // lookup over the map-sized resource list per gatherer per tick.
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
 

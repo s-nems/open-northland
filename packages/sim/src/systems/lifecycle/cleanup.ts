@@ -4,6 +4,7 @@ import { type Fixed, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
+import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
@@ -56,7 +57,8 @@ export const cleanupSystem: System = (world, ctx) => {
  * `demolish` command share: release every settler bound to it ({@link unbindWorkersOf}, so a besieged
  * workplace doesn't strand its operators on a dead entity), announce it (`buildingDestroyed` - the
  * render/audio collapse cue, carrying the type and build progress so an unfinished site collapses as
- * scaffolding), and remove it. The event is emitted before the destroy so the entity's
+ * scaffolding), remove it, and heap whatever was inside on the ground where it stood
+ * ({@link scatterSpilledStock}). The event is emitted before the destroy so the entity's
  * `Owner`/`Position`/`Building` are still readable.
  */
 export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void {
@@ -72,7 +74,9 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   unbindWorkersOf(world, e);
+  const spill = spilledStockOf(world, e);
   world.destroy(e);
+  scatterSpilledStock(world, ctx, spill);
 }
 
 /** Announce a combatant's death (`settlerDied`, the render/audio cue) and remove it from the world. The event

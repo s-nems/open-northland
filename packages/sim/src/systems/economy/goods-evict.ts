@@ -74,12 +74,16 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
 }
 
 /**
- * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked, not a
- * door cell (a designated stand), and holding no positioned stockpile yet - one pile per tile, so a
- * different-good heap is never buried under the landing. It may traverse the evicting building's own
- * `body` (the pile is displaced across its plot, not carried) but never any other blocked cell - the
- * settler eviction's `nearestFreeCellOutside` rule, minus the settler-occupancy tests (a pile and a
- * settler share a tile freely). Null when nothing free lies within the cap.
+ * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked and not a
+ * door cell (a designated stand). It may traverse the evicting building's own `body` (the pile is
+ * displaced across its plot, not carried) but never any other blocked cell - the settler eviction's
+ * `nearestFreeCellOutside` rule, minus the settler-occupancy tests (a pile and a settler share a tile
+ * freely). Null when nothing free lies within the cap.
+ *
+ * A tile with no pile yet is preferred, so a different-good heap is never buried under the landing; when
+ * the cap runs out before one turns up - building on the ruins of a razed store, whose contents carpet
+ * the neighbourhood - the second pass lands on an occupied tile instead. Two heaps on one tile is a
+ * supported state (each stays pickable), and it beats sealing this one inside the new walls.
  */
 function nearestPileLanding(
   world: World,
@@ -89,12 +93,15 @@ function nearestPileLanding(
   blocked: BlockOverlay,
   doors: ReadonlySet<NodeId>,
 ): NodeId | null {
-  return ringSearch(terrain, from, STAND_SEARCH_CAP, {
-    traverse: (n) => !blocked.has(n) || body.has(n),
+  const traverse = (n: NodeId): boolean => !blocked.has(n) || body.has(n);
+  const standable = (n: NodeId): boolean => !blocked.has(n) && !doors.has(n);
+  const vacant = ringSearch(terrain, from, STAND_SEARCH_CAP, {
+    traverse,
     accept: (n) => {
-      if (blocked.has(n) || doors.has(n)) return false;
+      if (!standable(n)) return false;
       const { x, y } = terrain.coordsOf(n);
       return stockpilesAtNode(world, x, y).length === 0;
     },
   });
+  return vacant ?? ringSearch(terrain, from, STAND_SEARCH_CAP, { traverse, accept: standable });
 }

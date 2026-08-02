@@ -639,6 +639,9 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
 describe('footprint displacement - loose goods never end up buried under walls', () => {
   const WOOD_GOOD = 1; // testContent wood
   const STONE_GOOD = 4; // testContent stone
+  /** Node (0,0)..(N,N) heaped in the carpet case: far enough past the anchor that the free ground
+   *  beyond it lies outside the landing search's `STAND_SEARCH_CAP` visit budget. */
+  const CARPET_TO = 20;
 
   /** Every loose pile (a positioned Stockpile that is not a building store), ascending id. */
   function loosePiles(sim: Simulation): Entity[] {
@@ -693,6 +696,23 @@ describe('footprint displacement - loose goods never end up buried under walls',
     expect(sim.world.get(trunk, GroundDrop).goodType).toBe(WOOD_GOOD);
     expect(sim.world.get(heap, Stockpile).amounts.get(STONE_GOOD)).toBe(2);
     expect(nodeOf(sim, trunk)).not.toEqual(nodeOf(sim, heap));
+  });
+
+  it('shares a tile rather than sealing a pile in when no free tile is in reach', () => {
+    const sim = mappedSim();
+    // Building on the ruins of a razed store: its contents carpet the neighbourhood, so the search for
+    // an EMPTY landing tile runs out of visits (more heaps here than `STAND_SEARCH_CAP` nodes).
+    for (let y = 0; y <= CARPET_TO; y++) {
+      for (let x = 0; x <= CARPET_TO; x++) pileAtNode(sim, x, y, WOOD_GOOD, 1);
+    }
+    const carpet = loosePiles(sim).length;
+
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+
+    const piles = loosePiles(sim);
+    expect(piles).toHaveLength(carpet); // every heap survived - none walled in, none dropped
+    for (const pile of piles) expect(onBody(sim, pile)).toBe(false);
   });
 
   it('spares a heap on the door cell - the door stays a reachable stand', () => {
