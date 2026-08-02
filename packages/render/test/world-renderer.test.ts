@@ -25,7 +25,6 @@ const SLOTS = [
   'sprites',
   'blood',
   'damageSmoke',
-  'doorBadges',
   'constructionSigns',
   'bubbles',
   'hearts',

@@ -251,8 +251,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
       else {
         // A sign-chain row consumes the right button as a plain select (no action ring, no order):
-        // the chain hangs over the door, so without this mask the click reads as "PPM on the settler
-        // idling below" (ring pops up) or falls through the floating art into a move order.
+        // the chain is a deliberate click target over a crowded door, so without this mask the click
+        // reads as "PPM on the settler idling below" (ring pops up) or falls through into a move order.
         const w = toWorld(e.clientX, e.clientY);
         const badgeSettler = pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation);
         if (badgeSettler !== null) setSelection([badgeSettler], false);
@@ -278,10 +278,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      // A door-badge sign row selects the settler it stands for - tested first, because the chain
-      // floats over the house body and the building's own pixel hit would swallow it. Then a
-      // settler/building under the cursor; failing that, a gatherer's flag selects its gatherer,
-      // then an own signpost (direct click only - the marquee never grabs a post).
+      // A door-badge sign row selects the settler it stands for - tested first, because it is a small
+      // target on a busy door that the building's own pixel hit (and now any unit drawn over the chain)
+      // would swallow. Then a settler/building under the cursor; failing that, a gatherer's flag selects
+      // its gatherer, then an own signpost (direct click only - the marquee never grabs a post).
       const hit =
         pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation) ??
         pickTopAt(unitTargets.owned(), w.x, w.y) ??

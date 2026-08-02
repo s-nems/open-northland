@@ -1,3 +1,4 @@
+import { ONE, tileToScreen } from '@open-northland/render';
 import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
@@ -9,8 +10,19 @@ import { building, type Ent, resident, settler, snapshotOf } from './support/sna
  * {@link JobAssignment} binding, so a badge row appears for every worker bound to a building
  * (auto-assigned or player-assigned), split by worker role (craftsman / carrier / gatherer via
  * `roleOf`). The projection owns the bottom-to-top stack order and each row's click-pick settler id;
- * the anchor is the type's `GfxFlagPoint` when present, else the worker-icon node beside the door.
+ * the stack stands at the type's `GfxFlagPoint` when present, else the worker-icon node beside the door,
+ * and reaches the layer as the BUILDING's position plus a screen-px offset either way (the layer keys
+ * the chain's depth off that position, so it must be the house, not the post).
  */
+
+/** The screen-px step from a building's own position to a half-cell node - how the projection has to
+ *  express a derived (non-flag-point) anchor. */
+function pxStep(pos: { x: number; y: number }, node: { hx: number; hy: number }): { x: number; y: number } {
+  const to = positionOfNode(node.hx, node.hy);
+  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
+  const at = tileToScreen(to.x / ONE, to.y / ONE);
+  return { x: at.x - from.x, y: at.y - from.y };
+}
 
 const CARRIER = 26; // a carrier job id
 const CRAFTSMAN = 1008; // a rebased craftsman job id
@@ -44,13 +56,15 @@ describe('computeDoorBadges', () => {
       { role: 'gatherer', settler: 5 },
       { role: 'carrier', settler: 4 },
     ]);
-    // Anchored on the worker-icon node = anchor + the type's door offset + the icon offset beside it.
-    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
+    // Anchored on the building, stepping out to the worker-icon node = door offset + the icon offset.
+    const pos = { x: fx.fromInt(4), y: fx.fromInt(4) };
+    const anchor = nodeOfPosition(pos.x, pos.y);
     const icon = workerIconOffset(undefined);
-    const iconPos = positionOfNode(anchor.hx + 0 + icon.dx, anchor.hy + 2 + icon.dy);
-    expect(badge?.x).toBe(iconPos.x);
-    expect(badge?.y).toBe(iconPos.y);
-    expect(badge?.dx).toBeUndefined(); // no flag point → node anchor, no px offset
+    const step = pxStep(pos, { hx: anchor.hx + 0 + icon.dx, hy: anchor.hy + 2 + icon.dy });
+    expect(badge?.x).toBe(pos.x);
+    expect(badge?.y).toBe(pos.y);
+    expect(badge?.dx).toBe(step.x);
+    expect(badge?.dy).toBe(step.y);
   });
 
   it('anchors at the building position + GfxFlagPoint px offset when the type carries one', () => {
@@ -81,11 +95,27 @@ describe('computeDoorBadges', () => {
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
     const badge = computeDoorBadges(snap, new Map(), roleOf)[0]; // type 7 absent → no door offset
-    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
+    const pos = { x: fx.fromInt(4), y: fx.fromInt(4) };
+    const anchor = nodeOfPosition(pos.x, pos.y);
     const icon = workerIconOffset(undefined);
-    const iconPos = positionOfNode(anchor.hx + icon.dx, anchor.hy + icon.dy);
-    expect(badge?.x).toBe(iconPos.x);
-    expect(badge?.y).toBe(iconPos.y);
+    const step = pxStep(pos, { hx: anchor.hx + icon.dx, hy: anchor.hy + icon.dy });
+    expect(badge?.x).toBe(pos.x);
+    expect(badge?.y).toBe(pos.y);
+    expect(badge?.dx).toBe(step.x);
+    expect(badge?.dy).toBe(step.y);
+  });
+
+  it('keeps a back-door type anchored on its building, so the chain cannot sort into its own house', () => {
+    // The wonders are the real no-flag-point types, and two of them (mausolos, zeus statue) put the door
+    // NORTH of the anchor. Carrying that as the badge position would key the chain a row behind the
+    // house and let the building body swallow its own signs.
+    const types = new Map<number, BuildingDoorInfo>([[7, { footprint: { door: { dx: 1, dy: -3 } } }]]);
+    const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    expect(badge?.x).toBe(fx.fromInt(4)); // the house, not the node behind it
+    expect(badge?.y).toBe(fx.fromInt(4));
+    expect(badge?.dy).toBeLessThan(0); // the post is drawn behind the anchor, by px offset alone
   });
 
   it('honours a per-building worker-icon override (the HQ stack sits a node further out)', () => {
@@ -95,12 +125,13 @@ describe('computeDoorBadges', () => {
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
     const badge = computeDoorBadges(snap, types, roleOf)[0];
-    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
+    const pos = { x: fx.fromInt(4), y: fx.fromInt(4) };
+    const anchor = nodeOfPosition(pos.x, pos.y);
     // The literal committed override (two nodes right of the door), NOT read back through the table -
     // deleting the table entry must fail this test, not silently fall back to the default.
-    const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
-    expect(badge?.x).toBe(iconPos.x);
-    expect(badge?.y).toBe(iconPos.y);
+    const step = pxStep(pos, { hx: anchor.hx + 0 + 2, hy: anchor.hy + 2 + 0 });
+    expect(badge?.dx).toBe(step.x);
+    expect(badge?.dy).toBe(step.y);
   });
 
   it("puts a home's family banner at the stack base, below its worker rows", () => {

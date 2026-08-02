@@ -207,9 +207,9 @@ export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number):
  * badge's stack anchor exactly as the badge layer draws it (`tileToScreen` + the `GfxFlagPoint` px
  * offset - the terrain lift at the anchor tile) and maps the click into a row via the shared chain
  * layout (`signRowAt`), so a click lands on the row the player sees. Rows without a settler (an empty
- * home banner edge case) don't hit; among overlapping stacks the larger anchor `y` wins - the iso
- * frontmost convention (the drawn stacks are pooled in rebuild order, not y-sorted, so on a rare
- * pixel-exact overlap the pixels may disagree).
+ * home banner edge case) don't hit; among overlapping stacks the one whose BUILDING projects further
+ * down the screen wins, which is the key the layer sorts the drawn stacks by - tiebreaking on the post
+ * instead would hand the click to a chain the front house's chain paints over.
  */
 export function pickDoorBadgeRow(
   badges: readonly DoorBadge[],
@@ -230,9 +230,9 @@ export function pickDoorBadgeRow(
     if (row === null) continue;
     const settler = badge.rows[row]?.settler;
     if (settler === undefined) continue;
-    if (ay > bestY) {
+    if (p.y > bestY) {
       best = settler;
-      bestY = ay;
+      bestY = p.y;
     }
   }
   return best;
