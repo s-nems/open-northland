@@ -40,3 +40,21 @@ export function moveFocus(items: readonly MainNavItem[], from: number, delta: 1 
   }
   return from;
 }
+
+/** One lap of the background camera's drift loop. Period and radii are a design judgment
+ *  (approximation): "barely noticeable" motion at the 1920x1080 design size. */
+export const CAMERA_DRIFT_PERIOD_MS = 120_000;
+export const CAMERA_DRIFT_RADIUS_X_PX = 110;
+export const CAMERA_DRIFT_RADIUS_Y_PX = 40;
+
+/**
+ * The menu background's slow camera drift: a flat lissajous loop (screen px) around the start
+ * framing. Starts and ends every lap at (0, 0), so the scene fades in exactly on the authored frame.
+ */
+export function cameraDrift(elapsedMs: number): { readonly dx: number; readonly dy: number } {
+  const angle = ((elapsedMs % CAMERA_DRIFT_PERIOD_MS) / CAMERA_DRIFT_PERIOD_MS) * 2 * Math.PI;
+  return {
+    dx: CAMERA_DRIFT_RADIUS_X_PX * Math.sin(angle),
+    dy: CAMERA_DRIFT_RADIUS_Y_PX * Math.sin(2 * angle),
+  };
+}
