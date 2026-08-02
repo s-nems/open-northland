@@ -35,7 +35,7 @@ const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
 };
 
 /** The entity's blocked nodes under `run`'s visitor - the shared channel/bounds filter of every capturer. */
-function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void): NodeId[] {
+function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void): BlockedCells {
   const cells: NodeId[] = [];
   run((x, y, channel) => {
     if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) cells.push(terrain.nodeAt(x, y));
@@ -46,7 +46,7 @@ function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void)
 /** One journal-replayed blocker store: its component and per-entity capturer. */
 export interface StaticBlockerSource {
   readonly component: Component<unknown>;
-  readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => NodeId[];
+  readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => BlockedCells;
 }
 
 export const RESOURCE_SOURCE: StaticBlockerSource = {
@@ -67,13 +67,13 @@ export const STATIC_SOURCES: readonly StaticBlockerSource[] = [
   },
 ];
 
-export function markerCells(world: World, terrain: TerrainGraph, e: Entity): NodeId[] {
+export function markerCells(world: World, terrain: TerrainGraph, e: Entity): BlockedCells {
   return captureCells(terrain, (v) => markerBlockerCells(world, e, v));
 }
 
 /** The whole blocked set derived from live state in one pass - the reference the incremental state is
- *  proved against. The marker argument is the opt-in that walks the flag store at all; none is excused. */
-export function allBlockedCells(
+ *  proved against, so it must scan the same channels, markers included. */
+export function rederiveBlockedCells(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
@@ -85,7 +85,7 @@ export function allBlockedCells(
     (x, y, channel) => {
       if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
     },
-    { ignoreFlag: undefined },
+    'with-markers',
   );
   return blocked;
 }

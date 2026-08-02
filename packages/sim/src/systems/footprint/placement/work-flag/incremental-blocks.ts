@@ -5,10 +5,10 @@ import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
 import {
-  allBlockedCells,
   type BlockedCells,
   markerCells,
   RESOURCE_SOURCE,
+  rederiveBlockedCells,
   STATIC_SOURCES,
   type StaticBlockerSource,
 } from './blocker-cells.js';
@@ -22,7 +22,7 @@ import { workFlagMoveCount } from './flag-moves.js';
  * against the blocker stores' membership journals, so a burst that plants N flags/signposts costs
  * N × O(own footprint) instead of the N × O(all blockers) a rebuild-on-bump memo pays. It feeds command
  * gates and sim decisions (`canPlaceWorkFlag`, the auto-flag plant), so the registered `verifyCaches`
- * verifier proves the held set byte-identical to a full {@link allBlockedCells} re-derive.
+ * verifier proves the held set byte-identical to a full {@link rederiveBlockedCells}.
  */
 interface IncrementalBlocks {
   readonly content: ContentSet;
@@ -42,16 +42,16 @@ interface IncrementalBlocks {
   /** Node → standing contribution count; `blocked` holds exactly the keys with a positive count. */
   readonly counts: Map<NodeId, number>;
   readonly blocked: Set<NodeId>;
-  readonly records: Map<Component<unknown>, Map<Entity, BlockedCells>>;
+  readonly records: Map<StaticBlockerSource, Map<Entity, BlockedCells>>;
   readonly flagCells: Map<Entity, BlockedCells>;
 }
 const blocksMemo = new WeakMap<World, IncrementalBlocks>();
 
 function recordsOf(state: IncrementalBlocks, source: StaticBlockerSource): Map<Entity, BlockedCells> {
-  let held = state.records.get(source.component);
+  let held = state.records.get(source);
   if (held === undefined) {
     held = new Map();
-    state.records.set(source.component, held);
+    state.records.set(source, held);
   }
   return held;
 }
@@ -176,7 +176,7 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
   return fresh;
 }
 
-/** The nodes a work flag may NOT occupy - the {@link allBlockedCells} rule, served off the incremental
+/** The nodes a work flag may NOT occupy - the {@link rederiveBlockedCells} rule, served off the incremental
  *  state so reads share one refcounted set that changes cost O(own footprint). The returned view reads
  *  that live state rather than a copy of it: read it fresh within a decision, never hold it across sim
  *  mutations. The `ignoreFlag` variant (a flag re-placed over its own cell) withholds that flag's
@@ -216,7 +216,7 @@ function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGra
   const state = blocksMemo.get(world);
   if (state === undefined || state.content !== content || state.terrain !== terrain) return [];
   if (!isFresh(world, state)) return []; // a pending catch-up - the next read applies it
-  const fresh = allBlockedCells(world, content, terrain);
+  const fresh = rederiveBlockedCells(world, content, terrain);
   if (sameCells(state.blocked, fresh)) return [];
   return [
     `workFlagPlacementBlocks holds ${state.blocked.size} nodes but re-derived ${fresh.size} - an incremental delta missed a blocker change`,
