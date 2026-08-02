@@ -10,11 +10,13 @@ original HAI internals, so this is authored content, not pipeline output.
 ## Scope
 
 Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its affinities
-and ground rule, `upgrade`, `collector`, and `towerCoverage`. Resolve the selected profile once per AI
-seat and keep the current table as the fallback profile. Workforce policy remains separate in
+and ground rule, `upgrade`, `collector`, and `towerCoverage`. Move the current authored table into the
+committed fallback catalog, resolve the selected profile once per AI seat, and leave no content-id table
+in sim source. Workforce policy remains separate in
 [ai-workforce-content-profile](ai-workforce-content-profile.md).
 
 ## Verify
 
-- Schema round-trips through `parseContentSet`; a fixture profile drives the executor in the
-  existing module tests; `npm test`, `npm run check`, `npm run build`.
+- Schema round-trips through `parseContentSet`; a fixture profile drives the executor in the existing
+  module tests; fallback content preserves the current command sequence and goldens; `npm test`,
+  `npm run check`, `npm run build`.
