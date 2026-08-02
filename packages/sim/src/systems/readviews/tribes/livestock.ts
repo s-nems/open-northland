@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import type { ContentSet, Recipe } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
 // The husbandry read views over the species⇄good join (`content-index/livestock.ts`): a fed animal is
@@ -13,6 +13,12 @@ export function livestockGoodOfTribe(content: ContentSet, tribeType: number): nu
 /** The livestock species whose fed animal `goodType` stocks, or null for an ordinary good. */
 export function livestockTribeOfGood(content: ContentSet, goodType: number): number | null {
   return contentIndex(content).livestockTribeByGood.get(goodType) ?? null;
+}
+
+/** The livestock species `recipe` feeds, or null for an ordinary (non-feed) recipe. */
+export function livestockTribeFedBy(content: ContentSet, recipe: Recipe): number | null {
+  const product = recipe.outputs[0]?.goodType;
+  return product === undefined ? null : livestockTribeOfGood(content, product);
 }
 
 /** Whether building type `buildingType` carries a feed recipe - the workplace claimed livestock is
