@@ -160,6 +160,11 @@ export const enContent = {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
     },
+    'attack-move': {
+      title: 'Attack-move',
+      summary:
+        'A warband ordered across the map cuts down the picket blocking its path, then walks on to the ordered spot.',
+    },
     'goods-catalog': {
       title: 'Goods catalog',
       summary: 'Every storable good and its warehouse slot in one compact reference scene.',

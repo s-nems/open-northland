@@ -30,7 +30,12 @@ export interface UnitOrderDeps {
 export interface UnitOrderController {
   issueRightClick(event: MouseEvent): void;
   issueSetWorkFlag(event: MouseEvent): void;
+  /** Send the selection to the clicked spot fighting everything on the way (the armed attack-move click). */
+  issueAttackMove(event: MouseEvent): void;
 }
+
+/** The two walk orders a formation click can issue: go there, or fight your way there. */
+type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
 
 /** Route right-click RTS intent into the one-way sim command seam. */
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
@@ -51,19 +56,14 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   // A carrying settler is ordered like any other - the sim makes it set its load down first, then walk
   // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
-  const issueMoveOrder = (event: MouseEvent, movers: readonly FormationUnit[]): void => {
+  const issueWalkOrder = (event: MouseEvent, movers: readonly FormationUnit[], kind: WalkOrderKind): void => {
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const world = deps.toWorld(event.clientX, event.clientY);
     const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
     const blocked = occupiedTiles(deps.selected);
     for (const order of assignFormation(movers, target, width, height, blocked)) {
-      deps.enqueue({
-        kind: 'moveUnit',
-        entity: order.ref as Entity,
-        x: order.tile.col,
-        y: order.tile.row,
-      });
+      deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
     }
   };
 
@@ -131,7 +131,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       return;
     }
-    issueMoveOrder(event, commanded);
+    issueWalkOrder(event, commanded, 'moveUnit');
+  };
+
+  const issueAttackMove = (event: MouseEvent): void => {
+    issueWalkOrder(event, deps.targets.ownedSettlersIn(deps.selected), 'attackMoveUnit');
   };
 
   const issueSetWorkFlag = (event: MouseEvent): void => {
@@ -150,5 +154,5 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
   };
 
-  return { issueRightClick, issueSetWorkFlag };
+  return { issueRightClick, issueSetWorkFlag, issueAttackMove };
 }

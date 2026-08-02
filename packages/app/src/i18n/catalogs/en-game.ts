@@ -164,7 +164,7 @@ export const enGame = {
     alert: 'Alert',
     query: 'Information',
     erectSignpost: 'Erect Signpost', // the original's scout action string (gui strings misclogic)
-    attack: 'Attack',
+    attack: 'Attack Position', // the original's own name for this order (gui strings misclogic 48)
     assign_house: 'Assign home',
     animal: 'Animal',
     vehicle: 'Vehicle',

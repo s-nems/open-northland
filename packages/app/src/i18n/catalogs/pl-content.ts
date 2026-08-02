@@ -161,6 +161,11 @@ export const plContent = {
       summary:
         'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
+    'attack-move': {
+      title: 'Atak w marszu',
+      summary:
+        'Drużyna wysłana przez mapę wycina posterunek stojący jej na drodze, po czym maszeruje dalej we wskazane miejsce.',
+    },
     'goods-catalog': {
       title: 'Katalog towarów',
       summary: 'Wszystkie towary i odpowiadające im miejsca w magazynie w jednej scenie.',

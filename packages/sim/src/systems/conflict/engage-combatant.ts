@@ -17,7 +17,13 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { withFightDamageBonus } from '../progression/index.js';
-import { isAnimalTribe, isHunterJob, MILITARY_MODE, weaponDamageVsMaterial } from '../readviews/index.js';
+import {
+  isAnimalTribe,
+  isHunterJob,
+  MILITARY_MODE,
+  type MilitaryMode,
+  weaponDamageVsMaterial,
+} from '../readviews/index.js';
 import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial/nodes.js';
 import { type ChaseTarget, chase, disengage, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
@@ -52,7 +58,11 @@ export function engageCombatant(
   e: Entity,
 ): void {
   if (busyOrFelled(world, e)) return;
-  if (suppressedByMoveOrder(world, e)) return;
+  // An attack-move march is the one player walk that does NOT bench combat: the unit fights its way there.
+  // While its aggression rests (`blockedUntil` - the last chase could not route) it walks as a plain move.
+  const march = world.tryGet(e, PlayerOrder)?.attackMove;
+  const marching = march !== undefined && ctx.tick >= march.blockedUntil;
+  if (suppressedByMoveOrder(world, e, marching)) return;
 
   const attacker = world.get(e, Settler);
   const owned = world.has(e, Owner);
@@ -60,7 +70,7 @@ export function engageCombatant(
   const stance: CombatantStance = {
     owned,
     ordered,
-    mode: owned ? stanceMode(world, ctx.content, e, attacker.jobType) : null,
+    mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
   };
 
   if (resolveFleeState(world, ctx, terrain, index, presence, e, attacker, stance)) return;
@@ -74,7 +84,7 @@ export function engageCombatant(
   }
 
   const travelling = isTravelling(world, e);
-  if (walksUnderAnotherDrive(world, e, travelling, ordered)) return;
+  if (walksUnderAnotherDrive(world, e, travelling, ordered || marching)) return;
   if (standsDownAsPassiveAnimal(world, ctx, e, stance, attacker)) {
     disengage(world, e);
     return;
@@ -131,9 +141,23 @@ function busyOrFelled(world: World, e: Entity): boolean {
 
 /** A live player move order (a {@link PlayerOrder} that is not an {@link AttackOrder}) suppresses ALL
  *  auto-behavior en route - engage and flee alike, the reposition is authoritative. It dies on arrival, so
- *  the unit's own stance takes over at the spot. */
-function suppressedByMoveOrder(world: World, e: Entity): boolean {
-  return world.has(e, PlayerOrder) && !world.has(e, AttackOrder);
+ *  the unit's own stance takes over at the spot. An attack-move `marching` order is the exception: the whole
+ *  point of that walk is to keep fighting along it. */
+function suppressedByMoveOrder(world: World, e: Entity, marching: boolean): boolean {
+  return !marching && world.has(e, PlayerOrder) && !world.has(e, AttackOrder);
+}
+
+/** The mode an OWNED combatant acts under: its own {@link Stance} ({@link stanceMode}) - or ATTACK for the
+ *  duration of an attack-move march, whatever its stance says. That override IS attack-move: a DEFEND guard
+ *  leaves its anchor, a scout stops ignoring, a civilian stops fleeing, all until the march ends. */
+function actingMode(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  jobType: number | null,
+  marching: boolean,
+): MilitaryMode {
+  return marching ? MILITARY_MODE.ATTACK : stanceMode(world, ctx.content, e, jobType);
 }
 
 /** Whether an explicit {@link AttackOrder} is in flight, dropping one that has outlived its target (dead, or
@@ -216,11 +240,12 @@ function huntSearchRests(
   return false;
 }
 
-/** A travelling unit that is neither engaged nor ordered walks under another drive (an economy walk, or a
- *  DEFEND unit heading back to its anchor) - don't yank it into combat. An engaged or ordered one IS
- *  re-evaluated, so a chaser stops and swings the instant it is in reach. */
-function walksUnderAnotherDrive(world: World, e: Entity, travelling: boolean, ordered: boolean): boolean {
-  return travelling && !world.has(e, Engagement) && !ordered;
+/** A travelling unit that is neither engaged nor commanded walks under another drive (an economy walk, or a
+ *  DEFEND unit heading back to its anchor) - don't yank it into combat. An engaged or commanded one (an
+ *  {@link AttackOrder} focus, an attack-move march) IS re-evaluated, so a chaser stops and swings the instant
+ *  it is in reach and a marching unit acquires without first standing still. */
+function walksUnderAnotherDrive(world: World, e: Entity, travelling: boolean, commanded: boolean): boolean {
+  return travelling && !world.has(e, Engagement) && !commanded;
 }
 
 /** An unowned animal that is neither aggressive nor still provoked runs no attack drive (an owned unit is

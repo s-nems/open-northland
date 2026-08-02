@@ -164,11 +164,41 @@ export const Age = defineComponent<{ ticks: number }>('Age');
  * hands full, so `moveUnit` starts the drop atomic and parks the destination node here, and the
  * {@link import('../systems/orders/index.js').playerOrderSystem} launches the walk (sets the {@link MoveGoal})
  * the tick the drop finishes, then clears the field. Absent on a move order issued to an empty-handed settler.
+ *
+ * `attackMove` marks the aggressive flavour ({@link AttackMoveMarch}) - the walk that fights its way there.
  */
-export const PlayerOrder = defineComponent<{ pendingGoal?: NodeId }>('PlayerOrder');
+export const PlayerOrder = defineComponent<{
+  pendingGoal?: NodeId;
+  attackMove?: AttackMoveMarch;
+}>('PlayerOrder');
+
+/**
+ * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a
+ * plain move order it does NOT suppress the combat auto-drives: the unit acts under `MILITARY_MODE.ATTACK`
+ * for the walk whatever its own stance says, so it engages what it meets and resumes the march once that
+ * fight ends. Approximated - the original's en-route behaviour is unobserved, so fighting along the way is
+ * the RTS reading of the order; the mode override applies to any ordered settler, where the original's own
+ * vocabulary scopes the modes to soldiers (`misclogic/38-40`), so an A-clicked civilian fights too.
+ *
+ * `goal` is the destination node the order was issued for, kept here because a fight overwrites the
+ * {@link MoveGoal} with chase destinations. `resume` records that a fight took the unit off its march, so
+ * {@link import('../systems/orders/index.js').playerOrderSystem} re-issues the goal exactly once when the
+ * unit next falls idle - a re-aimed goal (routing's occupied-node stand-in) makes "am I standing on `goal`?"
+ * an unusable arrival test. `blockedUntil` rests the aggression through that tick after a chase that could
+ * not route: the march then walks as a plain move order, so an enemy visible across a river cannot hold the
+ * unit in a per-tick failing search forever.
+ */
+export interface AttackMoveMarch {
+  readonly goal: NodeId;
+  resume: boolean;
+  blockedUntil: number;
+}
 
 /** The order kinds a running non-interruptible atomic parks instead of cancelling (see {@link DeferredOrder}). */
-export type DeferrableOrderCommand = Extract<Command, { kind: 'moveUnit' | 'setJob' | 'placeSignpost' }>;
+export type DeferrableOrderCommand = Extract<
+  Command,
+  { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' }
+>;
 
 /**
  * A gameplay order parked behind a non-interruptible atomic (a harvest swing, a half-eaten meal - see

@@ -112,12 +112,16 @@ describe('action-ring-layout - hit-test (a click → the right behaviour)', () =
     const openP = l.buttons.find((p) => p.button.kind === 'open-jobs');
     if (openP === undefined) throw new Error('missing open-jobs button');
     expect(hitTestActionRing(l, centre(openP).x, centre(openP).y)?.kind).toBe('open-jobs');
+    // The "attack" button (attack-move) is hit-testable from its very corner pixel.
+    const attackP = l.buttons.find((p) => p.button.kind === 'attack-move');
+    if (attackP === undefined) throw new Error('missing attack-move button');
+    expect(hitTestActionRing(l, attackP.rect.x + 1, attackP.rect.y + 1)?.kind).toBe('attack-move');
     // A default-menu placeholder hit returns that inert button (its id is preserved).
-    const attackP = l.buttons.find((p) => p.button.kind === 'placeholder' && p.button.id === 'attack');
-    if (attackP === undefined) throw new Error('missing attack placeholder');
-    const hit = hitTestActionRing(l, attackP.rect.x + 1, attackP.rect.y + 1);
+    const animalP = l.buttons.find((p) => p.button.kind === 'placeholder' && p.button.id === 'animal');
+    if (animalP === undefined) throw new Error('missing animal placeholder');
+    const hit = hitTestActionRing(l, centre(animalP).x, centre(animalP).y);
     expect(hit?.kind).toBe('placeholder');
-    expect(hit?.kind === 'placeholder' && hit.id).toBe('attack');
+    expect(hit?.kind === 'placeholder' && hit.id).toBe('animal');
     // Dead centre (over the settler, between the arms) hits nothing.
     expect(hitTestActionRing(l, 500, 400)).toBeNull();
     // An empty menu has no hittable button.

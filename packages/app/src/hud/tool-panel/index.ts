@@ -6,6 +6,7 @@ import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } fro
 import { loadUiFont } from '../../content/ui-font.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import { clientToCanvas } from '../geometry.js';
+import { isPlainHotkey } from '../hotkeys.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
@@ -110,13 +111,6 @@ export interface ToolPanelController {
 const FALLBACK_STRIP = 0x1c1810;
 const FALLBACK_BUTTON = 0x4a3f28;
 const FALLBACK_BUTTON_BORDER = 0x8a744a;
-
-/** True when a keydown originated in a text-entry element - a game hotkey must not fire while typing.
- *  (No text field exists in the app today; this guards the first one that appears.) */
-const isTypingTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLInputElement ||
-  target instanceof HTMLTextAreaElement ||
-  (target instanceof HTMLElement && target.isContentEditable);
 
 /**
  * Mount the tool panel onto the app stage. Async because it loads the (optional) decoded GUI art + font;
@@ -329,19 +323,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       if (placement.isActive()) placement.cancel();
       if (goodsDrop.isActive()) goodsDrop.cancel();
     }
-    // `P` toggles pause (remembering the running speed for the resume). Plain, non-repeated key only -
-    // a modifier combo (Cmd/Ctrl+P print, etc.) stays the browser's, a held key must not flicker the
-    // pause (each toggle re-rasterizes the strip), and typing "p" into a text field must not pause.
-    if (
-      e.code === 'KeyP' &&
-      !e.repeat &&
-      !e.metaKey &&
-      !e.ctrlKey &&
-      !e.altKey &&
-      !isTypingTarget(e.target)
-    ) {
-      speedButton.togglePause();
-    }
+    // `P` toggles pause (remembering the running speed for the resume). Non-repeat matters beyond the
+    // shared guard here: each toggle re-rasterizes the strip, so a held key would flicker it.
+    if (isPlainHotkey(e, 'KeyP')) speedButton.togglePause();
   };
 
   canvas.addEventListener('mousedown', onMouseDown);

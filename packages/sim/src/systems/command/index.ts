@@ -16,6 +16,7 @@ import {
   assignBuilder,
   assignHouse,
   assignWorker,
+  attackMoveUnit,
   attackUnit,
   equipGood,
   makeChild,
@@ -84,6 +85,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'moveUnit':
       moveUnit(world, ctx, command);
+      return;
+    case 'attackMoveUnit':
+      attackMoveUnit(world, ctx, command);
       return;
     case 'setJob':
       setJob(world, ctx, command);

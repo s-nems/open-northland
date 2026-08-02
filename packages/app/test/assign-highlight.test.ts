@@ -130,6 +130,8 @@ describe('pick-mode highlight cost', () => {
       mapSize: { width: 8, height: 8 },
       toWorld: () => ({ x: 0, y: 0 }),
       enqueue: () => undefined,
+      issueAttackMove: () => undefined,
+      setArmedCursor: () => undefined,
     });
   }
 

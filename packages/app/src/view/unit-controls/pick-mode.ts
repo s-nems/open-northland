@@ -12,17 +12,19 @@ import {
 import type { UnitTargets } from './unit-targets.js';
 
 /**
- * The armed click-to-pick mode, or null when none is. The three are mutually exclusive by construction -
+ * The armed click-to-pick mode, or null when none is. The four are mutually exclusive by construction -
  * arming one replaces whatever was armed:
  *  - `workplace` ("przydziel miejsce pracy") - candidate buildings wash green/red and the next left-click
  *    on a green one binds the settler to its matching slot.
  *  - `home` ("przypisz dom") - the residential twin: homes wash green/red and a green one takes the family.
  *  - `signpost` ("Erect Signpost") - the next left-click on the world orders the first scout to erect there.
+ *  - `attack-move` ("Atak", or the A key) - the next left-click sends the whole selection there fighting.
  * A click on a red building / terrain, a right-click, Esc, or a selection change cancels any of them.
  */
 type PickMode =
   | { readonly kind: 'workplace' | 'home'; readonly settler: number }
-  | { readonly kind: 'signpost'; readonly scouts: readonly number[] };
+  | { readonly kind: 'signpost'; readonly scouts: readonly number[] }
+  | { readonly kind: 'attack-move' };
 
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
@@ -32,12 +34,20 @@ export interface PickModeDeps {
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: Command) => void;
+  /** Issue the attack-move at the clicked spot; the order controller owns it so both walks fan a group out
+   *  through the same formation spread. */
+  readonly issueAttackMove: (event: MouseEvent) => void;
+  /** Show/clear the armed crosshair. Only attack-move uses it: it can be armed from the keyboard, with no
+   *  button pressed and no ground wash to show for it. A named addition - the original signals an armed
+   *  mode with prompt text ("Select attack position", `misc/31`), not a cursor. */
+  readonly setArmedCursor: (armed: boolean) => void;
 }
 
 export interface PickModeController {
   armWorkplace(settler: number): void;
   armHome(settler: number): void;
   armSignpost(scouts: readonly number[]): void;
+  armAttackMove(): void;
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
@@ -48,7 +58,7 @@ export interface PickModeController {
   highlight(): readonly BuildingHighlightItem[] | null;
 }
 
-/** Own the armed click-to-pick modes (workplace / home / signpost) and resolve their world click. */
+/** Own the armed click-to-pick modes and resolve their world click. */
 export function createPickModeController(deps: PickModeDeps): PickModeController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
   let pickMode: PickMode | null = null;
@@ -56,6 +66,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const setMode = (next: PickMode | null): void => {
     pickMode = next;
     pickVersion++;
+    deps.setArmedCursor(next?.kind === 'attack-move');
   };
   const cancel = (): void => setMode(null);
 
@@ -119,6 +130,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         }
         return true;
       }
+      // The selection is read at click time; it cannot have changed meanwhile, because a selection change
+      // cancels any armed mode.
+      case 'attack-move':
+        cancel();
+        if (event.button === 0) deps.issueAttackMove(event);
+        return true;
       default: {
         const unreachable: never = mode; // exhaustive: a new PickMode kind fails to compile here
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
@@ -139,6 +156,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           return computeHouseHighlight(snapshot, pickMode.settler, buildingsByType);
         case 'signpost':
           return null; // the erect mode washes the ground (placement overlay), not the buildings
+        case 'attack-move':
+          return null; // the attack-move mode shows on the cursor, not on the buildings
         default: {
           const unreachable: never = pickMode;
           return unreachable;
@@ -154,6 +173,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     armWorkplace: (settler) => setMode({ kind: 'workplace', settler }),
     armHome: (settler) => setMode({ kind: 'home', settler }),
     armSignpost: (scouts) => setMode({ kind: 'signpost', scouts }),
+    armAttackMove: () => setMode({ kind: 'attack-move' }),
     cancel,
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',

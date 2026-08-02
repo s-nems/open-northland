@@ -29,6 +29,9 @@ export interface SettlerActionsOptions {
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
   /** Arm the erect-signpost click-to-place mode for the selected scout(s) (the scout menu's button). */
   readonly onErectSignpost: (ids: readonly number[]) => void;
+  /** Arm the attack-move pick mode. It takes no ids: the mode sends whatever is selected when the world
+   *  click lands, and a selection change cancels it. */
+  readonly onAttackMove: () => void;
   /** Issue a `marry` order on the (single) selected settler. */
   readonly onMarry: (id: number) => void;
   /** Arm the click-a-house pick mode for the (single) selected settler. */

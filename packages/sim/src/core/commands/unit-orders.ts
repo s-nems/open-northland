@@ -17,6 +17,20 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Order one owned settler to fight its way to (x,y) - the original's "Attack Position"
+       * (`misclogic/48`, armed by the `misc/31` "Select attack position" prompt). Every `moveUnit` refusal
+       * and its carry-then-drop behaviour apply; the march itself is
+       * {@link import('../../components/index.js').AttackMoveMarch}, which owns the rule. Approximated: the
+       * original's en-route behaviour is unobserved, so fighting along the way (and the stance override it
+       * implies) is the RTS reading of the order.
+       */
+      readonly kind: 'attackMoveUnit';
+      readonly entity: Entity;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      /**
        * Change one owned settler's profession: set its `jobType` and reset it to a fresh idle worker of the new
        * trade (drop its workplace binding, cancel its action/route/order)
        * so the JobSystem re-employs it. The civilist job (`jobtypes.ini` 6) is an ordinary assignable

@@ -13,8 +13,8 @@ import {
  * apart from the geometry engine (`action-ring-layout.ts`) so a warrior/scout variant is a new table, not
  * new code. The command→icon binding here was read off the running original by the user,
  * clockwise from the top-left button (source basis "settler action menu"); the frame names are glyph
- * descriptions from the montage, so a command's icon name needn't match its label. Only `open-jobs` fires
- * today; every other button is an inert placeholder.
+ * descriptions from the montage, so a command's icon name needn't match its label. Buttons with a
+ * {@link ActionButton} kind of their own are live; the rest are inert placeholders.
  */
 
 /**
@@ -46,7 +46,6 @@ const placeholder = (id: string, icon: ActionIconFrame): ActionButton => ({
 const BUILD = placeholder('build', 'order_construct');
 const ALERT = placeholder('alert', 'order_alert');
 const QUERY = placeholder('query', 'order_query');
-const ATTACK = placeholder('attack', 'order_spearman');
 const ANIMAL = placeholder('animal', 'order_animal');
 const VEHICLE = placeholder('vehicle', 'order_transport');
 const PRAY = placeholder('pray', 'order_pray');
@@ -58,6 +57,9 @@ const HOUSE_A = placeholder('house_a', 'order_house_repair');
 const HOUSE_B = placeholder('house_b', 'order_build');
 const HOUSE_C = placeholder('house_c', 'order_crest');
 const HOUSE_D = placeholder('house_d', 'order_house_enter');
+
+/** The live "Attack Position" button (the original's `misclogic/48` order). */
+const ATTACK: ActionButton = { kind: 'attack-move', id: 'attack', icon: 'order_spearman' };
 
 /** The live "find a partner" button (the sim `marry` order). */
 const MARRY: ActionButton = { kind: 'marry', id: 'marry', icon: 'order_marry' };

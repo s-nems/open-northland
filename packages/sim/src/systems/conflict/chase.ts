@@ -1,4 +1,11 @@
-import { AttackOrder, Engagement, EquipOrder, MoveGoal, PathRequest } from '../../components/index.js';
+import {
+  AttackOrder,
+  Engagement,
+  EquipOrder,
+  MoveGoal,
+  PathRequest,
+  PlayerOrder,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -73,12 +80,20 @@ export function chase(
   });
 
   // A failed chase route (unreachable target): drop the dead nav state so we re-issue below. For an explicit
-  // attack order an unreachable target ends the order.
+  // attack order an unreachable target ends the order. An attack-move march instead rests its aggression and
+  // walks on: without the rest, an enemy visible across a river holds the marcher in a failing search every
+  // tick and the order can never complete.
   if (world.tryGet(e, PathRequest)?.failed) {
     clearNavState(world, e);
-    if (stance.ordered) {
+    const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
+    if (stance.ordered || marching) {
       world.remove(e, AttackOrder);
       world.remove(e, Engagement);
+      if (marching) {
+        world.write(e, PlayerOrder, (order) => {
+          if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
+        });
+      }
       return;
     }
   }

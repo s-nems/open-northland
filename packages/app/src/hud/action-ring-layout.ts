@@ -33,6 +33,12 @@ export type ActionButton =
       readonly icon: ActionIconFrame;
     }
   | {
+      /** "Attack Position" - arms the attack-move pick mode. */
+      readonly kind: 'attack-move';
+      readonly id: 'attack';
+      readonly icon: ActionIconFrame;
+    }
+  | {
       /** "Find a partner" - issues the sim `marry` order (shown only for an unmarried eligible adult). */
       readonly kind: 'marry';
       readonly id: 'marry';
