@@ -124,8 +124,9 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   let runsAt: { x: number; y: number }[] = [];
   /** The live counter block as read at the last local write. While the sim still shows exactly this
    *  block, the write has not applied (a queued command, a paused game) and the click's echo must
-   *  hold - a frame countdown would snap back under pause. Any live change clears it: commands apply
-   *  FIFO, so the first change after the write already contains it. */
+   *  hold - a frame countdown would snap back under pause. Any live change clears it; with several
+   *  writes pending (rapid clicks) the face may briefly show an intermediate value until the last
+   *  one applies - an accepted transient, cheaper than tracking a pending-write count. */
   let echoBase: AssistantState['counters'] | null = null;
 
   const clear = (): void => {

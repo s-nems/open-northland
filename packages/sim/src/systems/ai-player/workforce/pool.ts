@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-import { isFighterJob, isScoutJob } from '../../readviews/index.js';
+import { isAnimalTribe, isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../shared.js';
@@ -55,7 +55,11 @@ export function classifyWorkforce(
   const scouts: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
-    const job = world.get(e, Settler).jobType;
+    const settler = world.get(e, Settler);
+    // Captured livestock (an animal tribe, trade-less, owner-stamped) is stock, not labour - without
+    // this it would land in the pool and inflate every count downstream (posts, drafts, weddings).
+    if (isAnimalTribe(ctx.content, settler.tribe)) continue;
+    const job = settler.jobType;
     if (isFighterJob(ctx.content, job)) continue;
     if (world.has(e, TrainingOrder)) continue; // committed to a barracks drill - no longer spare
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post

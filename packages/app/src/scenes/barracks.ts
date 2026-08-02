@@ -2,6 +2,7 @@ import { components, type Entity, type Simulation, systems } from '@open-northla
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../catalog/jobs.js';
 import { jobUnlockedFor } from '../game/profession-unlocks.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_BARRACKS,
   BUILDING_HEADQUARTERS,
@@ -25,8 +26,8 @@ import type { SceneDefinition } from './types.js';
 
 const { Equipment, Settler } = components;
 
-/** The TRAINING bucket NOTHING may accrue - the checks prove a drill banks no experience stat
- *  (user rule 2026-08-02: the barracks only unlocks the trade). */
+/** The TRAINING bucket nothing may accrue - the checks prove the drill banked no experience stat
+ *  (the rule the sim's `progression/experience.ts` states on this bucket). */
 const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
@@ -59,7 +60,13 @@ function build(sim: Simulation): void {
   sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_SHORT, x: ARMORY.x, y: ARMORY.y, amount: 1 });
   sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_LONG, x: ARMORY.x, y: ARMORY.y, amount: 1 });
   sim.enqueue({ kind: 'dropGood', good: GOOD_ARMOR_CHAIN, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueue({ kind: 'setAssistantCounter', player: 0, counter: 'trainSword', value: 1, infinite: false });
+  sim.enqueue({
+    kind: 'setAssistantCounter',
+    player: HUMAN_PLAYER,
+    counter: 'trainSword',
+    value: 1,
+    infinite: false,
+  });
 }
 
 /** The four settlers by role. Query order is spawn order, which {@link build} fixes just above - the one
@@ -142,7 +149,7 @@ export const barracksScene: SceneDefinition = {
         if (draftee === undefined) return false;
         return (
           sim.world.tryGet(draftee, Equipment)?.armor?.goodType === GOOD_ARMOR_CHAIN &&
-          sim.assistantCounters(0).trainSword.value === 0
+          sim.assistantCounters(HUMAN_PLAYER).trainSword.value === 0
         );
       },
     },

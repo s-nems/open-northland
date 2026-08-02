@@ -722,10 +722,13 @@ describe('extras window controller', () => {
     expect(made).toContain('10');
     expect(counters.writes).toEqual([['extraMen', 10, false]]);
 
-    // The infinity toggle keeps the stored value and flips the flag; a numeric step drops it again.
+    // The infinity toggle keeps the stored value and flips the flag; the first step off it only
+    // surfaces that hidden value (the lemniscate covers the number), the next one moves it.
     const infinity = centreOf(geo.counters[1]?.infinityRect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(extras.handleClick(infinity.x, infinity.y)).toBe(true);
     expect(counters.writes.at(-1)).toEqual(['extraMen', 10, true]);
+    expect(extras.handleClick(plus.x, plus.y)).toBe(true);
+    expect(counters.writes.at(-1)).toEqual(['extraMen', 10, false]);
     expect(extras.handleClick(plus.x, plus.y)).toBe(true);
     expect(counters.writes.at(-1)).toEqual(['extraMen', 11, false]);
   });

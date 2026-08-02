@@ -69,13 +69,16 @@ describe('assistant state', () => {
     expect(adjustCounter(s, 'trainArchers', -10).counters.trainArchers.value).toBe(COUNTER_MAX - 10);
   });
 
-  it('toggles infinity on the queue rows, and stepping an infinite counter drops it', () => {
-    let s = toggleInfinity(defaultAssistantState(), 'trainSoldiers');
-    expect(s.counters.trainSoldiers).toEqual({ value: 0, infinite: true });
+  it('toggles infinity on the queue rows; the first step off infinity only surfaces the value', () => {
+    let s = adjustCounter(defaultAssistantState(), 'trainSoldiers', 5);
+    s = toggleInfinity(s, 'trainSoldiers');
+    expect(s.counters.trainSoldiers).toEqual({ value: 5, infinite: true });
     expect(toggleInfinity(s, 'trainSoldiers').counters.trainSoldiers.infinite).toBe(false);
 
-    s = adjustCounter(s, 'trainSoldiers', 1);
-    expect(s.counters.trainSoldiers).toEqual({ value: 1, infinite: false });
+    // The lemniscate hides the number: a blind step must not land on an unpredictable stored±1.
+    s = adjustCounter(s, 'trainSoldiers', -1);
+    expect(s.counters.trainSoldiers).toEqual({ value: 5, infinite: false });
+    expect(adjustCounter(s, 'trainSoldiers', -1).counters.trainSoldiers.value).toBe(4);
   });
 
   it('refuses infinity on extraWomen (it outranks the son queue)', () => {

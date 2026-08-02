@@ -1,5 +1,6 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
+  ASSISTANT_COUNTER_KINDS,
   AssistantCounters,
   type AssistantCounterValues,
   assistantCountersEntity,
@@ -283,9 +284,7 @@ export class Simulation {
     if (carrier === null) return defaultAssistantCounters();
     const live = this.world.get(carrier, AssistantCounters).counters;
     const copy = defaultAssistantCounters();
-    for (const kind of Object.keys(copy) as (keyof AssistantCounterValues)[]) {
-      copy[kind] = { ...live[kind] };
-    }
+    for (const kind of ASSISTANT_COUNTER_KINDS) copy[kind] = { ...live[kind] };
     return copy;
   }
 
