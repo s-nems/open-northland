@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, Stockpile } from '../../src/components/index.js';
+import { Carrying, CurrentAtomic, Stockpile } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
+import { plannerSystem, stockCapacity } from '../../src/systems/index.js';
 import { pickupFromStore, pileupIntoStore } from '../../src/systems/settlers/atomics/effects/goods/index.js';
 import { carriedGoodForm } from '../../src/systems/settlers/drives/economy/delivery-targets.js';
+import { canStoreGood } from '../../src/systems/settlers/targets/stores/stock.js';
 import { testContent } from '../fixtures/content.js';
 import {
+  BAKEHOUSE,
   buildingAt,
   CARRIER,
   ctxOf,
   FOOD_SIMPLE,
   grassMap,
   HEADQUARTERS,
+  PICKUP_ATOMIC,
   pileAt,
   settlerAt,
 } from './producer-supply/support.js';
@@ -56,5 +60,55 @@ describe("meat converts to food in every hand but the hunter's own", () => {
     const larder = sim.world.get(hq, Stockpile).amounts;
     expect(larder.get(FOOD_SIMPLE) ?? 0).toBe(1); // banked as food ...
     expect(larder.get(MEAT) ?? 0).toBe(0); // ... never as a raw slab in the larder
+  });
+});
+
+/**
+ * The routing half of the same rule: the planner must see the sink the deposit above would accept. The
+ * hunter is the only trade that reaches a store still holding MEAT ({@link carriedGoodForm} spares his
+ * lift), so he is the only one for whom "the larder banks the edible" and "the larder can take this
+ * load" can disagree.
+ */
+describe('a hunter employed at a larder delivers his meat into it', () => {
+  it('lifts a meat heap the larder can only bank as food', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const hq = buildingAt(sim, HEADQUARTERS, 4, 0);
+    const heap = pileAt(sim, 1, 0, [[MEAT, 3]]);
+    const hunter = settlerAt(sim, 1, 0, HUNTER, hq);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // tryGet, not get: planning NOTHING is the regression this pins, and it should read as a failed
+    // expectation rather than an ECS "no such component" throw.
+    const atomic = sim.world.tryGet(hunter, CurrentAtomic);
+    expect(atomic?.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic?.effect).toMatchObject({ kind: 'pickup', goodType: MEAT, from: heap });
+  });
+
+  it('end to end: the heap he collects reaches the larder as food', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const hq = buildingAt(sim, HEADQUARTERS, 4, 0);
+    pileAt(sim, 1, 0, [[MEAT, 2]]);
+    settlerAt(sim, 1, 0, HUNTER, hq);
+
+    for (let i = 0; i < 400; i++) sim.step();
+
+    const larder = sim.world.get(hq, Stockpile).amounts;
+    expect(larder.get(FOOD_SIMPLE) ?? 0).toBe(2);
+    expect(larder.get(MEAT) ?? 0).toBe(0);
+  });
+
+  // The gate that keeps the widened routing from hauling a load INTO its own producer: the fixture
+  // bakehouse (20) bakes `food_simple` from wheat and slots it, so judging meat by its raw form alone
+  // would make the oven the "nearest capable store" for the hunter's kill and ping-pong it back out.
+  it('never routes meat into a store that PRODUCES the food it would bank as', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const bakehouse = buildingAt(sim, BAKEHOUSE, 2, 0);
+    const hq = buildingAt(sim, HEADQUARTERS, 6, 0);
+    const ctx = ctxOf(sim);
+
+    expect(stockCapacity(sim.world, ctx, bakehouse, FOOD_SIMPLE)).toBeGreaterThan(0); // it has the slot ...
+    expect(canStoreGood(sim.world, ctx, bakehouse, MEAT)).toBe(false); // ... and still refuses the meat
+    expect(canStoreGood(sim.world, ctx, hq, MEAT)).toBe(true);
   });
 });

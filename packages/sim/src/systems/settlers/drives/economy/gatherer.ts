@@ -9,8 +9,8 @@ import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { HUNT_CARCASS_SLACK_NODES } from '../../../conflict/hunting-ground.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import { exportedGoodForm, isHunterJob } from '../../../readviews/index.js';
-import { workplaceStoredGoods } from '../../../stores/index.js';
+import { isHunterJob } from '../../../readviews/index.js';
+import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, walkPickupBatch } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import {
@@ -49,12 +49,10 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
   }
 
   // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
-  // stores, narrowed to its GatherSelection pick when one is set (the flag-less collector rule - a
-  // smithy's collector fetches iron/wood, never the quarry's stone). A good is "for the workplace"
-  // also when the store takes its BANKED form (`exportedGoodForm`): an HQ-employed hunter's meat
-  // banks as food into the food slot (`pileupIntoStore`), so a food-slot store must not filter the
-  // carcass out - without this the hunter kills once and wedges (the one-kill gate counts the carcass
-  // it may never pluck). An unemployed roamer, or one at a store-less building, stays unrestricted.
+  // stores ({@link workplaceStocksGood}, banked form included - an HQ-employed hunter's meat shelves as
+  // food, and filtering the carcass out would wedge him after one kill), narrowed to its GatherSelection
+  // pick when one is set (the flag-less collector rule - a smithy's collector fetches iron/wood, never
+  // the quarry's stone). An unemployed roamer, or one at a store-less building, stays unrestricted.
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   const rawStored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
   const stored =
@@ -62,7 +60,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
       ? new Set(
           plan.ctx.content.goods
             .map((g) => g.typeId)
-            .filter((g) => rawStored.has(g) || rawStored.has(exportedGoodForm(plan.ctx, g))),
+            .filter((g) => workplaceStocksGood(plan.ctx, rawStored, g)),
         )
       : undefined;
   const pick = world.tryGet(e, GatherSelection)?.goodType;

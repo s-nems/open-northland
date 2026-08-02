@@ -2,7 +2,7 @@ import { Building, Position, Stockpile } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { farmWorkGood } from '../../../economy/fields.js';
-import { mergedRecipeOf, stockCapacity } from '../../../stores/index.js';
+import { bankedSlot, mergedRecipeOf } from '../../../stores/index.js';
 import { jobAtomics } from '../../targets/index.js';
 
 /** Whether a job is the field worker, rather than the carrier, of a farm building. */
@@ -42,8 +42,9 @@ export function isStorageSink(world: World, ctx: SystemContext, store: Entity): 
   );
 }
 
-/** Whether a store has capacity for another unit of the requested good. */
+/** Whether a store has capacity for another unit of the requested good, judged on the {@link bankedSlot}
+ *  the deposit would land in so the bound-store rungs see the same sink `pileupIntoStore` does. */
 export function hasRoom(world: World, ctx: SystemContext, store: Entity, goodType: number): boolean {
-  const have = world.get(store, Stockpile).amounts.get(goodType) ?? 0;
-  return have < stockCapacity(world, ctx, store, goodType);
+  const slot = bankedSlot(world, ctx, store, goodType);
+  return (world.get(store, Stockpile).amounts.get(slot.goodType) ?? 0) < slot.capacity;
 }

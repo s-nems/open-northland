@@ -16,6 +16,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import {
+  bankedSlot,
   buildingProduces,
   type InboundSupplyTally,
   inboundSupplyOf,
@@ -89,6 +90,10 @@ function toConsumingWorkplace(plan: PlannerContext, goodType: number): DeliveryV
   if (workplace === null) return null;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe?.inputs.some((i) => i.goodType === goodType) !== true) return null;
+  // An input must land AS ITSELF. A workshop that would shelve it converted ({@link bankedSlot} - a dish
+  // consumed raw but stocked only as its edible) feeds its own recipe nothing, so the load falls through
+  // to a real sink instead of banking into a slot the cycle cannot draw from.
+  if (bankedSlot(world, ctx, workplace, goodType).goodType !== goodType) return null;
   return hasRoom(world, ctx, workplace, goodType) ? workplace : null;
 }
 
@@ -175,6 +180,8 @@ function toNeedingConstructionSite(
  * surplus later (user rule 2026-07-19). A site still under construction is skipped: it needs delivered build
  * material, not a recipe input.
  */
+// Needs no twin of {@link toConsumingWorkplace}'s "land as itself" guard: this rung fires only for a
+// settler bound to an input-less utility, so `carriedGoodForm` already converted any dish it carries.
 function toNearbyRecipeConsumer(
   plan: PlannerContext,
   goodType: number,

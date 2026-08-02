@@ -89,13 +89,17 @@ export function settlerWork(
   const def = buildingDef(ctx, rawType);
   // A building-employed GATHERER (a harvest-capable trade, no flag) forages only what its workplace
   // stockpiles - its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
-  // GatherSelection (absent = every stored good). The gather menu WINS over the craft menu for a job
-  // that is both harvest-capable and an operator slot (such a job runs the gather drive in the sim's
-  // planner ladder, never the craft loop), so the two menus can't coexist.
+  // GatherSelection (absent = every stored good). "Stocked" counts the good's EDIBLE form too, matching
+  // the sim's forage filter (`drives/economy/gatherer.ts`): the HQ has no meat slot, but its hunter's
+  // kill banks there as food, so the menu must still offer him meat. The gather menu WINS over the craft
+  // menu for a job that is both harvest-capable and an operator slot (such a job runs the gather drive
+  // in the sim's planner ladder, never the craft loop), so the two menus can't coexist.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
-    const choices = harvestable.filter((good) => stored.has(good.typeId) && earned(good.typeId));
+    const isStocked = (goodType: number): boolean =>
+      stored.has(goodType) || stored.has(ctx.edibleGoodForm?.(goodType) ?? goodType);
+    const choices = harvestable.filter((good) => isStocked(good.typeId) && earned(good.typeId));
     if (choices.length > 0) {
       const selectedGood =
         num((comps.GatherSelection as { goodType?: unknown } | undefined)?.goodType) ?? null;

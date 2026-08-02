@@ -41,8 +41,8 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
  * fruit, fish and sausage have NO producer and NO slot anywhere in this content set, so their entries
  * never fire - inference carried for a content set that might declare them. WHEN the mapping applies
  * is the carry seams' decision: {@link carriedGoodForm} (any lift outside the good's own gathering
- * trade - the rule's owner, source basis there) and `pileupIntoStore` (a deposit into a store with no
- * raw slot).
+ * trade - the rule's owner, source basis there) and `bankedSlot` (a deposit into a store with no raw
+ * slot).
  *
  * The simple/extra split is pinned for CANDY: good 17 and good 20 share one display name
  * ("Ciastko"/"Ciastka") in `text/pol/strings/gameobjects/goods.ini`, the eat slots are named for the
@@ -90,10 +90,16 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
  * end - `stockCapacity` is 0 for it in every store, so routing finds no sink, no carrier ever lifts it,
  * and the kitchen wedges at a full shelf with its workers idle.
  *
- * Scope: this resolves the mapping only - {@link carriedGoodForm} and `pileupIntoStore` decide WHEN it
- * applies. The bare-node pluck (`atomics/effects/goods/harvest.ts`) deliberately mints the RAW good:
- * the one dish it mints is the hunter's meat off a carcass, and the hunter carries meat as meat.
+ * Scope: this resolves the mapping only - {@link carriedGoodForm} decides when a LIFT applies it and
+ * `bankedSlot` when a DEPOSIT does. The bare-node pluck (`atomics/effects/goods/harvest.ts`) deliberately
+ * mints the RAW good: the one dish it mints is the hunter's meat off a carcass, and he carries meat as meat.
  */
 export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
-  return edibleForms(ctx.content).get(goodType) ?? goodType;
+  return edibleGoodFormOf(ctx.content, goodType);
+}
+
+/** {@link exportedGoodForm} over a bare content set, for a caller that holds no {@link SystemContext} -
+ *  the app's details panel, whose gather menu must offer the same goods the sim's forage filter accepts. */
+export function edibleGoodFormOf(content: ContentSet, goodType: number): number {
+  return edibleForms(content).get(goodType) ?? goodType;
 }

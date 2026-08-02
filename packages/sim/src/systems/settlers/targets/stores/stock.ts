@@ -14,12 +14,12 @@ import type { SystemContext } from '../../../context.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { forEachRingOffset } from '../../../spatial/nodes.js';
 import {
+  bankedSlot,
   buildingProduces,
   isYardHeap,
   MAX_GROUND_STACK,
   mayFetchGoodFrom,
   mergedRecipeOf,
-  stockCapacity,
 } from '../../../stores/index.js';
 import type { YardTargets } from '../candidates.js';
 import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
@@ -73,8 +73,12 @@ export function nearestStoreFor(
 }
 
 /** Position-independent acceptance half of {@link nearestStoreFor}. Shared with the tick-local sink
- * memo so null probes do not repeat the full stockpile scan. Keep every gate here in the same order as
- * the former inline scan: this is a pure extraction, not a policy change. */
+ * memo so null probes do not repeat the full stockpile scan.
+ *
+ * The good gates judge the {@link bankedSlot} - the slot the deposit would land in - so a store that
+ * banks a raw dish as its edible is a sink the routing can see, and the producer rules still hold
+ * against the form that lands. The structural rejects come first because they are plain membership
+ * tests, where resolving the slot costs a capacity lookup and this scan runs per candidate per query. */
 export function canStoreGood(
   world: World,
   ctx: SystemContext,
@@ -82,20 +86,19 @@ export function canStoreGood(
   goodType: number,
   excludeProducers = false,
 ): boolean {
-  if (excludeProducers && buildingProduces(world, ctx, entity).includes(goodType)) return false;
   if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
   if (world.has(entity, GroundDrop)) return false;
   if (isYardHeap(world, entity)) return false;
+  const slot = bankedSlot(world, ctx, entity, goodType);
+  if (excludeProducers && buildingProduces(world, ctx, entity).includes(slot.goodType)) return false;
   const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe !== undefined) {
     // A plain loop, not `.some(closure)`: the sink scans probe this per candidate per query.
     for (const output of recipe.outputs) {
-      if (output.goodType === goodType) return false;
+      if (output.goodType === slot.goodType) return false;
     }
   }
-  const stock = world.get(entity, Stockpile);
-  const have = stock.amounts.get(goodType) ?? 0;
-  return have < stockCapacity(world, ctx, entity, goodType);
+  return (world.get(entity, Stockpile).amounts.get(slot.goodType) ?? 0) < slot.capacity;
 }
 
 /**

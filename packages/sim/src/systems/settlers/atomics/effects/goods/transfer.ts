@@ -8,8 +8,7 @@ import {
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
-import { exportedGoodForm } from '../../../../readviews/index.js';
-import { stockCapacity } from '../../../../stores/index.js';
+import { bankedSlot } from '../../../../stores/index.js';
 import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -84,25 +83,12 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const stock = world.tryGet(store, Stockpile);
   if (stock === undefined) return 0;
 
-  // A store with no slot for a raw dish banks its edible instead: the hunter's meat delivered to a
-  // larder/warehouse lands as food (no larder or warehouse slots a raw edible in the readable stock
-  // tables - see `carriedGoodForm` for the rule's basis), while a store that DOES stock the raw good
-  // (the animal farm's meat slot, the bakery's bread shelf) takes it raw.
-  let banked = load.goodType;
-  let capacity = stockCapacity(world, ctx, store, banked);
-  if (capacity <= 0) {
-    const edible = exportedGoodForm(ctx, load.goodType);
-    if (edible !== load.goodType) {
-      banked = edible;
-      capacity = stockCapacity(world, ctx, store, edible);
-    }
-  }
-  const have = stock.amounts.get(banked) ?? 0;
-  const space = Math.max(0, capacity - have);
-  const moved = Math.min(load.amount, space);
+  const slot = bankedSlot(world, ctx, store, load.goodType); // the shelf settles the good's final identity
+  const have = stock.amounts.get(slot.goodType) ?? 0;
+  const moved = Math.min(load.amount, Math.max(0, slot.capacity - have));
   if (moved <= 0) return 0; // store full for this good - keep carrying
 
-  setStockAmount(world, store, banked, have + moved);
+  setStockAmount(world, store, slot.goodType, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
   return moved;
 }

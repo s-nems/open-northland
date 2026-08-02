@@ -4,6 +4,7 @@ import { isCarrierJobId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
+import { exportedGoodForm } from '../readviews/food.js';
 
 // What a building's TYPE declares: what it makes, the job slots it offers, the goods it stores. The
 // operator concept (which of those slots run the craft, and who fills them) is ./operators.ts.
@@ -156,7 +157,7 @@ const EMPTY_JOB_LIST: readonly number[] = Object.freeze([]);
 /**
  * The set of good types a building's `stock` slots store, or undefined when it has no Building/type
  * or declares no stock slots. Cross-system: what a building-employed gatherer may forage for (the
- * flag-less collector rule - `planGatherer`'s roaming filter and the `setGatherGood` employed path).
+ * flag-less collector rule - `planGatherer`'s roaming filter).
  */
 export function workplaceStoredGoods(
   world: World,
@@ -166,6 +167,24 @@ export function workplaceStoredGoods(
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
   return contentIndex(ctx.content).storedGoodsByBuilding.get(b.buildingType);
+}
+
+/**
+ * Whether a workplace whose {@link workplaceStoredGoods} are `stored` counts `goodType` as one of its
+ * wares - its own slot, or, for a dish, the edible's, since the deposit converts (`bankedSlot` asks the
+ * same question of a LIVE store). Type-level on purpose: employment does not wait for `built`, so a
+ * gatherer posted to a half-raised warehouse must answer for the store it will be, not for its
+ * construction bill.
+ *
+ * The employed gatherer's one "is this good mine to forage" test - shared by `planGatherer`'s filter and
+ * the `setGatherGood` order, which must agree or the order silently drops a pick the drive would honour.
+ */
+export function workplaceStocksGood(
+  ctx: SystemContext,
+  stored: ReadonlySet<number>,
+  goodType: number,
+): boolean {
+  return stored.has(goodType) || stored.has(exportedGoodForm(ctx, goodType));
 }
 
 /**
