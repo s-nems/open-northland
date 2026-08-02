@@ -1,20 +1,29 @@
-import { Building, ChildOrder, Female, Marriage, Residence } from '../../components/index.js';
+import {
+  ASSISTANT_COUNTER_MAX,
+  AssistantChildOrder,
+  Building,
+  ChildOrder,
+  Female,
+  Marriage,
+  Residence,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAdultSettler, mayMarry } from '../family/eligibility.js';
-import { familiesOf, isMinor } from '../family/households.js';
+import { familiesOf } from '../family/households.js';
 import type { AiPlayerModule } from './index.js';
-import { headquartersOf, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
+import { assistantCounterCommand, headquartersOf, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
  * The HomeExpansion module - population planning (user plan, 2026-07-17): every adult woman marries
  * as soon as a partner exists (grown girls included - the census is recomputed each decision), a
- * married woman's family moves into the first home with a free family slot, and mothers breed to the
- * housing stock: daughters while the planned female count (women + growing girls + pending daughter
- * orders) is below the total family slots, sons continuously once it matches - women in Cultures are
- * made to the number of house places.
+ * married woman's family moves into the first home with a free family slot, and the births run
+ * through the settlement assistant (user rule 2026-08-02): the module keeps `extraWomen` at the
+ * female deficit against the total family slots and `extraMen` infinite, so the dispatcher
+ * (`systems/assistant/`) breeds daughters up to the housing stock and sons continuously past it -
+ * women in Cultures are made to the number of house places.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly Command[] {
@@ -56,25 +65,22 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     commands.push({ kind: 'assignHouse', entity: woman, house: home.entity });
   }
 
-  // 3. Children: every housed mother without a growing child keeps a standing order - a daughter
-  // while planned females run below the family slots, a son once the count is met.
-  let plannedFemales = 0;
+  // 3. Children: the seat breeds through the assistant - `extraWomen` is held at the female deficit
+  // against the family slots (in the dispatcher daughters outrank sons, the plan's exact priority)
+  // and `extraMen` stands infinite (sons continuously once the women are made to the housing
+  // stock). Both are absolute re-sets, issued only when the wanted state differs.
+  let femaleStock = 0;
   for (const e of settlers) {
-    if (world.has(e, Female)) plannedFemales++; // women, girls, and baby girls alike
-    if (world.tryGet(e, ChildOrder)?.child === 'female') plannedFemales++;
+    if (world.has(e, Female)) femaleStock++; // women, girls, and baby girls alike
+    // A pending non-assistant daughter order still becomes a female; assistant-booked orders are
+    // accounted inside the counter itself (its value counts everything not yet born).
+    if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;
   }
-  for (const woman of women) {
-    if (world.has(woman, ChildOrder) || !world.has(woman, Residence)) continue;
-    if (!hasLivingSpouse(world, woman)) continue;
-    const child = world.get(woman, Marriage).child;
-    if (child !== null && world.isAlive(child) && isMinor(world, child)) continue; // one at a time
-    if (plannedFemales < familySlotsTotal) {
-      plannedFemales++;
-      commands.push({ kind: 'makeChild', entity: woman, child: 'female' });
-    } else {
-      commands.push({ kind: 'makeChild', entity: woman, child: 'male' });
-    }
-  }
+  const deficit = Math.min(ASSISTANT_COUNTER_MAX, Math.max(0, familySlotsTotal - femaleStock));
+  const daughters = assistantCounterCommand(world, player, 'extraWomen', deficit, false);
+  if (daughters !== null) commands.push(daughters);
+  const sons = assistantCounterCommand(world, player, 'extraMen', 0, true);
+  if (sons !== null) commands.push(sons);
   return commands;
 }
 
