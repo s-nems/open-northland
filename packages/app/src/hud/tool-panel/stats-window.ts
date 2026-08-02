@@ -19,7 +19,7 @@ const TICK_ROW = 0;
 
 export interface StatsWindowDeps {
   readonly ctx: PanelContext;
-  /** The panel's window container the stats parents its graphics + text under. */
+  /** The panel's window container the stats mounts its own container under. */
   readonly container: Container;
 }
 
@@ -70,11 +70,11 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     rect = { x: ox, y: oy, w, h };
     drawWindowPanel(shell.graphics, rect, scale);
     const title = ctx.makeText(ctx.uiString('miscwindow', 180, messages().hud.statistics), 'white');
-    deps.container.addChild(title.container);
+    shell.container.addChild(title.container);
     shell.runs.push(title);
     for (const text of rows) {
       const run = ctx.makeText(text, 'white');
-      deps.container.addChild(run.container);
+      shell.container.addChild(run.container);
       shell.runs.push(run);
     }
     place();

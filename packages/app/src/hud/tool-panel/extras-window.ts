@@ -61,7 +61,7 @@ export interface ExtrasGrantsSeam {
 
 export interface ExtrasWindowDeps {
   readonly ctx: PanelContext;
-  /** The panel's window container the window parents its graphics + text under. */
+  /** The panel's window container the window mounts its own container under. */
   readonly container: Container;
   readonly grants: ExtrasGrantsSeam;
 }
@@ -84,10 +84,9 @@ export interface ExtrasWindow extends ToolWindow {
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
   const { scale } = ctx;
-  // The tiled bitmap fills draw behind the shell's frame Graphics (child order back < frame).
-  const back = new Container();
-  deps.container.addChild(back);
   const shell = createWindowShell(deps.container);
+  const back = new Container();
+  shell.container.addChildAt(back, 0); // the tiled bitmap fills, behind the shell's frame Graphics
   // Right of the strip, dropping from the extras (chest) button - same reasoning as the building
   // menu's origin: it clears the top-left debug overlay and anchors the window to its button.
   const origin = {
@@ -110,7 +109,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   /** Queue a run with its top-left already resolved (rounded for crisp glyphs). */
   const addRunAt = (text: string, color: 'white' | 'dimmed', x: number, y: number, px?: number): void => {
     const run = ctx.makeText(text, color, px);
-    deps.container.addChild(run.container);
+    shell.container.addChild(run.container);
     shell.runs.push(run);
     runsAt.push({ x: Math.round(x), y: Math.round(y) });
   };
@@ -118,7 +117,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   /** Queue a run centred in `rect` (native-px width scaled for screen px, cap height for the y). */
   const addRunCentred = (text: string, color: 'white' | 'dimmed', rect: Rect, px?: number): void => {
     const run = ctx.makeText(text, color, px);
-    deps.container.addChild(run.container);
+    shell.container.addChild(run.container);
     shell.runs.push(run);
     runsAt.push({
       x: Math.round(rect.x + Math.max(0, (rect.w - run.width * scale) / 2)),

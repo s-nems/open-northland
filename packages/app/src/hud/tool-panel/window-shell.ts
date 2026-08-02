@@ -1,4 +1,4 @@
-import { type Container, Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import { contains, type Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 
@@ -16,15 +16,19 @@ export interface ToolWindow {
 
 /**
  * The open/close plumbing every tool-panel pop-up window repeats: an open flag, the vector text runs, and
- * one `Graphics` buffer parented under the panel's window container. Each window keeps its own layout,
+ * one `Graphics` buffer, all inside one container of the window's own. Each window keeps its own layout,
  * rebuild, and hit-test; the shell owns only what they all share, so a new window inherits the
  * lifecycle instead of re-implementing it.
  *
  * A window with extra draw layers (the tabbed lists' tiled `back` + hover `Graphics`) creates them itself
- * around the shell — the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
+ * inside `container` — the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
  */
 export interface WindowShell {
-  /** The shared frame/chrome buffer (window with extra layers draws those on its own Graphics). */
+  /** Everything this window draws, frame and labels alike: the panel mounts these in draw order, so a
+   *  rebuild's re-appended runs cannot outrank a later window's frame. */
+  readonly container: Container;
+  /** The shared frame/chrome buffer, and `container`'s first child — a window's extra layers order
+   *  themselves around it. */
   readonly graphics: Graphics;
   /** The window's vector text runs — the controller pushes what it builds; `clear()` destroys them. */
   readonly runs: TextRun[];
@@ -36,9 +40,11 @@ export interface WindowShell {
   claims(rect: Rect | null, x: number, y: number): boolean;
 }
 
-export function createWindowShell(container: Container): WindowShell {
+export function createWindowShell(parent: Container): WindowShell {
   let opened = false;
   const runs: TextRun[] = [];
+  const container = new Container();
+  parent.addChild(container);
   const graphics = new Graphics();
   container.addChild(graphics);
 
@@ -49,6 +55,7 @@ export function createWindowShell(container: Container): WindowShell {
   };
 
   return {
+    container,
     graphics,
     runs,
     isOpen: () => opened,

@@ -13,9 +13,8 @@ import type { ToolWindow } from './window-shell.js';
  * what a frame refreshes are answered from the same windows the strip buttons toggle by id.
  */
 
-/** The pop-ups in mount order, which is the draw order of their frames: each parents its layers under the
- *  panel's window container in turn. Text runs are re-appended on rebuild, so they land above every frame
- *  regardless of this order. */
+/** The pop-ups in mount order, which is their draw order: each parents one container of its own under the
+ *  panel's window container in turn, so a rebuild re-appends text runs inside its own window only. */
 const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
@@ -27,7 +26,7 @@ interface ToolWindowEntry {
 
 export interface ToolWindowsDeps {
   readonly ctx: PanelContext;
-  /** The panel's window container every pop-up parents its layers under (child order = draw order). */
+  /** The panel's window container every pop-up mounts its own container under (child order = draw order). */
   readonly container: Container;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly goods: readonly MenuGoodEntry[];

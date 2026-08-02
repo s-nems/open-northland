@@ -45,7 +45,7 @@ export interface TabbedListSource<Id, Item extends TabbedListItem> {
 
 export interface TabbedListWindowDeps<Id, Item extends TabbedListItem> {
   readonly ctx: PanelContext;
-  /** The panel's window container the pop-up parents its layers under. */
+  /** The panel's window container the pop-up mounts its own container under. */
   readonly container: Container;
   readonly source: TabbedListSource<Id, Item>;
   /** A row was clicked (the window closes itself first) — the panel enters the matching held mode. */
@@ -66,8 +66,9 @@ export interface TabbedListWindow extends ToolWindow {
 
 /**
  * Build a tabbed-list window controller over the pure {@link layoutTabbedList} geometry. It adds `back`
- * (tiled fills) and `hoverG` (the row wash) around the shared shell, so the container child order stays
- * back < frame < hover. The chrome rebuilds on open, tab change and scroll; hover redraws on its own.
+ * (tiled fills) and `hoverG` (the row wash) inside the shell's container, so the child order stays
+ * back < frame < hover < labels. The chrome rebuilds on open, tab change and scroll; hover redraws on
+ * its own.
  */
 export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   deps: TabbedListWindowDeps<Id, Item>,
@@ -95,14 +96,14 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   // The viewport row count the current layout was built for — a resize that changes it triggers a reflow.
   let builtRows = 0;
 
-  const back = new Container();
-  deps.container.addChild(back);
   const shell = createWindowShell(deps.container);
+  const back = new Container();
+  shell.container.addChildAt(back, 0); // behind the shell's frame Graphics
   const hoverG = new Graphics();
-  deps.container.addChild(hoverG);
+  shell.container.addChild(hoverG);
   const layers: TabbedListLayers = {
     ctx,
-    container: deps.container,
+    container: shell.container,
     back,
     graphics: shell.graphics,
     runs: shell.runs,
