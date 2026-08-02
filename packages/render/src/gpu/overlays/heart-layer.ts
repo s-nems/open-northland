@@ -41,18 +41,29 @@ const HEART_GAP = 4;
 const BACK_ABOVE_FEET = 26;
 /** Half-width of a heart lobe (world px) - the shape scales off this one knob. */
 const LOBE_RADIUS = 3;
-/** Channel multiplier of the drained top's shade - the faction colour, darkened to read as missing. */
-const DRAINED_SHADE = 0.35;
-/** The black rim: the silhouette grown a hair about its centre, so the heart reads on any ground
- *  (user feedback: the rimless heart blended into the terrain; a thick rim read unnatural). */
-const OUTLINE_COLOUR = 0x000000;
-const OUTLINE_SCALE = 1.08;
-/** Lobe centres sit this many radii above the tip; the shape tops out one radius higher. */
+/** Lobe centres, in lobe radii: this far to each side of the axis, this far above the tip. The shape
+ *  tops out one radius higher again. */
+const LOBE_SPREAD = 0.9;
 const LOBE_RAISE = 2.2;
+/** Where a lobe hands the outline over to the straight run down to the tip, in lobe radii from it. */
+const SHOULDER_X = 1.82;
+const SHOULDER_Y = -1.8;
+/** The same handover as an angle on the left lobe's circle (screen angles: +y points down). */
+const SHOULDER_ANGLE = Math.atan2(SHOULDER_Y + LOBE_RAISE, LOBE_SPREAD - SHOULDER_X);
+/** The top cleft, where the two lobe circles cross, as an angle on the left lobe's circle. */
+const CLEFT_ANGLE = -Math.acos(LOBE_SPREAD);
 /** The shape's full height (world px): tip at 0 up to the lobes' top. */
 const HEART_HEIGHT = LOBE_RADIUS * (LOBE_RAISE + 1);
 /** Half the fill's clip-rect width (world px) - wider than the shape's half-width. */
 const MASK_HALF_WIDTH = LOBE_RADIUS * 2;
+/** The rim: ONE constant-width stroke on the silhouette path, drawn over both fills, so it reads the same
+ *  all round and at every life level (user feedback: the rimless heart blended into the terrain). */
+const RIM_COLOUR = 0x000000;
+const RIM_WIDTH = LOBE_RADIUS / 3;
+/** The drained top: the faction colour scaled toward black, then lifted back off it so no faction's empty
+ *  half can sink into {@link RIM_COLOUR} - the one shade the rim must never blend with. */
+const DRAINED_SHADE = 0.42;
+const DRAINED_LIFT = 0x16;
 
 interface HeartNode {
   readonly node: Container;
@@ -114,35 +125,42 @@ function setFillLevel(entry: HeartNode, life: number): void {
   entry.fillMask.scale.set(MASK_HALF_WIDTH * 2, HEART_HEIGHT * level);
 }
 
-/** One heart node, tip anchored at the container origin so the shape reads above the unit. */
+/** One heart node, tip anchored at the container origin so the shape reads above the unit. The rim goes
+ *  on last: over the drained top as much as over the filled bottom, so the border never thins where the
+ *  gauge is empty. */
 function makeHeart(colour: number): HeartNode {
   const node = new Container();
-  const outline = heartShape(OUTLINE_COLOUR);
-  outline.scale.set(OUTLINE_SCALE);
-  // Grow about the shape's CENTRE (the tip is the local origin), so the rim stays even all round.
-  outline.position.y = (HEART_HEIGHT / 2) * (OUTLINE_SCALE - 1);
-  const drained = heartShape(drainedShadeOf(colour));
-  const fill = heartShape(colour);
+  const drained = heartPath().fill(drainedShadeOf(colour));
+  const fill = heartPath().fill(colour);
   const fillMask = new Graphics().rect(0, 0, 1, 1).fill(0xffffff);
   fill.mask = fillMask;
-  node.addChild(outline, drained, fill, fillMask);
+  const rim = heartPath().stroke({ color: RIM_COLOUR, width: RIM_WIDTH });
+  node.addChild(drained, fill, fillMask, rim);
   return { node, colour, fill, fillMask };
 }
 
-/** The faction colour with each RGB channel scaled by {@link DRAINED_SHADE}. */
+/** The faction colour scaled by {@link DRAINED_SHADE}, then lifted by {@link DRAINED_LIFT}. */
 function drainedShadeOf(colour: number): number {
-  const r = Math.round(((colour >> 16) & 0xff) * DRAINED_SHADE);
-  const g = Math.round(((colour >> 8) & 0xff) * DRAINED_SHADE);
-  const b = Math.round((colour & 0xff) * DRAINED_SHADE);
+  const drain = (c: number): number => Math.min(0xff, Math.round(c * DRAINED_SHADE) + DRAINED_LIFT);
+  const r = drain((colour >> 16) & 0xff);
+  const g = drain((colour >> 8) & 0xff);
+  const b = drain(colour & 0xff);
   return (r << 16) | (g << 8) | b;
 }
 
-/** The placeholder heart vector: two lobes and a point, drawn tip-down with the tip at (0, 0). */
-function heartShape(colour: number): Graphics {
+/**
+ * The placeholder heart vector as ONE closed path, tip at (0, 0): up the left run to the shoulder, over
+ * both lobes through the cleft, then back down to the tip. One path rather than a union of two circles
+ * and a triangle, so a stroke traces the silhouette alone and never the seams inside it.
+ */
+function heartPath(): Graphics {
   const r = LOBE_RADIUS;
+  const lobeY = -LOBE_RAISE * r;
+  const turn = Math.PI * 2; // sweep each lobe forward, never the short way back through the shape
   return new Graphics()
-    .circle(-r * 0.9, -r * LOBE_RAISE, r)
-    .circle(r * 0.9, -r * LOBE_RAISE, r)
-    .poly([-r * 1.82, -r * 1.8, 0, 0, r * 1.82, -r * 1.8])
-    .fill(colour);
+    .moveTo(0, 0)
+    .lineTo(-SHOULDER_X * r, SHOULDER_Y * r)
+    .arc(-LOBE_SPREAD * r, lobeY, r, SHOULDER_ANGLE, CLEFT_ANGLE + turn)
+    .arc(LOBE_SPREAD * r, lobeY, r, Math.PI - CLEFT_ANGLE, Math.PI - SHOULDER_ANGLE + turn)
+    .closePath();
 }

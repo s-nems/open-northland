@@ -13,11 +13,11 @@ import { ONE } from '../src/index.js';
 
 const heart = (life: number, colour = 0xff0000): LifeHeart => ({ id: 1, x: ONE, y: ONE, colour, life });
 
-/** Draw one heart and hand back its node's fill + mask (children: outline, drained, fill, mask). */
+/** Draw one heart and hand back its node's fill + mask (children: drained, fill, mask, rim). */
 function drawnHeart(layer: LifeHeartLayer, h: LifeHeart): { fill: Graphics; mask: Graphics } {
   layer.draw({ hearts: [h] });
   const node = layer.container.children[0] as Container;
-  const [, , fill, mask] = node.children as [Graphics, Graphics, Graphics, Graphics];
+  const [, fill, mask] = node.children as [Graphics, Graphics, Graphics, Graphics];
   return { fill, mask };
 }
 
@@ -46,18 +46,31 @@ describe('LifeHeartLayer - the fill level is the life fraction', () => {
     expect(drawnHeart(layer, heart(0)).fill.visible).toBe(false);
   });
 
-  it('one silhouette plus a rim - drained and fill sit unscaled, no second full-size heart', () => {
+  it('the rim is a constant-width border over both fills, not a scaled copy behind them', () => {
     const layer = new LifeHeartLayer();
     layer.draw({ hearts: [heart(0.5)] });
     const node = layer.container.children[0] as Container;
     expect(node.children).toHaveLength(4);
-    const [outline, drained, fill] = node.children as [Graphics, Graphics, Graphics, Graphics];
-    expect(drained.scale.x).toBe(1);
-    expect(drained.scale.y).toBe(1);
-    expect(fill.scale.x).toBe(1);
-    // The rim grows the silhouette a hair - a border, not the old 35%-larger backing heart.
-    expect(outline.scale.x).toBeGreaterThan(1);
-    expect(outline.scale.x).toBeLessThan(1.25);
+    const [drained, fill, , rim] = node.children as [Graphics, Graphics, Graphics, Graphics];
+    // Painted last, so the drained top wears the same border as the filled bottom.
+    expect(node.children.indexOf(rim)).toBe(node.children.length - 1);
+    for (const part of [drained, fill, rim]) {
+      expect(part.scale.x).toBe(1);
+      expect(part.scale.y).toBe(1);
+    }
+    // A stroke pads the silhouette's bounds by the same amount on EVERY side; scaling a copy grows it in
+    // proportion to the distance from the scale origin, so the four margins would disagree (the old
+    // scaled-copy rim measured 0 here, since the copy lived on its own node).
+    const body = drained.getLocalBounds();
+    const border = rim.getLocalBounds();
+    const margins = [
+      body.minX - border.minX,
+      border.maxX - body.maxX,
+      body.minY - border.minY,
+      border.maxY - body.maxY,
+    ];
+    expect(margins[0]).toBeGreaterThan(0);
+    for (const margin of margins) expect(margin).toBeCloseTo(margins[0] as number);
   });
 
   it('a life change moves the mask on the retained node; only a colour change rebuilds it', () => {
