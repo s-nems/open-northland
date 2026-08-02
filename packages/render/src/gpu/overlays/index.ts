@@ -6,8 +6,9 @@
  *    ({@link PlacementOverlayLayer}) and cursor ghost ({@link PlacementGhostLayer}), construction
  *    plots ({@link ConstructionPlotLayer}), selection rings ({@link SelectionLayer}), and combat
  *    litter ({@link CombatEffectsLayer});
- *  - markers above the sprites: door badges ({@link BadgeLayer}) and the `?debug=geometry` overlay
- *    ({@link GeometryDebugLayer});
+ *  - marks inside the depth-sorted sprite layer, so units occlude them: door badges
+ *    ({@link BadgeLayer}) and a razed body sinking ({@link CollapseLayer});
+ *  - markers above the sprites: the `?debug=geometry` overlay ({@link GeometryDebugLayer});
  *  - the pinned/second-render surfaces: the HUD ({@link HudLayer}) and the details-panel portrait
  *    inset ({@link PortraitInsetLayer}).
  *

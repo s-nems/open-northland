@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
+import { SIGN_DEPTH_EPS, screenDepth } from '../../data/scene/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
@@ -21,11 +22,19 @@ export type { DoorBadgeRole, HouseholdKind } from './sign-gfx.js';
 
 /**
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
- * (one sign per settler) and, for a home, its resident families, drawn in world space (a child of the
- * camera's `worldLayer`, above the sprite layer so it floats over the house) so it pans/zooms with the
- * building. Like the selection rings this is a client-side projection of the read-only snapshot, not
- * sim state: the app's `computeDoorBadges` resolves each building's anchor and its bottom-to-top
- * {@link DoorBadgeRow} list; this layer only draws them.
+ * (one sign per settler) and, for a home, its resident families. Like the selection rings this is a
+ * client-side projection of the read-only snapshot, not sim state: the app's `computeDoorBadges`
+ * resolves each building's anchor and its bottom-to-top {@link DoorBadgeRow} list; this layer only
+ * draws them.
+ *
+ * The stacks live in the depth-sorted sprite layer, not a painter slot of their own, keyed just above
+ * the OWNING BUILDING's {@link screenDepth} ({@link SIGN_DEPTH_EPS}) rather than the post's own planted
+ * spot: the chain clears its house whichever side the post stands on, and every unit from the house's
+ * row forward paints over it. APPROXIMATION - how the original sorts its sign records against units is
+ * not established here; this rule is chosen so a marker never swallows the unit the player is watching,
+ * at the cost of a band between house anchor and post where a settler is drawn in front of a post he
+ * stands behind (measured against the shipped data in the layer's test). Off-screen stacks detach, so
+ * this layer's share of the depth sort tracks the screen.
  *
  * Retained, like the selection layer: one badge-stack {@link Container} per building id (a stable key),
  * rebuilt only when its rows, family banners, or owner change, otherwise just repositioned each frame;
@@ -48,10 +57,12 @@ export interface DoorBadgeRow {
 export interface DoorBadge {
   /** The building entity id - the retained-pool key (ids are monotonic, a stable key). */
   readonly id: number;
-  /** Anchor position in fixed-point `Position` units (same space as a snapshot `Position`). */
+  /** The OWNING BUILDING's position in fixed-point `Position` units (same space as a snapshot
+   *  `Position`) - the depth key, so the stack sorts with its house wherever the post stands. */
   readonly x: number;
   readonly y: number;
-  /** Screen-px offset from the projected anchor - the original's `GfxFlagPoint` (+y down); absent = 0. */
+  /** Screen-px offset from the projected anchor to the post (+y down); absent = 0. The original's
+   *  `GfxFlagPoint`, or the projected step to the derived worker-icon node when a type has none. */
   readonly dx?: number;
   readonly dy?: number;
   /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
@@ -113,7 +124,6 @@ function rowsKey(badge: DoorBadge): string {
 }
 
 export class BadgeLayer {
-  readonly container = new Container();
   /** One persistent badge-stack per building id; rebuilt only when its rows change, else repositioned. */
   private readonly stacks = new Map<number, BadgeStack>();
   /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
@@ -124,7 +134,11 @@ export class BadgeLayer {
    *  door signs match its settlers' clothing band on a rostered map. */
   private readonly colourOf: (player: number) => number;
 
-  constructor(colourOf: (player: number) => number = IDENTITY_COLOUR) {
+  constructor(
+    /** The renderer's depth-sorted sprite layer - badge stacks interleave with the live sprites. */
+    private readonly spriteLayer: Container,
+    colourOf: (player: number) => number = IDENTITY_COLOUR,
+  ) {
     this.colourOf = colourOf;
   }
 
@@ -138,10 +152,11 @@ export class BadgeLayer {
 
   /**
    * Reconcile the badge stacks to `badges`: get-or-(re)build a stack per building whose rows changed,
-   * move it to the building's anchor (projected + terrain-lifted), then destroy stacks for buildings
-   * no longer in the list. An empty list retires every stack. A `viewport` bounds the per-frame work to
-   * the screen: a staffed building outside the framed box keeps its pooled stack (it scrolls back) but is
-   * hidden and neither repositioned nor rebuilt, so cost tracks the screen, not the map's building count.
+   * move it to the building's anchor (projected + terrain-lifted) and re-key its depth, then destroy
+   * stacks for buildings no longer in the list. An empty list retires every stack. A `viewport` bounds
+   * the per-frame work to the screen: a staffed building outside the framed box keeps its pooled stack
+   * (it scrolls back) but is detached and neither repositioned nor rebuilt, so cost tracks the screen,
+   * not the map's building count.
    */
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport): void {
     this.drawn.clear();
@@ -152,10 +167,12 @@ export class BadgeLayer {
       const p = tileToScreen(tileX, tileY);
 
       let stack = this.stacks.get(badge.id);
-      // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild.
-      // An id whose stack doesn't exist yet is deliberately not marked drawn (see {@link retainOffscreen}).
+      // Off-screen: retain the pooled stack so it isn't retired, but skip the reposition/rebuild and drop
+      // it out of the sprite layer, whose depth sort runs over its children every frame. An id whose stack
+      // doesn't exist yet is deliberately not marked drawn (see {@link retainOffscreen}).
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
+        stack?.node.removeFromParent();
         continue;
       }
       const lift = terrainLiftAt(elevation, tileX, tileY);
@@ -175,7 +192,6 @@ export class BadgeLayer {
           this.gfx !== undefined && sheet !== undefined
             ? makeSignStack(badge, this.gfx.textures, sheet)
             : makeSquareStack(badge);
-        this.container.addChild(node);
         stack = {
           node,
           rows,
@@ -186,7 +202,11 @@ export class BadgeLayer {
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
+      if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
       stack.node.position.set(p.x + (badge.dx ?? 0), p.y + (badge.dy ?? 0) - lift + stack.baseDrop);
+      // `p` is the PRE-lift projection the line above then lifts - the same key the pool builds a
+      // building from, so the chain sorts with its house on a hill too.
+      stack.node.zIndex = screenDepth(p.x, p.y, 'building') + SIGN_DEPTH_EPS;
       this.drawn.add(badge.id);
     }
     // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).
@@ -194,7 +214,7 @@ export class BadgeLayer {
   }
 
   destroy(): void {
-    this.container.destroy({ children: true });
+    for (const stack of this.stacks.values()) stack.node.destroy({ children: true });
     this.stacks.clear();
   }
 }

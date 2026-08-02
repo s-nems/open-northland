@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../src/data/projection/index.js';
-import { SHADOW_DEPTH_EPS, screenDepth, spriteDepth } from '../../src/data/scene/depth.js';
+import { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth, spriteDepth } from '../../src/data/scene/depth.js';
 import type { DrawKind } from '../../src/data/scene/index.js';
 
 /**
@@ -71,5 +71,15 @@ describe('same-anchor depth keys', () => {
   it('sizes the shadow epsilon below one kind-bias step so a shadow never drops behind an earlier kind', () => {
     const oneKindStep = screenDepth(0, 0, 'building') - screenDepth(0, 0, 'resource');
     expect(SHADOW_DEPTH_EPS).toBeLessThan(oneKindStep);
+  });
+
+  it('sizes the sign epsilon to clear a building yet stay under the next kind up', () => {
+    // A door-badge chain keys off its own building: it must clear the house (and the x-tiebreak that
+    // could otherwise tie them) without reaching the kind above 'building', so goods heaps, flags and
+    // settlers on the same anchor all keep painting over it.
+    const worstTiebreak = depthKey(MAX_MAP_SCREEN_X, 0) - depthKey(0, 0);
+    const oneKindStep = screenDepth(0, 0, 'stockpile') - screenDepth(0, 0, 'building');
+    expect(SIGN_DEPTH_EPS).toBeGreaterThan(worstTiebreak);
+    expect(SIGN_DEPTH_EPS).toBeLessThan(oneKindStep);
   });
 });

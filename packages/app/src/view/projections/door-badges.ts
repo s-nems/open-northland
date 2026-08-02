@@ -1,4 +1,5 @@
 import type { DoorBadge, DoorBadgeRow, HouseholdKind } from '@open-northland/render';
+import { ONE, tileToScreen } from '@open-northland/render/data';
 import {
   entityById,
   type Fixed,
@@ -34,9 +35,9 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
  *
  * This projection owns the stack order (bottom-to-top: resident families, worker discs, carrier
  * pennants on top) and each row's click-pick settler id, so drawing and picking share one row list.
- * The anchor is the building's `GfxFlagPoint` (the original's sign-post pixel offset from the sprite
- * anchor) when the content carries one; a type without it falls back to the derived worker-icon node
- * beside the door ({@link workerIconNode}).
+ * The stack stands at the building's `GfxFlagPoint` (the original's sign-post pixel offset from the
+ * sprite anchor) when the content carries one; a type without it falls back to the derived worker-icon
+ * node beside the door ({@link workerIconNode}). See {@link anchorOf} for how both reach the layer.
  */
 
 /** The slice of a building type this projection needs: its door offset (half-cell, from the placed
@@ -110,8 +111,9 @@ export function computeDoorBadges(
   return out;
 }
 
-/** The badge anchor: the building position + its `GfxFlagPoint` pixel offset when extracted, else the
- *  derived worker-icon node beside the door (the no-flag-point fallback). */
+/** Both anchors reach the layer as the BUILDING's position plus a screen-px offset, the derived node
+ *  included: that is what lets the layer depth-sort the chain with its house, where a node anchor
+ *  behind the house (a north-facing door) would sort the chain into the house body. */
 function anchorOf(
   pos: { readonly x: Fixed; readonly y: Fixed },
   info: BuildingDoorInfo | undefined,
@@ -119,10 +121,11 @@ function anchorOf(
   if (info?.flagPoint !== undefined) {
     return { x: pos.x, y: pos.y, dx: info.flagPoint.x, dy: info.flagPoint.y };
   }
-  const anchor = nodeOfPosition(pos.x, pos.y);
-  const node = workerIconNode(info?.footprint, anchor, info?.id);
-  const dpos = positionOfNode(node.hx, node.hy);
-  return { x: dpos.x, y: dpos.y };
+  const node = workerIconNode(info?.footprint, nodeOfPosition(pos.x, pos.y), info?.id);
+  const npos = positionOfNode(node.hx, node.hy);
+  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
+  const to = tileToScreen(npos.x / ONE, npos.y / ONE);
+  return { x: pos.x, y: pos.y, dx: to.x - from.x, dy: to.y - from.y };
 }
 
 /** Classify one resident family into its door banner: parents raising a child read 'family', a

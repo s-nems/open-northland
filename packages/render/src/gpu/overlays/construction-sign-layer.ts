@@ -6,8 +6,11 @@ import { IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
 /**
  * The construction-sign layer - one player-coloured `ls_temp` stand planted at each building site's
- * sign post, drawn in world space like the door badges. A client-side projection of the read-only
- * snapshot: the app's `computeConstructionSigns` decides what counts as a site and where its post is.
+ * sign post. A client-side projection of the read-only snapshot: the app's `computeConstructionSigns`
+ * decides what counts as a site and where its post is.
+ *
+ * Unlike the door-badge chain that replaces it when the site completes, the stand keeps its painter
+ * slot above the sprites: it marks a site the builders crowd around, so it stays readable through them.
  *
  * Retained per site id with the shared viewport-cull dance ({@link retainOffscreen} /
  * {@link retireUndrawn}); a sprite is rebuilt only when the site's owner changes, else repositioned.

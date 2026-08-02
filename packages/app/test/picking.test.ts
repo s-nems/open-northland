@@ -271,4 +271,17 @@ describe('pickDoorBadgeRow', () => {
     const front = stack(2, 3, 5, { rows: [{ role: 'single', settler: 8 }] });
     expect(pickDoorBadgeRow([back, front], p.x, p.y - 10)).toBe(8);
   });
+
+  it('breaks an overlap on the building, not the post, matching what the layer paints', () => {
+    // The layer sorts a chain by its BUILDING, so the front house's chain paints over the rear one even
+    // when the rear post is planted lower on screen - real flag points spread that far (home_level_04
+    // is +92, the smithy -23). Two posts 6 px apart, so one click lands in both base bands.
+    const rear = stack(1, 3, 5, { dy: 92, rows: [{ role: 'single', settler: 7 }] });
+    const front = stack(2, 3, 7, { dy: 10, rows: [{ role: 'single', settler: 8 }] });
+    const rearPost = tileToScreen(3, 5).y + 92;
+    const frontPost = tileToScreen(3, 7).y + 10;
+    expect(rearPost).toBeGreaterThan(frontPost); // the buried chain IS the lower-planted one
+    const p = tileToScreen(3, 5);
+    expect(pickDoorBadgeRow([rear, front], p.x, frontPost - 5)).toBe(8); // the front house still wins
+  });
 });

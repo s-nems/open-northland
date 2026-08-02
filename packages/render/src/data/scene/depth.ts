@@ -79,11 +79,19 @@ export function screenDepth(x: number, y: number, kind: DrawKind, isFlag = false
 }
 
 /**
- * How far below its caster's {@link depthKey} a tall object's cast shadow sorts. The original blits a
- * shadow immediately before its caster, so the shadow draws over sprites behind the caster but under
- * the caster itself. Half a {@link SCREEN_PAINT_EPS} kind-bias step: above `depthKey`'s max x-tiebreak
- * contribution (~0.07 on a 1024-tile-wide map) so the pair can't interleave, and below one whole step
- * so the shadow never
- * drops behind a genuinely earlier sprite.
+ * The offset a mark takes to sit just beside one sprite without joining the kind order: half a
+ * {@link SCREEN_PAINT_EPS} step, which is above `depthKey`'s max x-tiebreak contribution (~0.07 on a
+ * 1024-tile-wide map, so the pair can never interleave) and below one whole step (so it never crosses
+ * a genuine kind or row boundary). Both marks below are one of these, in opposite directions.
  */
-export const SHADOW_DEPTH_EPS = SCREEN_PAINT_EPS / 2;
+const HALF_PAINT_STEP = SCREEN_PAINT_EPS / 2;
+
+/** How far above its building's {@link screenDepth} a planted door-badge chain sorts - enough to clear
+ *  the house it belongs to, while staying under `stockpile` (the next kind up), so anything the player
+ *  sees standing in front of the house paints over the chain. */
+export const SIGN_DEPTH_EPS = HALF_PAINT_STEP;
+
+/** How far below its caster's {@link depthKey} a tall object's cast shadow sorts. The original blits a
+ *  shadow immediately before its caster, so the shadow draws over sprites behind the caster but under
+ *  the caster itself. */
+export const SHADOW_DEPTH_EPS = HALF_PAINT_STEP;

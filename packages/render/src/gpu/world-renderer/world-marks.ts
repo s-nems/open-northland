@@ -40,7 +40,6 @@ export type MarkSlots = Pick<
   | 'bones'
   | 'blood'
   | 'damageSmoke'
-  | 'doorBadges'
   | 'constructionSigns'
   | 'bubbles'
   | 'hearts'
@@ -76,6 +75,8 @@ export class WorldMarks {
    *  layer, not a slot of its own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
   private readonly damageSmoke = new DamageSmokeLayer();
+  /** The staffed-building sign chains. Like the collapses these live inside the depth-sorted sprite
+   *  layer, so a settler walking in front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
@@ -92,14 +93,13 @@ export class WorldMarks {
     playerColourOf?: (player: number) => number,
   ) {
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet);
-    this.badges = new BadgeLayer(playerColourOf);
+    this.badges = new BadgeLayer(spriteLayer, playerColourOf);
     this.constructionSigns = new ConstructionSignLayer(playerColourOf);
     this.slots = {
       selection: this.selection.container,
       bones: this.effects.groundContainer,
       blood: this.effects.overlayContainer,
       damageSmoke: this.damageSmoke.container,
-      doorBadges: this.badges.container,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
       hearts: this.hearts.container,

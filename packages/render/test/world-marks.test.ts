@@ -49,20 +49,23 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
   };
 }
 
-function marksIn(): WorldMarks {
-  return new WorldMarks(new Container(), new TextureCache(), undefined);
+/** The marks group over a stand-in for the renderer's depth-sorted sprite layer - the marks that must
+ *  occlude like sprites (collapses, door badges) draw into it instead of into a slot. */
+function marksIn(): { marks: WorldMarks; sprites: Container } {
+  const sprites = new Container();
+  return { marks: new WorldMarks(sprites, new TextureCache(), undefined), sprites };
 }
 
 describe('WorldMarks', () => {
   it('gives every painter slot a container of its own', () => {
-    const marks = marksIn();
+    const { marks } = marksIn();
     const slots = Object.values(marks.slots);
     expect(new Set(slots).size).toBe(slots.length);
     marks.destroy();
   });
 
   it('routes bones to the ground slot and blood to the overlay slot', () => {
-    const marks = marksIn();
+    const { marks } = marksIn();
     marks.ingest([died], 100);
     marks.draw(frameOf({ renderTime: 100 }));
     expect(marks.slots.bones.children).toHaveLength(1);
@@ -75,7 +78,7 @@ describe('WorldMarks', () => {
   });
 
   it('fades a mark on the interpolated render clock, not the integer tick it was ingested at', () => {
-    const marks = marksIn();
+    const { marks } = marksIn();
     marks.ingest([hit], 0);
     marks.draw(frameOf({ renderTime: 30 }));
     const blood = marks.slots.blood.children[0];
@@ -89,7 +92,7 @@ describe('WorldMarks', () => {
   });
 
   it('feeds each per-frame list to its own layer', () => {
-    const marks = marksIn();
+    const { marks, sprites } = marksIn();
     marks.draw(
       frameOf({
         selection: new Set([SETTLER]),
@@ -97,13 +100,14 @@ describe('WorldMarks', () => {
       }),
     );
     expect(marks.slots.selection.children).toHaveLength(1);
-    // No decoded sign art in a headless test - the badge layer draws its placeholder squares.
-    expect(marks.slots.doorBadges.children).toHaveLength(1);
+    // No decoded sign art in a headless test - the badge layer draws its placeholder squares, into the
+    // depth-sorted sprite layer rather than a slot of its own.
+    expect(sprites.children).toHaveLength(1);
     marks.destroy();
   });
 
   it('draws nothing for an empty frame and tears every slot down', () => {
-    const marks = marksIn();
+    const { marks } = marksIn();
     marks.draw(frameOf());
     expect(Object.values(marks.slots).every((c) => c.children.length === 0)).toBe(true);
     marks.destroy();
