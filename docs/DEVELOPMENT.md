@@ -21,6 +21,10 @@ npm run tickets:list    # priority-sorted ticket view
 
 Use `npm install` only when dependencies or the lockfile need to change.
 
+`dev` and `shot` compile the workspace packages before starting Vite, which resolves every
+`@open-northland/*` import to that package's `dist/`. A running server keeps serving the build it
+started with: restart it after changing sim, render, data, or audio source.
+
 ## Local game content
 
 Generate content from your own game installation:
