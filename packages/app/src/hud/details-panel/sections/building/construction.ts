@@ -4,13 +4,13 @@ import { BAR_H, type BuildingLayout, ROW_TEXT_PAD, STOCK_PLATE_H, STOCK_ROW_H } 
 import type { BuildingPanelModel } from '../../model/index.js';
 import { STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 
-/** Where the construction gauge starts (design px) — a narrow label column that fits the "100%" text. */
+/** Where the construction gauge starts (design px) - a narrow label column that fits the "100%" text. */
 const CONSTRUCTION_BAR_LEFT = 40;
 
 /**
  * Construction window (a site only): the health gauge that ramps with the build (the sim raises hitpoints
  * in step with `built`) beside the numeric %, then one stock-style row per material line reading
- * "delivered / needed". No extracted title exists for a site window — 'Construction' is a named
+ * "delivered / needed". No extracted title exists for a site window - 'Construction' is a named
  * approximation (English pending the i18n pass), like 'Produkcja'.
  */
 export function drawConstructionSection(

@@ -82,7 +82,7 @@ export class PlannerSpacing {
 
   /**
    * A workplace anchor's loiter yard: every walkable, unblocked node reachable from `anchor` within
-   * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order — Set insertion order
+   * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order - Set insertion order
    * is the claim priority, anchor first when it qualifies. Blocked cells are neither entered nor
    * traversed, mirroring the pathfinder, so a yard never spans a wall or a stream the walk couldn't
    * cross. Bounded: ≤ ~2·R² nodes visited.

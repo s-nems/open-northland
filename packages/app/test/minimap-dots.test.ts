@@ -30,7 +30,7 @@ function dotsOf(
   return out;
 }
 
-/** Where the raster stamps a force standing on tile `(x, y)` — the projection the dots must reproduce. */
+/** Where the raster stamps a force standing on tile `(x, y)` - the projection the dots must reproduce. */
 function pxAt(x: number, y: number): { bx: number; by: number } {
   const s = tileToScreen(x, y);
   return { bx: (s.x - BOUNDS.minX) * SCALE, by: (s.y - BOUNDS.minY) * SCALE };

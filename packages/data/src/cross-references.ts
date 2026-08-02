@@ -104,13 +104,13 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
   const errors: string[] = [];
   for (const t of set.tribes) {
     // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
-    // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
+    // themselves have no master table to resolve against - see AtomicId - so only jobType is checked.)
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
     }
     // Each `jobEnables*` tech-graph edge: the enabling `jobType` must resolve, and so must its
-    // `targetId` within the kind's table — a good, a building (`house`), a job, or a vehicle. The
+    // `targetId` within the kind's table - a good, a building (`house`), a job, or a vehicle. The
     // `vehicle` kind keys into the `vehicletypes` `logicvehicletype` namespace (distinct from
     // buildings), resolved against `VehicleType.typeId`.
     for (const e of t.jobEnables) {
@@ -142,7 +142,7 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
 function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
   const errors: string[] = [];
   // A weapon's wielding job, when set, must resolve too. Its `goodType` (the good that is the weapon)
-  // likewise resolves into the good table — the extractor already drops the `goodtype 0`
+  // likewise resolves into the good table - the extractor already drops the `goodtype 0`
   // natural-weapon sentinel to undefined.
   for (const w of set.weapons) {
     if (w.jobType !== undefined && !jobIds.has(w.jobType))
@@ -158,7 +158,7 @@ function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): str
   return errors;
 }
 
-// An animal record keys on `tribeType` (not `type`) — its identity is its owning tribe — so that id
+// An animal record keys on `tribeType` (not `type`) - its identity is its owning tribe - so that id
 // must resolve into the tribe table (the same dangling-reference class). The extractor already drops
 // records with no `tribetype` at all, so every animal here carries one to check.
 function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
@@ -194,7 +194,7 @@ function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
   return errors;
 }
 
-// A landscape object's `LogicType`, when set, must resolve into the landscape type table — the
+// A landscape object's `LogicType`, when set, must resolve into the landscape type table - the
 // placed object counts as that type on the map's logic lanes (every real record carries 1..87;
 // LOGIC_TYPE_NONE is the schema's "pure decor" default for a record that omits the key).
 function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] {
@@ -211,8 +211,8 @@ function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] 
 /** The three ordered stages of a good's gathering chain: the keys both gathering checks walk. */
 const GATHERING_STAGES = ['harvest', 'pickup', 'store'] as const;
 
-// A good's landscape references — its `landscapetype` on-the-ground lane and the three
-// gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
+// A good's landscape references - its `landscapetype` on-the-ground lane and the three
+// gathering-stage ids - must resolve into the landscape type table (the same dangling-reference
 // class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
 // map-gathered goods carry a `gathering` chain.
 function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[] {

@@ -5,9 +5,9 @@ import { diag } from '../diag/log.js';
  * The two fetch idioms every `content/` loader in this folder shares, kept in one place so the
  * degrade-gracefully policy can't drift per file:
  *
- *  - {@link fetchJsonOrNull} — optional JSON (a manifest, metrics, the IR): absent/unreadable → `null`,
+ *  - {@link fetchJsonOrNull} - optional JSON (a manifest, metrics, the IR): absent/unreadable → `null`,
  *    the caller falls back instead of crashing (a checkout without `content/` must still boot).
- *  - {@link loadTextureIfPresent} — optional texture (a palette/colour LUT): absent/unreadable →
+ *  - {@link loadTextureIfPresent} - optional texture (a palette/colour LUT): absent/unreadable →
  *    `undefined`, likewise. Absent is silent (the pipeline stage simply hasn't run); unreadable warns,
  *    because falling back to preview graphics over a broken artifact must not pass unannounced.
  */

@@ -1,5 +1,5 @@
 /**
- * The scene layer's shared vocabulary — the {@link DrawItem} shape the pure scene builders emit and the
+ * The scene layer's shared vocabulary - the {@link DrawItem} shape the pure scene builders emit and the
  * GPU layer consumes. Types only; the depth/paint-order keys live in {@link import('./depth.js')}, the
  * builders in {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')} (the latter also
  * owns the terrain-grid shapes), the per-component snapshot reads in
@@ -19,7 +19,7 @@ export type DrawKind =
   | 'signpost'
   | 'projectile';
 
-/** The kinds drawn as sprites — every {@link DrawKind} a marker component can classify an entity as.
+/** The kinds drawn as sprites - every {@link DrawKind} a marker component can classify an entity as.
  *  Terrain tiles are the exception: they come from the grid, not an entity, and bind separately. */
 export type SpriteKind = Exclude<DrawKind, 'tile'>;
 
@@ -55,7 +55,7 @@ export interface StaticDrawFields {
    */
   builtPct?: number;
   /**
-   * A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds — the key a
+   * A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds - the key a
    * per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
    * {@link import('../sprites/index.js').StockpileBinding} draws by. Omitted for a delivery flag
    * ({@link DrawItem.isFlag}) and an empty pile (both draw the flag, not a heap).
@@ -63,21 +63,21 @@ export interface StaticDrawFields {
   goodType?: number;
   /**
    * For a mined resource node ({@link import('@open-northland/sim').MineDeposit}) or a crop: its visual
-   * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties — a
+   * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties - a
    * {@link import('../sprites/index.js').ResourceTypeBinding} indexes the fill-state frames by it (the node
    * twin of a pile's {@link DrawItem.fill}). Omitted for a plain node, which draws its full-state frame.
    */
   level?: number;
   /**
    * The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). The resolver
-   * rescales the ladder onto the bound record's own authored frame count when they differ — a map's
+   * rescales the ladder onto the bound record's own authored frame count when they differ - a map's
    * deposit is sized from that record and matches, a record-less scene/admin one carries the catalog
-   * count instead — so a full deposit always draws its fullest frame. Travels with {@link level}: a
+   * count instead - so a full deposit always draws its fullest frame. Travels with {@link level}: a
    * ghost holding the level without its denominator would redraw at a different frame.
    */
   levels?: number;
   /**
-   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (`Resource.gfxIndex` —
+   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (`Resource.gfxIndex` -
    * a map's own species variant, "pine 02", "stones 05 grey"). A
    * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins over the per-good
    * representative, so a map keeps its variety. Omitted for an admin/scene-spawned node.
@@ -100,21 +100,21 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** The world-space sort key the item was ordered by (see {@link import('./terrain-scene.js').buildScene}). */
   readonly depth: number;
   /**
-   * For a stockpile pile: units of {@link goodType} held — a
+   * For a stockpile pile: units of {@link goodType} held - a
    * {@link import('../sprites/index.js').StockpileBinding} maps it to a per-fill heap frame so the pile
    * grows with its contents. Omitted for an empty pile (a flag) and non-stockpile kinds.
    */
   readonly fill?: number;
   /**
    * For a stockpile: whether it is a designated delivery flag (a
-   * {@link import('@open-northland/sim').DeliveryFlag}) rather than a loose pile — a marker holding no
+   * {@link import('@open-northland/sim').DeliveryFlag}) rather than a loose pile - a marker holding no
    * goods that draws the flag graphic, painted a hair above any co-located heap (the flag paint step
    * in {@link import('./depth.js')}).
    * Omitted (falsy) for a loose pile and non-stockpiles.
    */
   readonly isFlag?: boolean;
   /**
-   * For a `signpost` item: which direction-board frame to draw — an index into the binding's angular
+   * For a `signpost` item: which direction-board frame to draw - an index into the binding's angular
    * board list ({@link import('../sprites/index.js').SignpostBinding.boards}, 20°-step frames around
    * the post top). Omitted for the post itself. Board items are synthesized per connected in-range
    * neighbour by the scene collector, anchored on the same feet position (the frames' offsets carry
@@ -184,7 +184,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  ({@link import('../../gpu/sprite-sheet.js').paletteLutRow}), same tri-state. */
   readonly armorGood?: number | null;
   /**
-   * For a settler/signpost: the team-colour slot — the `PalettedSprite` reads its clothing-band
+   * For a settler/signpost: the team-colour slot - the `PalettedSprite` reads its clothing-band
    * indices through this row of the `256×N` colour LUT (and a signpost picks its per-colour baked
    * atlas by it). By default this is the owning `Owner.player` slot; a scene built with
    * {@link import('./sprite-scene.js').SpriteSceneOptions.playerColourOf} carries the mapped colour
@@ -193,22 +193,22 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    */
   readonly player?: number;
   /**
-   * For a settler: whether it is born-young (baby/child — `Age` present). Disambiguates the age-class
+   * For a settler: whether it is born-young (baby/child - `Age` present). Disambiguates the age-class
    * `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids (AGENTS.md [dc3ef54]): only a
    * young settler keys the child/baby body table. Omitted for adults.
    */
   readonly young?: boolean;
   /**
    * For a building being UPGRADED into its next level (`Upgrading` beside the site marker): upgrade
-   * progress as a whole percent (0..99, floored `Building.built`). Distinct from {@link builtPct} —
+   * progress as a whole percent (0..99, floored `Building.built`). Distinct from {@link builtPct} -
    * an upgrading building keeps its finished old-tier body draw, and the upgrade-overlay binding
-   * ({@link import('../sprites/index.js').BuildingTypeBinding.upgradeByType} — the `[GfxHouse]`
+   * ({@link import('../sprites/index.js').BuildingTypeBinding.upgradeByType} - the `[GfxHouse]`
    * `upgrade === 1` rows: the next tier's body) reveals over it at this progress. Omitted for a
    * finished building, a from-scratch site, and non-building kinds.
    */
   readonly upgradePct?: number;
   /**
-   * For a finished building: whether it is mid production cycle (`Production` present) — the key an
+   * For a finished building: whether it is mid production cycle (`Production` present) - the key an
    * animated state overlay switches on ({@link import('../sprites/index.js').BuildingTypeBinding.overlayByType},
    * the mill's spinning rotor). A named approximation of the original's overlay state 1: `Production`
    * persists through a brief worker-away pause (the rotor keeps spinning), whose exact behaviour is
@@ -216,36 +216,36 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    */
   readonly working?: boolean;
   /**
-   * For a FINISHED building that has taken damage: its remaining Health fraction (0..1, exclusive of 1 —
+   * For a FINISHED building that has taken damage: its remaining Health fraction (0..1, exclusive of 1 -
    * undamaged omits it). The damage-smoke overlay's drive: each fifth of the pool lost adds a smoke
-   * plume, and an HP rise sheds them (a pure function of the current pool —
+   * plume, and an HP rise sheds them (a pure function of the current pool -
    * {@link import('./snapshot-readers/static-readers.js').readHpFraction}). Omitted for sites,
    * upgrades, and non-building kinds.
    */
   readonly hpFrac?: number;
   /**
-   * For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise) — the pooled
+   * For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise) - the pooled
    * arrow (authored pointing screen-east) rotates to it so the shaft points along the flight, tilted
    * along the drawn ballistic arc's tangent when the launch origin is readable. Omitted for other kinds.
    */
   readonly rotation?: number;
   /**
-   * Whether this item is a fog ghost — a remembered static drawn from the viewer's
+   * Whether this item is a fog ghost - a remembered static drawn from the viewer's
    * {@link import('../fog/index.js').FogGhostStore} memory on explored ground, not a live entity. The pool
    * dims it ({@link import('../fog/mask.js').FOG_GHOST_TINT}) and stamps no hit bounds (clicking scenery intel
    * must not select a fogged, possibly dead, entity). Omitted (falsy) for live-drawn items.
    */
   readonly ghost?: boolean;
   /**
-   * The draw-height lift (world px, ≥ 0) at this item's feet — terrain elevation plus a projectile's
-   * arc height — subtracted from the drawn `y`. The anchor {@link x}/{@link y} and {@link depth} stay
+   * The draw-height lift (world px, ≥ 0) at this item's feet - terrain elevation plus a projectile's
+   * arc height - subtracted from the drawn `y`. The anchor {@link x}/{@link y} and {@link depth} stay
    * pre-lift, so a lifted sprite still occludes by feet row (draw at `y − lift`, sort by `y`). Omitted
    * (0) on a flat map with nothing in flight.
    */
   readonly lift?: number;
   /**
    * This item only survived the cull because it is the details-panel portrait's subject (off-screen,
-   * fogged, or a settler inside a building — cases the map normally drops). The pool keeps it reconciled
+   * fogged, or a settler inside a building - cases the map normally drops). The pool keeps it reconciled
    * and paletted so the portrait's second render can draw it, but hides it on the MAIN map (an off-screen
    * settler is off-canvas anyway; an indoor one must not pop into view at its workplace door). Omitted
    * (falsy) for a normally-drawn item.
@@ -260,7 +260,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
 }
 
 /** The mutable twin of {@link DrawItem}, used only while one item is being assembled (the fields are
- *  conditionally assigned instead of conditionally spread — a spread per optional field allocates a
+ *  conditionally assigned instead of conditionally spread - a spread per optional field allocates a
  *  throwaway object each, a real per-frame GC cost at thousands of sprites × 60 fps). */
 export type MutableDrawItem = { -readonly [K in keyof DrawItem]: DrawItem[K] };
 

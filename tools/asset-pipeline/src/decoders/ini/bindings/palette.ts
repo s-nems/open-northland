@@ -1,5 +1,5 @@
 /**
- * Palette aliases — the first leg of the `.bmd`→palette graph: a graphics record names a bob set's
+ * Palette aliases - the first leg of the `.bmd`→palette graph: a graphics record names a bob set's
  * palette by `editname`, and `palettes.ini` resolves that name to the `.pcx` whose trailer holds the
  * actual 256 colours.
  */
@@ -33,7 +33,7 @@ export interface PaletteAlias {
 }
 
 /**
- * Extracts the `palettes.ini` `[GfxPalette256]` records into name→`.pcx` aliases — the first leg of the
+ * Extracts the `palettes.ini` `[GfxPalette256]` records into name→`.pcx` aliases - the first leg of the
  * `.bmd`→palette graph (see the file header). Each record carries one `gfxfile` but the grammar allows
  * several `editname` aliases; every alias is emitted pointing at the shared file, so a consumer builds
  * one flat `name → .pcx` map (143 records in the real file; the 108 `[GfxPalette16]` sub-palettes built
@@ -61,7 +61,7 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
 /**
  * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup, first alias wins on a
  * duplicate name (the real `palettes.ini` has none, but the rule keeps it deterministic). The one
- * shared reading of the alias graph the bmd + goods stages both resolve palettes through — they then
+ * shared reading of the alias graph the bmd + goods stages both resolve palettes through - they then
  * read the `.pcx` from different roots (the unpacked out-tree vs the game dir), so only this map
  * construction is common.
  */

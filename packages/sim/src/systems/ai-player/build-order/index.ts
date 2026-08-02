@@ -19,12 +19,12 @@ export {
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
- * The HouseBuild module — the executor over the authored {@link BuildOrderEntry} list. It walks the
+ * The HouseBuild module - the executor over the authored {@link BuildOrderEntry} list. It walks the
  * entries in order, keeps at most {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites open (upgrade sites
  * included), places on the affinity-aware near-HQ spot, upgrades toward the named tiers, and waits
  * at a `collector` entry for the workforce module's hire. A destroyed building re-enters its
  * entry's count, so the list self-repairs; an unmet entry with no legal action stalls (is retried
- * next decision), never skipped. Builders are not pinned to sites — the organic builder drive
+ * next decision), never skipped. Builders are not pinned to sites - the organic builder drive
  * already picks the nearest site and fetches materials.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
@@ -81,18 +81,18 @@ function runBuildOrder(
         const target = buildingTypeByContentId(ctx.content, entry.building);
         if (target === undefined) return []; // unreachable after 'skip', kept for the type system
         const candidate = upgradeCandidate(world, index, owned, target);
-        if (candidate === null) return []; // nothing upgradable yet — stall until one stands
+        if (candidate === null) return []; // nothing upgradable yet - stall until one stands
         return [{ kind: 'upgradeBuilding', building: candidate }];
       }
       case 'collector':
-        return []; // the workforce module hires it (collectorGoodsWanted) — wait here
+        return []; // the workforce module hires it (collectorGoodsWanted) - wait here
       case 'towerCoverage': {
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         const target = firstUncoveredBuilding(world, ctx, owned);
-        if (target === null) return []; // status said unmet — defensive
+        if (target === null) return []; // status said unmet - defensive
         const spot = towerPlacementSpot(world, ctx, terrain, owned, anchor, type, target);
-        if (spot === null) return []; // no legal covering node — stall, same contract as 'place'
+        if (spot === null) return []; // no legal covering node - stall, same contract as 'place'
         return [
           {
             kind: 'placeBuilding',
@@ -107,5 +107,5 @@ function runBuildOrder(
       }
     }
   }
-  return []; // the list is satisfied — the module goes quiet
+  return []; // the list is satisfied - the module goes quiet
 }

@@ -4,11 +4,11 @@ import { loadTerrainMap } from '../src/slice/map-loader.js';
 import { EMPTY_SNAPSHOT } from './support/snapshot.js';
 
 /**
- * Unit tests for the app's map-loading seam — the testable core of "the shot/dev entry draws an
+ * Unit tests for the app's map-loading seam - the testable core of "the shot/dev entry draws an
  * actual `content/maps/<id>.json`". The browser `fetch` + GPU pixels can't run headless, but the
  * load-bearing logic (validate the fetched JSON through `@open-northland/data`'s `parseTerrainMap`, then
  * project it through `terrainMapToScene`, with graceful fallback on a bad id / 404 / malformed file)
- * is pure once `fetch` is injected — so it's pinned here, not left to the un-self-verifiable shot PNG.
+ * is pure once `fetch` is injected - so it's pinned here, not left to the un-self-verifiable shot PNG.
  */
 
 /** A minimal `Response`-shaped stub for the injected fetch (only the fields `loadTerrainMap` reads). */
@@ -36,7 +36,7 @@ describe('loadTerrainMap', () => {
     if (map === null) throw new Error('expected a loaded map');
 
     // The loaded grid must flow straight through the same render seam the slice uses, carrying its
-    // varied typeIds onto one tile per cell — i.e. the real map actually drives the drawn terrain.
+    // varied typeIds onto one tile per cell - i.e. the real map actually drives the drawn terrain.
     const scene = buildScene(EMPTY_SNAPSHOT, terrainMapToScene(map));
     const tiles = scene.filter((d) => d.kind === 'tile');
     expect(tiles).toHaveLength(6);
@@ -58,7 +58,7 @@ describe('loadTerrainMap', () => {
   });
 
   it('falls back to null on a malformed grid (length != width*height)', async () => {
-    // typeIds shorter than width*height — parseTerrainMap's zod refinement must reject it, and the
+    // typeIds shorter than width*height - parseTerrainMap's zod refinement must reject it, and the
     // loader swallows the throw into a null fallback so the entry degrades to the synthetic strip.
     const bad = { width: 3, height: 3, typeIds: [1, 2] };
     const fetchImpl = vi.fn(async () => jsonResponse(bad));

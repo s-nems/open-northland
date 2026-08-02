@@ -25,12 +25,12 @@ export { OBSTRUCTED_MAX_REROUTES, OBSTRUCTED_PROGRESS_FLOOR, OBSTRUCTED_REROUTE_
 /**
  * A collider's body radius, in world-metric column units. The bounds are the half-cell lattice's own
  * pitches, and both matter:
- *  - > half the E/W node pitch (0.25) — posts standing on horizontally adjacent nodes leave no zero-width
+ *  - > half the E/W node pitch (0.25) - posts standing on horizontally adjacent nodes leave no zero-width
  *    slip line between their radii, so a one-per-node line is a closed wall;
- *  - < the N/S node pitch (19/68 ≈ 0.2794) — a post never covers a neighbouring node's centre, so any free
+ *  - < the N/S node pitch (19/68 ≈ 0.2794) - a post never covers a neighbouring node's centre, so any free
  *    node stays exactly reachable and a melee attacker on an adjacent node stands clear of its target's body.
  * Impassability holds because a mover advances at most its gait + {@link SEPARATION_PUSH_CAP} (= 0.2 at the
- * fleeing run pace: gait 1/6 + cap 1/30) per tick — always less than this radius, so it can never step from
+ * fleeing run pace: gait 1/6 + cap 1/30) per tick - always less than this radius, so it can never step from
  * outside a post's radius past the post's centre in one tick, and the full resolve returns it to the near side.
  */
 const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
@@ -40,15 +40,15 @@ const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
  * (`gait / ARRIVAL_SPEED_DIV`, see `movement/system.ts`): a walker being brushed by passing traffic still
  * makes net progress every tick, so soft separation can delay an arrival but never prevent one. (One
  * bounded exception: a from-rest walker's very first acceleration-ramp tick advances only gait/3 < this
- * cap, so a fully-braked launch can regress ~gait/15 for that single tick — the ramp outruns the cap from
+ * cap, so a fully-braked launch can regress ~gait/15 for that single tick - the ramp outruns the cap from
  * tick two.) Tuned to ⅖ of the gait (just under the ½ floor).
  */
 const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
- * Minimum heading alignment (unit-heading dot product — the cosine of the angle between two walks) for two
+ * Minimum heading alignment (unit-heading dot product - the cosine of the angle between two walks) for two
  * overlapping movers to count as a convoy (same-lane traffic) rather than crossing traffic: ½ = within 60°. A
- * convoy pair resolves by the follower braking in line behind the leader — no lateral component — so
+ * convoy pair resolves by the follower braking in line behind the leader - no lateral component - so
  * shared-lane walkers form a column instead of shoving each other sideways on every step; anything closer to
  * perpendicular keeps the radial sidestep that lets head-on and crossing walkers slip past. A feel-tuning
  * constant with no original counterpart.
@@ -56,11 +56,11 @@ const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt
 const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
 
 /**
- * SeparationSystem — runs right after the MovementSystem and resolves this tick's body overlaps (see
+ * SeparationSystem - runs right after the MovementSystem and resolves this tick's body overlaps (see
  * `bodies.ts` for the two-tier model and its source basis). Displaces movers only: mover-vs-mover overlap
- * resolves softly for every owned walking settler (capped at {@link SEPARATION_PUSH_CAP} — the "walking units
- * never merge" tier) and is direction-aware: same-lane pairs ({@link CONVOY_ALIGNMENT_MIN}) column up — the
- * follower brakes in behind the leader — while crossing/head-on pairs split radially, half the overlap each.
+ * resolves softly for every owned walking settler (capped at {@link SEPARATION_PUSH_CAP} - the "walking units
+ * never merge" tier) and is direction-aware: same-lane pairs ({@link CONVOY_ALIGNMENT_MIN}) column up - the
+ * follower brakes in behind the leader - while crossing/head-on pairs split radially, half the overlap each.
  * Only firm movers (owned fighters) additionally resolve fully against posts (placed back on the post's
  * radius), so a post is impenetrable but never jitters and a civilian never wedges on a standing body. A
  * displaced position must land on walkable, unblocked ground or the offending axis (then the whole
@@ -68,16 +68,16 @@ const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
  *
  * Determinism: movers are processed in ascending entity id; mover-vs-mover pushes read the tick's
  * pre-separation position snapshot (order-independent by construction); mover-vs-post resolutions apply in the
- * 3×3 bucket-scan order around the mover's node (ascending post id within each bucket) — a fixed,
+ * 3×3 bucket-scan order around the mover's node (ascending post id within each bucket) - a fixed,
  * history-independent order; every quantity is fixed-point via `fx.*`. Scale: per-tick cost is O(colliders) to
- * bucket plus O(movers × local crowd) to resolve — cost follows units actually walking, and a mapless sim
+ * bucket plus O(movers × local crowd) to resolve - cost follows units actually walking, and a mapless sim
  * exits immediately.
  */
 export const separationSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no lattice to collide on
 
-  // Soft movers currently walking — the only entities this system ever displaces. The firm subset (owned
+  // Soft movers currently walking - the only entities this system ever displaces. The firm subset (owned
   // fighters) additionally resolves against posts and keeps the obstruction grind window.
   const scratch = separationScratch(world);
   const { movers, firmMovers } = scratch;
@@ -94,7 +94,7 @@ export const separationSystem: System = (world, ctx) => {
   if (movers.length === 0) return; // dormancy: nobody walking → nothing can overlap anything
   movers.sort((a, b) => a - b);
 
-  // Standing colliders — the immovable posts firm movers resolve against. Derived only when a firm mover
+  // Standing colliders - the immovable posts firm movers resolve against. Derived only when a firm mover
   // exists: soft-only traffic (a civilian economy tick) never reads the index, so it skips the full-settler
   // scan + sort entirely.
   const { posts } = scratch;
@@ -106,10 +106,10 @@ export const separationSystem: System = (world, ctx) => {
   const postIndex = new NodeBuckets(world, canonicalById(posts));
   const moverIndex = new NodeBuckets(world, movers);
 
-  // The tick's pre-separation mover snapshot — positions and headings — so a pair's two halves are computed
+  // The tick's pre-separation mover snapshot - positions and headings - so a pair's two halves are computed
   // from the same state regardless of processing order. Headings must come from the snapshot, not a live
   // component read: the grind bookkeeping below can drop an earlier-processed mover's PathFollow mid-loop (a
-  // re-route/stand-down in a converging crowd), so a live read on a later mover's neighbour would throw — and
+  // re-route/stand-down in a converging crowd), so a live read on a later mover's neighbour would throw - and
   // would make the pair split order-dependent.
   const { before, snapshotPool } = scratch;
   for (const e of movers) {
@@ -160,7 +160,7 @@ export const separationSystem: System = (world, ctx) => {
 
     // Gather this mover's neighbourhood. Radius < both bucket pitches, so bodies within reach live in the 3×3
     // bucket block around the mover's own node (truncation adds at most one node). Posts matter only to a firm
-    // mover — a civilian passes through every standing body.
+    // mover - a civilian passes through every standing body.
     const { nearMovers, nearPosts } = scratch;
     nearMovers.length = 0;
     nearPosts.length = 0;
@@ -177,7 +177,7 @@ export const separationSystem: System = (world, ctx) => {
       continue;
     }
     // A firm mover in its own town drops to the soft tier (no post resolve, no grind): fighters queueing at
-    // their own stores never wedge. The soft nudge below stays on for everyone — capped under the arrival
+    // their own stores never wedge. The soft nudge below stays on for everyone - capped under the arrival
     // brake floor, it cannot jam town flow, only un-merge the sprites.
     const ghost = isFirm && isGhostMover(e);
 
@@ -194,7 +194,7 @@ export const separationSystem: System = (world, ctx) => {
     // (nearPosts empty / skipped) keeps the soft candidate.
     if (!ghost) cand = resolveAgainstPosts(e, cand, nearPosts, world);
 
-    // Landing safety: never displace onto unwalkable/blocked ground — drop the offending axis, then
+    // Landing safety: never displace onto unwalkable/blocked ground - drop the offending axis, then
     // the whole displacement (the walker's own path point is always a legal stand).
     if (cand.x !== p.x || cand.y !== p.y) {
       if (safeLanding(cand.x, cand.y)) {
@@ -232,7 +232,7 @@ function resolveMoverPush(
     if (dist >= UNIT_SEPARATION_RADIUS) continue;
     const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
     const otherW = separationWorldPoint(other.x, other.y);
-    // (0,0) is the "no established heading" sentinel — such a pair can't be classified as a
+    // (0,0) is the "no established heading" sentinel - such a pair can't be classified as a
     // convoy and falls through to the radial split.
     if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {
       const alignment = fx.add(fx.mul(start.hx, other.hx), fx.mul(start.hy, other.hy));
@@ -241,18 +241,18 @@ function resolveMoverPush(
           fx.mul(fx.sub(otherW.x, startW.x), start.hx),
           fx.mul(fx.sub(otherW.y, startW.y), start.hy),
         );
-        // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named pick that
+        // Exactly abreast (or stacked): the higher id yields - the keeper convention, a named pick that
         // seeds the fore/aft order the geometric test then keeps stable. With headings up to 60° apart both
-        // sides can transiently read "follower" and brake — harmless (each keeps net progress under the cap,
+        // sides can transiently read "follower" and brake - harmless (each keeps net progress under the cap,
         // and braking diverges them). Known feel gap: a same-lane follower on a faster gait (a fleeing run
-        // behind a walk) out-closes the capped brake and passes through its leader — a brief merge.
+        // behind a walk) out-closes the capped brake and passes through its leader - a brief merge.
         if (ahead > ZERO || (ahead === ZERO && e > n)) {
           pushX = fx.sub(pushX, fx.mul(start.hx, half));
           pushY = fx.sub(pushY, fx.mul(start.hy, half));
-          continue; // braked in line — no radial component on a convoy follower
+          continue; // braked in line - no radial component on a convoy follower
         }
         // This side reads itself as the leader. It skips the counter-shove only if the other side will
-        // brake (the mirrored follower test — same snapshot inputs both iterations read, so e's prediction
+        // brake (the mirrored follower test - same snapshot inputs both iterations read, so e's prediction
         // equals n's own decision exactly). With headings apart and the offset near-perpendicular to both,
         // each side can read "leader"; such a pair would get no resolution and ride merged, so it falls
         // through to the radial split instead.
@@ -264,7 +264,7 @@ function resolveMoverPush(
       }
     }
     if (dist === ZERO) {
-      // Exactly stacked crossing traffic: split along E/W by id order — a named pick, not
+      // Exactly stacked crossing traffic: split along E/W by id order - a named pick, not
       // iteration luck.
       pushX = fx.add(pushX, e < n ? fx.sub(ZERO, half) : half);
     } else {

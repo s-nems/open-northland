@@ -1,5 +1,5 @@
 /**
- * The pure half of the animation gallery: clip metadata, the grid layout and the frame-selection math —
+ * The pure half of the animation gallery: clip metadata, the grid layout and the frame-selection math -
  * unit-testable without a GPU (see test/animation-gallery.test.ts). The retained Pixi view lives in
  * {@link import('./animation-gallery.js')}.
  */
@@ -10,8 +10,8 @@ export interface GalleryClip {
   readonly start: number;
   readonly length: number;
   /**
-   * Facings this clip is laid out for, derived by {@link clipDirs}: 8 (a full compass — `length` is a clean
-   * ×8, e.g. walk 96) or 1 (single-direction — `length` isn't ×8, e.g. eat 17, wait 57, jump 21; the
+   * Facings this clip is laid out for, derived by {@link clipDirs}: 8 (a full compass - `length` is a clean
+   * ×8, e.g. walk 96) or 1 (single-direction - `length` isn't ×8, e.g. eat 17, wait 57, jump 21; the
    * original plays these locked to one facing). A single-direction clip ignores the facing selector and
    * always plays its whole strip.
    */
@@ -31,7 +31,7 @@ export type GalleryDirection = number | 'full';
 export const GALLERY_DIRS = 8;
 
 /**
- * Block index (0..7) to draw for each compass step, in order `N, NE, E, SE, S, SW, W, NW` — inverted from
+ * Block index (0..7) to draw for each compass step, in order `N, NE, E, SE, S, SW, W, NW` - inverted from
  * the `CR_Hum_Body` facing table (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; source basis). "Full" mode
  * walks this order so the character turns in a circle (N→NE→E→…) instead of the storage order
  * (SW→W→NW→NE→…).

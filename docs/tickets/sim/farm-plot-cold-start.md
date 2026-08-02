@@ -1,4 +1,4 @@
-# Shorten the farm's cold start — a lone farmer ploughs 24 fields before watering any
+# Shorten the farm's cold start - a lone farmer ploughs 24 fields before watering any
 
 **Area:** sim · **Priority:** P3
 **Needs user:** observe how the original sequences sowing and watering on a new farm.
@@ -27,11 +27,11 @@ farmer never expands past the handful of fields its can can keep up with (measur
 
 ## Scope
 
-- Check what the original does on a freshly built farm — does the farmer interleave sowing and watering, or
+- Check what the original does on a freshly built farm - does the farmer interleave sowing and watering, or
   plough the whole plot first? Observation of the running game is the only oracle here; no readable data
   carries the loop's ordering.
 - If it interleaves, the likely shape is "water a field still at stage 1 before sowing another, but let
-  established fields wait" — the farmer then waters each seedling it just planted (they are adjacent) without
+  established fields wait" - the farmer then waters each seedling it just planted (they are adjacent) without
   established fields starving expansion. Confirm that keeps the plot at ~24 and the pacing bands in
   `farm-pacing.test.ts` green.
 - Re-tighten `RUN_TICKS` in `scenes/chain.ts` and `FARM_TICKS` in `farming-scenario.test.ts` if the ramp

@@ -10,7 +10,7 @@ import { BOBS_DIR, type GameOutTemp, makeGameOutTemp } from './support/game-tree
 
 /**
  * Font stage tests. No copyrighted fixtures: we synthesize the `.fnt` files (a CFont wrapping a tiny `.bmd`)
- * at the real on-disk paths under a temp game dir — for the root + `latin/` + `rus/` sets — plus the four
+ * at the real on-disk paths under a temp game dir - for the root + `latin/` + `rus/` sets - plus the four
  * `font_*.pcx` colour carriers, run each stage into a temp out dir, and assert the emitted atlases / colour
  * LUT / metrics + the top-level manifest. The per-decoder pixel/metric correctness is covered in the
  * fnt/atlas tests; here we assert the stage WIRING (right files at right paths, manifest shape, key scheme).

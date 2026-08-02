@@ -18,4 +18,4 @@ source labels can also overflow the fixed name column.
 ## Verify
 
 - `npm test`; pipeline run against the owned game copy.
-- Details panel shows original names without overflow — **user's eyes**.
+- Details panel shows original names without overflow - **user's eyes**.

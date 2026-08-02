@@ -6,7 +6,7 @@ import type { TextRun } from './text-run.js';
 /**
  * The HUD's default text face: the bundled vector serif (`content/ui-font.ts`, "Tinos") drawn as Pixi
  * `Text`. It replaces the decoded `.fnt` bitmap path for the on-screen HUD windows because a small indexed
- * bitmap glyph has no sub-pixel detail — at the HUD's fractional UI scale it can only be blocky or hazy,
+ * bitmap glyph has no sub-pixel detail - at the HUD's fractional UI scale it can only be blocky or hazy,
  * while a vector face rasters crisp at any scale + device-pixel-ratio.
  *
  * The `.fnt` path (`bitmap-text.ts`) stays for anything that must be the exact decoded original face, but
@@ -17,7 +17,7 @@ import type { TextRun } from './text-run.js';
 const UI_TEXT_PX = 11;
 /**
  * Build a retained {@link TextRun} in the vector UI font at `basePx * scale`. Placement positions the run's
- * visible cap-top at `(x, y)` (the `resWidth`/`resHeight` args are ignored — a stage-space `Text` needs no
+ * visible cap-top at `(x, y)` (the `resWidth`/`resHeight` args are ignored - a stage-space `Text` needs no
  * projection resolution, unlike the bitmap font's screen-space meshes). `width` is the run's advance in
  * native (pre-scale) px, so centring math matches the bitmap runs.
  */

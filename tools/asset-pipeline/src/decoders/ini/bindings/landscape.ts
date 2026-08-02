@@ -1,5 +1,5 @@
 /**
- * Landscape-object graphics bindings — the `[GfxLandscape]` `.bmd`→palette pairings for the map's
+ * Landscape-object graphics bindings - the `[GfxLandscape]` `.bmd`→palette pairings for the map's
  * pre-placed decor (trees, bushes, signs, wonders), the static-object analog of the job bindings.
  */
 
@@ -7,10 +7,10 @@ import { getStr, type RuleSection } from '../grammar.js';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**
- * Extracts the `[GfxLandscape]` records from `.../landscapes/landscapes.cif` — the landscape-object
+ * Extracts the `[GfxLandscape]` records from `.../landscapes/landscapes.cif` - the landscape-object
  * binding for the map's pre-placed decor (trees, bushes, signs, wonders, …). Each record pairs a body +
- * shadow bob set (`GfxBobLibs`) with a palette `editname` (`GfxPalette`) — the `(bmd, palette)` pairing
- * `convertBmdTree` consumes, read via the shared {@link readBmdPaletteBindings} — plus its `EditName`
+ * shadow bob set (`GfxBobLibs`) with a palette `editname` (`GfxPalette`) - the `(bmd, palette)` pairing
+ * `convertBmdTree` consumes, read via the shared {@link readBmdPaletteBindings} - plus its `EditName`
  * (a species handle, "yew 01" vs "fir 01": the only IR differentiator when records share one recoloured
  * bob). Ships `.cif`-only, decoded via `decodeCifStringArray` → `cifLinesToSections`. The editor
  * serializes these with CamelCase keys (`GfxBobLibs`/`GfxPalette`/`EditName`) and header, so the lookups

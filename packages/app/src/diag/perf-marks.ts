@@ -1,5 +1,5 @@
 /**
- * Per-system + per-phase User Timing marks (`?debug=perf`) — the local-dev profiling path. Chrome
+ * Per-system + per-phase User Timing marks (`?debug=perf`) - the local-dev profiling path. Chrome
  * DevTools' Performance panel shows `performance.measure` entries in its Timings track with zero
  * further UI, so one recording shows the whole frame anatomy: `frame/*` phases with `sim/<system>`
  * slices inside. Same instrumentation seam the sim benchmark (`npm run bench:sim`) times through.

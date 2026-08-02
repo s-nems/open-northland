@@ -4,11 +4,11 @@ import { goodsGraph } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The goods-graph read model — `goodsGraph` surfaces the recipe-DAG IR (`GoodType.classification`
+ * The goods-graph read model - `goodsGraph` surfaces the recipe-DAG IR (`GoodType.classification`
  * node layers + `GoodType.productionInputs` input edges, joined with the output side
  * `BuildingType.produces`/`recipe`) as one node per good. It is the HUD's fourth derived view, the
  * only one over content rather than world state: a pure, deterministic read, no mechanic added. These
- * tests pin the join — node layers, the input edges, the output-side producer list, and the empties.
+ * tests pin the join - node layers, the input edges, the output-side producer list, and the empties.
  */
 
 const NONE = 0;
@@ -25,7 +25,7 @@ function graphContent(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
     goods: [
-      { typeId: NONE, id: 'none' }, // unclassified — neither flag
+      { typeId: NONE, id: 'none' }, // unclassified - neither flag
       { typeId: WOOD, id: 'wood', classification: { producedOnMap: true } },
       {
         typeId: PLANK,
@@ -57,7 +57,7 @@ function graphContent(): ContentSet {
       { typeId: 10, id: 'sawmill', kind: 'workplace', produces: [PLANK] },
       // mill: produces flour.
       { typeId: 11, id: 'mill', kind: 'workplace', produces: [FLOUR] },
-      // bakery: produces bread, declared via materialized `recipes` (no `produces`) — the fallback.
+      // bakery: produces bread, declared via materialized `recipes` (no `produces`) - the fallback.
       {
         typeId: 12,
         id: 'bakery',
@@ -72,7 +72,7 @@ function graphContent(): ContentSet {
       },
       // bakery2: a SECOND bread producer, to prove producedBy lists every producer, sorted.
       { typeId: 13, id: 'bakery2', kind: 'workplace', produces: [BREAD] },
-      // warehouse: a non-producing building — must contribute no producer edge.
+      // warehouse: a non-producing building - must contribute no producer edge.
       { typeId: 14, id: 'warehouse', kind: 'storage' },
     ],
   });
@@ -116,16 +116,16 @@ describe('goodsGraph', () => {
     expect(graph.get(WOOD)?.inputs).toEqual([]); // a raw good consumes nothing
   });
 
-  it('joins the output side — which building types produce each good', () => {
+  it('joins the output side - which building types produce each good', () => {
     const graph = goodsGraph(graphContent());
     expect(graph.get(PLANK)?.producedBy).toEqual([10]); // sawmill, via `produces`
     expect(graph.get(FLOUR)?.producedBy).toEqual([11]); // mill
     expect(graph.get(BREAD)?.producedBy).toEqual([12, 13]); // bakery (recipe fallback) + bakery2, sorted
-    expect(graph.get(WOOD)?.producedBy).toEqual([]); // raw — no producer
+    expect(graph.get(WOOD)?.producedBy).toEqual([]); // raw - no producer
     expect(graph.get(STONE)?.producedBy).toEqual([]); // produced by nothing
   });
 
-  it('is deterministic — identical content yields an identical graph', () => {
+  it('is deterministic - identical content yields an identical graph', () => {
     const a = goodsGraph(graphContent());
     const b = goodsGraph(graphContent());
     expect([...a.entries()]).toEqual([...b.entries()]);

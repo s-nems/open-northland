@@ -26,7 +26,7 @@ import {
   WOMAN,
 } from '../support.js';
 
-describe('atomicSystem — a damaging swing accrues fight XP into the weapon-class bucket', () => {
+describe('atomicSystem - a damaging swing accrues fight XP into the weapon-class bucket', () => {
   it('a spear swing accrues into the SPEAR fight bucket (the needfor-gate id space)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
@@ -64,7 +64,7 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
     expect(sim.world.get(attacker, Settler).experience.size).toBe(0);
 
     // A saber (no JOB_EXPERIENCE_TYPE_FIGHT_SABER in the data) trains no fight BUCKET even when it
-    // hits — but a soldier-band swing still feeds the class-gate track (69).
+    // hits - but a soldier-band swing still feeds the class-gate track (69).
     startSwing(sim, attacker, { target, damage: 400, hitAt: 1, weaponMainType: WEAPON_MAIN_TYPE.SABER }, 2);
     atomicSystem(sim.world, ctxOf(sim));
     const xp = sim.world.get(attacker, Settler).experience;
@@ -105,14 +105,14 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
   });
 });
 
-describe('combatSystem — fight experience raises the issued swing damage', () => {
+describe('combatSystem - fight experience raises the issued swing damage', () => {
   const swingDamageOf = (spearHits: number): number => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     if (spearHits > 0) {
       sim.world.get(attacker, Settler).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
     }
-    fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy — the drive swings this tick
+    fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy - the drive swings this tick
     combatSystem(sim.world, ctxOf(sim));
     const atomic = sim.world.get(attacker, CurrentAtomic);
     if (atomic.effect.kind !== 'attack') throw new Error('expected an attack swing');

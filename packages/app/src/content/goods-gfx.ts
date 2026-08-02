@@ -8,7 +8,7 @@ import { loadLayer } from './ir/load.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * Goods-icon content bindings — the loadable seam for the pipeline's `goods` stage. A good's HUD icon is
+ * Goods-icon content bindings - the loadable seam for the pipeline's `goods` stage. A good's HUD icon is
  * its on-map pile graphic: the engine shares one monochrome sheet (`ls_goods.bmd`) recoloured per good
  * through a `goods_*` palette, so a good maps to (an atlas frame, a palette row), not a unique bitmap. This
  * is the goods twin of {@link import('./gui-art.js')}: the indexed atlas is read through the goods palette
@@ -21,7 +21,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /** One good's icon binding as it ships in `content/goods/manifest.json`. */
 export interface GoodIcon {
-  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic (the compact store icon). */
+  /** `ls_goods` atlas frame index (bob id) - the good's state-1 pile graphic (the compact store icon). */
   readonly frame: number;
   /** The recolor palette name (a goods-LUT row, resolved via the manifest order). */
   readonly palette: string;
@@ -45,7 +45,7 @@ export interface GoodsManifest {
 export interface GoodsArt {
   readonly layer: SpriteLayer;
   readonly lut: TextureSource;
-  /** LUT row count (its pixel height) — passed to each {@link PalettedSprite}. */
+  /** LUT row count (its pixel height) - passed to each {@link PalettedSprite}. */
   readonly colours: number;
   /** The recolor-palette LUT row for a palette name (from the manifest order); row 0 for an unknown name. */
   paletteRow(name: string): number;
@@ -57,7 +57,7 @@ const GOODS_MANIFEST_URL = '/goods/manifest.json';
 
 let goodsManifestOnce: Promise<GoodsManifest | null> | null = null;
 
-/** Fetch + parse `content/goods/manifest.json` once per page — the shared source the goods icon art, the
+/** Fetch + parse `content/goods/manifest.json` once per page - the shared source the goods icon art, the
  *  in-world pile bindings and the localized good names ({@link import('./good-names.js')}) all slice. `null`
  *  when the goods pipeline stage hasn't run. */
 export function loadGoodsManifest(): Promise<GoodsManifest | null> {
@@ -93,13 +93,13 @@ export function loadGoodsArt(): Promise<GoodsArt | null> {
   return goodsArtOnce;
 }
 
-/** The good string id → icon binding map, as the manifest ships it (no textures — just the frame/palette
+/** The good string id → icon binding map, as the manifest ships it (no textures - just the frame/palette
  *  data the in-world pile binding needs). */
 export type GoodIconMap = ReadonlyMap<string, GoodIcon>;
 
 /**
  * The neutral generic icon for a good with no `ls_goods` art (the synthetic plank, and the
- * potions/amulets/fruit that share the original's type-1 "no distinct pile") — the state-1 heap bob (0)
+ * potions/amulets/fruit that share the original's type-1 "no distinct pile") - the state-1 heap bob (0)
  * recoloured through the neutral `goods01` palette. A named approximation shared by the HUD Magazyn icon and
  * the in-world dropped-pile graphic, so an iconless good reads the same "generic sack" in both places rather
  * than showing nothing / the bare placeholder flag. `goods01` is always a valid LUT/atlas row.
@@ -109,7 +109,7 @@ export const GENERIC_GOOD_ICON: GoodIcon = { frame: 0, palette: 'goods01', fillF
 let goodsIconManifestOnce: Promise<GoodIconMap | null> | null = null;
 
 /**
- * Load just the good→icon bindings from `content/goods/manifest.json` — the lightweight twin of
+ * Load just the good→icon bindings from `content/goods/manifest.json` - the lightweight twin of
  * {@link loadGoodsArt} (no atlas/LUT textures), for the in-world pile binding that resolves each good's
  * `ls_goods` recoloured atlas by palette name. `null` when the goods pipeline stage hasn't run. Memoized.
  */
@@ -129,8 +129,8 @@ export interface GoodSprite {
 }
 
 /**
- * Build a {@link PalettedSprite} for one good icon — the good's `ls_goods` frame recoloured through its
- * palette row — or `null` when the frame isn't in the atlas. `colorKey` is `'off'`: the bob mask (atlas
+ * Build a {@link PalettedSprite} for one good icon - the good's `ls_goods` frame recoloured through its
+ * palette row - or `null` when the frame isn't in the atlas. `colorKey` is `'off'`: the bob mask (atlas
  * alpha) already cuts the transparent background, and the pile art's own dark pixels must be kept (a
  * near-black key would eat them).
  */

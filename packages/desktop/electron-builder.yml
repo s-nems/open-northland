@@ -12,7 +12,7 @@ files:
   - dist/**
   - package.json
 extraResources:
-  # The built web app rides as a plain resource (resources/app) — it is served by the app://
+  # The built web app rides as a plain resource (resources/app) - it is served by the app://
   # protocol, not loaded as Electron code.
   - from: ../app/dist
     to: app
@@ -34,7 +34,7 @@ portable:
   artifactName: ${productName}-${version}-portable.exe
 mac:
   # Both arches pinned for the same reason as win x64: the default is the build host's arch, which
-  # would silently skip Intel macs. Two dmgs instead of one universal — half the download each.
+  # would silently skip Intel macs. Two dmgs instead of one universal - half the download each.
   target:
     - target: dmg
       arch: [x64, arm64]

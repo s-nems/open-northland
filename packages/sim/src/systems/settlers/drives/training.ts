@@ -14,7 +14,7 @@ import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 /**
- * How long a recruit stays inside the barracks before it comes back out a soldier — 15 s of game time
+ * How long a recruit stays inside the barracks before it comes back out a soldier - 15 s of game time
  * (design rule, user-specified 2026-07-27), drawn down per COMPLETED repetition by
  * {@link serveDrillRepetition}, so the last one always overruns. How much schooling that buys is the
  * data's business: see `docs/tickets/features/barracks-training.md`.
@@ -27,7 +27,7 @@ export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
  *
  * The settler walks to the barracks door, steps inside and runs the exercise atomic one repetition at a
  * time until {@link BARRACKS_DRILL_TICKS} are served, then steps back out {@link enlist}ed.
- * The order is abandoned when the barracks is gone/unbuilt or its door is no longer open to the settler —
+ * The order is abandoned when the barracks is gone/unbuilt or its door is no longer open to the settler -
  * it is handed back to the economy rather than looping on a dead errand.
  */
 export function planTraining(
@@ -43,7 +43,7 @@ export function planTraining(
   if (order === undefined) return false;
   // Time served is served: the enlistment is settled before the house is looked at again, so a barracks
   // razed (or walled off) between the last repetition and this planning cannot swallow it. It takes the
-  // settler for the tick because `enlist` retires its trade — the rungs below were entered with the old
+  // settler for the tick because `enlist` retires its trade - the rungs below were entered with the old
   // one and would plan its work; the fresh soldier re-plans next tick.
   if (order.drillTicksLeft <= 0) {
     abandonDrill(world, e);
@@ -70,7 +70,7 @@ export function planTraining(
  * Whether `e` may walk to a drill at `door` right now: its signpost area must admit the node and its
  * failed-goal memo must not already name it. The `trainSoldier` handler refuses on a false and the AI's
  * garrison hire picks another man, so a walled-off barracks cannot be re-ordered and re-abandoned every
- * decision — each acceptance cancels whatever the recruit was doing.
+ * decision - each acceptance cancels whatever the recruit was doing.
  */
 export function drillDoorOpen(
   world: World,
@@ -97,7 +97,7 @@ export function serveDrillRepetition(
   ticks: number,
 ): void {
   const order = world.tryGet(e, TrainingOrder);
-  if (order === undefined) return; // the errand was called off mid-repetition — it schools nothing
+  if (order === undefined) return; // the errand was called off mid-repetition - it schools nothing
   grantTrainingExperience(world, ctx, e, atomicId);
   world.write(e, TrainingOrder, (o) => {
     o.drillTicksLeft -= Math.max(1, ticks);
@@ -114,7 +114,7 @@ function abandonDrill(world: World, e: Entity): boolean {
 /**
  * Enlist a settler that has served its drill: it takes the base soldier class ({@link baseSoldierJobType})
  * the schooling it just banked qualifies it for, dropping any workplace post like every other trade change.
- * A settler that already holds a fighter trade keeps it — an old hand only drills, banking TRAINING toward
+ * A settler that already holds a fighter trade keeps it - an old hand only drills, banking TRAINING toward
  * the heavier weapon classes. The qualification is re-read rather than assumed, so a tribe whose data
  * schools no soldier simply gets a settler back out unchanged.
  *

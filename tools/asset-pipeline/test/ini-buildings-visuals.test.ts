@@ -241,7 +241,7 @@ describe('extractBuildingBobs', () => {
   });
 
   it('skips a record missing a body `.bmd`, any palette, or a LogicTribeType (never throws)', () => {
-    // No GfxBobLibs, no GfxPalette, no LogicTribeType — each alone disqualifies the record.
+    // No GfxBobLibs, no GfxPalette, no LogicTribeType - each alone disqualifies the record.
     const bobs = extractBuildingBobs(
       parseIniSections(`[GfxHouse]
 EditName "no bmd"
@@ -272,7 +272,7 @@ GfxBobId 0 9
   });
 
   // The real saracen/egypt blocks pack MANY houses under ONE `[GfxHouse]` bracket, each delimited only
-  // by a fresh `EditName` (no new bracket) — so `parseIniSections` lumps them into one section. Two
+  // by a fresh `EditName` (no new bracket) - so `parseIniSections` lumps them into one section. Two
   // houses with DIFFERENT bmd/palette/typeId/bob under one header; each must be recovered intact (a
   // naive one-house-per-section read staples house A's bmd+palette to house B's last-wins type/bob).
   const GFXHOUSE_LUMPED_INI = `[GfxHouse]
@@ -354,7 +354,7 @@ GfxBobId 0 5
 describe('extractBuildingGraphics', () => {
   // Mirrors the real DataCnmd/budynki12/houses/houses.ini [GfxHouse] grammar (CamelCase keys, as the .ini
   // parser yields it): a "viking home" that recolours one body bob into TWO skins on a single
-  // GfxPalette line (house01 + house02), and a "viking stock" (the warehouse) on house02 alone — the
+  // GfxPalette line (house01 + house02), and a "viking stock" (the warehouse) on house02 alone - the
   // record whose missing atlas left the warehouse a placeholder box. A third record is a logic-only
   // marker (no GfxBobLibs) and must be skipped.
   const sections = parseIniSections(

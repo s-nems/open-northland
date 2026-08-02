@@ -16,7 +16,7 @@ describe('doorNode', () => {
   });
 
   it('applies the odd-row parity shift to an odd-dy door, matching the sim interactionNode', () => {
-    // Odd anchor row + odd door dy: one node further +x (footprintCellDx) — the walk target's rule.
+    // Odd anchor row + odd door dy: one node further +x (footprintCellDx) - the walk target's rule.
     expect(doorNode(footprintWithDoor(-1, 3), { hx: 10, hy: 21 })).toEqual({ hx: 10, hy: 24 });
     // Even door dy never shifts, whatever the anchor row.
     expect(doorNode(footprintWithDoor(-1, 2), { hx: 10, hy: 21 })).toEqual({ hx: 9, hy: 23 });

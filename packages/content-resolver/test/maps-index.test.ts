@@ -6,7 +6,7 @@ import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
  * The `/maps-index` join (`src/maps-index.ts`): grids + optional sidecars → menu entries. The
- * invariant under test is per-entry tolerance — one malformed sidecar degrades its own entry, never
+ * invariant under test is per-entry tolerance - one malformed sidecar degrades its own entry, never
  * the list. `null` is covered explicitly: it parses successfully but is not an object.
  */
 describe('buildMapsIndexEntries', () => {

@@ -20,28 +20,28 @@ import { workRepeatsFor } from '../../../../progression/index.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 
-// The harvest effect: resolve one completed swing against a resource node — reap a field, chop a tree,
-// chip a mined deposit, or pluck a bare node — and the felled-trunk / ore-pile / depletion drops that
+// The harvest effect: resolve one completed swing against a resource node - reap a field, chop a tree,
+// chip a mined deposit, or pluck a bare node - and the felled-trunk / ore-pile / depletion drops that
 // follow. Every mutation conserves goods.
 
 /**
- * Units a single completed `harvest` atomic yields — dropped/carried and removed from the harvested node. One
+ * Units a single completed `harvest` atomic yields - dropped/carried and removed from the harvested node. One
  * unit per swing keeps the node draining in step with what leaves it, so goods are conserved (a node of N units
  * survives exactly N harvests). A real per-good yield (some nodes drop more per swing) is a later balance slice
- * — kept a constant so tuning is a diff.
+ * - kept a constant so tuning is a diff.
  */
 const HARVEST_YIELD = 1;
 
 /**
  * Resolve one completed harvest swing, in one of four shapes decided by the node's own marker
- * components (never a hardcoded goodType — the lifecycle is content-declared and stamped at spawn):
+ * components (never a hardcoded goodType - the lifecycle is content-declared and stamped at spawn):
  *
- *  - **Sown field** (wheat, {@link Crop} present): the swing is a reap — a ripe field (its `remaining` was
+ *  - **Sown field** (wheat, {@link Crop} present): the swing is a reap - a ripe field (its `remaining` was
  *    set to its yield by the CropGrowthSystem) drops that whole yield at its node as a ground sheaf
  *    ({@link GroundDrop}, the good's `landscapeToPickup` look) and the field is removed, freeing the tile to
- *    sow again; an unripe/raced field (`remaining <= 0`) yields nothing. Checked first — a field is neither
+ *    sow again; an unripe/raced field (`remaining <= 0`) yields nothing. Checked first - a field is neither
  *    felled nor mined.
- *  - **Fellable node** (a tree, {@link Felling} present): the swing is a chop — it drives the node one step
+ *  - **Fellable node** (a tree, {@link Felling} present): the swing is a chop - it drives the node one step
  *    toward falling and grants nothing onto the settler's back. The whole yield lands at once as a ground trunk
  *    when the node comes down ({@link fellNode}, on the chop that zeroes `chopsLeft`), for the collector to
  *    carry off.
@@ -50,17 +50,17 @@ const HARVEST_YIELD = 1;
  *    then carries off; the deposit stays, shrinking a visual level, until its last unit is chipped, when it is
  *    removed ({@link depleteNode}).
  *  - **Bare node** (a mushroom, neither marker): the swing grants {@link HARVEST_YIELD} straight onto the
- *    settler's back (the direct pickup — no ground stage), and the node is removed once drained.
+ *    settler's back (the direct pickup - no ground stage), and the node is removed once drained.
  *
  * A missing {@link Resource} means the node was already felled/exhausted between the swing starting and
- * completing (another collector beat this one to it) — the swing hit nothing, so it yields nothing;
+ * completing (another collector beat this one to it) - the swing hit nothing, so it yields nothing;
  * likewise a `remaining <= 0` node is left untouched. Goods stay conserved (no unit is conjured for a
  * swing that landed on air, and a drained node's removal never doubles up).
  *
- * `swings` is the whole work units the completed swing performs ({@link swingWorkUnits} — 1 for a
+ * `swings` is the whole work units the completed swing performs ({@link swingWorkUnits} - 1 for a
  * novice, up to 2 at gather mastery): a chop drives a {@link Felling} tree that many steps, a strike
  * advances a {@link MineDeposit} that many counts (chipping more than one unit when they complete). A
- * bare-node pluck stays one unit regardless — the pluck IS the pickup and the on-foot carry holds one.
+ * bare-node pluck stays one unit regardless - the pluck IS the pickup and the on-foot carry holds one.
  *
  * Returns the units this swing actually extracted (the trunk/sheaf's whole yield on the swing that
  * fells/reaps, the chipped/plucked unit(s), 0 for a mid-job chop or strike), the executor's basis for
@@ -75,7 +75,7 @@ export function harvestFromNode(
   swings = 1,
 ): number {
   const res = world.tryGet(node, Resource);
-  if (res === undefined) return 0; // node already felled/gone — the swing struck nothing (conserved)
+  if (res === undefined) return 0; // node already felled/gone - the swing struck nothing (conserved)
   // A swing planned against a good the node no longer holds hit air: a shared carcass can re-arm to its
   // next layer (`depleteNode`) while a second hunter's atomic is in flight, and minting the STALE good
   // while draining the new layer would transmute goods. Yield nothing; the raced hunter re-plans.
@@ -99,10 +99,10 @@ export function harvestFromNode(
   const deposit = world.tryGet(node, MineDeposit);
   let took = Math.min(HARVEST_YIELD, res.remaining);
   if (deposit !== undefined) {
-    // Several strikes chip one unit (observed calibration, see MineDeposit doc — the data pins only the
+    // Several strikes chip one unit (observed calibration, see MineDeposit doc - the data pins only the
     // single-swing cycle length): only the strike that completes a unit drops ore and drains the node;
     // earlier strikes just advance the counter. A legacy 1-strike deposit never touches the counter, so its
-    // unstamped component shape (hash) survives being worked — the guarantee `createResourceNode`'s conditional
+    // unstamped component shape (hash) survives being worked - the guarantee `createResourceNode`'s conditional
     // stamp promises.
     const strikesPerUnit = deposit.strikesPerUnit ?? 1;
     if (strikesPerUnit > 1) {
@@ -147,9 +147,9 @@ export function harvestFromNode(
     r.remaining = remaining;
   });
   if (remaining <= 0) {
-    depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
+    depleteNode(world, ctx, node, res.goodType); // last unit chipped - the node is gone
   } else if (world.has(node, MineDeposit)) {
-    // A surviving deposit shrank a unit — announce it (`resourceMined`) so the map view hands the node
+    // A surviving deposit shrank a unit - announce it (`resourceMined`) so the map view hands the node
     // from its static decor layer to the live sprite pool (and audio can hook a chip effect).
     const pos = world.get(node, Position);
     ctx.events.emit({ kind: 'resourceMined', node, goodType: res.goodType, at: eventAt(pos.x, pos.y) });
@@ -166,17 +166,17 @@ function removeResourceNode(world: World, node: Entity): void {
 
 /**
  * Reap a ripe {@link Crop} field: drop its whole yield (`Resource.remaining`, set by the CropGrowthSystem at
- * ripeness) at its node as a ground sheaf pile — the same {@link GroundDrop} shape a felled trunk takes, so the
+ * ripeness) at its node as a ground sheaf pile - the same {@link GroundDrop} shape a felled trunk takes, so the
  * farmer's pickup + the porter/delivery machinery carry it off unchanged (it draws the good's
- * `landscapeToPickup` "cut wheat" look) — and remove the field, freeing the tile to sow again. An unripe field
+ * `landscapeToPickup` "cut wheat" look) - and remove the field, freeing the tile to sow again. An unripe field
  * (`remaining <= 0`) yields nothing and stays standing (goods conserved). The sheaf inherits the FARM's
- * {@link Owner} (via the field's {@link Crop} link), not the reaping farmer's — the farm's own farmers are the
+ * {@link Owner} (via the field's {@link Crop} link), not the reaping farmer's - the farm's own farmers are the
  * same player so they still collect it, while the gated porter/gatherer scans keep a rival's hauler off it.
- * No stump — the field clears to bare ground, faithful to the original's wheat cycle. Returns the units reaped
+ * No stump - the field clears to bare ground, faithful to the original's wheat cycle. Returns the units reaped
  * (the whole yield, or 0 for stubble).
  */
 function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): number {
-  if (res.remaining <= 0) return 0; // unripe / raced — the swing cut stubble (nothing conjured)
+  if (res.remaining <= 0) return 0; // unripe / raced - the swing cut stubble (nothing conjured)
   const { x, y } = world.get(node, Position);
   const sheaf = dropGroundPile(world, x, y, res.goodType, res.remaining);
   const farm = world.tryGet(node, Crop)?.farm;
@@ -189,7 +189,7 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
  * Fell a {@link Felling} node whose last chop just landed: remove the standing node (so the planner never
  * re-scans a depleted stump-to-be), drop its whole `yield` at its cell as a bare {@link Stockpile} trunk pile
  * (a {@link GroundDrop} the collector then carries off), leave a {@link Stump} decor where it stood, and
- * announce it (`resourceFelled`) for render/audio. Goods are conserved — the trunk holds exactly what the
+ * announce it (`resourceFelled`) for render/audio. Goods are conserved - the trunk holds exactly what the
  * standing node was worth. The node's `goodType`/`yield` are read before the destroy (the component object is
  * dropped from its store by `world.destroy`).
  */
@@ -204,10 +204,10 @@ function fellNode(
   const pos = world.get(node, Position);
   const { x, y } = pos;
   // The felled wood: a ground trunk pile holding the whole yield, at the node's cell (the shared drop shape,
-  // so the collector's own-trunk drive + the emptied-pile cleanup handle it — see reapEmptyGroundDrop).
+  // so the collector's own-trunk drive + the emptied-pile cleanup handle it - see reapEmptyGroundDrop).
   const trunk = dropGroundPile(world, x, y, goodType, yieldAmount);
   stampDropOwner(world, trunk, feller); // a flag-bound feller owns its trunk; a flagless one leaves it unmarked
-  // The stump / debris left where the tree stood — pure decor (non-blocking, not harvestable).
+  // The stump / debris left where the tree stood - pure decor (non-blocking, not harvestable).
   const stump = world.create();
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
@@ -225,11 +225,11 @@ function fellNode(
 
 /**
  * Drop one swing's worth of a mined {@link MineDeposit} deposit at the node's cell as a bare {@link Stockpile}
- * ore pile (a {@link GroundDrop}) — the same on-the-ground shape a felled trunk takes, so the collector's
+ * ore pile (a {@link GroundDrop}) - the same on-the-ground shape a felled trunk takes, so the collector's
  * own-trunk drive + the porter/delivery machinery carry it off unchanged (and the pile is auto-reaped when
  * emptied, see {@link reapEmptyGroundDrop}). The deposit node itself is left standing (drained by one in
  * {@link harvestFromNode}); it is removed only when its last unit is chipped ({@link depleteNode}). Goods are
- * conserved — the pile holds exactly the unit drained off the deposit.
+ * conserved - the pile holds exactly the unit drained off the deposit.
  */
 function dropMinedOre(world: World, miner: Entity, node: Entity, goodType: number, amount: number): void {
   const { x, y } = world.get(node, Position);
@@ -239,10 +239,10 @@ function dropMinedOre(world: World, miner: Entity, node: Entity, goodType: numbe
 
 /**
  * Mark a fresh ground drop with its harvester's identity and player. Two orthogonal stamps:
- *  - {@link HarvestedBy} names the exact gatherer, but only when it is FLAG-BOUND (carries a {@link WorkFlag}) —
+ *  - {@link HarvestedBy} names the exact gatherer, but only when it is FLAG-BOUND (carries a {@link WorkFlag}) -
  *    what lets that gatherer later reclaim only its own trunk/ore and leave every other pile alone. A flagless
  *    collector marks nothing here, so its drop hashes and is collected as normal.
- *  - {@link Owner} is the harvester's PLAYER (via {@link stampOwner}) — so the pile stays on its own side and a
+ *  - {@link Owner} is the harvester's PLAYER (via {@link stampOwner}) - so the pile stays on its own side and a
  *    rival player's hauler cannot fetch it (the same-side rule).
  */
 function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
@@ -253,8 +253,8 @@ function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
 /**
  * Remove an exhausted {@link Resource} node (a mined deposit whose last unit was just chipped, or a bare
  * mushroom after its single pickup) and announce it (`resourceDepleted`) for audio/effects and the
- * collision-unblock seam. Unlike {@link fellNode} it leaves nothing behind — the yield already dropped as ore
- * piles / went onto the back — it just deletes the node so the planner never re-scans a spent deposit. The
+ * collision-unblock seam. Unlike {@link fellNode} it leaves nothing behind - the yield already dropped as ore
+ * piles / went onto the back - it just deletes the node so the planner never re-scans a spent deposit. The
  * node's cell is read before the destroy (the component object is dropped from its store by `world.destroy`).
  *
  * A node with buried {@link ResourceLayers} (a hunter's multi-good carcass) is not spent yet: the drained

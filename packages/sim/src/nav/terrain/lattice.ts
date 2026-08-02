@@ -53,13 +53,13 @@ export abstract class TerrainLattice {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
 
-  /** The row-major node id for in-bounds coordinates — the class's addressing invariant, unchecked
+  /** The row-major node id for in-bounds coordinates - the class's addressing invariant, unchecked
    *  (callers that reach here have already bounds- or clamp-checked `x`, `y`). */
   protected idAt(x: number, y: number): NodeId {
     return (y * this.width + x) as NodeId;
   }
 
-  /** The node id at (x, y). Throws if out of bounds — an out-of-range lookup is a programmer error. */
+  /** The node id at (x, y). Throws if out of bounds - an out-of-range lookup is a programmer error. */
   nodeAt(x: number, y: number): NodeId {
     if (!this.inBounds(x, y))
       throw new Error(`node (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
@@ -84,7 +84,7 @@ export abstract class TerrainLattice {
 
   /**
    * The node at integer half-cell coordinates (`x`, `y`), clamped into the grid. Unlike
-   * {@link nodeAt} this never throws — it is the navigation planner's seam from an entity's node
+   * {@link nodeAt} this never throws - it is the navigation planner's seam from an entity's node
    * address (`nodeOfPosition`) to a node id, so an out-of-range coordinate clamps to the nearest
    * border node rather than crashing a tick.
    */
@@ -116,14 +116,14 @@ export abstract class TerrainLattice {
     return this.propsOf(node).walkable;
   }
 
-  /** True if a building's reserved zone may cover this node (the landscape row's `buildable` flag —
+  /** True if a building's reserved zone may cover this node (the landscape row's `buildable` flag -
    *  water/rock/void are neither walkable nor buildable; a real map's object margin is walkable but
    *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
     return this.propsOf(node).buildable;
   }
 
-  /** True if crops may be SOWN on this node (the landscape row's `plantable` flag — the original's
+  /** True if crops may be SOWN on this node (the landscape row's `plantable` flag - the original's
    *  `biocanplanton` ground class, carried only by grass/land). Farming-only; navigation and
    *  placement never read it. */
   isPlantable(node: NodeId): boolean {

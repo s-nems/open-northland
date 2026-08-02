@@ -10,7 +10,7 @@ import {
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * The "przypisz dom" verdict — the residential twin of `assign-highlight.test.ts`. A home is green iff
+ * The "przypisz dom" verdict - the residential twin of `assign-highlight.test.ts`. A home is green iff
  * it is an own, built `home` with a free FAMILY slot (`homeSize` counts families, not heads) for the
  * settler's household. The key invariant, as on the workplace side: the highlight (`computeHouseHighlight`,
  * what the player sees green) and the click resolver (`houseAssignableAt`, what a click binds) must agree
@@ -18,7 +18,7 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
  */
 
 const HOME_TYPE = 2; // a `home`-kind building type
-const MILL_TYPE = 9; // any non-home type — never a candidate
+const MILL_TYPE = 9; // any non-home type - never a candidate
 const HOME_SIZE = 2; // this home level holds two families
 const HOUSES = new Map<number, HouseInfo>([
   [HOME_TYPE, { kind: 'home', homeSize: HOME_SIZE }],
@@ -51,7 +51,7 @@ function person(
   };
 }
 
-describe('familyIdsOf — the household a home assignment moves as one', () => {
+describe('familyIdsOf - the household a home assignment moves as one', () => {
   it('is just the settler when unmarried', () => {
     expect(familyIdsOf(snapshotOf([person(1)]), 1)).toEqual([1]);
   });

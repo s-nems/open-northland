@@ -1,5 +1,5 @@
 /**
- * Ascending-id sorted-array maintenance — the insert/remove/search step shared by every incrementally
+ * Ascending-id sorted-array maintenance - the insert/remove/search step shared by every incrementally
  * maintained id index (the node-bucket grid, the region index, the resource-tile index). Ids are
  * monotonic, so an insert is usually an append; the binary search only earns its keep when an old id
  * re-enters a list.

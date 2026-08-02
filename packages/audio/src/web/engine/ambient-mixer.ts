@@ -3,7 +3,7 @@ import type { SampleCache } from './sample-cache.js';
 
 /**
  * The looping-ambient half of playback: reconcile the running terrain beds against each frame's
- * target — start new beds (fading in from silence), ramp existing ones toward their target gain, and
+ * target - start new beds (fading in from silence), ramp existing ones toward their target gain, and
  * fade-and-stop departed ones. All ramps ride the audio clock (`ctx.currentTime`), never `Date.now`.
  */
 
@@ -18,7 +18,7 @@ interface RunningLoop {
 export class AmbientMixer {
   /** ambient bed name → its running loop. */
   private readonly loops = new Map<string, RunningLoop>();
-  /** The most recent reconcile target — the load callback's "is this bed still wanted?" check. */
+  /** The most recent reconcile target - the load callback's "is this bed still wanted?" check. */
   private lastTarget: ReadonlyMap<string, AmbientLoop> = new Map();
 
   constructor(
@@ -58,7 +58,7 @@ export class AmbientMixer {
     try {
       running.source.stop(this.ctx.currentTime + AMBIENT_FADE_S);
     } catch {
-      // Already stopped — nothing to do.
+      // Already stopped - nothing to do.
     }
     this.loops.delete(name);
   }
@@ -66,7 +66,7 @@ export class AmbientMixer {
   private startLoop(loop: AmbientLoop): void {
     void this.samples.get(loop.file).then((buffer) => {
       // Re-check the gates: a mute (setEnabled(false)) or a reconcile that dropped this bed (terrain
-      // scrolled off before its first load landed) can arrive while the wav is in flight — an untracked
+      // scrolled off before its first load landed) can arrive while the wav is in flight - an untracked
       // loop that started anyway would play unwanted until the next reconcile catches it.
       if (buffer === null || !this.canPlay() || this.loops.has(loop.name)) return;
       const current = this.lastTarget.get(loop.name);

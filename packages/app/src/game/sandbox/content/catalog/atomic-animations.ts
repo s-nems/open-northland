@@ -66,7 +66,7 @@ function chatClip(
     id: name,
     name,
     length,
-    // `interruptable 1` in the source rows — a chat clip may be cut short by a higher drive.
+    // `interruptable 1` in the source rows - a chat clip may be cut short by a higher drive.
     interruptible: true,
     events: frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
   };
@@ -82,8 +82,8 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     })),
     { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
     { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
-    // The wedding kiss + the couple's make-love clocks — EXTRACTED lengths from the mod's
-    // `atomicanimations12/atomicanimations.ini` (kiss/kissed 50; woman make_love 50, civilist 200 —
+    // The wedding kiss + the couple's make-love clocks - EXTRACTED lengths from the mod's
+    // `atomicanimations12/atomicanimations.ini` (kiss/kissed 50; woman make_love 50, civilist 200 -
     // the hearts phase runs the longer clock).
     { id: 'viking_woman_kiss', name: 'viking_woman_kiss', length: 50 },
     { id: 'viking_woman_kissed', name: 'viking_woman_kissed', length: 50 },
@@ -91,9 +91,9 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     { id: 'viking_civilist_kissed', name: 'viking_civilist_kissed', length: 50 },
     { id: 'viking_woman_make_love', name: 'viking_woman_make_love', length: 50 },
     { id: 'viking_civilist_make_love', name: 'viking_civilist_make_love', length: 200 },
-    // The gossip talk/listen clips — EXTRACTED lengths + channel-3 pulse rows (see work-animations.ts):
+    // The gossip talk/listen clips - EXTRACTED lengths + channel-3 pulse rows (see work-animations.ts):
     // the civilist pair restores +800 per pulse both talking and listening; the woman restores +800
-    // talking but only +100 listening (she recovers on her talking turn — the pair alternates roles).
+    // talking but only +100 listening (she recovers on her talking turn - the pair alternates roles).
     chatClip(CIVILIST_TALK_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(CIVILIST_LISTEN_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
@@ -155,8 +155,8 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 1 }],
     },
     {
-      // The scout's signpost swing — the same authored hammer beat as the builder's (the transcribed
-      // `viking_scout_build_guide` shares the sound-FX frame; `event 4 34 2` — the wood-sign knock).
+      // The scout's signpost swing - the same authored hammer beat as the builder's (the transcribed
+      // `viking_scout_build_guide` shares the sound-FX frame; `event 4 34 2` - the wood-sign knock).
       id: BUILD_GUIDE_ANIMATION,
       name: BUILD_GUIDE_ANIMATION,
       length: BUILD_GUIDE_SWING_LENGTH,

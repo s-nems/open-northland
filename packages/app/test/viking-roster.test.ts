@@ -11,7 +11,7 @@ import {
 import type { BobSeqRow } from '../src/content/ir/rows.js';
 
 /**
- * The viking roster's pure half — the shape/consistency of the `jobgraphics.ini` transcription,
+ * The viking roster's pure half - the shape/consistency of the `jobgraphics.ini` transcription,
  * self-verifiable on any checkout. The pin that decoded `content/` actually carries every body
  * imagelib + head/body atlas the roster names lives in the real-content suite
  * (`test/content/viking-roster.test.ts`).

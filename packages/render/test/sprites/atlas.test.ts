@@ -9,7 +9,7 @@ import {
 import { drawItem } from '../support/fixtures.js';
 
 /**
- * Unit tests for the atlas layer — indexing decoded frames by bob id and resolving a draw item to its
+ * Unit tests for the atlas layer - indexing decoded frames by bob id and resolving a draw item to its
  * atlas frame. The self-verifiable (data-lookup) half; binding the rect to a GPU texture stays a human's.
  */
 
@@ -60,7 +60,7 @@ describe('resolveSpriteFrame', () => {
     expect(resolveSpriteFrame(drawItem('resource'), BINDINGS, atlas())).toBeNull();
   });
 
-  it('resolves a resource to its own (tree) atlas frame — the ls_trees per-kind bind', () => {
+  it('resolves a resource to its own (tree) atlas frame - the ls_trees per-kind bind', () => {
     // Mirrors the real resource bind: resource -> a non-empty bob in its OWN atlas (the per-kind tree
     // layer the GPU blits from). Geometry like ls_trees frame 60: a 101×111 tree anchored at its base.
     const treeAtlas = indexAtlasFrames(1024, 4914, [

@@ -9,7 +9,7 @@ import { FRAME_0, FRAME_1, tallSprites, WIDE } from './support.js';
  * The tall map-object cast shadow: a tall object whose sprite carries a shadow twin attaches a second
  * sprite sorted just under the body (the original blits a shadow immediately before its caster), binds
  * the shadow at the SAME pose index as the body, and hides it for a pose without a silhouette.
- * Headless like the fog tests — display objects construct without a GL context.
+ * Headless like the fog tests - display objects construct without a GL context.
  */
 
 const SHADOW_0: AtlasFrame = { x: 16, y: 0, width: 8, height: 4, offsetX: -2, offsetY: -4 };
@@ -47,7 +47,7 @@ describe('MapObjectLayer cast shadows (tall objects)', () => {
     const layer = new MapObjectLayer(spriteLayer, new TextureCache());
     layer.set([shadowedTree()]);
 
-    layer.update(WIDE, 1); // pose 1 — no silhouette
+    layer.update(WIDE, 1); // pose 1 - no silhouette
     expect(tallSprites(spriteLayer)[1]?.visible).toBe(false);
 
     layer.update(WIDE, 2); // pose 0 again

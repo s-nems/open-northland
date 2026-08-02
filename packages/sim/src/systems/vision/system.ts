@@ -20,7 +20,7 @@ import { FOG_STATE } from './state.js';
 /**
  * Ticks between visibility-mask rebuilds. The fog "scan pulse": positions move every tick but the masks refresh
  * on this cadence, so per-tick cost amortizes to (owned entities × vision area) / 5 writes. At 12 ticks/s that
- * is a ~417 ms refresh — imperceptible against fog's soft edges. Our design (the original has no observable fog
+ * is a ~417 ms refresh - imperceptible against fog's soft edges. Our design (the original has no observable fog
  * refresh rate), a deliberate cadence like combat's REPATH_CADENCE.
  */
 export const VISION_CADENCE_TICKS = 5;
@@ -29,7 +29,7 @@ export const VISION_CADENCE_TICKS = 5;
  * Vision radii in half-cell nodes (the same integer node-distance convention as `DEFAULT_WORK_FLAG_RADIUS` /
  * `SIGHT_RADIUS_NODES`), measured along the E/W world axis (one node = half a column = 34 px of the measured
  * 68×38 pitch); the stamped area is the world-metric ellipse of that radius, so vision reads circular on screen.
- * All approximated (user-tuned): the original carries no readable per-job sight field — the ordering (buildings
+ * All approximated (user-tuned): the original carries no readable per-job sight field - the ordering (buildings
  * large, scout largest, soldier large, hunter a bit over civilian, civilian smallest) is the user's spec.
  */
 export const BUILDING_VISION_NODES = 20;
@@ -39,7 +39,7 @@ export const SOLDIER_VISION_NODES = 16;
 export const SCOUT_VISION_NODES = 26;
 
 /**
- * The vision radius (nodes) of a settler of `jobType` — a lookup over the content-derived job roles (the
+ * The vision radius (nodes) of a settler of `jobType` - a lookup over the content-derived job roles (the
  * defaultStanceForJob style): scouts widest, soldiers/heroes wide, hunters a bit over civilians, every
  * other trade (and a jobless settler/child) the civilian floor.
  */
@@ -51,21 +51,21 @@ export function visionRadiusForJob(content: ContentSet, jobType: number | null):
 }
 
 /** The world-metric weights of the vision ellipse: one cell column is 68 px wide, one cell row 38 px
- *  deep, one node (the radius unit) 34 px — the measured projection pitch (`nav/world-metric.ts`,
+ *  deep, one node (the radius unit) 34 px - the measured projection pitch (`nav/world-metric.ts`,
  *  source basis "projection"). Integer, so the ellipse test is exact integer arithmetic. */
 const CELL_STEP_PX = 68;
 const ROW_STEP_PX = 38;
 const NODE_STEP_PX = 34;
 
 /**
- * VisionSystem — rebuild the per-player fog masks on the {@link VISION_CADENCE_TICKS} cadence (and immediately
+ * VisionSystem - rebuild the per-player fog masks on the {@link VISION_CADENCE_TICKS} cadence (and immediately
  * on a mode change, so a `setFogMode` command takes effect the same tick). Runs before the combatSystem in
  * `SYSTEM_ORDER` so combat always gates on this tick's (or at worst a cadence-stale) visibility.
  *
  * A rebuild is two passes over each player's mask:
- *  1. **Downgrade** — RECON drops every VISIBLE byte to EXPLORED (ground nobody watches regresses to
+ *  1. **Downgrade** - RECON drops every VISIBLE byte to EXPLORED (ground nobody watches regresses to
  *     terrain-only); REVEAL skips this (sticky exploration, the original's observed behaviour).
- *  2. **Stamp** — every owned positioned eye (settler by job / building / boat) writes VISIBLE over the
+ *  2. **Stamp** - every owned positioned eye (settler by job / building / boat) writes VISIBLE over the
  *     world-metric ellipse of its vision radius. Stamping is idempotent + commutative, so the
  *     `query(Owner, Position)` store order needs no canonical sort.
  *
@@ -74,7 +74,7 @@ const NODE_STEP_PX = 34;
  */
 export const visionSystem: System = (world, ctx) => {
   const fog = ctx.fog;
-  if (fog === undefined) return; // mapless sim — no grid to mask
+  if (fog === undefined) return; // mapless sim - no grid to mask
   const mode = fogMode(world);
   if (mode === FOG_MODE.OFF) {
     if (fog.activeMode !== FOG_MODE.OFF) {
@@ -90,7 +90,7 @@ export const visionSystem: System = (world, ctx) => {
   if (!modeChanged && !due) return;
 
   // Downgrade pass (RECON): ground no eye covers falls back to explored-grey. Masks are walked in
-  // ascending-player order — byte-for-byte deterministic (and the order hashState mixes them in).
+  // ascending-player order - byte-for-byte deterministic (and the order hashState mixes them in).
   // Each player's scan covers only its may-hold-VISIBLE box, not the whole map.
   if (mode !== FOG_MODE.REVEAL) {
     for (const player of fog.playersWithMasks()) {
@@ -117,15 +117,15 @@ export const visionSystem: System = (world, ctx) => {
 };
 
 /** The vision radius (nodes) of one owned entity, or null when it is not an eye: settlers see by job,
- *  buildings (finished or under construction — a rising site is manned ground) see the building
+ *  buildings (finished or under construction - a rising site is manned ground) see the building
  *  radius, boat hulls see like a civilian, a signpost watches its whole navigation circle (a standing
- *  eye, so its area stays visible in RECON — our design: the user-specified permanent recon reveal).
+ *  eye, so its area stays visible in RECON - our design: the user-specified permanent recon reveal).
  *  Owned markers (flags) and piles see nothing. */
 function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) {
     const base = visionRadiusForJob(content, settler.jobType);
-    // A seasoned scout sees a bit farther — its signpost craft widens the ellipse (scoutVisionBonusNodes).
+    // A seasoned scout sees a bit farther - its signpost craft widens the ellipse (scoutVisionBonusNodes).
     return isScoutJob(content, settler.jobType)
       ? base + scoutVisionBonusNodes(settler.experience.get(SCOUT_EXPERIENCE_TYPE) ?? 0)
       : base;
@@ -139,9 +139,9 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
 
 /**
  * Write {@link FOG_STATE.VISIBLE} over the world-metric ellipse of `radiusNodes` around cell
- * (cx, cy): a cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²` — the measured 68×38
+ * (cx, cy): a cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²` - the measured 68×38
  * projection pitch with the radius in 34 px nodes, so the fog edge reads circular on screen (the
- * per-row stagger's ±half-cell wobble is deliberately ignored — a half-cell fringe on a soft fog edge,
+ * per-row stagger's ±half-cell wobble is deliberately ignored - a half-cell fringe on a soft fog edge,
  * named approximation). Exact integer math; clamped to the grid.
  *
  * Returns the clamped cell rect the stamp touched (its ellipse bounding box ∩ grid) so the caller can

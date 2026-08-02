@@ -7,7 +7,7 @@ import { menuStateFor } from '../src/view/unit-controls/action-ring/menu-state.j
 import { countingSnapshot, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * The action ring's erect-signpost button must offer exactly what `placeSignpost` accepts — both read the
+ * The action ring's erect-signpost button must offer exactly what `placeSignpost` accepts - both read the
  * content's scout role, so a content whose scout is not the catalog's job 27 keeps them in step. The
  * button is derived before the single-selection gate, so an empty snapshot exercises it on its own.
  */
@@ -20,7 +20,7 @@ describe('action-ring erect-signpost gating', () => {
   it('offers the button on a uniform scout selection and nothing else', () => {
     expect(menuStateFor(content, EMPTY, [], JOB_SCOUT).erectSignpost).toBe(true);
     expect(menuStateFor(content, EMPTY, [], JOB_COLLECTOR).erectSignpost).toBe(false);
-    // A mixed selection has no uniform job — the erect order takes several scouts, so it needs one.
+    // A mixed selection has no uniform job - the erect order takes several scouts, so it needs one.
     expect(menuStateFor(content, EMPTY, [], undefined).erectSignpost).toBe(false);
   });
 });

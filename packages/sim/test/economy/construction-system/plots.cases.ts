@@ -5,7 +5,7 @@ import { constructionSystem } from '../../../src/systems/index.js';
 
 import { constructionContent, ctxOf, HEADQUARTERS, HOUSE, placeSite } from './support.js';
 
-describe('constructionPlots — the render decal cells for under-construction sites', () => {
+describe('constructionPlots - the render decal cells for under-construction sites', () => {
   it("returns each site's footprint body cells (anchor + offsets), for a plot matching the building", () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     placeSite(sim, HOUSE); // Position (0,0); HOUSE footprint blocked = anchor + one cell east

@@ -55,7 +55,7 @@ export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFi
  * stable order (the maps are sorted by their relative path so the IR is reproducible regardless of
  * directory-entry order). Each map's `id` comes from its containing
  * folder ({@link mapIdFromPath}). A `.cif` that fails to read or decode (not a map, missing
- * `mapsize`/`mapguid`, corrupt container) is logged and skipped — a batch over many maps must not
+ * `mapsize`/`mapguid`, corrupt container) is logged and skipped - a batch over many maps must not
  * abort on one bad file, matching the other tree-walk stages. Only the declarative header metadata is
  * extracted here; the binary tile grid, the `StaticObjects` placements and the
  * `playerdata`/`MissionData` script land in per-map artifacts via `convertMapDatTree` (see

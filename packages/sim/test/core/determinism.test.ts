@@ -9,7 +9,7 @@ import { movementSystem } from '../../src/systems/index.js';
 /**
  * Determinism golden tests. These are the safety net for the golden rule: same seed + same inputs
  * => identical state. When a mechanic changes intentionally, update the expected value. If it
- * changes accidentally, this fails — which is exactly the point.
+ * changes accidentally, this fails - which is exactly the point.
  */
 
 function ctx(seed: number, tick: number): SystemContext {

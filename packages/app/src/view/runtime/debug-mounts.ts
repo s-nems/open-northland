@@ -57,8 +57,8 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     enqueue: (command) => sim.enqueue(command),
     clientToTile: (x, y) => opts.clientToTile(x, y),
     // Pick the top entity of a kind under a client point for the action tools (kill/needs/fill/finish).
-    // A screen-bounded pass — buildSpriteScene is culled to the camera viewport (golden rule 6), pinned to
-    // solid pixels for buildings like the RTS controls — but over all owners (an enemy is killable),
+    // A screen-bounded pass - buildSpriteScene is culled to the camera viewport (golden rule 6), pinned to
+    // solid pixels for buildings like the RTS controls - but over all owners (an enemy is killable),
     // rebuilt per click (rare) rather than cached like the per-frame hover set.
     pickEntity: createAdminEntityPicker({
       app,
@@ -71,7 +71,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     claimPointer: (x, y) => opts.claimPointer(x, y),
     goodLabel: (typeId) => opts.goodLabel(typeId),
     // The droppable-goods palette is the running content's own goods (sandbox on a bare checkout, the real
-    // extracted goods on a scene/map) — the one source, so every listed good actually drops.
+    // extracted goods on a scene/map) - the one source, so every listed good actually drops.
     goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // The wildlife palette: every LIVING recorded species (a hitpoints-0 record is a decorative swarm
     // whose spawn places nothing) that also has a body in the render roster - a species without a
@@ -91,7 +91,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
         id: sim.content.tribes.find((t) => t.typeId === a.tribeType)?.id ?? a.id,
       }))
       .sort((a, b) => a.tribe - b.tribe),
-    // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
+    // The needs-toggle button's live state (scenes boot it off, maps on) - read through the sim's
     // sanctioned read accessor (the placementProbe pattern), never the live component stores.
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),

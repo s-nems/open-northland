@@ -6,7 +6,7 @@ import { type Simulation, simFor } from '../simulation.js';
 import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.js';
 
 /**
- * Headless scenario harness — the "e2e at the game level" layer that an AGENT can run and judge by
+ * Headless scenario harness - the "e2e at the game level" layer that an AGENT can run and judge by
  * itself, with no screen. A scenario scripts the same serializable commands the UI would issue,
  * runs the deterministic sim for N ticks, and asserts outcomes + invariants. Because the sim is
  * pure and headless, this fully exercises game logic (placement -> AI -> atomics -> economy)
@@ -22,7 +22,7 @@ export interface ScenarioResult {
   readonly sim: Simulation;
   readonly failures: readonly string[];
   readonly invariantViolations: readonly string[];
-  /** Chainable, and safe to destructure — the methods close over the run, not over `this`. */
+  /** Chainable, and safe to destructure - the methods close over the run, not over `this`. */
   expect(label: string, predicate: (sim: Simulation) => boolean): ScenarioResult;
   /** Throws with all collected failures (for use inside a test's it()). */
   assertOk(): void;
@@ -35,8 +35,8 @@ export interface RunOptions {
 }
 
 /**
- * Options for a scenario run. `seed` fixes the RNG (default 1); `map` supplies a real terrain grid —
- * e.g. a `parseTerrainMap`'d `content/maps/<id>.json` — so the sim navigates an actual decoded map in
+ * Options for a scenario run. `seed` fixes the RNG (default 1); `map` supplies a real terrain grid -
+ * e.g. a `parseTerrainMap`'d `content/maps/<id>.json` - so the sim navigates an actual decoded map in
  * place of a synthetic grid. Omitting `map` runs mapless (the determinism golden does this).
  */
 export interface ScenarioOptions {
@@ -52,7 +52,7 @@ class Scenario {
   }
 
   /**
-   * Script a serializable command exactly as the UI would issue it — the only way to mutate state.
+   * Script a serializable command exactly as the UI would issue it - the only way to mutate state.
    * Commands enqueued before `run` are applied on the first tick's CommandSystem pass. Chainable.
    */
   command(command: Command): this {
@@ -69,7 +69,7 @@ class Scenario {
         const v = checkInvariants(this.sim.world, invariants);
         if (v.length > 0) {
           invariantViolations.push(`tick ${this.sim.tick}: ${v.join('; ')}`);
-          break; // stop at first broken tick — that's the actionable signal
+          break; // stop at first broken tick - that's the actionable signal
         }
       }
     }

@@ -97,23 +97,23 @@ describe('extractWeapons', () => {
         // A melee claw fires nothing -> no `munitionType` field either (undefined dropped by toEqual).
         source: src,
       },
-      // Same `type 4` but a different tribe — `(tribeType, typeId)` is the composite key. No range
+      // Same `type 4` but a different tribe - `(tribeType, typeId)` is the composite key. No range
       // pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
       {
         typeId: 4,
         id: 'reed_sling',
         name: 'reed sling',
         tribeType: 2,
-        mainType: 6, // a different weapon class — captured per record
+        mainType: 6, // a different weapon class - captured per record
         weight: 1, // non-zero encumbrance captured
-        munitionType: 3, // a ranged weapon's ammo class — captured, NOT good id 3
-        speed: 6, // a ranged weapon's projectile travel speed — captured (undefined-dropped on melee)
-        damageType: 4, // the damage class (siege marker, all-lowercase key) — captured, NOT good id 4
+        munitionType: 3, // a ranged weapon's ammo class - captured, NOT good id 3
+        speed: 6, // a ranged weapon's projectile travel speed - captured (undefined-dropped on melee)
+        damageType: 4, // the damage class (siege marker, all-lowercase key) - captured, NOT good id 4
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2100 },
         jobType: 53,
-        goodType: 22, // a real good — the good that IS this weapon
+        goodType: 22, // a real good - the good that IS this weapon
         source: src,
       },
     ]);
@@ -289,7 +289,7 @@ describe('extractAnimals', () => {
   });
 
   it('drops an [animaltype] with no tribetype (a disabled stub that cannot resolve to a tribe)', () => {
-    // The third record in ANIMALTYPES_INI carries no `tribetype` — it is silently dropped, NOT thrown
+    // The third record in ANIMALTYPES_INI carries no `tribetype` - it is silently dropped, NOT thrown
     // on (the key is genuinely absent in real data, unlike a malformed `type`-keyed table).
     const animals = extractAnimals(parseIniSections(ANIMALTYPES_INI), { file: 'animaltypes.ini' });
     expect(animals.map((a) => a.tribeType)).toEqual([8, 9]);
@@ -363,7 +363,7 @@ describe('extractAtomicAnimations', () => {
     ]);
   });
 
-  it('throws on an [atomicanimation] with no (or empty) `name` — it would be unreferenceable', () => {
+  it('throws on an [atomicanimation] with no (or empty) `name` - it would be unreferenceable', () => {
     expect(() =>
       extractAtomicAnimations(parseIniSections('[atomicanimation]\nlength 20\n'), { file: 'f.ini' }),
     ).toThrow(/without a `name`/);

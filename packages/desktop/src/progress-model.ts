@@ -1,4 +1,4 @@
-// The `/progress` subpath is import-free by design — this module rides the browser-side setup
+// The `/progress` subpath is import-free by design - this module rides the browser-side setup
 // bundle, which must never drag the pipeline's node:fs decoder graph in.
 import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
 import { PIPELINE_STAGES } from '@open-northland/asset-pipeline/progress';

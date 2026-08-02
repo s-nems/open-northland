@@ -3,7 +3,7 @@ import { MEMBERSHIP_JOURNAL_LIMIT } from '../../src/ecs/membership-journal.js';
 import { defineComponent, World } from '../../src/ecs/world.js';
 
 /**
- * The World membership journal (`journalMembership`/`membershipDeltasSince`) — the replay feed the
+ * The World membership journal (`journalMembership`/`membershipDeltasSince`) - the replay feed the
  * incremental spatial memos catch up from instead of rebuilding on every store-generation bump.
  * Pinned: entry `i` maps to generation `base + i + 1`, a span the journal cannot cover answers
  * `null` (the rebuild fallback), and the cap drops the oldest span instead of growing forever.
@@ -39,11 +39,11 @@ describe('World membership journal', () => {
     const a = w.create();
     w.add(a, C, { n: 1 });
     const mid = w.componentGeneration(C);
-    w.add(a, C, { n: 2 }); // same membership, new value — still a journaled bump
+    w.add(a, C, { n: 2 }); // same membership, new value - still a journaled bump
     expect(w.membershipDeltasSince(C, mid)).toEqual([a]);
   });
 
-  it('drops the oldest span at the cap — a consumer left behind gets null and must rebuild', () => {
+  it('drops the oldest span at the cap - a consumer left behind gets null and must rebuild', () => {
     const w = new World();
     const C = defineComponent<Tag>('JournalCap');
     w.journalMembership(C);

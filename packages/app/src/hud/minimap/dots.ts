@@ -7,7 +7,7 @@ import type { WorldBounds } from './model.js';
 /** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
 const SETTLER_DOT_PX = 2;
 const BUILDING_DOT_PX = 3;
-/** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
+/** Dot colour for a player outside the swatch table - unreachable today (the index is taken modulo
  *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 
@@ -35,11 +35,11 @@ export function forEachMinimapDot(
     const settler = isSettler(e);
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    // Fog: a dot only on currently-visible ground (the viewer's own forces always are — they see
+    // Fog: a dot only on currently-visible ground (the viewer's own forces always are - they see
     // their own cell; an enemy in unexplored/grey ground stays off the minimap).
     if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
     const s = tileToScreen(pos.x / ONE, pos.y / ONE);
-    // Raster px coords — the buffer is 1:1 with the map picture's logical px.
+    // Raster px coords - the buffer is 1:1 with the map picture's logical px.
     const bx = (s.x - bounds.minX) * scale;
     const by = (s.y - bounds.minY) * scale;
     const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;

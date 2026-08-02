@@ -9,11 +9,11 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GAME-LEVEL (e2e) — the housing → upgrade loop under the real `Simulation.step()` schedule: the
+ * GAME-LEVEL (e2e) - the housing → upgrade loop under the real `Simulation.step()` schedule: the
  * `upgradeBuilding` command re-opens a built level-0 home as an upgrade site, carriers deliver the
  * level DIFFERENCE and a builder hammers it out, and the tribe's housing capacity grows with the
- * finished tier. (Births are no longer capacity-driven — they come from the family mechanics, proven
- * in test/family/ — so this covers the command→delivery→build→capacity half of the old loop.)
+ * finished tier. (Births are no longer capacity-driven - they come from the family mechanics, proven
+ * in test/family/ - so this covers the command→delivery→build→capacity half of the old loop.)
  *
  * Built with `parseContentSet` (not the shared fixture) so the home chain + per-tier `construction`
  * cost are explicit; the golden slice (no `home`-kind building) is untouched.
@@ -22,7 +22,7 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 const STONE = 1;
 const GRASS = 0;
-const CARRIER = 36; // a job with no harvest atomics — it only hauls a load it already carries
+const CARRIER = 36; // a job with no harvest atomics - it only hauls a load it already carries
 const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
 const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
 
@@ -57,7 +57,7 @@ function loopContent(): ContentSet {
         id: 'home_level_01',
         kind: 'home',
         homeSize: 5,
-        // Upgrading into L1 costs 2 stone (its own per-tier cost — the difference).
+        // Upgrading into L1 costs 2 stone (its own per-tier cost - the difference).
         construction: [{ goodType: STONE, amount: 2 }],
       },
     ],
@@ -73,7 +73,7 @@ function builtHomeAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** A builder settler placed at a tile — the trade that hammers the upgrade site out. */
+/** A builder settler placed at a tile - the trade that hammers the upgrade site out. */
 function builderAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -89,7 +89,7 @@ function builderAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** A carrier already holding a unit of `goodType` — the haul a producing workplace would have handed it. */
+/** A carrier already holding a unit of `goodType` - the haul a producing workplace would have handed it. */
 function loadedCarrierAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -110,7 +110,7 @@ describe('e2e: the housing → upgrade loop (full step schedule)', () => {
   it('the upgrade command turns a level-0 home into a served site and its capacity grows on completion', () => {
     const sim = new Simulation({ seed: 2, content: loopContent(), map: grassMap(8, 1) });
     const home = builtHomeAt(sim, 3, 0); // L0: shelters 3
-    // Two carriers each holding one stone — together L1's 2-stone difference — and a builder to hammer.
+    // Two carriers each holding one stone - together L1's 2-stone difference - and a builder to hammer.
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 5, 0, STONE, 1);
     builderAt(sim, 7, 0);
@@ -138,7 +138,7 @@ describe('e2e: the housing → upgrade loop (full step schedule)', () => {
     }
   });
 
-  it('is deterministic — two same-seed loop runs reach the same final state hash', () => {
+  it('is deterministic - two same-seed loop runs reach the same final state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: loopContent(), map: grassMap(8, 1) });
       const home = builtHomeAt(sim, 3, 0);

@@ -67,7 +67,7 @@ export function spawnSettlerDirect(
 /**
  * Spawn an unemployed settler (jobType null) directly (scene setup, pre-tick-0) and return it. Unlike
  * {@link spawnSandboxSettler} (which spawns a settler already doing a named job), an idle settler is the
- * one the JobSystem's second pass employs — it binds an idle settler to the first canonical building with an
+ * one the JobSystem's second pass employs - it binds an idle settler to the first canonical building with an
  * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
  * warehouse/HQ is not adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
  * so its haulers arrive as idle settlers the JobSystem assigns. Spawned as {@link JOB_IDLE} then

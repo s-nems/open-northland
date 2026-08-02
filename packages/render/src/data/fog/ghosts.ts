@@ -5,29 +5,29 @@ import { assignStaticFields, classify, readPosition } from '../scene/snapshot-re
 import { fogCellOfTile } from './mask.js';
 
 /**
- * Fog ghosts — the viewer player's remembered statics: a building, resource node or stump, once seen,
- * keeps drawing (dimmed to the explored-grey grading) after its ground falls back under the fog — the
+ * Fog ghosts - the viewer player's remembered statics: a building, resource node or stump, once seen,
+ * keeps drawing (dimmed to the explored-grey grading) after its ground falls back under the fog - the
  * classic RTS "last known intel" layer. All design here is ours (the original's reveal mode never
  * un-sees ground, so it has no ghosts to observe); it follows the genre's last-known-intel convention:
  *
- *  - Only statics ghost (building / resource / stump). Units, piles and flags vanish with the fog —
+ *  - Only statics ghost (building / resource / stump). Units, piles and flags vanish with the fog -
  *    they move or churn, so a remembered copy would be a lie within seconds.
  *  - A ghost is the last-seen state, frozen: a building destroyed (or a tree felled) behind the fog
- *    keeps its ghost until the player actually re-sees the cell — then the record refreshes to the
+ *    keeps its ghost until the player actually re-sees the cell - then the record refreshes to the
  *    live state or disappears with its entity. The staleness is intentional.
  *  - RECON additionally seeds every natural resource (resource/stump kinds, never buildings) at the
- *    moment the mode takes effect — "terrain rozpoznany" includes where the trees and rocks are (the
+ *    moment the mode takes effect - "terrain rozpoznany" includes where the trees and rocks are (the
  *    Age-of-Empires explored-map convention), but not what anyone has built.
  *
- * The store is render-side, per local viewer only — the sim's combat gates read the true masks and
+ * The store is render-side, per local viewer only - the sim's combat gates read the true masks and
  * never this memory, so determinism is untouched. Rebuilds ride {@link FogView.generation} (the
  * VisionSystem cadence, a few times a second): one pass over the snapshot's entities per rebuild,
  * O(pool-drawn statics), never per frame (golden rule 6). Entities in `staticRefs` (a decoded map's
- * virgin nodes) are skipped — the retained map-object layer is their ghost (they cannot change until
+ * virgin nodes) are skipped - the retained map-object layer is their ghost (they cannot change until
  * first worked, so drawing the real object on explored ground is exactly the last-seen state).
  */
 
-/** The DrawItem kinds that ghost — statics whose last-seen state stays meaningful under fog. */
+/** The DrawItem kinds that ghost - statics whose last-seen state stays meaningful under fog. */
 type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump'>;
 
 /** One remembered static: the entity's identity plus the shared {@link StaticDrawFields} its draw needs,
@@ -60,18 +60,18 @@ function capture(
 }
 
 export class FogGhostStore {
-  /** ref → last-seen record. A record exists only for cells the viewer does not currently see —
+  /** ref → last-seen record. A record exists only for cells the viewer does not currently see -
    *  every rebuild deletes records on visible ground first, then re-captures what is live there. */
   private readonly records = new Map<number, FogGhost>();
   /** The drawable subset of {@link records} (cells at least explored under the current view),
-   *  rebuilt per mask generation and returned by reference — the per-frame path never rescans. */
+   *  rebuilt per mask generation and returned by reference - the per-frame path never rescans. */
   private drawList: FogGhost[] = [];
-  /** The (generation, mode) the store last rebuilt for — the skip key. */
+  /** The (generation, mode) the store last rebuilt for - the skip key. */
   private lastGeneration = -1;
   private lastMode = -1;
   /** Whether the current RECON stretch already seeded the natural resources (re-arms on leaving). */
   private reconSeeded = false;
-  /** Refs to capture on the next rebuild regardless of visibility — the decoded-map handover seam:
+  /** Refs to capture on the next rebuild regardless of visibility - the decoded-map handover seam:
    *  a virgin node first worked under fog leaves the static layer, and without this its last-seen
    *  (virgin) look would simply vanish from explored ground. Survives fog-off (adoption may precede
    *  the mode change that makes it matter). */
@@ -82,7 +82,7 @@ export class FogGhostStore {
     this.pendingAdopt.add(ref);
   }
 
-  /** Drop every memory (fog switched off — the sim resets exploration history the same way). */
+  /** Drop every memory (fog switched off - the sim resets exploration history the same way). */
   clear(): void {
     if (this.records.size === 0 && this.drawList.length === 0 && !this.reconSeeded) return;
     this.records.clear();
@@ -93,7 +93,7 @@ export class FogGhostStore {
   }
 
   /**
-   * Bring the memory up to date with one mask rebuild and return the drawable ghosts — cached by
+   * Bring the memory up to date with one mask rebuild and return the drawable ghosts - cached by
    * (generation, mode), so per frame this is a field read; the passes below run only when the sim's
    * VisionSystem actually rebuilt the masks (or an adoption is pending).
    */
@@ -108,15 +108,15 @@ export class FogGhostStore {
     if (view.mode !== FOG_MODE.RECON) this.reconSeeded = false;
     const seedResources = view.mode === FOG_MODE.RECON && !this.reconSeeded;
 
-    // Pass 1 — forget everything on ground the viewer sees: what is really there draws live, and a
+    // Pass 1 - forget everything on ground the viewer sees: what is really there draws live, and a
     // dead static must not leave a ghost on watched ground. Pass 2 re-captures the live statics.
     for (const [ref, ghost] of this.records) {
       const { cx, cy } = fogCellOfTile(ghost.tileX, ghost.tileY);
       if (view.stateAt(cx, cy) === FOG_STATE.VISIBLE) this.records.delete(ref);
     }
 
-    // Pass 2 — capture: every pool-drawn static on visible ground (the normal sighting), every
-    // pending adoption (visibility waived — the handover seam), and, when RECON just took effect,
+    // Pass 2 - capture: every pool-drawn static on visible ground (the normal sighting), every
+    // pending adoption (visibility waived - the handover seam), and, when RECON just took effect,
     // every natural resource anywhere (the "terrain known" seed; buildings stay intel).
     for (const entity of snapshot.entities) {
       if (staticRefs?.has(entity.id)) continue;
@@ -139,9 +139,9 @@ export class FogGhostStore {
     if (seedResources) this.reconSeeded = true;
 
     // Drawable subset: a ghost draws only on explored ground. On visible ground the live entity
-    // draws instead (a freshly-seeded record can sit there — emitting it too would double-draw the
+    // draws instead (a freshly-seeded record can sit there - emitting it too would double-draw the
     // ref); on unexplored ground the memory stays but must not draw into the black (reachable across
-    // a mode switch — RECON's seeded knowledge read through REVEAL's raw mask).
+    // a mode switch - RECON's seeded knowledge read through REVEAL's raw mask).
     const drawable: FogGhost[] = [];
     for (const ghost of this.records.values()) {
       const { cx, cy } = fogCellOfTile(ghost.tileX, ghost.tileY);

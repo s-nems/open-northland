@@ -9,9 +9,9 @@ import { createTooltip } from './tooltip.js';
  * by the sim goodType the pile's `DrawItem` carries.
  *
  * Screen-bounded (golden rule 6): its hit-target set is filtered from the renderer's already-culled
- * `drawnItems` list (the frame's own scene — never a second scene build from the snapshot), and it
+ * `drawnItems` list (the frame's own scene - never a second scene build from the snapshot), and it
  * re-picks a cached set while the tick and camera hold still. Owns its own {@link createTooltip} element
- * (distinct from the details panel's Magazyn stock-row tooltip — the two hover surfaces are mutually
+ * (distinct from the details panel's Magazyn stock-row tooltip - the two hover surfaces are mutually
  * exclusive by cursor and must not share one DOM node). The impure game-view runtime drives
  * {@link GroundPileTooltip.update} once per frame, after the renderer's update drew the frame it reads.
  */
@@ -19,14 +19,14 @@ import { createTooltip } from './tooltip.js';
 export interface GroundPileTooltipOptions {
   readonly renderer: WorldRenderer;
   readonly camera: () => Camera;
-  /** client (CSS) px → screen px — the shared camera-space conversion the world pickers use. */
+  /** client (CSS) px → screen px - the shared camera-space conversion the world pickers use. */
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
   /** The good's localized display name; a `#id` fallback is used when this returns undefined. */
   readonly goodLabel: (goodType: number) => string | undefined;
   /** The current cursor position (client coords), or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
   /**
-   * Whether the world tooltip must yield the pointer this frame — build placement is active, or the HUD
+   * Whether the world tooltip must yield the pointer this frame - build placement is active, or the HUD
    * (a tool-panel window, the details panel) owns the cursor. The tooltip names world piles, not chrome.
    */
   readonly suppressed: (clientX: number, clientY: number) => boolean;
@@ -45,7 +45,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     return screenToWorld(opts.camera(), p.x, p.y);
   };
 
-  // Pile hit-targets, refiltered only when the sim tick or the camera moves — the drawn list is
+  // Pile hit-targets, refiltered only when the sim tick or the camera moves - the drawn list is
   // camera-dependent (culled to the viewport), so the cache keys on the camera too; a still cursor
   // over a still frame re-picks the cached set. The renderer's frame cull and fog gate already
   // dropped off-screen and fogged piles, so filtering its drawn list inherits both.
@@ -61,7 +61,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     hoverInfo.clear();
     for (const it of opts.renderer.drawnItems()) {
       if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
-      if (it.goodType === undefined) continue; // an empty delivery flag — nothing to name
+      if (it.goodType === undefined) continue; // an empty delivery flag - nothing to name
       if (!isHitTarget(it)) continue;
       hoverTargets.push({ ref: it.ref, x: it.x, y: it.y, box: opts.renderer.entityBounds(it.ref) });
       hoverInfo.set(it.ref, { goodType: it.goodType, amount: it.fill ?? 0 });

@@ -19,17 +19,17 @@ import { mintLayerSprite } from './layer-sprite.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
- * The building-collapse transient — a razed/demolished building sinks into the ground instead of
+ * The building-collapse transient - a razed/demolished building sinks into the ground instead of
  * blinking out: on `buildingDestroyed` the body is re-resolved from the event's `buildingType` (the
  * entity left the snapshot the same tick) and drawn for {@link import('../../data/effects/collapse.js')}'s
  * sink window with its graphic shifted DOWN while its lowest pixel rows are clipped at the ground line
- * ({@link TextureCache.croppedBottom} — the mirror of the construction rise; the original's
- * `PrintBob_UsingCollapseTimeMask`). A dense dust cloud churns along the ground line the whole while —
- * it hides the hard crop edge, so the body reads as sinking INTO the dust — and settles for a few ticks
+ * ({@link TextureCache.croppedBottom} - the mirror of the construction rise; the original's
+ * `PrintBob_UsingCollapseTimeMask`). A dense dust cloud churns along the ground line the whole while -
+ * it hides the hard crop edge, so the body reads as sinking INTO the dust - and settles for a few ticks
  * after the body is gone ({@link collapseDustPuff}). Retained like the combat-effects layer: one node
  * per collapse, minted once, then only re-cropped/re-positioned/culled; nodes join the depth-sorted
  * sprite layer so fighters still occlude correctly around the falling body. Cast-shadow layers are
- * skipped — a sinking body's ground shadow would crop nonsensically, and the shadow vanishing at the
+ * skipped - a sinking body's ground shadow would crop nonsensically, and the shadow vanishing at the
  * first crack reads fine.
  */
 export class CollapseLayer {
@@ -40,14 +40,14 @@ export class CollapseLayer {
   private collapses: BuildingCollapse[] = [];
 
   constructor(
-    /** The renderer's depth-sorted sprite layer — collapse nodes interleave with live sprites. */
+    /** The renderer's depth-sorted sprite layer - collapse nodes interleave with live sprites. */
     private readonly spriteLayer: Container,
     private readonly textures: TextureCache,
-    /** The session's resolved sprite sheet (immutable, like the pool's) — undefined draws nothing. */
+    /** The session's resolved sprite sheet (immutable, like the pool's) - undefined draws nothing. */
     private readonly sheet: SpriteSheet | undefined,
   ) {}
 
-  /** Fold this frame's events into the live collapse list — see {@link foldBuildingCollapses}. */
+  /** Fold this frame's events into the live collapse list - see {@link foldBuildingCollapses}. */
   ingest(events: readonly SimEvent[], tick: number): void {
     this.collapses = foldBuildingCollapses(this.collapses, events, tick);
   }
@@ -59,7 +59,7 @@ export class CollapseLayer {
     this.seen.clear();
     for (const c of this.collapses) {
       const age = tick - c.spawnTick;
-      if (age >= COLLAPSE_LIFETIME_TICKS) continue; // body sunk and dust settled — retired below
+      if (age >= COLLAPSE_LIFETIME_TICKS) continue; // body sunk and dust settled - retired below
       const key = collapseKey(c);
       const p = projectNode(elevation, c.hx, c.hy);
       let node = this.nodes.get(key);
@@ -69,7 +69,7 @@ export class CollapseLayer {
       }
       if (node === undefined) {
         const minted = this.makeNode(c);
-        if (minted === null) continue; // nothing resolvable to draw (no sheet / no frames) — skip silently
+        if (minted === null) continue; // nothing resolvable to draw (no sheet / no frames) - skip silently
         node = minted;
         this.spriteLayer.addChild(node);
         this.nodes.set(key, node);
@@ -93,7 +93,7 @@ export class CollapseLayer {
    *  each a child Sprite carrying its {@link ResolvedLayer} for the per-frame crop, topped with the
    *  ground-line dust cloud (drawn last, so it covers the sprites' crop edge). */
   private makeNode(c: BuildingCollapse): CollapseNode | null {
-    // A minimal building item — `builtPct` rides along for an unfinished site, so its construction-stage
+    // A minimal building item - `builtPct` rides along for an unfinished site, so its construction-stage
     // body (not the finished one it never became) resolves and sinks.
     const item: DrawItem = {
       kind: 'building',
@@ -152,7 +152,7 @@ export class CollapseLayer {
   }
 }
 
-/** The warm grey of collapse dust — a shade off the damage smoke, so debris reads distinct from fire smoke. */
+/** The warm grey of collapse dust - a shade off the damage smoke, so debris reads distinct from fire smoke. */
 const DUST_COLOUR = 0x9b9186;
 
 /** Pose the node's dust cloud for this frame: every puff churned by {@link collapseDustPuff} around the

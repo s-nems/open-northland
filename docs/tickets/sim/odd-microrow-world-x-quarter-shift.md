@@ -14,13 +14,13 @@ Our model is rectangular: `halfCellToScreen` maps node `(hx, hy)` to `x = hx * T
 row-parity term, and `positionOfNode` subtracts `staggerShift` so a standing entity on an odd-row
 node also renders at `hx * 34`. If the original is right, every odd-row map object and every entity
 standing on an odd-row node draws 17 px left of the original's spot. Node ADDRESSING (collision,
-footprints, placements) is unaffected — the parity shift fix already aligns blocked nodes.
+footprints, placements) is unaffected - the parity shift fix already aligns blocked nodes.
 
 ## Scope
 
 - Verify visually first: same map region in the running original vs our renderer (odd-row trees
   against ground texture). cultures2-gl can orient the investigation, but per `docs/SOURCES.md`
-  another implementation is not evidence — the original decides.
+  another implementation is not evidence - the original decides.
 - If confirmed, decide the seam: either `positionOfNode` keeps column coordinates un-corrected (so
   the position-domain `staggerShift` produces the quarter shift at half-integer rows naturally,
   changing sim Position values and goldens) or the render adds the parity term in
@@ -28,7 +28,7 @@ footprints, placements) is unaffected — the parity shift fix already aligns bl
   positions consistent; the second is render-local but leaves the sim's world metric a
   parity-blind approximation.
 - Movement edge lengths (`world-metric.ts`) inherit the same question (an N/S half-row step is
-  physically diagonal on a staggered lattice); treat as a separate follow-up if confirmed — the
+  physically diagonal on a staggered lattice); treat as a separate follow-up if confirmed - the
   original's own 6+2-direction model needs its own investigation before repricing edges.
 
 ## Verify

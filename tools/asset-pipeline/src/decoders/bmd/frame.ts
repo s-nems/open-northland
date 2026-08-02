@@ -1,5 +1,5 @@
 /**
- * `.bmd` bob RLE frame codec — turns a decoded {@link Bmd} container's packed-line stream into frame
+ * `.bmd` bob RLE frame codec - turns a decoded {@link Bmd} container's packed-line stream into frame
  * pixels: indexed pixels + an opacity mask, with palette/atlas concerns left out (the bob's palette lives
  * outside the `.bmd`), the way `.pcx` keeps `expandToRgba` separate from `decodePcx`.
  *
@@ -38,12 +38,12 @@ export interface BobFrame {
   /**
    * Row-major opacity, 0–255: 0 where the codec skipped (transparent); a written pixel of a single-byte
    * type is {@link BOB_ALPHA_OPAQUE}; a {@link BOB_TYPE_DOUBLE8BIT} pixel decoded as `'alpha'` carries
-   * its per-pixel alpha byte (the soft decals — ferns, smoke, wave foam — encode their feathered
+   * its per-pixel alpha byte (the soft decals - ferns, smoke, wave foam - encode their feathered
    * translucency there). A `'time'`-decoded pixel is fully opaque here; its threshold lives in {@link time}.
    */
   readonly mask: Uint8Array;
   /**
-   * Row-major 0–255 build-progress thresholds — the pair's second byte read as the engine's TimeMask
+   * Row-major 0–255 build-progress thresholds - the pair's second byte read as the engine's TimeMask
    * `timeByte` (a pixel first appears when construction progress reaches it; see {@link BOB_TYPE_TIMEMASK}).
    * Present only for a {@link BOB_TYPE_TIMEMASK} bob or a {@link BOB_TYPE_DOUBLE8BIT} decoded with
    * `secondByte: 'time'`; meaningful only where `mask ≠ 0`.
@@ -52,7 +52,7 @@ export interface BobFrame {
 }
 
 /**
- * How {@link decodeBobFrame} reads a {@link BOB_TYPE_DOUBLE8BIT} pair's second byte — per-pixel `'alpha'`
+ * How {@link decodeBobFrame} reads a {@link BOB_TYPE_DOUBLE8BIT} pair's second byte - per-pixel `'alpha'`
  * (the soft decals) or `'time'` (a `[GfxHouse]` bob's construction-progress threshold). The meaning is a
  * property of the consumer, not the file (see {@link BOB_TYPE_DOUBLE8BIT}); a TimeMask bob is always time.
  */
@@ -63,7 +63,7 @@ export type SecondByteMode = 'alpha' | 'time';
  *
  * Format: the bob's `area` gives the frame size; its scanlines are
  * `lineControl[bob.misc + line]` (`misc` is the bob's first-line
- * index into the contiguously-stacked line-control array — not `area.y`, which is the draw offset). For
+ * index into the contiguously-stacked line-control array - not `area.y`, which is the draw offset). For
  * each of `height` scanlines that word is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
  * `[xMin (10b)][offset (22b)]`. From `packedLineData[offset]` we walk control bytes until a `0`
  * terminator: a byte with the high bit clear is a raw run of `count = b & 0x7F` pixels whose data
@@ -72,8 +72,8 @@ export type SecondByteMode = 'alpha' | 'time';
  * the draw offset and is not applied here.
  *
  * Per-type pixel width within a raw run: 8-bit stores one index byte each; TimeMask and Double8Bit store
- * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` — see {@link BOB_TYPE_TIMEMASK} /
- * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store no pixel bytes — a raw run is itself
+ * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` - see {@link BOB_TYPE_TIMEMASK} /
+ * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store no pixel bytes - a raw run is itself
  * the coverage (`count` set pixels, drawn as {@link BOB_MASK_INDEX}; pinned on the real shadow `.bmd`s,
  * whose silhouettes only decode coherently this way).
  * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
@@ -148,7 +148,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
           const second = isPair ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
           pos += bytesPerPixel;
           const col = absX + i;
-          // An alpha pair's 0 skips the write entirely — the engine's `a <= 0 → continue` — so the
+          // An alpha pair's 0 skips the write entirely - the engine's `a <= 0 → continue` - so the
           // pixel stays genuinely unwritten (`index 0, mask 0`). A time pair's 0 is a real pixel
           // (visible from the very start of construction), written opaque with its threshold in `time`.
           if (col >= 0 && col < width && !(isAlpha && second === 0)) {
@@ -158,7 +158,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
           }
         }
       }
-      // Skip runs leave mask=0 — already transparent.
+      // Skip runs leave mask=0 - already transparent.
 
       absX += count;
       if (pos >= packed.length) break;

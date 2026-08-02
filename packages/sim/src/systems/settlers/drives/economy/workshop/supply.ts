@@ -22,14 +22,14 @@ import {
 import { buriedUnderBuilding, type InteractionCellIndex } from '../../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
-// deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
+// deliver loop* - the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
 // It sits beside the target-scan layer (targets/); the drive ladder wires these into the
 // per-settler decision.
 //
 // The split from the plain haul model: before this, inputs reached a workplace only because a harvester
 // happened to deposit them there (`nearestStoreFor` picks the workplace when it's the nearest sink), and
 // a worker just staffed the tile. That fails the moment inputs sit in a *warehouse* the harvester
-// delivers to instead — the workplace starves. A producer now actively FETCHES the recipe inputs it is
+// delivers to instead - the workplace starves. A producer now actively FETCHES the recipe inputs it is
 // short on from a store that holds them, and HAULS its finished output out, so the loop closes without a
 // dedicated carrier. Every choice is recipe-driven (no per-job/per-good hardcode) and canonically scanned
 // (ascending entity-id, Manhattan + cell-id tie-break) so the winner never depends on store history.
@@ -93,10 +93,10 @@ export function workSeatCount(
  * Where a producer worker should go for a **missing recipe input**, or null when every input is already
  * stocked (or nothing reachable can supply one). Walks `recipe`'s inputs in their fixed order and, for the
  * FIRST one the workplace is short of, returns the single NEAREST source of EITHER kind:
- *  - `fetch`: a store that already holds the good — a warehouse, a flag pile, another workplace's output —
+ *  - `fetch`: a store that already holds the good - a warehouse, a flag pile, another workplace's output -
  *    with the amount still needed (so the trip carries exactly the shortfall, "tylko te wymagane");
  *  - `draw`: a built shared UTILITY that mints the good from no inputs (the well for water, the hive for
- *    honey — {@link producesGoodWithoutInputs}, data-driven, no hardcoded id) — the worker cranks it in
+ *    honey - {@link producesGoodWithoutInputs}, data-driven, no hardcoded id) - the worker cranks it in
  *    place for one unit.
  *
  * Both kinds compete in ONE canonical scan (Manhattan + ascending-cell-id tie-break), so the CLOSER source
@@ -105,7 +105,7 @@ export function workSeatCount(
  * a `fetch` (picking the standing unit up beats re-cranking).
  *
  * `restockToCapacity` raises each input's fetch target from the recipe amount (a craftsman fetching just
- * enough for the next cycle) to the workplace's declared input-slot CAPACITY — the bound CARRIER's shape:
+ * enough for the next cycle) to the workplace's declared input-slot CAPACITY - the bound CARRIER's shape:
  * it keeps the mill's wheat store topped up trip after trip (observed original behaviour). It does not
  * affect a `draw`, which always yields one unit.
  *
@@ -130,7 +130,7 @@ export function nearestMissingInputSource(
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
-  /** The worker's owning player — never fetches/draws an input from another player's store or utility
+  /** The worker's owning player - never fetches/draws an input from another player's store or utility
    *  ({@link sameSideAs}). */
   owner: number | undefined,
   restockToCapacity = false,
@@ -148,9 +148,9 @@ export function nearestMissingInputSource(
       here,
       (e) => {
         if (e === workplace || world.has(e, UnderConstruction)) return null; // never self, never a build site
-        // A store that HOLDS the good and may be stripped of it (`mayFetchGoodFrom` — never another
+        // A store that HOLDS the good and may be stripped of it (`mayFetchGoodFrom` - never another
         // workshop's input reserve) is a fetch, and beats a mint when it's the nearer of the two; a buried
-        // pile is skipped (an unreachable stand strands the fetcher — the `nearestStoreHolding` guard).
+        // pile is skipped (an unreachable stand strands the fetcher - the `nearestStoreHolding` guard).
         if (
           (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 &&
           mayFetchGoodFrom(world, ctx, e, input.goodType)
@@ -184,7 +184,7 @@ export function nearestMissingInputSource(
  * The finished OUTPUT good a producer should haul out of its own workplace (to clear it so the next cycle
  * fits, and to carry the product to a store), or null if the workplace holds no deliverable output. A
  * candidate good is a recipe output the workplace currently stocks (>0) that some OTHER store can accept
- * ({@link nearestStoreFor} finds a sink) — walked in `recipe.outputs` order (a fixed content array, not a
+ * ({@link nearestStoreFor} finds a sink) - walked in `recipe.outputs` order (a fixed content array, not a
  * Map, so the pick never depends on store insertion history), first deliverable output wins. The producer
  * only reaches this when it holds no work seat right now ({@link workSeatCount} exhausted), so
  * hauling its output never steals a tick it should have spent producing.

@@ -11,13 +11,13 @@ import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // WALK-BLOCK overlays the routing/render consume: the union views over the memoized building
 // walk-block cells (./building-blocked-cache.ts) and the incrementally-cached resource cells
-// (./resource-blocked-cache.ts), plus the ground plots of under-construction sites. DERIVED state —
+// (./resource-blocked-cache.ts), plus the ground plots of under-construction sites. DERIVED state -
 // never hashed, never stored. The views ALIAS the live caches, so a holder spanning several entities
 // (a planner pass, a routing drain) relies on no stamp/unstamp running inside its schedule slot;
 // today every stamp site sits in command/atomic/growth/reclaim slots, none inside a holder's.
 
 /**
- * Every standing building's door node — the passable gates {@link buildingBlockedCells} carves out of
+ * Every standing building's door node - the passable gates {@link buildingBlockedCells} carves out of
  * the walk-block. A door is a designated stand (an operator runs its workshop from it), so displacement
  * passes exempt it the same way the blocked-set carve-out does. Order-independent set union.
  */
@@ -34,7 +34,7 @@ export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: Ter
   return doors;
 }
 
-/** One under-construction building's ground plot — the half-cell body cells it occupies, for the render's
+/** One under-construction building's ground plot - the half-cell body cells it occupies, for the render's
  *  grey "construction site" decal. Cells are `(col,row)` on the `2W×2H` half-cell lattice (anchor +
  *  footprint offset), the same coords `halfCellToScreen` projects. */
 export interface ConstructionPlot {
@@ -42,14 +42,14 @@ export interface ConstructionPlot {
 }
 
 /**
- * The ground plots of every UNDER-CONSTRUCTION building — its footprint body cells (`blocked`, this size
+ * The ground plots of every UNDER-CONSTRUCTION building - its footprint body cells (`blocked`, this size
  * level's walk-block body) translated to world half-cell nodes, so the render can wash a grey "plac budowy"
  * over exactly the cells the finished building will stand on. A footprint-less type (synthetic content, the
  * one graphics-less real type) falls back to its single anchor cell so a site always marks its ground.
  *
- * Read-only render support like {@link import('../../simulation.js').Simulation.placementProbe} — never
+ * Read-only render support like {@link import('../../simulation.js').Simulation.placementProbe} - never
  * mutates, so it is determinism-irrelevant; it reads only positions + content, no RNG, no wall-clock, and
- * iterates the small {@link UnderConstruction} store (membership, no pick — order-independent).
+ * iterates the small {@link UnderConstruction} store (membership, no pick - order-independent).
  */
 export function constructionSitePlots(world: World, content: ContentSet): ConstructionPlot[] {
   const plots: ConstructionPlot[] = [];
@@ -65,8 +65,8 @@ export function constructionSitePlots(world: World, content: ContentSet): Constr
 }
 
 /**
- * One building's walk-blocked body — its footprint `blocked` cells translated onto the map, minus its
- * door cell (the passable gate, exactly as {@link buildingBlockedCells} carves it out globally) — or
+ * One building's walk-blocked body - its footprint `blocked` cells translated onto the map, minus its
+ * door cell (the passable gate, exactly as {@link buildingBlockedCells} carves it out globally) - or
  * null when the type blocks nothing (footprint-less synthetic content, or a body erased by the door
  * carve-out). The shared stanza of the footprint displacement passes (`evictSettlersFromFootprint`,
  * `evictLooseGoodsFromFootprint`), extracted so the door-carve invariant lives in one place; both
@@ -108,8 +108,8 @@ export function dynamicBlockLayers(
 
 /**
  * The building + resource walk-block overlay as a membership VIEW ({@link LayeredBlocks}) that never
- * copies either cached layer into a fresh set. For a caller that only asks `.has(node)` — the
- * pathfinder's block test, the move-order goal snap, the spawn push — this is the O(1)-to-compose
+ * copies either cached layer into a fresh set. For a caller that only asks `.has(node)` - the
+ * pathfinder's block test, the move-order goal snap, the spawn push - this is the O(1)-to-compose
  * form: a box-select issuing one move order per selected unit (or a map load spawning hundreds of
  * settlers) reuses the two shared caches per call.
  */

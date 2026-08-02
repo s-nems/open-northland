@@ -12,11 +12,11 @@ export type CombatEffectKind = 'blood' | 'bones';
 /** One transient ground mark, positioned at a half-cell node and decaying from its spawn tick. */
 export interface CombatEffect {
   readonly kind: CombatEffectKind;
-  /** Half-cell node x (the event's `at.hx`) — projected via `halfCellToScreen`, lifted by the terrain. */
+  /** Half-cell node x (the event's `at.hx`) - projected via `halfCellToScreen`, lifted by the terrain. */
   readonly hx: number;
   /** Half-cell node y (the event's `at.hy`). */
   readonly hy: number;
-  /** The sim tick it was spawned on — decay is `tick - spawnTick` against the per-kind lifetime. */
+  /** The sim tick it was spawned on - decay is `tick - spawnTick` against the per-kind lifetime. */
   readonly spawnTick: number;
   /** A per-mark integer, seeded from the source entity + tick, driving splatter jitter / bone orientation
    *  without `Math.random`. Doubles as the retained-pool key. */
@@ -24,12 +24,12 @@ export interface CombatEffect {
 }
 
 /**
- * How long a blood splatter lingers before it has fully faded, in sim ticks — a short-lived hit marker, so a busy
+ * How long a blood splatter lingers before it has fully faded, in sim ticks - a short-lived hit marker, so a busy
  * fight doesn't carpet the ground in red. Approximated (the original's HIT particle lifetime is unreadable).
  */
 export const BLOOD_LIFETIME_TICKS = 60;
 /**
- * How long a bone pile lingers before it has fully faded, in sim ticks — a long-lived battlefield mark that still
+ * How long a bone pile lingers before it has fully faded, in sim ticks - a long-lived battlefield mark that still
  * fades so a long war doesn't accumulate unbounded marks. Approximated: the original's `cadaver_skeleton`
  * landscape auto-decays after a readable param of 100 (`landscapetypes.ini` transition 13), but that
  * param's unit is not - this keeps the pile on screen long enough to read.
@@ -54,7 +54,7 @@ function effectLifetime(kind: CombatEffectKind): number {
 
 /**
  * A mark's opacity at `tick`: full through its hold fraction, then linear to 0 at the end of its lifetime;
- * 0 once expired (the caller then drops/hides it). Render-only float — never a sim decision.
+ * 0 once expired (the caller then drops/hides it). Render-only float - never a sim decision.
  */
 export function effectAlpha(effect: CombatEffect, tick: number): number {
   const age = tick - effect.spawnTick;
@@ -71,7 +71,7 @@ export function effectKey(effect: CombatEffect): string {
   return `${effect.kind}:${effect.spawnTick}:${effect.seed}`;
 }
 
-/** Mix a source entity id and the tick into a 32-bit seed — distinct per (source, tick) so two simultaneous
+/** Mix a source entity id and the tick into a 32-bit seed - distinct per (source, tick) so two simultaneous
  *  marks jitter differently and the same source jitters differently across ticks. */
 function seedFrom(sourceId: number, tick: number): number {
   return (Math.imul(sourceId, 2654435761) + Math.imul(tick, 40503)) >>> 0;
@@ -93,7 +93,7 @@ export function foldCombatEffects(
   const next = active.filter((e) => tick - e.spawnTick < effectLifetime(e.kind));
   for (const ev of events) {
     if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {
-      if (ev.structure === true) continue; // a besieged wall doesn't bleed — impact SFX only, no blood
+      if (ev.structure === true) continue; // a besieged wall doesn't bleed - impact SFX only, no blood
       next.push({
         kind: 'blood',
         hx: ev.at.hx,
@@ -111,7 +111,7 @@ export function foldCombatEffects(
       });
     }
   }
-  // Bound the list: drop the oldest marks (front of the array — `active` is older than this frame's pushes).
+  // Bound the list: drop the oldest marks (front of the array - `active` is older than this frame's pushes).
   if (next.length > MAX_ACTIVE_EFFECTS) next.splice(0, next.length - MAX_ACTIVE_EFFECTS);
   return next;
 }

@@ -16,7 +16,7 @@ import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFo
  * a diminishing-returns hyperbola whose K shrinks to zero as n approaches N, so 100% is actually
  * reachable at n = N (a plain n/(n+K) never gets there). K = 4.9 fits the reference bonus table
  * (1: 17%, 2: 29%, 3: 38% ... 11: 70%) within ~2 points; the table was MEASURED from the original
- * game by the user (observation, 2026-07-25 — not extracted data). N = 100 is the chosen mastery
+ * game by the user (observation, 2026-07-25 - not extracted data). N = 100 is the chosen mastery
  * point (design rule, user-specified).
  *
  * What a bonus point buys (output per cycle, gather speed, damage) is the consuming system's concern;
@@ -58,7 +58,7 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
 
 /**
  * The repeats a settler's XP contributes toward one `needfor*` requirement, summed over its
- * `expTypes` — the single reading of the requirement scale, shared by the sim gate
+ * `expTypes` - the single reading of the requirement scale, shared by the sim gate
  * (`experienceRequirementMet`) and the app's unlock forecast and menu filters, so they can't drift.
  * Per expType: a track-less one (the fight/TRAINING/scout buckets) accrues at rate 1, so its raw XP
  * already is the repeat count; a good-SPECIFIC track counts its own repeats (raw XP ÷ factor, so
@@ -119,14 +119,14 @@ function trackTables(tracks: readonly HumanJobExperienceType[]) {
   return tables;
 }
 
-/** The raw XP worth `repeats` on an optional track — {@link experienceRepeats}' inverse, for seeding
+/** The raw XP worth `repeats` on an optional track - {@link experienceRepeats}' inverse, for seeding
  *  a veteran that must clear a repeats threshold (the sandbox-scene gather-mastery stamp). */
 export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repeats: number): number {
   return repeats * (track?.experienceFactor ?? 1);
 }
 
 /**
- * A production operator's current bonus fraction — the curve read on its job-GENERAL track (the same
+ * A production operator's current bonus fraction - the curve read on its job-GENERAL track (the same
  * track production XP accrues into): "baker 5" bakes half a bread extra per cycle. ZERO for a gone or
  * jobless operator, a profession with no general track, or one with no repeats yet. A carrier operator
  * (a carrier-run utility like the well) is ZERO too: its delivery-earned XP is display-only and must
@@ -141,7 +141,7 @@ export function operatorProductionBonus(world: World, ctx: SystemContext, operat
 }
 
 /**
- * A worker's work-speed bonus on `goodType` — the curve read on its `(job, good)` track via
+ * A worker's work-speed bonus on `goodType` - the curve read on its `(job, good)` track via
  * {@link trackFor}, the same track its extraction XP accrues into ("Zbieracz Drewna 10" chops faster).
  * ZERO for a gone or jobless worker or a pairing that trains no specialization.
  */
@@ -155,7 +155,7 @@ export function workSpeedBonus(world: World, ctx: SystemContext, worker: Entity,
 
 /**
  * A repeated-work count shrunk by a work-speed `bonus`: it scales as 1/(1 + bonus), so mastery
- * (bonus = ONE) halves it — the same work done in half the repetitions, each at its natural pace (up
+ * (bonus = ONE) halves it - the same work done in half the repetitions, each at its natural pace (up
  * to 2x work speed; design rule, user-specified: experience buys fewer swings, never faster
  * animations). Round-half-up on the exact integer ratio, never below one repetition.
  */
@@ -173,7 +173,7 @@ export function scaledWorkRepeats(repeats: number, bonus: Fixed): number {
 export const FIGHT_MASTERY_HITS = 500;
 const HITS_PER_FIGHT_REPEAT = FIGHT_MASTERY_HITS / EXPERIENCE_MASTERY_REPEATS;
 
-/** The damage cap — a mastered weapon hits half again as hard, deliberately below the crafts' 2x
+/** The damage cap - a mastered weapon hits half again as hard, deliberately below the crafts' 2x
  *  (design rule, user-specified: combat scales gentler than the economy). */
 export const FIGHT_DAMAGE_BONUS_MAX: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -188,7 +188,7 @@ export function fightDamageBonus(hits: number): Fixed {
 
 /**
  * `base` weapon damage raised by the attacker's fight experience in `weaponMainType`'s bucket
- * ({@link fightExperienceTypeFor}) — the bonus fraction of the base, truncated to whole points (damage
+ * ({@link fightExperienceTypeFor}) - the bonus fraction of the base, truncated to whole points (damage
  * stays an integer). Unchanged for an untrained bucket, a class with no fight track, or zero base.
  */
 export function withFightDamageBonus(
@@ -204,7 +204,7 @@ export function withFightDamageBonus(
   return base + fx.toInt(fx.mul(fx.fromInt(base), fightDamageBonus(hits)));
 }
 
-/** Extra vision nodes a mastered scout sees — deliberately small next to the other trades' 2x
+/** Extra vision nodes a mastered scout sees - deliberately small next to the other trades' 2x
  *  (design rule, user-specified: a seasoned scout sees a bit farther, never twice as far). */
 export const SCOUT_VISION_BONUS_MAX_NODES = 6;
 

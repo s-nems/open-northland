@@ -20,7 +20,7 @@ import { BODY_IMAGELIB, type BobSeqRow, type ContentIr } from './rows.js';
  */
 
 /**
- * The decoded atlas isn't served (the pipeline hasn't run / `content/` is empty) — an environment
+ * The decoded atlas isn't served (the pipeline hasn't run / `content/` is empty) - an environment
  * precondition, distinct from a genuine decode bug. The sheet loaders catch only this to degrade to
  * the synthetic markers; any other error (a bad manifest, a texture-load failure) propagates so a real
  * bug surfaces instead of being silently masked as "missing content".
@@ -28,7 +28,7 @@ import { BODY_IMAGELIB, type BobSeqRow, type ContentIr } from './rows.js';
 export class MissingAtlasError extends Error {}
 
 /** Whether a served atlas stem names a palette-indexed sheet (the pipeline emits every one as
- *  `<stem>.indexed` — characters, GUI, fonts, goods). Indexed sheets carry a palette INDEX in red, so
+ *  `<stem>.indexed` - characters, GUI, fonts, goods). Indexed sheets carry a palette INDEX in red, so
  *  they must load straight-alpha (`loadAtlasSource`'s `'straight'`). */
 function isIndexedStem(stem: string): boolean {
   return stem.endsWith('.indexed');
@@ -40,7 +40,7 @@ const layerBodies = new Map<string, Promise<SpriteLayer>>();
 /**
  * One decoded atlas body (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
  * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. A `build: true` manifest
- * (the house atlases) also reads the sibling `<stem>.build.png` CPU-side — the per-pixel
+ * (the house atlases) also reads the sibling `<stem>.build.png` CPU-side - the per-pixel
  * construction-reveal thresholds, degrading to the crop reveal when unreadable. Throws
  * {@link MissingAtlasError} when the decoded files are missing.
  */
@@ -82,7 +82,7 @@ function loadLayerBody(stem: string): Promise<SpriteLayer> {
 
 /**
  * One decoded atlas layer ({@link loadLayerBody}), optionally carrying the cast-shadow twin named by
- * `shadowStem` (the pipeline's `<shadow-bmd-stem>.shadow` atlas — see
+ * `shadowStem` (the pipeline's `<shadow-bmd-stem>.shadow` atlas - see
  * {@link import('./joins.js').servedShadowStem}). A missing shadow degrades to a shadow-less layer,
  * never fails the body. Body and shadow cache separately, so the same stem asked for with and without
  * a twin still decodes each sheet once.
@@ -96,7 +96,7 @@ export async function loadLayer(stem: string, shadowStem?: string): Promise<Spri
           throw err;
         });
   // A shadow rejection must wait for the body await below, not surface as unhandled while it is pending
-  // — and the body's own failure stays the one a caller sees, so `MissingAtlasError` still names the
+  // - and the body's own failure stays the one a caller sees, so `MissingAtlasError` still names the
   // stem the caller asked for.
   shadowLoad?.catch(() => undefined);
   const body = await loadLayerBody(stem);
@@ -123,11 +123,11 @@ export function loadPlayerLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent('/bobs/player-lut.png');
 }
 
-/** The one in-flight/settled `ir.json` fetch — every domain shares it (see {@link loadIrRaw}). */
+/** The one in-flight/settled `ir.json` fetch - every domain shares it (see {@link loadIrRaw}). */
 let contentIrPromise: Promise<unknown> | null = null;
 
 /**
- * Fetch + parse the served `content/ir.json` document once per page — memoized, because it is multi-MB
+ * Fetch + parse the served `content/ir.json` document once per page - memoized, because it is multi-MB
  * and both views of it (the graphics {@link loadIr} and the sim-side
  * {@link import('../real-content.js').loadRealContent}) plus the terrain, map-object and audio domains all
  * read their lanes from the same bytes. Returns `null` when absent or unreadable. The memo lives for the
@@ -136,7 +136,7 @@ let contentIrPromise: Promise<unknown> | null = null;
 export function loadIrRaw(): Promise<unknown> {
   contentIrPromise ??= fetchJsonOrNull<unknown>('/ir.json').then((raw) => {
     // Memoize only success: a transient boot-time fetch failure must not pin every domain (terrain,
-    // objects, sprites, audio) to the fallback for the page's lifetime — the next consumer retries.
+    // objects, sprites, audio) to the fallback for the page's lifetime - the next consumer retries.
     if (raw === null) contentIrPromise = null;
     return raw;
   });
@@ -155,7 +155,7 @@ export async function loadIr(): Promise<ContentIr | null> {
 
 /**
  * Load every `[bobseq]` of one body bob set (default {@link BODY_IMAGELIB}) from the served
- * `content/ir.json`, in file order — the raw animation list the {@link import('@open-northland/render').AnimationGallery}
+ * `content/ir.json`, in file order - the raw animation list the {@link import('@open-northland/render').AnimationGallery}
  * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
  * "run the pipeline" message instead of crashing. The atlas *image* is loaded separately
  * ({@link import('../sprite-sheet/index.js').loadHumanSpriteSheet}); this is only the frame ranges the gallery indexes.
@@ -168,12 +168,12 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
 
 /**
  * Load a gallery character's layers: one body atlas + N head atlases, given the already-resolved served
- * stems (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`) — the only human loader the animation
+ * stems (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`) - the only human loader the animation
  * gallery (`?anim`) needs. Unlike {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet} it does not pull in
  * the tree / house / building-family atlases (a gallery never draws them), so a partial `content/` still opens
  * the gallery.
  *
- * The body is the hard requirement — an absent body throws {@link MissingAtlasError}. A missing head
+ * The body is the hard requirement - an absent body throws {@link MissingAtlasError}. A missing head
  * degrades to `undefined` (its slot in `heads`) rather than failing the whole character: the animation
  * view needs only `heads[0]`, and the roster/heads montages skip an absent look, so one 404'd head can't
  * drop a body that decoded fine. `heads` preserves stem order, so it lines up 1:1 with the character's

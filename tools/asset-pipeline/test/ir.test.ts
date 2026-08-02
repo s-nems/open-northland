@@ -116,7 +116,7 @@ describe('buildIr / resolveIniSources', () => {
     );
 
     // Remove a base file: it's resolved-away with a warning, not a throw. (Drop the armor source
-    // too: it references good 7, which the cross-ref would flag as dangling once goods is empty —
+    // too: it references good 7, which the cross-ref would flag as dangling once goods is empty -
     // unrelated to this missing-source resilience check.)
     await rm(join(game, 'Data', 'logic', 'goodtypes.ini'));
     await rm(join(game, 'Data', 'logic', 'armortypes.ini'));

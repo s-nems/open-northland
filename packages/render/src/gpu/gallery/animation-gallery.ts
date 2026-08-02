@@ -18,7 +18,7 @@ import {
 } from './layout.js';
 
 /**
- * A data-driven animation gallery — the animation twin of the sandbox/catalog, for the character
+ * A data-driven animation gallery - the animation twin of the sandbox/catalog, for the character
  * instead of the map. It plays every extracted `[bobseq]` of a body bob set straight from the atlas, so a
  * human can validate that each animation decodes and cycles correctly. It is a pure viewer: no sim, no
  * determinism concern (floats + a wall-clock frame counter are fine here, `render` never feeds the sim).
@@ -26,19 +26,19 @@ import {
  * Why a gallery and not real settlers: the settler binding wires only a handful of the ~69 civilian
  * sequences to sim states (walk/chop/carry), and most (fights, job work, needs, social) map to no atomic.
  * Driving 69 distinct sim states is impractical, so the gallery reads the sequences from the IR and plays
- * each one directly — the only way to see the whole animation set.
+ * each one directly - the only way to see the whole animation set.
  *
  * Layout: a wrapped grid of animated character cells (body + head overlay, like the settler), one cell
  * per clip, each labelled with its animation name. A single global {@link GalleryDirection} applies to
  * every cell so a human can flip all animations to one of the 8 facings (validate direction) or "full"
- * (play each whole sequence). The 8-direction split assumes `dirs = 8, stride = floor(length/8)` — the
- * same convention the sprite bindings use for the settler — because the readable data carries no
+ * (play each whole sequence). The 8-direction split assumes `dirs = 8, stride = floor(length/8)` - the
+ * same convention the sprite bindings use for the settler - because the readable data carries no
  * per-sequence direction count (no oracle; see source basis); "full" always plays the true, complete
  * strip so a non-8-directional clip (e.g. eat/sleep) is watchable rather than mis-split.
  */
 
 /**
- * One cell to draw: its {@link GalleryClip} plus the layers that compose it — a body and any overlays
+ * One cell to draw: its {@link GalleryClip} plus the layers that compose it - a body and any overlays
  * (heads). Each cell carries its own layers, so a single grid can mix characters or looks: the
  * animation view gives every cell the same (body, head) and varies the clip; the "heads" montage gives
  * every cell the same walk clip and varies the head overlay. An optional {@link label} overrides the
@@ -64,9 +64,9 @@ export interface GalleryCellSpec {
 interface GalleryCell {
   readonly clip: GalleryClip;
   readonly container: Container;
-  /** This cell's layers in draw order (index 0 = body, rest = overlays) — its own, not gallery-shared. */
+  /** This cell's layers in draw order (index 0 = body, rest = overlays) - its own, not gallery-shared. */
   readonly layers: readonly SpriteLayer[];
-  /** One sprite per layer, in the same order — plain {@link Sprite}s, or {@link PalettedSprite}s in paletted mode. */
+  /** One sprite per layer, in the same order - plain {@link Sprite}s, or {@link PalettedSprite}s in paletted mode. */
   readonly sprites: readonly (Sprite | PalettedSprite)[];
   /** The player-colour row this cell draws (paletted mode only); 0 otherwise. */
   readonly player: number;
@@ -74,7 +74,7 @@ interface GalleryCell {
 
 /**
  * A retained Pixi view of the whole gallery: the grid is built once (containers, sprites, labels), and
- * {@link update} only swaps each cell's frame texture and applies the camera — no per-frame allocation,
+ * {@link update} only swaps each cell's frame texture and applies the camera - no per-frame allocation,
  * the same retained discipline as {@link import('../world-renderer/index.js').WorldRenderer}.
  */
 export class AnimationGallery {
@@ -96,7 +96,7 @@ export class AnimationGallery {
       readonly direction?: GalleryDirection;
       /**
        * The player-colour LUT (a `256 × colours` texture) + its row count. When given, every cell draws
-       * through it via {@link PalettedSprite} at the cell's {@link GalleryCellSpec.player} row — the 16
+       * through it via {@link PalettedSprite} at the cell's {@link GalleryCellSpec.player} row - the 16
        * player colours the atlas indices are read through. Absent → the plain baked-texture path.
        */
       readonly palette?: { readonly source: TextureSource; readonly colours: number };
@@ -127,7 +127,7 @@ export class AnimationGallery {
         .stroke({ color: 0x4a3d2c, width: 1, alpha: 0.6 });
       container.addChild(frame);
       // Wrap the label to the cell width so long names (`generic walk broadsword`) stay inside their cell
-      // instead of overrunning the neighbour — the grid must stay readable at a glance.
+      // instead of overrunning the neighbour - the grid must stay readable at a glance.
       const label = new Text({
         text: spec.label ?? spec.clip.label,
         style: {
@@ -171,7 +171,7 @@ export class AnimationGallery {
   /**
    * Draw one frame: apply the camera to the grid root, then swap each cell's frame textures for the
    * current `clock` + direction. `clock` is a monotonically rising counter (a view-frame accumulator; the
-   * app scales it by `?speed`, so it may be fractional) — the animation cadence. One `app.render()` at the end.
+   * app scales it by `?speed`, so it may be fractional) - the animation cadence. One `app.render()` at the end.
    */
   update(clock: number, camera: Camera): void {
     this.root.scale.set(camera.scale ?? 1);
@@ -200,7 +200,7 @@ export class AnimationGallery {
           continue;
         }
         if (spr instanceof PalettedSprite) {
-          // Indexed atlas read through the LUT at this cell's player row — the palette drives the colour.
+          // Indexed atlas read through the LUT at this cell's player row - the palette drives the colour.
           spr.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
           spr.place(originX, originY, scale, resW, resH);
           spr.player = cell.player;

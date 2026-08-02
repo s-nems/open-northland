@@ -10,7 +10,7 @@ import type { ContentContext, SystemContext } from '../context.js';
 
 /**
  * The UNION view over a building type's per-product recipes (inputs summed, outputs one line per
- * product — {@link import('../../core/content-index.js').ContentIndex.mergedRecipeByBuilding}), or
+ * product - {@link import('../../core/content-index.js').ContentIndex.mergedRecipeByBuilding}), or
  * undefined if it has no Building/type or no recipes.
  *
  * Cross-system: the AI plans against it (recognise a workplace, stock any input some product needs, haul
@@ -31,7 +31,7 @@ export function mergedRecipeOf(world: World, ctx: ContentContext, building: Enti
  *
  * Keyed on recipe inputs alone: a stock slot no recipe of that tier consumes stays strippable
  * (`work_joinery_00`'s iron) rather than becoming a sink nothing could empty, and a building declaring
- * no recipe — storage, homes, the barracks, towers — is untouched by the rule. A finished shelf yields
+ * no recipe - storage, homes, the barracks, towers - is untouched by the rule. A finished shelf yields
  * unless its own maker also consumes the product (`work_animal_farm` breeds the sheep it shears).
  */
 export function mayFetchGoodFrom(
@@ -69,9 +69,9 @@ export function recipesByProductOf(
 }
 
 /**
- * The goods a building's type produces (`logicproduction` — its `produces` list), or empty when it has no
+ * The goods a building's type produces (`logicproduction` - its `produces` list), or empty when it has no
  * Building/type or produces nothing (a passive store: a warehouse/HQ). The data-driven "is this a producing
- * building" signal — the split behind "a carrier at production hauls the output out, a carrier at a warehouse
+ * building" signal - the split behind "a carrier at production hauls the output out, a carrier at a warehouse
  * only brings goods in". A recipe workshop's `produces` mirrors its recipe outputs, so this covers both
  * producer kinds; a warehouse's is empty. It does not distinguish a farm by recipe absence: the sandbox
  * catalog's farm carries no recipe, but the asset pipeline synthesizes a recipe for every producing building
@@ -90,8 +90,8 @@ export function buildingProduces(world: World, ctx: SystemContext, building: Ent
 const EMPTY_PRODUCES: readonly number[] = [];
 
 /**
- * Whether building type `buildingType` is an UNSTAFFED shared utility that mints `goodType` from no inputs —
- * a well for water, a hive for honey — that a consumer can crank in place to draw the good. Data-driven via
+ * Whether building type `buildingType` is an UNSTAFFED shared utility that mints `goodType` from no inputs -
+ * a well for water, a hive for honey - that a consumer can crank in place to draw the good. Data-driven via
  * {@link import('../../core/content-index.js').ContentIndex.inputlessProducersByGood} (an unstaffed
  * input-less producer of the good, never a hardcoded id); a staffed input-less producer does not qualify.
  *
@@ -108,7 +108,7 @@ export function typeProducesGoodWithoutInputs(
   return contentIndex(ctx.content).inputlessProducersByGood.get(goodType)?.has(buildingType) ?? false;
 }
 
-/** {@link typeProducesGoodWithoutInputs} for a building entity — resolves its type first (false if it has
+/** {@link typeProducesGoodWithoutInputs} for a building entity - resolves its type first (false if it has
  *  no Building/type). The caller gates built/reachable. */
 export function producesGoodWithoutInputs(
   world: World,
@@ -122,7 +122,7 @@ export function producesGoodWithoutInputs(
 
 /**
  * The set of job types a building type's `workers` slots name (`logicworker <job> <count>`). Empty
- * if the building has no Building/type or declares no workers (an unstaffed-by-design building — a
+ * if the building has no Building/type or declares no workers (an unstaffed-by-design building - a
  * passive store, or any type without worker slots).
  */
 export function buildingWorkerJobs(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
@@ -131,7 +131,7 @@ export function buildingWorkerJobs(world: World, ctx: SystemContext, building: E
   return contentIndex(ctx.content).workerJobsByBuilding.get(typeId) ?? EMPTY_JOBS;
 }
 
-/** {@link buildingWorkerJobs} as an ascending list — the canonical slot order a workplace offers its
+/** {@link buildingWorkerJobs} as an ascending list - the canonical slot order a workplace offers its
  *  jobs in, so a multi-slot workplace assigns by lowest job id rather than by `Set` insertion order. */
 export function canonicalBuildingWorkerJobs(
   world: World,
@@ -156,7 +156,7 @@ const EMPTY_JOB_LIST: readonly number[] = Object.freeze([]);
 /**
  * The set of good types a building's `stock` slots store, or undefined when it has no Building/type
  * or declares no stock slots. Cross-system: what a building-employed gatherer may forage for (the
- * flag-less collector rule — `planGatherer`'s roaming filter and the `setGatherGood` employed path).
+ * flag-less collector rule - `planGatherer`'s roaming filter and the `setGatherGood` employed path).
  */
 export function workplaceStoredGoods(
   world: World,
@@ -169,9 +169,9 @@ export function workplaceStoredGoods(
 }
 
 /**
- * Whether a job is the transport trade — the original's carrier (`logicworker 24`, the "tragarz" who ferries
+ * Whether a job is the transport trade - the original's carrier (`logicworker 24`, the "tragarz" who ferries
  * goods but never operates a workshop's craft). Identified by the content job's `id` slug (`'carrier'`), the
- * same id-based inference {@link isFood} uses (approximated — the readable rule files carry no explicit
+ * same id-based inference {@link isFood} uses (approximated - the readable rule files carry no explicit
  * transport flag; both the sandbox content and the extraction pipeline emit the carrier job under this stable
  * slug).
  */

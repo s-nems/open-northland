@@ -16,7 +16,7 @@ import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors/index.js
 export interface Workforce {
   /** The builder pool the phases draw from, in classification (deterministic) order. */
   readonly pool: Entity[];
-  /** Recognized flag gatherers per good, in classification order, capped at the good's target —
+  /** Recognized flag gatherers per good, in classification order, capped at the good's target -
    *  extras fall to the pool (self-healing). The phases push their own hires in, so within-decision
    *  counts stay honest before the commands apply. */
   readonly collectorsByGood: Map<number, Entity[]>;
@@ -38,8 +38,8 @@ export function builderJobOf(ctx: SystemContext): number | null {
 
 /**
  * Classify the seat's adult men: employed workers keep their post, the collectors of each wanted
- * good — up to its target — the generic collectors, and the scouts are recognized in place, and
- * everyone else (civilians, stray trades, surplus collectors) lands in the spare pool — the builder
+ * good - up to its target - the generic collectors, and the scouts are recognized in place, and
+ * everyone else (civilians, stray trades, surplus collectors) lands in the spare pool - the builder
  * pool of the plan. Soldiers stay soldiers: the allocator governs civilians only.
  */
 export function classifyWorkforce(
@@ -57,8 +57,8 @@ export function classifyWorkforce(
     if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (isFighterJob(ctx.content, job)) continue;
-    if (world.has(e, TrainingOrder)) continue; // committed to a barracks drill — no longer spare
-    if (world.has(e, JobAssignment)) continue; // staffing a building — keep the post
+    if (world.has(e, TrainingOrder)) continue; // committed to a barracks drill - no longer spare
+    if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post
     if (isScoutJob(ctx.content, job)) {
       scouts.push(e);
       continue;

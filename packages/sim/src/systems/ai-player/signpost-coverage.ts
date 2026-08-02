@@ -11,7 +11,7 @@ import type { AiPlayerModule } from './index.js';
 import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
- * The GuideBuild module — the scout tiles the settlement with a hex lattice of signposts (user plan,
+ * The GuideBuild module - the scout tiles the settlement with a hex lattice of signposts (user plan,
  * 2026-07-18): one post beside the headquarters, six around it at near-minimal spacing, and outer
  * lattice spots only once owned buildings stand near them, so the covered field grows with the
  * settlement. One order per decision; the workforce module calls a scout up from the builder pool
@@ -19,21 +19,21 @@ import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings, ownedSettl
  * when it doesn't.
  */
 
-/** Distance between neighbouring lattice targets, in nodes on the world metric — "almost as close as
+/** Distance between neighbouring lattice targets, in nodes on the world metric - "almost as close as
  *  posts may stand" (user rule): above the 18-node placement block (SIGNPOST_SPACING_RADIUS_NODES) and
  *  below the 24-node nav range (SIGNPOST_NAV_RADIUS_NODES), so neighbouring posts clear each other's
  *  spacing yet always chain into one network. */
 export const SIGNPOST_LATTICE_SPACING_NODES = 22;
 
-/** How far a post may stand from its lattice target and still satisfy it — also the legal-spot search
+/** How far a post may stand from its lattice target and still satisfy it - also the legal-spot search
  *  reach, so an erected post always satisfies the target it was placed for. Under half the spacing,
  *  so one post can never satisfy two neighbouring targets. */
 export const SIGNPOST_TARGET_TOLERANCE_NODES = 8;
 
 // Hex-lattice basis in node offsets: axial (q, r) ↦ (22q + 11r, 34r). The node lattice is anisotropic
-// (34 px E/W, 19 px N/S — `nav/node-circle.ts`), so the r step's world-metric height 22·√3/2 ≈ 19.05
+// (34 px E/W, 19 px N/S - `nav/node-circle.ts`), so the r step's world-metric height 22·√3/2 ≈ 19.05
 // spans 19.05·34/19 ≈ 34 rows; every neighbour pair then sits ~22 world units apart. Integer
-// literals, precomputed — the sim allows no trig.
+// literals, precomputed - the sim allows no trig.
 const LATTICE_Q_DX = SIGNPOST_LATTICE_SPACING_NODES;
 const LATTICE_R_DX = SIGNPOST_LATTICE_SPACING_NODES / 2;
 const LATTICE_R_DY = 34;
@@ -43,7 +43,7 @@ export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: n
   return { dx: LATTICE_Q_DX * q + LATTICE_R_DX * r, dy: LATTICE_R_DY * r };
 }
 
-/** The innermost hex ring — the centre post plus this ring are always wanted (the user's "one beside
+/** The innermost hex ring - the centre post plus this ring are always wanted (the user's "one beside
  *  the HQ, then six around it"); outer rings need a building nearby. */
 const HQ_RING = 1;
 
@@ -53,7 +53,7 @@ const HQ_RING = 1;
 const CENTRE_DOOR_CLEARANCE_NODES = 2;
 
 /** Every ring-k target is at least k·19 world units from the centre (the mid-edge minimum
- *  k·22·√3/2 ≈ k·19.05, floored) — the divisor bounding how many rings a settlement extent needs. */
+ *  k·22·√3/2 ≈ k·19.05, floored) - the divisor bounding how many rings a settlement extent needs. */
 const RING_MIN_STEP_NODES = 19;
 
 /** Hard ring budget per decision (~217 targets scanned at worst). A settlement past it is the
@@ -102,7 +102,7 @@ function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode
  * The next erectable lattice target for the seat: the first spot (rings inside-out, walk order) that
  * is wanted (ring ≤ {@link HQ_RING}, or an owned building within one lattice spacing), has no own
  * post within the tolerance, AND a legal node to erect on. Null when the wanted lattice stands
- * complete or every remaining target is unbuildable (off-map, water, blocked) — the workforce module
+ * complete or every remaining target is unbuildable (off-map, water, blocked) - the workforce module
  * reads that as "no scout work" and returns the scout to the builder pool.
  */
 export function nextSignpostTarget(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
@@ -174,7 +174,7 @@ function runSignpostCoverage(world: World, ctx: SystemContext, player: number): 
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (scout === undefined) return [];
-  // Busy — leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
+  // Busy - leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
   // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a
   // need drive starts an atomic (orders/movement.ts `playerOrderSystem`, orders/signposts.ts
   // `signpostOrderSystem`), so an eating scout would otherwise look order-free and be re-ordered every
@@ -182,7 +182,7 @@ function runSignpostCoverage(world: World, ctx: SystemContext, player: number): 
   if (world.has(scout, CurrentAtomic)) return [];
   if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
   const target = nextSignpostTarget(world, ctx, player);
-  if (target === null) return []; // the wanted lattice is complete — the workforce module retires the scout
+  if (target === null) return []; // the wanted lattice is complete - the workforce module retires the scout
   return [{ kind: 'placeSignpost', entity: scout, x: target.hx, y: target.hy }];
 }
 

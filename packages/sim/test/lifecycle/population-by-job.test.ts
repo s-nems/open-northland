@@ -6,7 +6,7 @@ import { IDLE_JOB, tribePopulationByJob } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The jobs read model — `tribePopulationByJob` tallies a tribe's settlers by `jobType` (the third HUD
+ * The jobs read model - `tribePopulationByJob` tallies a tribe's settlers by `jobType` (the third HUD
  * read view after `tribeStocks` + `tribePopulation`). It is a pure, deterministic derived view, no
  * mechanic added; determinism is covered by the addition-commutes argument (a count is
  * order-independent). These tests pin the tally: per-job counting, the `null`→`IDLE_JOB` idle key, the
@@ -89,7 +89,7 @@ describe('tribePopulationByJob', () => {
     expect(byJob.get(FARMER)).toBe(1);
   });
 
-  it('is per-tribe — another tribe’s settlers are not counted', () => {
+  it('is per-tribe - another tribe’s settlers are not counted', () => {
     const sim = new Simulation({ seed: 1, content: jobsContent() });
     spawnSettler(sim, VIKING, FARMER);
     spawnSettler(sim, OTHER_TRIBE, FARMER);

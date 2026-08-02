@@ -82,7 +82,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     (sim.world.get(cutter, Settler) as { jobType: number | null }).jobType = MINER;
     expect(sim.world.verifyCaches().join('\n')).toContain('aliveTribeJobs');
 
-    setSettlerJob(sim.world, cutter, MINER); // the same trade through the seam — the next read rebuilds
+    setSettlerJob(sim.world, cutter, MINER); // the same trade through the seam - the next read rebuilds
     expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

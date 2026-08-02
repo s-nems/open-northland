@@ -6,8 +6,8 @@ import type { BuildingPanelModel } from '../../model/index.js';
 import { HOUSEWINDOW } from './shared.js';
 
 /** Workers window: a compact per-trade limits strip ("Kowal 1/3 · Tragarz 1/1"), leaving the field below
- *  free for the animated worker sprites (drawn by the panel's own pass — see panel.ts). A home shows its
- *  residents instead — the "Mieszkańcy" headline and a "Rodziny 1/3" family-slot line over the
+ *  free for the animated worker sprites (drawn by the panel's own pass - see panel.ts). A home shows its
+ *  residents instead - the "Mieszkańcy" headline and a "Rodziny 1/3" family-slot line over the
  *  family-grouped sprite field. A site hides the strip (the slots describe the finished building; the
  *  field shows the live build crew instead). */
 export function drawWorkersSection(

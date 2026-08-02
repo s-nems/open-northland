@@ -7,8 +7,8 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * here (pottery, mason, hive, animal farm, sewery, smithy, armory) exercise the
  * skip-missing-content path. The home chain (00→01→02) backs the upgrade entries, the
  * mill/bakery/well trio backs the chain-affinity entries, the bakery chain (00→01) backs the
- * upgrade tail and its two-baker target, and the iron good — gated by the viking `needforgood` row
- * over the collector XP tracks — backs the gated collector entry and its experience rule. The
+ * upgrade tail and its two-baker target, and the iron good - gated by the viking `needforgood` row
+ * over the collector XP tracks - backs the gated collector entry and its experience rule. The
  * brewery/joinery/barracks/storage/tower rows back the 2026-07-25 tail: the joinery's two recipes
  * drive the craft restriction, the storages the carrier staffing and the outskirts affinity, and the
  * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
@@ -28,7 +28,7 @@ export function aiContent(): ContentSet {
         atomics: { harvest: 24 },
         gathering: { bioLandscape: true, chopsToFell: 3, yieldPerNode: 4 },
       },
-      // Clay ("mud") is a trivial direct pickup here — the collector-selection tests only need a
+      // Clay ("mud") is a trivial direct pickup here - the collector-selection tests only need a
       // distinct harvest atomic per good, not the original's digging lifecycle.
       { typeId: 2, id: 'mud', weight: 1, atomics: { harvest: 32 }, gathering: { bioLandscape: false } },
       { typeId: 3, id: 'food_simple', weight: 1 },
@@ -39,9 +39,9 @@ export function aiContent(): ContentSet {
         atomics: { harvest: 25 },
         gathering: { bioLandscape: false, depositSize: 5, depositLevels: 5 },
       },
-      // Iron backs the build order's gated `collector` entry — same trivial pickup as clay.
+      // Iron backs the build order's gated `collector` entry - same trivial pickup as clay.
       { typeId: 5, id: 'iron', weight: 1, atomics: { harvest: 26 }, gathering: { bioLandscape: false } },
-      // The joinery's two products — the craft restriction keeps its joiners on tool_iron only.
+      // The joinery's two products - the craft restriction keeps its joiners on tool_iron only.
       { typeId: 6, id: 'tool_wooden', weight: 1 },
       { typeId: 7, id: 'tool_iron', weight: 1 },
     ],
@@ -72,7 +72,7 @@ export function aiContent(): ContentSet {
         typeId: 1,
         id: 'headquarters',
         kind: 'storage',
-        // A transport band plus the gatherer band — the collector reconciliation must pick the
+        // A transport band plus the gatherer band - the collector reconciliation must pick the
         // harvest-capable slot (8), never the carrier one (24).
         workers: [
           { jobType: 24, count: 3 },
@@ -117,7 +117,7 @@ export function aiContent(): ContentSet {
         typeId: 5,
         id: 'work_farm_00',
         kind: 'workplace',
-        // A farmer operator slot beside a carrier transport slot — staffing must fill the operator
+        // A farmer operator slot beside a carrier transport slot - staffing must fill the operator
         // trade only (one worker per trade), never the carrier.
         workers: [
           { jobType: 18, count: 4 },
@@ -145,7 +145,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // A baker operator beside a carrier transport slot — the bakery is the plan's one
+      // A baker operator beside a carrier transport slot - the bakery is the plan's one
       // carrier-staffed building, so staffing must fill BOTH.
       {
         typeId: 8,
@@ -159,7 +159,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // The upgraded bakery: two baker slots — a building whose operator target is raised to two
+      // The upgraded bakery: two baker slots - a building whose operator target is raised to two
       // (`STAFFING_BY_BUILDING_ID`), still carrier-staffed.
       {
         typeId: 9,
@@ -183,7 +183,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // The joinery makes wooden tools from wood and iron tools from wood+iron — the two recipes
+      // The joinery makes wooden tools from wood and iron tools from wood+iron - the two recipes
       // the craft restriction chooses between.
       {
         typeId: 11,
@@ -212,7 +212,7 @@ export function aiContent(): ContentSet {
           { goodType: 7, capacity: 5, initial: 0 },
         ],
       },
-      // The barracks: carrier slots only, the real shape — and the seat still staffs none of them.
+      // The barracks: carrier slots only, the real shape - and the seat still staffs none of them.
       {
         typeId: 12,
         id: 'barracks',
@@ -221,7 +221,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // Storages share the HQ's worker shape — up to three target-tier carriers, harvest slots open.
+      // Storages share the HQ's worker shape - up to three target-tier carriers, harvest slots open.
       {
         typeId: 13,
         id: 'stock_00',
@@ -244,7 +244,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 120, initial: 0 }],
       },
-      // The level-2 tower (garrison slots are fighter-band — never staffed) and the defence WALL,
+      // The level-2 tower (garrison slots are fighter-band - never staffed) and the defence WALL,
       // which shares kind 'tower' but must never count as a covering tower (the id allowlist).
       {
         typeId: 15,
@@ -265,7 +265,7 @@ export function aiContent(): ContentSet {
       },
     ],
     // The collector's per-good XP tracks (real track ids 4/5 back iron's `needforgood` below; the
-    // factors mirror the base data — one completed dig clears the threshold).
+    // factors mirror the base data - one completed dig clears the threshold).
     jobExperience: [
       { typeId: 4, id: 'collector_mud', jobType: 8, goodType: 2, experienceFactor: 100 },
       { typeId: 5, id: 'collector_stone', jobType: 8, goodType: 4, experienceFactor: 100 },
@@ -282,7 +282,7 @@ export function aiContent(): ContentSet {
       },
     ],
     // The viking requirement table's iron gate (base data: `needforgood iron 10` measured in the
-    // clay+stone collector tracks) — a fresh hire may not mine iron until it has dug clay or stone.
+    // clay+stone collector tracks) - a fresh hire may not mine iron until it has dug clay or stone.
     tribes: [
       {
         typeId: 1,
@@ -305,7 +305,7 @@ export function aiContent(): ContentSet {
       { typeId: 16, id: 'mud_pit', walkable: false, buildable: false },
       { typeId: 17, id: 'iron_rock', walkable: false, buildable: false },
     ],
-    // One single-cell placeable object per collected good — the minimum `createResourceNode` needs
+    // One single-cell placeable object per collected good - the minimum `createResourceNode` needs
     // to stamp a footprint, so tests can drop resource nodes with the `placeResource` command.
     landscapeGfx: [
       { index: 1, logicType: 4, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },

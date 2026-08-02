@@ -3,7 +3,7 @@ import { loadLayer } from './ir/load.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs: the
+ * GUI (in-game HUD) content bindings - the loadable seam for the pipeline's `gui` stage outputs: the
  * decoded GUI art, palettes, strings and cursors. A checkout without `content/` degrades gracefully: a
  * missing manifest/strings return `null`, a missing atlas throws `MissingAtlasError` via {@link loadLayer}.
  *
@@ -39,7 +39,7 @@ export const GUI_PALETTES = [
 
 export type GuiPaletteName = (typeof GUI_PALETTES)[number];
 
-/** The LUT row (y) a GUI palette occupies — the row a `PalettedSprite` reads an indexed GUI atlas through. */
+/** The LUT row (y) a GUI palette occupies - the row a `PalettedSprite` reads an indexed GUI atlas through. */
 export function guiPaletteRow(name: GuiPaletteName): number {
   return GUI_PALETTES.indexOf(name);
 }
@@ -57,7 +57,7 @@ export type GuiStrings = Record<string, Record<string, string>>;
 /** Look up the decoded UI string for `(table, id)`, else the pinned fallback label. */
 export type UiString = (table: string, id: number, fallback: string) => string;
 
-/** The shared `(table, id, fallback)` lookup over one loaded string set (or none — always the fallback). */
+/** The shared `(table, id, fallback)` lookup over one loaded string set (or none - always the fallback). */
 export function uiStringLookup(strings: GuiStrings | null): UiString {
   return (table, id, fallback) => strings?.[table]?.[String(id)] ?? fallback;
 }
@@ -105,7 +105,7 @@ export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
   if (image === null) return undefined;
   const rowIndex = guiPaletteRow('bar_hitpoints');
   // A stale LUT baked before this palette was appended is shorter than the row index; reading past it
-  // would sample transparent black (an all-black ramp) — degrade instead.
+  // would sample transparent black (an all-black ramp) - degrade instead.
   if (rowIndex >= image.height) return undefined;
   const { data, width } = image;
   const base = rowIndex * width * 4;
@@ -122,8 +122,8 @@ export type GuiBitmapName = 'bg' | 'bg_button' | 'bg_button_hilite' | 'bg_headli
 
 /**
  * The served file per bitmap. Two draw through an element palette rather than their embedded one (the
- * pipeline bakes the swap): `bg` uses `bg.bg_normal.png` — the window body's warm brown; `bg_selected`
- * uses `bg_selected.bg_normal.png` — the selected-item card body's grey-blue (its embedded palette is a
+ * pipeline bakes the swap): `bg` uses `bg.bg_normal.png` - the window body's warm brown; `bg_selected`
+ * uses `bg_selected.bg_normal.png` - the selected-item card body's grey-blue (its embedded palette is a
  * warm olive; through `bg_normal` its indices land cool, avg ≈ #3c4043). The other three match the
  * original through their embedded palettes.
  */

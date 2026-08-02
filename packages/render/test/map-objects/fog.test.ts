@@ -9,12 +9,12 @@ import { decorUVs, FRAME_0, FRAME_1, type TallSprite, tallSprites, WIDE } from '
 /**
  * The tall map-object FOG gate ({@link MapObjectLayer.update}'s `fogStateOfCell`): a virgin
  * tree/stone hides in the UNEXPLORED black, draws live on VISIBLE ground, and on EXPLORED ground
- * becomes its own ghost — dimmed to the explored grading AND frozen mid-animation (a ghost is a
+ * becomes its own ghost - dimmed to the explored grading AND frozen mid-animation (a ghost is a
  * memory; swaying trees under the fog would read as watched ground). Headless like the removal
- * tests — display objects construct without a GL context.
+ * tests - display objects construct without a GL context.
  */
 
-/** A two-frame TALL object (an animated tree) anchored at the origin — cell (0, 0). */
+/** A two-frame TALL object (an animated tree) anchored at the origin - cell (0, 0). */
 function swayingTree(): MapObjectSprite {
   return {
     x: 0,
@@ -32,7 +32,7 @@ function tallSprite(spriteLayer: Container): TallSprite | undefined {
   return tallSprites(spriteLayer)[0];
 }
 
-/** A two-frame animated DECOR object (a wave / swaying bush) anchored at the origin — cell (0, 0). */
+/** A two-frame animated DECOR object (a wave / swaying bush) anchored at the origin - cell (0, 0). */
 function wavingBush(): MapObjectSprite {
   return {
     x: 0,
@@ -93,7 +93,7 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     layer.update(WIDE, 1, () => FOG_STATE.VISIBLE);
     expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
 
-    // Ghosted (explored-only): frozen at the fixed clock — frame 0 — across animation ticks.
+    // Ghosted (explored-only): frozen at the fixed clock - frame 0 - across animation ticks.
     layer.update(WIDE, 2, () => FOG_STATE.EXPLORED);
     expect([...decorUVs(layer)]).toEqual(frame0UVs);
     layer.update(WIDE, 3, () => FOG_STATE.EXPLORED);

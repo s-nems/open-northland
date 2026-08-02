@@ -19,7 +19,7 @@ export interface MaskedTexturePair {
 /**
  * Pure composition: `.pcx` bytes -> `.png` bytes (indexed RLE -> palette-expanded RGBA -> PNG
  * container). The three decoders stay pure; this is the only wiring between them. Throws a
- * `pcx:`/`png:`-prefixed error for a malformed or palette-less picture — {@link convertPcxTree}
+ * `pcx:`/`png:`-prefixed error for a malformed or palette-less picture - {@link convertPcxTree}
  * catches it per-file so one bad image can't abort the batch.
  */
 export function pcxToPng(bytes: Uint8Array): Uint8Array {
@@ -35,11 +35,11 @@ export interface PcxConversion {
 /**
  * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into one RGBA
  * `<stem>.masked.png` under {@link TEXTURES_DIR} (the `/textures/` serving contract). The mask's
- * raw palette-index bytes become the alpha channel directly (the engine's convention — the mask
+ * raw palette-index bytes become the alpha channel directly (the engine's convention - the mask
  * picture's index is the coverage value; format oracle in docs/SOURCES.md), which the plain
  * palette-expanding conversion cannot represent.
  *
- * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} — the IR's normalized
+ * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} - the IR's normalized
  * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
  * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
  * to the warn-and-skip below. Pairs are deduped by texture path (several records share one page); a
@@ -82,10 +82,10 @@ export async function composeMaskedTransitionPages(
 }
 
 /**
- * Converts every `.pcx` under the source `roots` (layer-ordered union — one `.png` per relative path,
+ * Converts every `.pcx` under the source `roots` (layer-ordered union - one `.png` per relative path,
  * decoded from the layer that wins it) to a `.png` under `outDir`, mirroring the relative path.
  * Returns the conversions performed (input/output relative paths). A
- * picture that fails to read or decode is logged and skipped — a batch pipeline must not abort on one
+ * picture that fails to read or decode is logged and skipped - a batch pipeline must not abort on one
  * malformed/palette-less image. An output-write failure (and a missing/unreadable game root)
  * propagates instead: that's an environmental error, not a per-file boundary failure, and should
  * fail loudly rather than be lost.

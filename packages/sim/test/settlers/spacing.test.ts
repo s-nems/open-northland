@@ -21,9 +21,9 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
- * through any half-cell node) but they won't come to REST stacked on top of one another — a unit that has
+ * through any half-cell node) but they won't come to REST stacked on top of one another - a unit that has
  * arrived with nothing to do and shares its node with a lower-id resting owned unit steps off to the
- * nearest free NODE (half a cell — a 34 or 19 px hop). Faithful in spirit to the original's per-cell
+ * nearest free NODE (half a cell - a 34 or 19 px hop). Faithful in spirit to the original's per-cell
  * valency (source basis). Gated on Owner, so the unowned golden/economy fixtures never de-stack (their
  * planner output stays byte-identical). All scenario coordinates here are node coords.
  */
@@ -37,7 +37,7 @@ function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });
 }
 
-/** A settler of the given trade at half-cell NODE (x,y) — the one factory both drives' tests share. */
+/** A settler of the given trade at half-cell NODE (x,y) - the one factory both drives' tests share. */
 function settlerAt(s: Simulation, x: number, y: number, jobType: number, owner: number | null): Entity {
   const e = spawnSettler(s, { jobType, position: positionOfNode(x, y) });
   if (owner !== null) s.world.add(e, Owner, { player: owner });
@@ -59,8 +59,8 @@ function tileOf(s: Simulation, e: Entity): { x: number; y: number } {
 describe('idle-spacing (de-stack) drive', () => {
   it('spreads two stacked idle owned settlers so they end on different nodes (lowest id keeps the node)', () => {
     const s = sim();
-    const keeper = idleWoodcutter(s, 4, 3); // lower id — holds the node
-    const mover = idleWoodcutter(s, 4, 3); // higher id — steps aside
+    const keeper = idleWoodcutter(s, 4, 3); // lower id - holds the node
+    const mover = idleWoodcutter(s, 4, 3); // higher id - steps aside
     s.run(15); // one de-stack step (a half-cell node hop, a few move ticks) plus slack
 
     expect(tileOf(s, keeper)).toEqual({ x: 4, y: 3 }); // the keeper never moved
@@ -80,29 +80,29 @@ describe('idle-spacing (de-stack) drive', () => {
     const keys = new Set(tiles.map((t) => `${t.x},${t.y}`));
     expect(keys.size).toBe(3); // all three on distinct nodes
     for (const e of [a, b, c]) {
-      expect(s.world.has(e, MoveGoal)).toBe(false); // arrived — no lingering order
+      expect(s.world.has(e, MoveGoal)).toBe(false); // arrived - no lingering order
       expect(s.world.has(e, PathFollow)).toBe(false); // and not still walking (churn would show here)
     }
   });
 
-  it('does NOT de-stack UNOWNED settlers — the Owner gate keeps neutral/golden fixtures byte-identical', () => {
+  it('does NOT de-stack UNOWNED settlers - the Owner gate keeps neutral/golden fixtures byte-identical', () => {
     const s = sim();
     const a = idleWoodcutter(s, 4, 3, null); // no Owner
     const b = idleWoodcutter(s, 4, 3, null);
     s.run(15);
 
     expect(tileOf(s, a)).toEqual({ x: 4, y: 3 });
-    expect(tileOf(s, b)).toEqual({ x: 4, y: 3 }); // both still stacked — no spacing applied
+    expect(tileOf(s, b)).toEqual({ x: 4, y: 3 }); // both still stacked - no spacing applied
     expect(s.world.has(b, MoveGoal)).toBe(false);
   });
 
   it('never de-stacks an unowned settler sharing a tile with TWO owned units (the owner gate is real)', () => {
-    // The tricky case: occupancy holds only OWNED units, so an unowned e is never its own tile's keeper —
+    // The tricky case: occupancy holds only OWNED units, so an unowned e is never its own tile's keeper -
     // without the explicit Owner guard it would slip past the `bucket[0] === e` check and wrongly move.
     const s = sim();
-    const o1 = idleWoodcutter(s, 4, 3); // owned — keeper (lowest id)
-    const o2 = idleWoodcutter(s, 4, 3); // owned — steps aside
-    const neutral = idleWoodcutter(s, 4, 3, null); // unowned — MUST stay put
+    const o1 = idleWoodcutter(s, 4, 3); // owned - keeper (lowest id)
+    const o2 = idleWoodcutter(s, 4, 3); // owned - steps aside
+    const neutral = idleWoodcutter(s, 4, 3, null); // unowned - MUST stay put
     s.run(20);
 
     expect(tileOf(s, neutral)).toEqual({ x: 4, y: 3 }); // the neutral never moved
@@ -121,12 +121,12 @@ describe('idle-spacing (de-stack) drive', () => {
   });
 });
 
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// ------------------------------------------------------------------------------------------------
 // Builder WORK SLOTS (claimWorkCell): a crew on one construction site spreads over its perimeter
-// instead of stacking on its one interaction cell. Body collision can never provide this — civilians
-// are deliberate pass-through and the SeparationSystem displaces only WALKING movers — so the planner
+// instead of stacking on its one interaction cell. Body collision can never provide this - civilians
+// are deliberate pass-through and the SeparationSystem displaces only WALKING movers - so the planner
 // hands each builder a distinct stand cell (see systems/settlers/drives/spacing.ts).
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// ------------------------------------------------------------------------------------------------
 
 const STONE = 2;
 const WOOD = 3;
@@ -134,7 +134,7 @@ const HOUSE = 2;
 const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
 const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
 
-const WATER = 9; // walkable: false — the across-the-stream yard test's barrier
+const WATER = 9; // walkable: false - the across-the-stream yard test's barrier
 
 /** Content with a builder trade and a home whose cost is 2× stone + 1× wood (12 hammer swings), with
  *  a walk-blocking footprint and a named door that construction work deliberately does not converge on. */
@@ -191,7 +191,7 @@ function stockedSiteAt(s: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** A builder at half-cell NODE (x,y) — owned by default (the work-slot spread is Owner-gated). */
+/** A builder at half-cell NODE (x,y) - owned by default (the work-slot spread is Owner-gated). */
 function builderAt(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
   return settlerAt(s, x, y, BUILDER, owner);
 }
@@ -320,7 +320,7 @@ describe('builder work slots (claimWorkCell)', () => {
     ]);
   });
 
-  it('a builder across a stream — in raw radius but unreachable — walks around instead of hammering from afar', () => {
+  it('a builder across a stream - in raw radius but unreachable - walks around instead of hammering from afar', () => {
     // Water cells (7, 1..4) → node columns 14–15, rows 2–9: the footprint touches the stream, whose
     // only legal perimeter cells lie on the west bank. The builder starts east at (16,6), so it must
     // walk around an open end instead of treating raw proximity across water as permission to swing.

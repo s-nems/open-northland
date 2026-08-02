@@ -9,7 +9,7 @@ import { readSourceFile } from '../source-files.js';
 interface GuiAtlasSource {
   readonly stem: string;
   readonly bmd: string;
-  /** A {@link GUI_PALETTES} name — the palette that colours the most of this sheet (best default preview). */
+  /** A {@link GUI_PALETTES} name - the palette that colours the most of this sheet (best default preview). */
   readonly previewPalette: string;
 }
 

@@ -129,7 +129,7 @@ describe('convertBmdTree', () => {
 
   it('writes a distinct atlas per palette when bindings share one body .bmd (per-creature recolour)', async () => {
     // The animals are one geometry recoloured per creature: many bindings collapse onto one body .bmd.
-    // Naming on (bmd, palette) — not the .bmd alone — keeps each recolour its own file instead of
+    // Naming on (bmd, palette) - not the .bmd alone - keeps each recolour its own file instead of
     // overwriting last-palette-wins.
     await layDownAssets();
     // A solid-red palette, distinguishable from the bear's ramp: without it the two carriers would be
@@ -151,7 +151,7 @@ describe('convertBmdTree', () => {
     );
 
     expect(done).toHaveLength(2);
-    // Two distinct atlas files from one shared .bmd — the palette name is the differentiator.
+    // Two distinct atlas files from one shared .bmd - the palette name is the differentiator.
     expect(new Set(done.map((c) => c.png)).size).toBe(2);
     expect(done.map((c) => c.png).sort()).toEqual([
       join('Data', 'Bobs', 'Body.bear01.png'),
@@ -256,7 +256,7 @@ describe('convertShadowBmdTree', () => {
     await rm(out, { recursive: true, force: true });
   });
 
-  /** One type-2 (1-bit mask) shadow bob — a raw run of 2 set pixels (pure RLE, no pixel bytes). */
+  /** One type-2 (1-bit mask) shadow bob - a raw run of 2 set pixels (pure RLE, no pixel bytes). */
   const shadowBmdBytes = (): Uint8Array =>
     encodeBmd({
       version: 0,
@@ -285,14 +285,14 @@ describe('convertShadowBmdTree', () => {
       await indexSourceAssets({ game: out, mod: undefined }),
     );
 
-  it('writes `<shadow-stem>.shadow.{png,atlas.json}` beside the shadow .bmd — the name the app joins on', async () => {
+  it('writes `<shadow-stem>.shadow.{png,atlas.json}` beside the shadow .bmd - the name the app joins on', async () => {
     await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
     await writeFile(join(out, 'Data', 'Bobs', 'Body_s.bmd'), shadowBmdBytes());
 
     const done = await convert([shadowBinding()]);
 
     // The literal `.shadow.` filenames are the contract `servedShadowStem` (packages/app) resolves
-    // against — a drift here silently degrades to shadow-less rendering.
+    // against - a drift here silently degrades to shadow-less rendering.
     expect(done).toEqual([join('Data', 'Bobs', 'Body_s.shadow.png')]);
     const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body_s.shadow.png')));
     expect(decoded.width).toBeGreaterThan(0);
@@ -341,7 +341,7 @@ describe('convertBmdTree build-time bake', () => {
   });
 
   it('bakes a claimed .bmd opaque for EVERY palette; an unclaimed one keeps per-pixel alpha', async () => {
-    // A Double8Bit bob with a graded alpha byte (0x40) — the observable the modes differ on.
+    // A Double8Bit bob with a graded alpha byte (0x40) - the observable the modes differ on.
     const doubleBmd: Bmd = {
       version: 0,
       firstBobId: 10,

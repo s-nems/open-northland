@@ -3,7 +3,7 @@ import { type ContentSet, footprintCellMaxAbsDx, fullStateBlockAreaCells } from 
 /**
  * The largest |dx|+|dy| any `landscapeGfx` work-area cell can STAMP at from its record's anchor (the
  * full-state reading `resourceWorkCell` places collectors by, worst-case over the odd-row parity
- * shift), floored at 3 — see
+ * shift), floored at 3 - see
  * {@link import('../content-index.js').ContentIndex.maxResourceWorkOffset} for the fallback-coverage argument.
  */
 export function maxWorkCellOffset(content: ContentSet): number {

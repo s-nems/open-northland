@@ -26,25 +26,25 @@ describe('constructionSystem', () => {
   it('caps built at the delivered-material fraction however much a builder has hammered', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // needs 2 stone + 1 wood, has only 1 of 3 units
-    fullyHammer(sim, e); // the builder has done all the work it can — material is the limit now
+    fullyHammer(sim, e); // the builder has done all the work it can - material is the limit now
     constructionSystem(sim.world, ctxOf(sim));
-    // built = min(labor=ONE, delivered=1/3) = 1/3 — the site can't rise past what material backs it.
+    // built = min(labor=ONE, delivered=1/3) = 1/3 - the site can't rise past what material backs it.
     expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(3)));
     expect(finishedEvents(sim)).toHaveLength(0);
-    // The partial materials are NOT consumed — the site keeps waiting on the rest.
+    // The partial materials are NOT consumed - the site keeps waiting on the rest.
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(1);
     expect(sim.world.has(e, UnderConstruction)).toBe(true); // still a site
   });
 
-  it('does NOT finish a fully-stocked site with no builder work — labor is required', () => {
+  it('does NOT finish a fully-stocked site with no builder work - labor is required', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // every material present, labor still 0
     constructionSystem(sim.world, ctxOf(sim));
-    // built = min(labor=0, delivered=ONE) = 0 — material alone never raises a building; a builder must
+    // built = min(labor=0, delivered=ONE) = 0 - material alone never raises a building; a builder must
     // hammer it. This is the behaviour the whole feature adds.
     expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0));
     expect(finishedEvents(sim)).toHaveLength(0);
-    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(2); // untouched — not consumed
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(2); // untouched - not consumed
   });
 
   it('finishes a site once fully hammered AND every material is present, consuming the materials', () => {
@@ -77,7 +77,7 @@ describe('constructionSystem', () => {
     sim.world.get(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(2))); // min(0.5, ONE)
-    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2); // 50 of 100 — ramped with built
+    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2); // 50 of 100 - ramped with built
     // Finish it: Health fills to max.
     fullyHammer(sim, e);
     constructionSystem(sim.world, ctxOf(sim));
@@ -90,14 +90,14 @@ describe('constructionSystem', () => {
     const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // 1 of 3 units on hand
     const ctx = ctxOf(sim);
     // Hammer far more swings than the material on hand backs: labor must stop EXACTLY at the delivered
-    // fraction — the truncated per-swing quantum must not park it a hair above (that overshoot is what
+    // fraction - the truncated per-swing quantum must not park it a hair above (that overshoot is what
     // made `built` visibly jump the instant the next material landed instead of at a swing).
     const delivered = fx.div(ONE, fx.fromInt(3));
     // Far more swings than the 1/3-of-the-build the delivered unit backs (a 3-unit HOUSE is
-    // 3·STRIKES_PER_UNIT swings total, so ~a third of that fills the delivered third) — labor must cap.
+    // 3·STRIKES_PER_UNIT swings total, so ~a third of that fills the delivered third) - labor must cap.
     for (let i = 0; i < 40; i++) advanceConstructionLabor(sim.world, ctx, e);
     expect(sim.world.get(e, UnderConstruction).labor).toBe(delivered);
-    // More material lands: the cap rises but labor doesn't — built holds until the next swing.
+    // More material lands: the cap rises but labor doesn't - built holds until the next swing.
     sim.world.get(e, Stockpile).amounts.set(STONE, 2);
     constructionSystem(sim.world, ctx);
     expect(sim.world.get(e, Building).built).toBe(delivered);
@@ -107,14 +107,14 @@ describe('constructionSystem', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE); // needs 2 stone + 1 wood, nothing delivered
     const ctx = ctxOf(sim);
-    // Empty ledger: stone (2 needed) and wood (1) are both at 0 coverage — the tie keeps the
+    // Empty ledger: stone (2 needed) and wood (1) are both at 0 coverage - the tie keeps the
     // ascending-goodType pick (stone). The tally, reseeded from the live SupplyRun store before each
     // read, must reproduce exactly what a full-store scan would return.
     expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))[0]).toEqual({
       goodType: STONE,
       amount: 2,
     });
-    // Another settler is already fetching one stone → stone is half covered, wood untouched — the
+    // Another settler is already fetching one stone → stone is half covered, wood untouched - the
     // next fetch takes the LEAST-covered line (wood), not a second stone.
     const runner = sim.world.create();
     sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1 });
@@ -130,9 +130,9 @@ describe('constructionSystem', () => {
     expect(neededConstructionGoods(sim.world, ctx, e, collectInboundSupply(sim.world))).toEqual([]);
   });
 
-  it('finishes a free (empty-cost) building immediately — no labor needed', () => {
+  it('finishes a free (empty-cost) building immediately - no labor needed', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
-    const e = placeSite(sim, HEADQUARTERS); // construction cost [] — nothing to hammer in
+    const e = placeSite(sim, HEADQUARTERS); // construction cost [] - nothing to hammer in
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(ONE);
     expect(finishedEvents(sim)).toEqual([{ kind: 'buildingFinished', entity: e }]);
@@ -155,7 +155,7 @@ describe('constructionSystem', () => {
     expect(finishedEvents(sim)).toHaveLength(0);
   });
 
-  it('is deterministic — two runs from the same seed reach the same finished state', () => {
+  it('is deterministic - two runs from the same seed reach the same finished state', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: constructionContent() });
       const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 });

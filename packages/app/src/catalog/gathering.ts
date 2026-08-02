@@ -8,13 +8,13 @@ import {
 } from './mining.js';
 
 /**
- * The clean-room gathering balance for one gathered good — the `gathering`-block fields that decide how the
+ * The clean-room gathering balance for one gathered good - the `gathering`-block fields that decide how the
  * good leaves the landscape: a tree's chops-to-fell + wood yield, a mineral deposit's unit count + shrink
  * levels. The harvest/pickup/store atomic ids are NOT here (they are the good's own atomics); those numbers
  * are the felling/mining balance, sourced from `felling.ts`/`mining.ts`.
  *
  * `bioLandscape` is the odd one out: it IS extractable (real content ships it), so it is the sandbox
- * builder's source only — the real-content overlay preserves the extracted value (they agree by
+ * builder's source only - the real-content overlay preserves the extracted value (they agree by
  * construction). It lives here so the sandbox, which has no extraction, still has one.
  */
 export interface GatheringBalance {
@@ -29,8 +29,8 @@ export interface GatheringBalance {
  * Clean-room felling/mining balance per gathered good, keyed by its stable string id. The ONE source both
  * the sandbox goods builder (`game/sandbox/content/catalog/goods.ts` `buildSandboxGoods`) and the
  * real-content overlay (`content/real-content.ts` `mergeRealContent`) read, so the two content bases can
- * never balance the same good's felling/mining NUMBERS differently (`bioLandscape` excepted — see the type
- * doc). The original's `extractGoodGathering` emits 0 for these fields (`felling.ts` — "the live game does
+ * never balance the same good's felling/mining NUMBERS differently (`bioLandscape` excepted - see the type
+ * doc). The original's `extractGoodGathering` emits 0 for these fields (`felling.ts` - "the live game does
  * not yet fell"); this table is the scene-and-real-content lever.
  */
 export const GATHERING_BALANCE_BY_ID: Readonly<Record<string, GatheringBalance>> = {

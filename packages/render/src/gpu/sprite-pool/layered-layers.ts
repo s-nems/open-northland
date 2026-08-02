@@ -6,7 +6,7 @@ import type { ResolvedLayer } from './resolved-layer.js';
  * {@link layeredLayerFor} plus the body's cast shadow: `[shadow, body]` when the draw's source layer
  * carries a {@link SpriteLayer.shadow} twin with a visible frame at the same bob id, else `[body]`;
  * null exactly when {@link layeredLayerFor} is. The construction stack keeps {@link layeredLayerFor}
- * directly — its stage shadows draw from the stack's own `shadowBobId` lane, not the body twin.
+ * directly - its stage shadows draw from the stack's own `shadowBobId` lane, not the body twin.
  */
 export function layeredLayersWithShadow(
   sheet: SpriteSheet,
@@ -23,7 +23,7 @@ export function layeredLayersWithShadow(
 
 /**
  * Resolve one layered draw (a finished building body / construction stage, or a per-good resource /
- * stockpile object) to its atlas layer — the family / dedicated-kind-layer decision shared by every
+ * stockpile object) to its atlas layer - the family / dedicated-kind-layer decision shared by every
  * layered kind. Returns null for an unloaded family, a kind with no dedicated layer, or a
  * missing/empty frame (the caller skips or falls back to the placeholder).
  */
@@ -45,7 +45,7 @@ export function hasLoadedFamily(sheet: SpriteSheet, draw: BuildingDraw): boolean
 /**
  * The source atlas layer a layered draw reads: a `draw.layer` names a {@link SpriteSheet.families}
  * atlas, a bare draw uses the kind's own {@link SpriteSheet.kindLayers} layer. An unloaded named
- * family is `undefined` — never a wrong-bob borrow from the kind layer (their id spaces differ).
+ * family is `undefined` - never a wrong-bob borrow from the kind layer (their id spaces differ).
  */
 function sourceLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): SpriteLayer | undefined {
   return draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.[kind];
@@ -76,9 +76,9 @@ function resolveFromLayer(
 
 /**
  * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
- * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
+ * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids - observed
  * on the tree and house `_s.bmd`s). Null when the layer has no shadow twin or the twin holds no visible
- * frame at that id (most bobs cast none — the data decides).
+ * frame at that id (most bobs cast none - the data decides).
  */
 export function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
   const shadow = layer.shadow;

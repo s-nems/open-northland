@@ -16,7 +16,7 @@ import { cameraViewport, makeElevationField } from '../src/index.js';
 
 /**
  * The combat-feedback marks: the pure event→ground-litter fold (blood on a landed blow, bones on a death)
- * plus its tick-based decay. Render-only and deterministic — a miss emits no hit event so it leaves no
+ * plus its tick-based decay. Render-only and deterministic - a miss emits no hit event so it leaves no
  * blood, and the fold is a pure function of (marks, events, tick), the "what is on the ground" decision the
  * GPU layer just draws. The `Container`/`Graphics` retained pool builds without a GL context, so the
  * layer's node bookkeeping is agent-checkable too.
@@ -72,7 +72,7 @@ describe('foldCombatEffects', () => {
     expect(out).toEqual([]);
   });
 
-  it('leaves no blood for a blow on a building (structure) — a besieged wall does not bleed', () => {
+  it('leaves no blood for a blow on a building (structure) - a besieged wall does not bleed', () => {
     const out = foldCombatEffects(
       [],
       [
@@ -87,7 +87,7 @@ describe('foldCombatEffects', () => {
   });
 
   it('leaves no blood for a frame with no hit event (a miss is simply not an event)', () => {
-    // A whiffed swing resolves nothing in the sim, so no combatHit reaches here — nothing to fold.
+    // A whiffed swing resolves nothing in the sim, so no combatHit reaches here - nothing to fold.
     expect(foldCombatEffects([], [], 5)).toEqual([]);
     // Non-combat events don't spawn marks either.
     const out = foldCombatEffects([], [{ kind: 'settlerBorn', entity: asEntity(1) }], 5);
@@ -100,16 +100,16 @@ describe('foldCombatEffects', () => {
 
   it('expires a mark once past its lifetime, keeping younger ones', () => {
     const marks = foldCombatEffects([], [combatHit(2), died(3)], 0);
-    // One blood + one bone at tick 0. Advance past blood's lifetime but within bones' — blood expires.
+    // One blood + one bone at tick 0. Advance past blood's lifetime but within bones' - blood expires.
     const later = foldCombatEffects(marks, [], BLOOD_LIFETIME_TICKS + 1);
     expect(later.map((e) => e.kind)).toEqual(['bones']);
-    // Past bones' lifetime too — everything is gone.
+    // Past bones' lifetime too - everything is gone.
     expect(foldCombatEffects(later, [], BONES_LIFETIME_TICKS + 2)).toEqual([]);
   });
 
   it('caps the live list, dropping the oldest first', () => {
     // Carry a full cap of OLD bones (deaths at tick 0, still within their long lifetime), then flood the
-    // next tick with fresh hits — the overflow drops the oldest (front) marks, holding the list at the cap.
+    // next tick with fresh hits - the overflow drops the oldest (front) marks, holding the list at the cap.
     const old = foldCombatEffects(
       [],
       Array.from({ length: MAX_ACTIVE_EFFECTS }, (_, i) => died(1000 + i)),
@@ -146,7 +146,7 @@ describe('effectAlpha', () => {
   });
 });
 
-describe('bloodDroplet — the spray falls from the wound to the feet', () => {
+describe('bloodDroplet - the spray falls from the wound to the feet', () => {
   it('starts at the wound and falls DOWN to pool at the feet over time', () => {
     const start = bloodDroplet(1234, 0, 0);
     expect(start.y).toBeCloseTo(0, 5); // at the wound (local origin), before any fall

@@ -31,13 +31,13 @@ import { upgradeTierOf } from '../stores/index.js';
 /**
  * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed: drop the binding
  * and reset the settler to idle (`jobType = null`). Without this a demolished workplace would strand its
- * operators — the binding would dangle on a dead entity (the AI/JobSystem consumers only defend against a
+ * operators - the binding would dangle on a dead entity (the AI/JobSystem consumers only defend against a
  * stale binding, none clears it), so the worker would neither produce nor be re-employable. Faithful to the
  * original: pulling down a building turns its workers back into job-seekers.
  *
  * The scan only mutates the matched settlers (no chosen-entity pick), so iterating store order is permitted.
  * Matches are collected before mutating because `world.remove` deletes from the `JobAssignment` store that
- * `world.query` may be iterating — snapshot first, then mutate.
+ * `world.query` may be iterating - snapshot first, then mutate.
  */
 export function unbindWorkersOf(world: World, building: Entity): void {
   const bound: Entity[] = [];
@@ -46,7 +46,7 @@ export function unbindWorkersOf(world: World, building: Entity): void {
   }
   for (const e of bound) {
     world.remove(e, JobAssignment);
-    setSettlerJob(world, e, null); // back to idle — the JobSystem re-assigns it next tick
+    setSettlerJob(world, e, null); // back to idle - the JobSystem re-assigns it next tick
   }
 }
 
@@ -56,21 +56,21 @@ export function placeBuilding(
   command: Extract<Command, { kind: 'placeBuilding' }>,
 ): void {
   const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
-  if (type === undefined) return; // unknown building type — skip (recoverable bad input)
+  if (type === undefined) return; // unknown building type - skip (recoverable bad input)
 
   // `force` (map-authored imports + pinned demo fixtures) skips both gates below: the original loads a decoded
   // map's houses verbatim, never re-validating authored state against the interactive placement rule (source
-  // basis: observed original behavior — scenario maps open with houses free-placement would reject, e.g.
+  // basis: observed original behavior - scenario maps open with houses free-placement would reject, e.g.
   // packed villages). A gated-out placement below is recoverable bad input: skipped, still logged for replay.
   if (command.force !== true) {
     // Tech-unlock gate: a house may be locked until a settler of an enabling job exists in the tribe
-    // (`jobEnablesHouse`). Currently a no-op — the gate is disabled feature-wide (see {@link buildingEnabled});
+    // (`jobEnablesHouse`). Currently a no-op - the gate is disabled feature-wide (see {@link buildingEnabled});
     // the call stays so re-enabling the switch restores placement gating with no code move.
     if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
-    // Ground-collision gate — the original's free placement rule: the type's footprint must fit here (its
+    // Ground-collision gate - the original's free placement rule: the type's footprint must fit here (its
     // reserved zone on buildable ground, clear of resource nodes, its walls and every existing building's walls
-    // outside each other's zones — see {@link canPlaceBuilding}). A mapless sim (no terrain) or a
+    // outside each other's zones - see {@link canPlaceBuilding}). A mapless sim (no terrain) or a
     // footprint-less type (synthetic content) validates trivially.
     if (
       ctx.terrain !== undefined &&
@@ -84,7 +84,7 @@ export function placeBuilding(
   // The anchor is a half-cell node; its Position is the node's fractional tile coords (the render
   // projects Positions, so the building draws exactly on its authored half-cell).
   world.add(e, Position, positionOfNode(command.x, command.y));
-  // `underConstruction` starts the building at built=0 — the ConstructionSystem advances it to ONE once its
+  // `underConstruction` starts the building at built=0 - the ConstructionSystem advances it to ONE once its
   // `construction` material cost is delivered into its stockpile. Omitted (the default) places it already
   // built. An under-construction site begins with an empty hold (it accumulates delivered materials); a
   // finished placement is seeded from the type's stock `initial`s so a headquarters arrives with its goods.
@@ -95,7 +95,7 @@ export function placeBuilding(
     // A construction site: the builder-work marker (starts at 0 labor) plus, when the type has a hitpoints
     // pool, a Health pool the ConstructionSystem ramps up as it rises (stamped at 1 so the foundation is never
     // a 0-HP corpse the CleanupSystem reaps). A type with no extracted `hitpoints` (synthetic content) carries
-    // no Health — it still builds, just without a life pool.
+    // no Health - it still builds, just without a life pool.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
     if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
   } else if (command.fillStock) {
@@ -117,51 +117,51 @@ export function placeBuilding(
     }
     // A placed-built building arrives at full life so it can be besieged (an under-construction site
     // instead gets its ramping Health above). A type with no extracted `hitpoints` (synthetic content)
-    // carries no Health and cannot be attacked — the same rule the construction ramp already followed.
+    // carries no Health and cannot be attacked - the same rule the construction ramp already followed.
     if (type.hitpoints !== undefined)
       world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
   }
   world.add(e, Stockpile, { amounts });
-  // A building placed for a specific player carries an `Owner` — that player's to select/command. Omitted /
+  // A building placed for a specific player carries an `Owner` - that player's to select/command. Omitted /
   // out-of-range leaves it neutral.
   stampOwner(world, e, command.owner);
-  // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in,
+  // The plot is impassable from this tick - settlers standing on it step aside instead of being walled in,
   // a work flag already planted there is pushed to the nearest legal field, and loose goods piled there
   // are displaced outside (the placement gates ignore flags and piles, so a house may legally land on
-  // either — building on a heap of felled wood loses nothing).
+  // either - building on a heap of felled wood loses nothing).
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
   evictLooseGoodsFromFootprint(world, ctx, e);
-  // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them —
+  // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them -
   // raze both (the original clears landscape decoration in a building's reserved zone).
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
-  // A field declares no build area, so it never refuses a site — this is the only thing that clears one:
+  // A field declares no build area, so it never refuses a site - this is the only thing that clears one:
   // the plants under the new walls go with them rather than stranding their farm's slot.
   destroyFieldsUnderBuilding(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }
 
 /**
- * Begin upgrading a built building into its type's `upgradeTarget` level — the `upgradeBuilding`
+ * Begin upgrading a built building into its type's `upgradeTarget` level - the `upgradeBuilding`
  * command's effect. The building re-opens as a construction site: its inventory is stashed into the
  * {@link Upgrading} marker and the emptied {@link Stockpile} becomes the site's separate build hold,
- * seeded with the bill goods the building already holds (recorded in `Upgrading.seeded` — the why
- * lives on {@link Upgrading}). `built` drops to 0 (suspending production/housing — the same gates a
+ * seeded with the bill goods the building already holds (recorded in `Upgrading.seeded` - the why
+ * lives on {@link Upgrading}). `built` drops to 0 (suspending production/housing - the same gates a
  * from-scratch site sits behind), an {@link UnderConstruction} marker starts the builder-work clock,
  * and settlers standing on the
- * footprint are pushed out. Deliberately NOT cleared: {@link JobAssignment}s and residences — the
+ * footprint are pushed out. Deliberately NOT cleared: {@link JobAssignment}s and residences - the
  * occupants leave the building but keep their bindings and return when the upgrade completes
  * (source basis: observed original behavior). An in-flight {@link Production} cycle is also left to
- * run out — operators pause it by stepping off the door, and a batch that still completes deposits
+ * run out - operators pause it by stepping off the door, and a batch that still completes deposits
  * into the (now build-hold) stockpile (goods-conserving; named approximation, the original's
  * mid-upgrade batch behavior is unobserved).
  *
  * Skip conditions (recoverable bad input, still logged): a dead / non-building target, one still under
- * construction (or already upgrading), a stockpile-less building (a bare fixture — its {@link Stockpile}
+ * construction (or already upgrading), a stockpile-less building (a bare fixture - its {@link Stockpile}
  * is the site's build hold, and the ConstructionSystem only advances `(Building, Stockpile)` sites), a
  * type with no `upgradeTarget` (top level / unchained), a target absent from content, or a target the
- * tribe has not tech-unlocked ({@link buildingEnabled} — the same gate as direct placement, so the
+ * tribe has not tech-unlocked ({@link buildingEnabled} - the same gate as direct placement, so the
  * upgrade path can't unlock what placement forbids; our design invariant, the original's upgrade gating
  * is unobserved).
  */
@@ -176,10 +176,10 @@ export function upgradeBuilding(
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return; // top level / unchained / malformed content
-  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // building-unlock gate (disabled — see buildingEnabled)
+  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // building-unlock gate (disabled - see buildingEnabled)
 
   const stock = world.tryGet(command.building, Stockpile);
-  if (stock === undefined) return; // no build hold — the site could never advance (see the doc)
+  if (stock === undefined) return; // no build hold - the site could never advance (see the doc)
   // Seed the hold with bill goods already in the inventory, stash the rest (see the doc).
   const hold = new Map<number, number>();
   const seeded = new Map<number, number>();
@@ -200,21 +200,21 @@ export function upgradeBuilding(
   });
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
-  // The plot is a building site again — settlers standing on it step out (bindings kept, see above).
+  // The plot is a building site again - settlers standing on it step out (bindings kept, see above).
   evictSettlersFromFootprint(world, ctx, command.building);
 }
 
 /**
- * Abort an in-flight upgrade — the `cancelUpgrade` command's effect, {@link upgradeBuilding}'s inverse
+ * Abort an in-flight upgrade - the `cancelUpgrade` command's effect, {@link upgradeBuilding}'s inverse
  * short of the materials: the stashed inventory returns to the {@link Stockpile}, plus the building's
  * own bill goods that seeded the hold (`Upgrading.seeded` - they were inventory, not a delivery);
- * whatever ELSE the site hold had accumulated is LOST — the price of changing one's mind, user
+ * whatever ELSE the site hold had accumulated is LOST - the price of changing one's mind, user
  * decision 2026-07-18. `built` returns to ONE (only a built building can start an upgrade), and both
  * site markers come off. The type, level, Health, and every binding never changed mid-upgrade, so
  * nothing else needs restoring.
  *
  * Skip conditions (recoverable bad input, still logged): a dead / non-building target, or one not
- * upgrading — a from-scratch construction site has no previous level to fall back to.
+ * upgrading - a from-scratch construction site has no previous level to fall back to.
  */
 export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'cancelUpgrade' }>): void {
   const building = world.tryGet(command.building, Building);
@@ -239,21 +239,21 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
 }
 
 /**
- * Place a boat hull — the boat analogue of {@link placeBuilding}: it creates a {@link Vehicle} hull at (x,y)
+ * Place a boat hull - the boat analogue of {@link placeBuilding}: it creates a {@link Vehicle} hull at (x,y)
  * carrying an empty {@link Stockpile} (a ship is a movable stockpile, its capacity being the ship type's
  * `stockSlots`).
  *
  * Gated by the tribe's ship-unlock tech graph ({@link tribeShipsUnlocked}): only a `vehicleType` that is a
- * ship the tribe has currently unlocked (a `vehicle_ship` row — `passengerSlots > 0` — whose
+ * ship the tribe has currently unlocked (a `vehicle_ship` row - `passengerSlots > 0` - whose
  * `jobEnablesVehicle` edge is satisfied) is placed. A cart, a catapult, an unknown id, or a not-yet-unlocked
- * ship is recoverable bad input — skipped, still logged. Unlike a building the hull is seeded with an empty
+ * ship is recoverable bad input - skipped, still logged. Unlike a building the hull is seeded with an empty
  * hold: a boat is loaded by hauling cargo to it (the `cargoGoods` filter, a deferred load slice), not
  * pre-stocked.
  *
- * Source basis: pinned to the extracted vehicle IR — the ship/cart split is the `passengerslots` param
+ * Source basis: pinned to the extracted vehicle IR - the ship/cart split is the `passengerslots` param
  * (`shipVehicles`/`isShipVehicle`) and the unlock is the `jobEnablesVehicle` edge ({@link tribeShipsUnlocked}).
  * The hull is a static placed store here: movement, passenger embark/disembark, the cargo-load filter, and
- * water-valency terrain are deferred follow-ups (source basis "Sea/Northland — boat hull entity").
+ * water-valency terrain are deferred follow-ups (source basis "Sea/Northland - boat hull entity").
  */
 export function placeBoat(
   world: World,
@@ -261,7 +261,7 @@ export function placeBoat(
   command: Extract<Command, { kind: 'placeBoat' }>,
 ): void {
   // tribeShipsUnlocked already excludes carts / catapults, unknown ids, and ships behind an unmet tech edge,
-  // so a `vehicleType` absent from it is bad input — skipped, still logged.
+  // so a `vehicleType` absent from it is bad input - skipped, still logged.
   const unlocked = tribeShipsUnlocked(world, ctx, command.tribe);
   if (!unlocked.some((v) => v.typeId === command.vehicleType)) return;
 
@@ -270,7 +270,7 @@ export function placeBoat(
   world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
   // A hull placed for a specific player carries an `Owner`. Omitted / out-of-range leaves it neutral.
   stampOwner(world, e, command.owner);
-  // A hull arrives empty — filled by hauling cargo to it, not pre-seeded. Its hold capacity is the ship type's
+  // A hull arrives empty - filled by hauling cargo to it, not pre-seeded. Its hold capacity is the ship type's
   // `stockSlots` (read off the VehicleType, like `largestShipCapacity`).
   world.add(e, Stockpile, { amounts: new Map<number, number>() });
   ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { hx: command.x, hy: command.y } });

@@ -14,7 +14,7 @@ import type { MeleeSlots, WeaponBand } from './melee-slots.js';
 
 /** The chase's pre-resolved target: the entity (the encircle-band memo key), the combat node the reach
  *  check measured (its own node for a unit, its nearest wall for a building), and a building's full wall
- *  list (`null` for a unit) — derived together in {@link engageCombatant} and passed whole. */
+ *  list (`null` for a unit) - derived together in {@link engageCombatant} and passed whole. */
 export interface ChaseTarget {
   readonly entity: Entity;
   readonly node: NodeId;
@@ -22,17 +22,17 @@ export interface ChaseTarget {
 }
 
 /**
- * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one — the chase
+ * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one - the chase
  * repath throttle. A chaser tracks a moving enemy by re-pathing periodically, not every tick; a per-tick full
  * re-path of every chaser would be the RTS-scale regression golden rule 7 forbids (and would eat the
- * pathfinder's per-tick node budget — `routing.ts`). Between repaths the unit keeps walking its last route, and
+ * pathfinder's per-tick node budget - `routing.ts`). Between repaths the unit keeps walking its last route, and
  * the swing check is distance-based (independent of the path goal), so a slightly-stale route still delivers it
- * into reach. Our design (no oracle) — source basis "Combat chase / repath cadence".
+ * into reach. Our design (no oracle) - source basis "Combat chase / repath cadence".
  */
 export const REPATH_CADENCE = 8;
 
 /** Send a DEFEND unit back to its anchor when no enemy is in its defend radius: drop the {@link Engagement} and
- *  either hold in place (already home — clear any stale route) or walk home (a fresh {@link MoveGoal} to the
+ *  either hold in place (already home - clear any stale route) or walk home (a fresh {@link MoveGoal} to the
  *  anchor). With the leash in {@link chase}, this is the "engage in a radius, don't chase far, return to post"
  *  behaviour of the DEFEND mode. The Engagement ALWAYS drops here (the planner's Engagement gate would
  *  otherwise bench the guard for good), but the walk home defers to a live equip errand - clearing the
@@ -45,9 +45,9 @@ export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell
 }
 
 /**
- * Advance an owned combatant on `target` it can't yet reach — the walk-into-melee drive. It keeps an {@link
+ * Advance an owned combatant on `target` it can't yet reach - the walk-into-melee drive. It keeps an {@link
  * Engagement} marker (so the PlannerSystem leaves the unit to combat) and re-issues a {@link MoveGoal} toward
- * an {@link approachCell} (a cell in the weapon's reach band of `target.node`, closest to the unit — so a
+ * an {@link approachCell} (a cell in the weapon's reach band of `target.node`, closest to the unit - so a
  * melee unit stops adjacent rather than walking onto the enemy) at most every {@link REPATH_CADENCE} ticks.
  * Between repaths it follows its live route; the swing check (distance-based) catches it the instant it steps
  * into reach. A dead route (an unreachable target) is dropped so it re-issues; an ordered unit whose route
@@ -84,7 +84,7 @@ export function chase(
   }
 
   const travelling = isTravelling(world, e);
-  if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route — don't re-path
+  if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route - don't re-path
 
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // A building's slots are dealt against its whole wall list ({@link MeleeSlots.encircleCandidates}), so a
@@ -92,7 +92,7 @@ export function chase(
   // holding behind the first rank.
   const dest =
     target.body !== null && target.body.length > 0
-      ? // The untaken candidate nearest the unit — null when every slot is taken, the full-perimeter hold.
+      ? // The untaken candidate nearest the unit - null when every slot is taken, the full-perimeter hold.
         nearestCell(
           terrain,
           slots.encircleCandidates(target.entity, target.body, weapon),
@@ -102,8 +102,8 @@ export function chase(
       : approachCell(terrain, here, target.node, weapon, slots, ownGoal);
   if (dest === null) {
     // Every walkable cell of the target's reach band is a taken slot (a standing body, or dealt to an earlier
-    // chaser this tick): stand fast as a second rank — a stationary body, not a walker grinding into the first
-    // rank's backs — and re-ask at the chase cadence; the slot check admits it the moment a front-liner falls
+    // chaser this tick): stand fast as a second rank - a stationary body, not a walker grinding into the first
+    // rank's backs - and re-ask at the chase cadence; the slot check admits it the moment a front-liner falls
     // or steps off. With the id-order slot deal above, this turns a converging mass into ranks, not a pile.
     clearNavState(world, e);
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
@@ -119,18 +119,18 @@ export function chase(
     return;
   }
   if (dest === here && !travelling) {
-    // Standing on its own best approach cell yet out of range (else it would have swung, not chased) — the
+    // Standing on its own best approach cell yet out of range (else it would have swung, not chased) - the
     // target can't be closed on (boxed into an unwalkable pocket, or the two are stacked on one cell with no
     // free approach). Give up rather than loop engaged-but-frozen: `disengage` drops the Engagement + chase
     // state and any AttackOrder. Next tick the unit re-acquires another enemy, or the economy relocates it
     // (which also breaks a shared-tile stall), so it never stays stuck. Only reachable on obstructed terrain
     // when standing: an all-walkable map always yields a band cell. A travelling unit whose truncated node
-    // already reads as a free band cell (mid-stride onto it) is not boxed in — it falls through and aims its
+    // already reads as a free band cell (mid-stride onto it) is not boxed in - it falls through and aims its
     // live route there, finishing the step and swinging next pass (the standstill-swing rule).
     disengage(world, e);
     return;
   }
-  redirectRoute(world, e, dest); // keep the live route — dropping it reset the gait (chase stutter)
+  redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
   slots.claim(dest);
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }
@@ -138,13 +138,13 @@ export function chase(
 /** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link
  *  MeleeSlots.isOpen open}, untaken cell whose Manhattan distance to the target is in the band and which is
  *  closest to the unit (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell
- *  short of the enemy (hittable) instead of walking onto it (distance 0, below every weapon's near reach —
+ *  short of the enemy (hittable) instead of walking onto it (distance 0, below every weapon's near reach -
  *  which would deadlock), and a mass of chasers is dealt distinct contact cells around the target instead of
- *  all converging on one — the melee-slot rule that spreads a large fight along the band. Returns `null` when
- *  the band has open cells but every one is taken (a full front — the chaser should hold as a second rank);
+ *  all converging on one - the melee-slot rule that spreads a large fight along the band. Returns `null` when
+ *  the band has open cells but every one is taken (a full front - the chaser should hold as a second rank);
  *  falls back to the target's own cell when no in-band cell is open at all (a boxed-in target; the chase then
- *  closes and the swing/disengage logic re-decides). A bounded scan of the band box — O((2·maxRange+1)²), tiny
- *  for melee — deterministic (fixed order + min-id tie-break). */
+ *  closes and the swing/disengage logic re-decides). A bounded scan of the band box - O((2·maxRange+1)²), tiny
+ *  for melee - deterministic (fixed order + min-id tie-break). */
 function approachCell(
   terrain: TerrainGraph,
   from: NodeId,
@@ -184,7 +184,7 @@ function approachCell(
 
 /** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and the
  *  chase movement it drove, and any {@link AttackOrder} (a dead/invalid focus). Only touches a unit that was
- *  engaged — a peaceful/economy unit with no marker keeps its own movement untouched. */
+ *  engaged - a peaceful/economy unit with no marker keeps its own movement untouched. */
 export function disengage(world: World, e: Entity): void {
   if (world.has(e, Engagement)) {
     world.remove(e, Engagement);

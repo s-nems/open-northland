@@ -10,11 +10,11 @@ import { shadowStemsByAtlasStem } from '../src/content/sprite-sheet/human-sheet.
 
 const B = 'data/engine2d/bin/bobs';
 
-describe('shadowStemsByAtlasStem — the body-stem → shadow-stem join', () => {
+describe('shadowStemsByAtlasStem - the body-stem → shadow-stem join', () => {
   it('joins landscape and building rows onto served stems, first defined stem wins', () => {
     const ir: ContentIr = {
       landscapeGfx: [
-        // A shadow-less row for the SAME atlas first — it must not block the twin below.
+        // A shadow-less row for the SAME atlas first - it must not block the twin below.
         { index: 0, logicType: 4, bmd: `${B}/ls_trees.bmd`, paletteName: 'tree_yew01' },
         {
           index: 1,

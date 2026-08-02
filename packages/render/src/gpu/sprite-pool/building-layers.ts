@@ -26,7 +26,7 @@ type BuildingBranch =
  * named-family body [+ extras] directly, or falls through (`done: false`) with the default
  * building-layer `bobId` so the shared body block draws it. The extras drawn above the body are a
  * finished building's animated state overlay (the mill's rotor) or an UPGRADING building's revealing
- * next-tier stack ({@link resolveUpgradeDraws} — the old body keeps drawing; the new tier materialises
+ * next-tier stack ({@link resolveUpgradeDraws} - the old body keeps drawing; the new tier materialises
  * over it). Each stage/body resolves through the same family/default-layer decision
  * ({@link layeredLayerFor}).
  */
@@ -36,10 +36,10 @@ export function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: 
   if (stack !== null && typeof sheet.bindings.building !== 'number') {
     // Each active stage reveals as the build progresses (the pool eases the displayed value between
     // the sim's per-swing steps). A stage whose atlas carries a time sheet reveals per-pixel in its
-    // own [fromPct,toPct] window — the original's model, where even the finished-house bob listed as
+    // own [fromPct,toPct] window - the original's model, where even the finished-house bob listed as
     // the stack's top stage materialises pixel by pixel. Without time data a stage falls back to the
     // bottom-up crop, and a finished building sprite is excluded from that rise (it would creep up as
-    // a half-built cottage) — it snaps in at completion.
+    // a half-built cottage) - it snaps in at completion.
     const layers = revealingStageLayers(sheet, stack, item.builtPct);
     if (layers.length > 0) return { done: true, layers };
   }
@@ -48,10 +48,10 @@ export function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: 
   const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
   if (overlayDraw !== null) {
     const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
-    // The spin frames must not move the entity's box — see ResolvedLayer.boundsExempt.
+    // The spin frames must not move the entity's box - see ResolvedLayer.boundsExempt.
     if (resolved !== null) extras.push({ ...resolved, boundsExempt: true });
   }
-  // An upgrading building keeps its old-tier body draw and reveals the next tier's stack above it —
+  // An upgrading building keeps its old-tier body draw and reveals the next tier's stack above it -
   // the same per-pixel/crop reveal rules as a construction stage, driven by `upgradePct`.
   const upgradeStack = resolveUpgradeDraws(sheet.bindings.building, item);
   if (upgradeStack !== null && typeof sheet.bindings.building !== 'number') {
@@ -73,7 +73,7 @@ export function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: 
  * Resolve a stage stack's drawable layers at a rise progress (a from-scratch site's `builtPct` or an
  * upgrade's `upgradePct`): a stage whose atlas carries a time sheet reveals per-pixel in its own
  * window; one without time data crop-rises, except a finished-building sprite, which snaps in at
- * completion instead of creeping up ({@link finishedBuildingBobKeys}) — for an upgrade stack (whose
+ * completion instead of creeping up ({@link finishedBuildingBobKeys}) - for an upgrade stack (whose
  * bobs ARE the next tier's finished body) that means the old body alone shows until the time-mask
  * atlas is available. A stage whose frame is missing/empty is skipped.
  */

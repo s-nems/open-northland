@@ -29,7 +29,7 @@ import type { ResolvedLayer } from './resolved-layer.js';
 const NO_EXTRAS: readonly ResolvedLayer[] = [];
 
 /**
- * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder — the family →
+ * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder - the family →
  * kind-layer → shared-body decision. A loaded family/kind layer with a missing or empty frame returns
  * `null` rather than borrowing a frame from another layer, since their id spaces differ.
  */
@@ -44,8 +44,8 @@ export function resolveLayers(
   if (sheet === undefined) return null;
 
   let bobId: number | null;
-  // Layers a building appends ABOVE its body draw — a finished building's animated state overlay (the
-  // mill's rotor) and/or an upgrading building's revealing next-tier stack — resolved inside the
+  // Layers a building appends ABOVE its body draw - a finished building's animated state overlay (the
+  // mill's rotor) and/or an upgrading building's revealing next-tier stack - resolved inside the
   // building branch and appended to whichever body layer this frame draws.
   let buildingExtras: readonly ResolvedLayer[] = NO_EXTRAS;
   switch (item.kind) {
@@ -75,7 +75,7 @@ export function resolveLayers(
       // through to the `kindLayers.resource` tree layer (or the shared synthetic atlas) below. The
       // reducer only emits a layer for a loaded family, so a layer-qualified miss is a real gap
       // (placeholder), never a wrong-bob borrow from the tree atlas. A null draw is a data-pinned
-      // invisible level (the original's freshly-sown field) — draw nothing, not the placeholder.
+      // invisible level (the original's freshly-sown field) - draw nothing, not the placeholder.
       const draw = resolveResourceDraw(sheet.bindings.resource, item);
       if (draw === null) return [];
       if (hasLoadedFamily(sheet, draw)) return layeredLayersWithShadow(sheet, 'resource', draw);
@@ -143,14 +143,14 @@ export function resolveLayers(
 function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
   const binding = sheet.bindings.stockpile;
   if (binding === undefined) return null;
-  // A stockpile draws a single graphic — its heap or its delivery flag; piles never stack layers.
+  // A stockpile draws a single graphic - its heap or its delivery flag; piles never stack layers.
   const draw = resolveStockpileDraw(binding, item);
   if (draw.layer === undefined) return null; // no family -> placeholder heap/flag, never a wrong atlas borrow
   return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }
 
 /**
- * Resolve a decor entity's layers — a stump (`ls_trees_dead` debris), a freshly-felled trunk on the
+ * Resolve a decor entity's layers - a stump (`ls_trees_dead` debris), a freshly-felled trunk on the
  * ground (`landscapeToPickup` LOG) or a wild berry bush (the `ls_trees` bush frames). Like the stockpile
  * they have no shared `kindLayers` layer, so each draws only from a loaded named family (else the
  * placeholder), reusing the per-good resource resolver. The DrawKind names the entity, the binding key
@@ -169,7 +169,7 @@ function resolveDecorLayers(
         : sheet.bindings.trunk;
   if (binding === undefined) return null;
   const draw = resolveResourceDraw(binding, item);
-  if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
+  if (draw === null) return []; // a data-pinned invisible level - draw nothing, not the placeholder
   if (draw.layer === undefined) return null; // no family → placeholder
   return layeredLayersWithShadow(sheet, kind, draw);
 }

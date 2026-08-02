@@ -3,7 +3,7 @@ import { encodePng } from '../../decoders/png.js';
 
 /**
  * The shipped minimaps' filler is palette index 0, not one RGB. Source basis: observed across all 70
- * `minimap.pcx` in the owned copy — every corner pixel is index 0, while its RGB varies (magenta
+ * `minimap.pcx` in the owned copy - every corner pixel is index 0, while its RGB varies (magenta
  * 255,0,255 on 65, blue 0,0,255 on the 3 `oasis_o_plenty` copies, brown 180,120,87 on the 2 non-350×160
  * ones), so an RGB colorkey would leave some fillers opaque.
  */
@@ -14,10 +14,10 @@ const MINIMAP_FILLER_INDEX = 0;
  * into a sub-rectangle of the canvas (usually 350×160) and the rest is filled with
  * {@link MINIMAP_FILLER_INDEX}; the same index also occurs as sparse speckles inside the map picture,
  * so only the border-connected index-0 region is keyed to transparent (a 4-neighbour flood fill from
- * the edges — a named approximation: the engine's own compositing is not oracle-documented, and this
+ * the edges - a named approximation: the engine's own compositing is not oracle-documented, and this
  * reproduces "frame gone, picture intact" on the whole corpus). The result is cropped to the bounding
  * box of the surviving pixels, so the menu card shows the map, not the filler. Throws on a malformed
- * `.pcx` or an all-filler picture — the caller warns-and-skips per map.
+ * `.pcx` or an all-filler picture - the caller warns-and-skips per map.
  */
 export function minimapToPng(bytes: Uint8Array): Uint8Array {
   const image = decodePcx(bytes);

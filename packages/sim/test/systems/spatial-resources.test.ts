@@ -12,7 +12,7 @@ import {
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The resource REGION index (`systems/spatial/resources.ts`) — the golden-rule-6 fix that lets a flag-bound
+ * The resource REGION index (`systems/spatial/resources.ts`) - the golden-rule-6 fix that lets a flag-bound
  * gatherer's `nearestHarvestableFor` scan read only the nodes near its flag instead of every resource
  * on a decoded map (~17k). Correctness contract pinned here: the query is a SUPERSET of the anchors
  * within the reach box, returned ascending-id (the canonical first-wins order the nearest-pick
@@ -27,7 +27,7 @@ function newSim(): Simulation {
   return new Simulation({ seed: 1, content: testContent() });
 }
 
-/** A bare resource node anchored at half-cell node (hx, hy) — the fixture idiom (no footprint). */
+/** A bare resource node anchored at half-cell node (hx, hy) - the fixture idiom (no footprint). */
 function nodeAt(sim: Simulation, hx: number, hy: number) {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
@@ -39,8 +39,8 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('returns exactly the anchors within the reach box, ascending-id, across region borders', () => {
     const sim = newSim();
     const far = nodeAt(sim, 2, 2); // outside the box
-    const b = nodeAt(sim, 31, 31); // inside — one side of the 32-node region border
-    const c = nodeAt(sim, 33, 33); // inside — the other side of the border
+    const b = nodeAt(sim, 31, 31); // inside - one side of the 32-node region border
+    const c = nodeAt(sim, 33, 33); // inside - the other side of the border
     const beyond = nodeAt(sim, 60, 60); // outside
     const near = resourcesNearNode(sim.world, 32, 32, 5);
     expect(near).toEqual([b, c]); // ascending id, both border-straddling nodes present
@@ -51,7 +51,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('anyResourceNear agrees with resourcesNearNode over the same box, edge nodes included', () => {
     const sim = newSim();
     const straddling = nodeAt(sim, 31, 31); // one side of the 32-node region border
-    const onEdge = nodeAt(sim, 37, 32); // exactly `reach` away — in the box only if the bound is inclusive
+    const onEdge = nodeAt(sim, 37, 32); // exactly `reach` away - in the box only if the bound is inclusive
     const justOutside = nodeAt(sim, 38, 32); // one node past the edge, in a region the scan still walks
     // The existence twin must answer "does the box hold one that passes?" exactly as the collecting scan
     // does; the `onEdge` / `justOutside` predicates are what catch a divergent bound.
@@ -83,7 +83,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('stays exact when reads interleave with plants and fells (the mid-dispatch pattern)', () => {
     const sim = newSim();
     // The atomic-dispatch interleave the ticket measured: sow (create) and fell (destroy) between
-    // reads of the same index — each read must cost a delta replay, never a wrong answer.
+    // reads of the same index - each read must cost a delta replay, never a wrong answer.
     const standing: ReturnType<typeof nodeAt>[] = [];
     for (let i = 0; i < 20; i++) {
       const planted = nodeAt(sim, 10 + i, 10);
@@ -117,7 +117,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('drops a harvest atomic only when its LAST node goes (the refcounted dormancy set)', () => {
     const sim = newSim();
     const a = nodeAt(sim, 5, 5); // harvestAtomic 24
-    const b = nodeAt(sim, 6, 6); // harvestAtomic 24 — the same atomic twice
+    const b = nodeAt(sim, 6, 6); // harvestAtomic 24 - the same atomic twice
     expect(resourceHarvestAtomics(sim.world).has(24)).toBe(true);
     sim.world.destroy(a);
     expect(resourceHarvestAtomics(sim.world).has(24)).toBe(true); // one node left
@@ -129,7 +129,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('atNode answers the node itself, not the region box around it', () => {
     const sim = newSim();
     const on = nodeAt(sim, 20, 20);
-    nodeAt(sim, 21, 20); // one node over, same 32-node region — must not answer for (20, 20)
+    nodeAt(sim, 21, 20); // one node over, same 32-node region - must not answer for (20, 20)
     expect(resourcesAtNode(sim.world, 20, 20)).toEqual([on]);
     expect(resourcesAtNode(sim.world, 22, 20)).toEqual([]);
   });
@@ -137,7 +137,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
   it('atNode mints from the standing population and tracks creates and destroys after', () => {
     const sim = newSim();
     const first = nodeAt(sim, 7, 7);
-    const second = nodeAt(sim, 7, 7); // stacked BEFORE the mint — the region-walk path, not the incremental one
+    const second = nodeAt(sim, 7, 7); // stacked BEFORE the mint - the region-walk path, not the incremental one
     expect(resourcesAtNode(sim.world, 7, 7)).toEqual([first, second]); // the mint
     const third = nodeAt(sim, 7, 7);
     expect(resourcesAtNode(sim.world, 7, 7)).toEqual([first, second, third]);

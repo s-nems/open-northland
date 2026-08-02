@@ -20,13 +20,13 @@ export type TribeDef = ContentSet['tribes'][number];
 export interface UnitPanelModelContext {
   readonly buildings: readonly BuildingDef[];
   readonly goods: readonly GoodDef[];
-  /** The content jobs — the worker-row labels resolve a bound settler's job name from here (a building's
+  /** The content jobs - the worker-row labels resolve a bound settler's job name from here (a building's
    *  worker vs carrier slots), so the panel names them even when they're not in the profession catalog. */
   readonly jobs: readonly JobDef[];
-  /** The content experience tracks — the Doświadczenie rows resolve a specialization's label (its good
+  /** The content experience tracks - the Doświadczenie rows resolve a specialization's label (its good
    *  or owning job) and its per-repeat accrual rate from here. */
   readonly jobExperience: readonly JobExperienceDef[];
-  /** The content tribes — the Doświadczenie section's upcoming-unlock rows read a settler tribe's
+  /** The content tribes - the Doświadczenie section's upcoming-unlock rows read a settler tribe's
    *  `needforjob` requirement table from here. */
   readonly tribes: readonly TribeDef[];
   /** The sim's livestock-workplace classification (`isLivestockWorkplaceType`), so the panel hides the
@@ -45,7 +45,7 @@ export interface Comp {
 }
 
 /**
- * A settler's profession name for the panel — resolved through the shared profession catalog + i18n
+ * A settler's profession name for the panel - resolved through the shared profession catalog + i18n
  * (`catalog/professions.ts` + `i18n/`), so a settler's label always matches the picker's. Any soldier-band
  * job reads "Żołnierz"; idle/unknown falls back to the localized "Cywil".
  */
@@ -90,7 +90,7 @@ export function recipeOutputs(
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
   if (typeId === undefined) return messages().hud.build;
   const catalog = vikingBuildingByTypeId(typeId);
-  // The panel title reads the same localized name the build menu shows (catalog/building-i18n.ts —
+  // The panel title reads the same localized name the build menu shows (catalog/building-i18n.ts -
   // "Farma", "Chata"), falling back to the English catalog label for a building not yet localized.
   if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, currentLocale());
   return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
@@ -101,18 +101,18 @@ export function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef |
 }
 
 /** A good's display name: its localized content `name` (the pipeline's per-locale good-name table,
- *  loaded by the browser entries — "Mąka"), falling back to the machine id on a bare checkout. */
+ *  loaded by the browser entries - "Mąka"), falling back to the machine id on a bare checkout. */
 export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string {
   const def = goodDef(ctx, goodType);
   return def?.name ?? def?.id ?? `#${goodType}`;
 }
 
 /**
- * A job's display name — shared by a building's worker-slot rows and a settler's own profession title, so
+ * A job's display name - shared by a building's worker-slot rows and a settler's own profession title, so
  * the two never drift. The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz
- * drewna", carrier → "Tragarz"); the life-stage roles (baby/child/woman/civilist — not picker
+ * drewna", carrier → "Tragarz"); the life-stage roles (baby/child/woman/civilist - not picker
  * professions) resolve by their content job SLUG through `messages().lifeStage`; a trade the catalog
- * doesn't carry (a rebased building slot like "Cieśla"/"Druid" — a bound settler's `jobType` is that same
+ * doesn't carry (a rebased building slot like "Cieśla"/"Druid" - a bound settler's `jobType` is that same
  * rebased id) falls back to its content job name, then to the localized idle label. `undefined` (an
  * unbound settler) resolves to the idle label.
  */
@@ -125,7 +125,7 @@ export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | und
   return stage ?? job?.name ?? jobLabel(jobType);
 }
 
-/** Whether a job slot is the transport trade — the sim's own carrier rule ({@link systems.isCarrierJobRow}),
+/** Whether a job slot is the transport trade - the sim's own carrier rule ({@link systems.isCarrierJobRow}),
  *  read over the panel's content slice so the HUD cannot classify it differently. */
 export function isCarrierJob(ctx: UnitPanelModelContext, jobType: number): boolean {
   const job = ctx.jobs.find((j) => j.typeId === jobType);

@@ -38,7 +38,7 @@ function residentsOf(world: World, house: Entity): Entity[] {
 }
 
 /**
- * A settler's household — itself, its living spouse, and their still-growing child — the unit the
+ * A settler's household - itself, its living spouse, and their still-growing child - the unit the
  * `assignHouse` command moves as one. The child counts while it is alive and still carries an `Age`
  * (a grown child has left the family; ids are never recycled, so the stale probe is safe).
  */
@@ -63,13 +63,13 @@ export function isMinor(world: World, child: Entity): boolean {
  * The distinct families living in `house`, each as its member list. A family is an adult, its living
  * cohabiting spouse, and the couple's still-growing child; a resident minor whose parents are gone
  * forms its own one-member household. `homeSize` (`houses.ini` `logichomesize` 1..5) caps FAMILIES,
- * not heads (user-specified design, 2026-07-16) — this grouping is that capacity's unit. Deterministic:
+ * not heads (user-specified design, 2026-07-16) - this grouping is that capacity's unit. Deterministic:
  * built over the ascending-id resident scan, so group order follows the lowest member id.
  */
 export function familiesOf(world: World, house: Entity): Entity[][] {
   const residents = residentsOf(world, house);
   const residentSet = new Set(residents);
-  const groups = new Map<Entity, Entity[]>(); // keyed by the family head — the couple's lower adult id
+  const groups = new Map<Entity, Entity[]>(); // keyed by the family head - the couple's lower adult id
   const headByChild = new Map<Entity, Entity>();
   const minors: Entity[] = [];
   for (const e of residents) {
@@ -98,7 +98,7 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
   return [...groups.values()];
 }
 
-/** Total edible units ({@link isFood}) in `house`'s stockpile — the larder the family draws on. */
+/** Total edible units ({@link isFood}) in `house`'s stockpile - the larder the family draws on. */
 export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity): number {
   const stock = world.tryGet(house, Stockpile);
   if (stock === undefined) return 0;
@@ -109,7 +109,7 @@ export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity)
   return total;
 }
 
-/** The food units of `house`'s stock held back for child-making — 0 when nothing is reserved. */
+/** The food units of `house`'s stock held back for child-making - 0 when nothing is reserved. */
 export function reservedFoodUnits(world: World, house: Entity): number {
   return world.tryGet(house, FoodReserve)?.amount ?? 0;
 }

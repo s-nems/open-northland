@@ -4,7 +4,7 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `diffSnapshots()` — the "diff state between two ticks" half of the time-travel / replay
+ * Tests for `diffSnapshots()` - the "diff state between two ticks" half of the time-travel / replay
  * inspector (plan "Cross-cutting DX"). It is a pure function of two plain `WorldSnapshot` values,
  * so most cases are hand-built snapshots (no sim needed); the last case proves it composes over a
  * real `step()`-driven run so the overlay's actual path is exercised end to end.

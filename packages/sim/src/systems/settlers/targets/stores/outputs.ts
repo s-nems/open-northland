@@ -7,13 +7,13 @@ import { mergedRecipeOf } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
- * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link mergedRecipeOf}
+ * Whether ANY workplace holds a haulable output this tick - a producing {@link Building} ({@link mergedRecipeOf}
  * defined) whose {@link Stockpile} holds ≥1 unit of one of its recipe outputs. The population-level gate
  * for {@link nearestWorkplaceOutput}: if this is false no carrier can haul, so idle settlers skip the
  * per-settler scan entirely (the same "holds an output" test the scan's inner loop applies, so a false
- * here means every scan would return null — identical behavior, done once instead of per settler). It is
+ * here means every scan would return null - identical behavior, done once instead of per settler). It is
  * deliberately WEAKER than the full scan (no "a store can take it" check): a true still runs the real
- * scan, which returns null if delivery is impossible — the gate only ever elides a provably-empty scan.
+ * scan, which returns null if delivery is impossible - the gate only ever elides a provably-empty scan.
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
   for (const e of stockpiles) {
@@ -37,7 +37,7 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  *
  * Determinism: workplaces are scanned in canonical entity-id order with a Manhattan-distance +
  * ascending-cell-id tie-break; within a workplace the good is chosen by canonical (ascending
- * goodType) order via {@link stockpileEntries} — never raw Map insertion order. The "some other
+ * goodType) order via {@link stockpileEntries} - never raw Map insertion order. The "some other
  * store can take it" check ({@link nearestStoreFor}) keeps the carrier from picking up a good it
  * could never deliver (which would just shuttle it back and forth).
  */
@@ -47,9 +47,9 @@ export function nearestWorkplaceOutput(
   world: World,
   ctx: SystemContext,
   here: NodeId,
-  /** The carrier's owning player — never hauls another player's workplace output ({@link sameSideAs}). */
+  /** The carrier's owning player - never hauls another player's workplace output ({@link sameSideAs}). */
   owner: number | undefined,
-  /** The carrier's signpost confinement — an out-of-area workplace is not one it fetches from. */
+  /** The carrier's signpost confinement - an out-of-area workplace is not one it fetches from. */
   gate?: SpatialGate,
   /** The carrier's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
@@ -67,7 +67,7 @@ export function nearestWorkplaceOutput(
 }
 
 /** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and the seeking
- *  carrier could actually deliver (`deliverable` — its {@link deliverableGoodProbe}) — or null when the
+ *  carrier could actually deliver (`deliverable` - its {@link deliverableGoodProbe}) - or null when the
  *  entity is not a workplace holding a deliverable output. Canonical (ascending goodType via
  *  {@link stockpileEntries}) so the chosen good never depends on Map insertion history; side-effect-free,
  *  so the ring may re-evaluate it on the fallback scan. */
@@ -77,12 +77,12 @@ function haulableOutputGood(
   deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
-  // A construction site's stock is its delivered materials, never finished output — an upgrading
+  // A construction site's stock is its delivered materials, never finished output - an upgrading
   // stonecutter/sawmill would otherwise offer its own construction stone/wood as a "recipe output"
   // and a carrier would strip the site.
   if (world.has(entity, UnderConstruction)) return null;
   const recipe = mergedRecipeOf(world, ctx, entity);
-  if (recipe === undefined) return null; // not a workplace — passive stores aren't hauled FROM
+  if (recipe === undefined) return null; // not a workplace - passive stores aren't hauled FROM
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
     if (amount <= 0) continue;
     if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs

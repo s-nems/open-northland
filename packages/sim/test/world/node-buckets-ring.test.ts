@@ -5,12 +5,12 @@ import { positionOfNode } from '../../src/index.js';
 import { NodeBuckets } from '../../src/systems/spatial/nodes.js';
 
 /**
- * Unit tests for the {@link NodeBuckets.nearest} grid RING SEARCH — the spatial primitive behind the
+ * Unit tests for the {@link NodeBuckets.nearest} grid RING SEARCH - the spatial primitive behind the
  * combat enemy query (packages/sim/AGENTS.md "Full ring-search nearest-X", plan tier 3). The
  * contract these pin: the winner is the canonical (min-distance, then min-id) one a full scan would
  * pick, found by completing the whole minimum-distance ring; the `[minDist, maxDist]` band is honored
  * on both ends; and the search short-circuits past its radius (an empty query never scans forever).
- * All coordinates and distances here are HALF-CELL NODE coords — the one integer grid the buckets
+ * All coordinates and distances here are HALF-CELL NODE coords - the one integer grid the buckets
  * key on (`nodeOfPosition`) and the ring metric measures over.
  */
 
@@ -30,11 +30,11 @@ function place(coords: ReadonlyArray<{ x: number; y: number }>): { world: World;
 
 const ALL = (): boolean => true;
 
-describe('NodeBuckets.nearest — grid ring search', () => {
+describe('NodeBuckets.nearest - grid ring search', () => {
   it('finds the nearest entity by integer Manhattan distance', () => {
     const { world, ids } = place([
       { x: 5, y: 0 }, // dist 5
-      { x: 2, y: 0 }, // dist 2 — nearest
+      { x: 2, y: 0 }, // dist 2 - nearest
       { x: 3, y: 0 }, // dist 3
     ]);
     const buckets = new NodeBuckets(world, ids);
@@ -49,11 +49,11 @@ describe('NodeBuckets.nearest — grid ring search', () => {
 
   it('completes the whole minimum-distance ring and breaks a tie by ascending entity id', () => {
     // Two entities equidistant (Manhattan 2) from the origin. The LOWER-id one is at +x (scanned LATE
-    // in the dx sweep), the HIGHER-id one at -x (scanned FIRST) — so a naive first-hit would return the
+    // in the dx sweep), the HIGHER-id one at -x (scanned FIRST) - so a naive first-hit would return the
     // wrong one. The min-id-over-the-whole-ring rule must pick the lower id regardless of scan order.
     const { world, ids } = place([
-      { x: 2, y: 0 }, // id 0 (lower) — encountered LAST in the dx sweep (dx = +2)
-      { x: -2, y: 0 }, // id 1 (higher) — encountered FIRST (dx = -2)
+      { x: 2, y: 0 }, // id 0 (lower) - encountered LAST in the dx sweep (dx = +2)
+      { x: -2, y: 0 }, // id 1 (higher) - encountered FIRST (dx = -2)
     ]);
     const buckets = new NodeBuckets(world, ids);
     expect(buckets.nearest(0, 0, 0, 10, ALL)).toEqual({ entity: ids[0], distance: 2 });
@@ -62,7 +62,7 @@ describe('NodeBuckets.nearest — grid ring search', () => {
   it('picks the smallest id when several enemies share the nearest node', () => {
     const { world, ids } = place([
       { x: 2, y: 0 },
-      { x: 2, y: 0 }, // same node as ids[0] — the bucket keeps ascending id
+      { x: 2, y: 0 }, // same node as ids[0] - the bucket keeps ascending id
       { x: 2, y: 0 },
     ]);
     const buckets = new NodeBuckets(world, ids);
@@ -71,8 +71,8 @@ describe('NodeBuckets.nearest — grid ring search', () => {
 
   it('honors the near floor: an entity closer than minDist is skipped', () => {
     const { world, ids } = place([
-      { x: 1, y: 0 }, // dist 1 — inside the near floor
-      { x: 4, y: 0 }, // dist 4 — the nearest at or beyond minDist
+      { x: 1, y: 0 }, // dist 1 - inside the near floor
+      { x: 4, y: 0 }, // dist 4 - the nearest at or beyond minDist
     ]);
     const buckets = new NodeBuckets(world, ids);
     expect(buckets.nearest(0, 0, 3, 10, ALL)).toEqual({ entity: ids[1], distance: 4 });

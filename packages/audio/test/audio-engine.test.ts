@@ -7,7 +7,7 @@ import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from '
  * The Web Audio engine, exercised through its injected platform seams (a fake context + a stub
  * loader + a scripted random): the one-shot gain/pan graph, the cooldown debounce, the memoised
  * failed load, the ambient start/retune/stop reconciliation and the in-flight-load races (mute,
- * departed bed) — all without a browser.
+ * departed bed) - all without a browser.
  */
 
 interface Harness {

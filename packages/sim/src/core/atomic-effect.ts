@@ -20,10 +20,10 @@ export type AtomicEffect =
     }
   | { readonly kind: 'pileup'; readonly store: Entity }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
-  /** A consumer worker draws one unit of `goodType` from an input-less shared utility (`utility` — a well
+  /** A consumer worker draws one unit of `goodType` from an input-less shared utility (`utility` - a well
    *  for water, a hive for honey): on completion one unit appears on its back
    *  ({@link import('../systems/settlers/atomics/effects/goods/index.js').drawUtilityGood}). The utility
-   *  mints from no inputs, so the draw creates the unit — the consumer-side twin of the ProductionSystem
+   *  mints from no inputs, so the draw creates the unit - the consumer-side twin of the ProductionSystem
    *  depositing an input-less recipe's output when the utility is staffed (goods conserved up to that
    *  by-definition creation). `utility` is an inspection record; a utility gone since the planner chose it
    *  still yields (the extraction happened, like `eat`'s emptied store). */
@@ -32,7 +32,7 @@ export type AtomicEffect =
       readonly kind: 'eat';
       readonly goodType: number;
       /** The store the food is consumed from (a stockpile the eater stands on), or null when the eater
-       *  consumes a unit it already carries. One unit of `goodType` is removed on completion — eating destroys
+       *  consumes a unit it already carries. One unit of `goodType` is removed on completion - eating destroys
        *  the food (conserved up to that consumption). */
       readonly from: Entity | null;
     }
@@ -40,31 +40,31 @@ export type AtomicEffect =
    *  the full contract (restores, sip wear, whiff-on-raced-slot conservation) is `drinkDraught`'s. */
   | { readonly kind: 'drink'; readonly slot: number }
   /** The settler sleeps to restore rest: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion (no
-   *  goods consumed — unlike `eat`, resting is free). The partial-refill counterpart to the NeedsSystem's
+   *  goods consumed - unlike `eat`, resting is free). The partial-refill counterpart to the NeedsSystem's
    *  fatigue rise; the settler beds down on open ground the sleep drive walked it to. */
   | { readonly kind: 'sleep' }
-  /** The settler prays to restore devotion: zeroes its `piety` on completion (no goods consumed — like
+  /** The settler prays to restore devotion: zeroes its `piety` on completion (no goods consumed - like
    *  `sleep`, praying is free). The pairing reset for the NeedsSystem's piety rise. Unlike `sleep` (any patch
-   *  of open ground) this need is building-bound — the settler must stand on a temple to run it. */
+   *  of open ground) this need is building-bound - the settler must stand on a temple to run it. */
   | { readonly kind: 'pray' }
-  /** The settler enjoys itself to restore leisure: zeroes its `enjoyment` on completion (no goods consumed —
+  /** The settler enjoys itself to restore leisure: zeroes its `enjoyment` on completion (no goods consumed -
    *  like `sleep`/`pray`). The pairing reset for the NeedsSystem's enjoyment rise (the `enjoy` atomic, id 17).
-   *  The need→satisfier drive is deferred — `enjoy` has no readable building satisfier (see source basis) — so
+   *  The need→satisfier drive is deferred - `enjoy` has no readable building satisfier (see source basis) - so
    *  for now this effect is the reset half, exercised directly. */
   | { readonly kind: 'enjoy' }
-  /** The settler makes love to restore leisure: zeroes its `enjoyment` on completion (no goods consumed — like
-   *  `enjoy`/`sleep`/`pray`). The `make_love` atomic (id 78) is not a separate need — its animation
+  /** The settler makes love to restore leisure: zeroes its `enjoyment` on completion (no goods consumed - like
+   *  `enjoy`/`sleep`/`pray`). The `make_love` atomic (id 78) is not a separate need - its animation
    *  (`viking_civilist_make_love`) restores the same channel 3 as `enjoy` via `event <at> 3 +800` tuples (a
    *  bigger leisure boost than enjoy's +100), so it resets `enjoyment` too. The need→satisfier drive is
-   *  deferred for the same reason as `enjoy` (see source basis) — so for now this is the reset half only. */
+   *  deferred for the same reason as `enjoy` (see source basis) - so for now this is the reset half only. */
   | { readonly kind: 'make_love' }
   /** The settler runs one drill repetition inside a barracks: on completion it banks the clip's own
    *  TRAINING experience (`event <at> 29 <value>`) into the bucket the `trainfor*` schooling gates read,
-   *  and charges the repetition against the errand's remaining drill time. No goods consumed — the
+   *  and charges the repetition against the errand's remaining drill time. No goods consumed - the
    *  soldier's own train clip, which spends a coin, is a later slice. */
   | { readonly kind: 'exercise' }
   /** The settler swings at `target`: the blow subtracts `damage` from the target's `Health.hitpoints`,
-   *  clamped at 0. `damage` is the resolved column damage — the planner looked it up from the weapon's
+   *  clamped at 0. `damage` is the resolved column damage - the planner looked it up from the weapon's
    *  `damagevalue[targetMaterial]` (attacker weapon × target armor material) and carried it here already
    *  resolved, so the executor stays a pure subtraction. The hit lands at `hitAt` (the animation's
    *  `ATOMIC_EVENT_TYPE_ATTACK` frame), falling back to the completion frame when omitted. `weaponMainType`
@@ -90,13 +90,13 @@ export type AtomicEffect =
     }
   /** A builder's construction swing at a {@link import('../components/economy/index.js').UnderConstruction}
    *  site: on completion it advances the site's builder-work `labor` by one strike's quantum
-   *  (`+ONE / (totalConstructionUnits · strikesPerUnit)`), clamped at ONE. No goods move here — the delivered
+   *  (`+ONE / (totalConstructionUnits · strikesPerUnit)`), clamped at ONE. No goods move here - the delivered
    *  materials sit in the site's stockpile until the ConstructionSystem consumes the whole cost at completion,
    *  and the visible `Building.built` is derived from `min(labor, deliveredFraction)`. A `site` no longer
    *  under construction (finished or demolished) is a no-op. */
   | { readonly kind: 'construct'; readonly site: Entity }
   /** The scout's build-guide swing completed: a signpost owned by the swinging scout's player appears at
-   *  half-cell node `(x, y)` — one hammer strike, instant, no materials (source basis: observed original).
+   *  half-cell node `(x, y)` - one hammer strike, instant, no materials (source basis: observed original).
    *  The spot is re-validated at application (`erectSignpost`); an illegal spot means the swing whiffs. */
   | { readonly kind: 'erectSignpost'; readonly x: number; readonly y: number }
   /** A farmer's sowing swing at a free field node `(x, y)` (half-cell coords): on completion it plants a
@@ -112,15 +112,15 @@ export type AtomicEffect =
       readonly y: number;
     }
   /** A hungry settler forages a wild {@link import('../components/economy/index.js').BerryBush}: on completion
-   *  it eats the ripe bush's fruit — the bush flips ripe→bare and regrows (BerryGrowthSystem) — and the eater's
-   *  hunger drops by `EAT_HUNGER_RESTORE`, like `eat` — a partial refill, so a forager comes back for another.
+   *  it eats the ripe bush's fruit - the bush flips ripe→bare and regrows (BerryGrowthSystem) - and the eater's
+   *  hunger drops by `EAT_HUNGER_RESTORE`, like `eat` - a partial refill, so a forager comes back for another.
    *  Unlike `eat` no stored/carried good is consumed and no job/tool is needed (a bush is wild food anyone can
    *  graze). A `bush` already bare (a forager beat this one to it) or gone consumes nothing, but the meal still
    *  counts (the raced-source stance, like `eat`'s empty store). Runs on the eat animation (id 10). */
   | { readonly kind: 'forage'; readonly bush: Entity }
   /** A farmer's watering (the original's cultivate atomic) of a growing field: on completion the
-   *  {@link import('../components/economy/index.js').Crop} is marked `watered`, which enables its growth — an
-   *  unwatered field stalls at its sown stage (a named approximation — the engine's watering semantics are not
+   *  {@link import('../components/economy/index.js').Crop} is marked `watered`, which enables its growth - an
+   *  unwatered field stalls at its sown stage (a named approximation - the engine's watering semantics are not
    *  decoded). A field already reaped/ripe, or gone, is a no-op. */
   | { readonly kind: 'water'; readonly crop: Entity }
   /** The settler sets its carried load down on the ground before an interrupt takes over (a profession
@@ -128,7 +128,7 @@ export type AtomicEffect =
    *  load is placed on the settler's own tile, spilling any remainder over the `MAX_GROUND_STACK` cap to the
    *  nearest free walkable hexes
    *  ({@link import('../systems/settlers/atomics/effects/goods/index.js').dropCarriedLoad}). No good is lost
-   *  — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the settler at
+   *  - a dropped load becomes loose ground heaps. Carries no payload: the load is read off the settler at
    *  apply time. */
   | { readonly kind: 'drop' }
   /** The settler lifts one unit of `goodType` out of the store/pile `from` STRAIGHT into its equipment

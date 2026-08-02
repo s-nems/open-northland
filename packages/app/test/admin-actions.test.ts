@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEBUG_ACTIONS } from '../src/view/admin-debug/actions-catalog.js';
 
 /**
- * The admin/debug panel's entity-ACTION catalog — the pure "arm a tool, click a target → a debug command"
+ * The admin/debug panel's entity-ACTION catalog - the pure "arm a tool, click a target → a debug command"
  * mapping (the data half of the action tools, verifiable without the DOM). The panel's window-capture
  * wiring (a map click picks the entity + enqueues this) is browser-verified; here we pin that each tool
  * targets the right entity kind and builds the right `debug*` command for the picked entity ref.

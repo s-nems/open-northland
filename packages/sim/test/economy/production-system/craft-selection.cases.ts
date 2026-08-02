@@ -26,20 +26,20 @@ import {
 } from './support.js';
 
 // The fixture forge (typeId 9): one carpenter operator, TWO per-product recipes off the same wood
-// input — wood → plank (2) and wood → food_simple (3), in that content order.
+// input - wood → plank (2) and wood → food_simple (3), in that content order.
 const FORGE = 9;
 const PLANK = 2;
 const FOOD = 3;
-/** A good typeId the forge has no recipe for — the invalid/orphaned-pick cases. */
+/** A good typeId the forge has no recipe for - the invalid/orphaned-pick cases. */
 const UNMADE = 99;
 
 function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } {
-  spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler — plank is gated on a woodcutter existing
+  spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler - plank is gated on a woodcutter existing
   const building = sim.world.create();
   sim.world.add(building, Building, { buildingType: FORGE, tribe: 1, built: ONE, level: 0 });
   sim.world.add(building, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
   sim.world.add(building, Stockpile, { amounts: new Map([[WOOD, wood]]) });
-  // Spawned with the fixture's `needforgood PLANK` row earned, like the sawmill's worker — the
+  // Spawned with the fixture's `needforgood PLANK` row earned, like the sawmill's worker - the
   // needforgood rotation gate has its own case below (which clears the XP again).
   const smith = spawnSettler(sim, CARPENTER, 0, 0, PLANK_GATE_EARNED);
   // An orderable, bound operator: setCraftGoods requires an OWNED settler with a workplace binding.
@@ -53,7 +53,7 @@ function runCycles(sim: Simulation, count: number): void {
   for (let t = 0; t < (CYCLE_TICKS + 1) * count + 1; t++) productionSystem(sim.world, ctxOf(sim));
 }
 
-describe('productionSystem — per-product recipes and the craft selection', () => {
+describe('productionSystem - per-product recipes and the craft selection', () => {
   it('a worker with no selection rotates through every product (1 plank, 1 food, 1 plank…)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f } = forge(sim, 4);
@@ -106,7 +106,7 @@ describe('productionSystem — per-product recipes and the craft selection', () 
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 4);
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE] });
-    expect(sim.world.has(smith, CraftSelection)).toBe(false); // recoverable bad input — no-op
+    expect(sim.world.has(smith, CraftSelection)).toBe(false); // recoverable bad input - no-op
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE, FOOD] });
     expect(sim.world.get(smith, CraftSelection).goods).toEqual([FOOD]); // invalid entry dropped
   });
@@ -123,7 +123,7 @@ describe('productionSystem — per-product recipes and the craft selection', () 
   it('an orphaned pick (naming nothing this workplace makes) degrades to all-products, not a stall', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    // Stamp a pick for a good the forge has no recipe for — the state a content rebase could leave.
+    // Stamp a pick for a good the forge has no recipe for - the state a content rebase could leave.
     sim.world.add(smith, CraftSelection, { goods: [UNMADE], cursor: 0 });
     runCycles(sim, 2);
     const stock = sim.world.get(f, Stockpile).amounts;
@@ -139,7 +139,7 @@ describe('productionSystem — per-product recipes and the craft selection', () 
     sim.world.get(smith, Settler).experience.delete(WOOD_TRACK); // back to unearned
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
-    expect(stock.get(PLANK) ?? 0).toBe(0); // locked — the rotation skips it
+    expect(stock.get(PLANK) ?? 0).toBe(0); // locked - the rotation skips it
     expect(stock.get(FOOD)).toBe(5); // the ungated ware keeps flowing
   });
 
@@ -159,7 +159,7 @@ describe('productionSystem — per-product recipes and the craft selection', () 
     const { forge: f, smith } = forge(sim, 4);
     // Pin the rotation to start at FOOD, then fill the food slot so only plank can start.
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD, PLANK] });
-    sim.world.get(f, Stockpile).amounts.set(FOOD, 20); // food slot at capacity — food can't start
+    sim.world.get(f, Stockpile).amounts.set(FOOD, 20); // food slot at capacity - food can't start
     runCycles(sim, 2);
     expect(sim.world.get(f, Stockpile).amounts.get(PLANK)).toBe(2); // plank kept flowing
   });

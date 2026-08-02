@@ -16,11 +16,11 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('combatSystem — target selection + issuing the attack atomic', () => {
+describe('combatSystem - target selection + issuing the attack atomic', () => {
   it('an idle combatant swings at the nearest enemy in range, with the resolved net damage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // 2 nodes away — at the axe's maxRange 2
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // 2 nodes away - at the axe's maxRange 2
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -34,7 +34,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('does NOT target a same-tribe settler (friendly fire is off)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // same tribe, adjacent — never a target
+    fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // same tribe, adjacent - never a target
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -44,7 +44,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('does NOT swing at an enemy out of weapon range', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 5, 0, FRANK, WOODCUTTER); // 10 nodes away — beyond maxRange 2
+    fighterAt(sim, 5, 0, FRANK, WOODCUTTER); // 10 nodes away - beyond maxRange 2
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -54,8 +54,8 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('picks the NEAREST enemy when several are in range, tie-broken by ascending entity id', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // node (2, 0)
-    const far = fighterAt(sim, 2, 0, FRANK, WOODCUTTER); // 2 nodes away — in range
-    const near = fighterAtNode(sim, 3, 0, FRANK, WOODCUTTER); // 1 node away — nearest
+    const far = fighterAt(sim, 2, 0, FRANK, WOODCUTTER); // 2 nodes away - in range
+    const near = fighterAtNode(sim, 3, 0, FRANK, WOODCUTTER); // 1 node away - nearest
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -65,7 +65,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
 
   it('a non-combatant settler (no Health) is never an attacker and never a target', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    // The attacker has Health; the "enemy" is a plain settler (no Health) — not a combatant.
+    // The attacker has Health; the "enemy" is a plain settler (no Health) - not a combatant.
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const civilian = sim.world.create();
     sim.world.add(civilian, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
@@ -99,7 +99,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const busy = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
-    sim.world.add(busy, MoveGoal, { cell: 4 }); // travelling — leave it to play out
+    sim.world.add(busy, MoveGoal, { cell: 4 }); // travelling - leave it to play out
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -116,10 +116,10 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
     expect(sim.world.has(corpse, CurrentAtomic)).toBe(false);
   });
 
-  it('does NOT target a recorded ANIMAL tribe — civ-vs-animal is a separate aggression model', () => {
+  it('does NOT target a recorded ANIMAL tribe - civ-vs-animal is a separate aggression model', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // a wolf adjacent — a DIFFERENT tribe, but an animal
+    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // a wolf adjacent - a DIFFERENT tribe, but an animal
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -129,7 +129,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
 
   it('an ANIMAL-tribe combatant does not run the player-vs-player drive (even armed, vs a civ)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    // The wolf IS armed (test_claw, tribe 9/job 1) — so it is skipped for being an animal, not unarmed.
+    // The wolf IS armed (test_claw, tribe 9/job 1) - so it is skipped for being an animal, not unarmed.
     const wolf = fighterAt(sim, 0, 0, WOLVES, WOODCUTTER);
     fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a viking adjacent
 
@@ -141,20 +141,20 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('still targets a different-tribe combatant that has NO record (not reclassified as an animal)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const frank = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // tribe 2 — no record in the fixture
+    const frank = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // tribe 2 - no record in the fixture
 
     combatSystem(sim.world, ctxOf(sim));
 
-    // FRANK has no `[tribetype]` record, so it is NOT an animal — it stays a valid player-vs-player enemy.
+    // FRANK has no `[tribetype]` record, so it is NOT an animal - it stays a valid player-vs-player enemy.
     expect(sim.world.get(viking, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: frank });
   });
 });
 
-describe('combatSystem — end-to-end through the real schedule', () => {
+describe('combatSystem - end-to-end through the real schedule', () => {
   it('two enemies fight to a kill: attack drains HP, cleanup reaps the felled one', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, 1000);
-    // The frank has a low pool and no weapon (job 2) — it can't fight back, so the viking grinds it down.
+    // The frank has a low pool and no weapon (job 2) - it can't fight back, so the viking grinds it down.
     const frank = fighterAt(sim, 1, 0, FRANK, 2, 120);
 
     // 50 net damage per swing, 4-tick swing -> 120 HP falls after 3 landed hits (~12+ ticks). Run enough.

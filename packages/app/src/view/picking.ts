@@ -13,7 +13,7 @@ import {
 } from '@open-northland/render';
 
 /**
- * Pure picking math — the screen→world→node inverse of the render projection, plus the point/box
+ * Pure picking math - the screen→world→node inverse of the render projection, plus the point/box
  * hit-tests the selection controller runs over the on-screen units. No DOM, no Pixi, no sim: plain
  * geometry, so it is unit-tested headless (see `packages/app/test/picking.test.ts`) exactly like the
  * render-side `viewport.ts` cull math. The controller (`view/unit-controls/`) is the impure half that
@@ -21,7 +21,7 @@ import {
  *
  * Three coordinate spaces (mirroring `render`): screen/canvas px → world px (pre-camera, what
  * `tileToScreen` and a `DrawItem.x/y` live in) → half-cell node (col,row on the sim's `2W×2H`
- * lattice — `halfCellToScreen` is its projection, a plain rectangular grid, so the inverse is a
+ * lattice - `halfCellToScreen` is its projection, a plain rectangular grid, so the inverse is a
  * per-axis rounding). The camera transform is `screen = world*scale + offset`, so its inverse is
  * `world = (screen - offset)/scale`.
  */
@@ -35,14 +35,14 @@ export interface Pickable {
   readonly kind?: 'settler' | 'building' | 'signpost';
   /**
    * The entity's exact rendered sprite bounds (world px), from the renderer's per-entity bounds. When
-   * present the hit test uses this box — so a click anywhere on the actual graphic selects, a big building
+   * present the hit test uses this box - so a click anywhere on the actual graphic selects, a big building
    * getting a big box and a small one a small box. Absent (off-screen / no renderer) → the kind fallback.
    */
   readonly box?: EntityBounds | undefined;
   /**
    * Pixel-accurate refinement of the box hit (the renderer's `entityPixelHit`): `true`/`false` = the
    * point does / does not land on a solid texel of the drawn sprite; `undefined` = no exact answer
-   * (off-screen, unreadable atlas), so the box verdict stands. Wired for buildings — their box swallows
+   * (off-screen, unreadable atlas), so the box verdict stands. Wired for buildings - their box swallows
    * a lot of transparent corner, so a click just next to the house must not select it. Settlers keep
    * the deliberately generous box (a small sprite needs the slack to stay clickable).
    */
@@ -73,7 +73,7 @@ export function screenToWorld(camera: Camera, sx: number, sy: number): { x: numb
 /**
  * Invert the flat half-cell projection (no elevation): a world-px point → the nearest node.
  * `halfCellToScreen(col,row) = (col·HALF_W, row·HALF_H/2)` is a plain rectangular lattice, so the
- * inverse is an independent per-axis rounding — no candidate scoring. Deterministic (`Math.round`
+ * inverse is an independent per-axis rounding - no candidate scoring. Deterministic (`Math.round`
  * half-up on both axes).
  */
 function worldToTileFlat(wx: number, wy: number): Tile {
@@ -91,7 +91,7 @@ const PICK_ELEVATION_PASSES = 8;
  * Invert the projection to the tile drawn under a world-px point, accounting for the elevation lift. The
  * renderer draws cell `(col,row)`'s ground at `y = projected_y − liftAt(col,row)`, so a click at screen
  * `wy` sits on ground whose unlifted `y` is `wy + lift`. We can't know the lift without the cell, so we
- * iterate: estimate the cell with the flat inverse, sample its lift, add it back, re-solve — a fixed
+ * iterate: estimate the cell with the flat inverse, sample its lift, add it back, re-solve - a fixed
  * point (the 2-pass the design calls for, iterated so steep slopes still round-trip). Without a field
  * (or a flat one) this is exactly {@link worldToTileFlat}. Pure + deterministic.
  */
@@ -116,10 +116,10 @@ export function clampTile(tile: Tile, width: number, height: number): Tile {
 }
 
 /**
- * The half-cell node bounds of a `width×height`-cell map — cell `(c, r)` owns the 2×2 node block
+ * The half-cell node bounds of a `width×height`-cell map - cell `(c, r)` owns the 2×2 node block
  * `(2c..2c+1, 2r..2r+1)`, so the node grid spans `[0, 2·cells)` on each axis. The one app-side owner
  * of the cell→node bounds convention (order targeting, tile hit-bounds, overlay bands all derive
- * from it — a caller hand-rolling the ×2 is the bug this helper exists to prevent).
+ * from it - a caller hand-rolling the ×2 is the bug this helper exists to prevent).
  */
 export function nodeBounds(mapSize: { readonly width: number; readonly height: number }): {
   width: number;
@@ -128,7 +128,7 @@ export function nodeBounds(mapSize: { readonly width: number; readonly height: n
   return { width: mapSize.width * 2, height: mapSize.height * 2 };
 }
 
-/** The node band covering an inclusive cell range — each cell contributes its whole 2×2 node block
+/** The node band covering an inclusive cell range - each cell contributes its whole 2×2 node block
  *  (see {@link nodeBounds} for the convention). */
 export function nodeBandOfCells(cells: {
   readonly minCol: number;
@@ -146,11 +146,11 @@ export function nodeBandOfCells(cells: {
 
 /**
  * Horizontal half-width / upward / downward reach (world px) of a target's clickable box around its feet
- * anchor. A standing sprite's body extends up from the feet, so the box reaches further up than down —
+ * anchor. A standing sprite's body extends up from the feet, so the box reaches further up than down -
  * a click on the body (not just the feet) still selects. In world px, so it scales with zoom for free.
  * A building is a much larger, taller sprite than a settler, so a settler-sized box makes it nearly
  * unclickable (only a pixel at the base registers); it gets a generous box so a click anywhere on the
- * house body selects it. (Fixed magnitudes, not the exact per-type footprint — a click-usability box,
+ * house body selects it. (Fixed magnitudes, not the exact per-type footprint - a click-usability box,
  * generous by design; a footprint-accurate box is a later refinement.)
  */
 const PICK_BOX = {
@@ -174,7 +174,7 @@ function hits(t: Pickable, wx: number, wy: number): boolean {
   return t.pixelHit?.(wx, wy) ?? true;
 }
 
-/** The feet-anchored per-kind fallback box test — used when the exact sprite bounds aren't known. */
+/** The feet-anchored per-kind fallback box test - used when the exact sprite bounds aren't known. */
 function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
   const box = PICK_BOX[t.kind ?? 'settler'];
   return Math.abs(wx - t.x) <= box.halfW && wy >= t.y - box.up && wy <= t.y + box.down;
@@ -184,7 +184,7 @@ function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
  * The topmost target under a world-px point, or `null` if none. A target is hit when the point falls in
  * its clickable area ({@link hits}: the exact sprite bounds when known, else a per-kind fallback box);
  * among hits the frontmost wins (largest screen `y` = drawn last = on top), tie-broken by the higher
- * entity id (the later-drawn of two on the same row) — so a click resolves to the thing a human sees on
+ * entity id (the later-drawn of two on the same row) - so a click resolves to the thing a human sees on
  * top (a unit standing in front of a building outranks it), the RTS single-click convention.
  */
 export function pickTopAt(targets: readonly Pickable[], wx: number, wy: number): number | null {
@@ -240,7 +240,7 @@ export function pickDoorBadgeRow(
 
 /**
  * Every target whose feet anchor falls inside the world-px rectangle `(x0,y0)-(x1,y1)` (corners in any
- * order) — the drag-select ("marquee") hit-test. Anchor-in-box is the standard RTS rule: a unit is
+ * order) - the drag-select ("marquee") hit-test. Anchor-in-box is the standard RTS rule: a unit is
  * grabbed when its centre is boxed, not when the box merely clips its sprite. Returns ids in the input
  * order (which the caller keeps canonical by building `targets` from the sorted draw list).
  */

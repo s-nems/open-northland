@@ -14,7 +14,7 @@ import { testContent } from '../fixtures/content.js';
 /**
  * The strategic AI-player scaffold: the `setPlayerAi` seat flag, the AiPlayerSystem's staggered
  * decision cadence, the module enable gates, and the replay seam (re-emitted AI commands are
- * discarded — the log's copies apply verbatim). Modules ship empty; these tests drive the seam
+ * discarded - the log's copies apply verbatim). Modules ship empty; these tests drive the seam
  * with stubs.
  */
 
@@ -26,7 +26,7 @@ function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
 }
 
-describe('setPlayerAi — the AI seat flag', () => {
+describe('setPlayerAi - the AI seat flag', () => {
   it('flags a seat with all modules enabled by default', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
@@ -93,7 +93,7 @@ function ctxAt(tick: number, commands: CommandQueue): SystemContext {
   return { content: testContent(), rng: new Rng(1), tick, events: new EventBuffer(), commands };
 }
 
-describe('AiPlayerSystem — cadence, stagger, and module gates', () => {
+describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
   it('runs each seat only on its stagger slot of the decision interval and enqueues its commands', () => {
     const world = worldWithSeats(0, OTHER_SEAT);
     const commands = new CommandQueue();
@@ -182,7 +182,7 @@ describe('AI seat determinism and replay', () => {
     expect(replayed.hashState()).toBe(live.hashState());
 
     // The discard seam itself: a command left pending mid-replay (what an AI module's live re-emission
-    // is — its applied copy already sits in the log) must be thrown away, never double-applied.
+    // is - its applied copy already sits in the log) must be thrown away, never double-applied.
     const strayed = new Simulation({ seed: 7, content: testContent() });
     stepReplaying(strayed, live.commands.log, TICKS, () => {
       strayed.enqueue({ kind: 'setNeedsEnabled', enabled: false }); // would move the hash if applied

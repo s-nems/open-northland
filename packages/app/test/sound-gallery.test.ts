@@ -5,8 +5,8 @@ import { buildSoundGalleryModel } from '../src/entries/sound.js';
 
 /**
  * The `?sounds` gallery's PURE model: the auditable join of the decoded bank + the event→sound bindings.
- * This is the half a human can't self-judge made checkable — that the chop atomic reaches the axe clips,
- * a life event reaches its jingle, and the voice pools split by sex — without a browser or an AudioContext.
+ * This is the half a human can't self-judge made checkable - that the chop atomic reaches the axe clips,
+ * a life event reaches its jingle, and the voice pools split by sex - without a browser or an AudioContext.
  */
 
 const CHOP_ATOMIC = 24;
@@ -39,7 +39,7 @@ const bank: SoundBank = {
   ],
 };
 
-/** A one-clip SoundSfx (params default to empty — the gallery reads only the file). */
+/** A one-clip SoundSfx (params default to empty - the gallery reads only the file). */
 function f(file: string): { file: string; params: number[] } {
   return { file, params: [] };
 }

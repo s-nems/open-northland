@@ -1,5 +1,5 @@
 /**
- * Global crash capture — the tester-facing half of the diagnostics system. An uncaught exception or
+ * Global crash capture - the tester-facing half of the diagnostics system. An uncaught exception or
  * unhandled rejection is logged to the ring (channel `crash`) and surfaces a minimal DOM banner with
  * a "download report" action. Plain DOM on purpose: the game (Pixi, the RAF loop) may be wedged, so
  * the banner depends on nothing that just crashed.
@@ -8,7 +8,7 @@ import { messages } from '../i18n/index.js';
 import { downloadDiagnosticsBundle } from './bundle.js';
 import { diag } from './log.js';
 
-/** Above every game overlay (system menu/tooltips sit at 2000) — a crash outranks all of them. */
+/** Above every game overlay (system menu/tooltips sit at 2000) - a crash outranks all of them. */
 const CRASH_BANNER_Z_INDEX = '2200';
 
 const BANNER_STYLE = [
@@ -85,7 +85,7 @@ function showCrashBanner(text: string): void {
 let installed = false;
 
 /**
- * Hook `window.onerror` + `unhandledrejection` once at boot — every uncaught failure lands in the
+ * Hook `window.onerror` + `unhandledrejection` once at boot - every uncaught failure lands in the
  * log ring and raises the banner. A repeating error (a throwing RAF frame) just updates the banner;
  * the bounded ring absorbs the flood.
  */

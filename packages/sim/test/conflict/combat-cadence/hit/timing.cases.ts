@@ -15,7 +15,7 @@ import {
   VIKING,
 } from '../support.js';
 
-describe('combatSystem — the swing carries the ATTACK-event hit-frame + the weapon class', () => {
+describe('combatSystem - the swing carries the ATTACK-event hit-frame + the weapon class', () => {
   it('stamps hitAt from the animation ATTACK event and weaponMainType from the weapon', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const spearman = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
@@ -32,7 +32,7 @@ describe('combatSystem — the swing carries the ATTACK-event hit-frame + the we
   it('omits hitAt when the attack animation carries no ATTACK event (falls back to completion)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const saberer = fighterAt(sim, 0, 0, VIKING, SOLDIER_SABER); // saber animation has no `event <f> 25`
-    fighterAtNode(sim, 1, 0, OTHER, null); // 1 node away — the saber's whole reach band is [1, 1]
+    fighterAtNode(sim, 1, 0, OTHER, null); // 1 node away - the saber's whole reach band is [1, 1]
     combatSystem(sim.world, ctxOf(sim));
     const effect = sim.world.get(saberer, CurrentAtomic).effect;
     expect('hitAt' in effect).toBe(false); // no ATTACK event -> no hitAt -> executor uses completion
@@ -40,14 +40,14 @@ describe('combatSystem — the swing carries the ATTACK-event hit-frame + the we
   });
 });
 
-describe('atomicSystem — the blow lands at the ATTACK-event frame, not at completion', () => {
+describe('atomicSystem - the blow lands at the ATTACK-event frame, not at completion', () => {
   it('drains the target exactly once, at the ATTACK frame mid-animation', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
     startSwing(sim, attacker, { target, damage: 2090, hitAt: 17 }, 27);
 
-    // Frames 1..16: the swing is winding up — the target is untouched.
+    // Frames 1..16: the swing is winding up - the target is untouched.
     for (let i = 0; i < 16; i++) atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(target, Health).hitpoints).toBe(10_000);
 
@@ -76,7 +76,7 @@ describe('atomicSystem — the blow lands at the ATTACK-event frame, not at comp
   });
 });
 
-describe('atomicSystem — repeating swings at the animation cadence', () => {
+describe('atomicSystem - repeating swings at the animation cadence', () => {
   it('a survivor is re-struck one animation-length apart (cadence IS the swing length)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR); // spear: 27-frame swing, ATTACK @17
@@ -92,7 +92,7 @@ describe('atomicSystem — repeating swings at the animation cadence', () => {
     }
 
     expect(hitTicks.length).toBeGreaterThanOrEqual(2);
-    // Consecutive blows land exactly one swing (27 ticks) apart — the cadence is the animation length,
+    // Consecutive blows land exactly one swing (27 ticks) apart - the cadence is the animation length,
     // no invented cooldown.
     const firstHit = hitTicks[0];
     const secondHit = hitTicks[1];

@@ -11,14 +11,14 @@ import type { ModEvent } from '../ipc.js';
  * replayed as query params, yield the real byte stream.
  */
 
-/** culturesnation.pl's stable download entry — redirects to the current mod archive. */
+/** culturesnation.pl's stable download entry - redirects to the current mod archive. */
 const CNMOD_DOWNLOAD_URL = 'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
 
 /** SHA-256 of the known-good `CnMod 1.3.1.zip` the URL above resolved to; a mismatch means a new
  *  (unverified) mod version. Kept beside the URL: a mod release bumps both together. */
 export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
 
-/** The largest Drive interstitial page the downloader will buffer — a hop that answers with more
+/** The largest Drive interstitial page the downloader will buffer - a hop that answers with more
  * HTML than this is not the confirm form (the real one is ~2 KB). */
 const MAX_INTERSTITIAL_BYTES = 1 << 20;
 
@@ -35,7 +35,7 @@ export function parseDriveFileId(url: string): string | undefined {
 export function parseDriveConfirmUrl(html: string): string | undefined {
   const action = /<form[^>]+action="([^"]+)"/.exec(html)?.[1];
   if (action === undefined) return undefined;
-  // The form must submit back to Google — a page steering the download anywhere else (a tampered
+  // The form must submit back to Google - a page steering the download anywhere else (a tampered
   // interstitial) is refused rather than fetched, since the pinned hash only warns on a mismatch.
   try {
     const host = new URL(action).hostname;
@@ -64,7 +64,7 @@ function assertOk(response: Response, hop: string): void {
     throw new Error(`mod download: ${hop} answered ${response.status} ${response.statusText}`);
 }
 
-/** Reads at most {@link MAX_INTERSTITIAL_BYTES} of a text response — never the whole body. */
+/** Reads at most {@link MAX_INTERSTITIAL_BYTES} of a text response - never the whole body. */
 async function readBoundedText(response: Response): Promise<string> {
   if (response.body === null) return '';
   const chunks: Uint8Array[] = [];

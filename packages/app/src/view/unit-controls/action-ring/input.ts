@@ -19,7 +19,7 @@ export interface ActionRingInputContext {
   readonly scale: number;
   readonly hoverG: Graphics;
   readonly tooltip: HTMLElement;
-  /** Client (CSS) point → canvas px — the space the layout and every hit-test work in. */
+  /** Client (CSS) point → canvas px - the space the layout and every hit-test work in. */
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   readonly getMode: () => MenuMode;
   /** Whether the ring container is currently visible (menu shown, not the DOM list). */
@@ -42,7 +42,7 @@ export interface ActionRingInputContext {
 }
 
 export interface ActionRingInput {
-  /** True when a client point is over a visible menu button — the input router asks before world picking. */
+  /** True when a client point is over a visible menu button - the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }
@@ -58,7 +58,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (ctx.getMode() === 'closed' || !ctx.isRingVisible()) return false;
     const { x, y } = toCanvas(clientX, clientY);
-    // Claim only actual button squares — a click in the gap between buttons (over the unit itself) still
+    // Claim only actual button squares - a click in the gap between buttons (over the unit itself) still
     // reaches world picking, so the settler stays selectable/orderable through the open menu.
     return hitTestActionRing(ctx.getLayout(), x, y) !== null;
   };
@@ -68,7 +68,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const hit = hitTestActionRing(ctx.getLayout(), x, y);
     if (hit === null) return;
-    // A menu click is the menu's — stop it reaching world picking (we register before unit-controls). This
+    // A menu click is the menu's - stop it reaching world picking (we register before unit-controls). This
     // consumes a placeholder click too, so an inert button never falls through to a move/attack order.
     e.stopImmediatePropagation();
     const targets = ctx.getTargets();
@@ -76,14 +76,14 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     if (hit.kind === 'open-jobs') {
       ctx.openJobWindow(); // swap the ring for the scrollable profession list window
     } else if (hit.kind === 'erect-signpost') {
-      // Arm the click-to-place mode for the selected scout(s) and close the ring — the next world click
+      // Arm the click-to-place mode for the selected scout(s) and close the ring - the next world click
       // places the signpost (the "Select place for signpost" flow of the original).
       const scouts = [...targets];
       ctx.closeMenu();
       ctx.onErectSignpost(scouts);
     } else if (hit.kind === 'marry' && single !== undefined) {
       ctx.onMarry(single);
-      ctx.closeMenu(); // the order is issued — nothing left to do in the menu
+      ctx.closeMenu(); // the order is issued - nothing left to do in the menu
     } else if (hit.kind === 'assign-house' && single !== undefined) {
       ctx.onAssignHouse(single);
       ctx.closeMenu(); // hands off to the click-a-house pick mode
@@ -91,7 +91,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       ctx.onMakeChild(single, hit.sex);
       ctx.closeMenu();
     }
-    // kind 'placeholder' — consumed above, but its action is not yet implemented (inert on this slice).
+    // kind 'placeholder' - consumed above, but its action is not yet implemented (inert on this slice).
   };
 
   const onMouseMove = (e: MouseEvent): void => {
@@ -121,7 +121,7 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
   };
 
   // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must stop here:
-  // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first — so
+  // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first - so
   // without stopImmediatePropagation an Escape over the list would also deselect the unit and close the whole
   // menu, when it should only step back to the ring with the unit still selected.
   const onKeyDown = (e: KeyboardEvent): void => {

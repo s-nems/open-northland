@@ -21,16 +21,16 @@ export interface ToolWindow {
  * lifecycle instead of re-implementing it.
  *
  * A window with extra draw layers (the tabbed lists' tiled `back` + hover `Graphics`) creates them itself
- * inside `container` — the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
+ * inside `container` - the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
  */
 export interface WindowShell {
   /** Everything this window draws, frame and labels alike: the panel mounts these in draw order, so a
    *  rebuild's re-appended runs cannot outrank a later window's frame. */
   readonly container: Container;
-  /** The shared frame/chrome buffer, and `container`'s first child — a window's extra layers order
+  /** The shared frame/chrome buffer, and `container`'s first child - a window's extra layers order
    *  themselves around it. */
   readonly graphics: Graphics;
-  /** The window's vector text runs — the controller pushes what it builds; `clear()` destroys them. */
+  /** The window's vector text runs - the controller pushes what it builds; `clear()` destroys them. */
   readonly runs: TextRun[];
   isOpen(): boolean;
   setOpen(open: boolean): void;

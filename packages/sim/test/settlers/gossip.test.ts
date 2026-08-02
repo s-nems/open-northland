@@ -19,7 +19,7 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
- * Tests for the GOSSIP drive — the company need's self-satisfying loop: a lonely settler pairs up with
+ * Tests for the GOSSIP drive - the company need's self-satisfying loop: a lonely settler pairs up with
  * another, the pair stands adjacent and alternates the talk/listen atomics (14/15, `logicdefines.inc`),
  * and the clips' channel-3 pulses refill `enjoyment`. Soldiers are excluded (the original's
  * `jobtypes.ini` soldier `forbidatomic 13/14/15`); the fixture talk/listen clips carry the original's
@@ -29,9 +29,9 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } fr
 const TALK = 14;
 const LISTEN = 15;
 const PLAYER = 1;
-const SOLDIER_JOB = 31; // soldier_unarmed — isFighterJob band start
+const SOLDIER_JOB = 31; // soldier_unarmed - isFighterJob band start
 const LONELY: Fixed = justAbove(NEED_THRESHOLD); // over the ¾·ONE chat-seek threshold
-const MILD: Fixed = fx.div(ONE, fx.fromInt(2)); // half a bar — idle-chat eligible, seek-quiet
+const MILD: Fixed = fx.div(ONE, fx.fromInt(2)); // half a bar - idle-chat eligible, seek-quiet
 
 function owned(sim: Simulation, e: Entity): Entity {
   sim.world.add(e, Owner, { player: PLAYER });
@@ -42,7 +42,7 @@ function gossiper(sim: Simulation, x: number, y: number, enjoyment: Fixed): Enti
   return owned(sim, needsSettlerAt(sim, x, y, { enjoyment }));
 }
 
-/** A gossiper standing half a cell east of cell `x` — the lattice node beside a cell-anchored partner
+/** A gossiper standing half a cell east of cell `x` - the lattice node beside a cell-anchored partner
  *  (partner searches start at ring 1, so a pair never forms on a single shared node). */
 function gossiperBeside(sim: Simulation, x: number, y: number, enjoyment: Fixed): Entity {
   const e = gossiper(sim, x, y, enjoyment);
@@ -77,7 +77,7 @@ describe('gossip initiation (planner rungs)', () => {
 
   it('idle settlers standing beside each other pair up spontaneously', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    // No tree — nothing to do. Both mildly deprived, on neighbouring lattice nodes.
+    // No tree - nothing to do. Both mildly deprived, on neighbouring lattice nodes.
     const a = gossiper(sim, 1, 0, MILD);
     const b = gossiperBeside(sim, 1, 0, MILD);
 
@@ -87,25 +87,25 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, seeker: false });
   });
 
-  it('a distant idle pair pairs up only after the paced wander roll — never on the first pass', () => {
+  it('a distant idle pair pairs up only after the paced wander roll - never on the first pass', () => {
     // Seed 5: the seeded stream's first 1/240 hit lands ~80 ticks in (an early-stream mulberry32
-    // artifact makes some tiny seeds fire on the very first draw — that would defeat the "stands
+    // artifact makes some tiny seeds fire on the very first draw - that would defeat the "stands
     // around first" half of this test).
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(8, 1) });
-    setNeedsEnabled(sim.world, false); // bars frozen at 0: the seek rung can't fire — only the wander can
+    setNeedsEnabled(sim.world, false); // bars frozen at 0: the seek rung can't fire - only the wander can
     const a = gossiper(sim, 1, 0, fx.fromInt(0));
     const b = gossiper(sim, 3, 0, fx.fromInt(0));
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Nobody adjacent: no instant pairing and no instant walk — the wander waits out its 1/N-per-tick
+    // Nobody adjacent: no instant pairing and no instant walk - the wander waits out its 1/N-per-tick
     // roll, so idlers stand around instead of herding together the moment they spawn.
     expect(sim.world.has(a, Chat)).toBe(false);
     expect(sim.world.has(b, Chat)).toBe(false);
     expect(sim.world.has(a, MoveGoal)).toBe(false);
 
     // Deterministically (seeded roll) one of them eventually wanders over and the pair talks from
-    // neighbouring lattice nodes — the bound covers many multiples of the mean wait.
+    // neighbouring lattice nodes - the bound covers many multiples of the mean wait.
     let talked = false;
     for (let i = 0; i < 3000 && !talked; i++) {
       sim.step();
@@ -134,7 +134,7 @@ describe('gossip initiation (planner rungs)', () => {
   it('a finished chat leaves a cooldown: the pair rests, then chats again', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 1, 0, MILD);
-    gossiperBeside(sim, 1, 0, MILD); // the neighbour `a` chats with — asserted through `a`'s side only
+    gossiperBeside(sim, 1, 0, MILD); // the neighbour `a` chats with - asserted through `a`'s side only
 
     let ended = false;
     for (let i = 0; i < 200 && !ended; i++) {
@@ -143,7 +143,7 @@ describe('gossip initiation (planner rungs)', () => {
     }
     expect(ended).toBe(true); // the first chat ran its rounds and ended with the breather stamped
     sim.step();
-    expect(sim.world.has(a, Chat)).toBe(false); // no instant re-grab — the planner pass stays free
+    expect(sim.world.has(a, Chat)).toBe(false); // no instant re-grab - the planner pass stays free
 
     let rechatted = false;
     for (let i = 0; i < 2 * CHAT_COOLDOWN_TICKS && !rechatted; i++) {
@@ -167,7 +167,7 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.get(b, CurrentAtomic).atomicId).toBe(LISTEN);
   });
 
-  it('soldiers never gossip — neither seeking nor as a partner (forbidatomic 13/14/15)', () => {
+  it('soldiers never gossip - neither seeking nor as a partner (forbidatomic 13/14/15)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const soldier = owned(sim, needsSettlerAt(sim, 1, 0, { enjoyment: LONELY }));
     setSettlerJob(sim.world, soldier, SOLDIER_JOB);
@@ -195,7 +195,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, LONELY);
     const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));
-    plannerSystem(sim.world, ctxOf(sim)); // pairs them (adjacent nodes — already in range)
+    plannerSystem(sim.world, ctxOf(sim)); // pairs them (adjacent nodes - already in range)
 
     gossipSystem(sim.world, ctxOf(sim));
 
@@ -221,7 +221,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
         if (ev.kind === 'chatVoice') voices.push({ entity: ev.entity, soundType: ev.soundType });
       }
     }
-    // The fixture clips voice `logicSoundType` 61 (SocialTalk — societies.ts): the talker opens the
+    // The fixture clips voice `logicSoundType` 61 (SocialTalk - societies.ts): the talker opens the
     // round at frame 0 and the listener responds at frame 10, so ONE 20-tick round yields both halves.
     expect(voices.length).toBeGreaterThanOrEqual(2);
     expect(voices.every((v) => v.soundType === 61)).toBe(true);
@@ -232,7 +232,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, LONELY);
     const b = gossiperBeside(sim, 2, 0, MILD);
-    treeAt(sim, 6, 0); // the errand the seeker abandoned — reclaimed once the chat satisfies it
+    treeAt(sim, 6, 0); // the errand the seeker abandoned - reclaimed once the chat satisfies it
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true });
 
@@ -244,7 +244,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(midway).toBeGreaterThan(fx.fromInt(0));
 
     // The full round restores a full bar (5×800 = 4000 units): the satisfied seeker leaves the chat, and
-    // with its company met the work rung wins again — it walks off to the tree instead of re-chatting.
+    // with its company met the work rung wins again - it walks off to the tree instead of re-chatting.
     let backToWork = false;
     for (let i = 0; i < 60 && !backToWork; i++) {
       sim.step();
@@ -292,7 +292,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(sim.world.has(b, CurrentAtomic)).toBe(false);
   });
 
-  it('a player order on one half ends the chat — the other never talks into the air', () => {
+  it('a player order on one half ends the chat - the other never talks into the air', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, LONELY);
     const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));

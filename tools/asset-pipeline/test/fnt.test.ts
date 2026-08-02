@@ -15,8 +15,8 @@ import { StorableId } from '../src/decoders/storable.js';
 import { packLineControl } from './fixtures/bmd.js';
 
 /**
- * `.fnt` (CFont) decoder tests. No copyrighted fixtures: we synthesize a CFont — the 16-byte font prefix
- * in front of a hand-built `.bmd` bob container — and assert the envelope parse, the `encodeFnt`/`decodeFnt`
+ * `.fnt` (CFont) decoder tests. No copyrighted fixtures: we synthesize a CFont - the 16-byte font prefix
+ * in front of a hand-built `.bmd` bob container - and assert the envelope parse, the `encodeFnt`/`decodeFnt`
  * round-trip, and the layout metrics used by this project (advance, line height, baseline, and the
  * space-to-bob-0x49 width rule). The bob-pixel decode itself is covered by the `.bmd`/atlas tests.
  */
@@ -89,7 +89,7 @@ describe('decodeFnt / encodeFnt', () => {
     new DataView(wrongId.buffer).setUint32(0, StorableId.CBobManager, true); // 0x3F4, not a CFont
     expect(() => decodeFnt(wrongId)).toThrow(/not a CFont/);
 
-    // A CFont whose nested storable header is (id 0, version 0) — the "null bob manager" CFont writes.
+    // A CFont whose nested storable header is (id 0, version 0) - the "null bob manager" CFont writes.
     const nullNested = new Uint8Array(20);
     new DataView(nullNested.buffer).setUint32(0, StorableId.CFont, true);
     expect(() => decodeFnt(nullNested)).toThrow(/no CBobManager/);
@@ -99,7 +99,7 @@ describe('decodeFnt / encodeFnt', () => {
 
   it('throws on a glyph container that does not start at bob 0', () => {
     // fontMetrics reports `firstChar: FONT_FIRST_CHAR` while deriving each glyph's char from
-    // `firstBobId + i`, so its `glyphs[c - firstChar]` contract only holds at a zero origin — a
+    // `firstBobId + i`, so its `glyphs[c - firstChar]` contract only holds at a zero origin - a
     // non-zero one would silently shift every glyph rather than fail. Every shipped .fnt starts at 0.
     const shifted = encodeFnt({
       version: 0,

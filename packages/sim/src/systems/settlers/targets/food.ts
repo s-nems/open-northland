@@ -28,11 +28,11 @@ import { interactionCell } from './workplaces.js';
  * edible good ({@link isFood}), by Manhattan distance from `here`, ascending-cell-id tie-break,
  * scanned in canonical entity-id order. Returns the store and the specific food good to eat, or null
  * if no reachable store holds food. The good within a store is chosen in canonical (ascending
- * goodType) order via {@link stockpileEntries} — never raw Map insertion order — so the choice never
+ * goodType) order via {@link stockpileEntries} - never raw Map insertion order - so the choice never
  * depends on store insertion history. A producing workplace counts too (a settler eats the food it
  * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
  *
- * Reachability: a store in another static component (the far bank of a river — the same `componentOf`
+ * Reachability: a store in another static component (the far bank of a river - the same `componentOf`
  * gate the bush sibling applies) or on the eater's failed-goal `memo` is skipped, so a hungry settler
  * walks to the second, reachable larder instead of looping park→re-pick→fail beside the first.
  */
@@ -107,21 +107,21 @@ function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): numbe
  * The extra reach (half-cell nodes) a {@link bushesNearNode} query adds over {@link BERRY_FORAGE_RADIUS}
  * so the region box is a provable SUPERSET of the true "interaction cell within radius" set. A bush is
  * non-blocking, so its interaction cell IS its anchor unless a resource footprint overlaps the tile, in
- * which case `positionedInteractionCell` picks an immediate walkable neighbour (≤2 nodes off) — this
+ * which case `positionedInteractionCell` picks an immediate walkable neighbour (≤2 nodes off) - this
  * covers that displacement, so the cellDist filter below still picks the same winner as a full scan.
  */
 const BUSH_INTERACTION_SLACK_NODES = 2;
 
 /**
  * The nearest RIPE {@link BerryBush} a hungry settler could forage, by Manhattan distance from `here`
- * with the shared ascending-cell-id tie-break — the eat drive's WILD-FOOD fallback ({@link nearestFood}).
+ * with the shared ascending-cell-id tie-break - the eat drive's WILD-FOOD fallback ({@link nearestFood}).
  * Only a bush that currently holds fruit (`ripe`), lies within {@link BERRY_FORAGE_RADIUS} of the settler,
  * and is REACHABLE (same terrain component as `here`, the same gate {@link nearestHarvestableFor} applies
  * so a settler never latches onto a bush across an uncrossable river) qualifies. Returns the bush + its
  * distance/cell (so {@link nearestFood} can weigh it against a store), or null if none is in reach.
  *
  * Scans only the bushes NEAR the settler ({@link bushesNearNode}, the region index) rather than every bush
- * on the map — a decoded map spawns tens of thousands, and this runs per hungry settler, so a full scan is
+ * on the map - a decoded map spawns tens of thousands, and this runs per hungry settler, so a full scan is
  * the golden-rule-6 per-entity-loop trap. The region box (widened by {@link BUSH_INTERACTION_SLACK_NODES})
  * is a provable superset of the radius disc, and the filter/rank loop is unchanged, so the winner is
  * identical to a full scan. Determinism: the candidate list is ascending-id and the pick is canonical.
@@ -137,12 +137,12 @@ function nearestRipeBush(
   const { x: hx, y: hy } = terrain.coordsOf(here);
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
   // No same-side gate: a wild BerryBush is a neutral map feature foraged in place (it drops no owned pile),
-  // so any hungry settler may pick it — the shared wild fallback, unlike an owned store's larder.
+  // so any hungry settler may pick it - the shared wild fallback, unlike an owned store's larder.
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const bush = world.tryGet(e, BerryBush);
-    if (bush === undefined || bush.stage !== 'ripe') return null; // bare/blooming — nothing to forage
+    if (bush === undefined || bush.stage !== 'ripe') return null; // bare/blooming - nothing to forage
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
+    if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off - leave it be
     if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this eater's route just failed on
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (flat radius)
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
@@ -159,16 +159,16 @@ type FoodTarget =
   | { readonly kind: 'bush'; readonly bush: Entity };
 
 /**
- * The nearest FOOD of any kind a hungry settler should head for — the eat drive's "find the nearest food"
+ * The nearest FOOD of any kind a hungry settler should head for - the eat drive's "find the nearest food"
  * primitive. It weighs the nearest food STORE ({@link nearestFoodStore}) against the nearest ripe wild BUSH
  * ({@link nearestRipeBush}, the bounded {@link BERRY_FORAGE_RADIUS} fallback) with the ONE shared
  * {@link closer} tie-break, so the winner
- * is whichever is genuinely nearer — an equal-distance tie is broken by the lower interaction-cell id (so a
+ * is whichever is genuinely nearer - an equal-distance tie is broken by the lower interaction-cell id (so a
  * bush CAN win a distance tie when its cell id is lower; the pick stays deterministic, cell ids being
  * position-derived). Returns null when neither is in reach.
  *
  * The wild bush is a FALLBACK in practice (a settled larder is usually the nearer food), but the choice is
- * pure nearest-food, not "bush only if no store" — a settler beside a berry patch eats the berries rather
+ * pure nearest-food, not "bush only if no store" - a settler beside a berry patch eats the berries rather
  * than trek to a distant granary. With no bushes near the settler the bush scan is O(0) and the result is
  * exactly {@link nearestFoodStore}'s, so every existing eat golden holds.
  */

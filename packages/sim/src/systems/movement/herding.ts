@@ -19,10 +19,10 @@ import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/n
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
 /**
- * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.
+ * HerdingSystem - the **follow-the-leader** movement drive for a herding animal.
  *
  * A herd animal that `searchforleader`s carries a {@link HerdMember} pointing at its pack's leader
- * (set once at spawn by the `spawnAnimalHerd` command — the lowest-id member, which points at
+ * (set once at spawn by the `spawnAnimalHerd` command - the lowest-id member, which points at
  * **itself**). This system keeps the pack together: an idle **follower** that has wandered farther
  * than its `animaltypes.ini` `maximumleaderdistance` from its leader is sent back, walking to a spot
  * BESIDE the leader via the same {@link MoveGoal}→{@link PathRequest}→{@link PathFollow} chain a
@@ -35,21 +35,21 @@ import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
  *
  * A follower is moved only when **idle and at rest**: no {@link CurrentAtomic} running (don't yank a
  * creature out of an attack swing) and not already travelling (no {@link MoveGoal}/{@link PathRequest}/
- * {@link PathFollow} — it is already heading somewhere; re-issuing would fight the planner). So a
+ * {@link PathFollow} - it is already heading somewhere; re-issuing would fight the planner). So a
  * fighting or already-returning animal is left alone; cohesion is the **idle-default** behaviour, the
  * same precedence the AI planner gives travel.
  *
  * source-basis: the **cohesion radius** is the verbatim extracted `animaltypes.ini` `maximumleaderdistance`
- * param (faithful — *how far* a follower may stray). **Approximated (no oracle):** that a strayed
- * follower walks back to a free spot beside the leader (the original's herd-cohesion AI — flocking
- * offsets, formation, wander-while-near — is the undocumented "soul"); a `maximumleaderdistance` of 0
+ * param (faithful - *how far* a follower may stray). **Approximated (no oracle):** that a strayed
+ * follower walks back to a free spot beside the leader (the original's herd-cohesion AI - flocking
+ * offsets, formation, wander-while-near - is the undocumented "soul"); a `maximumleaderdistance` of 0
  * means "stay on the leader's cell", the literal reading of the param. Recorded in source basis.
  *
  * Determinism: no RNG, no wall-clock. Followers are visited in canonical id order because the spot
- * picks consume a shared taken-set — an earlier follower's choice excludes it for later ones. The
+ * picks consume a shared taken-set - an earlier follower's choice excludes it for later ones. The
  * standing-occupancy set and block overlay are built lazily, only on a tick where some follower
  * actually strays. No-ops without a terrain graph (a mapless sim has no cells to measure leader
- * distance over — the golden is untouched). Inert on the goldens/slice: no entity there carries a
+ * distance over - the golden is untouched). Inert on the goldens/slice: no entity there carries a
  * `HerdMember`, so the follower scan finds nobody.
  */
 export const herdingSystem: System = (world, ctx) => {
@@ -69,7 +69,7 @@ export const herdingSystem: System = (world, ctx) => {
     // A workplace visit owns the creature: no recall out of the building (Resting), and none competing
     // with the visit system's walk to the door (LivestockVisit).
     if (world.has(e, Resting) || world.has(e, LivestockVisit)) continue;
-    // A leader that has been reaped (killed in combat) is gone — its components are removed, so a
+    // A leader that has been reaped (killed in combat) is gone - its components are removed, so a
     // follower has no cell to return to; leave it where it stands (the herd is leaderless until a
     // later slice re-designates one).
     if (!world.has(leader, Position)) continue;
@@ -77,7 +77,7 @@ export const herdingSystem: System = (world, ctx) => {
     const range = herdParams(ctx.content, world.get(e, Settler).tribe)?.leaderDistance ?? 0;
     const here = entityNode(world, terrain, e);
     const leaderCell = entityNode(world, terrain, leader);
-    if (manhattan(terrain, here, leaderCell) <= range) continue; // close enough — stay put
+    if (manhattan(terrain, here, leaderCell) <= range) continue; // close enough - stay put
 
     standing ??= standingAnimalNodes(world, terrain);
     taken ??= new Set<NodeId>();
@@ -89,7 +89,7 @@ export const herdingSystem: System = (world, ctx) => {
 };
 
 /** Recall landing spots ringing the leader, nearest first: the node-Manhattan-2 diagonals/axials, then
- *  the 3-ring — every spot at least the stander spacing from the leader, in fixed (canonical) order. */
+ *  the 3-ring - every spot at least the stander spacing from the leader, in fixed (canonical) order. */
 const RECALL_OFFSETS: readonly (readonly [number, number])[] = [
   [1, 1],
   [-1, -1],

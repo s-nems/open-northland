@@ -9,7 +9,7 @@ import {
 import { building, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * The `?debug=geometry` projection — pure snapshot → overlay items, and the building-set fingerprint
+ * The `?debug=geometry` projection - pure snapshot → overlay items, and the building-set fingerprint
  * that gates its rebuild. The icon anchor must match the door-badge path (both go through
  * `workerIconNode`), including the doorless fallback the old inline copy dropped.
  */
@@ -38,7 +38,7 @@ describe('computeGeometryDebugItems', () => {
     expect(item?.blocked).toEqual([{ dx: 0, dy: 0 }]);
     expect(item?.reserved).toEqual([{ dx: 1, dy: 1 }]);
     expect(item?.door).toEqual({ dx: 0, dy: 2 });
-    // Default worker-icon offset: one node right of the door node (8,10), as an ABSOLUTE node —
+    // Default worker-icon offset: one node right of the door node (8,10), as an ABSOLUTE node -
     // the overlay draws it verbatim (the door-badge path's own composition).
     expect(item?.iconAnchor).toEqual({ hx: 9, hy: 10 });
     expect(item?.label).toBe('work_well_00');
@@ -48,7 +48,7 @@ describe('computeGeometryDebugItems', () => {
     const items = computeGeometryDebugItems(snapshotOf([building(1, 99, 4, 4)]), TYPES);
     const item = items[0];
     expect(item?.door).toBeUndefined();
-    expect(item?.iconAnchor).toEqual({ hx: 9, hy: 8 }); // anchor (8,8) + the default offset — the badge draws here
+    expect(item?.iconAnchor).toEqual({ hx: 9, hy: 8 }); // anchor (8,8) + the default offset - the badge draws here
     expect(item?.label).toBe('#99');
   });
 
@@ -59,11 +59,11 @@ describe('computeGeometryDebugItems', () => {
 });
 
 describe('buildingSetFingerprint', () => {
-  it('moves when a building is added, upgraded IN PLACE, or moved — and not otherwise', () => {
+  it('moves when a building is added, upgraded IN PLACE, or moved - and not otherwise', () => {
     const base = snapshotOf([building(1, 7, 4, 4)]);
     const fp = buildingSetFingerprint(base, TYPES);
     expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4)]), TYPES)).toBe(fp); // same set
-    // In-place level-up (same entity, new type) — the case placementBlockerVersion misses.
+    // In-place level-up (same entity, new type) - the case placementBlockerVersion misses.
     expect(buildingSetFingerprint(snapshotOf([building(1, 8, 4, 4)]), TYPES)).not.toBe(fp);
     expect(buildingSetFingerprint(snapshotOf([building(1, 7, 4, 4), building(2, 7, 9, 9)]), TYPES)).not.toBe(
       fp,

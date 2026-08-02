@@ -23,7 +23,7 @@ describe('extractStringTable', () => {
   });
 
   it('drops only a malformed stringn line, not the bare strings that follow it', () => {
-    // A non-numeric `stringn` id must NOT poison the running id — the following bare `string`
+    // A non-numeric `stringn` id must NOT poison the running id - the following bare `string`
     // still lands on the id set by the last VALID `stringn`.
     const table = extractStringTable(
       parseIniSections('[text]\nstringn 3 "Three"\nstringn zz "Bad"\nstring "Four"\n'),
@@ -37,7 +37,7 @@ describe('extractStringTable', () => {
   });
 
   it('keeps CP1250 text intact through the readable-.ini seam (iniBytesToSections)', () => {
-    // "BŁĘKITNY" as CP1250 bytes (Ł=0xA3, Ę=0xCA) — the real map strings.ini codepage.
+    // "BŁĘKITNY" as CP1250 bytes (Ł=0xA3, Ę=0xCA) - the real map strings.ini codepage.
     const bytes = Uint8Array.from('[text]\nstringn 0 "B\xa3\xcaKITNY"\n', (c) => c.charCodeAt(0) & 0xff);
     const table = extractStringTable(iniBytesToSections(bytes));
     expect(table[0]).toBe('BŁĘKITNY');
@@ -73,7 +73,7 @@ describe('extractStringnById (singular-only, multiplier-free)', () => {
 
 describe('latin1ToCp1250', () => {
   it('re-decodes byte-preserving latin1 as CP1250 display text', () => {
-    // 0xB3 is ³ in latin1 but ł in CP1250 — the .cif seam decodes latin1, display needs CP1250.
+    // 0xB3 is ³ in latin1 but ł in CP1250 - the .cif seam decodes latin1, display needs CP1250.
     expect(latin1ToCp1250('B\xb3\xeakitny')).toBe('Błękitny');
   });
 });

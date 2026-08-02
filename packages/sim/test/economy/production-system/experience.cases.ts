@@ -20,7 +20,7 @@ describe('productionSystem grants the operator profession XP per completed batch
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the batch really finished
     const xp = sim.world.get(worker, Settler).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // one batch = one experienceFactor grant
-    // Profession-level: only the seeded plank-gate entry + the general track — the good-specific
+    // Profession-level: only the seeded plank-gate entry + the general track - the good-specific
     // carpenter_plank track stays untouched.
     expect(xp.size).toBe(2);
   });
@@ -55,7 +55,7 @@ describe('productionSystem accrues the experience bonus as fractional output', (
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
-    seedRepeats(sim, worker, 200); // far past mastery — the curve clamps at 100%
+    seedRepeats(sim, worker, 200); // far past mastery - the curve clamps at 100%
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(2); // 1 base + 1 whole bonus
     expect(sim.world.has(mill, ProductionBonus)).toBe(false); // nothing fractional left pending
@@ -66,7 +66,7 @@ describe('productionSystem accrues the experience bonus as fractional output', (
     const { mill, worker } = sawmill(sim, [[PLANK, 19]]);
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     const ctx = ctxOf(sim);
-    // An in-flight plank batch has reserved the last free slot (capacity 20, 19 held) — its own deposit
+    // An in-flight plank batch has reserved the last free slot (capacity 20, 19 held) - its own deposit
     // is unconditional, so the banked bonus unit must not take it.
     sim.world.add(mill, Production, { cycles: [{ elapsed: 1, duration: 20, goodType: PLANK }] });
     sim.world.add(mill, ProductionBonus, { remainders: new Map([[PLANK, ONE]]) });
@@ -96,7 +96,7 @@ describe('productionSystem accrues the experience bonus as fractional output', (
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(ONE); // held, not lost
   });
 
-  it('a withdrawal frees the slot and releases the held unit — production may never complete again', () => {
+  it('a withdrawal frees the slot and releases the held unit - production may never complete again', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill, worker } = sawmill(sim, [
       [WOOD, 1],

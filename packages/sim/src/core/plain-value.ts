@@ -1,5 +1,5 @@
 /**
- * True for a `{}` literal (or a null-prototype record) — the object shape `Object.keys` enumerates. A `Set`
+ * True for a `{}` literal (or a null-prototype record) - the object shape `Object.keys` enumerates. A `Set`
  * or a `Date` yields no keys there and a class instance only its own fields, so `hashSimState` and the
  * snapshot's `clonePlain` share this test rather than each reading part of a value, or none of it.
  */

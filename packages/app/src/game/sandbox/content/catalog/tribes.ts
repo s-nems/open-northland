@@ -50,7 +50,7 @@ import type { SandboxContentExtras } from '../types.js';
 import { SANDBOX_ANIMAL_TRIBES } from './animals.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
-/** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) — the hearts phase's duration key. The
+/** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) - the hearts phase's duration key. The
  *  sim transcribes the same id (`systems/family/children/make-love.ts` MAKE_LOVE_ATOMIC_ID); both pin to the
  *  decoded define, so neither can drift alone. */
 const MAKE_LOVE_ATOMIC = 78;
@@ -104,7 +104,7 @@ export function buildSandboxTribes(
         animation: gatherer.animation,
       })),
       // The family pair: kiss/kissed (atomics 20/21) time the wedding, make_love (78) times the
-      // hearts phase — bound for the woman/civilist jobs like the original's `setatomic 5/6` rows.
+      // hearts phase - bound for the woman/civilist jobs like the original's `setatomic 5/6` rows.
       { jobType: JOB_WOMAN, atomicId: KISS_ATOMIC, animation: 'viking_woman_kiss' },
       { jobType: JOB_WOMAN, atomicId: KISSED_ATOMIC, animation: 'viking_woman_kissed' },
       { jobType: JOB_WOMAN, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_woman_make_love' },
@@ -112,7 +112,7 @@ export function buildSandboxTribes(
       { jobType: JOB_CIVILIST, atomicId: KISSED_ATOMIC, animation: 'viking_civilist_kissed' },
       { jobType: JOB_CIVILIST, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_civilist_make_love' },
       // The gossip pair: talk/listen (atomics 14/15) time the chat rounds and carry the channel-3
-      // refill pulses — bound for the woman/civilist jobs like the original's `setatomic 5/6 14/15`
+      // refill pulses - bound for the woman/civilist jobs like the original's `setatomic 5/6 14/15`
       // rows; every other trade resolves them through the sim's civilist fallback (the `baseatomics 6`
       // inheritance, systems/social/gossip/).
       { jobType: JOB_WOMAN, atomicId: TALK_ATOMIC, animation: WOMAN_TALK_ANIMATION },
@@ -157,7 +157,7 @@ export function buildSandboxTribes(
   }
   for (const tribe of extras.tribes ?? []) {
     if (!tribes.has(tribe.typeId)) {
-      // Extra tribes (enemy raiders, wildlife) carry no tech graph — an empty edge list gates nothing, so their
+      // Extra tribes (enemy raiders, wildlife) carry no tech graph - an empty edge list gates nothing, so their
       // buildings stay enabled without needing an enabler settler.
       tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id, hitpoints: HUMAN_HITPOINTS });
     }

@@ -15,7 +15,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * Two fully-defined playable civilizations fighting through the real `Simulation.step()` schedule,
- * each resolving its own asymmetric weapon + attack-animation binding — the integration
+ * each resolving its own asymmetric weapon + attack-animation binding - the integration
  * `playable-tribes.test.ts` (pure `mayAttack` predicate) and `combat-system.test.ts` (one tribe, direct
  * `combatSystem()` call) leave uncovered.
  *
@@ -30,13 +30,13 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 
 const VIKING = 1;
 const SAXON = 2;
-const SOLDIER = 1; // job 1 — each tribe binds its attack weapon + atomic 81 to job 1
+const SOLDIER = 1; // job 1 - each tribe binds its attack weapon + atomic 81 to job 1
 
 /**
  * Two PLAYABLE civilizations with deliberately **asymmetric** combat data:
- *  - viking (tribe 1): `viking_mace` — damage 50 vs unarmored, reach 2, attack animation length 4.
- *  - saxon  (tribe 2): `saxon_sword` — damage 30 vs unarmored, reach 3, attack animation length 6.
- * Both carry a `jobEnables` tech-graph edge (so each is a civilization, `isPlayableTribe` true) — a
+ *  - viking (tribe 1): `viking_mace` - damage 50 vs unarmored, reach 2, attack animation length 4.
+ *  - saxon  (tribe 2): `saxon_sword` - damage 30 vs unarmored, reach 3, attack animation length 6.
+ * Both carry a `jobEnables` tech-graph edge (so each is a civilization, `isPlayableTribe` true) - a
  * different edge kind each, to underline that the asymmetry is just data, not a special case.
  */
 function twoCivContent(): ContentSet {
@@ -66,7 +66,7 @@ function twoCivContent(): ContentSet {
         maxRange: 2,
         damage: { '0': 50 },
       },
-      // saxon soldier (tribe 2, job 1): a weaker but longer-reach sword — asymmetric on BOTH axes.
+      // saxon soldier (tribe 2, job 1): a weaker but longer-reach sword - asymmetric on BOTH axes.
       {
         typeId: 8,
         id: 'saxon_sword',
@@ -83,7 +83,7 @@ function twoCivContent(): ContentSet {
         id: 'viking',
         // attack atomic 81 -> viking_attack (length 4): the viking's swing duration.
         atomicBindings: [{ jobType: SOLDIER, atomicId: 81, animation: 'viking_attack' }],
-        // a `house` tech edge — a civilization (so isPlayableTribe is true).
+        // a `house` tech edge - a civilization (so isPlayableTribe is true).
         jobEnables: [{ jobType: SOLDIER, kind: 'house', targetId: 4 }],
       },
       {
@@ -91,7 +91,7 @@ function twoCivContent(): ContentSet {
         id: 'saxon',
         // attack atomic 81 -> saxon_attack (length 6): a DIFFERENT swing duration than the viking's.
         atomicBindings: [{ jobType: SOLDIER, atomicId: 81, animation: 'saxon_attack' }],
-        // a `good` tech edge (a different kind than the viking's) — also a civilization.
+        // a `good` tech edge (a different kind than the viking's) - also a civilization.
         jobEnables: [{ jobType: SOLDIER, kind: 'good', targetId: 3 }],
       },
     ],
@@ -112,7 +112,7 @@ function fighterAt(sim: Simulation, x: number, y: number, tribe: number, hitpoin
   return fighterAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, tribe, hitpoints);
 }
 
-/** A combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell (2 nodes on a
+/** A combatant standing exactly on half-cell node (hx, hy) - reach geometry a whole cell (2 nodes on a
  *  row) cannot express, e.g. an ODD node distance from a cell-anchored fighter. */
 function fighterAtNode(sim: Simulation, hx: number, hy: number, tribe: number, hitpoints: number): Entity {
   return fighterAtPosition(sim, positionOfNode(hx, hy), tribe, hitpoints);
@@ -154,7 +154,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
     const content = twoCivContent();
     const sim = new Simulation({ seed: 1, content, map: grass(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, 1_000_000);
-    const saxon = fighterAt(sim, 1, 0, SAXON, 1_000_000); // 2 nodes away — within both weapons' reach
+    const saxon = fighterAt(sim, 1, 0, SAXON, 1_000_000); // 2 nodes away - within both weapons' reach
 
     sim.step(); // the full schedule: combatSystem picks targets, atomicSystem starts the swings
 
@@ -165,7 +165,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
     const vEffect = sim.world.get(viking, CurrentAtomic).effect;
     const sEffect = sim.world.get(saxon, CurrentAtomic).effect;
     // ASYMMETRIC weapon binding: the viking swings the viking mace (50 dmg), the saxon the saxon sword
-    // (30 dmg) — each resolves ITS OWN weapontypes row off settler.tribe, never a shared/hardcoded value.
+    // (30 dmg) - each resolves ITS OWN weapontypes row off settler.tribe, never a shared/hardcoded value.
     expect(vEffect).toMatchObject({ kind: 'attack', target: saxon, damage: 50 });
     expect(sEffect).toMatchObject({ kind: 'attack', target: viking, damage: 30 });
 
@@ -177,11 +177,11 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
 
   it("the saxon's longer reach lets it strike a viking the viking cannot yet hit back", () => {
     // The saxon sword reaches 3 nodes; the viking mace only 2. Placed 3 nodes apart, only the saxon has a
-    // valid target this tick — the asymmetric reach band is a real, data-driven combat difference.
+    // valid target this tick - the asymmetric reach band is a real, data-driven combat difference.
     const content = twoCivContent();
     const sim = new Simulation({ seed: 1, content, map: grass(6, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, 1_000_000);
-    const saxon = fighterAtNode(sim, 3, 0, SAXON, 1_000_000); // 3 nodes — saxon reach 3, viking reach 2
+    const saxon = fighterAtNode(sim, 3, 0, SAXON, 1_000_000); // 3 nodes - saxon reach 3, viking reach 2
 
     sim.step();
 
@@ -212,7 +212,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
       const content = twoCivContent();
       const sim = new Simulation({ seed: 7, content, map: grass(5, 1) });
       fighterAt(sim, 0, 0, VIKING, 500);
-      fighterAt(sim, 1, 0, SAXON, 500); // 2 nodes — inside both reach bands, so the skirmish really runs
+      fighterAt(sim, 1, 0, SAXON, 500); // 2 nodes - inside both reach bands, so the skirmish really runs
       for (let i = 0; i < 60; i++) sim.step();
       return sim.hashState();
     };

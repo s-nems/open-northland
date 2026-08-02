@@ -6,22 +6,22 @@ export const societyContent = {
       // The woodcutter (job 1) plays "viking_chop" for the harvest atomic (24); the planner
       // resolves its duration through this binding -> atomicAnimations length below. The eat atomic
       // (10, the original's eat-slot id) binds to "viking_eat" for every job (the woodcutter's row
-      // is enough for the slice — a settler eats with the eat atomic regardless of trade). The
+      // is enough for the slice - a settler eats with the eat atomic regardless of trade). The
       // sleep atomic (8, the original's sleep-slot id) binds to "viking_sleep" the same way.
       atomicBindings: [
         { jobType: 1, atomicId: 24, animation: 'viking_chop' },
-        // The MINER (job 5) plays "viking_mine" for the stone harvest atomic (25) — the planner
+        // The MINER (job 5) plays "viking_mine" for the stone harvest atomic (25) - the planner
         // resolves the chip duration through this binding -> atomicAnimations length below.
         { jobType: 5, atomicId: 25, animation: 'viking_mine' },
         { jobType: 1, atomicId: 10, animation: 'viking_eat' },
         { jobType: 1, atomicId: 8, animation: 'viking_sleep' },
-        // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" — the planner
+        // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" - the planner
         // resolves its duration through this binding -> atomicAnimations length below.
         { jobType: 1, atomicId: 12, animation: 'viking_pray' },
         // The attack atomic (81, the original's `setatomic <job> 81 "..._attack"` slot) binds to
-        // "viking_attack" — the CombatSystem resolves the swing's duration through this binding.
+        // "viking_attack" - the CombatSystem resolves the swing's duration through this binding.
         { jobType: 1, atomicId: 81, animation: 'viking_attack' },
-        // The HUNTER (job 15) binds the SAME attack atomic (81) to "viking_hunter_attack" — the
+        // The HUNTER (job 15) binds the SAME attack atomic (81) to "viking_hunter_attack" - the
         // original's `setatomic 15 81 "viking_hunter_attack"`. A hunter's strike on prey reuses the
         // combat attack path; the CombatSystem resolves its swing duration through this binding.
         { jobType: 15, atomicId: 81, animation: 'viking_hunter_attack' },
@@ -30,15 +30,15 @@ export const societyContent = {
         { jobType: 18, atomicId: 29, animation: 'viking_reap' },
         { jobType: 18, atomicId: 34, animation: 'viking_sow' },
         { jobType: 18, atomicId: 35, animation: 'viking_water' },
-        // The gossip pair: talk (14) / listen (15), the original's `setatomic 5/6 14/15` slots — the
+        // The gossip pair: talk (14) / listen (15), the original's `setatomic 5/6 14/15` slots - the
         // GossipSystem resolves the round duration and the channel-3 refill pulses through these.
         { jobType: 1, atomicId: 14, animation: 'viking_talk' },
         { jobType: 1, atomicId: 15, animation: 'viking_listen' },
       ],
       // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
-      // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
+      // (buildingEnabled) reads this - the smithy can only be placed once a carpenter settler exists.
       // (2) the WOODCUTTER (job 1) unlocks producing PLANK (good 2): the production gate (goodEnabled)
-      // reads this — a sawmill can't make planks until a woodcutter is alive in the tribe, even when
+      // reads this - a sawmill can't make planks until a woodcutter is alive in the tribe, even when
       // its own carpenter operator is present. The HQ/sawmill (houses 1/2) carry no house edge so
       // they stay ungated for placement; the slice always has a woodcutter so the golden is unaffected.
       jobEnables: [
@@ -46,7 +46,7 @@ export const societyContent = {
         { jobType: 1, kind: 'good', targetId: 2 },
       ],
       // The XP threshold (the `needfor*` half): a `needforgood` on PLANK (good 2, 30 repeats of the
-      // woodcutter-wood track typeId 1) — the accrued-XP gate on top of the `jobEnables` who-unlocks-it
+      // woodcutter-wood track typeId 1) - the accrued-XP gate on top of the `jobEnables` who-unlocks-it
       // gate, exercised by `settlerMeetsNeed`/`experienceRequirementMet` (progression-system.test.ts).
       // It also arms the per-operator PRODUCTION gate (`startCycleFor`): a carpenter may not craft
       // planks until it earned those repeats, so production fixtures spawn their operators pre-seeded
@@ -60,7 +60,7 @@ export const societyContent = {
       ],
     },
     {
-      // An ANIMAL tribe (typeId 9): a recorded `[tribetype]` with **no** `jobEnables` tech graph —
+      // An ANIMAL tribe (typeId 9): a recorded `[tribetype]` with **no** `jobEnables` tech graph -
       // the data signature `isAnimalTribe` recognises (only a civilization carries `jobEnables`). It
       // binds the attack atomic (81) so an animal *could* swing, which lets the combat test prove the
       // animal is left out of the **player-vs-player** drive by its tribe class, not by being unarmed.
@@ -72,7 +72,7 @@ export const societyContent = {
     {
       // An AGGRESSIVE animal tribe (bear, typeId 10): like the wolves it carries no `jobEnables` tech
       // graph (so `isAnimalTribe` is true), but its `animaltypes` record below sets `aggressive`, so it
-      // DOES run the civ-vs-animal attack drive — a bear charges a nearby settler, and the settler
+      // DOES run the civ-vs-animal attack drive - a bear charges a nearby settler, and the settler
       // fights back (the mutual `mayAttack` relation). Binds the attack atomic (81) so it can swing.
       typeId: 10,
       id: 'test_bear',
@@ -81,13 +81,13 @@ export const societyContent = {
     {
       // A decorative-fauna animal tribe (bee, typeId 11): a known animal tribe (no `jobEnables`) whose
       // `animaltypes` record sets `cannotBeAttacked`, so a civilization is EXEMPT from attacking it
-      // (the bee is never a valid target) — even though the record also flags it aggressive.
+      // (the bee is never a valid target) - even though the record also flags it aggressive.
       typeId: 11,
       id: 'test_bees',
     },
     {
       // A PASSIVE-but-PROVOKABLE animal tribe (boar, typeId 12): a known animal tribe (no `jobEnables`)
-      // whose `animaltypes` record sets `getAngry` (and NOT `aggressive`) — it picks no fight on its
+      // whose `animaltypes` record sets `getAngry` (and NOT `aggressive`) - it picks no fight on its
       // own, but if STRUCK it turns hostile for `angryGameTime` ticks (the provoked-anger half). Binds
       // the attack atomic (81) so a provoked boar can swing back.
       typeId: 12,
@@ -96,16 +96,16 @@ export const societyContent = {
     },
     {
       // A CATCHABLE prey animal tribe (cow, typeId 13): a known animal tribe (no `jobEnables`) whose
-      // `animaltypes` record sets `catchable` (and is passive — not aggressive, not getAngry). An
+      // `animaltypes` record sets `catchable` (and is passive - not aggressive, not getAngry). An
       // ordinary civilization leaves it alone, but a HUNTER (job 15) may strike it (the hunter-strike
-      // mechanic). It binds no attack atomic — prey doesn't fight back unless provoked, and a plain cow
+      // mechanic). It binds no attack atomic - prey doesn't fight back unless provoked, and a plain cow
       // isn't even `getAngry`.
       typeId: 13,
       id: 'test_cow',
     },
     {
       // A CATCHABLE-and-PROVOKABLE prey animal tribe (deer, typeId 14): `catchable` AND `getAngry` (NOT
-      // aggressive). A hunter's strike on it is the PROVOCATION SOURCE — the hit stamps an `Anger` timer
+      // aggressive). A hunter's strike on it is the PROVOCATION SOURCE - the hit stamps an `Anger` timer
       // so the deer fights back, exactly the source the anger timer waits on. Binds the attack atomic so
       // a provoked deer can swing back.
       typeId: 14,
@@ -121,7 +121,7 @@ export const societyContent = {
   // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
   // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
   // `Health`-stamp reads; the wolves (tribe 9) deliberately have NO record (the "known animal tribe
-  // with no animaltypes record" path — not aggressive, never targeted). A `cannotBeAttacked` bee
+  // with no animaltypes record" path - not aggressive, never targeted). A `cannotBeAttacked` bee
   // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
   animals: [
     // The bear also carries herd params so the spawnAnimalHerd command has a real group to place: a
@@ -130,7 +130,7 @@ export const societyContent = {
     // 6 from its own stay point (maximumDistanceToStayPoint, the animalWanderSystem territory leash).
     // `moveSpeed 8` (the real cow/boar value) gives it a data-pinned walking pace: it walks ONE/8
     // tile/tick (the MoveSpeed stamp), exercising the per-entity movement pace. `runSpeed 4` mirrors
-    // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim —
+    // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim -
     // no run/sprint gait exists; it proves the spawn ignores the param.
     {
       id: 'bear',
@@ -146,14 +146,14 @@ export const societyContent = {
       moveSpeed: 8,
       runSpeed: 4,
     },
-    // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) — the spawn places
+    // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) - the spawn places
     // exactly one and adds no HerdMember.
     { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
     // The butterfly is a DECORATIVE `hitpoints 0` record (the real butterflies/bees/mosquitos shape):
-    // a swarm effect, not a creature — spawnAnimalHerd spawns nothing for it.
+    // a swarm effect, not a creature - spawnAnimalHerd spawns nothing for it.
     { id: 'butterfly', tribeType: 15, hitpointsAdult: 0, maximumGroupSize: 2 },
     // The boar is PASSIVE but PROVOKABLE: `getAngry` (NOT `aggressive`) with an `angryGameTime` of 10
-    // — struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture.
+    // - struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture.
     {
       id: 'boar',
       tribeType: 12,
@@ -167,7 +167,7 @@ export const societyContent = {
     // row below, not this record.
     { id: 'cow', tribeType: 13, catchable: true, hitpointsAdult: 1000, maximumCadaverSize: 4 },
     // The deer is CATCHABLE AND PROVOKABLE: `catchable` + `getAngry` (NOT aggressive), `angryGameTime`
-    // 10 — a hunter's strike provokes it (the provocation SOURCE), then it fights back for 10 ticks.
+    // 10 - a hunter's strike provokes it (the provocation SOURCE), then it fights back for 10 ticks.
     {
       id: 'deer',
       tribeType: 14,
@@ -198,14 +198,14 @@ export const societyContent = {
     { id: 'viking_sow', name: 'viking_sow', length: 3 },
     { id: 'viking_water', name: 'viking_water', length: 3 },
     { id: 'viking_eat', name: 'viking_eat', length: 5 },
-    // Interruptible like the original's outdoor sleep (`interruptable 1`) — a sleeper obeys an order at
+    // Interruptible like the original's outdoor sleep (`interruptable 1`) - a sleeper obeys an order at
     // once, while an unmarked clip (eat, the swings) defaults non-interruptible and parks orders.
     { id: 'viking_sleep', name: 'viking_sleep', length: 6, interruptible: true },
     { id: 'viking_pray', name: 'viking_pray', length: 7 },
     // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
-    // pulses totalling the 4000-unit full bar — `viking_civilist_talk`), compressed to a short
+    // pulses totalling the 4000-unit full bar - `viking_civilist_talk`), compressed to a short
     // fixture length so gossip tests run in a handful of ticks. They also carry the original's voice
-    // cues (`event <at> 34 61` — PLAY_SOUND_FX naming the SocialTalk `logicSoundType`): the talker's
+    // cues (`event <at> 34 61` - PLAY_SOUND_FX naming the SocialTalk `logicSoundType`): the talker's
     // opening line at frame 0, the listener's response mid-clip.
     {
       id: 'viking_talk',
@@ -235,7 +235,7 @@ export const societyContent = {
     { id: 'deer_attack', name: 'deer_attack', length: 4 },
   ],
   // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
-  // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the
+  // (good 1, the narrow `(job, good)` specialization) and a general track (no good) - so the
   // ProgressionSystem prefers the wood track when chopping wood and the general one otherwise. The
   // carpenter (job 2) has both shapes too so the production grant can prove it bypasses the
   // good-specific track; the carriers (jobs 36 and 24) carry the transport-trade general track.

@@ -3,19 +3,19 @@ import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 
-/** Banner width (design px) — fits a "<held> — klik: …, Esc: …" hint in font10. */
+/** Banner width (design px) - fits a "<held> - klik: …, Esc: …" hint in font10. */
 const BANNER_WIDTH = 260;
 /** Banner top offset + text inset (design px). */
 const BANNER_OFFSET_Y = 2;
 const BANNER_TEXT_INSET_Y = 3;
 
-/** The "what's held" banner shared by the placement and good-drop controllers — a window-chrome strip
+/** The "what's held" banner shared by the placement and good-drop controllers - a window-chrome strip
  *  beside the tool panel showing the held item + its click/cancel hint. Only the hint text differs; the
  *  geometry, chrome and per-frame re-placement live here. */
 export interface HeldItemBanner {
   /** Draw or replace the banner with `text` (the fully-formatted hint). */
   show(text: string): void;
-  /** Re-place the banner text against the live canvas size — call once per frame. */
+  /** Re-place the banner text against the live canvas size - call once per frame. */
   place(): void;
   /** Clear the banner graphics + text (leaving the mode). */
   clear(): void;

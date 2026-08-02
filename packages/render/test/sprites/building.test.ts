@@ -13,12 +13,12 @@ import type { DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
 /**
- * Unit tests for the building frame-selection resolvers — the per-type house bob, layer-qualified
+ * Unit tests for the building frame-selection resolvers - the per-type house bob, layer-qualified
  * (multi-.bmd) bindings, the construction-stage stack, the animated state overlay (the mill rotor),
  * and the finished-sprite set the construction rise excludes.
  */
 
-describe('resolveSpriteBobId — per-type building binding', () => {
+describe('resolveSpriteBobId - per-type building binding', () => {
   /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
     return drawItem('building', typeId !== undefined ? { typeId } : {});
@@ -51,7 +51,7 @@ describe('resolveSpriteBobId — per-type building binding', () => {
   });
 });
 
-describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding', () => {
+describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', () => {
   /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
     return drawItem('building', typeId !== undefined ? { typeId } : {});
@@ -95,7 +95,7 @@ describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding'
   });
 });
 
-describe('resolveConstructionDraws — construction-stage stack for an under-construction building', () => {
+describe('resolveConstructionDraws - construction-stage stack for an under-construction building', () => {
   /** A building draw item at a given construction progress percent (omit = finished). */
   function site(typeId: number, builtPct?: number): DrawItem {
     return drawItem('building', { typeId, ...(builtPct !== undefined ? { builtPct } : {}) });
@@ -115,7 +115,7 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
   };
 
   it('shows only the grey foundation at 0% and the full overlap mid-build, in stacking order', () => {
-    // Each draw carries its own [fromPct,toPct] window — the per-pixel reveal maps progress into it.
+    // Each draw carries its own [fromPct,toPct] window - the per-pixel reveal maps progress into it.
     expect(resolveConstructionDraws(binding, site(2, 0))).toEqual([{ bob: 102, fromPct: 0, toPct: 50 }]);
     expect(resolveConstructionDraws(binding, site(2, 30))).toEqual([
       { bob: 102, fromPct: 0, toPct: 50 },
@@ -126,7 +126,7 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
 
   it('keeps a scaffold past its own window while a higher-stack layer still reveals over it', () => {
     // At 99% the two scaffolds (windows end at 50/70) are long past their own toPct, but the body above
-    // them (bob 101, [20,100]) is still revealing, so they stay drawn under it — the roof grows on the
+    // them (bob 101, [20,100]) is still revealing, so they stay drawn under it - the roof grows on the
     // scaffold instead of the scaffold vanishing at 70%.
     expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([
       { bob: 102, fromPct: 0, toPct: 50 },
@@ -137,7 +137,7 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
 
   it('retires a top-stack teardown overlay at its own window (nothing above covers it)', () => {
     // The frank-well shape: a full-window body (bob 1, [0,100]) with a teardown overlay drawn ON TOP
-    // (bob 2, [0,30]). The overlay is the highest stack layer, so nothing will cover it — it must come
+    // (bob 2, [0,30]). The overlay is the highest stack layer, so nothing will cover it - it must come
     // down at its own 30% window, not linger to completion.
     const well: BuildingTypeBinding = {
       byType: {},
@@ -157,7 +157,7 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
   });
 
   it('returns null for a finished building, an unmapped type, and a table-less/plain binding', () => {
-    expect(resolveConstructionDraws(binding, site(2))).toBeNull(); // no builtPct — finished
+    expect(resolveConstructionDraws(binding, site(2))).toBeNull(); // no builtPct - finished
     expect(resolveConstructionDraws(binding, site(999, 30))).toBeNull(); // type has no stage table
     expect(resolveConstructionDraws({ byType: {}, default: 11 }, site(2, 30))).toBeNull();
     expect(resolveConstructionDraws(20, site(2, 30))).toBeNull(); // plain-number binding
@@ -174,7 +174,7 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
   });
 });
 
-describe('buildTimeThreshold — progress → TimeMask threshold within a stage window', () => {
+describe('buildTimeThreshold - progress → TimeMask threshold within a stage window', () => {
   it('maps the window linearly onto 0–255 (window start → 0, window end → 255)', () => {
     expect(buildTimeThreshold(0.2, 20, 100)).toBe(0);
     expect(buildTimeThreshold(0.6, 20, 100)).toBe(128);
@@ -190,7 +190,7 @@ describe('buildTimeThreshold — progress → TimeMask threshold within a stage 
   });
 });
 
-describe('resolveBuildingOverlayDraw — the animated state overlay (the mill rotor)', () => {
+describe('resolveBuildingOverlayDraw - the animated state overlay (the mill rotor)', () => {
   /** A mill draw item: finished by default; `working` = mid production cycle. */
   function mill(opts: { working?: boolean; builtPct?: number; typeId?: number } = {}): DrawItem {
     return drawItem('building', {
@@ -237,7 +237,7 @@ describe('resolveBuildingOverlayDraw — the animated state overlay (the mill ro
   });
 });
 
-describe('finishedBuildingBobKeys — the finished-sprite set excluded from the construction rise', () => {
+describe('finishedBuildingBobKeys - the finished-sprite set excluded from the construction rise', () => {
   it('keys every type bob + the default (bare and layer-qualified), so only scaffold stages survive', () => {
     // Two finished homes (a bare default + a layer-qualified tier) plus construction-only scaffold bobs.
     const binding: BuildingTypeBinding = {
@@ -252,7 +252,7 @@ describe('finishedBuildingBobKeys — the finished-sprite set excluded from the 
     expect(finished.has(bobKey({ bob: 1 }))).toBe(true);
     expect(finished.has(bobKey({ bob: 11, layer: 'viking4' }))).toBe(true);
     expect(finished.has(bobKey({ bob: 99 }))).toBe(true);
-    // The construction-only scaffold bobs are NOT finished sprites — they rise.
+    // The construction-only scaffold bobs are NOT finished sprites - they rise.
     expect(finished.has(bobKey({ bob: 2 }))).toBe(false);
     expect(finished.has(bobKey({ bob: 3 }))).toBe(false);
     // Filtering the stage stack by this set drops the finished body (bob 1), keeps the scaffold (2, 3).
@@ -266,7 +266,7 @@ describe('finishedBuildingBobKeys — the finished-sprite set excluded from the 
     ]);
   });
 
-  it('memoizes per binding — the same set instance is returned across calls', () => {
+  it('memoizes per binding - the same set instance is returned across calls', () => {
     const binding: BuildingTypeBinding = { byType: { 2: 1 }, default: 11 };
     expect(finishedBuildingBobKeys(binding)).toBe(finishedBuildingBobKeys(binding));
   });

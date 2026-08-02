@@ -15,7 +15,7 @@ import { ctxOf } from '../fixtures/context.js';
 /** The `setProfessionProgression` command through the real command path: the `ProgressionRules`
  *  singleton is created on first use, read back through the Simulation probe, and stays absent on a
  *  world that never issues the command (so untouched command streams keep their golden hashes). */
-describe('setProfessionProgression — the rules command and its default', () => {
+describe('setProfessionProgression - the rules command and its default', () => {
   it('defaults to enabled with NO singleton entity (an untouched stream keeps its hash)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.run(5);
@@ -45,10 +45,10 @@ describe('setProfessionProgression — the rules command and its default', () =>
   });
 });
 
-describe('setJob — the profession tree gates the manual trade change', () => {
+describe('setJob - the profession tree gates the manual trade change', () => {
   const WOODCUTTER = 1;
   const CARPENTER = 2;
-  const WOOD_TRACK = 1; // factor 10 in the fixture — the amount-30 gate needs 300 raw XP
+  const WOOD_TRACK = 1; // factor 10 in the fixture - the amount-30 gate needs 300 raw XP
 
   /** A sim whose carpenter trade demands 30 wood-track repeats (`needforjob 2 30 [1]`). */
   function gatedSim(): Simulation {

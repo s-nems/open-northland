@@ -29,9 +29,9 @@ export interface SpeedButtonDeps {
   readonly stripContainer: Container;
   /** The decoded GUI art, or null → the flat-Graphics fallback (a text glyph on the button rect). */
   readonly art: GuiArt | null;
-  /** The baked strip texture (real-art path) — re-rasterized when the speed glyph changes. */
+  /** The baked strip texture (real-art path) - re-rasterized when the speed glyph changes. */
   readonly supersampled: SupersampledStrip | null;
-  /** The speed button's outline stamps + real glyph — a speed change re-frames all of them (one shape). */
+  /** The speed button's outline stamps + real glyph - a speed change re-frames all of them (one shape). */
   readonly speedSprites: readonly PalettedSprite[];
   /** The speed button's placed rect, for the fallback glyph position (undefined → no fallback glyph). */
   readonly speedBtnRect: PlacedRect | undefined;
@@ -39,18 +39,18 @@ export interface SpeedButtonDeps {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
 }
 
-/** The mounted game-speed button — the strip's one interactive glyph (×1 → ×2 → ×3; P toggles pause). */
+/** The mounted game-speed button - the strip's one interactive glyph (×1 → ×2 → ×3; P toggles pause). */
 export interface SpeedButton {
   /** Click action: un-pause if paused, else cycle to the next speed. */
   cycle(): void;
   /** The `P` key: toggle pause, remembering the running speed for the resume. */
   togglePause(): void;
-  /** Mount-time init — set the button graphic only; never push to the loop (the entry seeds its own speed). */
+  /** Mount-time init - set the button graphic only; never push to the loop (the entry seeds its own speed). */
   init(): void;
 }
 
 /**
- * The game-speed button on the tool-panel strip — the one piece of interactive strip logic (its state +
+ * The game-speed button on the tool-panel strip - the one piece of interactive strip logic (its state +
  * glyph). Real art re-frames the baked outline stamps + glyph and re-rasterizes the strip on a change;
  * the flat fallback draws a `×N`/`||` text glyph on the button rect. Kept as its own controller like the
  * panel's window controllers, so the mount just wires clicks/keys to {@link cycle}/{@link togglePause}.
@@ -60,7 +60,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
   let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
 
-  // `cause` null = mount-time init (refresh the glyph only, never push to the loop — see the call below).
+  // `cause` null = mount-time init (refresh the glyph only, never push to the loop - see the call below).
   const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
     if (speedSprites.length > 0 && art !== null) {
@@ -70,7 +70,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
         for (const s of speedSprites) {
           s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
         }
-        // The strip is baked into a texture, so re-rasterize it with the new speed glyph (rare — a click).
+        // The strip is baked into a texture, so re-rasterize it with the new speed glyph (rare - a click).
         supersampled?.redraw();
       }
     }
@@ -86,7 +86,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
         app.screen.height,
       );
     }
-    // Push to the loop only on an actual change (a click / the P key), not at mount — the entry seeds its
+    // Push to the loop only on an actual change (a click / the P key), not at mount - the entry seeds its
     // own initial loop speed (default / `?speed=`), and the panel must not clobber it with ×1 before frame 0.
     if (cause !== null) deps.onSpeedChange(spec, cause);
   };
@@ -94,7 +94,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
   return {
     cycle: () => {
       // Cause from the pre-click state: a click while paused is an un-pause, not a speed pick (a
-      // 'cycle' cause there would clobber a fractional `?speed=` seed — see gameSpeedClickCause).
+      // 'cycle' cause there would clobber a fractional `?speed=` seed - see gameSpeedClickCause).
       const cause = gameSpeedClickCause(speedControl);
       speedControl = cycleGameSpeed(speedControl);
       applySpeed(cause);

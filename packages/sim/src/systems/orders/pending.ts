@@ -12,19 +12,19 @@ import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';
 
 /**
- * DeferredOrderSystem — re-dispatches each order parked behind a non-interruptible atomic ({@link
+ * DeferredOrderSystem - re-dispatches each order parked behind a non-interruptible atomic ({@link
  * DeferredOrder}, stamped by {@link import('./guards.js').deferOrderDuringAtomic}) once that atomic is gone.
  * Scheduled directly after the atomicSystem so a completing swing frees the settler and its parked order
  * takes effect the same tick, before any drive could see the gap and re-task it (the plannerSystem already
  * ran this tick).
  *
- * The command replays through its ordinary handler, which re-validates against the current world — a target
+ * The command replays through its ordinary handler, which re-validates against the current world - a target
  * dead or a spot taken since the order was parked skips exactly like fresh bad input.
  */
 export const deferredOrderSystem: System = (world, ctx) => {
-  // Re-dispatch follows the DeferredOrder store's insertion order — park order, mirroring command FIFO.
+  // Re-dispatch follows the DeferredOrder store's insertion order - park order, mirroring command FIFO.
   for (const e of world.query(Settler, DeferredOrder)) {
-    if (world.has(e, CurrentAtomic)) continue; // still acting — the order stays parked
+    if (world.has(e, CurrentAtomic)) continue; // still acting - the order stays parked
     const parked = world.get(e, DeferredOrder).command;
     world.remove(e, DeferredOrder);
     applyDeferredOrder(world, ctx, parked);

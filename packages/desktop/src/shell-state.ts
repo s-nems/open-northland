@@ -24,9 +24,9 @@ export interface ShellPaths {
 
 export interface ShellState {
   /**
-   * A usable mod root outside the game folder: the config's hand-picked folder (re-validated — the
+   * A usable mod root outside the game folder: the config's hand-picked folder (re-validated - the
    * user may have deleted it, in which case the stale entry is dropped from the config) first, then
-   * a mod downloaded into the data root's `mods/`. Also the root the conversion uses — derived here,
+   * a mod downloaded into the data root's `mods/`. Also the root the conversion uses - derived here,
    * never taken from the renderer, so no renderer string ever reaches the filesystem.
    */
   availableModRoot(): Promise<string | undefined>;

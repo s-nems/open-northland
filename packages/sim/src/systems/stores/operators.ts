@@ -10,12 +10,12 @@ import { buildingWorkerJobs, isCarrierJob } from './workplace.js';
 // and which settlers stand at the door filling them.
 
 /**
- * The operator jobs of a workplace: its worker-slot jobs minus the transport (carrier) and gatherer slots —
+ * The operator jobs of a workplace: its worker-slot jobs minus the transport (carrier) and gatherer slots -
  * the trades that actually run the craft (the mill's millers, not its carrier, nor a collector employed to
  * fetch its raw input). A gatherer bound to a workshop gathers a raw good and delivers it into the building
- * (the building is its flag — see the gatherer drive); it never operates the craft, so it must not satisfy
+ * (the building is its flag - see the gatherer drive); it never operates the craft, so it must not satisfy
  * the production worker-presence gate. A building whose slots are all carrier/gatherer keeps them (the well's
- * one carrier is its operator — dropping it would let the well run unstaffed); named approximation, the
+ * one carrier is its operator - dropping it would let the well run unstaffed); named approximation, the
  * readable data doesn't say which slot operates.
  */
 function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
@@ -28,7 +28,7 @@ function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): Rea
 }
 
 /**
- * Whether `jobType` is one of a workplace's operator jobs — the trades whose presence at the door runs the
+ * Whether `jobType` is one of a workplace's operator jobs - the trades whose presence at the door runs the
  * craft ({@link operatorJobsOf}: worker slots minus carriers/gatherers, or the whole slot set when a
  * building is carrier/gatherer-only, e.g. a well whose lone carrier IS its operator). The planner uses it to
  * keep such an operator standing ON the door (driving production) instead of loitering beside it.
@@ -43,32 +43,32 @@ export function isWorkplaceOperator(
 }
 
 /**
- * A workplace's operator staffing right now — the two cases the production gates must tell apart:
+ * A workplace's operator staffing right now - the two cases the production gates must tell apart:
  *  - `unstaffed`: the building type declares no operator slots (a passive store / fixture). There is no worker
  *    requirement to satisfy, so it works at the base rate of {@link UNSTAFFED_OPERATOR_COUNT} anonymous
- *    operator — no entity to attribute the work to.
+ *    operator - no entity to attribute the work to.
  *  - `staffed`: the type has operator slots, and `operators` are the settlers filling them at the door right
- *    now — EMPTY when they have all walked away (a deserted workshop stops).
+ *    now - EMPTY when they have all walked away (a deserted workshop stops).
  */
 export type WorkplaceOperators =
   | { readonly kind: 'unstaffed' }
   | { readonly kind: 'staffed'; readonly operators: readonly Entity[] };
 
-/** The base-rate headcount an unstaffed-by-design workplace works at — one anonymous operator, so a passive
+/** The base-rate headcount an unstaffed-by-design workplace works at - one anonymous operator, so a passive
  *  store / fixture keeps running without anyone to staff it (see {@link WorkplaceOperators}). */
 const UNSTAFFED_OPERATOR_COUNT = 1;
 
 /**
  * The operators on station at a workplace right now: settlers whose `jobType` is one of the building's operator
  * jobs ({@link operatorJobsOf}) standing on its interaction tile (its door cell when the type's footprint names
- * one, else its anchor tile — {@link interactionNode}; the walls themselves are walk-blocked, so operators work
+ * one, else its anchor tile - {@link interactionNode}; the walls themselves are walk-blocked, so operators work
  * at the door, where the AI walk-to-station drive delivers them). Listed in ascending id (canonical) and capped
  * at the type's declared operator-slot headcount, so crowding extra settlers onto the door can't overclock past
  * the staffing plan.
  *
  * Cross-system: the ProductionSystem's cycle-START path pairs each spare operator with the product choice it
  * starts ({@link CraftSelection}); the pairing "first `running` operators work the running batches, the rest may
- * start" is a named approximation (batches are anonymous — the original's exact worker↔batch binding isn't
+ * start" is a named approximation (batches are anonymous - the original's exact worker↔batch binding isn't
  * decoded), deterministic via the ascending-id order. Its completion path charges forging piety per finished
  * military batch to the same list, and its advance path takes only the {@link operatorCountOf} of this result.
  *
@@ -99,13 +99,13 @@ export function presentOperators(
 }
 
 const UNSTAFFED: WorkplaceOperators = { kind: 'unstaffed' };
-/** Shared "has operator slots, nobody on station" result — the deserted workplace's frozen empty list. */
+/** Shared "has operator slots, nobody on station" result - the deserted workplace's frozen empty list. */
 const DESERTED: WorkplaceOperators = { kind: 'staffed', operators: Object.freeze([]) };
 
 /**
- * How many operators are working a workplace — the number {@link presentOperators}' result is worth to the
+ * How many operators are working a workplace - the number {@link presentOperators}' result is worth to the
  * production rate: one anonymous operator when the type is unstaffed-by-design, else the settlers on station.
- * The ProductionSystem advances this many separate batches by one tick each per tick (oldest first — see the
+ * The ProductionSystem advances this many separate batches by one tick each per tick (oldest first - see the
  * FIFO rule on the Production component): two millers run two independent flours in parallel, doubling
  * throughput, and a single bar never flows faster than 1× (per-batch model; observed original behaviour, the
  * exact staffing rule isn't decoded). Zero means the craft is paused.
@@ -119,7 +119,7 @@ export function operatorCountOf(operators: WorkplaceOperators): number {
   }
 }
 
-/** The seats a workplace type DECLARES — the ceiling {@link presentOperators} clamps its on-station
+/** The seats a workplace type DECLARES - the ceiling {@link presentOperators} clamps its on-station
  *  list to, read from content alone (no settler scan). */
 export function operatorSlotCapacity(world: World, ctx: SystemContext, building: Entity): number {
   const jobs = operatorJobsOf(world, ctx, building);
@@ -127,7 +127,7 @@ export function operatorSlotCapacity(world: World, ctx: SystemContext, building:
   return operatorSlotHeadcount(world, ctx, building, jobs);
 }
 
-/** The operator headcount on station at `building` — {@link operatorCountOf} of its {@link presentOperators}. */
+/** The operator headcount on station at `building` - {@link operatorCountOf} of its {@link presentOperators}. */
 export function presentOperatorCount(
   world: World,
   ctx: SystemContext,
@@ -138,7 +138,7 @@ export function presentOperatorCount(
 }
 
 /** The declared headcount across a building's operator slots (Σ `count` over `workers` whose job is in
- *  `jobs`) — the ceiling {@link presentOperators} clamps to. */
+ *  `jobs`) - the ceiling {@link presentOperators} clamps to. */
 function operatorSlotHeadcount(
   world: World,
   ctx: SystemContext,

@@ -6,11 +6,11 @@ import { testContent } from '../fixtures/content.js';
 /**
  * The snapshot PERF machinery a decoded map depends on (tens of thousands of standing resource nodes,
  * golden rule 6): `Simulation.snapshot()` is memoized per tick, and `takeSnapshot` reuses a cached
- * clone for an unchanged SCENERY entity (one carrying `Resource`/`Stump`) — evicted through the
+ * clone for an unchanged SCENERY entity (one carrying `Resource`/`Stump`) - evicted through the
  * World's touched-entity log (`add`/`remove`/`destroy` auto-log; an in-place write must go through
  * {@link World.write}).
- * These tests pin the identity contract (reuse) and, more importantly, the INVALIDATION paths — a
- * stale clone would render a harvested node as still full — plus the `verifyCaches` verifier that
+ * These tests pin the identity contract (reuse) and, more importantly, the INVALIDATION paths - a
+ * stale clone would render a harvested node as still full - plus the `verifyCaches` verifier that
  * catches a write that bypassed the seam in invariant-checked runs.
  */
 
@@ -60,7 +60,7 @@ describe('Simulation.snapshot() per-tick memo', () => {
     const sim = newSim();
     bareResource(sim, 5);
     const a = sim.snapshot();
-    // A snapshot emits one entry per alive id, so a component-less entity still changes it — `create`
+    // A snapshot emits one entry per alive id, so a component-less entity still changes it - `create`
     // must bump the version on its own rather than relying on a following `add`.
     sim.world.create();
     const b = sim.snapshot();
@@ -95,7 +95,7 @@ describe('takeSnapshot scenery clone cache', () => {
     const inB = b.entities.find((e) => e.id === (node as number));
     expect(inB).not.toBe(inA);
     expect(inB?.components.Resource).toMatchObject({ remaining: 4 });
-    // The earlier snapshot stays what it observed — clones never alias the live store.
+    // The earlier snapshot stays what it observed - clones never alias the live store.
     expect(inA?.components.Resource).toMatchObject({ remaining: 5 });
   });
 

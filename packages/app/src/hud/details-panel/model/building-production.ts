@@ -13,23 +13,23 @@ import {
 
 // The building's Produkcja model: a workshop's per-product recipe rows, or a farm's live field state.
 
-/** One product row of a workshop's Produkcja section — its icon/name on the left, the bar's live
+/** One product row of a workshop's Produkcja section - its icon/name on the left, the bar's live
  *  progress, and the hover tooltip naming the recipe's inputs. */
 export interface ProductionRow {
   readonly goodType: number;
-  /** The product's string id — the row's icon key (like {@link StockRow.goodId}). */
+  /** The product's string id - the row's icon key (like {@link StockRow.goodId}). */
   readonly goodId?: string;
   /** Further icon keys drawn beside {@link goodId} - a livestock chain row shows every ware the
    *  species' visit yields (meat + wool, meat + leather). */
   readonly extraGoodIds?: readonly string[];
   readonly label: string;
   /**
-   * The row's bar: the FRONT-RUNNER batch of this product — the highest progress among the in-flight
+   * The row's bar: the FRONT-RUNNER batch of this product - the highest progress among the in-flight
    * `Production.cycles` crafting it (a finished batch deposits and leaves the list, so the bar hands
    * over to the next-furthest batch). 0 when none runs.
    */
   readonly pct: number;
-  /** The hover tooltip's ingredient list — one "- Żelazo ×2" line per recipe input (newline-joined; the
+  /** The hover tooltip's ingredient list - one "- Żelazo ×2" line per recipe input (newline-joined; the
    *  panel prefixes the product name line), or the no-materials label for an input-less craft; empty
    *  when the inputs are unknown (no recipe). */
   readonly inputs: string;
@@ -37,22 +37,22 @@ export interface ProductionRow {
 
 /**
  * The Produkcja section's content, one of two shapes:
- *  - `recipe` — a workshop's per-product rows (one bar per producible good — a smithy 2 lists all
+ *  - `recipe` - a workshop's per-product rows (one bar per producible good - a smithy 2 lists all
  *    five wares; see {@link ProductionRow});
- *  - `fields` — a farm's live field state (the produced good's icon + the sown/growing/ripe counters),
+ *  - `fields` - a farm's live field state (the produced good's icon + the sown/growing/ripe counters),
  *    for a workplace producing a field-farmed good (`farming` on the good, no recipe): there is no
  *    recipe to show, the "production" is the fields its farmers work around the building.
  */
 export type ProductionModel =
   | {
       readonly kind: 'recipe';
-      /** One row per producible good (recipe order) — the single source both the layout's height math
+      /** One row per producible good (recipe order) - the single source both the layout's height math
        *  and the section's row loop consume, so they can never drift apart. Never empty. */
       readonly rows: readonly ProductionRow[];
     }
   | {
       readonly kind: 'fields';
-      /** The farmed good's string id — the icon key (like {@link StockRow.goodId}). */
+      /** The farmed good's string id - the icon key (like {@link StockRow.goodId}). */
       readonly goodId?: string;
       /** The farmed good's display name. */
       readonly label: string;
@@ -105,7 +105,7 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
 ): ProductionModel | null {
-  // A farm produces a field-farmed good — checked before the recipes, mirroring the sim: farmWorkGood ignores
+  // A farm produces a field-farmed good - checked before the recipes, mirroring the sim: farmWorkGood ignores
   // recipe presence and planner/system.ts ranks the farmer rung above the producer rung precisely because
   // real extracted content synthesizes abstract recipes from `logicproduction` for every producer. Wherever
   // the sim farms, the panel must show live field state, never a dead recipe bar.
@@ -125,7 +125,7 @@ export function productionModel(
   const chainRows = livestockChainRows(ctx, def, bestPct);
   if (chainRows.length > 0) return { kind: 'recipe', rows: chainRows };
   const outputs = recipeOutputs(ctx, def);
-  if (outputs.length === 0) return null; // not a producer — no Produkcja window
+  if (outputs.length === 0) return null; // not a producer - no Produkcja window
   const inputsByProduct = new Map<number, string>();
   for (const recipe of visibleRecipes(ctx, def)) {
     const product = recipe.outputs[0]?.goodType;
@@ -198,7 +198,7 @@ function livestockChainRows(
   return rows;
 }
 
-/** A recipe's inputs as the tooltip's ingredient lines — one "- Żelazo ×2" per line — or the
+/** A recipe's inputs as the tooltip's ingredient lines - one "- Żelazo ×2" per line - or the
  *  no-materials label for an input-less craft (the well). */
 function recipeInputsLabel(
   ctx: UnitPanelModelContext,

@@ -7,7 +7,7 @@ import { tribeContent } from './support.js';
 describe('playableTribes', () => {
   it('returns only the tribes carrying a jobEnables tech graph (the civilizations)', () => {
     const ids = playableTribes(tribeContent()).map((t) => t.id);
-    expect(ids).toEqual(['viking', 'frank']); // wolves/bears excluded — no jobEnables
+    expect(ids).toEqual(['viking', 'frank']); // wolves/bears excluded - no jobEnables
   });
 
   it('sorts ascending by typeId regardless of declaration order', () => {

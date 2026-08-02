@@ -32,7 +32,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('canPlaceBuilding — the free-placement collision rule', () => {
+describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
     const sim = mappedSim();
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(true);
@@ -47,19 +47,19 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     sim.step();
     // Odd-row anchors: a ring's odd-dy rows stamp one node +x (the parity shift). First hut ring:
     // x∈[4..7] on rows 5/7, x∈[5..8] on rows 4/6.
-    // Anchor (3,5): its ring reaches x 5 (rows 5/7) and x 6 (rows 4/6) — overlaps on every row
-    // (the first hut's body node (5,5) is inside too) — rejected.
+    // Anchor (3,5): its ring reaches x 5 (rows 5/7) and x 6 (rows 4/6) - overlaps on every row
+    // (the first hut's body node (5,5) is inside too) - rejected.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
     // Anchor (8,5): the new body (x∈[8..9]) clears the first zone, but its ring starts at x 7 on
-    // rows 5/7 — touching that zone at x=7 — so the zone-vs-zone rule rejects it. (The old
+    // rows 5/7 - touching that zone at x=7 - so the zone-vs-zone rule rejects it. (The old
     // body-vs-zone rule allowed this; it is exactly the tight packing the widened clearance removes.)
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 8, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
     // Anchor (9,5): its ring starts at x 8 (rows 5/7) / x 9 (rows 4/6), past the first ring's
-    // per-row ends (7 and 8) — accepted, the two reserved zones are disjoint on every row.
+    // per-row ends (7 and 8) - accepted, the two reserved zones are disjoint on every row.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2);
@@ -69,19 +69,19 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
-    // (6,6) is the level-max growth node — blocked for OTHERS via the family zone even though the
+    // (6,6) is the level-max growth node - blocked for OTHERS via the family zone even though the
     // level-0 walls don't cover it: a placement whose body would take it is rejected.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 6)).toBe(false);
   });
 
   it('keeps the reserved zone clear of blocking terrain (minimum distance from water)', () => {
     const cells = grassCells(16, 16);
-    // A water CELL at (8,5) — nodes (16..17, 10..11): the hut's reserved ring at odd-row anchor
-    // (15,9) covers x∈[14..17] on even-dy rows and x∈[15..18] on shifted odd-dy rows — too close.
+    // A water CELL at (8,5) - nodes (16..17, 10..11): the hut's reserved ring at odd-row anchor
+    // (15,9) covers x∈[14..17] on even-dy rows and x∈[15..18] on shifted odd-dy rows - too close.
     cells.typeIds[5 * 16 + 8] = WATER;
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 15, 9)).toBe(false);
-    // Three nodes further west the ring (x≤14, shifted rows x≤15) misses the water — accepted.
+    // Three nodes further west the ring (x≤14, shifted rows x≤15) misses the water - accepted.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 12, 9)).toBe(true);
     // And a zone hanging off the map edge is rejected, not clamped.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 0, 5)).toBe(false);
@@ -92,9 +92,9 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(7, 5)); // footprint-less: occupies its anchor node
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
-    // Anchor (6,5): reserved ring x∈[5..8] covers the tree at node (7,5) — rejected.
+    // Anchor (6,5): reserved ring x∈[5..8] covers the tree at node (7,5) - rejected.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5)).toBe(false);
-    // Anchor (4,5): ring x∈[3..6] misses it — accepted.
+    // Anchor (4,5): ring x∈[3..6] misses it - accepted.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 4, 5)).toBe(true);
   });
 
@@ -112,18 +112,18 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same node!
     sim.step();
-    expect(buildingsPlaced(sim)).toBe(2); // no collision model — both land, like before footprints
+    expect(buildingsPlaced(sim)).toBe(2); // no collision model - both land, like before footprints
   });
 });
 
 describe('the dense mask rule agrees with an independent derivation', () => {
   // The command gate and the overlay probe both read one memoized `Uint8Array` grid, so comparing them
-  // against each other proves nothing — and the memo verifier re-stamps through that same code. The
+  // against each other proves nothing - and the memo verifier re-stamps through that same code. The
   // oracle ({@link referenceCanPlace}) walks the blocker channels straight into sparse string sets, so a
   // wrong channel routing or wrong index arithmetic in the mask shows up here and nowhere else.
   it('matches the reference rule at every anchor with a tree, water, and a building on the map', () => {
     const cells = grassCells(16, 16);
-    cells.typeIds[5 * 16 + 8] = WATER; // blocking terrain — cell (8,5), nodes (16..17, 10..11)
+    cells.typeIds[5 * 16 + 8] = WATER; // blocking terrain - cell (8,5), nodes (16..17, 10..11)
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
@@ -161,7 +161,7 @@ describe('the dense mask rule agrees with an independent derivation', () => {
   });
 });
 
-describe('placementBlockerVersion — the shared memo key that decouples the blocker scan from the tick', () => {
+describe('placementBlockerVersion - the shared memo key that decouples the blocker scan from the tick', () => {
   // Both the build-mode overlay and the `placeBuilding` command gate re-derive the blocker grid only when
   // this value moves; keying it on the tick (the old regression) re-scanned every RAF while the game
   // played. So the version MUST hold steady across ticks yet move the instant a building/resource enters
@@ -169,7 +169,7 @@ describe('placementBlockerVersion — the shared memo key that decouples the blo
   it('holds steady across ticks while buildings and resources are unchanged', () => {
     const sim = mappedSim();
     const v0 = sim.placementBlockerVersion();
-    sim.run(10); // ten empty ticks — no building/resource churn
+    sim.run(10); // ten empty ticks - no building/resource churn
     expect(sim.placementBlockerVersion()).toBe(v0);
   });
 
@@ -210,7 +210,7 @@ describe('placementBlockerVersion — the shared memo key that decouples the blo
   });
 
   it('re-derives the COMMAND GATE when a blocker appears and again when it is destroyed', () => {
-    // The gate reads the same memoized grid, so a repeated probe must never answer from a stale stamp —
+    // The gate reads the same memoized grid, so a repeated probe must never answer from a stale stamp -
     // and `verifyCaches` must agree with a fresh derive at each step (the registered grid verifier).
     const sim = mappedSim();
     const terrain = terrainOf(sim);
@@ -230,7 +230,7 @@ describe('placementBlockerVersion — the shared memo key that decouples the blo
   });
 
   it('the verifier flags a blocker move no generation can see', () => {
-    // The version covers add/remove, not an in-place Position write — the gap the memo would otherwise
+    // The version covers add/remove, not an in-place Position write - the gap the memo would otherwise
     // serve stale. Resources never move today; this proves the tripwire fires if one ever does, so the
     // three `toEqual([])` above are a coherent verifier agreeing, not a silent bail.
     const sim = mappedSim();
@@ -240,14 +240,14 @@ describe('placementBlockerVersion — the shared memo key that decouples the blo
     canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5); // stamps the memo
     expect(sim.world.verifyCaches()).toEqual([]);
 
-    sim.world.get(tree, Position).x = positionOfNode(9, 9).x; // raw store write — no generation bump
+    sim.world.get(tree, Position).x = positionOfNode(9, 9).x; // raw store write - no generation bump
     expect(sim.world.verifyCaches().join('\n')).toContain('placementBlockerGrid');
   });
 });
 
-describe('buildable terrain channel — walkable ground that rejects building', () => {
+describe('buildable terrain channel - walkable ground that rejects building', () => {
   /** A margin landscape class: walkable for navigation, NOT buildable (a real map's exclusion ring
-   *  around a tree/rock — content/collision.ts's TERRAIN_MARGIN resolves to exactly these flags). */
+   *  around a tree/rock - content/collision.ts's TERRAIN_MARGIN resolves to exactly these flags). */
   const MARGIN = 2;
 
   function marginContent(): ContentSet {
@@ -260,7 +260,7 @@ describe('buildable terrain channel — walkable ground that rejects building', 
 
   it('rejects a footprint whose reserved zone touches a walkable-but-unbuildable cell', () => {
     const cells = grassCells(16, 16);
-    // One margin CELL at (7,5) — nodes (14..15, 10..11) — inside the hut's reserved ring at odd-row
+    // One margin CELL at (7,5) - nodes (14..15, 10..11) - inside the hut's reserved ring at odd-row
     // anchor (13,9): x∈[12..15] on rows 9/11, x∈[13..16] on the parity-shifted rows 8/10.
     cells.typeIds[5 * 16 + 7] = MARGIN;
     const sim = new Simulation({ seed: 1, content: marginContent(), map: halfCellMapFromCells(cells) });
@@ -272,7 +272,7 @@ describe('buildable terrain channel — walkable ground that rejects building', 
   });
 });
 
-describe('forced placement — authored map imports load as-is', () => {
+describe('forced placement - authored map imports load as-is', () => {
   it('places a rejected footprint when force is set (the original loads scenario houses verbatim)', () => {
     // Water under the reserved ring → the interactive rule rejects this anchor: the water CELL at
     // (5,5) covers nodes (10..11, 10..11), inside the ring of odd-row anchor (9,9) (x∈[8..11] on
@@ -296,7 +296,7 @@ describe('forced placement — authored map imports load as-is', () => {
   });
 });
 
-describe('building walk-block — houses have collision', () => {
+describe('building walk-block - houses have collision', () => {
   it('walk-blocks the body cells from the foundation tick and routes paths around them', () => {
     const sim = mappedSim(grassMap(8, 5));
     // A hut whose body occupies nodes (3,1)-(4,1): the straight west→east walk along node row 1 is
@@ -372,9 +372,9 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
 
     expect(buildingsPlaced(sim)).toBe(1);
     expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
-    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
+    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone - untouched
     expect(survivingBushes(sim)).toBe(1);
-    // The razing announces itself so render can drop the bush's static-decor quad — one event, the razed bush.
+    // The razing announces itself so render can drop the bush's static-decor quad - one event, the razed bush.
     const razed = sim.events.current().filter((ev) => ev.kind === 'berryBushRazed');
     expect(razed.map((ev) => ev.bush)).toEqual([inside]);
   });
@@ -415,10 +415,10 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
 
     expect(buildingsPlaced(sim)).toBe(1);
     expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
-    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
+    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone - untouched
     expect(survivingStumps(sim)).toBe(1);
 
-    // A stump is a live snapshot-drawn entity (never a static-decor quad), so razing it emits no event at all —
+    // A stump is a live snapshot-drawn entity (never a static-decor quad), so razing it emits no event at all -
     // the sprite pool reaps its quad when it leaves the snapshot. Proven against a stumpless control: the same
     // placement with no stump present produces the identical event stream.
     const control = mappedSim();
@@ -440,7 +440,7 @@ describe('determinism', () => {
   it('two same-seed runs through placement + rejection + pathing hash identically', () => {
     const run = (): string => {
       const sim = mappedSim();
-      createBerryBush(sim.world, { x: 6, y: 6 }); // razed by the hut below — its removal must be deterministic
+      createBerryBush(sim.world, { x: 6, y: 6 }); // razed by the hut below - its removal must be deterministic
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected
       sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 5, tribe: VIKING });

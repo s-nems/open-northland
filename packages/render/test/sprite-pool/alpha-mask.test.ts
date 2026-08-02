@@ -3,8 +3,8 @@ import { buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from '../../src/gpu/spri
 
 /**
  * The pure half of pixel-accurate picking: RGBA → 1-bit solid mask and its sampling. The canvas-backed
- * mask builder (`alphaMaskOf`) needs a real 2d context and gracefully returns null without one — the
- * picker then keeps the box hit — so the load-bearing threshold + packing + bounds logic is what tests
+ * mask builder (`alphaMaskOf`) needs a real 2d context and gracefully returns null without one - the
+ * picker then keeps the box hit - so the load-bearing threshold + packing + bounds logic is what tests
  * here.
  */
 
@@ -27,7 +27,7 @@ describe('buildAlphaMask / maskSolidAt', () => {
   });
 
   it('packs across byte boundaries (a 3×3 sheet spans two bytes)', () => {
-    // Solid checkerboard: indices 0,2,4,6,8 — index 8 lives in the second packed byte.
+    // Solid checkerboard: indices 0,2,4,6,8 - index 8 lives in the second packed byte.
     const alphas = [255, 0, 255, 0, 255, 0, 255, 0, 255];
     const mask = buildAlphaMask(rgbaWithAlpha(3, 3, alphas), 3, 3);
     for (let y = 0; y < 3; y++) {

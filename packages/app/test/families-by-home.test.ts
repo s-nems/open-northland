@@ -3,10 +3,10 @@ import { familiesByHome } from '../src/game/snapshot.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * `familiesByHome` — the ONE snapshot grouping the door badges, the assign-home highlight, and the
+ * `familiesByHome` - the ONE snapshot grouping the door badges, the assign-home highlight, and the
  * home panel all consume (the mirror of the sim's `familiesOf`; the sim command is the validator).
- * Pinned here because its trickiest branches — the orphaned minor, the child housed apart from its
- * parents, couple-vs-single classification — regress silently through any single consumer's test.
+ * Pinned here because its trickiest branches - the orphaned minor, the child housed apart from its
+ * parents, couple-vs-single classification - regress silently through any single consumer's test.
  */
 
 const HOME = 100;

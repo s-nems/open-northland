@@ -4,10 +4,10 @@ import type { UnitPanelModel } from '../model/index.js';
 import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
-/** The building selection model — the `layoutBuilding` input narrowed off the panel model union. */
+/** The building selection model - the `layoutBuilding` input narrowed off the panel model union. */
 type BuildingModel = Extract<UnitPanelModel, { kind: 'building' }>;
 
-/** A stock cell row (icon + amount plate) — ≈22 px in the original. */
+/** A stock cell row (icon + amount plate) - ≈22 px in the original. */
 export const STOCK_ROW_H = 22;
 /** The stock section's category-tab strip (the row of eight 32×18 tab plates). */
 const STOCK_TAB_H = 18;
@@ -23,7 +23,7 @@ const NAME_H = 14;
 /** The yellow-green selected strip under the name (≈5 px in the original). */
 const UNDERLINE_H = 5;
 /**
- * Buttons start this far below the general body's top — the original puts the name, its underline, and a
+ * Buttons start this far below the general body's top - the original puts the name, its underline, and a
  * capacity line ("Pojemność: 100", not yet extracted) above them; the offset reserves that room.
  */
 const BUTTONS_TOP = 60;
@@ -34,7 +34,7 @@ export const PREVIEW_INSET = 4;
 /** The amount plate's height inside a {@link STOCK_ROW_H} stock cell (≈11 px in the original). */
 export const STOCK_PLATE_H = 11;
 /**
- * Stock rows per column (two columns side by side). The body always reserves all six rows — the
+ * Stock rows per column (two columns side by side). The body always reserves all six rows - the
  * original's stock window is fixed-height, not fit-to-content.
  */
 export const MAX_STOCK_ROWS = 6;
@@ -70,42 +70,42 @@ export interface BuildingLayout {
   /** The selected strip directly under the name line. */
   readonly underline: Rect;
   readonly buttons: readonly ButtonHit[];
-  /** The Construction section — replaces defence/production/stock/workers while the building is a
+  /** The Construction section - replaces defence/production/stock/workers while the building is a
    *  site (those windows mean nothing before completion). Null once built. */
   readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
-  /** One rect per Produkcja product row (same order as `ProductionModel.rows`) — the hover target the
+  /** One rect per Produkcja product row (same order as `ProductionModel.rows`) - the hover target the
    *  inputs tooltip probes; empty for a farm's fields view or no production window. */
   readonly productionRowRects: readonly Rect[];
-  /** The Magazyn section — null for a building that stores nothing (no stock slots: a home), which
+  /** The Magazyn section - null for a building that stores nothing (no stock slots: a home), which
    *  simply has no store window, matching the original's per-building window set. */
   readonly stock: SectionRect | null;
   /**
-   * Whether the stock body is the compact shape — a small store (up to {@link COMPACT_STOCK_MAX}
+   * Whether the stock body is the compact shape - a small store (up to {@link COMPACT_STOCK_MAX}
    * goods: the farm's single wheat slot, the mint's 16) drops the category tabs and sizes the body to
    * exactly its rows ({@link stockRows}); only a big store (a warehouse's full catalog) keeps the
    * original's fixed-height tabbed window. The dynamic-magazyn rule is a general one, keyed on the
-   * good count — never a per-building-type branch.
+   * good count - never a per-building-type branch.
    */
   readonly stockCompact: boolean;
   /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
   readonly stockRows: number;
   /**
-   * The eight category-tab plate rects at the top of the stock body — carried in the layout (like
+   * The eight category-tab plate rects at the top of the stock body - carried in the layout (like
    * {@link buttons}) so `mapLayout` derives the draw copy from the hit copy, and the drawn plate equals its
    * clickable rect by construction (never two independent `stockTabRects` roundings at different scales).
    * Empty for a compact/absent stock body (no tabs to click).
    */
   readonly stockTabHits: readonly Rect[];
   /** Always present: for a finished building the bound workers, for a construction site the live
-   *  building crew (the panel feeds the overlay a different selector — see panel.ts). */
+   *  building crew (the panel feeds the overlay a different selector - see panel.ts). */
   readonly workers: SectionRect;
 }
 
 /**
  * The stock body's cell rects (icon + amount plate together), column-major: the left column top→bottom,
- * then the right — the one geometry the stock rows draw into and the hover hit-test probes, so a hovered
+ * then the right - the one geometry the stock rows draw into and the hover hit-test probes, so a hovered
  * slot is exactly a drawn slot by construction. `rowsPerColumn * 2` slots: the tabbed store body reserves
  * its fixed {@link MAX_STOCK_ROWS}; a compact store (few goods, no tabs) passes its own fitted row count.
  * A slot past the current good count is simply empty. `s` is the caller's scale (the draw oversample
@@ -133,7 +133,7 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
 /**
  * A store with up to this many goods draws the compact tab-less body (fitted rows, taller panel);
  * bigger stores (the barracks' arsenal, the warehouse/HQ catalogs) keep the fixed tabbed window.
- * Sized to the biggest specialist workshop store — the mint's 16 slots — which should read on one
+ * Sized to the biggest specialist workshop store - the mint's 16 slots - which should read on one
  * page (user decision 2026-07-16); the rule stays keyed on the good count, never the building type.
  */
 const COMPACT_STOCK_MAX = 16;
@@ -141,7 +141,7 @@ const COMPACT_STOCK_MAX = 16;
 /** Which buttons the building's general section offers; upgrade, cancel-upgrade + demolish are wired.
  *  Both upgrade actions sit ABOVE demolish, matching the original's button order (housewindow
  *  110/112 before 114): Upgrade for an upgradable building (built, with a next level to rise into),
- *  Cancel-upgrade for a running upgrade site — never both at once. */
+ *  Cancel-upgrade for a running upgrade site - never both at once. */
 function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
   return [
     ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
@@ -167,7 +167,7 @@ export function layoutBuilding(
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
   // A construction site swaps production/stock/defence for the Construction window (delivered materials
-  // would otherwise read as store stock). The workers window stays — it shows the live building crew
+  // would otherwise read as store stock). The workers window stays - it shows the live building crew
   // (user-requested). The Construction body is one gauge row + one row per material line.
   const underConstruction = model.construction !== null;
   const constructionBodyH = underConstruction
@@ -176,7 +176,7 @@ export function layoutBuilding(
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;
   const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
-  // A recipe workshop reserves one row per producible good (`ProductionModel.rows` — the model is
+  // A recipe workshop reserves one row per producible good (`ProductionModel.rows` - the model is
   // the single source, the section's row loop draws the same count); a farm's field counters keep
   // the single row.
   const productionRows = model.production?.kind === 'recipe' ? Math.max(1, model.production.rows.length) : 1;

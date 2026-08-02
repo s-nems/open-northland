@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * A row-major per-cell lane: one non-negative integer per map cell — the shared shape of every decoded
+ * A row-major per-cell lane: one non-negative integer per map cell - the shared shape of every decoded
  * terrain lane (ground pattern picks, transition overlays, elevation, brightness). Each lane's own
  * `length === width * height` invariant is enforced in {@link TerrainMapFile}.
  */
@@ -27,7 +27,7 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
 
 /**
  * The transition-overlay layer of a decoded map: the original's `emt1..emt4` per-cell u8 lanes,
- * each a per-triangle overlay pick — `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
+ * each a per-triangle overlay pick - `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
  * A/B, `emt3`/`emt4` layer 2 (under layer 1) for A/B. A lane value `v < 255` selects transition
  * `⌊v/6⌋` from the map's `eatd` dictionary ({@link types}, kept verbatim so the positional join
  * survives) and pair variant `v % 6` of its six `GfxCoords` pairs; `255` = no overlay. A name
@@ -36,13 +36,13 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
 export const TerrainTransitions = z.strictObject({
   /** The map's `eatd` transition-name dictionary, verbatim (lane `⌊v/6⌋` indexes it positionally). */
   types: z.array(z.string()),
-  /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
+  /** Row-major per-cell `emt1` lane - layer 1 (topmost), triangle A. Raw u8; 255 = none. */
   a1: CellLane,
-  /** Row-major per-cell `emt2` lane — layer 1 (topmost), triangle B. Raw u8; 255 = none. */
+  /** Row-major per-cell `emt2` lane - layer 1 (topmost), triangle B. Raw u8; 255 = none. */
   b1: CellLane,
-  /** Row-major per-cell `emt3` lane — layer 2 (under layer 1), triangle A. Raw u8; 255 = none. */
+  /** Row-major per-cell `emt3` lane - layer 2 (under layer 1), triangle A. Raw u8; 255 = none. */
   a2: CellLane,
-  /** Row-major per-cell `emt4` lane — layer 2 (under layer 1), triangle B. Raw u8; 255 = none. */
+  /** Row-major per-cell `emt4` lane - layer 2 (under layer 1), triangle B. Raw u8; 255 = none. */
   b2: CellLane,
 });
 export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
@@ -51,7 +51,7 @@ export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
  * The placed landscape objects of a decoded map: the original's `emla` lane is a half-cell
  * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary. {@link types} is
  * that dictionary compacted to the names actually placed; {@link placements} is the sparse flat list of
- * `[hx, hy, typeIndex]` triples (half-cell coordinates — divide by 2 for the cell, the remainder is the
+ * `[hx, hy, typeIndex]` triples (half-cell coordinates - divide by 2 for the cell, the remainder is the
  * sub-cell corner), row-major order. A name joins onto the {@link LandscapeGfx} table.
  */
 export const TerrainObjects = z.strictObject({
@@ -62,7 +62,7 @@ export const TerrainObjects = z.strictObject({
   /**
    * Per-placement object level from the `lmlv` lane (parallel to {@link placements}, one entry per
    * triple): 1-based and counting up from the lowest state, while the type's {@link LandscapeGfx}
-   * `frames` lists are authored highest-first — so level N (= the list count) is the full-grown
+   * `frames` lists are authored highest-first - so level N (= the list count) is the full-grown
    * tree / full deposit / intact wall (the first list) and level 1 the sapling / dregs / rubble
    * (the last); consumers map `index = N − level`. Walls carry the sentinel `100` (= intact); that
    * and any other out-of-range value render the first (full) list. Absent on maps decoded before

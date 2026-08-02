@@ -4,12 +4,12 @@ import type { TerrainGraph } from './graph.js';
 import type { NodeId } from './node-id.js';
 
 /**
- * The fixed-point half-cell lattice step distance between two nodes — the admissible, consistent A*
+ * The fixed-point half-cell lattice step distance between two nodes - the admissible, consistent A*
  * heuristic for the 8-direction graph ({@link TerrainGraph.steps}: E/W cost {@link HALF_COLUMN},
  * diagonal {@link DIAGONAL_STEP}, vertical {@link HALF_ROW}), and the exact minimum cost across open
  * terrain. With `ax = |Δhx|` (half-columns) and `ay = |Δhy|` (half-rows): a diagonal covers `(1, 2)`
  * and is cheaper than its straight substitute `E + 2·N` (DIAGONAL_STEP < HALF_COLUMN + 2·HALF_ROW),
- * so use as many diagonals as either axis allows — `d = min(ax, ⌊ay/2⌋)` — and cover the remainder
+ * so use as many diagonals as either axis allows - `d = min(ax, ⌊ay/2⌋)` - and cover the remainder
  * with straight steps:
  *
  *  - `2·ax ≤ ay` (vertical dominates): `ax·DIAGONAL_STEP + (ay − 2ax)·HALF_ROW`;
@@ -30,7 +30,7 @@ export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixe
 }
 
 /**
- * {@link nodeLatticeDistance} with one endpoint already resolved to coordinates — the form A* calls
+ * {@link nodeLatticeDistance} with one endpoint already resolved to coordinates - the form A* calls
  * per discovered node, since the goal's coordinates are a loop invariant of a search.
  */
 export function latticeDistanceTo(g: TerrainGraph, bx: number, by: number, a: NodeId): Fixed {

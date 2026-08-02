@@ -26,7 +26,7 @@ import {
 // The executor applies the typed effect; the atomic id only names the animation, so any id serves.
 const ANY_ATOMIC = 24;
 
-describe('grantProductionExperience — one completed batch trains one operator', () => {
+describe('grantProductionExperience - one completed batch trains one operator', () => {
   it('accrues the job-GENERAL track, bypassing the good-specific one (profession-level XP)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const op = makeSettler(sim, CARPENTER);
@@ -68,7 +68,7 @@ describe('grantProductionExperience — one completed batch trains one operator'
   });
 });
 
-describe('grantCarryExperience — a landed delivery trains the transport trade', () => {
+describe('grantCarryExperience - a landed delivery trains the transport trade', () => {
   it('accrues the carrier general track for a carrier', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, CARRIER);
@@ -119,7 +119,7 @@ describe('AtomicSystem grants carry XP on a completed pileup', () => {
 
   it('a blocked deposit (store full) trains nothing', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const hq = headquarters(sim, 150); // at the wood capacity — no room
+    const hq = headquarters(sim, 150); // at the wood capacity - no room
     const e = makeSettler(sim, CARRIER);
     pileupAtomic(sim, e, hq);
     atomicSystem(sim.world, ctxOf(sim));

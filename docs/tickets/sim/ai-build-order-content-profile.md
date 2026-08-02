@@ -3,7 +3,7 @@
 **Area:** sim, data · **Priority:** P3
 
 `DEFAULT_BUILD_ORDER` (`packages/sim/src/systems/ai-player/build-order/entries.ts`) is a const
-table of stable content ids inside the sim — data in shape, but not authorable per scenario. A
+table of stable content ids inside the sim - data in shape, but not authorable per scenario. A
 validated IR profile would allow map and difficulty variants. No extraction source exists for the
 original HAI internals, so this is authored content, not pipeline output.
 

@@ -2,14 +2,14 @@ import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 import { type ComponentChange, diffComponents } from './snapshot-diff.js';
 
 /**
- * `dumpEntity` / `traceEntity` — the **"dump an entity"** third of the time-travel / replay inspector
+ * `dumpEntity` / `traceEntity` - the **"dump an entity"** third of the time-travel / replay inspector
  * (plan "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks, and dump an
  * entity"). `replay()` jumps to tick N and `HashTrace` finds tick N; `diffSnapshots()` shows what
- * changed across two ticks; this isolates ONE entity — its full component view at a tick, and its
- * timeline across a window — so "hash diverged at tick 432 → jump there → inspect entity 7" closes.
+ * changed across two ticks; this isolates ONE entity - its full component view at a tick, and its
+ * timeline across a window - so "hash diverged at tick 432 → jump there → inspect entity 7" closes.
  *
  * Both are pure functions of plain {@link WorldSnapshot} values (no class instances, live `Map`s, or
- * `Entity` brands — see `snapshot.ts`), so they are render-agnostic and agent-self-verifiable headless,
+ * `Entity` brands - see `snapshot.ts`), so they are render-agnostic and agent-self-verifiable headless,
  * exactly like `replay()`/`HashTrace`/`diffSnapshots()`; the human-eyed overlay consumes them rather
  * than re-walking the snapshot itself.
  *
@@ -24,7 +24,7 @@ import { type ComponentChange, diffComponents } from './snapshot-diff.js';
 
 /**
  * One entity's state at a single tick: which tick the snapshot was taken at, and the entity's full
- * component map (the verbatim {@link EntitySnapshot} components — already in sorted-name order).
+ * component map (the verbatim {@link EntitySnapshot} components - already in sorted-name order).
  */
 export interface EntityDump {
   readonly tick: number;
@@ -35,7 +35,7 @@ export interface EntityDump {
 
 /**
  * One step of an entity's timeline across a snapshot window: the tick, whether the entity is alive at
- * it, and — when alive in BOTH this snapshot and the previous one — the per-component changes since the
+ * it, and - when alive in BOTH this snapshot and the previous one - the per-component changes since the
  * previous step. A `spawned`/`despawned` flag marks the life-edges so the overlay can render birth/death
  * without diffing absence against an empty map.
  */
@@ -85,9 +85,9 @@ export function dumpEntity(snapshot: WorldSnapshot, id: number): EntityDump | nu
 }
 
 /**
- * Trace ONE entity across a window of snapshots: for each snapshot (in the order given — the caller's
+ * Trace ONE entity across a window of snapshots: for each snapshot (in the order given - the caller's
  * ascending-tick window) emit whether the entity is alive, its components when alive, the spawn/despawn
- * life-edge, and — on a survivor transition — its per-component changes vs. the previous step. The
+ * life-edge, and - on a survivor transition - its per-component changes vs. the previous step. The
  * overlay's "follow entity 7 from tick A to tick B" without re-running the whole world diff each frame.
  *
  * Pure: reads only the plain snapshots. The `changes` use the same comparison as `diffSnapshots`, so an

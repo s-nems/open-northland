@@ -50,7 +50,7 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
   for (const job of [
     { typeId: JOB_IDLE, id: 'idle', name: professionLabel('idle') },
     // The life-stage classes + the two generic adults (`jobtypes.ini` 1..6): the family mechanics'
-    // vocabulary — sex is stamped from these slugs at spawn and a girl matures into `woman`.
+    // vocabulary - sex is stamped from these slugs at spawn and a girl matures into `woman`.
     { typeId: JOB_BABY_FEMALE, id: 'baby_female' },
     { typeId: JOB_BABY_MALE, id: 'baby_male' },
     { typeId: JOB_CHILD_FEMALE, id: 'child_female' },
@@ -58,7 +58,7 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
     { typeId: JOB_WOMAN, id: 'woman' },
     { typeId: JOB_CIVILIST, id: 'civilist' },
     // One collector trade allowed on every gathered good's harvest atomic (the original's single
-    // collector fells, mines, and picks) — see {@link GATHERERS}.
+    // collector fells, mines, and picks) - see {@link GATHERERS}.
     {
       typeId: JOB_COLLECTOR,
       id: 'collector',
@@ -67,7 +67,7 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
     },
     { typeId: JOB_CARRIER, id: 'carrier', name: professionLabel('carrier') },
     // The scout's one allowed atomic is the signpost-erecting build-guide swing (jobtypes.ini 27
-    // `allowatomic 43`) — the placeSignpost flow's animation gate.
+    // `allowatomic 43`) - the placeSignpost flow's animation gate.
     {
       typeId: JOB_SCOUT,
       id: 'scout',

@@ -18,9 +18,9 @@ import { attackUnit } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
-describe('attackUnit — the explicit attack order', () => {
+describe('attackUnit - the explicit attack order', () => {
   it('stamps an AttackOrder + Engagement and chases the target REGARDLESS of sight radius', () => {
-    const far = SIGHT_RADIUS_NODES / 2 + 3; // cells — node distance SIGHT+6, beyond auto-engage sight
+    const far = SIGHT_RADIUS_NODES / 2 + 3; // cells - node distance SIGHT+6, beyond auto-engage sight
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const enemy = fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond auto-engage sight
@@ -45,7 +45,7 @@ describe('attackUnit — the explicit attack order', () => {
     for (let i = 0; i < 60 && sim.world.isAlive(enemy); i++) sim.step();
 
     expect(sim.world.isAlive(enemy)).toBe(false); // felled under the focused attack
-    expect(sim.world.has(a, AttackOrder)).toBe(false); // order dropped — no target left
+    expect(sim.world.has(a, AttackOrder)).toBe(false); // order dropped - no target left
     expect(sim.world.has(a, Engagement)).toBe(false); // and disengaged (no other enemy in sight)
   });
 
@@ -79,11 +79,11 @@ describe('attackUnit — the explicit attack order', () => {
   });
 
   it('gives up (disengages, drops the order) when the target cannot be approached into range', () => {
-    // A 3×3-cell map hand-authored at HALF-CELL resolution whose ONLY walkable node is (3, 2) — the
+    // A 3×3-cell map hand-authored at HALF-CELL resolution whose ONLY walkable node is (3, 2) - the
     // anchor node of cell (1,1); every other node is water. (A cell-resolution map cannot express this:
     // upsampling stamps a walkable 2×2 block, which always leaves an adjacent approach node.) An attacker
     // stacked on its ordered target (distance 0, below melee minRange 1) can never step into the weapon
-    // band — approachCell finds no walkable band node. The chase must give up, not loop engaged-forever.
+    // band - approachCell finds no walkable band node. The chase must give up, not loop engaged-forever.
     const boxedWidth = 6;
     const boxedTypeIds = new Array<number>(6 * boxedWidth).fill(1); // water everywhere...
     boxedTypeIds[2 * boxedWidth + 3] = 0; // ...except grass on node (3, 2)
@@ -95,7 +95,7 @@ describe('attackUnit — the explicit attack order', () => {
     };
     const sim = new Simulation({ seed: 1, content: testContent(), map: boxed });
     const a = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P0 });
-    const enemy = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P1 }); // same node (3, 2) — dist 0
+    const enemy = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P1 }); // same node (3, 2) - dist 0
 
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target: enemy });
     expect(sim.world.has(a, AttackOrder)).toBe(true); // the order was accepted

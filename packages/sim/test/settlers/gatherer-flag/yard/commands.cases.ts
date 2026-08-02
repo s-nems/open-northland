@@ -19,7 +19,7 @@ import { setGatherGood, setWorkFlag } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD, WOODCUTTER } from '../support.js';
 
-describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click)', () => {
+describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)', () => {
   const PLAYER = 0;
   // A node at half-cell coords of tile (t,0): node (2t, 0).
   const nodeOfTile = (t: number): { x: number; y: number } => ({ x: 2 * t, y: 0 });
@@ -45,7 +45,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect(sim.world.has(g, WorkFlag)).toBe(true);
     const wf = sim.world.get(g, WorkFlag);
     expect(sim.world.has(wf.flag, DeliveryFlag)).toBe(true); // marked so render draws the flag above goods
-    expect(sim.world.has(wf.flag, Stockpile)).toBe(false); // a PURE marker — it stores nothing
+    expect(sim.world.has(wf.flag, Stockpile)).toBe(false); // a PURE marker - it stores nothing
     expect(fx.toInt(sim.world.get(wf.flag, Position).x)).toBe(6);
     expect(wf.radius).toBeGreaterThan(0);
   });
@@ -63,7 +63,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect([...sim.world.query(DeliveryFlag)]).toHaveLength(1); // no second flag littered
   });
 
-  // The flag marker's node-x — the yard fixtures are a one-row map, so x alone identifies the node.
+  // The flag marker's node-x - the yard fixtures are a one-row map, so x alone identifies the node.
   const flagNodeX = (sim: Simulation, gatherer: Entity): number =>
     nodeOfPosition(
       sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x,
@@ -71,7 +71,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     ).hx;
 
   it('snaps to the node just outside an occupied resource body rather than dropping the order', () => {
-    // Clicking the patch to work means clicking the body that blocks its own cells — the click the
+    // Clicking the patch to work means clicking the body that blocks its own cells - the click the
     // player actually makes. Dropping it left the gatherer at its old flag with no feedback. A real ore
     // patch is a CLUSTER, so the body here is three nodes wide and the snap must clear all of it.
     const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
@@ -103,7 +103,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
 
   it('rejects a click with no walkable node in snapping range (mid-lake)', () => {
     // A water band wider than the snap radius: there is no nearby ground to mean, so the order stands
-    // rejected — the snap is a click tolerance, not a licence to relocate the yard anywhere.
+    // rejected - the snap is a click tolerance, not a licence to relocate the yard anywhere.
     const lake = [...Array(21).keys()].map((i) => i + 5); // half-cell columns 5..25
     const water = new Simulation({ seed: 1, content: testContent(), map: riverMap(40, 1, lake) });
     const gatherer = ownedGatherer(water, 0, 0);
@@ -175,11 +175,11 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
   });
 });
 
-describe("spawnSettler gatherGood — a decoded map's authored setproducedgood", () => {
+describe("spawnSettler gatherGood - a decoded map's authored setproducedgood", () => {
   const CARPENTER = 2; // a non-gathering trade: syncWorkFlagToJob plants it no flag
   const STONE = 4; // a fixture good whose harvest atomic (25) the woodcutter is NOT granted
 
-  /** The first canonical (ascending-id) entity — a spawn command returns no id. */
+  /** The first canonical (ascending-id) entity - a spawn command returns no id. */
   const spawned = (sim: Simulation): Entity => {
     const e = sim.world.canonicalEntities()[0];
     if (e === undefined) throw new Error('nothing spawned');
@@ -218,6 +218,6 @@ describe("spawnSettler gatherGood — a decoded map's authored setproducedgood",
 
     const other = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const c = spawn(other, CARPENTER, WOOD);
-    expect(other.world.has(c, WorkFlag)).toBe(false); // no flag to narrow — no crash, no stamp
+    expect(other.world.has(c, WorkFlag)).toBe(false); // no flag to narrow - no crash, no stamp
   });
 });

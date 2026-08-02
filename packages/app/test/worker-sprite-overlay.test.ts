@@ -15,7 +15,7 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const BUILDING = 500;
 /** A one-facing, four-frame idle loop at one frame per tick, laid out so the atlas frame's `x` IS the bob
- *  id — so a drawn sprite reads back as `IDLE_START + clock % IDLE_FRAMES`, revealing its clock. */
+ *  id - so a drawn sprite reads back as `IDLE_START + clock % IDLE_FRAMES`, revealing its clock. */
 const IDLE_START = 10;
 const IDLE_FRAMES = 4;
 const frame = (bob: number): [number, AtlasFrame] => [
@@ -70,7 +70,7 @@ describe('WorkerSpriteOverlay animation clock', () => {
     const tick = 5;
     const snapshot = snapshotOf(
       [
-        worker(1), // out working — animates on the sim tick
+        worker(1), // out working - animates on the sim tick
         // Mid-exchange INSIDE the store it staffs. Resolving this needs the store itself, which is why the
         // overlay must hand the builder the whole snapshot: narrowed to the workers, no building is left
         // for the enterable-store scan to find and this worker animates like the one outside.
@@ -114,12 +114,12 @@ describe('WorkerSpriteOverlay hit boxes', () => {
 });
 
 describe('WorkerSpriteOverlay display-object pool', () => {
-  /** A staffed building whose `crew` workers all carry ids unique to `round` — the panel one building later. */
+  /** A staffed building whose `crew` workers all carry ids unique to `round` - the panel one building later. */
   function crew(round: number, size: number): Ent[] {
     return [...Array.from({ length: size }, (_, i) => worker(round * 1000 + i + 1)), STORE];
   }
 
-  /** The overlay's retained display objects — its container is the only child it puts on the stage. */
+  /** The overlay's retained display objects - its container is the only child it puts on the stage. */
   function retained(stage: Container): number {
     return stage.children[0]?.children.length ?? 0;
   }
@@ -130,7 +130,7 @@ describe('WorkerSpriteOverlay display-object pool', () => {
 
     overlay.update(snapshotOf(crew(0, MAX_WORKERS), 0), BUILDING, FIELD);
     const afterFirstPanel = retained(stage);
-    expect(afterFirstPanel).toBeGreaterThan(0); // it really drew — the bound below is not vacuous
+    expect(afterFirstPanel).toBeGreaterThan(0); // it really drew - the bound below is not vacuous
 
     // Every round is a different building with a wholly different crew, as clicking through a settlement
     // is. Keying the pool by entity id grew it by a full crew per round and never released the old ones.

@@ -4,7 +4,7 @@ import type { ContentStatus } from './content-state.js';
 import type { Locale } from './i18n/index.js';
 
 /**
- * The desktop shell's IPC vocabulary — one shared module so the main process, the preload bridge,
+ * The desktop shell's IPC vocabulary - one shared module so the main process, the preload bridge,
  * the pipeline child, and the setup renderer agree on channel names and message shapes.
  */
 

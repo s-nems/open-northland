@@ -7,28 +7,28 @@ import { buildPaletteLut, identityPalette, type PaletteLutResult } from './palet
 import { readSourceFile } from './source-files.js';
 
 /**
- * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an owned
+ * Font extraction stage - the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an owned
  * game copy into `content/` so the renderer can draw text. It is the font twin of the GUI stage
  * ({@link import('./gui/index.js')}), reusing its pieces:
  *
  *  - **Glyph atlas.** Each `.fnt` is a CFont (id 0x3F5) wrapping the same CBobManager `.bmd` bob container
  *    the settlers/HUD use (one bob per glyph; char `c` → bob `c - 0x20`), so its bobs pack into the same
- *    atlas: an indexed atlas ({@link packIndexedBobAtlas} — palette index in red, mask in alpha) the
+ *    atlas: an indexed atlas ({@link packIndexedBobAtlas} - palette index in red, mask in alpha) the
  *    renderer colours per text-colour at draw time through a colour LUT, plus an RGBA preview
  *    ({@link packBobAtlas}) coloured with the default (`white`) font palette for human inspection. Both ride
  *    the existing `/bobs/` route (`<stem>.png` + `<stem>.atlas.json`), loaded unchanged by `loadLayer`.
  *  - **Colours.** The engine colours glyphs with a `Data/gui/palettes/font_{white,dark,dimmed,red}.pcx`
- *    palette carrier. We stack them into one `256 × 4` LUT PNG — the same mechanism as the player-colour
- *    and GUI palette LUTs — with the row order fixed by {@link FONT_COLORS} (mirrored app-side in
+ *    palette carrier. We stack them into one `256 × 4` LUT PNG - the same mechanism as the player-colour
+ *    and GUI palette LUTs - with the row order fixed by {@link FONT_COLORS} (mirrored app-side in
  *    `packages/app/src/content/font-gfx.ts`). The renderer reads an indexed glyph pixel through the LUT row
  *    for its text colour.
  *  - **Metrics.** Per font, a `content/gui/fonts/<key>.metrics.json` carries the {@link FontMetrics}: the
- *    per-glyph advance/offset/size, line height, baseline, and space bob — the layout the renderer needs
+ *    per-glyph advance/offset/size, line height, baseline, and space bob - the layout the renderer needs
  *    (the atlas gives where the pixels are; the metrics give how to lay them out). Metrics are
  *    derived from decoded font rectangles and pinned by synthetic layout tests.
  *
- * The three shipped sets — the root `Data/gui/fonts/` (the central-European set that carries the Polish
- * CP1250 glyph range) plus the `latin/` and `rus/` alternate-codepage variants — are all extracted, keyed
+ * The three shipped sets - the root `Data/gui/fonts/` (the central-European set that carries the Polish
+ * CP1250 glyph range) plus the `latin/` and `rus/` alternate-codepage variants - are all extracted, keyed
  * by variant (see {@link FONT_SOURCES}); the fonts are byte-indexed (`char = 0x20 + bobId`), so the codepage
  * a variant is read in belongs to the consuming language, not this decoder.
  *
@@ -57,7 +57,7 @@ interface FontColorSource {
 /**
  * The font text colours, in LUT-row order (row index = array index). The renderer reads an indexed glyph
  * pixel through the row named here for the colour it draws text in. This order is the contract with the app
- * (mirrored in `packages/app/src/content/font-gfx.ts`) — append, never reorder, or the app's row indices drift.
+ * (mirrored in `packages/app/src/content/font-gfx.ts`) - append, never reorder, or the app's row indices drift.
  */
 const FONT_COLORS: readonly FontColorSource[] = [
   { name: 'white', file: join(FONT_PALETTES_DIR, 'font_white.pcx') },
@@ -210,7 +210,7 @@ export async function convertFonts(
   return done;
 }
 
-/** The top-level `content/gui/fonts/manifest.json` — the app's single entry point to discover every font output. */
+/** The top-level `content/gui/fonts/manifest.json` - the app's single entry point to discover every font output. */
 export interface FontManifest {
   readonly fonts: FontResult[];
   readonly colorLut: { readonly stem: string; readonly names: string[] };

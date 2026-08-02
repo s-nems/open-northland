@@ -102,7 +102,7 @@ describe('convertPcxTree', () => {
 
   it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
     // The colour picture expands through its palette; the MASK picture's raw palette-index bytes
-    // become the alpha channel directly (the engine convention — no palette expansion for the mask).
+    // become the alpha channel directly (the engine convention - no palette expansion for the mask).
     // The IR hands the LOWERCASED normalized paths; the stage must still resolve the real-cased
     // Data/engine2d/bin/textures tree and write back into it (the /textures serving contract).
     const width = 2;

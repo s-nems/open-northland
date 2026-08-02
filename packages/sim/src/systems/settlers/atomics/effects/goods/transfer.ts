@@ -20,15 +20,15 @@ import { reapEmptyLoosePile } from './piles.js';
 /**
  * Resolve one completed `draw`: mint one unit of `goodType` onto the drawing worker's back (the `draw`
  * effect's conservation note covers why an input-less utility creates the unit). The worker reached here
- * empty — the delivery rung runs first on a loaded settler — so {@link addCarry} never merges a foreign good.
+ * empty - the delivery rung runs first on a loaded settler - so {@link addCarry} never merges a foreign good.
  */
 export function drawUtilityGood(world: World, settler: Entity, goodType: number): void {
-  addCarry(world, settler, goodType, CARRY_CAPACITY); // one unit per trip — more water/honey takes more trips
+  addCarry(world, settler, goodType, CARRY_CAPACITY); // one unit per trip - more water/honey takes more trips
 }
 
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
- * {@link Stockpile} onto the settler's back. The amount is conserved — the carrier gains exactly what
+ * {@link Stockpile} onto the settler's back. The amount is conserved - the carrier gains exactly what
  * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
  * The good's identity is not: a dish lands on the back as the edible it becomes in THIS settler's
  * hands ({@link carriedGoodForm} - the rule and its source basis live there); the bakery loses one
@@ -36,7 +36,7 @@ export function drawUtilityGood(world: World, settler: Entity, goodType: number)
  * before ordering the lift, so the delivery rung already agrees on what is being carried.
  * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
  * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
- * completing — a competing system or another carrier). A source with nothing left to give is a no-op.
+ * completing - a competing system or another carrier). A source with nothing left to give is a no-op.
  */
 export function pickupFromStore(
   world: World,
@@ -52,10 +52,10 @@ export function pickupFromStore(
     return;
   }
   const stock = world.tryGet(from, Stockpile);
-  if (stock === undefined) return; // source gone — nothing to take (don't conjure goods)
+  if (stock === undefined) return; // source gone - nothing to take (don't conjure goods)
   const have = stock.amounts.get(goodType) ?? 0;
   const moved = Math.min(amount, have);
-  if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
+  if (moved <= 0) return; // source emptied since the planner chose it - nothing to carry
   setStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);
   flushBankedBonus(world, ctx, from); // the freed slot may release a capacity-blocked bonus unit
@@ -65,7 +65,7 @@ export function pickupFromStore(
 /**
  * Deposit a settler's carried load. A **delivery flag** ({@link DeliveryFlag}) is a MARKER, not a store:
  * the load drops onto a loose ground heap on the tile the gatherer STANDS on ({@link dropCarryAtOwnTile}),
- * capped per tile — the planner walked it to a free yard tile first (`nearestFreeYardNode`), so the goods
+ * capped per tile - the planner walked it to a free yard tile first (`nearestFreeYardNode`), so the goods
  * land where its feet are and never teleport, and each heap is pinned to its own tile so relocating the
  * flag moves nothing already dropped. Any other store takes the load into its own {@link Stockpile}, capped
  * at the building type's per-good capacity, overflow staying on the settler's back (goods conserved). No-op
@@ -100,7 +100,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const have = stock.amounts.get(banked) ?? 0;
   const space = Math.max(0, capacity - have);
   const moved = Math.min(load.amount, space);
-  if (moved <= 0) return 0; // store full for this good — keep carrying
+  if (moved <= 0) return 0; // store full for this good - keep carrying
 
   setStockAmount(world, store, banked, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed

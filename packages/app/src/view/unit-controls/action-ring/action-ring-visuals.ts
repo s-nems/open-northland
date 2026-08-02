@@ -4,14 +4,14 @@ import { guiFrameIndex } from '../../../content/gui-atlas-map.js';
 import type { ActionButton, ActionIconFrame, ActionRingLayout } from '../../../hud/action-ring-layout.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../../../hud/icon-texture.js';
 
-/** Flat-fallback disc colours (only when the decoded GUI art is absent) — a wooden button + rim. */
+/** Flat-fallback disc colours (only when the decoded GUI art is absent) - a wooden button + rim. */
 const FALLBACK_FILL = 0x6b4f2a;
 const FALLBACK_RIM = 0x2a1d0e;
 
 /** One built button: its spec + the supersampled baked icon (real art) or the flat fallback disc. */
 interface ButtonVisual {
   readonly button: ActionButton;
-  /** The crisp, supersampled order-icon (real-art path) — baked once, re-placed each frame. */
+  /** The crisp, supersampled order-icon (real-art path) - baked once, re-placed each frame. */
   readonly icon: BakedIcon | null;
   readonly fallback: Graphics | null;
 }
@@ -21,7 +21,7 @@ export interface ActionRingVisualsDeps {
   readonly app: Application;
   /** The decoded GUI art, or null → the flat-Graphics disc fallback. */
   readonly art: GuiArt | null;
-  /** The ring's effective scale (uiscale × ring factor) — feeds the icon bake and the fallback rim width. */
+  /** The ring's effective scale (uiscale × ring factor) - feeds the icon bake and the fallback rim width. */
   readonly scale: number;
   /** Every button the default menu can show (built once, placed by identity per frame). */
   readonly buttons: readonly ActionButton[];
@@ -29,7 +29,7 @@ export interface ActionRingVisualsDeps {
   readonly container: Container;
 }
 
-/** The retained button graphics of the settler action ring — built once, shown/placed per frame by layout. */
+/** The retained button graphics of the settler action ring - built once, shown/placed per frame by layout. */
 export interface ActionRingVisuals {
   /** Show + place only the buttons this layout produced (hiding the rest); placed by button identity. */
   placeLayout(layout: ActionRingLayout): void;
@@ -40,7 +40,7 @@ export interface ActionRingVisuals {
 }
 
 /**
- * Build and manage the settler action ring's button graphics — the round order-icon discs (real GUI art
+ * Build and manage the settler action ring's button graphics - the round order-icon discs (real GUI art
  * baked crisp at the fractional UI scale, or flat-Graphics discs when `content/` is absent). Split from the
  * menu state machine + input in {@link import('./settler-actions.js')}: this only owns the retained
  * per-button visuals and their per-frame placement.
@@ -57,7 +57,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       ? null
       : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });
 
-  // Build every button's visual once (retained graph — placed each frame, never re-created). Keyed by the
+  // Build every button's visual once (retained graph - placed each frame, never re-created). Keyed by the
   // button object so placement is by identity, robust to a face that shows only a subset of buttons.
   const visuals: ButtonVisual[] = [];
   const visualByButton = new Map<ActionButton, ButtonVisual>();
@@ -69,7 +69,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       fallback = new Graphics();
       container.addChild(fallback);
     } else {
-      // Supersample the round order-icon into a texture (crisp at the fractional UI scale — see
+      // Supersample the round order-icon into a texture (crisp at the fractional UI scale - see
       // hud/icon-texture.ts); the display sprite is what the scene graph draws + re-places each frame.
       icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
       container.addChild(icon.display);

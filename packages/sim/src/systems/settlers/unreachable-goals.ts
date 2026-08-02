@@ -5,7 +5,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 
 /**
- * The failed-goal memo ({@link UnreachableGoals}) — written when the planner sheds a dead route
+ * The failed-goal memo ({@link UnreachableGoals}) - written when the planner sheds a dead route
  * (`releaseStaleIntent`), read by the target scans so a re-plan skips what it just failed to reach.
  *
  * Keyed by cell alone and therefore drive-agnostic: routing failed to reach that node, which is true
@@ -13,7 +13,7 @@ import type { SystemContext } from '../context.js';
  * searched target picks and the rest/sleep stand picks veto remembered cells, each keyed at the cell
  * the route actually walks (a construction site at its perimeter stand, not its bucketed door). A
  * settler's BOUND work targets (its own workplace/flag/storage/crew site, its home as the family
- * delivery sink — the sleep walk still vetoes a failed home door) are exempt, mirroring the signpost
+ * delivery sink - the sleep walk still vetoes a failed home door) are exempt, mirroring the signpost
  * gate: a settler always knows the way home, and vetoing the one legal sink would strand its load.
  * The loiter/de-stack stands and the flag yard (its own failed-route resume, `YardDeliveryRoute`)
  * stay outside it.
@@ -22,8 +22,8 @@ import type { SystemContext } from '../context.js';
 /**
  * How long a failed goal stays excluded. Comfortably longer than the stranded park
  * (`STRANDED_RETRY_TICKS`, 4 s) so the settler actually commits to a different target instead of
- * flipping back the moment it re-plans, and short enough that ground freed meanwhile — a felled tree,
- * a colleague who moved on — comes back into play within the minute. The target stays retired for the
+ * flipping back the moment it re-plans, and short enough that ground freed meanwhile - a felled tree,
+ * a colleague who moved on - comes back into play within the minute. The target stays retired for the
  * full window even if the blocker clears sooner; the settler works elsewhere meanwhile, which is the
  * trade this memo exists to make. Our recovery pacing; the original's is not readable.
  */
@@ -36,7 +36,7 @@ export const UNREACHABLE_GOAL_MEMO_TICKS = 30 * TICKS_PER_SECOND;
  */
 export const UNREACHABLE_GOAL_MEMO_SIZE = 8;
 
-/** Drop expired entries, returning the stored array untouched when none expired — the memo is read up
+/** Drop expired entries, returning the stored array untouched when none expired - the memo is read up
  *  to four times per gatherer per tick, so the common path must not allocate. Sound because deadlines
  *  ascend along the array: entries are appended with a constant lifetime, and a re-noted cell moves to
  *  the tail, so an unexpired head means nothing behind it expired either. */
@@ -64,7 +64,7 @@ export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity,
 }
 
 /**
- * Drop `e`'s expired entries, shedding the component once none are left — the memo's lifecycle step,
+ * Drop `e`'s expired entries, shedding the component once none are left - the memo's lifecycle step,
  * run from the planner prologue so a settler that recovered carries no dead state into the hash. Kept
  * out of {@link unreachableGoals} so the target scans stay pure reads.
  */
@@ -77,7 +77,7 @@ export function pruneUnreachableGoals(world: World, ctx: SystemContext, e: Entit
 }
 
 /**
- * The goals `e` should not re-target, or null when it remembers none — the fast path every settler
+ * The goals `e` should not re-target, or null when it remembers none - the fast path every settler
  * whose routes all succeeded takes. A pure read: {@link pruneUnreachableGoals} owns expiry. Probe it
  * with {@link isUnreachableGoal}; the array stays an array because at {@link UNREACHABLE_GOAL_MEMO_SIZE}
  * entries a linear probe beats building a `Set` per scan.
@@ -99,7 +99,7 @@ export function isUnreachableGoal(memo: readonly UnreachableGoal[] | null, cell:
 }
 
 /** The memo as the cell veto the index scans take (`InteractionCellIndex.nearest`'s `avoid`), or
- *  undefined when this settler remembers no failures — so the common all-routes-succeeded settler
+ *  undefined when this settler remembers no failures - so the common all-routes-succeeded settler
  *  adds no per-candidate work to its scans. */
 export function unreachableGoalVeto(
   world: World,

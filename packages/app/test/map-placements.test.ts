@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { forEachPlacement } from '../src/content/map-placements.js';
 
 /**
- * The shared `[hx, hy, typeIndex]` placement iterator — the one home for the triple stride the object,
+ * The shared `[hx, hy, typeIndex]` placement iterator - the one home for the triple stride the object,
  * collision and resource joins read a decoded map's `objects.placements` lane through.
  */
 describe('forEachPlacement', () => {

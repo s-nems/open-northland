@@ -16,7 +16,7 @@ import type { ResolvedLayer } from '../../src/index.js';
 
 const source = {} as TextureSource;
 
-/** A resolved layer whose 10x10 frame sits at draw offset (−4, −20) — a feet-anchored body. */
+/** A resolved layer whose 10x10 frame sits at draw offset (−4, −20) - a feet-anchored body. */
 const layer = (extra: Partial<ResolvedLayer> = {}): ResolvedLayer => ({
   source,
   frame: { x: 0, y: 0, width: 10, height: 10, offsetX: -4, offsetY: -20 },
@@ -51,7 +51,7 @@ describe('layerDrawBox', () => {
     const box = createLayerDrawBox();
     layerDrawBox(box, layer({ reveal: 1, scale: 2 }), 0.25, false);
     // hiddenTop counts atlas texels while every other field is scaled px, so the shift must be scaled on
-    // the way in — at scale 2 an 8-texel crop moves the drawn top 16 px, not 8.
+    // the way in - at scale 2 an 8-texel crop moves the drawn top 16 px, not 8.
     expect(box.hiddenTop).toBe(8);
     expect(box.drawnOy).toBe(box.oy + 16);
   });
@@ -70,7 +70,7 @@ describe('layerDrawBox', () => {
     layerDrawBox(risen, layer({ reveal: 1 }), 0.05, false);
     layerDrawBox(flat, layer(), undefined, false);
     // A barely-started foundation must stay clickable over the finished building's whole box, so oy/width/
-    // height ignore the crop entirely — only drawnOy/hiddenTop move.
+    // height ignore the crop entirely - only drawnOy/hiddenTop move.
     expect(risen.oy).toBe(flat.oy);
     expect(risen.width).toBe(flat.width);
     expect(risen.height).toBe(flat.height);

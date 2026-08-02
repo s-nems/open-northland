@@ -1,5 +1,5 @@
 /**
- * Intermediate-representation (IR) schemas — the single source of truth for the content model.
+ * Intermediate-representation (IR) schemas - the single source of truth for the content model.
  * These produce both runtime validation and inferred TypeScript types. Every object schema is strict:
  * unknown keys fail at the loader boundary instead of being silently stripped.
  *

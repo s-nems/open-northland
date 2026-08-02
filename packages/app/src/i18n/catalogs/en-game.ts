@@ -82,8 +82,8 @@ export const enGame = {
     selectedCount: '{count} selected',
     subjectCount: 'Subjects on the list: {count}',
     commandHint: 'Right click the world to issue a command.',
-    dropHint: '{label} — click to drop, Esc to finish',
-    placementHint: '{label} — click to build, Esc to cancel',
+    dropHint: '{label} - click to drop, Esc to finish',
+    placementHint: '{label} - click to build, Esc to cancel',
     resources: 'Resources',
     statuses: {
       ordered: 'following an order',
@@ -181,7 +181,7 @@ export const enGame = {
     house_c: 'Home assignment',
     house_d: 'Home assignment',
   },
-  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG — the details
+  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG - the details
   // panel resolves these before falling back to the raw content name (which is the untranslated slug).
   lifeStage: {
     baby_female: 'Baby (girl)',
@@ -210,12 +210,12 @@ export const enGame = {
     actions: 'Actions',
     targetSettler: 'unit',
     targetBuilding: 'building',
-    nothingArmed: 'Nothing selected — choose a unit, resource, good or tool above.',
-    armedResource: 'Armed: “{label}” resource — click the world (right click/Esc cancels).',
-    armedGood: 'Armed: “{label}” ground pile — click the world (right click/Esc cancels).',
-    armedAction: 'Armed: {label} — click a {target} (right click/Esc cancels).',
-    armedUnit: 'Armed: {label} (player {player} — {name}) — click the world (right click/Esc cancels).',
-    armedAnimal: 'Armed: “{label}” herd — click the world (right click/Esc cancels).',
+    nothingArmed: 'Nothing selected - choose a unit, resource, good or tool above.',
+    armedResource: 'Armed: “{label}” resource - click the world (right click/Esc cancels).',
+    armedGood: 'Armed: “{label}” ground pile - click the world (right click/Esc cancels).',
+    armedAction: 'Armed: {label} - click a {target} (right click/Esc cancels).',
+    armedUnit: 'Armed: {label} (player {player} - {name}) - click the world (right click/Esc cancels).',
+    armedAnimal: 'Armed: “{label}” herd - click the world (right click/Esc cancels).',
     resourceFallback: 'resource',
     goodFallback: 'good',
     needsCaption: 'Hunger, sleep, etc.',

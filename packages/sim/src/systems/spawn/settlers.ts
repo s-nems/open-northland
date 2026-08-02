@@ -32,7 +32,7 @@ import { stampDefaultStance } from '../orders/index.js';
 import { settlerHitpoints } from '../readviews/index.js';
 
 /**
- * The DATA of a settler to create — the {@link Command} `spawnSettler` payload minus its `kind`, so a
+ * The DATA of a settler to create - the {@link Command} `spawnSettler` payload minus its `kind`, so a
  * scene's direct pre-tick-0 placement and the runtime command share the one entity-assembly path (the
  * settler analogue of {@link createResourceNode}'s {@link ResourceNodeSpec}). `x`/`y` are half-cell node
  * coords, like every sim command.
@@ -41,26 +41,26 @@ export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind
 
 /**
  * The hitpoint pool a settler spawns with when its command names none. Every human carries a {@link Health}
- * pool (user decision: civilians have health too — the panel shows it, a soldier can strike them, starvation
- * drains it). The magnitude is approximated — a human's hitpoints are below the readable `.ini` (source basis
+ * pool (user decision: civilians have health too - the panel shows it, a soldier can strike them, starvation
+ * drains it). The magnitude is approximated - a human's hitpoints are below the readable `.ini` (source basis
  * "Combat hit resolution"); 300 is the sandbox scale the combat scenes and admin palette already use.
  */
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
-/** The idle/unemployed job sentinel — always a valid {@link createSettler} input, even on content whose
+/** The idle/unemployed job sentinel - always a valid {@link createSettler} input, even on content whose
  *  job table starts at typeId 1 (real ir.json has no job 0). A settler spawned idle is then re-set to
  *  `jobType: null` (see the app's `spawnIdleSettler`). */
 const IDLE_JOB_TYPE = 0;
 
 /**
- * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id — bad
+ * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id - bad
  * input, no entity created). The pure entity-construction core shared by the `spawnSettler` command handler
  * (which then announces `settlerBorn`) and the sanctioned pre-tick-0 scene helpers (which create authored
  * fixture state directly, like {@link createResourceNode}, and stamp their own bindings on the returned
- * entity — e.g. a gatherer's {@link WorkFlag}). It emits no event and takes `content` (not a full
+ * entity - e.g. a gatherer's {@link WorkFlag}). It emits no event and takes `content` (not a full
  * `SystemContext`), matching {@link createResourceNode}: the birth event belongs to the runtime seam only.
  *
- * Stamp set and order are hash-significant — keep them stable. Each optional stamp follows the
+ * Stamp set and order are hash-significant - keep them stable. Each optional stamp follows the
  * separate-optional-component pattern: absent input leaves the component off and the golden hash untouched.
  *
  * Draws four values from `rng` (one per need) to seed the settler's starting needs at a random 50–100%
@@ -99,8 +99,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   if (ageTicks !== null) {
     world.add(e, Age, { ticks: ageTicks });
   }
-  // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
-  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` — so every spawn on
+  // Every settler carries a `Health` pool. The pool comes from the content - the settler's tribe HP
+  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` - so every spawn on
   // one content base shares one value (no per-scene tuning). A command may still pass an explicit positive
   // `hitpoints` to override (admin/debug); a tribe that leaves it unset falls back to
   // {@link DEFAULT_SETTLER_HITPOINTS}.
@@ -130,7 +130,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
     world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
   }
-  // A settler spawned for a specific player carries an `Owner` — the human player's to select and order.
+  // A settler spawned for a specific player carries an `Owner` - the human player's to select and order.
   // Omitted / out-of-range leaves it neutral.
   stampOwner(world, e, spec.owner);
   // An owned settler also gets its job's default military stance (soldiers→ATTACK, scout/hunter→IGNORE, other
@@ -143,7 +143,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
 /**
  * The `spawnSettler` COMMAND handler: create a {@link Settler} from the command payload
  * ({@link createSettler}) and, when one was made, announce `settlerBorn` for render/audio. An unknown job
- * id is bad input — no entity, no event (still logged by commandSystem, so replay stays faithful).
+ * id is bad input - no entity, no event (still logged by commandSystem, so replay stays faithful).
  */
 export function spawnSettler(
   world: World,
@@ -153,7 +153,7 @@ export function spawnSettler(
   const e = createSettler(world, ctx.content, ctx.rng, command);
   if (e === null) return;
   // A commanded spawn takes its (x,y) on trust, and authored maps routinely name a cell inside a house
-  // body — push such a settler out before anything reads its position, so the work flag below plants at
+  // body - push such a settler out before anything reads its position, so the work flag below plants at
   // its real feet and render/audio see the final spot.
   evictSettlerFromBlockedSpawn(world, ctx, e);
   // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
@@ -173,10 +173,10 @@ export function spawnSettler(
  *
  * Named approximation: only a flag-harvestable pick lands, which is 573 of the decoded corpus's 819.
  * The original authors the verb for every trade, but the picks it drops have no home in this model and
- * no behavior to change — a workshop product (`baker` → `bread`) and a `fisher` → `fish` carry no work
+ * no behavior to change - a workshop product (`baker` → `bread`) and a `fisher` → `fish` carry no work
  * flag at all; a `farmer` → `wheat` is bound to its farm by the farming rule ({@link jobCanHarvest});
  * and a `hunter` → `prey` names the resource, not a good, so the hunter falls back to every good it can
- * harvest — `leather` + `meat`, which is what hunting prey yields anyway. Per-settler workshop product
+ * harvest - `leather` + `meat`, which is what hunting prey yields anyway. Per-settler workshop product
  * selection is tracked in docs/tickets/sim/authored-workshop-product-picks.md.
  */
 function stampGatherGood(
@@ -202,7 +202,7 @@ function toEquipmentSlot(input: SettlerEquipmentSlot | null | undefined): Equipm
   return { goodType: input.goodType, degreeOfUse: fx.div(fx.fromInt(pct), fx.fromInt(100)) };
 }
 
-/** Build the {@link Equipment} component value from a command payload — the `misc` list is normalised to
+/** Build the {@link Equipment} component value from a command payload - the `misc` list is normalised to
  *  the fixed {@link MISC_EQUIP_SLOTS} length (excess dropped, short padded with empty slots). */
 function equipmentFromCommand(equipment: SettlerEquipment): {
   boots: EquipmentSlot | null;

@@ -4,7 +4,7 @@ import { inflateRaw } from 'node:zlib';
 /**
  * Minimal ZIP reader for the mod-download flow (PKWARE APPNOTE 4.5 layout: end-of-central-directory
  * record → central directory → per-entry local headers). Supports the two compression methods real
- * archives use (0 = stored, 8 = deflate); ZIP64 archives are rejected — the CnMod zip is ~600 MB
+ * archives use (0 = stored, 8 = deflate); ZIP64 archives are rejected - the CnMod zip is ~600 MB
  * with ~46k entries, well inside the classic limits.
  */
 
@@ -33,7 +33,7 @@ const CENTRAL_COMMENT_LENGTH = 32;
 const CENTRAL_LOCAL_HEADER_OFFSET = 42;
 const LOCAL_NAME_LENGTH = 26;
 const LOCAL_EXTRA_LENGTH = 28;
-/** General-purpose flag bit 11: the entry name is UTF-8 (otherwise CP437; decoded as latin1 —
+/** General-purpose flag bit 11: the entry name is UTF-8 (otherwise CP437; decoded as latin1 -
  * byte-preserving and unambiguous for path handling). */
 const UTF8_NAME_FLAG = 1 << 11;
 const METHOD_STORED = 0;
@@ -62,7 +62,7 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   const tail = await readAt(fh, fileSize - span, span);
   let eocd = -1;
   for (let i = span - EOCD_MIN_SIZE; i >= 0; i--) {
-    // A real EOCD's comment length must reach exactly the end of the file — this rejects a stray
+    // A real EOCD's comment length must reach exactly the end of the file - this rejects a stray
     // signature embedded in the comment (or in trailing garbage) that a plain scan would take.
     if (
       tail.readUInt32LE(i) === EOCD_SIGNATURE &&
@@ -108,7 +108,7 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
 /**
  * Reads and decompresses one entry's bytes (via its local header, whose extra field can differ from
  * the central one). `fileSize` bounds the claimed compressed size, and the central directory's
- * uncompressed size caps the inflate output — a lying deflate member (zip bomb) fails instead of
+ * uncompressed size caps the inflate output - a lying deflate member (zip bomb) fails instead of
  * exhausting memory.
  */
 export async function readZipEntryData(

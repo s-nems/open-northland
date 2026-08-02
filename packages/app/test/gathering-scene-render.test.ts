@@ -35,7 +35,7 @@ const GOODS = {
 const WOOD_TREES = GATHERERS.find((gatherer) => gatherer.good === GOOD_WOOD)?.nodes ?? 0;
 const MUSHROOM_NODES = GATHERERS.find((gatherer) => gatherer.good === GOOD_MUSHROOM)?.nodes ?? 0;
 
-/** One gathering lane per good — worker, nodes, and its own drop-off flag on one row. The purpose-built
+/** One gathering lane per good - worker, nodes, and its own drop-off flag on one row. The purpose-built
  *  full-consumption fixture (the sandbox scene keeps its camps busy indefinitely, so it cannot witness
  *  end states like "every node consumed"). */
 const LANE_Y0 = 4;
@@ -43,7 +43,7 @@ const LANE_STEP = 2;
 const WORKER_X = 8;
 const NODE_X = 13;
 const FLAG_X = 18;
-/** Enough for the slowest lane to fully drain — clay (10 units × 6 strikes × 23-tick digs + rests)
+/** Enough for the slowest lane to fully drain - clay (10 units × 6 strikes × 23-tick digs + rests)
  *  empties around tick 5400 on this layout; 6000 leaves honest headroom. */
 const RUN_TICKS = 6000;
 

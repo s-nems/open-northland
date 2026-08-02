@@ -2,28 +2,28 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
  * The number of PLAYER slots the sim supports for now. Player ids are the half-open range
- * `[0, MAX_PLAYERS)`. A *player* is WHO controls an entity (issues orders, owns the economy) — a
+ * `[0, MAX_PLAYERS)`. A *player* is WHO controls an entity (issues orders, owns the economy) - a
  * concept ORTHOGONAL to a settler/building/vehicle's `tribe` (its civilization/species): two
  * players can both field vikings, and the `tribe` alone can't tell them apart. The cap is a
- * deliberate, revisable ceiling (the plan's "up to N players"), not a fidelity constant — raise
+ * deliberate, revisable ceiling (the plan's "up to N players"), not a fidelity constant - raise
  * it when the lobby / AI-player work needs more slots.
  */
 export const MAX_PLAYERS = 16;
 
-/** True when `player` is a valid player slot id — an integer in `[0, MAX_PLAYERS)`. */
+/** True when `player` is a valid player slot id - an integer in `[0, MAX_PLAYERS)`. */
 export function isValidPlayer(player: number): boolean {
   return Number.isInteger(player) && player >= 0 && player < MAX_PLAYERS;
 }
 
 /**
  * Which PLAYER owns/controls this entity (a settler, building, or vehicle). Orthogonal to the
- * `tribe` field those components carry — `tribe` decides look/rules/tech, `Owner.player` decides
+ * `tribe` field those components carry - `tribe` decides look/rules/tech, `Owner.player` decides
  * WHO commands it. It is the gate the app uses to decide which units the human player may select and
  * order (only its own), and the foundation the later friend/foe + AI-player work builds on.
  *
  * A **separate optional component** (the Health/Armor/MoveSpeed/JobAssignment pattern): only an
- * entity spawned WITH a valid `owner` carries one; a neutral/unowned entity — every existing spawn,
- * the golden / vertical-slice path — has none, so adding this component leaves the golden hash
+ * entity spawned WITH a valid `owner` carries one; a neutral/unowned entity - every existing spawn,
+ * the golden / vertical-slice path - has none, so adding this component leaves the golden hash
  * untouched. `player` is a plain integer (a slot id, not a position), so it hashes deterministically
  * like every other component. Determinism: set once at spawn from the command data, no RNG /
  * wall-clock.
@@ -38,10 +38,10 @@ export function ownerOf(world: World, e: Entity): number | undefined {
 }
 
 /**
- * Whether two entities are on the SAME SIDE for the economy — a settler builds/staffs/supplies a
+ * Whether two entities are on the SAME SIDE for the economy - a settler builds/staffs/supplies a
  * building only when this holds. Two players can both field the same `tribe`, so `tribe` alone cannot
  * keep their economies apart (an enemy builder raised the player's site; reported). The rule blocks
- * ONLY a cross-PLAYER pairing — two DIFFERENT explicit owners; a neutral (unowned) entity is compatible
+ * ONLY a cross-PLAYER pairing - two DIFFERENT explicit owners; a neutral (unowned) entity is compatible
  * with anyone, so every owned-settler/neutral-building fixture and the all-neutral goldens keep working
  * unchanged. In a real multi-player game every entity is owner-stamped, so the "both owned, differ" gate
  * is the exact friend/foe line.
@@ -51,7 +51,7 @@ export function sameSide(world: World, a: Entity, b: Entity): boolean {
 }
 
 /**
- * The {@link sameSide} rule on two owner ids directly — for the planner scans that carry the settler's
+ * The {@link sameSide} rule on two owner ids directly - for the planner scans that carry the settler's
  * owner as a number ({@link import('../systems/settlers/planner/context.js').PlannerContext.owner}) and read
  * the candidate's off the world. Compatible unless BOTH are explicit and differ (see {@link sameSide}).
  */
@@ -60,7 +60,7 @@ export function ownersCompatible(a: number | undefined, b: number | undefined): 
 }
 
 /**
- * {@link ownersCompatible} as a per-candidate predicate — the `onSide` gate the economy scans hand to
+ * {@link ownersCompatible} as a per-candidate predicate - the `onSide` gate the economy scans hand to
  * their shared nearest-X seams. A neutral scanner or a neutral candidate always passes.
  */
 export function sameSideAs(world: World, owner: number | undefined): (e: Entity) => boolean {
@@ -71,7 +71,7 @@ export function sameSideAs(world: World, owner: number | undefined): (e: Entity)
  * Stamp an {@link Owner} on `e` when `owner` is a valid player slot; a no-op otherwise (an omitted
  * or out-of-range `owner` leaves the entity neutral). The single stamp point shared by every spawn
  * handler (spawnSettler / placeBuilding / placeBoat), so the validity rule lives in one place. An
- * out-of-range owner is a recoverable bad input — the entity is still created, just unowned — the
+ * out-of-range owner is a recoverable bad input - the entity is still created, just unowned - the
  * same skip-don't-throw stance the handlers take for a bad type id.
  */
 export function stampOwner(world: World, e: Entity, owner: number | undefined): void {

@@ -1,9 +1,9 @@
 /**
- * `map.dat` packed grid layers — the `pck` RLE format in its two element widths: `X8el` (one byte
+ * `map.dat` packed grid layers - the `pck` RLE format in its two element widths: `X8el` (one byte
  * per element: `lmhe` height, `lmlt` landscape-object typeIds) and `X6el` (little-endian u16 per
  * element: `empa`/`empb` ground-pattern picks, `emla` object placements).
  *
- * The grid layer payloads are not raw byte arrays — they are RLE-packed and open with a 21-byte
+ * The grid layer payloads are not raw byte arrays - they are RLE-packed and open with a 21-byte
  * inner header (all u32s little-endian, offsets from the chunk payload start):
  *
  *   +0x00 u8   version        (observed 1)
@@ -19,7 +19,7 @@
  * `b` is either a run (high bit set) of `count = b & 0x7F`
  * copies of the single element that follows, or a literal (high bit clear) run of `count = b` elements
  * copied verbatim. `X8el` and `X6el` share this stream grammar exactly and differ only in element
- * width, so both directions route through one codec parameterized by {@link elementBytes} —
+ * width, so both directions route through one codec parameterized by {@link elementBytes} -
  * {@link unpackRle}/{@link packRle}. Decoding stops at exactly the declared unpacked byte length.
  */
 
@@ -46,7 +46,7 @@ const X6EL_BYTES_PER_CELL = 2;
 
 /** A decoded packed grid layer: its codec id and the unpacked row-major byte grid. */
 export interface MapLayer {
-  /** The codec id from the inner header (always `"X8el"` — the byte-per-element planes). */
+  /** The codec id from the inner header (always `"X8el"` - the byte-per-element planes). */
   readonly codec: typeof MAP_LAYER_CODEC_X8;
   /** The decoded bytes (`unpackedLength` long, row-major over the grid). */
   readonly cells: Uint8Array;
@@ -141,7 +141,7 @@ function unpackRle(p: Uint8Array, out: Uint8Array | Uint16Array, elementBytes: n
  * Shared RLE encode for both element widths: emits the packed control stream (not the inner header).
  * Runs of ≥2 identical elements become a run control (capped at 0x7F per run); everything else is a
  * literal run (also capped at 0x7F). The exact packing the original generator chose is not
- * byte-reproduced (a packer has freedom in run/literal boundaries) — what is pinned is that
+ * byte-reproduced (a packer has freedom in run/literal boundaries) - what is pinned is that
  * {@link unpackRle} recovers the input grid exactly.
  */
 function packRle(elementCount: number, get: (index: number) => number, elementBytes: number): number[] {

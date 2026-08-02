@@ -20,7 +20,7 @@ interface GuiPaletteSource {
  * palettes from `Data/gui/palettes/` (the `font_*` ones belong to the later font step; `campaignmap`/
  * `campaignbuttons`/`menu_remap` are menu/campaign, not in-game HUD), then `gui_bubbles` for the bubble
  * sheet. The renderer reads an indexed GUI atlas pixel through the row named here for its element. This
- * order is the contract with the app (mirrored in `packages/app/src/content/gui-gfx.ts`) — append, never
+ * order is the contract with the app (mirrored in `packages/app/src/content/gui-gfx.ts`) - append, never
  * reorder, or the app's row indices drift.
  */
 const GUI_PALETTES: readonly GuiPaletteSource[] = [

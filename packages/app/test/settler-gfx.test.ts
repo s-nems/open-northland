@@ -59,7 +59,7 @@ describe('buildHumanBindings', () => {
   it('derives the settler walk/chop/carry anims from the decoded sequences', () => {
     const seqs = new Map([
       ['human_man_generic_walk', { name: 'human_man_generic_walk', start: 1988, length: 96 }],
-      // Idle is the WAIT sequence played SINGLE-direction (57 isn't ×8) — the full loop, not a frozen hold.
+      // Idle is the WAIT sequence played SINGLE-direction (57 isn't ×8) - the full loop, not a frozen hold.
       ['human_man_generic_wait', { name: 'human_man_generic_wait', start: 1931, length: 57 }],
       [
         'human_man_woodcutter_work_woodcutting',
@@ -69,7 +69,7 @@ describe('buildHumanBindings', () => {
     ]);
     const bindings = buildHumanBindings(seqs);
     expect(bindings.settler).toEqual({
-      // Idle = the WHOLE wait strip as ONE direction (57 frames), not a facing-sliced 1/8 — and it ANIMATES.
+      // Idle = the WHOLE wait strip as ONE direction (57 frames), not a facing-sliced 1/8 - and it ANIMATES.
       idle: { start: 1931, dirs: 1, stride: 57 },
       moving: { start: 1988, dirs: 8, stride: 12 },
       byAtomic: { 24: { start: 5106, dirs: 8, stride: 15, phaseStart: 9 } },
@@ -82,12 +82,12 @@ describe('buildHumanBindings', () => {
 
   it('binds idle to a full-loop single-direction wait (never a frozen hold, never a facing-sliced excerpt)', () => {
     // The never-frozen guarantee: idle is a multi-frame DirectionalAnim, not a `frames: 1` still. With no
-    // decoded seq it falls back to the known-good wait range (start 1931) — single-direction (dirs 1), so
+    // decoded seq it falls back to the known-good wait range (start 1931) - single-direction (dirs 1), so
     // it plays the WHOLE 57-frame loop rather than a 1/8 slice (57 isn't a clean ×8).
     const idle = buildHumanBindings(new Map()).settler;
     const anim = typeof idle === 'number' ? undefined : idle.idle;
     expect(anim).toEqual({ start: 1931, dirs: 1, stride: 57 });
-    // Not a `frames: 1` hold — the effective cycle (frames ?? stride) is the whole strip, so it animates.
+    // Not a `frames: 1` hold - the effective cycle (frames ?? stride) is the whole strip, so it animates.
     const cycle =
       typeof anim === 'number' || anim === undefined || !('stride' in anim)
         ? 0
@@ -105,7 +105,7 @@ describe('buildHumanBindings', () => {
     });
   });
 
-  it('overlays a supplied buildingBobs map onto the constant — data wins per type, constant backs the rest', () => {
+  it('overlays a supplied buildingBobs map onto the constant - data wins per type, constant backs the rest', () => {
     // Live path: real data overrides per type (home 6 → a different bob) and adds growth-stage types
     // (2); the constant types the data does NOT cover (10/11/15) stay backed by VIKING_HOUSE01_BOBS, so
     // a partial IR degrades type-by-type instead of dropping the whole family to the generic box.
@@ -154,7 +154,7 @@ describe('carryAnimsByGood', () => {
     ['walk_iron_gold', { name: 'walk_iron_gold', start: 3044, length: 96 }],
     ['walk_potion', { name: 'walk_potion', start: 7200, length: 96 }],
     ['walk_flour', { name: 'walk_flour', start: 6100, length: 96 }],
-    ['walk_odd', { name: 'walk_odd', start: 9000, length: 17 }], // not ×8 — must be skipped
+    ['walk_odd', { name: 'walk_odd', start: 9000, length: 17 }], // not ×8 - must be skipped
   ]);
 
   /** The `[gfxwalkatomic]` answer for the civilist: honey rides the potion cycle, wool the flour sack. */
@@ -183,7 +183,7 @@ describe('carryAnimsByGood', () => {
     expect(table[10]?.moving).toMatchObject({ start: 6100 });
   });
 
-  it('omits a good the table does not list — the source says that job shows no load', () => {
+  it('omits a good the table does not list - the source says that job shows no load', () => {
     const table = carryAnimsByGood(seqs, carrySeqs, [{ typeId: 57, id: 'sheep' }]);
     expect(table[57]).toBeUndefined();
   });
@@ -233,7 +233,7 @@ describe('characterBinding', () => {
     });
   });
 
-  it('binds a non-x8 action strip facing-locked (eat/sleep/pick_up — the clipDirs reading)', () => {
+  it('binds a non-x8 action strip facing-locked (eat/sleep/pick_up - the clipDirs reading)', () => {
     const seqs = new Map([
       ['wait', { name: 'wait', start: 1931, length: 57 }],
       ['eat', { name: 'eat', start: 1530, length: 17 }],
@@ -285,7 +285,7 @@ describe('characterBinding', () => {
     // The swing pool `start` comes from the [bobseq] row, its per-direction layout from the gfxAtomics
     // map. A PARTIAL multi-list table is still a <dir>-space table: dir 0 (E) lands on facing 4, dir 1
     // (SE) on facing 5, and the unauthored facings hold empty lists (frameOf pins the pool's first
-    // frame there) — never an unremapped pass-through.
+    // frame there) - never an unremapped pass-through.
     expect(characterBinding(spec, seqs, [], undefined, frameLists)?.byAtomic).toEqual({
       81: {
         start: 2255,
@@ -306,7 +306,7 @@ describe('characterBinding', () => {
     ]);
     const swing = characterBinding(spec, seqs, [], undefined, dirLists)?.byAtomic?.[ATTACK_ATOMIC];
     // Facing order is the strip-block compass (0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N): the
-    // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring —
+    // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring -
     // GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6], data-pinned by the 123 human-body [gfxanimatomic] records.
     expect(swing).toEqual({
       start: 2255,
@@ -358,7 +358,7 @@ describe('characterBinding', () => {
     { typeId: 10, id: 'wool' },
   ];
 
-  it('binds only what the walk table names — no generic gait to mask the goods it omits', () => {
+  it('binds only what the walk table names - no generic gait to mask the goods it omits', () => {
     // wool is absent from the table, so it must stay absent from the binding: a generic fallback here
     // is what put a wood log in a honey-hauler's hands.
     const binding = characterBinding(
@@ -415,7 +415,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
   it('arming a warrior draws the same body its job does (the three weapon tables agree)', () => {
     // `pickByJob` prefers the equipped-weapon body (`WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG`) over the job
     // body (`ADULT_CHARACTER_BY_JOB`), so for every soldier/hero job that spawns with a weapon good
-    // (`WEAPON_GOOD_SLUG_BY_JOB`), the armed look MUST equal the job's own look — otherwise arming a
+    // (`WEAPON_GOOD_SLUG_BY_JOB`), the armed look MUST equal the job's own look - otherwise arming a
     // warrior would silently reskin it. This locks the composite the render relies on across all three
     // tables.
     for (const [jobStr, slug] of Object.entries(WEAPON_GOOD_SLUG_BY_JOB)) {
@@ -432,7 +432,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
     expect(YOUNG_CHARACTER_BY_JOB[2]).toBe('baby');
     expect(YOUNG_CHARACTER_BY_JOB[3]).toBe('girl');
     expect(YOUNG_CHARACTER_BY_JOB[4]).toBe('boy');
-    // The adult table must NOT claim the age-class ids — an adult fixture job 1..4 stays the default.
+    // The adult table must NOT claim the age-class ids - an adult fixture job 1..4 stays the default.
     for (const id of [1, 2, 3, 4]) expect(ADULT_CHARACTER_BY_JOB[id]).toBeUndefined();
   });
 
@@ -448,7 +448,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
   });
 });
 
-describe('carryHeadAnims — the head-borrow for head-empty carry cycles', () => {
+describe('carryHeadAnims - the head-borrow for head-empty carry cycles', () => {
   const WALK = { start: 1988, dirs: 8, stride: 12 } as const;
   const STONE_CARRY = { start: 4100, dirs: 8, stride: 12 } as const;
   const WOOD_CARRY = { start: 4580, dirs: 8, stride: 12 } as const;

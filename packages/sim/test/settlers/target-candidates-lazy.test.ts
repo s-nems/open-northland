@@ -36,7 +36,7 @@ describe('collectTargets cell indexes', () => {
     expect(constructed).toHaveBeenCalledTimes(1);
   });
 
-  it('memoizes each index for the tick — one build per accessed category', () => {
+  it('memoizes each index for the tick - one build per accessed category', () => {
     constructed.mockClear();
     const { targets } = fixture();
     expect(targets.stockpileCells).toBe(targets.stockpileCells);

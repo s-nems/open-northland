@@ -5,7 +5,7 @@ import { IR_VERSION, parseContentSet } from '../src/index.js';
  * These lock the failure surface of `validateCrossReferences` (run inside `parseContentSet`): every
  * dangling-reference branch throws, and the deliberate carve-outs (the `vehicle` jobEnables kind, the
  * unchecked `experienceTypes`) do NOT. They are the safety net the decomposed validator must keep
- * green — a refactor that drops or inverts a check surfaces here, not silently in generated content.
+ * green - a refactor that drops or inverts a check surfaces here, not silently in generated content.
  *
  * The set is hand-authored synthetic data (no game bytes): a minimal valid base plus one bad
  * reference per case. Everything not named defaults to an empty table, so each case exercises exactly
@@ -315,7 +315,7 @@ describe('validateCrossReferences', () => {
     expect(() => parseWith(overrides)).toThrow(error);
   });
 
-  /** The minimal valid set plus the deliberate carve-outs — these must NOT throw. */
+  /** The minimal valid set plus the deliberate carve-outs - these must NOT throw. */
   const ACCEPT_CASES: { name: string; overrides: Record<string, unknown> }[] = [
     { name: 'a minimal internally-consistent set', overrides: {} },
     {
@@ -336,7 +336,7 @@ describe('validateCrossReferences', () => {
       },
     },
     {
-      name: 'a wide-id experienceTypes id (carve-out — experienceTypes ids are not resolved)',
+      name: 'a wide-id experienceTypes id (carve-out - experienceTypes ids are not resolved)',
       overrides: {
         tribes: [
           {

@@ -3,7 +3,7 @@ import type { Rect } from './geometry.js';
 
 /**
  * The shared chrome of the HUD's pop-up windows (building menu, statistics, placement banner) plus the
- * hover highlight theme — one home so the look can't drift per window. Two tiers over the same geometry:
+ * hover highlight theme - one home so the look can't drift per window. Two tiers over the same geometry:
  * {@link tileBitmap} lays the decoded `bg*.pcx` wood/rust/button fills (the in-game look), and the `draw*`
  * Graphics helpers (gilt frame, bevels, tab plates, scrollbar) both frame those tiles and stand in as the
  * flat fallback when `content/` is absent. The details panel (`details-panel/chrome.ts`) draws
@@ -18,7 +18,7 @@ export const WIN_LINE_H = 12;
 /** Parchment window fill/border. */
 const WINDOW_FILL = 0x241d12;
 export const WINDOW_BORDER = 0x6b5836;
-/** Warmer wood fill used when the decoded `bg` bitmap is absent — closer to the in-game window than the
+/** Warmer wood fill used when the decoded `bg` bitmap is absent - closer to the in-game window than the
  *  near-black {@link WINDOW_FILL}, so the flat-Graphics fallback still reads as wood. */
 export const WOOD_FILL = 0x3a2c1a;
 /** The gold window frame (a bright bead between two dark lines) echoing the original's gilt border. */
@@ -27,7 +27,7 @@ const FRAME_DARK = 0x120d07;
 /** The two-tone bevel: a warm highlight on the light edge, near-black on the shadow edge. */
 const BEVEL_LIGHT = 0x8a744a;
 const BEVEL_DARK = 0x120d07;
-/** Rust headline band (the title bar) fill — the fallback when the decoded headline bitmap is absent. */
+/** Rust headline band (the title bar) fill - the fallback when the decoded headline bitmap is absent. */
 export const HEADLINE_FILL = 0x3a2a18;
 /** Tab faces: a slightly lit body for the selected (pressed-in) tab, a duller one for the rest. */
 const TAB_FILL = 0x2c2114;
@@ -128,7 +128,7 @@ export function drawHoverHighlight(g: Graphics, r: Rect): void {
   g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
 }
 
-/** Draw the close affordance (a dimmed box with an X) into `r` — the top-right close hot-region. */
+/** Draw the close affordance (a dimmed box with an X) into `r` - the top-right close hot-region. */
 export function drawCloseX(g: Graphics, r: Rect, scale: number): void {
   const m = Math.max(2, 2 * scale);
   g.rect(r.x, r.y, r.w, r.h)

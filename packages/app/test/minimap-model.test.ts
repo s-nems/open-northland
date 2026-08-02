@@ -240,7 +240,7 @@ describe('stampDot', () => {
 });
 
 describe('fillFogAlpha', () => {
-  /** A 3×2 grid: the three states across the top row, all-visible below — so a row-major write is
+  /** A 3×2 grid: the three states across the top row, all-visible below - so a row-major write is
    *  distinguishable from a transposed or wrongly strided one. */
   const GRID = {
     cellsWide: 3,
@@ -258,7 +258,7 @@ describe('fillFogAlpha', () => {
     fillFogAlpha(GRID, rgba);
 
     expect(alphaLane(rgba)).toEqual([0, FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, 0, 0, 0]);
-    // Only the alpha lane is written — the colour lanes stay the buffer's black.
+    // Only the alpha lane is written - the colour lanes stay the buffer's black.
     expect([rgba[0], rgba[1], rgba[2], rgba[4], rgba[8]]).toEqual([0, 0, 0, 0, 0]);
   });
 

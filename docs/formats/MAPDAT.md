@@ -116,8 +116,8 @@ verified stamp rule, per placement at half-cell `(x, y)` and per block-area row 
 - each row stamps `run` nodes starting at `(x + dx, y + dy)` along +x, clipped to the grid;
 - **odd-row parity shift**: when the anchor row `y` is odd and the target row `y + dy` is even, the
   whole row lands one node further +x. That stamp rule is the verified fact; the consistent
-  geometric READING — offsets authored in the even-row frame, odd lattice rows half a node to +x
-  (matching `lmtw`'s parity-dependent 6-neighbour table) — is an interpretation, not yet verified
+  geometric READING - offsets authored in the even-row frame, odd lattice rows half a node to +x
+  (matching `lmtw`'s parity-dependent 6-neighbour table) - is an interpretation, not yet verified
   visually against the running original.
 
 `lmbb` follows the same rule; it replays byte-identically on most maps, with residues consistent with

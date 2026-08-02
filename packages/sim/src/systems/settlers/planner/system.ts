@@ -9,7 +9,7 @@ import { beginPlannerPass } from './pass.js';
 import { releaseStaleIntent } from './replan.js';
 
 /**
- * PlannerSystem — the settler planner: two layered passes per tick.
+ * PlannerSystem - the settler planner: two layered passes per tick.
  *
  *  1. {@link atomicPlanner} (the *what*): for each idle settler (a job, no atomic running, not
  *     travelling), run the drive ladder (../drives/ladder.ts) and either issue a MoveGoal to walk to
@@ -36,7 +36,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // Canonical order (the pass's shared sort - see PlannerPass.settlers): the per-tick claim maps
   // hand out targets first-come-first-served, so the visit order is a pick, not a mere sweep.
   for (const e of pass.settlers) {
-    // Busy (an atomic running, a live route, a parked failed one) — leave it to play out; else the
+    // Busy (an atomic running, a live route, a parked failed one) - leave it to play out; else the
     // settler is re-planning, and every intent the previous plan left is shed first (./replan.ts).
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound)) continue;
     const settler = world.get(e, Settler);

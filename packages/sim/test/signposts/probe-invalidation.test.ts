@@ -14,8 +14,8 @@ import { HUT, mappedSim, VIKING } from '../footprint/building-placement/support.
 /**
  * The signpost placement probe (`Simulation.signpostProbe`) is memoized on `workFlagBlockerVersion`,
  * and a work flag is the one blocker that MOVES (an in-place Position write `componentGeneration`
- * cannot see). These tests pin the version's flag-move counter: after a relocation — with no
- * intervening add/remove of any blocker — the probe must report the flag's new cell blocked and its
+ * cannot see). These tests pin the version's flag-move counter: after a relocation - with no
+ * intervening add/remove of any blocker - the probe must report the flag's new cell blocked and its
  * old cell free.
  */
 
@@ -77,7 +77,7 @@ describe('signpostProbe invalidation on a work-flag move', () => {
 
   it('reports the pushed-out flag at its new cell after a placeBuilding eviction', () => {
     // End-to-end only: the placeBuilding itself bumps placementBlockerVersion, so this cannot isolate
-    // the flag-move counter — the relocate test above is the counter's regression pin.
+    // the flag-move counter - the relocate test above is the counter's regression pin.
     const sim = mappedSim();
     const g = ownedGatherer(sim, 12, 12);
     const ANCHOR = { x: 5, y: 5 };

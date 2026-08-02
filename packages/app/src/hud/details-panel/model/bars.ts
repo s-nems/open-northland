@@ -1,14 +1,14 @@
 import { ONE } from '@open-northland/sim';
 
 /**
- * The details panel's bar/percentage primitives — the gauge model + colour banding + the two clamped
+ * The details panel's bar/percentage primitives - the gauge model + colour banding + the two clamped
  * 0..100 percent helpers, shared by the settler and building model halves.
  */
 
 /**
  * One stat bar in the Ogólne section: a pinned label + a 0..100 level + the hover value text. The bars
  * show the original's satisfaction (full = content, like the original's coloured bars), not the sim's
- * rising deficit — see {@link import('./settler.js').satisfactionBars}.
+ * rising deficit - see {@link import('./settler.js').satisfactionBars}.
  */
 export interface PanelBar {
   readonly label: string;
@@ -21,13 +21,13 @@ export interface PanelBar {
 /** A bar gauge's colour band: full/high draws green, a draining stat turns orange, a nearly-empty one red. */
 export type BarTone = 'ok' | 'warn' | 'critical';
 /** Below this satisfaction/health percent a fallback bar turns orange. The banded colours are only the
- *  no-`content/` fallback — with decoded art the gauge colour comes from the original's continuous
+ *  no-`content/` fallback - with decoded art the gauge colour comes from the original's continuous
  *  `bar_hitpoints`/`bar_standart` level ramps; these band thresholds are our own choice. */
 const BAR_WARN_BELOW_PCT = 50;
 /** Below this percent a fallback bar turns red. */
 const BAR_CRITICAL_BELOW_PCT = 25;
 
-/** The green/orange/red band a 0..100 bar level falls into — the no-`content/` fallback colouring
+/** The green/orange/red band a 0..100 bar level falls into - the no-`content/` fallback colouring
  *  (`chrome.ts` `BAR_TONE_FILL`; with content the decoded `GuiBarRamp` colours the gauge instead). */
 export function barTone(pct: number): BarTone {
   if (pct < BAR_CRITICAL_BELOW_PCT) return 'critical';

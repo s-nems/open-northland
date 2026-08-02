@@ -12,7 +12,7 @@ import { atomicSystem, grantWorkExperience, trackFor } from '../../../src/system
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, GENERAL_TRACK, MINER, makeSettler, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
-describe('trackFor — (job, good) specialization lookup', () => {
+describe('trackFor - (job, good) specialization lookup', () => {
   it('prefers the good-specific track over the general one for the same job', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const track = trackFor(ctxOf(sim), WOODCUTTER, WOOD);
@@ -32,7 +32,7 @@ describe('trackFor — (job, good) specialization lookup', () => {
   });
 });
 
-describe('grantWorkExperience — accrual on a completed work atomic', () => {
+describe('grantWorkExperience - accrual on a completed work atomic', () => {
   it('trains ONLY the good-specific track when one matches (one XP row per worked resource)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
@@ -124,9 +124,9 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
       atomicSystem(sim.world, ctxOf(sim));
       sim.world.remove(e, CurrentAtomic); // shed any rest tail so the next swing starts clean
     };
-    swing(); // chop 1 of 2 — nothing extracted yet
+    swing(); // chop 1 of 2 - nothing extracted yet
     expect(sim.world.get(e, Settler).experience.size).toBe(0);
-    swing(); // the felling chop — the whole 4-unit trunk drops
+    swing(); // the felling chop - the whole 4-unit trunk drops
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(40); // 4 units × factor 10
   });
 });

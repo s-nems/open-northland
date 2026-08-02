@@ -6,17 +6,17 @@ import { clamp } from '../data/math.js';
  * meshes. The GUI art is a nearest-sampled indexed atlas (palette indices can't be linearly filtered), so
  * drawing it straight at a fractional UI scale doubles texel columns unevenly ("pixeloza"). The fix is to
  * rasterize the sprites at an integer oversample into a texture (nearest is exact at an integer zoom) and
- * then draw that resolved-RGBA texture as one ordinary `Sprite` linear-downscaled to the display size — the
+ * then draw that resolved-RGBA texture as one ordinary `Sprite` linear-downscaled to the display size - the
  * downscale is smooth, so the result is crisp with no pixeloza.
  *
  * The knowledge that lives here (not in the app callers): a WebGL render-texture is stored bottom-up, and a
  * {@link PalettedSprite} hand-rolls its own screen→clip projection assuming the on-screen Y convention (it
- * can't ride the scene-graph transform — see its class note), so rendering it into a texture lands it
+ * can't ride the scene-graph transform - see its class note), so rendering it into a texture lands it
  * upside-down. Two ways out, one per caller shape:
  * - {@link bakeToFlippedSprite}: Y-flip the whole baked sprite (negative y-scale, caller bottom-anchors).
  *   Correct only when every element is a PalettedSprite (the tool-panel strip).
- * - {@link bakeToSprite}: the source already renders upright — Pixi-native content (Graphics, Sprites) plus
- *   PalettedSprites with `flipY = true` — so the display is not flipped (caller top-anchors). Use this when
+ * - {@link bakeToSprite}: the source already renders upright - Pixi-native content (Graphics, Sprites) plus
+ *   PalettedSprites with `flipY = true` - so the display is not flipped (caller top-anchors). Use this when
  *   the source mixes PalettedSprites with Pixi-native primitives (the details panel).
  *
  * The app forces a WebGL backend (`gpu/pixi-app.ts` `preference: 'webgl'`), so this inversion is fixed; a
@@ -24,12 +24,12 @@ import { clamp } from '../data/math.js';
  */
 /**
  * The integer oversample a supersampled bake needs. The display sprite spans `scale × resolution`
- * device px per design px; merely covering that (`ceil`) is not enough — at a near-integer device
+ * device px per design px; merely covering that (`ceil`) is not enough - at a near-integer device
  * scale (e.g. the 1.4× default on DPR 2 → 2.8 → ss 3) the downscale ratio lands ≈1 and the linear
  * tap barely averages, leaving nearest-hard palette edges (jagged icon rims on Retina). So the bake
  * targets double the device coverage: `floor(2×)` pins the downscale ratio into (1, 2], where every
  * device px is fully covered by the GPU's 2×2 linear tap (a ratio above 2 would undersample) and
- * hard palette edges resolve anti-aliased. Integer device scales stay pixel-exact — each device px
+ * hard palette edges resolve anti-aliased. Integer device scales stay pixel-exact - each device px
  * then averages a uniform block of one source texel. The `ceil` term only bites below 0.5 device px
  * per design px, where `floor(2×)` alone would upscale (there the (1, 2] guarantee yields to "never
  * upscale"). `floor` is the caller's quality floor (a
@@ -44,7 +44,7 @@ export function oversampleFor(scale: number, resolution: number, floor: number, 
 }
 
 export interface SupersampledTexture {
-  /** The baked, linear-downscaled display sprite — the caller adds it to the scene + positions it. Y-flipped
+  /** The baked, linear-downscaled display sprite - the caller adds it to the scene + positions it. Y-flipped
    *  by {@link bakeToFlippedSprite} (bottom-anchor), upright by {@link bakeToSprite} (top-anchor). */
   readonly display: Sprite;
   /** Re-rasterize `source` into the texture (call after a mesh in it changes frame). */
@@ -53,8 +53,8 @@ export interface SupersampledTexture {
 }
 
 /**
- * Rasterize `source` — a detached container already placed at an integer oversample into a `texW × texH`
- * box — into an off-screen texture and return it as one `Sprite` linear-downscaled by `invScale`
+ * Rasterize `source` - a detached container already placed at an integer oversample into a `texW × texH`
+ * box - into an off-screen texture and return it as one `Sprite` linear-downscaled by `invScale`
  * (= displayScale ÷ oversample). `flipDisplay` negates the sprite's y-scale (see the module note): the
  * all-PalettedSprite path bakes upside-down and flips here (bottom-anchor); the mixed / `flipY`-per-mesh
  * path bakes upright and does not (top-anchor). Owns the texture + `source` lifetime via `dispose`.
@@ -111,7 +111,7 @@ export function bakeToSprite(
   return bake(renderer, source, texW, texH, invScale, false);
 }
 
-/** A {@link bakeToSprite} twin that reuses one render target across bakes — see {@link createReusableBaker}. */
+/** A {@link bakeToSprite} twin that reuses one render target across bakes - see {@link createReusableBaker}. */
 export interface ReusableBaker {
   /** Bake `source` like {@link bakeToSprite}; the returned handle's dispose frees the source + view but
    *  never the shared target, which stays with the baker. */
@@ -124,10 +124,10 @@ export interface ReusableBaker {
  * A baker for a caller that re-bakes frequently (the details panel rebuilds up to 4 Hz while a value
  * ticks): one grow-only {@link RenderTexture} plus one persistent `(0,0,texW,texH)` frame view of it,
  * reused as the render target across bakes (the frame is mutated in place when the size changes), so
- * a rebuild allocates no GPU texture — {@link bakeToSprite} would mint and destroy a panel-sized
+ * a rebuild allocates no GPU texture - {@link bakeToSprite} would mint and destroy a panel-sized
  * texture per rebuild. The pair only reallocates when a bake outgrows the target (a rare structural
  * change). Single-slot: each bake reuses the one view, so callers keep at most one returned bake
- * alive at a time — enforced: `bake` throws while the previous bake is undisposed (a second live
+ * alive at a time - enforced: `bake` throws while the previous bake is undisposed (a second live
  * handle would be silently retargeted, a corrupt-pixels class of bug).
  */
 export function createReusableBaker(renderer: Renderer): ReusableBaker {

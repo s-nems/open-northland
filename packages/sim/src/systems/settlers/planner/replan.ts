@@ -26,14 +26,14 @@ import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals
 // (../drives/ladder.ts) sees a clean settler and never re-chooses against its own stale claims. Also
 // home to the economy's ownership gate (anotherSystemOwns).
 
-/** How long a stranded walker parks before shedding its failed route and re-planning — long enough that
+/** How long a stranded walker parks before shedding its failed route and re-planning - long enough that
  *  a permanently blocked target costs one path query per episode, short enough that a transient blockage
  *  (a footprint stamped mid-walk, a crowd) heals within seconds. Our recovery pacing (the original's
  *  retry cadence is not readable). */
 const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
 
 /** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
- *  flee, wedding, and gossip systems each read the `failed` flag and clear/cancel it themselves — the
+ *  flee, wedding, and gossip systems each read the `failed` flag and clear/cancel it themselves - the
  *  planner's stranded recovery must not eat their signal. A narrower set than
  *  {@link anotherSystemOwns}: a guard's post and family duty hold a settler off the economy but do not
  *  own a route's failure signal. */
@@ -51,9 +51,9 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
 /**
  * Whether a system outside the planner currently owns `e`'s actions, so the economy ladder must not
  * re-task it:
- *  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its atomic
+ *  - Engagement: fighting/advancing - the CombatSystem owns its movement (the chase) and its atomic
  *    (the swing); it clears the marker when the fight ends.
- *  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed in,
+ *  - Fleeing: running from danger (the FLEE stance's active drive) - matters while it stands (boxed in,
  *    or in the flee cool-down); while running it carries a MoveGoal and the ladder's busy check
  *    ({@link releaseStaleIntent}) already skipped it.
  *  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
@@ -79,15 +79,15 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
  * Reconcile `e`'s leftover intent and report whether the drive ladder should run for it this tick.
  *
  * Returns false while the settler is spoken for: an atomic is running, it is walking a live route, or it
- * is parking a failed one. A FAILED route is not travel — nothing on the nav side retries it
+ * is parking a failed one. A FAILED route is not travel - nothing on the nav side retries it
  * (navigationPlanner skips any entity with a live request; routing skips failed ones), so a settler left in
  * that state stands forever. Drives with their own failure protocol keep the signal
  * ({@link ownsFailedRoute}); for everyone else the planner parks the dead route ({@link Stranded}), then
- * sheds it and re-plans — the pacing costs one path query per retry instead of per tick when the target
+ * sheds it and re-plans - the pacing costs one path query per retry instead of per tick when the target
  * stays blocked, and a transient blockage heals on its own.
  *
  * Returns true once the settler is genuinely re-planning, having first released what the previous intent
- * held: its {@link YardDeliveryRoute} (reconciled against the live load/flag — see
+ * held: its {@link YardDeliveryRoute} (reconciled against the live load/flag - see
  * {@link reconcileYardRoute}), its farm claim (so it never blocks ITSELF from re-choosing the field it was
  * walking to), its rest-inside marker, its supply errand, and its expired failed-goal memo
  * ({@link pruneUnreachableGoals}, run before any drive reads it). Each is re-stamped by the drive that still
@@ -105,7 +105,7 @@ export function releaseStaleIntent(
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
   if (world.has(e, CurrentAtomic)) return false;
-  // Fresh read — reconcileYardRoute may have cleared the request.
+  // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {
     const stranded = world.tryGet(e, Stranded);
@@ -118,7 +118,7 @@ export function releaseStaleIntent(
     // nearest-first target pick, so without the memo it re-chooses this very goal and the settler
     // loops park→re-pick→fail forever beside reachable work (see {@link noteUnreachableGoal}).
     noteUnreachableGoal(world, ctx, e, request.goal);
-    clearNavState(world, e); // sheds Stranded with the route — fall through and re-plan this tick
+    clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
     return false;
   }

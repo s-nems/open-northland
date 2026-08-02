@@ -17,7 +17,7 @@ import {
 
 /**
  * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
- * `editname` its graphics record names — the second leg of the `.bmd`→palette graph. The first leg
+ * `editname` its graphics record names - the second leg of the `.bmd`→palette graph. The first leg
  * ({@link import('./palette.js').extractPaletteIndex}) resolves `paletteName` to a `.pcx` trailer palette;
  * together they answer "which 256 colours colour this `.bmd`". The `.bmd` paths are normalized
  * (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is host-OS/case-independent,
@@ -41,7 +41,7 @@ export interface BmdPaletteBinding {
 }
 
 /**
- * A {@link BmdPaletteBinding} plus the record's `EditName` — the shape the `[GfxLandscape]` (map decor)
+ * A {@link BmdPaletteBinding} plus the record's `EditName` - the shape the `[GfxLandscape]` (map decor)
  * and `[GfxHouse]` (building) bindings share. The name is a species/building handle ("yew 01" vs "fir
  * 01", "viking stock" vs "viking home"): the only IR-layer differentiator when many records share one
  * body bob recoloured per palette.

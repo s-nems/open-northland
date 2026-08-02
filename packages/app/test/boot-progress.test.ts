@@ -4,7 +4,7 @@ import { SCENE_BOOT_PHASES } from '../src/entries/scene.js';
 import { messages } from '../src/i18n/index.js';
 import { BOOT_PHASES, bootFraction } from '../src/view/boot-progress.js';
 
-/** The real step lists the playable entries drive the card with — not a copy that could drift from them. */
+/** The real step lists the playable entries drive the card with - not a copy that could drift from them. */
 const ENTRY_PHASES = [
   { entry: 'map', phases: MAP_BOOT_PHASES },
   { entry: 'scene', phases: SCENE_BOOT_PHASES },

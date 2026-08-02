@@ -10,7 +10,7 @@ import {
  * Temporarily strips the vehicle goods (handcart/oxcart/ships/catapult) from every building's `stock`
  * slots and `produces` list, so no workshop stores or crafts a vehicle as a ware. A vehicle good is a
  * `[goodtype]` whose id slug matches a `[logicvehicletype]`'s (the two tables share the debugname slugs).
- * Vehicles are not goods — the original builds them physically on a yard beside the workshop; restoring
+ * Vehicles are not goods - the original builds them physically on a yard beside the workshop; restoring
  * them as yard-built vehicles is tracked in `docs/tickets/features/vehicle-yard-construction.md`. Runs
  * before {@link fillBuildingRecipes} so the recipe join never materializes a vehicle recipe.
  */
@@ -33,7 +33,7 @@ export function stripVehicleGoods(
 /**
  * Fills each producing building's `recipes` by the output-side join: a workplace's `produces` names the
  * output good(s) it makes, and a `[goodtype]`'s `productionInputGoods` (extracted onto
- * {@link GoodType.productionInputs}) names what producing that good consumes — so joining a building's
+ * {@link GoodType.productionInputs}) names what producing that good consumes - so joining a building's
  * outputs through the goods table materializes the inputs the original house table never carried
  * directly. Cross-table, so it runs after `extractGoods`/`extractBuildings`, before `parseContentSet`.
  *
@@ -42,11 +42,11 @@ export function stripVehicleGoods(
  * declares products; the HUD mirrors it):
  *   - `outputs` = that single good; amount = its `logicproduction` multiplicity (a repeated id sums;
  *     the table carries no per-good quantity, so uniform 1 is the faithful default). A field-farmed
- *     output ({@link hasFieldFarmAtomics}: wheat/herb/mushroom) is excluded — it is grown on the map,
- *     not made in-house — so a workplace producing only field goods (a farm) gets no recipes and the
+ *     output ({@link hasFieldFarmAtomics}: wheat/herb/mushroom) is excluded - it is grown on the map,
+ *     not made in-house - so a workplace producing only field goods (a farm) gets no recipes and the
  *     sim drives it through the field loop (`farmWorkGood`) instead.
  *   - `inputs` = that good's own `productionInputs`, in ascending goodType order (deterministic,
- *     source-order-independent) — a multi-product workshop pays only for the product it is crafting.
+ *     source-order-independent) - a multi-product workshop pays only for the product it is crafting.
  *   - `ticks` = the uniform {@link DEFAULT_RECIPE_TICKS} design pacing (15 s at 1×); the extracted
  *     per-animation cycle lengths are deliberately not used (see the constant's doc).
  *

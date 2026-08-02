@@ -22,21 +22,21 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * The combat MOVEMENT-FEEL contracts (the reported large-battle artifacts, each pinned here):
  *
- *  1. **Chase route continuity** — a chaser re-aims its LIVE route at the repath cadence (the
+ *  1. **Chase route continuity** - a chaser re-aims its LIVE route at the repath cadence (the
  *     moveUnit redirect pattern: goal swap + routing splice) instead of dropping it; clearing the
  *     nav state reset the gait to zero every 8 ticks, so a charging unit lurched cell-by-cell
- *     (accelerate → brake → stall) while a player-ordered walk glided — the chase stutter.
- *  2. **Swing from a standstill** — node positions truncate, so a walker reads as in-band
+ *     (accelerate → brake → stall) while a player-ordered walk glided - the chase stutter.
+ *  2. **Swing from a standstill** - node positions truncate, so a walker reads as in-band
  *     mid-stride; swinging there froze the walker off any node centre (the wind-up glide/teleport).
  *     A swing may only start once the walker has finished its braked last leg onto a node centre.
- *  3. **The arrived hold does not suppress a fighter's combat drive** — a unit holding at an
+ *  3. **The arrived hold does not suppress a fighter's combat drive** - a unit holding at an
  *     ordered spot on ATTACK/DEFEND engages an enemy per its stance instead of standing through
  *     the timed hold while being beaten to death; passive stances (IGNORE/FLEE) still hold blindly,
  *     and the ordered WALK itself stays authoritative (no mid-route auto-engage).
- *  4. **A move order relocates a DEFEND post** — the anchor follows the ordered spot, so the guard
+ *  4. **A move order relocates a DEFEND post** - the anchor follows the ordered spot, so the guard
  *     defends where it was sent instead of marching back to the tile the stance was set on.
  *
- * All are OUR design (no oracle) — source basis "Combat chase / repath cadence" and "Player
+ * All are OUR design (no oracle) - source basis "Combat chase / repath cadence" and "Player
  * move-order dwell"; the fixture's `test_axe` (viking tribe 1, job 1) has band [1, 2].
  */
 
@@ -88,25 +88,25 @@ function runChase(sim: Simulation, chaser: Entity, maxTicks: number): { swingTic
   return { swingTick: -1, gaps };
 }
 
-describe('chase route continuity — a repath re-aims the live route, never stops the walker', () => {
+describe('chase route continuity - a repath re-aims the live route, never stops the walker', () => {
   it('a long chase keeps its PathFollow through every repath (no per-cadence stop-start lurch)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const a = fighterAt(sim, 0, 0, P0);
-    fighterAt(sim, 7, 0, P1, MILITARY_MODE.IGNORE); // 14 nodes away (inside sight 16); IGNORE — it stands
+    fighterAt(sim, 7, 0, P1, MILITARY_MODE.IGNORE); // 14 nodes away (inside sight 16); IGNORE - it stands
 
     const { swingTick, gaps } = runChase(sim, a, 200);
 
     expect(swingTick).toBeGreaterThan(0); // the chase closed into a swing
     // ~9 repaths happen over this walk; the old clearChase dropped the route on each (one gap tick
-    // per cadence). The re-aim keeps the route live — only the arrival handoff may briefly show none.
+    // per cadence). The re-aim keeps the route live - only the arrival handoff may briefly show none.
     expect(gaps).toBeLessThanOrEqual(2);
   });
 });
 
-describe('swing from a standstill — no wind-up mid-stride, off a node centre', () => {
+describe('swing from a standstill - no wind-up mid-stride, off a node centre', () => {
   it('a WESTWARD chaser swings EXACTLY on a node centre (truncation reads the band early)', () => {
     // Node coords TRUNCATE, so a walker moving −x reads as standing on its next node one step after
-    // LEAVING the previous centre — nearly half a column early. A westward chaser therefore enters
+    // LEAVING the previous centre - nearly half a column early. A westward chaser therefore enters
     // the weapon band MID-STRIDE; without the standstill gate the first swing started there, frozen
     // off any centre (the reported wind-up glide/teleport). Eastward legs flip exactly ON the centre,
     // which is why an east-walking chaser can't reproduce it.
@@ -147,7 +147,7 @@ describe('arrival vs the combat drive', () => {
     const enemy = fighterAt(sim, 8, 0, P1, MILITARY_MODE.IGNORE);
     const hp0 = sim.world.get(enemy, Health).hitpoints;
 
-    orderAndArrive(sim, a, 7, 0, 60); // ordered one cell short of the enemy — in band after arrival
+    orderAndArrive(sim, a, 7, 0, 60); // ordered one cell short of the enemy - in band after arrival
 
     // Well before the 300-tick soldier hold expires, the fighter has taken the fight up (and the
     // engagement/swing state ended the order through playerOrderSystem's own rules).
@@ -174,7 +174,7 @@ describe('arrival vs the combat drive', () => {
     const enemy = fighterAt(sim, 8, 0, P1, MILITARY_MODE.IGNORE);
     const hp0 = sim.world.get(enemy, Health).hitpoints;
 
-    orderAndArrive(sim, a, 7, 0, 60); // enemy is 2 nodes from the ordered spot — inside the defend radius
+    orderAndArrive(sim, a, 7, 0, 60); // enemy is 2 nodes from the ordered spot - inside the defend radius
 
     expect(sim.world.get(enemy, Health).hitpoints).toBeLessThan(hp0);
   });

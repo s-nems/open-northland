@@ -11,18 +11,18 @@ import { entityNode } from '../spatial/nodes.js';
 // so the ring-search index, the chase drive, and the mid-swing whiff check all resolve a building target's
 // approach the same way.
 
-/** A per-tick memo of a building's wall nodes — a building never moves within a tick, so the combat loop
+/** A per-tick memo of a building's wall nodes - a building never moves within a tick, so the combat loop
  *  computes each once and the index build + every chaser share the result (see {@link buildingBodyNodes}). */
 export type BuildingBodyNodeCache = Map<Entity, readonly NodeId[]>;
 
 /**
- * The half-cell WALL nodes a building presents to attackers — its footprint `blocked` (physical body) cells,
+ * The half-cell WALL nodes a building presents to attackers - its footprint `blocked` (physical body) cells,
  * translated to the placed anchor. A warrior measures reach to, and swings at, the nearest of these, so a
  * building is besieged from EVERY face rather than only its door: melee stands on any walkable perimeter cell
  * (one node outside a wall) and archers fire from the reach band around it. Falls back to the door node (then
  * the anchor) for a footprint-less building (synthetic test content, the one graphics-less real type), which
  * keeps the pre-footprint single-node behaviour. `cache` (optional) memoizes the result per building for the
- * tick — the index build and every chaser reuse it instead of re-translating the footprint.
+ * tick - the index build and every chaser reuse it instead of re-translating the footprint.
  */
 export function buildingBodyNodes(
   world: World,
@@ -60,11 +60,11 @@ function computeBuildingBodyNodes(
 }
 
 /**
- * The half-cell node a warrior at `from` fights `target` from — its own node for a settler/animal
+ * The half-cell node a warrior at `from` fights `target` from - its own node for a settler/animal
  * ({@link entityNode}), the nearest wall ({@link buildingBodyNodes}) cell for a building. Attacker-aware so a
  * besieging warrior closes on (and measures reach to) the face nearest it, which is why a mass of attackers
  * spreads around the whole footprint instead of queueing at one door. The combat index buckets a building at
- * every wall cell, so `index.nearest` returns the same node this resolves for a given attacker — the reach
+ * every wall cell, so `index.nearest` returns the same node this resolves for a given attacker - the reach
  * distance and the chase goal agree. `cache` threads the tick's building-wall memo through.
  */
 export function combatTargetNode(

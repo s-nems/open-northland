@@ -25,7 +25,7 @@ export class TerrainGraph extends TerrainEdges {
   /**
    * The static-connectivity label of a node: nodes reachable over static terrain share a label,
    * unwalkable nodes are -1. The dynamic walk-block overlay only ever removes edges, so two nodes with
-   * different labels are provably unreachable under any overlay — the pathfinder uses this to answer
+   * different labels are provably unreachable under any overlay - the pathfinder uses this to answer
    * "no route" without flooding the component. Labels are assigned by ascending seed id at build time,
    * so they are a pure function of the terrain (lockstep-safe).
    */

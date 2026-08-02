@@ -29,8 +29,8 @@ import {
 
 /**
  * Workers of an UPGRADING building stand down (user requirement 2026-07-18: "pracownik budynku który
- * jest ulepszany powinien przestać pracować"). Source basis: readable original — `jobtypes.ini` gives
- * every bound trade we model `mustHaveFinishedWorkHouseFlag 1` (its 0 rows — hunter/scout/jester — never
+ * jest ulepszany powinien przestać pracować"). Source basis: readable original - `jobtypes.ini` gives
+ * every bound trade we model `mustHaveFinishedWorkHouseFlag 1` (its 0 rows - hunter/scout/jester - never
  * bind a workplace), so a trade needs its finished workhouse. The upgrade turns the
  * building back into a construction site whose emptied stockpile is the construction hold, so an
  * ungated crew would read the stashed stock as starvation and shuttle goods, or strip the site's
@@ -45,17 +45,17 @@ function startUpgrade(sim: Simulation, b: Entity): void {
   sim.world.add(b, Upgrading, { savedStock: new Map(), seeded: new Map() });
 }
 
-describe('an upgrading workplace — its crew stands down', () => {
+describe('an upgrading workplace - its crew stands down', () => {
   it('the bound producer neither fetches inputs nor takes a seat while the upgrade runs', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const mill = buildingAt(sim, SAWMILL, 3, 0); // empty input slots — reads as "starved"
+    const mill = buildingAt(sim, SAWMILL, 3, 0); // empty input slots - reads as "starved"
     startUpgrade(sim, mill);
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // wood is available next door…
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // …but the workhouse is a site: no fetch walk, no pickup — the smith waits the upgrade out.
+    // …but the workhouse is a site: no fetch walk, no pickup - the smith waits the upgrade out.
     expect(sim.world.has(smith, MoveGoal)).toBe(false);
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
   });
@@ -70,7 +70,7 @@ describe('an upgrading workplace — its crew stands down', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Delivery case 1 (the bound workshop) is gated off — the wood routes to the HQ instead.
+    // Delivery case 1 (the bound workshop) is gated off - the wood routes to the HQ instead.
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 1, 0));
   });
 
@@ -96,7 +96,7 @@ describe('an upgrading workplace — its crew stands down', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The site's stock is construction material, not output — nothing qualifies, the carrier idles.
+    // The site's stock is construction material, not output - nothing qualifies, the carrier idles.
     expect(sim.world.has(hauler, MoveGoal)).toBe(false);
     expect(sim.world.has(hauler, CurrentAtomic)).toBe(false);
   });

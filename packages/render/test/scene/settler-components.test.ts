@@ -8,10 +8,10 @@ import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
  * fields the draw item carries across for the sprite resolver to join on.
  */
 
-describe('buildScene — settler stance & component reads', () => {
+describe('buildScene - settler stance & component reads', () => {
   it('a mid-swing attacker plays the swing IN PLACE: anchor untouched, facing its target', () => {
     // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1). The drawn anchor must
-    // stay exactly on the attacker's own feet — the attack frames carry their authored advance in
+    // stay exactly on the attacker's own feet - the attack frames carry their authored advance in
     // per-frame foot offsets, and an extra positional nudge doubled it into a ground slide (the
     // rejected melee "lunge"). Facing still resolves toward the live target; the depth key is pinned
     // against an idle twin on the attacker's own cell.
@@ -86,7 +86,7 @@ describe('buildScene — settler stance & component reads', () => {
 
   it('reads a between-paths settler (MoveGoal / pending PathRequest) as moving, not a stutter', () => {
     // A chaser re-issuing its route drops PathFollow for a tick while it still holds a MoveGoal or a fresh
-    // PathRequest — it is walking, not standing. Reading that gap as `idle` was the visible march stutter
+    // PathRequest - it is walking, not standing. Reading that gap as `idle` was the visible march stutter
     // (the walk animation snapping to the standing pose each tile). A FAILED PathRequest is the genuinely
     // stuck case and stays `idle` so the unit doesn't moonwalk against an unreachable goal.
     const scene = buildScene(
@@ -106,7 +106,7 @@ describe('buildScene — settler stance & component reads', () => {
     const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
     expect(byRef(1)?.state).toBe('moving'); // holding a goal, path not yet issued
     expect(byRef(2)?.state).toBe('moving'); // route queued, not yet a PathFollow
-    expect(byRef(3)?.state).toBe('idle'); // unreachable goal — stuck, not moving
+    expect(byRef(3)?.state).toBe('idle'); // unreachable goal - stuck, not moving
     expect(byRef(4)?.state).toBe('idle'); // failed route wins over the lingering goal
   });
 
@@ -116,7 +116,7 @@ describe('buildScene — settler stance & component reads', () => {
     const scene = buildScene(
       snapshotOf([
         entity(1, 0, 0, { Settler: { tribe: 0 }, Owner: { player: 3 } }),
-        entity(2, 1, 0, { Settler: { tribe: 0 } }), // wildlife / neutral — unowned
+        entity(2, 1, 0, { Settler: { tribe: 0 } }), // wildlife / neutral - unowned
         entity(3, 2, 0, { Settler: { tribe: 0 }, Owner: { player: 0 } }), // player 0 is a real slot, not "none"
       ]),
       FLAT_3x2,
@@ -145,12 +145,12 @@ describe('buildScene — settler stance & component reads', () => {
     expect(byRef(1)?.state).toBe('moving');
     expect(byRef(1)?.carrying).toBeUndefined();
     expect(byRef(1)?.carryGood).toBeUndefined();
-    expect(byRef(2)?.state).toBe('moving'); // still moving — carrying is orthogonal to the coarse state
+    expect(byRef(2)?.state).toBe('moving'); // still moving - carrying is orthogonal to the coarse state
     expect(byRef(2)?.carrying).toBe(true);
-    expect(byRef(2)?.carryGood).toBe(1); // the hauled goodType rides along — the per-good look join key
+    expect(byRef(2)?.carryGood).toBe(1); // the hauled goodType rides along - the per-good look join key
   });
 
-  it('carries the settler jobType + the young (Age) flag — the per-character body join keys', () => {
+  it('carries the settler jobType + the young (Age) flag - the per-character body join keys', () => {
     const scene = buildScene(
       snapshotOf([
         // An adult with a job: jobType rides along, no young flag (no Age component).
@@ -175,11 +175,11 @@ describe('buildScene — settler stance & component reads', () => {
     expect(byRef(4)?.young).toBeUndefined();
   });
 
-  it('draws a chopping settler at its cell centre — the swing plays in place, no positional nudge', () => {
+  it('draws a chopping settler at its cell centre - the swing plays in place, no positional nudge', () => {
     // The worker stands on the work cell BESIDE its tree (the planner's adjacent stance) and FACES it;
     // the swing's advance is authored into the frames. The old fixed −24 px chop nudge assumed the
-    // settler shared the tree's cell and popped on/off across the between-swings replan gap — the
-    // reported forward-back slide — so a chopping and a non-chopping settler now share the same anchor.
+    // settler shared the tree's cell and popped on/off across the between-swings replan gap - the
+    // reported forward-back slide - so a chopping and a non-chopping settler now share the same anchor.
     const cellCentreX = tileToScreen(2, 0).x;
     const scene = buildScene(
       snapshotOf([

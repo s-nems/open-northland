@@ -12,7 +12,7 @@ import { GUI_PALETTES } from '../src/content/gui-gfx.js';
 const UNKNOWN_NAME = /^unknown_(\d{3})$/;
 const VALID_PALETTES = new Set<string>(GUI_PALETTES);
 /** The table at its declared shape: `GUI_FRAMES` is `as const`, so a row that authors no `states`
- *  has no such property to read — these assertions are about the interface, not one row's literal. */
+ *  has no such property to read - these assertions are about the interface, not one row's literal. */
 const FRAMES: readonly GuiFrameMeta[] = GUI_FRAMES;
 
 describe('gui-atlas-map', () => {
@@ -34,8 +34,8 @@ describe('gui-atlas-map', () => {
   it('names any placeholder exactly unknown_<zero-padded index> (no mis-padded/typo placeholders slip through)', () => {
     GUI_FRAMES.forEach((frame, index) => {
       // Guard BOTH directions: a real name never starts with "unknown", and anything that does must be the
-      // exact canonical placeholder for its index — so a mis-padded `unknown_42` can't masquerade as identified.
-      if (!frame.name.startsWith('unknown')) return; // an identified name — nothing to check here
+      // exact canonical placeholder for its index - so a mis-padded `unknown_42` can't masquerade as identified.
+      if (!frame.name.startsWith('unknown')) return; // an identified name - nothing to check here
       expect(frame.name).toBe(`unknown_${String(index).padStart(3, '0')}`);
       // An unknown_NNN name may carry a montage best-guess role, but a manually mapped frame is named.
       expect(frame.source).not.toBe('manual');
@@ -73,7 +73,7 @@ describe('gui-atlas-map', () => {
 
   it('resolves a name to its index and throws on an unknown name', () => {
     expect(guiFrameIndex('overview_toggle_button')).toBe(145);
-    // The runtime backstop for a caller that reached here with an unchecked string — the cast is
+    // The runtime backstop for a caller that reached here with an unchecked string - the cast is
     // what such a caller looks like, since a typed one cannot compile.
     expect(() => guiFrameIndex('does_not_exist' as GuiFrameName)).toThrow(/no frame named/);
   });

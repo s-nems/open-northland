@@ -32,7 +32,7 @@ export function drawStockSection(
   const slots = stockSlotRects(body, s, layout.stockRows);
   const cellH = Math.round(STOCK_ROW_H * s);
   // The one shared row source (draw == hover hit-test): compact declared order, the "Wszystkie" tab's
-  // held-goods-fullest-first view, or a category tab with held goods bubbled up — see visibleStockRows.
+  // held-goods-fullest-first view, or a category tab with held goods bubbled up - see visibleStockRows.
   const rows = visibleStockRows(model.stock, layout.stockCompact, activeTab);
   const shown = rows.slice(0, layout.stockRows * 2);
   shown.forEach((row, i) => {
@@ -76,20 +76,20 @@ export function drawStockSection(
  * carries the authoritative name either way.
  */
 const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
-  GUI_FRAME.stock_tab_0 + 7, // 0 Wszystkie — the assorted-goods pile (reads as "everything")
-  GUI_FRAME.stock_tab_0 + 2, // 1 Żywność — cutlery
-  guiFrameIndex('resource_icon_water_drop'), // 2 Napoje — water drop (the tab set has no drink glyph)
-  GUI_FRAME.stock_tab_0 + 4, // 3 Surowce — (unread)
-  GUI_FRAME.stock_tab_0 + 1, // 4 Budulec — house
-  GUI_FRAME.stock_tab_0 + 0, // 5 Narzędzia — hammer
-  GUI_FRAME.stock_tab_0 + 5, // 6 Wyroby — boots
-  GUI_FRAME.stock_tab_0 + 6, // 7 Wojsko — weapon
-  GUI_FRAME.stock_tab_0 + 3, // 8 Inne — the set's remaining glyph (shears)
+  GUI_FRAME.stock_tab_0 + 7, // 0 Wszystkie - the assorted-goods pile (reads as "everything")
+  GUI_FRAME.stock_tab_0 + 2, // 1 Żywność - cutlery
+  guiFrameIndex('resource_icon_water_drop'), // 2 Napoje - water drop (the tab set has no drink glyph)
+  GUI_FRAME.stock_tab_0 + 4, // 3 Surowce - (unread)
+  GUI_FRAME.stock_tab_0 + 1, // 4 Budulec - house
+  GUI_FRAME.stock_tab_0 + 0, // 5 Narzędzia - hammer
+  GUI_FRAME.stock_tab_0 + 5, // 6 Wyroby - boots
+  GUI_FRAME.stock_tab_0 + 6, // 7 Wojsko - weapon
+  GUI_FRAME.stock_tab_0 + 3, // 8 Inne - the set's remaining glyph (shears)
 ];
 
 /**
- * The stock window's tabs — the "Wszystkie" (held goods, fullest first) tab then the eight categories —
- * justified across the body width (whether the original spreads or packs them flush is unread — a guess
+ * The stock window's tabs - the "Wszystkie" (held goods, fullest first) tab then the eight categories -
+ * justified across the body width (whether the original spreads or packs them flush is unread - a guess
  * alongside the per-tab categories, pending a human pass). Each tab bob carries its own plate plus a
  * glyph, drawn through the `bg_invert` palette as bright cream line-art on a recessed plate (a named
  * legibility choice, not verified to be the original's tab palette). Clicking a tab filters the stock

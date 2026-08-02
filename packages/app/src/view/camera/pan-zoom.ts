@@ -1,7 +1,7 @@
 import type { Camera } from '@open-northland/render';
 
 /**
- * The pure pan/zoom reducers and their bounds — the interactive camera's *math*, unit-tested headless
+ * The pure pan/zoom reducers and their bounds - the interactive camera's *math*, unit-tested headless
  * (`test/camera.test.ts`). Each takes a {@link Camera} and returns a new one; no DOM, no Pixi. The DOM
  * controller (`controller.ts`) drives these from real mouse/wheel/key events.
  */
@@ -9,7 +9,7 @@ import type { Camera } from '@open-northland/render';
 /**
  * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
  * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
- * + bob count (and thus frame cost), not a whole-map fit — a mid-size decoded map must not fit on
+ * + bob count (and thus frame cost), not a whole-map fit - a mid-size decoded map must not fit on
  * screen whole. The `0.35` bound follows hands-on feedback and the measured zoomed-out allocation
  * cost; it still frames a battle or settlement cluster. Lower it only with a zoom-out LOD.
  */
@@ -25,14 +25,14 @@ export interface CameraTuning {
   readonly arrowPanSpeed: number;
   /** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
   readonly edgeScrollSpeed: number;
-  /** Wheel-zoom glide speed in log-zoom units per second — LINEAR: the scale travels toward its
+  /** Wheel-zoom glide speed in log-zoom units per second - LINEAR: the scale travels toward its
    *  target at this constant perceptual rate (each ×e of zoom takes `1/rate` seconds), so a long
    *  glide never lurches fast then crawls the tail like an exponential ease. */
   readonly zoomGlideRate: number;
 }
 
 /** The default camera speeds ({@link CameraTuning}). The zoom rate is tuned so one wheel notch
- *  (×1.1 ≈ 0.095 log units) lands in ~2 frames — responsive, the glide only smooths the step — while
+ *  (×1.1 ≈ 0.095 log units) lands in ~2 frames - responsive, the glide only smooths the step - while
  *  a stacked burst still travels the full MIN..MAX range in under a second. */
 export const DEFAULT_CAMERA_TUNING: CameraTuning = {
   arrowPanSpeed: 900,
@@ -63,7 +63,7 @@ export function edgePanVelocity(
 
 /**
  * One LINEAR step of the wheel-zoom glide: move the camera's scale toward `target` at a constant
- * `ratePerS` in log-zoom space ({@link CameraTuning.zoomGlideRate} — perceptually uniform: ×2 takes
+ * `ratePerS` in log-zoom space ({@link CameraTuning.zoomGlideRate} - perceptually uniform: ×2 takes
  * the same time zooming from 1→2 as from 4→8), anchored at the cursor like {@link zoomCameraAt},
  * landing exactly on the target when within one step of it. Returns the camera untouched when
  * already there. Pure.

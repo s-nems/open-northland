@@ -17,7 +17,7 @@ import {
   WOMAN,
 } from '../support.js';
 
-describe('atomicSystem — a struck civilian staggers (data-driven `82` ATTACKED atomic)', () => {
+describe('atomicSystem - a struck civilian staggers (data-driven `82` ATTACKED atomic)', () => {
   it('gives a struck woman her 82 flinch (she has the setatomic 82 binding)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
@@ -29,7 +29,7 @@ describe('atomicSystem — a struck civilian staggers (data-driven `82` ATTACKED
     const flinch = sim.world.get(woman, CurrentAtomic);
     expect(flinch.atomicId).toBe(ATTACKED_ATOMIC); // she is staggering
     expect(flinch.duration).toBe(50); // woman_attacked length
-    expect(flinch.effect).toEqual({ kind: 'idle' }); // purely visual — no state mutation
+    expect(flinch.effect).toEqual({ kind: 'idle' }); // purely visual - no state mutation
   });
 
   it('does NOT stagger a struck soldier (no 82 binding for the soldier class)', () => {
@@ -47,7 +47,7 @@ describe('atomicSystem — a struck civilian staggers (data-driven `82` ATTACKED
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     const woman = fighterAt(sim, 1, 0, VIKING, WOMAN, { hitpoints: 10_000 });
-    // The woman is mid-swing (her own attack 81, uninterruptible) — the blow must not cut it short.
+    // The woman is mid-swing (her own attack 81, uninterruptible) - the blow must not cut it short.
     startSwing(sim, woman, { target: attacker, damage: 0 }, 100);
     startSwing(sim, attacker, { target: woman, damage: 2090, hitAt: 1 }, 27);
 

@@ -26,17 +26,17 @@ import { BOBS_DIR, writeAtlasBeside } from './content-tree.js';
 import { readSourceFile, type SourceAssetIndex } from './source-files.js';
 
 /**
- * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
+ * Player-colour pipeline stage - the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
  * Where that stage bakes one palette into each atlas, this stage keeps the human character bobs recolourable
- * per player: it emits (a) an indexed atlas per character `.bmd` (palette index in red, mask in alpha —
+ * per player: it emits (a) an indexed atlas per character `.bmd` (palette index in red, mask in alpha -
  * no colour applied) and (b) a single colour LUT PNG (256 wide, one composed palette row per
  * (armor tier, player); see {@link convertPlayerColorLut}). The renderer reads each atlas index through
  * the row, so one indexed atlas serves every player colour and armor recolor (see `packages/render`
  * palette-LUT shader + `source basis`).
  *
  * Not the original's mechanism byte-for-byte (it composes a per-creature palette at spawn from
- * `randompalette.ini`); it is the same idea — the player colour is decided by the palette the `.bmd` index is
- * read through — moved to draw time so up to 16 players share one atlas texture. Boundary failures are
+ * `randompalette.ini`); it is the same idea - the player colour is decided by the palette the `.bmd` index is
+ * read through - moved to draw time so up to 16 players share one atlas texture. Boundary failures are
  * warned-and-skipped, never fatal, matching the other tree-walk stages.
  */
 
@@ -48,16 +48,16 @@ const BASE_PALETTE_PCX = 'test_human_00.pcx';
 const SYNTHETIC_REFERENCE_PCX = 'player01.pcx';
 /** Human character bobs get the recolourable indexed atlas; everything else keeps its baked RGB atlas. */
 const CHARACTER_BMD_RE = /(^|\/)cr_hum_/i;
-/** The guidepost bob — drawn through the player's own FULL palette in the original (source basis: the
- *  board-text indices 23–30 sit inside the `playerNN.pcx` player ramp — blue for player 1, red for
- *  player 2 — and those palettes carry the wood ramp at the body indices 131–141). Unlike the character
+/** The guidepost bob - drawn through the player's own FULL palette in the original (source basis: the
+ *  board-text indices 23–30 sit inside the `playerNN.pcx` player ramp - blue for player 1, red for
+ *  player 2 - and those palettes carry the wood ramp at the body indices 131–141). Unlike the character
  *  bobs it has heavily graded edge alpha (25% of its visible pixels), which the binary-alpha indexed
- *  path would shred — so it gets per-player BAKED atlases instead ({@link convertGuidepostPlayerAtlases}). */
+ *  path would shred - so it gets per-player BAKED atlases instead ({@link convertGuidepostPlayerAtlases}). */
 const GUIDEPOST_BMD = 'data/engine2d/bin/bobs/ls_guidepost.bmd';
 
 /**
  * Read a `creatures/<file>.pcx` 768-byte trailer palette from the winning source layer, resolved
- * case-insensitively via `tree` ({@link SourceAssetIndex}) — each layer keeps its own (unpredictable)
+ * case-insensitively via `tree` ({@link SourceAssetIndex}) - each layer keeps its own (unpredictable)
  * case, so a direct `join` would miss on a case-sensitive filesystem (Linux CI), exactly why the bmd
  * stage resolves the same way. Throws if the file is in no layer or has no palette trailer.
  */
@@ -169,7 +169,7 @@ export async function convertPlayerColorLut(
 
 /**
  * Bake one guidepost atlas per player (`ls_guidepost.player_NN.{png,atlas.json}`): the bob decoded
- * through that player's FULL palette — the shipped `playerNN.pcx` verbatim for the faithful ten, the
+ * through that player's FULL palette - the shipped `playerNN.pcx` verbatim for the faithful ten, the
  * hue-rotated reference for the six synthetic extras. Baked (not indexed+LUT) because the guidepost's
  * graded edge alpha survives only the RGB bake; the atlases are tiny (19 small bobs), so 16 of them
  * cost nothing next to one house sheet. Returns the emitted per-player atlas count.
@@ -188,7 +188,7 @@ export async function convertGuidepostPlayerAtlases(outDir: string, tree: Source
         ? await readCreaturePalette(tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     // The `player_NN` suffix is a string contract with the app loader (`guidepostPlayerAtlas`,
-    // packages/app/src/content/sprite-sheet/human-sheet.ts) — a drift falls back silently to bridge01.
+    // packages/app/src/content/sprite-sheet/human-sheet.ts) - a drift falls back silently to bridge01.
     const suffix = `player_${String(color.id).padStart(2, '0')}`;
     await writeAtlasBeside(outDir, source.rel, suffix, packBobAtlas(bmd, palette));
     emitted++;
@@ -198,7 +198,7 @@ export async function convertGuidepostPlayerAtlases(outDir: string, tree: Source
 
 /**
  * Emit an indexed atlas (`<bmd>.indexed.png` + `<bmd>.indexed.atlas.json`) for every human character `.bmd`
- * referenced by `bindings` (deduped — many bindings share one body). The `.bmd`s are read from the layer
+ * referenced by `bindings` (deduped - many bindings share one body). The `.bmd`s are read from the layer
  * that wins each reference, resolved case-insensitively via {@link SourceAssetIndex}. A missing/malformed
  * `.bmd` is warned-and-skipped. Returns the emitted PNG paths (relative to `<out>`).
  */

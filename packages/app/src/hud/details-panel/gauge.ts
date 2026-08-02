@@ -3,7 +3,7 @@ import type { Rect } from '../geometry.js';
 import { type BarTone, barTone } from './model/index.js';
 
 /**
- * The details panel's progress/need bar rendering — the recessed-groove gauge and its colour ramp, drawn
+ * The details panel's progress/need bar rendering - the recessed-groove gauge and its colour ramp, drawn
  * as pure functions over a passed `Graphics`. All gauge shading strengths are eyeballed against the
  * parchment panel, not sampled from the original (which has no decoded bar-draw code).
  */
@@ -19,7 +19,7 @@ const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   warn: 0xd08a2e,
   critical: 0xb5392b,
 };
-/** The neutral production-progress fill — a warm amber that sits on the parchment without reading as a
+/** The neutral production-progress fill - a warm amber that sits on the parchment without reading as a
  *  health/need level (eyeballed). */
 export const PRODUCTION_BAR_FILL = 0xb8894a;
 
@@ -34,7 +34,7 @@ const GAUGE_SPECULAR_ALPHA = 0.28;
 /** How far the fill's leading-edge lip is darkened, so the gauge end reads as a surface. */
 const GAUGE_LIP_DARKEN = 0.45;
 
-/** The gauge groove's shared bevel palette — the panel's inner-box dark/light lines, passed in from the
+/** The gauge groove's shared bevel palette - the panel's inner-box dark/light lines, passed in from the
  *  {@link import('./chrome.js').Chrome} kit so the gauge outline matches the rest of the panel framing. */
 export interface GaugeBevel {
   readonly dark: number;
@@ -49,7 +49,7 @@ export function rampColor(barRamp: readonly number[] | undefined, clamped: numbe
   return barRamp[index] ?? BAR_TONE_FILL[barTone(clamped)];
 }
 
-/** Blend `from` toward `to` by `t` (0..1), per RGB channel — the gauge's gradient math. */
+/** Blend `from` toward `to` by `t` (0..1), per RGB channel - the gauge's gradient math. */
 function mixColor(from: number, to: number, t: number): number {
   const ch = (shift: number): number => {
     const a = (from >> shift) & 0xff;
@@ -61,7 +61,7 @@ function mixColor(from: number, to: number, t: number): number {
 
 /**
  * The shared bar track+fill draw. Drawn entirely as Graphics, not the grey `bar_disabled` art (whose
- * middle read as a stuck bar and broke down when stretched long for the production row) — the
+ * middle read as a stuck bar and broke down when stretched long for the production row) - the
  * PalettedSprite art can't be tinted per-sprite (see paletted-sprite.ts). The fill is a smooth vertical
  * gradient of `base` in 1-px strips (no gradient textures to leak on the panel's 4 Hz rebuilds).
  */
@@ -83,7 +83,7 @@ export function drawGauge(
   const fillW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
   if (fillW === 0) return;
   const fill: Rect = { x: r.x + line, y: r.y + line, w: fillW, h: Math.max(1, r.h - line * 2) };
-  // Vertical gradient: a lit top rolling over the base into a shaded bottom — one strip per px.
+  // Vertical gradient: a lit top rolling over the base into a shaded bottom - one strip per px.
   const top = mixColor(base, 0xffffff, GAUGE_TOP_LIGHTEN);
   const bottom = mixColor(base, 0x000000, GAUGE_BOTTOM_DARKEN);
   const steps = Math.max(2, Math.round(fill.h));

@@ -1,10 +1,10 @@
 /**
- * The terrain mesh's node geometry — which lattice nodes each cell's two triangles span, and what a node
+ * The terrain mesh's node geometry - which lattice nodes each cell's two triangles span, and what a node
  * vertex samples. The twin of the GPU mesh build in `gpu/terrain/terrain-layer.ts`, with no Pixi import, so
  * the vertex math is unit-tested headlessly.
  *
  * Tessellation (source basis: docs/SOURCES.md "terrain tessellation"): mesh vertices are the
- * cell-centre nodes of the half-cell lattice — cell `(col, row)`'s centre is node
+ * cell-centre nodes of the half-cell lattice - cell `(col, row)`'s centre is node
  * `(2·col + (row&1), 2·row)`, the lattice the sim's nav grid addresses. Each map cell contributes
  * two triangles spanning between neighbouring cell centres:
  *
@@ -15,11 +15,11 @@
  * (`empa`/`empb` → A/B) blend across cells rather than seaming on lattice edges.
  */
 
-/** A half-cell node address `[hx, hy]` — the sim lattice's integer coordinates (`nav/halfcell.ts`). */
+/** A half-cell node address `[hx, hy]` - the sim lattice's integer coordinates (`nav/halfcell.ts`). */
 export type NodeXY = readonly [number, number];
 
 /**
- * Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice
+ * Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` - the staggered raster's lattice
  * address. Must stay the same formula as the sim's `nav/halfcell.ts` `cellAnchorNode`, or mesh
  * vertices drift off nav anchors.
  */
@@ -29,7 +29,7 @@ export function cellNode(col: number, row: number): NodeXY {
 
 /**
  * Triangle A (△) of cell `(col, row)`: its 3 vertex nodes `[apex, bottom-right, bottom-left]` =
- * [own centre, SE-below cell's centre, SW-below cell's centre] — the vertex order `coordsA`'s
+ * [own centre, SE-below cell's centre, SW-below cell's centre] - the vertex order `coordsA`'s
  * (TL, BR, BL) UV points map onto.
  */
 export function triangleANodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
@@ -43,7 +43,7 @@ export function triangleANodes(col: number, row: number): readonly [NodeXY, Node
 
 /**
  * Triangle B (▽) of cell `(col, row)`: its 3 vertex nodes `[left, right, bottom-apex]` =
- * [own centre, E cell's centre, SE-below cell's centre] — the vertex order `coordsB`'s
+ * [own centre, E cell's centre, SE-below cell's centre] - the vertex order `coordsB`'s
  * (TL, TR, BR) UV points map onto.
  */
 export function triangleBNodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
@@ -89,7 +89,7 @@ export function nodeLift(
 /**
  * A node vertex's brightness-lane texture UV: the node's own cell centre mapped to the lane texel's
  * centre (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear blends each
- * triangle's shading between its three cell-centre samples — the engine model (one lighting value
+ * triangle's shading between its three cell-centre samples - the engine model (one lighting value
  * per node, interpolated across the triangle). `paddedWidth` is the lane texture's alignment-padded
  * width (`gpu/terrain/lane-texture.ts` `padLaneRows`); the clamp uses the unpadded grid.
  */

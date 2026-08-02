@@ -4,18 +4,18 @@ import { JOB_CARRIER, JOB_IDLE } from '../../catalog/jobs.js';
 import { canonicalJobType, EXTRACTED_GATHERER_TRADES, GATHERERS } from './ids/index.js';
 
 /**
- * The three worker roles the badge colours and the right-click assignment priority distinguish — a
+ * The three worker roles the badge colours and the right-click assignment priority distinguish - a
  * gatherer (chops/mines/picks a raw good and hauls it to a flag), a carrier (a "tragarz" that ferries
  * goods between stores), and a craftsman (a trade like smith/joiner that works inside a workshop).
  * These are the sandbox's role buckets, keyed off the job ids ({@link GATHERERS} all bind the collector
- * (8), {@link JOB_CARRIER} is 24, and every rebased building-slot trade lands high — see
+ * (8), {@link JOB_CARRIER} is 24, and every rebased building-slot trade lands high - see
  * `ids/economy/jobs.ts` `rebaseSlotJob`), not a sim concept: the sim treats a carrier as the job-agnostic haul
  * fallback and never names one. Faithful intent: in *Cultures* a gatherer is rarely hand-assigned to a
  * building (it belongs on the map delivering to flags), so the right-click gesture never offers one.
  */
 export type WorkerRole = 'gatherer' | 'carrier' | 'craftsman';
 
-/** The gatherer job ids in the raw `jobtypes.ini` space — the sandbox's own {@link GATHERERS} table
+/** The gatherer job ids in the raw `jobtypes.ini` space - the sandbox's own {@link GATHERERS} table
  *  (all collector) plus the extracted outdoor-gatherer trades ({@link EXTRACTED_GATHERER_TRADES}:
  *  collector/hunter/fisher). A settler of one of these harvests a raw good on the map, so it's excluded
  *  from right-click building assignment and draws the gatherer badge colour. Membership is tested against
@@ -52,10 +52,10 @@ export function workerRoleOf(jobType: number): WorkerRole {
 
 /**
  * The right-click assignment priority for a building's worker slots: the jobs a player-directed
- * `assignWorker` may bind, most-preferred first — craftsmen (ascending job id) then the carrier, with
+ * `assignWorker` may bind, most-preferred first - craftsmen (ascending job id) then the carrier, with
  * gatherers excluded (never hand-assigned to a workshop). The sim walks this list and binds the first job
  * whose slot is open for the settler (see the `assignWorker` command / `openWorkerJobFromList`), so the
- * carrier is the fallback when every craft slot is full or the settler lacks the trade's skill — the
+ * carrier is the fallback when every craft slot is full or the settler lacks the trade's skill - the
  * original's "make him a tradesman, else a hauler" rule.
  */
 export function assignmentPriority(slots: readonly { readonly jobType: number }[] | undefined): number[] {
@@ -65,14 +65,14 @@ export function assignmentPriority(slots: readonly { readonly jobType: number }[
     const role = workerRoleOf(slot.jobType);
     if (role === 'craftsman') craftsmen.push(slot.jobType);
     else if (role === 'carrier') carriers.push(slot.jobType);
-    // a gatherer slot (e.g. the joinery's demo woodcutter) is never a right-click target — skip it
+    // a gatherer slot (e.g. the joinery's demo woodcutter) is never a right-click target - skip it
   }
   craftsmen.sort((a, b) => a - b);
   return [...craftsmen, ...carriers];
 }
 
 /** The building's gatherer slots (collector/hunter/fisher), ascending by job id. Empty when the building
- *  employs no gatherer — the signal that a gatherer settler has no place here. */
+ *  employs no gatherer - the signal that a gatherer settler has no place here. */
 function gathererSlots(slots: readonly { readonly jobType: number }[] | undefined): number[] {
   return (slots ?? [])
     .map((slot) => slot.jobType)
@@ -90,12 +90,12 @@ function gathererSlots(slots: readonly { readonly jobType: number }[] | undefine
  * so a full/unoffered/gated trade falls through:
  *  - **A gatherer** (collector/hunter/fisher current trade) keeps the building's CRAFT slots first: aiming a
  *    gatherer at a workshop means "become its tradesman" in the original, and the sim's `needforjob` gate is
- *    what decides — a collector that earned the potter's repeats becomes a potter, one that hasn't falls
+ *    what decides - a collector that earned the potter's repeats becomes a potter, one that hasn't falls
  *    through. Its own gatherer slots come next (its exact slot first), so a hunter right-clicked onto a
  *    warehouse is still bound as a gatherer delivering there, with the carrier slot last.
  *  - **A craftsman/carrier** current trade is promoted only when the building actually offers it.
  *  - **Idle/absent** has no trade to keep, so the default {@link assignmentPriority} stands (gatherers
- *    excluded — a plain settler on a warehouse becomes a carrier, not a gatherer).
+ *    excluded - a plain settler on a warehouse becomes a carrier, not a gatherer).
  */
 export function assignmentPriorityFor(
   currentJob: number | undefined,
@@ -105,7 +105,7 @@ export function assignmentPriorityFor(
   if (currentJob === undefined || currentJob === JOB_IDLE) return base;
   if (workerRoleOf(currentJob) === 'gatherer') {
     const gatherers = gathererSlots(slots);
-    if (gatherers.length === 0) return base; // no gatherer slot here — craft, else carrier
+    if (gatherers.length === 0) return base; // no gatherer slot here - craft, else carrier
     const offeredExactly = gatherers.includes(currentJob);
     const ordered = offeredExactly ? [currentJob, ...gatherers.filter((j) => j !== currentJob)] : gatherers;
     // Craft slots keep the lead; the gatherer's own slots sit between them and the carrier fallback.

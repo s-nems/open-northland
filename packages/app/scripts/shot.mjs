@@ -1,7 +1,7 @@
-// The committed screenshot harness — `npm run shot` (see docs/TESTING.md "Visual validation via
+// The committed screenshot harness - `npm run shot` (see docs/TESTING.md "Visual validation via
 // Playwright"). It boots the app's deterministic, headless render entry (`?shot`), waits on the
 // `window.__opennorthlandShotReady` flag the entry sets after drawing ONE frame, and writes a PNG an agent
-// (or a human) eyeballs for GROSS correctness — never auto-passed, never byte-compared (the GPU
+// (or a human) eyeballs for GROSS correctness - never auto-passed, never byte-compared (the GPU
 // rasteriser isn't byte-stable across machines; the sim is, the pixels aren't).
 //
 // Reproducible because: the sim is seed-deterministic and `buildScene` is pure, so `?shot&seed&ticks`
@@ -30,7 +30,7 @@ function arg(name, fallback) {
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : fallback;
 }
 
-/** A boolean CLI flag — present (`--atlas`) vs absent. */
+/** A boolean CLI flag - present (`--atlas`) vs absent. */
 function flag(name) {
   return process.argv.includes(`--${name}`);
 }
@@ -78,7 +78,7 @@ async function main() {
 
     await page.goto(url, { waitUntil: 'load' });
     // Wait for the headless render entry to draw its single frame and raise the ready flag. If it
-    // never does (a render crash before the flag), surface the collected page errors — otherwise the
+    // never does (a render crash before the flag), surface the collected page errors - otherwise the
     // bare timeout masks the real cause.
     try {
       await page.waitForFunction(() => window.__opennorthlandShotReady === true, { timeout: 30_000 });
@@ -102,7 +102,7 @@ async function main() {
     console.log(
       `shot: wrote ${outPath} (seed=${seed}, ticks=${ticks}${mapId ? `, map=${mapId}` : ''}) from ${url}`,
     );
-    console.log('shot: NOT auto-passed — a human/agent must eyeball the PNG for gross correctness.');
+    console.log('shot: NOT auto-passed - a human/agent must eyeball the PNG for gross correctness.');
   } finally {
     await browser.close();
     await server.close();

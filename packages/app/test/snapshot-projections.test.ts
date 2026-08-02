@@ -9,10 +9,10 @@ import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from '
 /**
  * The identity memo behind the frame loop's per-tick projections: an O(entities) read must run once per
  * SNAPSHOT, not once per RAF frame (the loop calls these every frame while the fixed timestep may not
- * have stepped). Pinned here because nothing else fails when the memo silently stops hitting — the cost
+ * have stepped). Pinned here because nothing else fails when the memo silently stops hitting - the cost
  * is invisible to every other test.
  */
-describe('createSnapshotProjections — memoized by snapshot identity', () => {
+describe('createSnapshotProjections - memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
   const projectionsFor = () =>
     createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), { isLivestockTribe: () => false });
@@ -23,7 +23,7 @@ describe('createSnapshotProjections — memoized by snapshot identity', () => {
     expect(hudFor(snap)).toBe(hudFor(snap));
     expect(doorBadgesFor(snap)).toBe(doorBadgesFor(snap));
 
-    const next = snapshotOf([building(10, HOME_TYPE, 1, 1)]); // a new tick's snapshot — a new instance
+    const next = snapshotOf([building(10, HOME_TYPE, 1, 1)]); // a new tick's snapshot - a new instance
     expect(doorBadgesFor(next)).not.toBe(doorBadgesFor(snap));
   });
 });
@@ -34,7 +34,7 @@ describe('createSnapshotProjections — memoized by snapshot identity', () => {
  * by counting entities handed out, because a projection that quietly walks `entities` again still returns
  * the right answer.
  */
-describe('per-tick projections — one walk of the map between them', () => {
+describe('per-tick projections - one walk of the map between them', () => {
   const HOME_TYPE = 2;
   const SCENERY = 400;
   const PLAYER = 0;

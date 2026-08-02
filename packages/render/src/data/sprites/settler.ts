@@ -7,7 +7,7 @@ import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-
  */
 
 /**
- * The facing used when a draw item carries none (`item.facing` is undefined — an idle/acting settler
+ * The facing used when a draw item carries none (`item.facing` is undefined - an idle/acting settler
  * with no live movement to derive a heading from). `5` is SE on screen (toward the camera-right) in the
  * `CR_Hum_Body` direction layout (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; source basis "Settler
  * facing"), a toward-camera pose rather than a back/profile view. Approximation: no per-entity "hold
@@ -22,7 +22,7 @@ function wrap(n: number, m: number): number {
 
 /**
  * Resolve a {@link SpriteFrameRef} to a concrete bob id for a given facing and animation `clock` (an
- * integer tick count — the free sim tick for a looping gait, or the atomic's `elapsed` for an action).
+ * integer tick count - the free sim tick for a looping gait, or the atomic's `elapsed` for an action).
  * A plain number is that id verbatim; a {@link import('./bindings.js').DirectionalAnim} or
  * {@link import('./bindings.js').FrameListAnim} resolves through the layout, cadence and `phaseStart`
  * semantics documented on its type in settler-bindings.ts.
@@ -39,8 +39,8 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
     if (lists.length === 0) return ref.start;
     const list = lists[wrap(facing, lists.length)];
     if (list === undefined || list.length === 0) return ref.start;
-    // One-shot default: past the list's end the sprite returns to the first entry — the tool-ready
-    // stance on every list — instead of wrapping into a replay: the stonecrush/shovel lists end
+    // One-shot default: past the list's end the sprite returns to the first entry - the tool-ready
+    // stance on every list - instead of wrapping into a replay: the stonecrush/shovel lists end
     // mid-motion, so holding the last entry froze the digger in half a swing, and a duration longer
     // than its list (the mushroom pluck) would stutter back through the motion. `loop` wraps instead
     // (an idle wait cycle on the endless free tick clock).
@@ -60,9 +60,9 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
  * {@link SettlerStateBinding} picks by state with a fixed fallback chain so a sparse table is always
  * total: `acting` tries `byAtomic[id]` → `acting` → `idle`; `moving` tries `moving` → `idle`; `idle` is
  * `idle`. When the item is {@link DrawItem.carrying} a good, the {@link SettlerStateBinding.carrying}
- * loaded-gait override is consulted first for the `moving`/`idle` slots — the hauled good's own
+ * loaded-gait override is consulted first for the `moving`/`idle` slots - the hauled good's own
  * {@link import('./bindings.js').CarryingBinding.byGood} look when bound ({@link DrawItem.carryGood}),
- * else the generic loaded slots — so a hauling settler walks the loaded cycle; a bound atomic still
+ * else the generic loaded slots - so a hauling settler walks the loaded cycle; a bound atomic still
  * wins, as a settler only carries after harvesting empty-handed. The chosen {@link SpriteFrameRef} is
  * then resolved through {@link frameOf}. Exported so the per-character render path
  * ({@link import('../../gpu/sprite-sheet.js').SettlerCharacter}) resolves its own binding through the
@@ -73,7 +73,7 @@ export function resolveSettlerBobId(
   item: DrawItem,
   tick: number,
   // The moving-state clock: the pool passes its motion-scaled walk-cycle phase (feet track ground
-  // covered, not wall ticks — gpu/sprite-pool/motion.ts `gaitPhase`); defaults to the free tick so
+  // covered, not wall ticks - gpu/sprite-pool/motion.ts `gaitPhase`); defaults to the free tick so
   // every other caller (ghost previews, the synthetic sheet, tests) keeps the fixed cadence.
   gaitClock: number = tick,
 ): number {
@@ -89,7 +89,7 @@ export function resolveSettlerBobId(
       ? undefined
       : { idle: byGood?.idle ?? carrying.idle, moving: byGood?.moving ?? carrying.moving };
   // Combat-engaged gait override (the `..._agressive` walk/wait), in effect only while the sim marks the
-  // unit engaged. Wins over the loaded gait — an engaged soldier is fighting, not hauling — and falls
+  // unit engaged. Wins over the loaded gait - an engaged soldier is fighting, not hauling - and falls
   // back to its un-engaged counterpart when a slot is unbound (the unarmed body authors no aggressive
   // variant). A bound attack swing (byAtomic) still wins below while the unit is mid-swing.
   const engaged = item.engaged ? binding.engaged : undefined;
@@ -108,7 +108,7 @@ export function resolveSettlerBobId(
     return frameOf(engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
   }
   if (state === 'moving') {
-    // The walk cycle runs on the gait clock — motion-scaled by the pool — so a braking, accelerating
+    // The walk cycle runs on the gait clock - motion-scaled by the pool - so a braking, accelerating
     // or body-pressed walker's legs slow with its actual advance instead of jogging in place. The
     // idle 'wait' loop below stays on the free tick (a standing unit keeps breathing).
     return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, gaitClock);
@@ -118,7 +118,7 @@ export function resolveSettlerBobId(
 
 /**
  * Pick from a {@link ByJobTable} for a draw item's `jobType`, `young` flag and equipped `weaponGood`.
- * An adult carrying a mapped weapon good takes {@link ByJobTable.byWeaponGood} first — the drawn weapon
+ * An adult carrying a mapped weapon good takes {@link ByJobTable.byWeaponGood} first - the drawn weapon
  * follows the equipment slot, not the job - and an adult whose weapon slot is explicitly empty
  * (`weaponGood` null) takes its job's bare-hands look ({@link ByJobTable.unarmedByJob}). Otherwise:
  * young → {@link ByJobTable.youngByJob}, adult → {@link ByJobTable.byJob}, any miss →

@@ -12,7 +12,7 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
- * Unit + integration tests for the SLEEP DRIVE — the planner choosing a `sleep` atomic (id 8, the
+ * Unit + integration tests for the SLEEP DRIVE - the planner choosing a `sleep` atomic (id 8, the
  * original's sleep-slot) when a settler's fatigue crosses the threshold, bedding down on open ground
  * (stepping off a workplace doorstep first) and taking SLEEP_FATIGUE_RESTORE off fatigue on completion,
  * closing the NeedsSystem's rise→sleep→relief loop.
@@ -23,16 +23,16 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } fr
  */
 
 const SLEEP_ATOMIC = 8;
-// Just over the ¾·ONE sleep threshold — a settler this tired rests before any work.
+// Just over the ¾·ONE sleep threshold - a settler this tired rests before any work.
 const TIRED: Fixed = justAbove(NEED_THRESHOLD);
-// Comfortably below the threshold — a rested settler ignores the sleep drive and works as normal.
+// Comfortably below the threshold - a rested settler ignores the sleep drive and works as normal.
 const RESTED: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function settlerAt(sim: Simulation, x: number, y: number, fatigue: Fixed, hunger = fx.fromInt(0)): Entity {
   return needsSettlerAt(sim, x, y, { hunger, fatigue });
 }
 
-describe('sleepDrive — the planner choosing to sleep', () => {
+describe('sleepDrive - the planner choosing to sleep', () => {
   it('starts a sleep atomic (duration from content) on the spot when already lying in the open', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 2, 0, TIRED);
@@ -41,7 +41,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(settler, MoveGoal)).toBe(false); // already clear ground — no walk needed
+    expect(sim.world.has(settler, MoveGoal)).toBe(false); // already clear ground - no walk needed
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(SLEEP_ATOMIC);
     expect(atomic.duration).toBe(6); // viking setatomic 8 -> "viking_sleep" length 6
@@ -55,7 +55,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Headed for the wood, not resting — the sleep drive did not fire.
+    // Headed for the wood, not resting - the sleep drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     const treeNode = cellAnchorNode(3, 0); // the tree's anchor node on the half-cell lattice
     expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.nodeAt(treeNode.hx, treeNode.hy));
@@ -70,12 +70,12 @@ describe('sleepDrive — the planner choosing to sleep', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
-    expect(atomic.atomicId).toBe(10); // EAT — eat outranks sleep
+    expect(atomic.atomicId).toBe(10); // EAT - eat outranks sleep
     expect(atomic.effect.kind).toBe('eat');
   });
 });
 
-describe('sleep atomic — relieving fatigue on completion (AtomicSystem)', () => {
+describe('sleep atomic - relieving fatigue on completion (AtomicSystem)', () => {
   it('takes one sleep off fatigue and consumes no goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, TIRED);
@@ -91,13 +91,13 @@ describe('sleep atomic — relieving fatigue on completion (AtomicSystem)', () =
 
     atomicSystem(sim.world, ctxOf(sim));
 
-    // One sleep is a partial refill, not a reset — a settler run to the top of its bar beds down again.
+    // One sleep is a partial refill, not a reset - a settler run to the top of its bar beds down again.
     expect(sim.world.get(settler, Settler).fatigue).toBe(fx.sub(TIRED, SLEEP_FATIGUE_RESTORE));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 });
 
-describe('sleep drive — closing the rise→sleep→relief loop through the real schedule', () => {
+describe('sleep drive - closing the rise→sleep→relief loop through the real schedule', () => {
   it('a settler gets tired, sleeps, and a sleep comes off its fatigue bar', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     // Start the settler already near the threshold so it crosses within a short headless run.

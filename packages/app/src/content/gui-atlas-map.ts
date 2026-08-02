@@ -4,14 +4,14 @@
 // to UI sprites by name, never by a magic frame number.
 //
 // Identification basis (per-frame `source`):
-//   'manual'      — a project-maintained mapping of frame, rectangle, and HUD purpose. Recheck it
+//   'manual'      - a project-maintained mapping of frame, rectangle, and HUD purpose. Recheck it
 //                   against the running original when exact UI behavior matters.
-//   'montage'     — identified by eye from a numbered render of every frame (the labeled-montage technique).
+//   'montage'     - identified by eye from a numbered render of every frame (the labeled-montage technique).
 //                   Once a human confirms the category and the glyph is legible, the frame carries a
 //                   provisional descriptive name (a read of the drawn glyph, refine-able later); a frame
 //                   whose glyph is unread stays `unknown_NNN` with a best-guess `role`/`note`. See
 //                   docs/formats/GRAPHICS.md.
-//   'unknown'     — not yet identified at all.
+//   'unknown'     - not yet identified at all.
 //
 // The round wooden radial buttons at frames 96–136 were identified visually. Their `order_*` names
 // remain provisional until each command is confirmed in the running original.
@@ -38,7 +38,7 @@ export type GuiFrameRole =
   | 'decoration' // a flag, ornament, or other chrome
   | 'unknown'; // not yet categorized
 
-/** Where a frame's identification comes from — see the file header. */
+/** Where a frame's identification comes from - see the file header. */
 export type GuiFrameSource = 'manual' | 'montage' | 'unknown';
 
 /** One GUI-atlas frame's metadata. `name` is unique across the sheet; unidentified frames are `unknown_NNN`. */
@@ -58,7 +58,7 @@ export interface GuiFrameMeta {
 /**
  * Every frame of the GUI-window sheet, indexed by atlas frame id (array index === frame index === original
  * gfx id). Total over the sheet: exactly {@link GUI_ATLAS_FRAME_COUNT} entries, every one named (or
- * `unknown_NNN`), no duplicate names — enforced by `gui-atlas-map.test.ts`.
+ * `unknown_NNN`), no duplicate names - enforced by `gui-atlas-map.test.ts`.
  */
 export const GUI_FRAMES = [
   /* 000 0x00 */ {
@@ -66,28 +66,28 @@ export const GUI_FRAMES = [
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'rope-knot window corner 7x7 (bottom pair) — orientation provisional; pending the step-3 human pass',
+    note: 'rope-knot window corner 7x7 (bottom pair) - orientation provisional; pending the step-3 human pass',
   },
   /* 001 0x01 */ {
     name: 'knot_corner_br',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'rope-knot window corner 7x7 (bottom pair) — orientation provisional; pending the step-3 human pass',
+    note: 'rope-knot window corner 7x7 (bottom pair) - orientation provisional; pending the step-3 human pass',
   },
   /* 002 0x02 */ {
     name: 'knot_corner_tl',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'rope-knot window corner 10x10 (top pair) — orientation provisional; pending the step-3 human pass',
+    note: 'rope-knot window corner 10x10 (top pair) - orientation provisional; pending the step-3 human pass',
   },
   /* 003 0x03 */ {
     name: 'knot_corner_tr',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'rope-knot window corner 10x10 (top pair) — orientation provisional; pending the step-3 human pass',
+    note: 'rope-knot window corner 10x10 (top pair) - orientation provisional; pending the step-3 human pass',
   },
   /* 004 0x04 */ {
     name: 'unknown_004',
@@ -101,56 +101,56 @@ export const GUI_FRAMES = [
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '9-slice window border: horizontal edge 128x3 — orientation provisional (details-panel rope-tiling reads coherently); pending the step-3 human pass',
+    note: '9-slice window border: horizontal edge 128x3 - orientation provisional (details-panel rope-tiling reads coherently); pending the step-3 human pass',
   },
   /* 006 0x06 */ {
     name: 'window_border_right',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '9-slice window border: vertical edge 3x128 — orientation provisional; pending the step-3 human pass',
+    note: '9-slice window border: vertical edge 3x128 - orientation provisional; pending the step-3 human pass',
   },
   /* 007 0x07 */ {
     name: 'window_border_top',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '9-slice window border: horizontal edge 128x3 — orientation provisional; pending the step-3 human pass',
+    note: '9-slice window border: horizontal edge 128x3 - orientation provisional; pending the step-3 human pass',
   },
   /* 008 0x08 */ {
     name: 'window_border_left',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '9-slice window border: vertical edge 3x128 — orientation provisional; pending the step-3 human pass',
+    note: '9-slice window border: vertical edge 3x128 - orientation provisional; pending the step-3 human pass',
   },
   /* 009 0x09 */ {
     name: 'corner_5x5_0',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '5x5 corner piece — unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
+    note: '5x5 corner piece - unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
   },
   /* 010 0x0a */ {
     name: 'corner_5x5_1',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '5x5 corner piece — unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
+    note: '5x5 corner piece - unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
   },
   /* 011 0x0b */ {
     name: 'corner_5x5_2',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '5x5 corner piece — unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
+    note: '5x5 corner piece - unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
   },
   /* 012 0x0c */ {
     name: 'corner_5x5_3',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: '5x5 corner piece — unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
+    note: '5x5 corner piece - unconsumed since the rope border landed (frames 0-3 are the window corners); identity pending the step-3 human pass',
   },
   /* 013 0x0d */ {
     name: 'unknown_013',
@@ -325,7 +325,7 @@ export const GUI_FRAMES = [
     role: 'resource_icon',
     palette: 'context',
     source: 'montage',
-    note: 'water drop — used as the Magazyn "Napoje" (drinks) category-tab glyph',
+    note: 'water drop - used as the Magazyn "Napoje" (drinks) category-tab glyph',
   },
   /* 038 0x26 */ {
     name: 'unknown_038',
@@ -452,7 +452,7 @@ export const GUI_FRAMES = [
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'braided minimap/overview window frame 149x133: braid along top+right only, hole flush to the LEFT and BOTTOM edges — drawn pinned to the screen bottom-left corner; measured inner map area (0,16,116x117), near-black opaque',
+    note: 'braided minimap/overview window frame 149x133: braid along top+right only, hole flush to the LEFT and BOTTOM edges - drawn pinned to the screen bottom-left corner; measured inner map area (0,16,116x117), near-black opaque',
   },
   /* 056 0x38 */ {
     name: 'tool_button_tech_tree',
@@ -677,28 +677,28 @@ export const GUI_FRAMES = [
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'skull & crossbones (stone token) — attack/death?',
+    note: 'skull & crossbones (stone token) - attack/death?',
   },
   /* 088 0x58 */ {
     name: 'unknown_088',
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'handshake (stone token) — trade/diplomacy?',
+    note: 'handshake (stone token) - trade/diplomacy?',
   },
   /* 089 0x59 */ {
     name: 'unknown_089',
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'house + ladder (stone token) — build?',
+    note: 'house + ladder (stone token) - build?',
   },
   /* 090 0x5a */ {
     name: 'unknown_090',
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'crossed swords (stone token) — military/attack?',
+    note: 'crossed swords (stone token) - military/attack?',
   },
   /* 091 0x5b */ {
     name: 'unknown_091',
@@ -852,7 +852,7 @@ export const GUI_FRAMES = [
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'round wooden order button (context palette); glyph: two screws (one larger, one smaller) — user-identified as the "change profession" command; provisional name pending exact command',
+    note: 'round wooden order button (context palette); glyph: two screws (one larger, one smaller) - user-identified as the "change profession" command; provisional name pending exact command',
   },
   /* 113 0x71 */ {
     name: 'order_repair',
@@ -1174,77 +1174,77 @@ export const GUI_FRAMES = [
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 159 0x9f */ {
     name: 'unknown_159',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 160 0xa0 */ {
     name: 'unknown_160',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 161 0xa1 */ {
     name: 'unknown_161',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 162 0xa2 */ {
     name: 'unknown_162',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 163 0xa3 */ {
     name: 'unknown_163',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame 70x22 (decoded atlas rect) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame 70x22 (decoded atlas rect) - solid fill under bar_* palettes',
   },
   /* 164 0xa4 */ {
     name: 'unknown_164',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame 70x22 (decoded atlas rect) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame 70x22 (decoded atlas rect) - solid fill under bar_* palettes',
   },
   /* 165 0xa5 */ {
     name: 'bar_frame_96',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame 96x18 (decoded atlas rect) — solid fill under bar_* palettes; the details-panel progress/need bar',
+    note: 'horizontal bar frame 96x18 (decoded atlas rect) - solid fill under bar_* palettes; the details-panel progress/need bar',
   },
   /* 166 0xa6 */ {
     name: 'unknown_166',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame 96x18 (decoded atlas rect) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame 96x18 (decoded atlas rect) - solid fill under bar_* palettes',
   },
   /* 167 0xa7 */ {
     name: 'unknown_167',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 168 0xa8 */ {
     name: 'unknown_168',
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame (70x22 / 96x18) — solid fill under bar_* palettes',
+    note: 'horizontal bar frame (70x22 / 96x18) - solid fill under bar_* palettes',
   },
   /* 169 0xa9 */ {
     name: 'unknown_169',
@@ -1258,56 +1258,56 @@ export const GUI_FRAMES = [
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 171 0xab */ {
     name: 'stock_tab_1',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 172 0xac */ {
     name: 'stock_tab_2',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 173 0xad */ {
     name: 'stock_tab_3',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 174 0xae */ {
     name: 'stock_tab_4',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 175 0xaf */ {
     name: 'stock_tab_5',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 176 0xb0 */ {
     name: 'stock_tab_6',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 177 0xb1 */ {
     name: 'stock_tab_7',
     role: 'resource_icon',
     palette: 'bg_invert',
     source: 'montage',
-    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics — context rendered it dark-on-dark); eight-tab strip, per-tab category unread — pending the step-3 human pass',
+    note: 'stock-window category tab 32x18: renders through the bg_invert palette as a BRIGHT cream line-art glyph on a recessed plate (our palette choice, not decoded frame semantics - context rendered it dark-on-dark); eight-tab strip, per-tab category unread - pending the step-3 human pass',
   },
   /* 178 0xb2 */ {
     name: 'unknown_178',
@@ -1335,21 +1335,21 @@ export const GUI_FRAMES = [
     role: 'decoration',
     palette: 'iconsleft',
     source: 'montage',
-    note: 'small ornament / creature glyph (NOT a mouse cursor — cursors are separate .cur files)',
+    note: 'small ornament / creature glyph (NOT a mouse cursor - cursors are separate .cur files)',
   },
   /* 182 0xb6 */ {
     name: 'unknown_182',
     role: 'decoration',
     palette: 'iconsleft',
     source: 'montage',
-    note: 'small ornament / creature glyph (NOT a mouse cursor — cursors are separate .cur files)',
+    note: 'small ornament / creature glyph (NOT a mouse cursor - cursors are separate .cur files)',
   },
   /* 183 0xb7 */ {
     name: 'unknown_183',
     role: 'decoration',
     palette: 'iconsleft',
     source: 'montage',
-    note: 'small ornament / creature glyph (NOT a mouse cursor — cursors are separate .cur files)',
+    note: 'small ornament / creature glyph (NOT a mouse cursor - cursors are separate .cur files)',
   },
   /* 184 0xb8 */ {
     name: 'unknown_184',
@@ -1412,11 +1412,11 @@ export const GUI_FRAMES = [
     role: 'bar',
     palette: 'bar_standart',
     source: 'montage',
-    note: 'horizontal bar frame 96x18 — solid fill under bar_* palettes',
+    note: 'horizontal bar frame 96x18 - solid fill under bar_* palettes',
   },
 ] as const satisfies readonly GuiFrameMeta[];
 
-/** Every frame name the sheet carries — derived from {@link GUI_FRAMES}, so a typo'd reference fails to
+/** Every frame name the sheet carries - derived from {@link GUI_FRAMES}, so a typo'd reference fails to
  *  compile instead of throwing at draw time. */
 export type GuiFrameName = (typeof GUI_FRAMES)[number]['name'];
 

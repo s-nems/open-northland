@@ -4,26 +4,26 @@
  * forbidden nondeterminism patterns and feeds violations straight back to the agent (exit 2 →
  * stderr), so a violation surfaces the moment it is written instead of at the next `npm test`.
  *
- * packages/sim/test/core/hygiene.test.ts is the AUTHORITATIVE scan — it gates `npm test` + CI and
+ * packages/sim/test/core/hygiene.test.ts is the AUTHORITATIVE scan - it gates `npm test` + CI and
  * covers the whole tree. This guard mirrors its patterns for instant feedback and must never grow
  * past it: when adding a pattern, add it to the test first, then mirror it here.
  */
 import { readFileSync } from 'node:fs';
 
 const FORBIDDEN = [
-  { pattern: /\bMath\.random\b/, why: 'use world.rng (seeded) — Math.random is nondeterministic' },
-  { pattern: /\bDate\.now\b/, why: 'no wall-clock in sim — use the tick counter' },
+  { pattern: /\bMath\.random\b/, why: 'use world.rng (seeded) - Math.random is nondeterministic' },
+  { pattern: /\bDate\.now\b/, why: 'no wall-clock in sim - use the tick counter' },
   { pattern: /\bnew Date\b/, why: 'no wall-clock in sim' },
   { pattern: /\bperformance\.now\b/, why: 'no wall-clock in sim' },
   {
     pattern:
       /\bMath\.(?:sqrt|cbrt|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|exp|expm1|log|log1p|log2|log10|pow|hypot|fround)\b/,
-    why: 'transcendental float math can differ across engines — use fx.* integer helpers (e.g. fx.isqrt)',
+    why: 'transcendental float math can differ across engines - use fx.* integer helpers (e.g. fx.isqrt)',
     allowFile: /[/\\]core[/\\]fixed\.ts$/,
   },
   {
     pattern: /\blocaleCompare\b|\btoLocale[A-Z]\w*\b|\bIntl\./,
-    why: 'locale-dependent APIs vary by environment — sort/format by numeric id or codepoint instead',
+    why: 'locale-dependent APIs vary by environment - sort/format by numeric id or codepoint instead',
   },
 ];
 
@@ -52,12 +52,12 @@ try {
       console.error(
         `sim determinism guard: forbidden nondeterministic pattern(s) in the file you just edited\n${violations.join(
           '\n',
-        )}\nFix before committing — the authoritative gate is packages/sim/test/core/hygiene.test.ts (fails npm test + CI).`,
+        )}\nFix before committing - the authoritative gate is packages/sim/test/core/hygiene.test.ts (fails npm test + CI).`,
       );
       process.exit(2);
     }
   }
 } catch {
-  // Never block an edit because the guard itself failed — the hygiene test is the real gate.
+  // Never block an edit because the guard itself failed - the hygiene test is the real gate.
 }
 process.exit(0);

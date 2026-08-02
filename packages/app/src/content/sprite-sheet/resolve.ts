@@ -23,7 +23,7 @@ export function syntheticSpriteSheet(): SpriteSheet {
  * to the reproducible hand-authored markers; renderer verification overrides remain confined to `?shot`.
  */
 export async function resolveSpriteSheet(
-  /** The goods of the content set the sim will run (demo/scene) — keys the per-good carry looks; the
+  /** The goods of the content set the sim will run (demo/scene) - keys the per-good carry looks; the
    *  ids are content-relative numbers, so only the entry that builds the sim knows them. */
   goods: readonly GoodRef[] = [],
 ): Promise<SpriteSheet> {
@@ -33,7 +33,7 @@ export async function resolveSpriteSheet(
     if (!(err instanceof MissingAtlasError)) throw err;
     diag.warn(
       'content',
-      'real atlas unavailable (is content/ populated?) — falling back to synthetic markers',
+      'real atlas unavailable (is content/ populated?) - falling back to synthetic markers',
       err,
     );
     return syntheticSpriteSheet();

@@ -14,10 +14,10 @@ import {
 } from '../../../game/snapshot.js';
 
 /**
- * The "przypisz dom" (assign a home) highlight — the pure snapshot projection behind the action-ring
+ * The "przypisz dom" (assign a home) highlight - the pure snapshot projection behind the action-ring
  * button + the green/red house tint, the residential twin of `assign-highlight.ts`. Green = an own,
- * built `home` with a free family slot for this settler's family (`homeSize` — the original
- * `logichomesize` 1..5 by level — counts FAMILIES, see {@link familiesByHome}). The sim's `assignHouse`
+ * built `home` with a free family slot for this settler's family (`homeSize` - the original
+ * `logichomesize` 1..5 by level - counts FAMILIES, see {@link familiesByHome}). The sim's `assignHouse`
  * command re-validates on click; this is the at-a-glance candidacy the player reads. Known gap:
  * signpost confinement is not mirrored, so an out-of-area home may wash green before the sim refuses
  * the click.
@@ -29,7 +29,7 @@ export interface HouseInfo {
   readonly homeSize?: number | undefined;
 }
 
-/** The settler's household — itself, its living spouse, their still-growing child (the sim `familyOf`
+/** The settler's household - itself, its living spouse, their still-growing child (the sim `familyOf`
  *  mirrored over the snapshot). */
 export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[] {
   const e = entityById(snapshot, settlerId);

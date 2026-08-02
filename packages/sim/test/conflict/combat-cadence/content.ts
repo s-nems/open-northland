@@ -3,19 +3,19 @@ import { WEAPON_MAIN_TYPE } from '../../../src/systems/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
- * Combat cadence + hit-frame + stagger + need-drain + fight-XP — the "make a melee exchange run at the
+ * Combat cadence + hit-frame + stagger + need-drain + fight-XP - the "make a melee exchange run at the
  * data's cadence" slice (combat rework part 1). The shared fixture's attack animations are length-only
  * (no ATTACK event, no need-drain, no weapon `mainType`), so those tests exercise only the fallback
  * paths; THIS fixture mirrors the real soldier data (`atomicanimations12/atomicanimations.ini` +
- * `weapons.ini`, verified 2026-07-03) — attack animations carrying the `event <frame> 25` ATTACK cue
+ * `weapons.ini`, verified 2026-07-03) - attack animations carrying the `event <frame> 25` ATTACK cue
  * and the `event 2 {1,2} -20`/`-100` need-drains, the AP-asymmetric spear/sword `damagevalue` columns,
- * and the civilian `setatomic 82 "..._attacked"` stagger binding — so the mechanics can be pinned to
+ * and the civilian `setatomic 82 "..._attacked"` stagger binding - so the mechanics can be pinned to
  * the exact frames/values the data specifies. Synthetic (no copyrighted bytes), but numerically faithful.
  */
 
 export const VIKING = 1;
 export const SAXON = 2;
-export const OTHER = 99; // a tribe with NO content record — a valid PvP enemy (not an animal), never fights back
+export const OTHER = 99; // a tribe with NO content record - a valid PvP enemy (not an animal), never fights back
 export const WOLF_TRIBE = 20; // an animal tribe (carries an `animals` row) - its swings must train nothing
 
 export const WOMAN = 5;
@@ -24,7 +24,7 @@ export const SOLDIER_SPEAR = 33;
 export const SOLDIER_SWORD_SHORT = 34;
 export const SOLDIER_SWORD_LONG = 35;
 export const SOLDIER_SABER = 36;
-export const HERO = 42; // hero band — its swings feed the `hero general` track (70), not soldier's (69)
+export const HERO = 42; // hero band - its swings feed the `hero general` track (70), not soldier's (69)
 
 export const CHAIN_CLASS = 3; // armor typeId/material 3
 export const PLATE_CLASS = 4; // armor typeId/material 4
@@ -32,7 +32,7 @@ export const PLATE_CLASS = 4; // armor typeId/material 4
 export const ATTACK_ATOMIC = 81;
 export const ATTACKED_ATOMIC = 82;
 
-// Real weapon damagevalue columns (viking, verified in the extracted IR) — the AP asymmetry the test pins:
+// Real weapon damagevalue columns (viking, verified in the extracted IR) - the AP asymmetry the test pins:
 // the iron spear is anti-plate (2090 vs plate 4 / 950 vs chain 3); the long sword is anti-chain (the mirror).
 export const IRON_SPEAR_DAMAGE = { '0': 3800, '1': 1900, '2': 2850, '3': 950, '4': 2090, '6': 200, '7': 500 };
 export const LONG_SWORD_DAMAGE = { '0': 3800, '1': 1900, '2': 2850, '3': 2090, '4': 950, '6': 200, '7': 500 };
@@ -61,7 +61,7 @@ export function combatCadenceContent(): ContentSet {
     SOLDIER_SWORD_LONG,
     SOLDIER_SABER,
   ];
-  // Both tribes bind the same (job → attack animation) rows — the animation names are tribe-agnostic join
+  // Both tribes bind the same (job → attack animation) rows - the animation names are tribe-agnostic join
   // keys; the per-tribe asymmetry lives in the weapons. The woman alone carries the ATTACKED (82) stagger.
   const bindings = [
     { jobType: WOMAN, atomicId: ATTACK_ATOMIC, animation: 'woman_attack' },
@@ -70,7 +70,7 @@ export function combatCadenceContent(): ContentSet {
     { jobType: SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_spear_iron' },
     { jobType: SOLDIER_SWORD_SHORT, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_sword_short' },
     { jobType: SOLDIER_SWORD_LONG, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_sword_long' },
-    // The saber attack animation carries NO ATTACK event — the completion-fallback + saber-has-no-fight-XP case.
+    // The saber attack animation carries NO ATTACK event - the completion-fallback + saber-has-no-fight-XP case.
     { jobType: SOLDIER_SABER, atomicId: ATTACK_ATOMIC, animation: 'soldier_attack_saber' },
   ];
   const weaponsFor = (tribe: number) => [
@@ -157,7 +157,7 @@ export function combatCadenceContent(): ContentSet {
       { typeId: PLATE_CLASS, id: 'plate_armor', goodType: 36, materialType: 4, blockingValue: 5 },
     ],
     tribes: [
-      // A `jobEnables` edge makes each a civilization (not an animal — isAnimalTribe is false), so the two
+      // A `jobEnables` edge makes each a civilization (not an animal - isAnimalTribe is false), so the two
       // tribes are mutually hostile through the real `mayAttack` relation. The edge kind is irrelevant here.
       {
         typeId: VIKING,
@@ -200,7 +200,7 @@ export function combatCadenceContent(): ContentSet {
         length: 29,
         events: [...drainEvents(SOLDIER_DRAIN), { at: 16, type: 25 }],
       },
-      // The saber swing has the drains but NO ATTACK event (type 25) — the completion-fallback case.
+      // The saber swing has the drains but NO ATTACK event (type 25) - the completion-fallback case.
       {
         id: 'soldier_attack_saber',
         name: 'soldier_attack_saber',

@@ -9,7 +9,7 @@ import { authoredMap, mixedGrid } from './support/slice-maps.js';
 
 /**
  * The demo scenario the live + shot entries share: the terrain projection and the three sims built over
- * it — the demo slice, a bare imported map, and a map's authored entities.
+ * it - the demo slice, a bare imported map, and a map's authored entities.
  */
 
 describe('sliceTerrain', () => {
@@ -38,13 +38,13 @@ describe('runSlice on a loaded map', () => {
 
   it('places the slice entities on the first walkable cells of the grid, not the strip', () => {
     const { Position, Building, Settler, Resource, DeliveryFlag } = components;
-    // ticks=1 so the placeBuilding/spawnSettler commands (applied on tick 1) have run — the two wood
+    // ticks=1 so the placeBuilding/spawnSettler commands (applied on tick 1) have run - the two wood
     // nodes are created directly, but the command entities only exist after the first step.
     const sim = runSlice(7, 1, mixedGrid(4, 8));
 
     // Seven positioned entities: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
     // (Resource), and the woodcutter's WORK FLAG (a Position + DeliveryFlag, auto-planted at its feet on
-    // spawn — a gatherer is never free). The grid leaves enough open ground beyond the building bodies for
+    // spawn - a gatherer is never free). The grid leaves enough open ground beyond the building bodies for
     // the flag's free-field placement; at least one entity must sit below the synthetic strip's row-0 line.
     const positioned = [...sim.world.query(Position)].map((e) => sim.world.get(e, Position));
     expect(positioned).toHaveLength(7);
@@ -65,7 +65,7 @@ describe('runSlice on a loaded map', () => {
 
   it('falls back to the synthetic strip when a loaded map has too few walkable cells', () => {
     // TERRAIN_IMPASSABLE is the demo's non-walkable water class; an all-impassable grid has 0 walkable
-    // cells, so placement can't fit the slice — runSlice must degrade to the 6×1 strip rather than throw.
+    // cells, so placement can't fit the slice - runSlice must degrade to the 6×1 strip rather than throw.
     const allWater: TerrainMap = {
       resolution: 'half-cell',
       width: 3,
@@ -109,7 +109,7 @@ describe('runAuthoredSlice (map.cif StaticObjects → sim commands)', () => {
     if (sim === null) throw new Error('expected an authored sim');
 
     // Positions truncated to whole CELLS: node (8,4) is cell (4,2)'s row-2 line, node (3,5) sits at
-    // fractional (1.25, 2.5) → cell (1,2) — the authored anchors, on the map, at half-cell precision.
+    // fractional (1.25, 2.5) → cell (1,2) - the authored anchors, on the map, at half-cell precision.
     const cellsOf = (comp: typeof Building | typeof Settler): string[] =>
       [...sim.world.query(comp)]
         .map((e) => sim.world.get(e, Position))

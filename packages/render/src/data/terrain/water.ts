@@ -3,15 +3,15 @@ import { clampedCellAt } from './cell-field.js';
 import { nodeCell } from './tessellation.js';
 
 /**
- * The water-surface wave field — an OpenNorthland visual enhancement (the original's water is a
+ * The water-surface wave field - an OpenNorthland visual enhancement (the original's water is a
  * static ground texture plus animated foam decor). Each terrain-mesh node gets a wave amplitude
  * factor in [0, 1] the ground shader bobs/shimmers by (`gpu/shading.ts`).
  *
  * The water mask comes from the map's own ground-pattern NAMES (`empa`/`empb` → `eapd`, the lanes the
- * mesh already draws) — the one signal that is authoritative on every textured map. The `lmms` lane
+ * mesh already draws) - the one signal that is authoritative on every textured map. The `lmms` lane
  * is deliberately NOT used: it tracks water depth only on maps that have water (oasis_o_plenty:
  * band 7 = `block water`, 1..6 = `water shallow`) but carries the same 1..7 bands across plain meadow
- * on waterless maps (Tale_of_Six_Sons — probed on the owned copies), so keying off it would bob grass.
+ * on waterless maps (Tale_of_Six_Sons - probed on the owned copies), so keying off it would bob grass.
  *
  * Amplitude is 1 only where a node's whole 3×3 cell neighbourhood is water and 0 on any node a land
  * triangle can reach, so the coastline never warps; the shader's varying interpolation ramps the band
@@ -21,7 +21,7 @@ import { nodeCell } from './tessellation.js';
 /** A terrain-mesh node's wave amplitude factor in [0, 1] (0 = still ground). */
 export type NodeWaveFn = (hx: number, hy: number) => number;
 
-/** The still field — no ground lanes / no water. Shared so land maps allocate nothing. */
+/** The still field - no ground lanes / no water. Shared so land maps allocate nothing. */
 export const NO_WAVE: NodeWaveFn = () => 0;
 
 /** A ground pattern drawing water surface, by `EditName` ('water 01', 'block water …',
@@ -44,7 +44,7 @@ export function makeWaveField(ground: SceneGround | undefined, width: number, he
     water[i] = w;
     if (w > 0) anyWater = true;
   }
-  if (!anyWater) return NO_WAVE; // a dictionary may name water no cell draws — still a land map
+  if (!anyWater) return NO_WAVE; // a dictionary may name water no cell draws - still a land map
   const at = clampedCellAt(water, width, height);
   // Node amplitude = the minimum water fraction over the node's 3×3 cell neighbourhood, so any node
   // shared with a land triangle stays exactly still and the swell lives offshore.

@@ -105,7 +105,7 @@ describe('decodeMapTree', () => {
 });
 
 describe('minimapToPng', () => {
-  // The filler is keyed by palette INDEX 0 (its RGB varies across the corpus — magenta, blue, brown),
+  // The filler is keyed by palette INDEX 0 (its RGB varies across the corpus - magenta, blue, brown),
   // so the fixtures only need index 0 as the frame; rampPalette's entry 0 = (0, 255, 0) stands in.
 
   it('keys the border-connected index-0 filler transparent and crops to the real map pixels', () => {
@@ -125,7 +125,7 @@ describe('minimapToPng', () => {
   it('keeps an ENCLOSED index-0 pixel opaque (map content, not filler)', () => {
     // 5×5: an index-0 frame, a ring of real pixels, and an enclosed index-0 hole in the middle. The
     // border flood fill keys only the frame; the hole mirrors the sparse index-0 speckles observed
-    // INSIDE the two full-bleed shipped minimaps — content, so it stays opaque.
+    // INSIDE the two full-bleed shipped minimaps - content, so it stays opaque.
     const pcx = encodePcx({
       width: 5,
       height: 5,
@@ -148,7 +148,7 @@ describe('minimapToPng', () => {
 
   it('keys a ragged filler intrusion inside the crop box to alpha 0', () => {
     // The filler bites into the picture's bounding box (BLEKINY_NURT-style ragged edge): (1,0) is
-    // index 0 connected to the frame, inside the crop — transparent, while the columns stay.
+    // index 0 connected to the frame, inside the crop - transparent, while the columns stay.
     const pcx = encodePcx({
       width: 4,
       height: 3,

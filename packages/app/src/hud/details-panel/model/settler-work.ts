@@ -22,12 +22,12 @@ export interface SettlerWorkModel {
   readonly gatherChoices: readonly {
     readonly goodType: number | null;
     readonly label: string;
-    /** The good's string id — the key the round button draws its icon by; absent for the "Wszystko"
+    /** The good's string id - the key the round button draws its icon by; absent for the "Wszystko"
      *  (gather-everything) choice, which has no single good and draws the generic pile instead. */
     readonly goodId?: string;
   }[];
   readonly selectedGood: number | null;
-  /** A craft operator's product toggles — one per product its workplace's recipes make (in recipe
+  /** A craft operator's product toggles - one per product its workplace's recipes make (in recipe
    *  order), multi-selectable (the crafting twin of {@link gatherChoices}; the two never coexist).
    *  Empty for a non-craft settler. */
   readonly craftChoices: readonly {
@@ -44,7 +44,7 @@ export interface SettlerWorkModel {
  * The Praca section: the settler's workplace name and the good it makes. The workplace is the building
  * its `JobAssignment` points at; the product is that building's first recipe output (or `produces`
  * entry), falling back to what the settler is carrying. A settler with no `JobAssignment` reads
- * "brak miejsca pracy" — a pinned Polish fallback (the model returns the string directly; it matches
+ * "brak miejsca pracy" - a pinned Polish fallback (the model returns the string directly; it matches
  * the original's `humanwindow` 41 wording but isn't resolved from the decoded table like the section
  * titles are).
  */
@@ -88,7 +88,7 @@ export function settlerWork(
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
   // A building-employed GATHERER (a harvest-capable trade, no flag) forages only what its workplace
-  // stockpiles — its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
+  // stockpiles - its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
   // GatherSelection (absent = every stored good). The gather menu WINS over the craft menu for a job
   // that is both harvest-capable and an operator slot (such a job runs the gather drive in the sim's
   // planner ladder, never the craft loop), so the two menus can't coexist.
@@ -108,7 +108,7 @@ export function settlerWork(
       .filter((choice) => craft.selected.includes(choice.goodType))
       .map((choice) => choice.label);
     const allSelected = selectedLabels.length === craft.choices.length;
-    // A long multi-selection is summarized as a count ("Wybrano: 3") — the highlighted product buttons
+    // A long multi-selection is summarized as a count ("Wybrano: 3") - the highlighted product buttons
     // below already name the picks, and four joined labels overflow the panel column.
     const product = allSelected
       ? messages().hud.gatherAll
@@ -139,7 +139,7 @@ export function settlerWork(
 /** A goods-catalog entry the gather menus filter over. */
 type GoodEntry = UnitPanelModelContext['goods'][number];
 
-/** The non-farmed goods `jobType` may harvest (its gather-menu vocabulary), in goods-catalog order —
+/** The non-farmed goods `jobType` may harvest (its gather-menu vocabulary), in goods-catalog order -
  *  the job's resolved atomics matched against each good's harvest atomic. Shares `resolveJobAtomics`
  *  with the sim's permission gate so the menu cannot offer a good the planner would refuse. */
 function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
@@ -173,7 +173,7 @@ function gatherWork(
 /**
  * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing
  * to choose: the workplace has fewer than one product, or the settler's job is not one of the type's
- * OPERATOR slots (mirrors the sim's `operatorJobsOf`: worker slots minus the carrier transport slot —
+ * OPERATOR slots (mirrors the sim's `operatorJobsOf`: worker slots minus the carrier transport slot -
  * a carrier ferries goods, it never picks what the smiths forge; when every slot is carrier the
  * building is carrier-operated and the carrier does choose, like the well). The effective selection
  * comes from the snapshot's `CraftSelection` goods; absent/empty reads as every product selected (the

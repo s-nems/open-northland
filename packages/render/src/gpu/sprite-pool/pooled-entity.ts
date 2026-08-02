@@ -13,7 +13,7 @@ import type { MotionTrack } from './motion.js';
  * The world-space axis-aligned bounding box of an entity's drawn sprite this frame (pre-camera, the same
  * space as a {@link import('../../data/scene/index.js').DrawItem}'s `x`/`y`). The union of its visible
  * atlas layers (or its placeholder box), translated to the feet anchor. This is what makes "click
- * anywhere on the graphic" and a footprint-sized selection marker exact per building/settler — the
+ * anywhere on the graphic" and a footprint-sized selection marker exact per building/settler - the
  * picker + selection ring read it instead of guessing a fixed box, so a big headquarters and a small hut
  * each get a hit box the size of their own sprite.
  */
@@ -24,7 +24,7 @@ export interface EntityBounds {
   readonly maxY: number;
 }
 
-/** The mutable backing of an entity's bounds — one per pooled entity, restamped in place each frame so
+/** The mutable backing of an entity's bounds - one per pooled entity, restamped in place each frame so
  *  the per-frame bounds pass allocates nothing (see {@link PooledEntity.bounds}). */
 interface MutableBounds {
   minX: number;
@@ -37,12 +37,12 @@ interface MutableBounds {
  * One entity's persistent display objects, kept across frames and reused: a {@link Container} at the
  * entity's feet anchor holding its atlas layer sprites (body + head overlays, or a single kind/family
  * sprite) and a lazily-built placeholder {@link Graphics}. Per frame only the container position, the
- * sprites' textures/offsets, and their visibility change — nothing is re-allocated.
+ * sprites' textures/offsets, and their visibility change - nothing is re-allocated.
  */
 interface PooledEntityBase {
   readonly container: Container;
   readonly kind: SpriteKind;
-  /** Per-{@link PooledEntity.sprites}-index: whether that layer is a cast shadow this frame — restamped
+  /** Per-{@link PooledEntity.sprites}-index: whether that layer is a cast shadow this frame - restamped
    *  by the {@link import('./bind-layers.js').LayerBinder}, read by the pixel hit test (a shadow must not
    *  make its caster clickable). */
   readonly shadowFlags: boolean[];
@@ -55,7 +55,7 @@ interface PooledEntityBase {
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
-  /** Last real facing (0..7) this settler drew with — reused across the 1-tick heading gap a re-pathing
+  /** Last real facing (0..7) this settler drew with - reused across the 1-tick heading gap a re-pathing
    *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see
    *  {@link import('./presentation.js').walkPose}). */
   lastFacing?: number;
@@ -65,7 +65,7 @@ interface PooledEntityBase {
    *  optional) so an entity's shape never transitions when a reveal first appears; the pool holds
    *  exactly the union's two shapes, one per variant. */
   reveal: number | undefined;
-  /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
+  /** The entity's inter-tick motion track - the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
    *  `tick` −1 = untracked (see {@link MotionTrack.tick}). */
   readonly motion: MotionTrack;

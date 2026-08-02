@@ -8,7 +8,7 @@ interface AliveTribeJobsCache {
    *  generation above, so only a `World.write` to Settler distinguishes a retrained settler from the one
    *  this table recorded. Any Settler write bumps it, not just
    *  {@link import('../../components/settler.js').setSettlerJob}, so this table only stays a cache while the
-   *  PER-TICK Settler writers (needs decay, work XP, combat need cost) keep writing raw — routing those
+   *  PER-TICK Settler writers (needs decay, work XP, combat need cost) keep writing raw - routing those
    *  through the seam would rebuild it every tick. */
   valueGeneration: number;
   readonly jobsByTribe: ReadonlyMap<number, ReadonlySet<number>>;

@@ -3,7 +3,7 @@ import { simFor } from '../simulation.js';
 import { type RunReplay, stepReplaying } from './replay.js';
 
 /**
- * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay
+ * `scrubWindow` - the **single-run "free scrubbing"** composition of the time-travel / replay
  * inspector (plan "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks,
  * and dump an entity"; it "calls `replay()`+`traceEntity()` for free scrubbing"). Where
  * {@link localizeDivergence} composes the TWO-run path ("hash diverged at tick N → inspect what
@@ -12,16 +12,16 @@ import { type RunReplay, stepReplaying } from './replay.js';
  * `traceEntity()` (which wants the whole window) and `diffSnapshots()` (adjacent pairs).
  *
  * It exists for the same reason `localizeDivergence` does: the overlay would otherwise have to drive
- * {@link replay} by hand — exactly the glue these compositions encapsulate so the only part left is
+ * {@link replay} by hand - exactly the glue these compositions encapsulate so the only part left is
  * the human-eyed UI.
  *
  * ## One forward pass, not N replays (still byte-identical)
  *
- * A naive scrub would `replay()` from tick 1 once PER tick in the window — O(window × toTick) work.
+ * A naive scrub would `replay()` from tick 1 once PER tick in the window - O(window × toTick) work.
  * Instead this replays the log into ONE fresh sim, steps from tick 1
  * to `toTick` enqueuing each logged command on exactly its recorded tick (identically to
  * {@link replay}), and snapshots whenever the running tick lands inside `[fromTick, toTick]`. A
- * `WorldSnapshot` is a plain value (no live store views — see `snapshot.ts`), so every captured tick
+ * `WorldSnapshot` is a plain value (no live store views - see `snapshot.ts`), so every captured tick
  * survives the sim continuing to mutate the stores; the result is byte-identical to having replayed
  * each tick separately, at a fraction of the cost. It is as "pure" as `replay()`: it builds its own
  * sim (own stores), reads only plain inputs (a command log), and touches no clock, DOM, or I/O.
@@ -29,7 +29,7 @@ import { type RunReplay, stepReplaying } from './replay.js';
 
 /**
  * Reconstruct every tick in `[fromTick, toTick]` (inclusive) of a single recorded run as a plain
- * {@link WorldSnapshot}, returned in ascending-tick order — the contiguous scrub window the inspector
+ * {@link WorldSnapshot}, returned in ascending-tick order - the contiguous scrub window the inspector
  * overlay follows an entity across (`traceEntity`) or steps through (`diffSnapshots` on adjacent
  * pairs).
  *
@@ -39,7 +39,7 @@ import { type RunReplay, stepReplaying } from './replay.js';
  * spans `max(1, fromTick) .. toTick`. An empty window (`toTick < max(1, fromTick)`) yields `[]`.
  *
  * Throws on a negative `fromTick`/`toTick` (a nonsense target, like {@link replay}'s negative
- * `untilTick`) — a caller bug, not recoverable bad content. An out-of-range-high `toTick` is fine:
+ * `untilTick`) - a caller bug, not recoverable bad content. An out-of-range-high `toTick` is fine:
  * the sim keeps stepping deterministically past the last logged command (the deterministic tail).
  */
 export function scrubWindow(run: RunReplay, fromTick: number, toTick: number): WorldSnapshot[] {

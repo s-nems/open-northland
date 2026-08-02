@@ -4,7 +4,7 @@ import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../../content/ui-font.js';
 import type { Rect } from '../geometry.js';
 
 /**
- * The details panel's vector-text primitives — the placement half of the drawing kit
+ * The details panel's vector-text primitives - the placement half of the drawing kit
  * ({@link import('./chrome.js')}). Text draws in the bundled vector serif (`content/ui-font.ts`, always
  * present), not the original bitmap `.fnt`: a larger `title` size for headlines/buttons/the building name,
  * a `body` size for the rest. Lines are placed by Pixi `Text` anchors (top-left / centred / right) rather
@@ -23,7 +23,7 @@ export type FontVariant = 'body' | 'title';
 const FONT_PX: Readonly<Record<FontVariant, number>> = { body: 11, title: 13 };
 /**
  * A tiny vertical nudge (native px) added when centring a line in a rect: Pixi measures a `Text` by its
- * full ascent+descent line box, so the visible caps sit a hair high — this drops them to the optical centre.
+ * full ascent+descent line box, so the visible caps sit a hair high - this drops them to the optical centre.
  */
 const CENTER_BIAS = 0.5;
 
@@ -32,9 +32,9 @@ export interface TextKit {
   /** Draw a line of text with its top-left at `(x, y)`. */
   textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Center a line of text in `r` (both axes). `maxWidth` (in `r`'s px) shrinks an over-long line to fit
-   *  the box instead of overflowing it — the seam for long personalized names in the section headline. */
+   *  the box instead of overflowing it - the seam for long personalized names in the section headline. */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
-  /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
+  /** Left-anchor a line of text at `x`, vertically centred on `centerY` - a left-aligned value that must
    *  still sit on a field's centre line (the stock amount in its plate). `maxWidth` shrinks an over-long
    *  line to fit instead of overflowing (a production row's label column before its bar). */
   textLeftMiddle(
@@ -51,7 +51,7 @@ export interface TextKit {
 
 /**
  * Build the text-placement kit over the panel's `text` layer container. Each `Text` renders at
- * `FONT_PX * scale` (so the bake's oversample keeps it sharp) and is anchored per call — Pixi
+ * `FONT_PX * scale` (so the bake's oversample keeps it sharp) and is anchored per call - Pixi
  * centres/right-aligns by its own measured bounds, so no bitmap-baseline math is needed.
  */
 export function createTextKit(textLayer: Container, fontFamily: string, scale: number): TextKit {

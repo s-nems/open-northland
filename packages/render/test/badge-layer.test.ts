@@ -105,7 +105,7 @@ describe('BadgeLayer (placeholder squares)', () => {
   it('retires an on-screen stack even with an off-screen never-built staffed building present', () => {
     // Regression: `drawn` must stay a subset of the pooled stacks. An off-screen building that never built
     // a stack must NOT be marked drawn, or retireUndrawn's `pool.size <= drawn.size` fast-path would skip a
-    // genuinely-orphaned on-screen stack — leaving a ghost badge that never gets destroyed.
+    // genuinely-orphaned on-screen stack - leaving a ghost badge that never gets destroyed.
     const layer = new BadgeLayer();
     const onScreen = tileToScreen(3, 5);
     const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };

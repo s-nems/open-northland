@@ -16,7 +16,7 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The construction-rise scene: buildings placed as foundations and raised the normal way (carriers
- * haul wood + stone from a stocked depot, builders hammer the site up — the ConstructionSystem). Its
+ * haul wood + stone from a stocked depot, builders hammer the site up - the ConstructionSystem). Its
  * point is the visual reveal, not a new mechanic: a site draws its stacked construction-stage bobs
  * (foundation → scaffold → roof scaffold → body), each revealing per-pixel in its own `[fromPct,toPct]`
  * window, and a scaffold now stays drawn under the body that covers it instead of vanishing the instant
@@ -47,14 +47,14 @@ const SITES: readonly { ref: number; x: number; y: number }[] = [
 const BUILDERS = 8;
 const CARRIERS = 12;
 const CREW = { x: 15, y: 13 } as const;
-/** Headroom over the measured full-rise run — the shared crew raises all four foundations by ~tick
+/** Headroom over the measured full-rise run - the shared crew raises all four foundations by ~tick
  *  4400 (deterministic, seed 7); 8000 keeps ~1.8× slack. */
 const RUN_TICKS = 8_000;
 
 const { Building, UnderConstruction } = components;
 
 function build(sim: Simulation): void {
-  // A built warehouse seeded with construction material only — raw command so `initialGoods` seeds
+  // A built warehouse seeded with construction material only - raw command so `initialGoods` seeds
   // exactly wood + stone (fillStock would also stock production goods a finished bakery would then pull).
   const depot = cellAnchorNode(DEPOT.x, DEPOT.y);
   sim.enqueue({
@@ -99,7 +99,7 @@ export const constructionScene: SceneDefinition = {
   initialZoom: 0.9,
   checks: [
     {
-      label: 'every foundation was raised to a finished building — the crew loop converged',
+      label: 'every foundation was raised to a finished building - the crew loop converged',
       predicate: (sim) => unfinishedSites(sim) === 0,
     },
     {

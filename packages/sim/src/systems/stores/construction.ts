@@ -12,9 +12,9 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 
 /**
  * The next level in `type`'s upgrade chain, or undefined for a top-level / unchained type. The chain is
- * the extracted `upgradeTarget` join (the `[GfxHouse]` record's `LogicType` table — the typeId at the
+ * the extracted `upgradeTarget` join (the `[GfxHouse]` record's `LogicType` table - the typeId at the
  * next `sizeIdx`), so it is data-driven across every leveled kind: homes, storages, workplaces, the
- * tower (the wonder is NOT chained — its record maps every size level to one typeId, a self-link the
+ * tower (the wonder is NOT chained - its record maps every size level to one typeId, a self-link the
  * extractor skips). Undefined too when the target id is absent from content (malformed data).
  */
 export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
@@ -24,9 +24,9 @@ export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingT
 
 /**
  * The material cost of raising a building entity: for a plain site its type's FROM-SCRATCH construction
- * bill (for a leveled type, the merged cost of every chain stage up to it — see
+ * bill (for a leveled type, the merged cost of every chain stage up to it - see
  * {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}); for an
- * **upgrading** building ({@link Upgrading}) the target tier's OWN `construction` — the level
+ * **upgrading** building ({@link Upgrading}) the target tier's OWN `construction` - the level
  * difference, which the source encodes per tier. Empty when the entity is not a typed building (a bare
  * fixture) or its type declares no cost (a free type). The shared read behind
  * {@link deliveredConstructionFraction}, {@link constructionMaterialsPresent},
@@ -46,7 +46,7 @@ export function constructionBillOf(world: World, ctx: SystemContext, site: Entit
 
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
-/** Total material units a construction site's cost sums to (Σ amount) — the denominator the delivered
+/** Total material units a construction site's cost sums to (Σ amount) - the denominator the delivered
  *  fraction and the per-swing labor quantum divide against. 0 for a free (empty-cost) type. */
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {
   let units = 0;
@@ -55,7 +55,7 @@ export function constructionTotalUnits(world: World, ctx: SystemContext, site: E
 }
 
 /**
- * The delivered-material fraction of a construction site, 0..ONE — Σ min(held, need) / Σ need over the
+ * The delivered-material fraction of a construction site, 0..ONE - Σ min(held, need) / Σ need over the
  * `construction` cost, each line capped at its own need so an over-delivery of one good can't mask a
  * missing other. ONE for a free (empty-cost) type. This is the MATERIAL cap on `Building.built`: the
  * ConstructionSystem sets `built = min(labor, this)`, and the builder drive hammers a site only while
@@ -69,7 +69,7 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
     needed += line.amount;
     delivered += Math.min(Math.max(stock?.get(line.goodType) ?? 0, 0), line.amount);
   }
-  if (needed <= 0) return ONE; // free type — trivially "fully delivered"
+  if (needed <= 0) return ONE; // free type - trivially "fully delivered"
   return fx.div(fx.fromInt(delivered), fx.fromInt(needed));
 }
 
@@ -82,7 +82,7 @@ export function constructionMaterialsPresent(world: World, ctx: SystemContext, s
 
 /**
  * Every `construction` material a site still lacks, with each line's unclaimed shortfall
- * (`need − held − inbound`, the `inbound` tally per {@link inboundSupplyOf}) — the fetch menu a builder
+ * (`need − held − inbound`, the `inbound` tally per {@link inboundSupplyOf}) - the fetch menu a builder
  * works through to keep its OWN site supplied. Ordered LEAST-COVERED first (`(held+inbound)/need`,
  * compared by integer cross-multiplication) so a crew spreads over different materials instead of
  * queueing on one; ties break by ascending goodType, so the order never depends on Map insertion order.

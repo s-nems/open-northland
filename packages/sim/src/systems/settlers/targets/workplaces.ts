@@ -12,7 +12,7 @@ const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 /**
  * The set of atomic ids a job may run (`resolveJobAtomics`). An unknown jobType yields an empty set
  * (no permissions), so a settler with a job absent from content harvests nothing rather than
- * everything. This is the data-driven permission gate from `jobtypes` — the planner picks atomics the
+ * everything. This is the data-driven permission gate from `jobtypes` - the planner picks atomics the
  * job is allowed, never a hardcoded per-job list.
  */
 export function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
@@ -33,8 +33,8 @@ export function boundWorkplaceTarget(
   const building = world.tryGet(workplace, Building);
   if (building === undefined || building.tribe !== tribe) return null;
   // A trade needs its workhouse finished (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`,
-  // per-job data — 1 for every bound trade we model, and the 0 rows (hunter/scout/jester) never bind a
-  // workplace here; the same gate the farm twin applies) — in practice a running upgrade: its stashed stock
+  // per-job data - 1 for every bound trade we model, and the 0 rows (hunter/scout/jester) never bind a
+  // workplace here; the same gate the farm twin applies) - in practice a running upgrade: its stashed stock
   // reads as empty input slots, so an ungated producer would shuttle inputs store-to-store (the site
   // refuses the drop).
   if (world.has(workplace, UnderConstruction)) return null;

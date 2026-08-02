@@ -4,8 +4,8 @@ import type { SpritePool } from '../sprite-pool/index.js';
 import { restoreStash, stashHidden } from '../visibility.js';
 
 /** Pixi's public {@link RenderOptions} omits `frame`, though the runtime honours it (the render-target
- *  system takes it as the viewport region, in the target's logical px) — typed here until it is exposed.
- *  Undocumented API (verified on pixi.js 8.19): re-verify on any Pixi bump — if `frame` were dropped,
+ *  system takes it as the viewport region, in the target's logical px) - typed here until it is exposed.
+ *  Undocumented API (verified on pixi.js 8.19): re-verify on any Pixi bump - if `frame` were dropped,
  *  this pass would paint the re-aimed world over the WHOLE canvas instead of the preview box. */
 interface FramedRenderOptions extends RenderOptions {
   readonly frame: Rectangle;
@@ -15,7 +15,7 @@ interface FramedRenderOptions extends RenderOptions {
  * The details-panel portrait "observation window": a live cutout of the world centred on the selected
  * entity, drawn into the panel's Ogólne/preview box each frame. `rect` is the box in screen px (the
  * panel's on-screen preview area, bevel-inset); `entityRef` is the entity to centre on. `kind` picks the
- * framing: a `building` fits its (static) drawn bounds in the box — a big ship zooms out, a small hut in;
+ * framing: a `building` fits its (static) drawn bounds in the box - a big ship zooms out, a small hut in;
  * a `settler` frames a fixed feet-anchored window, so the cutout tracks only the unit's position and never
  * jitters with the swaying idle "look-around" animation (whose drawn bounds breathe every frame).
  */
@@ -30,27 +30,27 @@ export interface PortraitInsetFrame {
  * so the chunks around a subject that scrolled to a screen edge are hidden and the re-aimed cutout would
  * leave transparent holes (through which the panel's static fallback bob shows as a duplicate). `toInset`
  * makes the chunks the inset frame covers visible; `restore` puts back the main-view culling. The world
- * renderer supplies both — the inset never needs the projection/pad math.
+ * renderer supplies both - the inset never needs the projection/pad math.
  */
 export interface InsetTerrainCull {
   toInset(camera: Camera, w: number, h: number): void;
   restore(): void;
   /** Opaque ground colour (`0xRRGGBB`) the cutout floors its off-map margin with (a quad under the
-   *  world — the screen pass cannot `clear` just its frame region), so the region behind the framed
+   *  world - the screen pass cannot `clear` just its frame region), so the region behind the framed
    *  building blends as ground instead of showing through to the panel's static fallback bob. */
   readonly backdrop: number;
 }
 
 /** A building's drawn bounds fill this fraction of the portrait box (the rest is surrounding-world margin). */
 const PORTRAIT_FILL = 0.72;
-/** Zoom-out floor — a huge building still can't shrink past this (keeps the cutout legible). */
+/** Zoom-out floor - a huge building still can't shrink past this (keeps the cutout legible). */
 const PORTRAIT_MIN_SCALE = 0.2;
-/** Zoom-in ceiling — a tiny building can't blow up past this (avoids a pixel-mush close-up). */
+/** Zoom-in ceiling - a tiny building can't blow up past this (avoids a pixel-mush close-up). */
 const PORTRAIT_MAX_SCALE = 2.5;
 /**
  * World-space height framed for a settler portrait. A viking body is ~32 world units tall; the extra is
  * head/foot margin (and clearance for the raised-arm "look-around" wait frame). A named approximation,
- * eye-calibrated — the settler window is a fixed feet-anchored frame (not a fit to the breathing bounds),
+ * eye-calibrated - the settler window is a fixed feet-anchored frame (not a fit to the breathing bounds),
  * so it stays rock-steady while the unit stands and only pans as the unit's feet actually move. Framing
  * more world height pulls the camera back (scale = h / this), so the body sits with a little breathing
  * room in the box rather than filling it edge-to-edge.
@@ -63,11 +63,11 @@ const SETTLER_FEET_FRACTION = 0.84;
  * Renders the {@link PortraitInsetFrame} cutout: a second, viewport-framed SCREEN render of the shared
  * {@link Container} `worldLayer` (re-aimed at the selected entity) painted straight into the panel's
  * preview box, run by the {@link import('../world-renderer/index.js').WorldRenderer} right after its
- * main stage render — the box region was just drawn by the panel, and this pass overpaints it as the
+ * main stage render - the box region was just drawn by the panel, and this pass overpaints it as the
  * frame's last render. Deliberately NOT a render-to-texture: a `worldLayer`-as-root render into a
  * texture goes blank on any frame another render-to-texture ran (Pixi 8.19, WebGL; mechanism unpinned
- * — instruction-cache forcing, target reuse and render reordering were all tried), which blinked the
- * preview on every details-panel re-bake — one per construction hammer hit. A screen-target pass has
+ * - instruction-cache forcing, target reuse and render reordering were all tried), which blinked the
+ * preview on every details-panel re-bake - one per construction hammer hit. A screen-target pass has
  * no such failure mode, and `clear: false` keeps the panel's own backdrop behind sparse cutouts (an
  * indoor subject's solo render). No-op when nothing is selected.
  */
@@ -77,7 +77,7 @@ export class PortraitInsetLayer {
   private readonly backdrop = new Sprite(Texture.WHITE);
 
   /**
-   * @param app the shared Pixi app — its renderer draws the re-aimed viewport pass.
+   * @param app the shared Pixi app - its renderer draws the re-aimed viewport pass.
    * @param worldLayer the renderer's camera-transformed world container, re-aimed then restored per drawn frame.
    * @param pool the sprite pool, for the selected entity's drawn anchor/bounds + re-placing its team-colour meshes.
    */
@@ -88,7 +88,7 @@ export class PortraitInsetLayer {
   ) {}
 
   /**
-   * Set (or clear) the portrait frame — the app passes the box rect + entity ref each frame (null when the
+   * Set (or clear) the portrait frame - the app passes the box rect + entity ref each frame (null when the
    * selection has no portrait: multi-select, a building-less pick, nothing). The actual second render
    * happens in {@link draw}, right after the main stage render.
    */
@@ -141,12 +141,12 @@ export class PortraitInsetLayer {
 
   /**
    * Paint the portrait observation window: re-aim {@link worldLayer} onto the selected entity and render
-   * it into the preview box's screen viewport (`frame` is in logical px — the render target scales it by
+   * it into the preview box's screen viewport (`frame` is in logical px - the render target scales it by
    * its resolution). The framing ({@link framing}) is building-fit or settler-fixed; if the entity wasn't
    * drawn this frame (off-screen/culled) nothing paints and the panel placeholder shows. The pool's half
-   * of the borrow (subject reveal, indoor solo, team-colour mesh placement — restored to `mainCamera`
-   * after) is scoped by `SpritePool.portraitPass`; the render callback restores its own half — the world
-   * transform, the solo world-layer stash, the backdrop quad and the borrowed terrain cull — even if the
+   * of the borrow (subject reveal, indoor solo, team-colour mesh placement - restored to `mainCamera`
+   * after) is scoped by `SpritePool.portraitPass`; the render callback restores its own half - the world
+   * transform, the solo world-layer stash, the backdrop quad and the borrowed terrain cull - even if the
    * render throws. Must run after the pool reconcile (this frame's positions) and after the main stage
    * render (this pass overpaints the panel, so nothing may draw on top of it).
    */
@@ -169,7 +169,7 @@ export class PortraitInsetLayer {
       this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
       // An indoor subject (frozen, standing in its workplace) renders ALONE over the panel's backdrop:
       // the pool already hid its sprite-layer siblings; blank every world layer but the one (`soloKeep`)
-      // holding it — otherwise the building it stands in draws behind it and it reads as standing on the
+      // holding it - otherwise the building it stands in draws behind it and it reads as standing on the
       // roof.
       const worldSaved = soloKeep === null ? null : stashHidden(this.worldLayer.children, soloKeep);
       try {

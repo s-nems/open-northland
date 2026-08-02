@@ -24,8 +24,8 @@ import {
 } from '../../game/sandbox/ids/index.js';
 
 /**
- * The data the admin/debug spawn palette offers — unit presets, resource entries and the player
- * (team-colour) swatches — kept apart from the panel wiring ({@link import('./index.js')}) so the catalog
+ * The data the admin/debug spawn palette offers - unit presets, resource entries and the player
+ * (team-colour) swatches - kept apart from the panel wiring ({@link import('./index.js')}) so the catalog
  * of "what can I spawn" is one obvious table. Everything is driven off the shared sandbox ids/{@link
  * GATHERERS} table (never bare numbers), so a new soldier class or gatherer shows up here for free.
  */
@@ -45,21 +45,21 @@ export interface UnitSpawnOptions {
   /** The player that owns the spawned unit (a slot in `[0, MAX_PLAYERS)`). */
   readonly player: number;
   /** The spawned unit's hitpoint pool; `<= 0` defers to the sim's default pool (every settler
-   *  carries `Health` — `DEFAULT_SETTLER_HITPOINTS`). */
+   *  carries `Health` - `DEFAULT_SETTLER_HITPOINTS`). */
   readonly hitpoints: number;
   /** The worn armor class (1..4); `<= 0` spawns unarmored. */
   readonly armorClass: number;
   readonly x: number;
   readonly y: number;
-  /** The running content's goods table — resolves the class weapon's good slug to the id space the
+  /** The running content's goods table - resolves the class weapon's good slug to the id space the
    *  sim actually plays on ({@link WeaponGoodLookup}). */
   readonly goods: WeaponGoodLookup;
 }
 
 /**
- * Build the `spawnSettler` command for a unit preset at a tile — the pure command mapping the palette
+ * Build the `spawnSettler` command for a unit preset at a tile - the pure command mapping the palette
  * enqueues (extracted so it is unit-testable without the DOM). HP/armor/weapon are optional stamps: a
- * non-positive `hitpoints` is omitted (the sim then applies its default pool — every settler carries
+ * non-positive `hitpoints` is omitted (the sim then applies its default pool - every settler carries
  * `Health`), a non-positive `armorClass` and a civilian's absent weapon are omitted likewise.
  */
 export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Command {
@@ -82,8 +82,8 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
 }
 
 /** The soldier classes, each paired with its own weapon so the drawn body + attack animation match the
- *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is one profession — the weapon
- *  in hand decides its look — so the bare-handed warrior (fists) leads, then each armed variant. */
+ *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is one profession - the weapon
+ *  in hand decides its look - so the bare-handed warrior (fists) leads, then each armed variant. */
 export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'unarmed', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
   { id: 'spear', jobType: JOB_SOLDIER_SPEAR, weaponTypeId: WEAPON_SPEAR },
@@ -98,7 +98,7 @@ export const WARRIOR_PRESETS: readonly UnitPreset[] = [
 ];
 
 /** The civilian units: an idle townsperson, a carrier, and the collector (the one outdoor gatherer trade
- *  — every gathered good is worked by the same collector, so one preset, not one per good). */
+ *  - every gathered good is worked by the same collector, so one preset, not one per good). */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'civilian', jobType: JOB_IDLE },
   { id: 'carrier', jobType: JOB_CARRIER },
@@ -112,7 +112,7 @@ export interface AnimalEntry {
   readonly id: string;
 }
 
-/** Build the `spawnAnimalHerd` command at a tile — one click drops the species' data-pinned herd
+/** Build the `spawnAnimalHerd` command at a tile - one click drops the species' data-pinned herd
  *  (group size, leader, scatter all come from its `animaltypes` record; the sim owns those). */
 export function animalSpawnCommand(tribe: number, x: number, y: number): Command {
   return { kind: 'spawnAnimalHerd', tribe, x, y };
@@ -124,7 +124,7 @@ export interface ResourceEntry {
   readonly id: string;
 }
 
-/** The resource nodes the palette can drop — every gatherable good (wood tree, ore/clay/stone deposits,
+/** The resource nodes the palette can drop - every gatherable good (wood tree, ore/clay/stone deposits,
  *  mushrooms). Each becomes a `placeResource` command via {@link resourceCommand}. */
 export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => ({
   good: g.good,
@@ -133,29 +133,29 @@ export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => (
 
 /** One droppable good: its `dropGood` goodType + its stable string id (for the localized label + icon
  *  keying). The admin panel builds its goods list from the LIVE content set (`sim.content.goods`), not a
- *  fixed catalog, so the palette matches whatever content the view is running — the sandbox on a bare
- *  checkout, the real extracted goods on a scene/map — and every listed good passes the `dropGood`
+ *  fixed catalog, so the palette matches whatever content the view is running - the sandbox on a bare
+ *  checkout, the real extracted goods on a scene/map - and every listed good passes the `dropGood`
  *  content guard (a good absent from the running content is a silent skip in the sim). */
 export interface GoodEntry {
   readonly good: number;
   readonly id: string;
 }
 
-/** Units dropped per admin click — one, like the in-game goods tool: each click adds a single unit and the
+/** Units dropped per admin click - one, like the in-game goods tool: each click adds a single unit and the
  *  sim stacks repeat clicks on the same tile up to its ground-stack cap, so the pile grows one at a time. */
 export const ADMIN_DROP_AMOUNT = 1;
 
-/** Build the `dropGood` command for a good at a tile — the pure command the admin palette enqueues. */
+/** Build the `dropGood` command for a good at a tile - the pure command the admin palette enqueues. */
 export function goodDropCommand(good: number, x: number, y: number): Command {
   return { kind: 'dropGood', good, x, y, amount: ADMIN_DROP_AMOUNT };
 }
 
-/** The armour tiers the palette applies to a spawned unit — 0 (unarmoured) plus the `[armortype]`
+/** The armour tiers the palette applies to a spawned unit - 0 (unarmoured) plus the `[armortype]`
  *  classes 1..4 that `spawnSettler` mitigates an incoming hit by. */
 export const ARMOR_CLASSES = [0, 1, 2, 3, 4] as const;
 
 /**
- * Approximate CSS colours for the player swatches, slot order = player id — a rough stand-in for the
+ * Approximate CSS colours for the player swatches, slot order = player id - a rough stand-in for the
  * real team-colour LUT (`render`'s 256×16 player palette) purely so the swatch reads at a glance; the
  * actual spawned unit is recoloured by the LUT, not by these hexes. Names come from the shared
  * {@link PLAYER_COLOR_NAMES} so the slot order can't drift from the LUT.

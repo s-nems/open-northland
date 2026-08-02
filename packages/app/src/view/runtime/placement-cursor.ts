@@ -20,13 +20,13 @@ export interface PlacementCursorInput {
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
-  /** Owner slot for a signpost ghost — the renderer applies the session colour mapping. */
+  /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
 }
 
 /**
  * What the cursor holds this frame. Build mode and the pending signpost share one wash (dim exactly where
- * the thing would be refused) and one ghost, which stays hidden over rejecting ground — the original's
+ * the thing would be refused) and one ghost, which stays hidden over rejecting ground - the original's
  * vanishing house cursor. A held building wins over a pending signpost: it is the more specific intent.
  */
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {

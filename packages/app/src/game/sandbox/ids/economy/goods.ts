@@ -2,8 +2,8 @@ import type { EquipClass } from '@open-northland/data';
 
 /** Goods and equipment ids in the sandbox-scoped economy namespace. The six gathered goods + coin carry
  *  their real `goodtypes.ini` (ir.json) typeIds, so a placed wood/stone/… resolves against either the
- *  sandbox or the real content base; the rest of the catalog — including the food chain (wheat 104 /
- *  flour 111) — rides `EXTENDED_GOOD_TYPE_OFFSET`, and synthetic goods sit in a band above. */
+ *  sandbox or the real content base; the rest of the catalog - including the food chain (wheat 104 /
+ *  flour 111) - rides `EXTENDED_GOOD_TYPE_OFFSET`, and synthetic goods sit in a band above. */
 
 export const GOOD_NONE = 0;
 export const GOOD_MUD = 2;
@@ -17,23 +17,23 @@ export const GOOD_MUSHROOM = 14;
 /** Synthetic sandbox-only goods have no ir.json counterpart, so they sit above the real (1–65) and
  *  extended (101–165) id ranges and never collide with a real good. */
 const SYNTHETIC_GOOD_BASE = 200;
-/** `plank` — the joinery slice's synthetic demo output (sawn `wood`); no real good matches it, so it
+/** `plank` - the joinery slice's synthetic demo output (sawn `wood`); no real good matches it, so it
  *  lives in the {@link SYNTHETIC_GOOD_BASE} band rather than among the real economy ids. */
 export const GOOD_PLANK = SYNTHETIC_GOOD_BASE;
 
-// The equippable goods ride the sandbox-scoped catalog ids — `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
-// `goodtypes.ini` id (30–55) = 130–155 — the same ids the global goods catalog (`catalog/goods.ts`
+// The equippable goods ride the sandbox-scoped catalog ids - `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
+// `goodtypes.ini` id (30–55) = 130–155 - the same ids the global goods catalog (`catalog/goods.ts`
 // `EXTENDED_GOODS`) declares them at, so an equipped good is the same good as the one dropped on the ground
 // or stored in a warehouse: one id, one `ls_goods` icon, one name.
-/** Water — the well's in-house product, a bakery input (`goodtypes.ini` type 1, at the +100 catalog offset). */
+/** Water - the well's in-house product, a bakery input (`goodtypes.ini` type 1, at the +100 catalog offset). */
 export const GOOD_WATER = 101;
-/** Wheat — the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
+/** Wheat - the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
 export const GOOD_WHEAT = 104;
-/** Flour — the mill's in-house product ground from wheat (`goodtypes.ini` type 11, at the +100 offset). */
+/** Flour - the mill's in-house product ground from wheat (`goodtypes.ini` type 11, at the +100 offset). */
 export const GOOD_FLOUR = 111;
-/** Bread — the bakery's in-house product baked from water + flour (`goodtypes.ini` type 19, at the +100 offset). */
+/** Bread - the bakery's in-house product baked from water + flour (`goodtypes.ini` type 19, at the +100 offset). */
 export const GOOD_BREAD = 119;
-/** The two eat-slot foods homes stock (`goodtypes.ini` types 16/17, at the +100 offset) — the `food_`
+/** The two eat-slot foods homes stock (`goodtypes.ini` types 16/17, at the +100 offset) - the `food_`
  *  slug prefix is what the sim's `isFood` recognizes as edible. */
 export const GOOD_FOOD_SIMPLE = 116;
 export const GOOD_FOOD_EXTRA = 117;
@@ -49,7 +49,7 @@ export const GOOD_SHOES = 130;
 export const GOOD_TOOL_WOODEN = 131;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
-// Weapon goods — the equippable side of the weapons. A settler carrying one in its `Equipment.weapon`
+// Weapon goods - the equippable side of the weapons. A settler carrying one in its `Equipment.weapon`
 // slot draws that weapon's warrior body (WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG, joined by good id-slug).
 export const GOOD_BOW_SHORT = 137;
 export const GOOD_BOW_LONG = 138;

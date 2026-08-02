@@ -4,7 +4,7 @@ import { formatMessage, messages } from '../../i18n/index.js';
 import type { PanelContext } from './context.js';
 import { createHeldItemBanner } from './held-item-banner.js';
 
-/** Units dropped per click — one, so each click adds a single unit to the pile on that tile (the sim stacks
+/** Units dropped per click - one, so each click adds a single unit to the pile on that tile (the sim stacks
  *  repeat clicks up to its ground-stack cap). Click the same tile again to grow the heap. */
 const DROP_AMOUNT = 1;
 
@@ -22,7 +22,7 @@ export interface GoodsDropDeps {
 
 /**
  * Good-drop mode: pick a good in the palette, then each left-click on the map drops a loose pile of it there
- * (via the `dropGood` command) — the mode stays active so many piles drop in a row (Esc / right-click ends).
+ * (via the `dropGood` command) - the mode stays active so many piles drop in a row (Esc / right-click ends).
  * This differs from building placement (one click = one building, then the mode exits); the two controllers
  * stay separate because their click semantics differ, though both draw a "what's held" banner.
  */

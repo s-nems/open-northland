@@ -19,10 +19,10 @@ import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The production-chain scene: the original's grain economy end-to-end in one place — farm → mill → bakery,
+ * The production-chain scene: the original's grain economy end-to-end in one place - farm → mill → bakery,
  * fed by the well. A grain farm field-farms wheat on the grass around it; the mill's millers fetch that
  * wheat and grind it to flour; the well draws water; the bakery's baker fetches flour + water and bakes
- * bread. Every link is the generic producer/haul AI — no chain-specific code — the goods flowing
+ * bread. Every link is the generic producer/haul AI - no chain-specific code - the goods flowing
  * building-to-building because a workshop fetches each input from the nearest store that holds it, so the
  * mill pulls the farm's wheat and the bakery pulls the mill's flour and the well's water without a depot in
  * between (the warehouse is just the bread sink + overflow). The headless half asserts the whole chain
@@ -43,7 +43,7 @@ const WAREHOUSE = { x: 37, y: 15 } as const;
 
 /** Crew per workshop, from the extracted worker slots: farm `logicworker 18 4` (two read clearly), mill
  *  `logicworker 19 2` (both), bakery `logicworker 20 1`; the well's lone `logicworker 24 1` carrier draws
- *  and hauls its water (a carrier-only workplace — see spawnWorkersAtDoor / primaryWorkerJob). */
+ *  and hauls its water (a carrier-only workplace - see spawnWorkersAtDoor / primaryWorkerJob). */
 const FARMERS = 2;
 const MILLERS = 2;
 const BAKERS = 1;
@@ -55,7 +55,7 @@ const WELL_CARRIERS = 1;
 const RUN_TICKS = 12000;
 
 /** Extra ticks the sown-fields check may step a fresh run past {@link RUN_TICKS}. The plot no longer empties
- *  in a mass harvest (fields grow at spread paces — `catalog/farming.ts`), so this is slack, not a
+ *  in a mass harvest (fields grow at spread paces - `catalog/farming.ts`), so this is slack, not a
  *  trough-recovery budget. */
 const RESOW_WINDOW_TICKS = 1600;
 /** Frames the whole cluster; ≠ 1 so `cameraFor` centres on the settlers (a non-1 zoom). */
@@ -63,13 +63,13 @@ const INITIAL_ZOOM = 0.7;
 
 const { Crop, Stockpile } = components;
 
-/** The tech enabler's corner — clear of the chain so the lone collector just idles (no resource nodes to
+/** The tech enabler's corner - clear of the chain so the lone collector just idles (no resource nodes to
  *  harvest; the farm's wheat is a Crop, not a collector's gatherable). */
 const ENABLER = { x: 2, y: 2 } as const;
 
 function build(sim: Simulation): void {
   // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone
-  // collector must be present or none of the crews below get employed — the gatherer a real game's HQ seeds.
+  // collector must be present or none of the crews below get employed - the gatherer a real game's HQ seeds.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
   placeSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
   placeSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);
@@ -109,7 +109,7 @@ export const chainScene: SceneDefinition = {
       label: 'the farm field-farms wheat (fields sown on the grass)',
       // A bare end-tick sample is luck: fields ripen at spread paces, so the count dips whenever several
       // land together. When it reads empty, a fresh run gets a bounded window past the scene's own length
-      // (see {@link RESOW_WINDOW_TICKS} — slack, not a trough-recovery budget).
+      // (see {@link RESOW_WINDOW_TICKS} - slack, not a trough-recovery budget).
       predicate: (sim) =>
         cropFields(sim) > 0 ||
         holdsSometimeDuring(chainScene, RUN_TICKS + RESOW_WINDOW_TICKS, (s) => cropFields(s) > 0),
@@ -123,7 +123,7 @@ export const chainScene: SceneDefinition = {
       predicate: (sim) => totalOf(sim, GOOD_WATER) > 0,
     },
     {
-      label: 'the bakery baked bread — the whole farm→mill→bakery+well chain closed',
+      label: 'the bakery baked bread - the whole farm→mill→bakery+well chain closed',
       predicate: (sim) => totalOf(sim, GOOD_BREAD) > 0,
     },
   ],

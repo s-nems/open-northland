@@ -3,7 +3,7 @@ import { harvestCapableJobs } from './atomics.js';
 import { isCarrierJobId } from './jobs.js';
 
 /** The per-building-type `product → recipe` tables
- *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) — first-wins per typeId
+ *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) - first-wins per typeId
  *  like the other tables; a recipe's product key is its first output's goodType (per-product recipes carry
  *  exactly one output), first-wins on a duplicate product. Types without recipes are absent.
  *
@@ -61,11 +61,11 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
 }
 
 /**
- * `goodType → the building typeIds a consumer self-serves it from` — the shared UNSTAFFED utilities that
+ * `goodType → the building typeIds a consumer self-serves it from` - the shared UNSTAFFED utilities that
  * mint a good from no inputs (the well drawing water, the hive drawing honey). A type qualifies only when
  * it both (a) has a recipe producing the good with no inputs, and (b) is unstaffed-by-design: every worker
  * slot is a carrier or gatherer, none an operator trade. Condition (b) excludes a STAFFED input-less
- * producer — the animal farm's breeders mint meat from nothing, but that is real husbandry, not a public
+ * producer - the animal farm's breeders mint meat from nothing, but that is real husbandry, not a public
  * tap a stranger cranks. The signal is data ("an unstaffed input-less producer of the needed good"), never
  * a hardcoded well/hive id. First-wins per typeId, matching the other tables.
  */
@@ -79,7 +79,7 @@ export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number,
   for (const b of content.buildings) {
     if (seen.has(b.typeId)) continue;
     seen.add(b.typeId);
-    if (b.workers.some((w) => isOperatorSlot(w.jobType))) continue; // staffed — not a self-service tap
+    if (b.workers.some((w) => isOperatorSlot(w.jobType))) continue; // staffed - not a self-service tap
     for (const recipe of b.recipes) {
       if (recipe.inputs.length > 0) continue;
       const product = recipe.outputs[0]?.goodType;
@@ -95,7 +95,7 @@ export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number,
   return map;
 }
 
-/** The per-building-type worker-job sets — first-wins per typeId unconditionally (a first record with zero
+/** The per-building-type worker-job sets - first-wins per typeId unconditionally (a first record with zero
  *  workers claims the key with an empty set, exactly as the `.find` it replaced resolved the first record and
  *  read its empty `workers`), so a later duplicate can never shadow it. */
 export function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
@@ -132,7 +132,7 @@ export function storedGoodSets(content: ContentSet): ReadonlyMap<number, Readonl
 }
 
 /** The per-type per-good stock-slot capacities
- *  ({@link import('../content-index.js').ContentIndex.stockSlotCapacityByBuilding}) — first-wins per
+ *  ({@link import('../content-index.js').ContentIndex.stockSlotCapacityByBuilding}) - first-wins per
  *  typeId AND per good within a type (matching the `.find` scan it replaces); types with no stock
  *  slots omitted. */
 export function stockSlotCapacityTables(

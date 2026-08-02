@@ -5,14 +5,14 @@ import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-// The dev/admin `debug*` commands — the spawn/inspect palette's direct pokes at world state. They are real
+// The dev/admin `debug*` commands - the spawn/inspect palette's direct pokes at world state. They are real
 // commands (logged and replayed like any other), so each is a no-op on a target of the wrong kind rather
 // than a throw.
 
 /**
  * Kill a unit: drain its {@link Health} pool to 0 and let the CleanupSystem reap it next tick (the real
  * death path + event), rather than a silent destroy. Gated on {@link Settler} (animals are settlers too) so
- * a building that carries a Health pool while under construction can't be drained-and-reaped here — that
+ * a building that carries a Health pool while under construction can't be drained-and-reaped here - that
  * would destroy the building through CleanupSystem, bypassing demolish's worker-unbind seam and emitting a
  * `settlerDied` cue for a non-settler. A non-settler / already-reaped target is a no-op.
  */
@@ -33,7 +33,7 @@ export function debugSetNeeds(world: World, command: Extract<Command, { kind: 'd
   if (command.enjoyment !== undefined) settler.enjoyment = needFixedFromPct(command.enjoyment);
 }
 
-/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed` — a single truncation
+/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed` - a single truncation
  *  (`ONE · pct / 100`) so 0 → sated and 100 → maxed exactly, the debug-needs command's one conversion. */
 function needFixedFromPct(pct: number): Fixed {
   const clamped = pct < 0 ? 0 : pct > 100 ? 100 : Math.trunc(pct);

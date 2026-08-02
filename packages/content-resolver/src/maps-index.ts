@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
 
-/** Node-side builder for the `/maps-index` payload — the decoded-maps list the app menu renders. */
+/** Node-side builder for the `/maps-index` payload - the decoded-maps list the app menu renders. */
 
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
 interface ScriptMultiplayer {
@@ -103,7 +103,7 @@ function playersOf(
 }
 
 /**
- * Builds one entry per `content/maps/<id>.json` grid, sorted, joined with its optional sidecars —
+ * Builds one entry per `content/maps/<id>.json` grid, sorted, joined with its optional sidecars -
  * the `.meta.json`/`.script.json` ones are not maps of their own and are filtered out. Tolerance is
  * per entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist
  * (the caller guards).

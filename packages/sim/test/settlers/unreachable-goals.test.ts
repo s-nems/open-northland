@@ -27,7 +27,7 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 /**
  * The failed-goal memo: a settler whose route fails must not re-choose the same target on its next
  * plan. Without it the planner's deterministic nearest-first pick returns the identical unreachable
- * node every retry, and the settler loops park→re-pick→fail forever — observed on a real map as an AI
+ * node every retry, and the settler loops park→re-pick→fail forever - observed on a real map as an AI
  * clay collector idle from tick ~20k with 50 routable deposits inside its own flag radius.
  */
 
@@ -87,7 +87,7 @@ describe('the failed-goal memo', () => {
   });
 });
 
-/** Drive the sim until `done`, or fail loudly — a silent timeout would read as a passing assertion. */
+/** Drive the sim until `done`, or fail loudly - a silent timeout would read as a passing assertion. */
 function stepUntil(s: ReturnType<typeof sim>, limit: number, done: () => boolean): void {
   for (let i = 0; i < limit && !done(); i++) s.step();
   if (!done()) throw new Error(`condition not reached within ${limit} ticks`);
@@ -106,7 +106,7 @@ describe('the gatherer re-plan after a failed route', () => {
     const near = woodAt(s, 3, 0, UNTOUCHED);
     const far = woodAt(s, 8, 0, UNTOUCHED);
 
-    // Let the planner make its own nearest-first pick, then fail exactly that route — the state
+    // Let the planner make its own nearest-first pick, then fail exactly that route - the state
     // routing leaves behind when a goal turns out to be walled off by standing bodies.
     stepUntil(s, 20, () => s.world.has(e, MoveGoal));
     const doomed = s.world.get(e, MoveGoal).cell;
@@ -128,7 +128,7 @@ describe('the gatherer re-plan after a failed route', () => {
     s.world.add(e, PathRequest, { start: doomed, goal: doomed, failed: true });
     stepUntil(s, 100, () => s.world.has(e, UnreachableGoals));
 
-    // With no alternative tree the settler idles while the memo holds, then resumes on expiry —
+    // With no alternative tree the settler idles while the memo holds, then resumes on expiry -
     // a transient blockage (a colleague in the only doorway) must not retire the node forever.
     stepUntil(s, UNREACHABLE_GOAL_MEMO_TICKS + 400, () => harvestedResource(s, e) !== null);
     expect(harvestedResource(s, e)).not.toBeNull();
@@ -137,7 +137,7 @@ describe('the gatherer re-plan after a failed route', () => {
 
 describe('the builder re-plan after a failed stand route', () => {
   it('raises the second site instead of re-picking the one whose stand it could not reach', () => {
-    // Sites are bucketed by their finished door, but site routes walk PERIMETER stands — the veto must
+    // Sites are bucketed by their finished door, but site routes walk PERIMETER stands - the veto must
     // probe the stand (unreachableSiteStand), or a failed site route retires a cell no pick compares.
     const s = new Simulation({ seed: 1, content: constructionContent(), map: grassNodeMap(24, 4) });
     const near = siteAt(s, HOUSE, 2, 0);

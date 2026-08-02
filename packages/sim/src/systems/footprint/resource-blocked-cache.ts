@@ -106,7 +106,7 @@ function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string
   const fresh = deriveResourceBlockedCells(world, terrain);
   if (sameCells(cached.cells, fresh)) return [];
   return [
-    `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} — stale resource footprint overlay`,
+    `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - stale resource footprint overlay`,
   ];
 }
 

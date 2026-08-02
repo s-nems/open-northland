@@ -17,10 +17,10 @@ import type { DrawnGeometry } from '../src/gpu/sprite-pool/index.js';
 /**
  * Damage smoke is a pure function of a building's CURRENT HP fraction: each fifth of the pool lost adds a
  * seeded roof plume, and an HP rise (repair, an upgrade refill) sheds them again with no event wiring.
- * The puff motion is tick-driven and seeded — reproducible for a `?shot`, distinct across emitters.
+ * The puff motion is tick-driven and seeded - reproducible for a `?shot`, distinct across emitters.
  */
 
-describe('damageSmokeEmitters — one plume per damage step, shed on repair', () => {
+describe('damageSmokeEmitters - one plume per damage step, shed on repair', () => {
   it('steps 0→max as the pool drains, and back down as it refills', () => {
     expect(damageSmokeEmitters(1)).toBe(0); // pristine
     expect(damageSmokeEmitters(1 - DAMAGE_SMOKE_STEP + 0.01)).toBe(0); // just under the first threshold
@@ -32,20 +32,20 @@ describe('damageSmokeEmitters — one plume per damage step, shed on repair', ()
   });
 });
 
-describe('readHpFraction — the snapshot read driving the smoke', () => {
+describe('readHpFraction - the snapshot read driving the smoke', () => {
   it('reads a damaged finished building, and stays absent for undamaged / under-construction ones', () => {
     const ONE = 65536; // the sim fixed-point ONE (Building.built is a 0..ONE fraction)
     expect(readHpFraction({ Health: { hitpoints: 250, max: 1000 } })).toBeCloseTo(0.25);
     expect(readHpFraction({ Health: { hitpoints: 1000, max: 1000 } })).toBeUndefined(); // undamaged
     expect(
       readHpFraction({ Health: { hitpoints: 250, max: 1000 }, Building: { built: ONE / 2 } }),
-    ).toBeUndefined(); // a site's pool ramps with the build — it must not smoke
+    ).toBeUndefined(); // a site's pool ramps with the build - it must not smoke
     expect(readHpFraction({})).toBeUndefined();
     expect(readHpFraction({ Health: { hitpoints: 1, max: 0 } })).toBeUndefined(); // malformed
   });
 });
 
-describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
+describe('smokePuff - deterministic rising, swelling, thinning loop', () => {
   it('is reproducible and varies per emitter', () => {
     expect(smokePuff(7, 0, 0, 12)).toEqual(smokePuff(7, 0, 0, 12));
     expect(smokePuff(7, 0, 0, 12)).not.toEqual(smokePuff(7, 1, 0, 12));
@@ -84,7 +84,7 @@ describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
 
   it("spreads each building's emitters across distinct roof bands, so every step reads as a new spot", () => {
     // Stratified placement: emitters own disjoint horizontal bands, so the worst-case pair still has a
-    // visible gap — the plume count works as a damage gauge instead of clumping into one cloud.
+    // visible gap - the plume count works as a damage gauge instead of clumping into one cloud.
     for (const seed of [1, 42, 1337, 65535]) {
       const us = Array.from({ length: MAX_SMOKE_EMITTERS }, (_, e) => emitterSpot(seed, e).u).sort(
         (a, b) => a - b,
@@ -98,7 +98,7 @@ describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
   });
 
   it('pins every spot to the centered roof wedge, never in an empty bounds-box corner', () => {
-    // Off-center spots must sit at or below the wedge's roof line — a sprite narrows toward its top,
+    // Off-center spots must sit at or below the wedge's roof line - a sprite narrows toward its top,
     // so a high spot far from the center line would smoke from the air beside the roof.
     for (const seed of [1, 42, 1337, 65535]) {
       for (let e = 0; e < MAX_SMOKE_EMITTERS; e++) {
@@ -126,7 +126,7 @@ describe('DamageSmokeLayer', () => {
     expect(visiblePlumes()).toBe(MAX_SMOKE_EMITTERS); // battered → full smoke
 
     layer.draw([{ ref: 5, hpFrac: 0.9 }], drawn, 2);
-    expect(layer.container.children).toHaveLength(0); // repaired above the first threshold — retired
+    expect(layer.container.children).toHaveLength(0); // repaired above the first threshold - retired
   });
 
   it('retires the node when the building leaves the damaged list (razed or scrolled out)', () => {

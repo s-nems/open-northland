@@ -5,7 +5,7 @@ import { jobBaseGraphicsToBindings, resolveGraphicsBindings } from '../src/stage
 import { buildStringCif } from './fixtures/cif.js';
 import { makeTempDir } from './support/game-tree.js';
 
-/** The hand-authored guidepost binding appended LAST on every resolve (engine-bound in the original —
+/** The hand-authored guidepost binding appended LAST on every resolve (engine-bound in the original -
  *  no data table names it; see resolveGraphicsBindings). */
 const GUIDEPOST_BINDING = ['data/engine2d/bin/bobs/ls_guidepost.bmd', 'bridge01'];
 

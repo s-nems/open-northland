@@ -22,7 +22,7 @@ import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 
 /**
- * Everything the per-frame loop reads — assembled once by {@link import('./game-view.js').startGameView}
+ * Everything the per-frame loop reads - assembled once by {@link import('./game-view.js').startGameView}
  * during its mount phase and handed here. This context is the explicit contract between the one-time HUD
  * wiring and the steady-state RAF loop: the setup owns construction, the loop owns the pinned per-frame
  * order (see {@link startFrameLoop}).
@@ -42,7 +42,7 @@ export interface FrameLoopDeps {
   readonly pileTooltip: GroundPileTooltip;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
-  /** The erect-signpost band probe — shown while unit-controls' signpost placement mode is active. */
+  /** The erect-signpost band probe - shown while unit-controls' signpost placement mode is active. */
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
   /** The tribe HUD read-view, memoized by snapshot identity (rebuilt per tick, not per RAF). */
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
@@ -56,7 +56,7 @@ export interface FrameLoopDeps {
   readonly livestockHeartsFor: (snap: WorldSnapshot) => ReturnType<typeof computeLivestockHearts>;
   /** The one live placement rule the click gate and the cursor ghost share. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
-  /** The erect-signpost twin of {@link canPlaceAt} — gates the signpost cursor ghost. */
+  /** The erect-signpost twin of {@link canPlaceAt} - gates the signpost cursor ghost. */
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   readonly perf: PerfOverlayHandle;
@@ -99,7 +99,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     pointer: pointerAt,
   } = loop;
   const { app, renderer, sim, cameraCtl } = deps;
-  // The controlled player (the menu's roster seat; slot 0 for scenes) — fog, ghost ownership and the
+  // The controlled player (the menu's roster seat; slot 0 for scenes) - fog, ghost ownership and the
   // death-stinger filter below all read it.
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
@@ -107,11 +107,11 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // instrument installed by game-view) so one recording shows the whole frame anatomy.
   const emitPhase = framePhaseEmitter(deps.params);
   let lastMs = performance.now();
-  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
+  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by - refreshed each
   // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
   let renderAlpha = 1;
   // Events from every sim step this frame (not just the last tick): the fixed-timestep loop may advance
-  // several ticks between rendered frames, and each step clears the buffer — so an audio trigger on an
+  // several ticks between rendered frames, and each step clears the buffer - so an audio trigger on an
   // intermediate tick would otherwise be lost. One persistent scratch array, cleared per frame.
   const frameEvents: SimEvent[] = [];
   // The two band probes bound once against the live camera + screen: the cursor decision below calls at
@@ -130,10 +130,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
     // Time the CPU work (sim + snapshot + render-build/submit + audio) so the overlay can split the
-    // frame into CPU vs GPU/compositor — the split that tells whether a slow frame is our code or the GPU.
+    // frame into CPU vs GPU/compositor - the split that tells whether a slow frame is our code or the GPU.
     const cpu0 = performance.now();
     frameEvents.length = 0;
-    // Count the sim steps this frame — the fixed-timestep loop may run several to catch wall-clock up
+    // Count the sim steps this frame - the fixed-timestep loop may run several to catch wall-clock up
     // (or zero when paused/idle); a persistently high count is the sim falling behind, the overlay shows it.
     let steps = 0;
     if (!control.paused) {
@@ -146,16 +146,16 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const simMs = performance.now() - cpu0;
     cameraCtl.update(elapsed);
     // The sepia pause wash mirrors the loop's pause flag every frame (an idempotent visibility set), so
-    // any future pauser — auto-pause on blur, a modal — browns the map without knowing about the renderer.
+    // any future pauser - auto-pause on blur, a modal - browns the map without knowing about the renderer.
     renderer.setPaused(control.paused);
-    // Hand the frame's events to the entry before anything draws — the map entry's static→dynamic
+    // Hand the frame's events to the entry before anything draws - the map entry's static→dynamic
     // resource handover must release a first-worked node in the same frame the pool starts drawing it.
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
     const snap0 = performance.now();
     const snap = sim.snapshot();
     // CPU split #2: the snapshot clone (the plain-cloned world the renderer + HUD read).
     const snapMs = performance.now() - snap0;
-    // The human player's fog-of-war view for this frame (null = fog off — every layer reverts to the
+    // The human player's fog-of-war view for this frame (null = fog off - every layer reverts to the
     // pre-fog behaviour). One read shared by the renderer (wash + sprite/tree cull), the minimap mask
     // and the presentation event filter below, so no consumer can disagree about a cell. An observer
     // session sees everything: a view-only null, the sim's fog state untouched.
@@ -163,10 +163,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     fogGates.setFrame(fogView); // refresh the stable predicates' slot before anything below consults them
     renderer.updateFog(fogView);
     // Presentation events only (blood/bones + positional audio): an event at ground the player does
-    // not currently see is dropped — a fight in the fog must neither splatter visible blood nor ring
+    // not currently see is dropped - a fight in the fog must neither splatter visible blood nor ring
     // audible clangs. Event `at` coords are half-cell nodes, gated to fog visibility by `fogGates.seesNode`.
     // The map entry's `onEvents` handover deliberately keeps the unfiltered list (sim bookkeeping,
-    // not presentation — a fogged tree felled by an enemy must still hand its static sprite over).
+    // not presentation - a fogged tree felled by an enemy must still hand its static sprite over).
     const presentEvents =
       fogView === null
         ? frameEvents
@@ -178,7 +178,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // its fog mask only when the fog generation moved.
     mountedMinimap.update(snap, fogView);
     // The held building / pending signpost, decided here from the sim's placement probe and handed to the
-    // renderer as plain data — the renderer stays a pure projection and never calls back into the sim. No
+    // renderer as plain data - the renderer stays a pure projection and never calls back into the sim. No
     // HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.
     const cursor = placementCursor({
       placementType: toolPanel.controller.placementType(),
@@ -195,8 +195,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Tick the unit controls (details panel + action ring) before the renderer's update, so the panel a
     // rebuild bakes and the portrait inset painted over it (a post-main-render screen pass inside
     // renderer.update) both show this frame's state.
-    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
-    // Feed the details panel's live "observation window" — a world cutout centred on the selected entity,
+    controls.tick(snap); // reuse the frame's snapshot - don't rebuild a second one
+    // Feed the details panel's live "observation window" - a world cutout centred on the selected entity,
     // rendered into the portrait box inside renderer.update (a second world render, before the main stage
     // render). Null when the selection has no portrait; the inset fits the entity's bounds to the box.
     renderer.setPortraitInset(controls.portrait());
@@ -205,7 +205,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // + positions) and handed over as plain cells. Cheap: the sim scans only the small under-construction
     // set, and the layer skips the redraw when the set is unchanged.
     // Fog gate: the plot layer draws above the wash, so an enemy foundation in the black would paint
-    // through it — keep only the cells (half-cell nodes) the player currently sees.
+    // through it - keep only the cells (half-cell nodes) the player currently sees.
     const plots = sim.constructionPlots();
     renderer.updateConstructionPlots(
       fogView === null
@@ -223,12 +223,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     renderer.setBuildingHighlight(controls.assignHighlight());
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
-    // is passed — the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
+    // is passed - the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
     const doorBadges = doorBadgesFor(snap); // memoized per tick, not per RAF
     const constructionSigns = constructionSignsFor(snap); // memoized per tick, not per RAF
     const settlerBubbles = settlerBubblesFor(snap); // memoized per tick, not per RAF
     const livestockHearts = livestockHeartsFor(snap); // memoized per tick, not per RAF
-    // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events — ingested
+    // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events - ingested
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
     // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.
     renderer.ingestCombatEffects(presentEvents, snap.tick);
@@ -255,7 +255,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
         localPlayer, // the death stinger rings only for our own units, not enemies/wildlife
-        // Chat voices locate their emitter off the snapshot, so they need their own fog gate — a
+        // Chat voices locate their emitter off the snapshot, so they need their own fog gate - a
         // hidden enemy must not natter from empty black (positional SFX are already covered by the
         // presentEvents filter above).
         visibleTile: fogGates.visibleTile,
@@ -263,10 +263,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     }
     const cpuMs = performance.now() - cpu0;
     // CPU split #3: the render build + submit and the rest of the frame's app work (camera, controls,
-    // sound) — the remainder after sim + snapshot, so the three sum to cpuMs.
+    // sound) - the remainder after sim + snapshot, so the three sum to cpuMs.
     const drawMs = cpuMs - simMs - snapMs;
     if (emitPhase !== null) {
-      // Named approximation: drawMs is the cpu REMAINDER (two intervals — camera/fog work between
+      // Named approximation: drawMs is the cpu REMAINDER (two intervals - camera/fog work between
       // sim end and snapshot start, then build+submit); one slice draws it as the tail interval.
       emitPhase('frame/sim', cpu0, cpu0 + simMs);
       emitPhase('frame/snapshot', snap0, snap0 + snapMs);

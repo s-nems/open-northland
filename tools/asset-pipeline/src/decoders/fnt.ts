@@ -1,13 +1,13 @@
 /**
- * `.fnt` bitmap-font decoder — CFont (storable id 0x3F5), a thin wrapper around the `.bmd` bob container.
+ * `.fnt` bitmap-font decoder - CFont (storable id 0x3F5), a thin wrapper around the `.bmd` bob container.
  *
  * A `.fnt` is one serialized `CStorable` whose body is two font-level words followed by a nested
- * `CBobManager` (id 0x3F4) — the same bob container the `.bmd` decoder already parses. Each glyph is one
+ * `CBobManager` (id 0x3F4) - the same bob container the `.bmd` decoder already parses. Each glyph is one
  * bob; character `c` (>= 0x20) draws bob `c - 0x20`. On disk:
  *
  *   [u32 id=0x3F5][u32 version]                  CFont storable header
  *   [u32 value08]                                font-level word (unknown; carried verbatim)
- *   [u32 value0C]                                font-level word — empirically the nominal pixel size
+ *   [u32 value0C]                                font-level word - empirically the nominal pixel size
  *                                                (8/10/12 for font08/10/12; 8 for fontdebug)
  *   [u32 id=0x3F4][u32 version][ CBobManager … ] the nested bob container ({@link decodeBmd} parses this)
  *
@@ -48,10 +48,10 @@ export const FONT_SPACE_BOB_ID = 0x49;
 export interface Font {
   /** CFont storable version word (carried, not interpreted). */
   readonly version: number;
-  /** CFont+0x08 — unknown font-level word, carried verbatim for a faithful round-trip. */
+  /** CFont+0x08 - unknown font-level word, carried verbatim for a faithful round-trip. */
   readonly value08: number;
   /**
-   * CFont+0x0C — carried verbatim. Empirically the font's nominal pixel size: 8/10/12 for font08/10/12
+   * CFont+0x0C - carried verbatim. Empirically the font's nominal pixel size: 8/10/12 for font08/10/12
    * and 8 for fontdebug. Exposed as {@link FontMetrics.nominalSize}; not load-bearing (the real layout
    * comes from the per-glyph rects), so it is an observation, not a contract.
    */
@@ -64,7 +64,7 @@ export interface Font {
  * Decodes a `.fnt` (CFont) into its font-level words + the nested bob container. Reads the 16-byte CFont
  * prefix, then hands the remainder to {@link decodeBmd} (the nested storable is a `.bmd` CBobManager).
  * Throws an `fnt:`-prefixed error on a too-short buffer, a wrong root id, or a font with no bob manager (a
- * null nested storable, which CFont writes as an id/version of 0) — a batch stage should wrap the call
+ * null nested storable, which CFont writes as an id/version of 0) - a batch stage should wrap the call
  * per-file so one bad font can't abort the run.
  */
 export function decodeFnt(bytes: Uint8Array): Font {
@@ -115,7 +115,7 @@ export function encodeFnt(font: Font): Uint8Array {
   return out;
 }
 
-/** Reference characters (in priority order) whose baseline the font's baseline is derived from — see {@link deriveBaseline}. */
+/** Reference characters (in priority order) whose baseline the font's baseline is derived from - see {@link deriveBaseline}. */
 const BASELINE_REFERENCE_CHARS = ['H', 'E', 'A', 'T', 'I', 'X', '0'] as const;
 
 /** The bob record for `bobId`, or `undefined` if the container has no such bob. */
@@ -152,7 +152,7 @@ export function deriveLineHeight(bmd: Bmd): number {
 /**
  * A derived baseline (advisory, not stored in the format): the bottom edge `area.y + area.height` of the first
  * available reference capital ({@link BASELINE_REFERENCE_CHARS}), since capitals sit on the baseline.
- * The original has no baseline concept — it lays glyphs out top-anchored, blitting each at `pen + (x, y)`
+ * The original has no baseline concept - it lays glyphs out top-anchored, blitting each at `pen + (x, y)`
  * and advancing by {@link bobAdvance}. A convenience for a renderer aligning mixed content; falls back to
  * the line height when no reference glyph has pixels (e.g. a partial debug font). Heuristic, source basis.
  */
@@ -194,9 +194,9 @@ export interface FontMetrics {
   readonly charCount: number;
   /** The bob a space/tab is measured through ({@link FONT_SPACE_BOB_ID}); recorded for the consumer. */
   readonly spaceBobId: number;
-  /** Line height (max glyph extent) — see {@link deriveLineHeight}. */
+  /** Line height (max glyph extent) - see {@link deriveLineHeight}. */
   readonly lineHeight: number;
-  /** Derived baseline (advisory) — see {@link deriveBaseline}. */
+  /** Derived baseline (advisory) - see {@link deriveBaseline}. */
   readonly baseline: number;
   /** The font's nominal pixel size ({@link Font.value0C}); an observation, not load-bearing. */
   readonly nominalSize: number;

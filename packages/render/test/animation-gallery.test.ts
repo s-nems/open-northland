@@ -9,7 +9,7 @@ import {
 } from '../src/gpu/gallery/index.js';
 
 /**
- * The PURE half of the animation gallery — layout, direction count, frame selection, head remap — the part
+ * The PURE half of the animation gallery - layout, direction count, frame selection, head remap - the part
  * an agent CAN self-verify. Whether the pixels animate right is the `?anim` browser view a human signs off;
  * this pins the grid placement + the `[bobseq]` math so they can't silently drift. Cell PIXEL sizes are
  * intentionally not asserted (a visual tuning knob).
@@ -61,7 +61,7 @@ describe('clipDirs', () => {
   });
 });
 
-describe('galleryBobId — 8-directional clip', () => {
+describe('galleryBobId - 8-directional clip', () => {
   const walk = clip({ start: 1988, length: 96 }); // stride 12, dirs 8
 
   it('a numeric facing plays that block, staying inside it for any step', () => {
@@ -89,7 +89,7 @@ describe('galleryBobId — 8-directional clip', () => {
 
   it('full mode visits all 8 distinct direction blocks over one cycle', () => {
     // One sub-cycle per direction (stride 12), so sampling the first frame of each slot must hit every
-    // block exactly once — guards against a bad/duplicate entry in COMPASS_TO_BLOCK.
+    // block exactly once - guards against a bad/duplicate entry in COMPASS_TO_BLOCK.
     const blocks = new Set<number>();
     for (let slot = 0; slot < 8; slot++)
       blocks.add((galleryBobId(walk, 'full', slot * 12) - walk.start) / 12);
@@ -102,7 +102,7 @@ describe('galleryBobId — 8-directional clip', () => {
   });
 });
 
-describe('galleryBobId — guards', () => {
+describe('galleryBobId - guards', () => {
   it('pins to the clip start when the stride is 0 (dirs > 1 but too short to split)', () => {
     // A hand-built 8-dir clip shorter than 8 frames → floor(4/8) = 0 stride; must not divide-by-0 / go negative.
     const bad = clip({ start: 700, length: 4, dirs: 8 });
@@ -110,7 +110,7 @@ describe('galleryBobId — guards', () => {
   });
 });
 
-describe('galleryBobId — single-direction clip', () => {
+describe('galleryBobId - single-direction clip', () => {
   const eat = clip({ start: 1530, length: 17 }); // dirs 1
 
   it('always plays the whole strip, ignoring the requested facing', () => {

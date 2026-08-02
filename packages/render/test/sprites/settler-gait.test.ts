@@ -5,11 +5,11 @@ import type { DirectionalAnim, DrawItem, SettlerStateBinding, SpriteBindings } f
 import { settlerItem } from '../support/fixtures.js';
 
 /**
- * Unit tests for the settler GAIT OVERRIDES and per-job pick — the engaged (aggressive) and carrying
+ * Unit tests for the settler GAIT OVERRIDES and per-job pick - the engaged (aggressive) and carrying
  * (loaded) gait swaps, the per-good carry look, and pickByJob's body/head selection.
  */
 
-describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
+describe('resolveSpriteBobId - engaged (aggressive) gait override', () => {
   const WALK: DirectionalAnim = { start: 1000, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1000, dirs: 8, stride: 12, frames: 1 };
   const AGGR_WALK: DirectionalAnim = { start: 2000, dirs: 8, stride: 12 };
@@ -43,7 +43,7 @@ describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
   });
 });
 
-describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
+describe('resolveSpriteBobId - carrying (loaded-gait) override', () => {
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
   const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
@@ -87,7 +87,7 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
 
   it('a bound atomic still wins over the carry override (a settler harvests empty-handed)', () => {
     // The chop is bound on atomic 24; even if a (spurious) carry flag were present the harvest swing
-    // must still play — carry only swaps the gait, never a bound action animation.
+    // must still play - carry only swaps the gait, never a bound action animation.
     expect(
       resolveSpriteBobId(
         settlerItem('acting', { facing: 4, atomicId: 24, elapsed: 1, carrying: true }),
@@ -115,8 +115,8 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
   });
 });
 
-describe('resolveSpriteBobId — per-good carry look (carrying.byGood)', () => {
-  /** A hauling settler item carrying a specific good (or none — the generic loaded look). */
+describe('resolveSpriteBobId - per-good carry look (carrying.byGood)', () => {
+  /** A hauling settler item carrying a specific good (or none - the generic loaded look). */
   function hauler(state: SpriteState, facing: number, carryGood?: number): DrawItem {
     return settlerItem(state, { facing, carrying: true, carryGood });
   }
@@ -174,7 +174,7 @@ describe('resolveSpriteBobId — per-good carry look (carrying.byGood)', () => {
   });
 });
 
-describe('pickByJob — the per-job character pick', () => {
+describe('pickByJob - the per-job character pick', () => {
   const table: ByJobTable<string> = {
     byJob: { 5: 'woman', 31: 'warrior' },
     youngByJob: { 1: 'baby', 3: 'girl' },
@@ -187,7 +187,7 @@ describe('pickByJob — the per-job character pick', () => {
     expect(pickByJob(table, 11, false)).toBe('civilian');
   });
 
-  it('a young settler picks from youngByJob — never the adult table', () => {
+  it('a young settler picks from youngByJob - never the adult table', () => {
     expect(pickByJob(table, 1, true)).toBe('baby');
     expect(pickByJob(table, 3, true)).toBe('girl');
     // A young settler whose age class isn't mapped falls to the default, not to byJob.
@@ -195,7 +195,7 @@ describe('pickByJob — the per-job character pick', () => {
   });
 
   it('an ADULT with a fixture job id colliding with an age class stays the default (dc3ef54)', () => {
-    // The demo woodcutter is jobType 1 — the real baby_female id. Without the Age flag it must NEVER
+    // The demo woodcutter is jobType 1 - the real baby_female id. Without the Age flag it must NEVER
     // draw the baby body.
     expect(pickByJob(table, 1, false)).toBe('civilian');
   });
@@ -219,7 +219,7 @@ describe('pickByJob — the per-job character pick', () => {
     // A bare warrior (job 31, no weapon) keeps its job body; equip a sword good and it draws the sword body.
     expect(pickByJob(armed, 31, false)).toBe('warrior');
     expect(pickByJob(armed, 31, false, 41)).toBe('warrior-sword');
-    // The weapon wins over a conflicting job — a job-40 archer holding a short-bow good still draws the bow.
+    // The weapon wins over a conflicting job - a job-40 archer holding a short-bow good still draws the bow.
     expect(pickByJob(armed, 40, false, 37)).toBe('warrior-shortbow');
     // An unmapped weapon good falls through to the job pick, not the default.
     expect(pickByJob(armed, 31, false, 999)).toBe('warrior');

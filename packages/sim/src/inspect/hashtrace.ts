@@ -1,11 +1,11 @@
 import type { WorldSnapshot } from './snapshot.js';
 
 /**
- * `HashTrace` — the per-tick hash (+ bounded snapshot) capped list for the replay inspector. It is the
+ * `HashTrace` - the per-tick hash (+ bounded snapshot) capped list for the replay inspector. It is the
  * "find tick N" half; `replay()` is the "jump to tick N" half:
  *
  *  - `replay({content,seed,map?,log,untilTick})` reconstructs the exact state at a tick by re-applying the
- *    command log — the expensive, on-demand primitive a scrub overlay calls once you know which tick.
+ *    command log - the expensive, on-demand primitive a scrub overlay calls once you know which tick.
  *  - `HashTrace` records `{tick, hash}` cheaply during a live run, so "the hash diverged at tick N" is
  *    detectable by comparing two runs' traces without re-replaying either. The overlay hands that N to
  *    `replay()` to inspect.
@@ -15,17 +15,17 @@ import type { WorldSnapshot } from './snapshot.js';
  * A settlement runs for hours = millions of ticks; keeping every `{tick, hash}` (let alone every snapshot) is
  * unbounded memory. So the trace is a capped list: once full, recording a new tick drops the oldest.
  * The hash window is cheap (a tick number + an 8-char string per entry) so it can be large; the optional
- * snapshot window is heavy (a full cloned world per entry) so it has its own, smaller cap — recent snapshots
+ * snapshot window is heavy (a full cloned world per entry) so it has its own, smaller cap - recent snapshots
  * let the overlay dump an entity at a recent tick without a `replay()`, while older ticks fall back to
  * `replay()` from the command log.
  *
- * Eviction shifts the backing array, so a full trace costs O(hashCapacity) per record — fine for the
+ * Eviction shifts the backing array, so a full trace costs O(hashCapacity) per record - fine for the
  * inspector's throttled, debug-gated recording, but this is not a ring buffer: don't put `record` on an
  * unthrottled per-tick path at a large capacity without making it one.
  *
  * ## Purity
  *
- * Pure data: no DOM, no I/O, no clock. A passive recorder the caller drives — call {@link HashTrace.record}
+ * Pure data: no DOM, no I/O, no clock. A passive recorder the caller drives - call {@link HashTrace.record}
  * after each `step()` with the already-computed `hashState()` (and optional `snapshot()`). It deliberately
  * does not hook `Simulation.step()`: per-tick hashing stays opt-in and out of the deterministic hot loop, so
  * enabling the inspector can never change sim state or the golden hashes. It holds only plain values, so it is
@@ -34,7 +34,7 @@ import type { WorldSnapshot } from './snapshot.js';
 export interface HashTraceEntry {
   /** The tick this hash/snapshot was recorded after (`Simulation.tick` at record time). */
   readonly tick: number;
-  /** `Simulation.hashState()` at that tick — the canonical full-state fingerprint. */
+  /** `Simulation.hashState()` at that tick - the canonical full-state fingerprint. */
   readonly hash: string;
   /**
    * The plain `WorldSnapshot` at that tick, if this entry is within the (smaller) snapshot window.
@@ -55,7 +55,7 @@ export interface HashTraceOptions {
   /**
    * Max recent entries that also retain their full `WorldSnapshot` (the heavy payload). Must be
    * `>= 0` and `<= hashCapacity` (a snapshot can't outlive its hash entry). `0` means "hashes only".
-   * Defaults to 0 — opt into snapshots explicitly, since they are large.
+   * Defaults to 0 - opt into snapshots explicitly, since they are large.
    */
   readonly snapshotCapacity?: number;
 }
@@ -103,7 +103,7 @@ export class HashTrace {
    * if it would exceed `hashCapacity`, and ages the snapshot out of any entry that has fallen outside
    * the (more recent) snapshot window so the heavy payload stays bounded.
    *
-   * Ticks must be recorded in strictly ascending order (the natural per-`step()` cadence) — a non-monotonic
+   * Ticks must be recorded in strictly ascending order (the natural per-`step()` cadence) - a non-monotonic
    * record is a caller bug (out-of-order ticks would make `at`/`divergedFrom` lookups meaningless), so it
    * throws rather than silently corrupting the window.
    */
@@ -119,7 +119,7 @@ export class HashTrace {
     while (this.entries.length > this.hashCapacity) this.entries.shift();
     // Age the snapshot out of the one entry that just fell outside the (smaller) snapshot window, so
     // the heavy payload stays capped at the most-recent `snapshotCapacity` entries. This is O(1): we
-    // ran on every prior `record`, so everything older is already snapshot-free — only the single
+    // ran on every prior `record`, so everything older is already snapshot-free - only the single
     // entry now at the window's boundary can still hold one. Nothing to do when snapshots are off.
     if (this.snapshotCapacity > 0) {
       const boundary = this.entries.length - this.snapshotCapacity - 1;
@@ -135,19 +135,19 @@ export class HashTrace {
     return this.entries.length;
   }
 
-  /** The oldest retained tick, or `undefined` if empty — the floor of the in-memory window. */
+  /** The oldest retained tick, or `undefined` if empty - the floor of the in-memory window. */
   get oldestTick(): number | undefined {
     return this.entries[0]?.tick;
   }
 
-  /** The newest retained tick, or `undefined` if empty — the head of the in-memory window. */
+  /** The newest retained tick, or `undefined` if empty - the head of the in-memory window. */
   get newestTick(): number | undefined {
     return this.entries[this.entries.length - 1]?.tick;
   }
 
   /**
    * The entry recorded for `tick`, or `undefined` if that tick is outside the retained window (aged
-   * out, or never recorded). Binary search — entries are ascending by tick.
+   * out, or never recorded). Binary search - entries are ascending by tick.
    */
   at(tick: number): HashTraceEntry | undefined {
     let lo = 0;
@@ -167,13 +167,13 @@ export class HashTrace {
     return this.at(tick)?.hash;
   }
 
-  /** All retained entries, oldest-first (a defensive shallow copy — the backing list stays private). */
+  /** All retained entries, oldest-first (a defensive shallow copy - the backing list stays private). */
   list(): readonly HashTraceEntry[] {
     return [...this.entries];
   }
 
   /**
-   * Find the first tick where this trace's hash disagrees with `other`'s — "the hash diverged at tick N",
+   * Find the first tick where this trace's hash disagrees with `other`'s - "the hash diverged at tick N",
    * computed without re-replaying either run. Compares only ticks present in both retained windows, in
    * ascending order; returns the earliest mismatch, or `undefined` if every shared tick agrees. The
    * inspector's bug-localizer: feed it a reference run's trace (a golden, or a peer's lockstep trace) and it

@@ -8,15 +8,15 @@ import { type CifLine, decodeCifStringArray } from '../cif.js';
  * The Cultures rule files were authored on Windows-1250 codepages, so display strings carry Polish
  * glyphs (`ą ć ę ł ń ó ś ź ż` and capitals) in the 0x80..0xFF range; reading them as UTF-8 mangles
  * those bytes. Structural keywords (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII
- * and survive any of these single-byte encodings unchanged — only the human-facing names differ.
+ * and survive any of these single-byte encodings unchanged - only the human-facing names differ.
  *
  * This is the byte->text seam for the readable `.ini` skin; the `.cif` skin's seam lives in
  * `cif.ts` (decoded as latin1 to preserve every source byte). Re-decoding a `.cif`
- * display string as CP1250 is the IR-layer concern cif.ts's note defers — out of scope here.
+ * display string as CP1250 is the IR-layer concern cif.ts's note defers - out of scope here.
  */
 export function decodeIni(bytes: Uint8Array): string {
   // `fatal:false` (the default) maps the few unassigned CP1250 byte values to U+FFFD rather than
-  // throwing — a malformed glyph in one name must not abort an offline batch over many files.
+  // throwing - a malformed glyph in one name must not abort an offline batch over many files.
   return new TextDecoder('windows-1250').decode(bytes);
 }
 
@@ -40,7 +40,7 @@ export interface SourceRef {
 
 /**
  * Splits one line into tokens: a quoted run (`"a b"`) is a single token (quotes stripped);
- * otherwise tokens are whitespace-separated. Signed numbers (`-1`, `+1`) survive as raw strings —
+ * otherwise tokens are whitespace-separated. Signed numbers (`-1`, `+1`) survive as raw strings -
  * extractors coerce. The first token of a property line is its key; the rest are values.
  */
 function tokenize(line: string): string[] {
@@ -113,7 +113,7 @@ export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
     if (tokens.length === 0) continue;
     // Verified type tables (`housetypes`, ...) nest exactly: level 1 = section header,
     // level 2 = property. Only level 1 opens a section; level 0 (unprefixed) and any deeper
-    // level fold into the current section's properties rather than spawning a bogus section —
+    // level fold into the current section's properties rather than spawning a bogus section -
     // tighten this once a real deeper-nested `.cif` fixture forces a richer tree.
     if (level === 1) {
       current = { name: tokens[0] as string, props: [] };
@@ -139,7 +139,7 @@ export function findProp(sec: RuleSection, key: string): RuleProp | undefined {
   return sec.props.find((p) => p.key === key);
 }
 
-/** All properties with this key, in file order — for repeated keys like `allowatomic`. */
+/** All properties with this key, in file order - for repeated keys like `allowatomic`. */
 export function findProps(sec: RuleSection, key: string): RuleProp[] {
   return sec.props.filter((p) => p.key === key);
 }
@@ -173,7 +173,7 @@ export function getIntValues(sec: RuleSection, key: string): number[] {
 
 /**
  * All values of the first matching property parsed as ints, returned only if there are exactly
- * `length` of them (else `undefined`) — for fixed-arity tuples like a 6-int UV set (`GfxCoordsA`) or a
+ * `length` of them (else `undefined`) - for fixed-arity tuples like a 6-int UV set (`GfxCoordsA`) or a
  * 3-int `debugcolor`. A wrong-arity line yields `undefined` rather than a partial tuple, so a degenerate
  * record degrades gracefully instead of producing a malformed shape.
  */
@@ -184,7 +184,7 @@ export function getIntTuple(sec: RuleSection, key: string, length: number): numb
 
 /**
  * Every property with this key as a row of base-10 ints, keeping only rows whose length satisfies
- * `arity` and that contain no NaN — for repeated multi-int lines of a fixed or bounded shape
+ * `arity` and that contain no NaN - for repeated multi-int lines of a fixed or bounded shape
  * (`GfxCoordsA` 6-int UV rows, `LogicWalkBlockArea` 4-int cells, `GfxFrames` ≥2-int state+bobs,
  * `transition` any-length tuples). File order is preserved; a wrong-arity or malformed row is dropped
  * rather than partially read.
@@ -218,7 +218,7 @@ export function slug(name: string): string {
 }
 
 /**
- * Reads the required numeric `type` id, throwing if absent — malformed source data, surfaced to the
+ * Reads the required numeric `type` id, throwing if absent - malformed source data, surfaced to the
  * human running the offline pipeline rather than silently dropped (matches cif.ts's throw-on-corrupt
  * stance and the project's "throw for bugs" rule).
  */
@@ -231,7 +231,7 @@ export function requireTypeId(sec: RuleSection, block: string, src: SourceRef): 
 }
 
 /**
- * Builds a record's `source` provenance — the {@link SourceRef} plus the `[block]` it was read from,
+ * Builds a record's `source` provenance - the {@link SourceRef} plus the `[block]` it was read from,
  * defaulting the layer to `base`. Every typed extractor stamps this onto each IR record for auditability
  * (the one shared spelling, so the `?? 'base'` default can't drift between them).
  */
@@ -243,9 +243,9 @@ export function makeSource(
 }
 
 /**
- * Tally an id multiset — a flat list where a repeated id encodes its quantity (a recipe's
+ * Tally an id multiset - a flat list where a repeated id encodes its quantity (a recipe's
  * `productionInputGoods`, a build cost's `LogicConstructionGoods`: `… 1 1 14 …` = 2× good 1 + 1× good 14)
- * — into `{ goodType, amount }` pairs, preserving first-seen order for a deterministic IR.
+ * - into `{ goodType, amount }` pairs, preserving first-seen order for a deterministic IR.
  */
 export function tallyIds(ids: readonly number[]): { goodType: number; amount: number }[] {
   const counts = new Map<number, number>();
@@ -269,8 +269,8 @@ export function normalizeOptionalPath(path: string | undefined): string | undefi
 
 /**
  * Normalizes a palette `editname` to its case-insensitive join key (lower-case). The two pairing legs
- * disagree on case in the real data — `palettes.ini` declares `Lion01`/`Chicken01`, `jobgraphics.ini`
- * references `LION01`/`chicken01` — and the original engine matches them case-insensitively, so both
+ * disagree on case in the real data - `palettes.ini` declares `Lion01`/`Chicken01`, `jobgraphics.ini`
+ * references `LION01`/`chicken01` - and the original engine matches them case-insensitively, so both
  * {@link extractPaletteIndex} and {@link extractGraphicsBindings} key on the lower-cased name.
  */
 export function normalizePaletteName(name: string): string {
@@ -279,7 +279,7 @@ export function normalizePaletteName(name: string): string {
 
 /**
  * First value of the first matching property as a lower-cased palette `editname`, or `undefined` if
- * absent/blank — {@link getStr} plus the {@link normalizePaletteName} join-key normalization. The palette
+ * absent/blank - {@link getStr} plus the {@link normalizePaletteName} join-key normalization. The palette
  * analog of {@link normalizeOptionalPath}, shared by the graphics-binding readers and the landscape/gfx
  * type extractors that reference a recolour palette by name.
  */

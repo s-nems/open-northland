@@ -4,32 +4,32 @@ import { buildTerrainGraph, type NodeId, TerrainGraph, type TerrainMap } from '.
 import { animalRecord } from '../systems/readviews/index.js';
 
 /**
- * The **map populator** — seeds a terrain map's wildlife by producing the `spawnAnimalHerd` commands
+ * The **map populator** - seeds a terrain map's wildlife by producing the `spawnAnimalHerd` commands
  * that place each animal tribe's herds at walkable birth points. It is the AnimalSystem/scenario seam
  * the `spawnAnimalHerd` command's doc names: that command *lands* one herd; this decides **which**
  * herds go **where** on a real map, so a loaded map actually contains animals.
  *
  * It is a **pure function**, not a system: given `content` + a `terrain` graph it returns an ordered
  * list of {@link Command}s (all `spawnAnimalHerd`), and a caller (a scenario, the app's map loader)
- * enqueues them through the one mutation seam — exactly like a UI issuing `placeBuilding`. Keeping the
+ * enqueues them through the one mutation seam - exactly like a UI issuing `placeBuilding`. Keeping the
  * populator OUT of the per-tick `SYSTEM_ORDER` is deliberate: seeding happens once, at map load, not
  * every tick, and a pure command-producer is replay-faithful for free (the commands land in the log
  * like any other). The {@link spawnAnimalHerd} command then does the per-herd scatter/leader work.
  *
  * Which tribes: every **recorded animal tribe** in `content.animals` (a `[tribetype]` with an
- * `animaltypes.ini` record), in canonical ascending-`tribeType` order — never a hardcoded list. A
+ * `animaltypes.ini` record), in canonical ascending-`tribeType` order - never a hardcoded list. A
  * civilization (no animal record) is never seeded as wildlife.
  *
  * Where: birth points are chosen by striding through the terrain's **walkable** nodes in row-major
  * (canonical) order and taking every `cellStride`-th one, round-robin-assigning successive birth
  * points to successive animal tribes. So herds spread across the map's land instead of clustering, the
- * choice is a pure function of `(content, terrain, options)` — no RNG, no wall-clock — and a map with
+ * choice is a pure function of `(content, terrain, options)` - no RNG, no wall-clock - and a map with
  * no walkable nodes (all water/blocking) simply seeds nothing.
  *
  * source-basis: the **set of animal tribes** (every recorded `[animaltype]`) is faithful, and each herd's
  * size / HP / range / leader come from the verbatim `animaltypes.ini` params (via `spawnAnimalHerd`).
  * **Approximated (no oracle):** *where on the map* each birth point lands and *how many* herds a map
- * gets — the original reads animal birth/spawn points from per-map scenario data (below the readable
+ * gets - the original reads animal birth/spawn points from per-map scenario data (below the readable
  * `.ini`), so the even walkable-cell distribution here is a deterministic
  * stand-in, not a pinned placement. Recorded in source basis ("Animal map populator").
  */
@@ -58,10 +58,10 @@ export interface SeedAnimalsOptions {
  * points. See {@link SeedAnimalsOptions} for the placement rule. Accepts either a built
  * {@link TerrainGraph} or a raw {@link TerrainMap} (which it builds against `content`).
  *
- * Deterministic: a pure function of `(content, terrain, options)` — it walks the terrain's walkable
+ * Deterministic: a pure function of `(content, terrain, options)` - it walks the terrain's walkable
  * nodes in canonical row-major order, assigns birth points round-robin to the canonical-ordered animal
  * tribes, and returns the commands in that order. No RNG, no wall-clock, no world mutation (it touches
- * no entity — the caller enqueues the returned commands, which the CommandSystem applies).
+ * no entity - the caller enqueues the returned commands, which the CommandSystem applies).
  */
 export function seedAnimalHerds(
   content: ContentSet,
@@ -73,10 +73,10 @@ export function seedAnimalHerds(
   // The animal tribes to seed: every recorded animal tribe (or the requested subset that HAS a record),
   // in canonical ascending-tribeType order so the round-robin assignment is stable across runs.
   const tribes = resolveAnimalTribes(content, options.tribes);
-  if (tribes.length === 0) return []; // no animals in this content — nothing to seed
+  if (tribes.length === 0) return []; // no animals in this content - nothing to seed
 
   // Clamp to sane bounds. A non-finite (NaN) option would otherwise poison the `% stride`/`>= maxHerds`
-  // comparisons (every comparison with NaN is false), silently yielding an empty or uncapped result — so
+  // comparisons (every comparison with NaN is false), silently yielding an empty or uncapped result - so
   // a malformed value falls back to the default rather than failing quietly.
   const stride = Number.isFinite(options.cellStride)
     ? Math.max(1, Math.floor(options.cellStride as number))
@@ -106,9 +106,9 @@ export function seedAnimalHerds(
 
 /**
  * The animal tribes to seed, in canonical ascending-`tribeType` order: every recorded animal tribe in
- * `content.animals`, or — when `requested` is given — the subset of `requested` that has an animal
+ * `content.animals`, or - when `requested` is given - the subset of `requested` that has an animal
  * record (a `tribeType` with no record is silently dropped, since a civilization can't be wildlife).
- * A `hitpoints 0` decorative record (the real butterflies/bees/mosquitos) is dropped too — its spawn
+ * A `hitpoints 0` decorative record (the real butterflies/bees/mosquitos) is dropped too - its spawn
  * command places nothing, so seeding it would only pad the command log. Deduplicated (the source array
  * may repeat a `tribeType`; `animalRecord` returns the first match).
  */
@@ -119,8 +119,8 @@ function resolveAnimalTribes(content: ContentSet, requested?: readonly number[])
   for (const t of ids) {
     if (seen.has(t)) continue;
     const record = animalRecord(content, t);
-    if (record === null) continue; // not a recorded animal tribe — skip
-    if (record.hitpointsAdult <= 0) continue; // decorative swarm — its spawn places nothing
+    if (record === null) continue; // not a recorded animal tribe - skip
+    if (record.hitpointsAdult <= 0) continue; // decorative swarm - its spawn places nothing
     seen.add(t);
     out.push(t);
   }

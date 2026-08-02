@@ -12,9 +12,9 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The gossip + need-bubbles scene: prove the company need's self-satisfying loop and the pressing-need
- * thought bubbles, in three vignettes (needs ON — the one mechanic this scene is about).
+ * thought bubbles, in three vignettes (needs ON - the one mechanic this scene is about).
  *
- *  - **The idle circle** (left): three fully-lonely civilians with nothing to do pair up and chat — two
+ *  - **The idle circle** (left): three fully-lonely civilians with nothing to do pair up and chat - two
  *    talk first while the third waits its turn, each pair standing face to face playing the talk/listen
  *    clips while their "Towarzystwo" bars refill. The soldier standing beside them NEVER joins (the
  *    original forbids soldiers the talk/listen atomics) and his bar stays frozen.
@@ -24,14 +24,14 @@ import type { SceneDefinition } from './types.js';
  *    walks to the berry bush and eats; a very sleepy one shows the sleep bubble, then naps in place.
  *
  * The browser half is where a human judges the pixels: the pairs turning toward each other, the talk
- * animations, the bars refilling live in the details panel, and the bubble frames (hunger 4 / sleep 0 —
+ * animations, the bars refilling live in the details panel, and the bubble frames (hunger 4 / sleep 0 -
  * observed original behavior). The headless half asserts the mechanics below.
  */
 
 const MAP_W = 36;
 const MAP_H = 12;
 
-/** The idle chat circle — three civilians a couple of tiles apart, plus the excluded soldier. */
+/** The idle chat circle - three civilians a couple of tiles apart, plus the excluded soldier. */
 const CIRCLE = [
   { x: 4, y: 5 },
   { x: 7, y: 5 },
@@ -49,11 +49,11 @@ const BUSH = { x: 32, y: 6 } as const;
 const HUNGRY_SPOT = { x: 31, y: 6 } as const;
 const SLEEPY_SPOT = { x: 33, y: 8 } as const;
 
-/** Fully lonely — the idle circle (and the soldier) start with the company bar spent whole. */
+/** Fully lonely - the idle circle (and the soldier) start with the company bar spent whole. */
 const LONELY_WHOLE: Fixed = ONE;
 /** Just under the ¾·ONE seek threshold: the woodcutter visibly works first, then crosses it and quits. */
 const ALMOST_LONELY: Fixed = fx.div(fx.fromInt(7), fx.fromInt(10));
-/** Clearly over the ¾·ONE eat/sleep thresholds — the bubble settlers' pressing needs. */
+/** Clearly over the ¾·ONE eat/sleep thresholds - the bubble settlers' pressing needs. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** End-of-run bound proving a settler chatted: without a chat the bar would sit pinned at ONE. */
 const REFILLED: Fixed = fx.div(ONE, fx.fromInt(4));
@@ -83,7 +83,7 @@ function spawnActor(
 }
 
 function build(sim: Simulation): void {
-  // The idle circle + the excluded soldier — everyone starts fully lonely.
+  // The idle circle + the excluded soldier - everyone starts fully lonely.
   for (const spot of CIRCLE) spawnActor(sim, JOB_CIVILIST, spot.x, spot.y, { enjoyment: LONELY_WHOLE });
   spawnActor(sim, JOB_SOLDIER_UNARMED, SOLDIER.x, SOLDIER.y, { enjoyment: LONELY_WHOLE });
 
@@ -100,7 +100,7 @@ function build(sim: Simulation): void {
   spawnActor(sim, JOB_CIVILIST, SLEEPY_SPOT.x, SLEEPY_SPOT.y, { fatigue: PRESSING });
 }
 
-/** The `Settler` values of every settler working `jobType` — the checks classify actors by trade. */
+/** The `Settler` values of every settler working `jobType` - the checks classify actors by trade. */
 function ofJob(sim: Simulation, jobType: number): { enjoyment: Fixed; hunger: Fixed; fatigue: Fixed }[] {
   const out: { enjoyment: Fixed; hunger: Fixed; fatigue: Fixed }[] = [];
   for (const e of sim.world.query(Settler)) {
@@ -135,7 +135,7 @@ export const gossipScene: SceneDefinition = {
       },
     },
     {
-      label: 'the soldier never chatted — his frozen company bar is still spent whole (forbidatomic 14/15)',
+      label: 'the soldier never chatted - his frozen company bar is still spent whole (forbidatomic 14/15)',
       predicate: (sim) => {
         const soldiers = ofJob(sim, JOB_SOLDIER_UNARMED);
         return soldiers.length === 1 && soldiers.every((s) => s.enjoyment === ONE);

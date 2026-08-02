@@ -28,7 +28,7 @@ describe('nodeLatticeDistance', () => {
     const g = buildTerrainGraph(testContent(), rawGrid(8, 8));
     // Straight down the screen, (2,0)->(2,4): four half-row steps, no weave premium.
     expect(nodeLatticeDistance(g, g.nodeAt(2, 0), g.nodeAt(2, 4))).toBe(fx.mul(fx.fromInt(4), HALF_ROW));
-    // (0,0)->(1,4): 2·ax=2 ≤ ay=4 — one diagonal absorbs the column, two half-rows remain.
+    // (0,0)->(1,4): 2·ax=2 ≤ ay=4 - one diagonal absorbs the column, two half-rows remain.
     expect(nodeLatticeDistance(g, g.nodeAt(0, 0), g.nodeAt(1, 4))).toBe(
       fx.add(DIAGONAL_STEP, fx.mul(fx.fromInt(2), HALF_ROW)),
     );

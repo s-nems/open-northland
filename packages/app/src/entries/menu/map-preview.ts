@@ -8,7 +8,7 @@ import { loadTerrainMap } from '../../slice/map-loader.js';
 const PREVIEW_MAX_WIDTH = 720;
 const PREVIEW_MAX_HEIGHT = 420;
 /** mapId → generated preview URL, memoised so each map rasterises at most once. The blob URLs are
- *  never revoked — fine because the menu reloads on Start (a full navigation), so this cache and its
+ *  never revoked - fine because the menu reloads on Start (a full navigation), so this cache and its
  *  object URLs live for the menu-page lifetime and die with the page rather than accumulating. */
 const previews = new Map<string, Promise<string | null>>();
 

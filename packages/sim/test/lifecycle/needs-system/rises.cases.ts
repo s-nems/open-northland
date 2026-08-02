@@ -14,12 +14,12 @@ import {
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, settlerWithHunger } from './support.js';
 
-/** A soldier job id (jobtypes.ini soldiers 31..41) — a fighter, whose company need is frozen. */
+/** A soldier job id (jobtypes.ini soldiers 31..41) - a fighter, whose company need is frozen. */
 const SOLDIER_JOB = 31;
 /** The fixture bear (tribe 10), a recorded tribe with no `jobEnables`, what `isAnimalTribe` reads. */
 const ANIMAL_TRIBE = 10;
 
-describe('needsSystem — hunger rises over time', () => {
+describe('needsSystem - hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
@@ -31,7 +31,7 @@ describe('needsSystem — hunger rises over time', () => {
     expect(sim.world.get(e, Settler).hunger).toBe(fx.add(HUNGER_RISE_PER_TICK, HUNGER_RISE_PER_TICK));
   });
 
-  it('clamps hunger at ONE (never above — the hungerInRange invariant ceiling)', () => {
+  it('clamps hunger at ONE (never above - the hungerInRange invariant ceiling)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Start one step below the ceiling: the next rise would overshoot ONE and must clamp.
     const e = settlerWithHunger(sim, fx.sub(ONE, fx.div(HUNGER_RISE_PER_TICK, fx.fromInt(2))));
@@ -90,7 +90,7 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
   });
 });
 
-describe('needsSystem — a cared-for baby accumulates nothing', () => {
+describe('needsSystem - a cared-for baby accumulates nothing', () => {
   it('freezes every need of an Age carrier in a baby stage (its family keeps it fed and rested)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const baby = settlerWithHunger(sim, fx.fromInt(0));
@@ -104,7 +104,7 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
     expect(settler.enjoyment).toBe(fx.fromInt(0));
   });
 
-  it('rises the needs of an Age carrier in a CHILD stage (weaned — it self-feeds from here)', () => {
+  it('rises the needs of an Age carrier in a CHILD stage (weaned - it self-feeds from here)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const child = settlerWithHunger(sim, fx.fromInt(0));
     setSettlerJob(sim.world, child, CHILD_MALE);
@@ -117,14 +117,14 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
   it('rises the needs of an ADULT fixture whose synthetic job id collides with a baby id (no Age)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const adult = settlerWithHunger(sim, fx.fromInt(0));
-    setSettlerJob(sim.world, adult, BABY_MALE); // an adult trade in some fixtures — no Age carried
+    setSettlerJob(sim.world, adult, BABY_MALE); // an adult trade in some fixtures - no Age carried
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(adult, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
   });
 });
 
-describe('needsSystem — fatigue rises over time', () => {
+describe('needsSystem - fatigue rises over time', () => {
   it('raises a settler fatigue by exactly FATIGUE_RISE_PER_TICK each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with fatigue 0 too
@@ -140,7 +140,7 @@ describe('needsSystem — fatigue rises over time', () => {
     expect(FATIGUE_RISE_PER_TICK).toBe(HUNGER_RISE_PER_TICK);
   });
 
-  it('clamps fatigue at ONE (never above — the fatigueInRange invariant ceiling)', () => {
+  it('clamps fatigue at ONE (never above - the fatigueInRange invariant ceiling)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
@@ -166,7 +166,7 @@ describe('needsSystem — fatigue rises over time', () => {
   });
 });
 
-describe('needsSystem — piety no longer rises over time', () => {
+describe('needsSystem - piety no longer rises over time', () => {
   it('leaves a settler piety untouched each tick (forging weapons is its only source)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with piety 0 too
@@ -191,7 +191,7 @@ describe('needsSystem — piety no longer rises over time', () => {
   });
 });
 
-describe('needsSystem — enjoyment (company) rises for civilians, frozen for fighters', () => {
+describe('needsSystem - enjoyment (company) rises for civilians, frozen for fighters', () => {
   it('raises a civilian enjoyment by exactly ENJOYMENT_RISE_PER_TICK each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // a woodcutter (civilian), enjoyment 0
@@ -220,7 +220,7 @@ describe('needsSystem — enjoyment (company) rises for civilians, frozen for fi
     expect(settler.hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100))); // hunger still rises for all
   });
 
-  it('clamps a civilian enjoyment at ONE (never above — the enjoymentInRange invariant ceiling)', () => {
+  it('clamps a civilian enjoyment at ONE (never above - the enjoymentInRange invariant ceiling)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.

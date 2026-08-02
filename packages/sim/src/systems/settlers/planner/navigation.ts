@@ -9,7 +9,7 @@ import { isValidNodeId } from '../../spatial/nodes.js';
 const TWO: Fixed = fx.fromInt(2);
 
 /** The integer FLOOR of a Fixed. `fx.toInt` truncates toward zero, which is one too high for a
- *  negative fraction — reachable here: a west-border seam transient can sit a quarter-column left
+ *  negative fraction - reachable here: a west-border seam transient can sit a quarter-column left
  *  of world x = 0 (`routing.ts` pathToWaypoints), and the bracket below must be the true
  *  floor/ceil pair. */
 function floorInt(v: Fixed): number {
@@ -21,18 +21,18 @@ function floorInt(v: Fixed): number {
  * The route-start node for a walker standing at fixed-point position `(x,y)`: the nearest WALKABLE
  * node among the (up to four) nodes that bracket the position on the rectangular half-cell lattice
  * (floor/ceil of its world coordinates in half-cell units), by world-metric distance (ties by
- * ascending cell id — deterministic; a bracket node clamped onto the map at a border can duplicate
- * another, which is harmless — identical distance and id). Mid-leg a walker sits between two
- * walkable waypoints, so the bracket always contains a walkable node — but the NEAREST bracket node
+ * ascending cell id - deterministic; a bracket node clamped onto the map at a border can duplicate
+ * another, which is harmless - identical distance and id). Mid-leg a walker sits between two
+ * walkable waypoints, so the bracket always contains a walkable node - but the NEAREST bracket node
  * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain/edges.ts`
  * steps), and a walker past the seam truncates onto that flank. `findPath` rejects an unwalkable
  * start outright, which would fail the request and strand the walker mid-seam; skipping to the
  * nearest WALKABLE bracket node keeps every mid-walk re-route servable. Falls back to the
- * truncated node if no bracket node is walkable — the request then fails exactly as an off-network
+ * truncated node if no bracket node is walkable - the request then fails exactly as an off-network
  * start always has.
  */
 function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): NodeId {
-  // World coordinates in half-cell units — the lattice is rectangular in world space, so the
+  // World coordinates in half-cell units - the lattice is rectangular in world space, so the
   // nearest node is one of the four floor/ceil corners of (2·worldX, 2·row).
   const wx = fx.mul(worldX(x, y), TWO);
   const wy = fx.mul(y, TWO);
@@ -65,11 +65,11 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): NodeId {
  * {@link PathRequest} from the entity's nearest cell to the goal cell. The PathfindingSystem turns
  * that into a path and the MovementSystem walks it; when the entity stands on the goal centre the
  * goal is satisfied and removed. An entity already walking a route that ENDS at the goal is left to
- * play it out; a route that ends anywhere else is stale — the goal changed mid-walk (a player
- * redirect) — and is re-routed immediately from where the walker stands, so the routing splice
+ * play it out; a route that ends anywhere else is stale - the goal changed mid-walk (a player
+ * redirect) - and is re-routed immediately from where the walker stands, so the routing splice
  * replaces the path in the same tick and carries the walker's momentum through the turn
- * (`routing.ts`/`movement/system.ts` — the movement-inertia corner rule). A goal whose request just failed
- * (no route) is left in place but not re-issued this tick — the failed flag is the planner's
+ * (`routing.ts`/`movement/system.ts` - the movement-inertia corner rule). A goal whose request just failed
+ * (no route) is left in place but not re-issued this tick - the failed flag is the planner's
  * signal; a future slice decides abandon/wait/repath. This is the *where* layer; the atomic planner
  * (the *what*) sets the goals.
  *
@@ -79,7 +79,7 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): NodeId {
  */
 export function navigationPlanner(world: World, terrain: TerrainGraph): void {
   for (const e of world.query(Position, MoveGoal)) {
-    // A route is already being resolved — let it land (or fail) before deciding anything.
+    // A route is already being resolved - let it land (or fail) before deciding anything.
     if (world.has(e, PathRequest)) continue;
 
     const goalNode = world.get(e, MoveGoal).cell;
@@ -93,7 +93,7 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
     const p = world.get(e, Position);
     const pf = world.tryGet(e, PathFollow);
     if (pf !== undefined) {
-      // The steady-state majority (already walking the right route) exits HERE every tick — keep it
+      // The steady-state majority (already walking the right route) exits HERE every tick - keep it
       // allocation-free: a route's LAST waypoint is always an exact node centre (`routing.ts`), so
       // comparing its node is bit-equivalent to comparing centre coordinates.
       const last = pf.waypoints[pf.waypoints.length - 1];
@@ -103,7 +103,7 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
           continue; // route serves the goal
         }
       }
-      // The route ends somewhere else — the goal changed mid-walk. Fall through and re-route from
+      // The route ends somewhere else - the goal changed mid-walk. Fall through and re-route from
       // where the walker stands: the splice replaces the stale path this tick, momentum carried.
     } else {
       const g = terrain.coordsOf(goalNode); // validated just above

@@ -20,7 +20,7 @@ import {
 /**
  * The map-select player roster panel (DOM half over `state.ts`): one row per listed map player
  * slot, where the person takes a claimable seat, recolours slots (unique picks, unless the map
- * fixes its colours), and pre-sets what an unclaimed claimable seat will do (Idle/AI — shown only
+ * fixes its colours), and pre-sets what an unclaimed claimable seat will do (Idle/AI - shown only
  * where the lobby offers AI). Lobby-hidden slots are not listed.
  */
 
@@ -28,7 +28,7 @@ import {
 export interface PlayersPanel {
   show(mapId: string, players: readonly MapPlayerSlot[], fixedColors?: boolean): void;
   hide(): void;
-  /** False while a shown roster offers a seat and none is claimed — the menu disables Start on it.
+  /** False while a shown roster offers a seat and none is claimed - the menu disables Start on it.
    *  A roster with no claimable seat (an all-AI mod map) never gates. */
   readonly seatClaimed: boolean;
   /** The current roster's start params ({@link rosterStartParams}); empty when hidden. */
@@ -93,7 +93,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
     const fixed = shown?.fixedColors === true;
     swatch.title = fixed
-      ? `${copy.teamColour}: ${colourName} — ${copy.teamColourLocked}`
+      ? `${copy.teamColour}: ${colourName} - ${copy.teamColourLocked}`
       : `${copy.teamColour}: ${colourName}`;
     swatch.setAttribute('aria-label', swatch.title);
     swatch.disabled = fixed;
@@ -187,7 +187,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
 
   // A spectator pseudo-seat row (observer or overseer): claims the seat without controlling a slot and
   // satisfies the Start gate like a real seat. The read-only observer inspects; the overseer commands
-  // every seat — they share this row shape and differ only in their copy.
+  // every seat - they share this row shape and differ only in their copy.
   const spectatorRow = (seatChoice: SeatChoice, name: string, detail: string, taken: string): HTMLElement => {
     const copy = messages().menu;
     const isSeat = state().seat === seatChoice;

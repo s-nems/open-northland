@@ -4,7 +4,7 @@ import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
 /** A resolved berry-bush draw: the fruited-record index (the {@link import('@open-northland/sim').BerryBush.gfxIndex}
- *  → {@link import('@open-northland/render').DrawItem.gfxIndex} join key) and its three render states — `ripe`
+ *  → {@link import('@open-northland/render').DrawItem.gfxIndex} join key) and its three render states - `ripe`
  *  (holds fruit), `flowering` (blooming, the regrow midpoint) and `bare` (foraged), each a served atlas stem + bob. */
 export interface BerryBushRef {
   readonly gfxIndex: number;
@@ -15,7 +15,7 @@ export interface BerryBushRef {
 
 /**
  * Resolve every forageable berry bush's three-stage draw from the IR landscape gfx: each fruited-bush record
- * (`logicType === bush with fruits`) paired with its species twins — the "… flower" record (`bush flowering`)
+ * (`logicType === bush with fruits`) paired with its species twins - the "… flower" record (`bush flowering`)
  * and the "… empty" record (`bush naked`), matched by editName ("bush 01 fruits" → "bush 01 flower" / "bush 01
  * empty"). A twin with no decoded record reuses a fallback frame (flowering → ripe, bare → flowering) so a
  * bush with a missing stage still draws. Keyed by the fruited record index. Pure; degrades to empty on an
@@ -43,7 +43,7 @@ export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   return out;
 }
 
-/** Atlas stems a set of {@link BerryBushRef}s draw from (both ripe + bare states) — folded into the loaded
+/** Atlas stems a set of {@link BerryBushRef}s draw from (both ripe + bare states) - folded into the loaded
  *  gathering families so the live pool can draw a bush in either state after its static→live handover. */
 export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> {
   const out = new Set<string>();
@@ -57,11 +57,11 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
 
 /**
  * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a three-frame level list — level 1 (bare) → empty frame, level 2 (flowering) → flower
+ * `gfxIndex` with a three-frame level list - level 1 (bare) → empty frame, level 2 (flowering) → flower
  * frame, level 3 (ripe) → fruited frame (the empty→full order {@link import('./bindings.js').buildResourceBinding}
  * uses, so `DrawItem.level` picks straight). A flowering/bare frame whose atlas family didn't load reuses
  * the next-higher loaded frame (flowering → ripe, bare → flowering); a bush whose ripe family didn't load
- * is dropped to the placeholder. `default` is the first bush's ripe frame — what a bush with no matching
+ * is dropped to the placeholder. `default` is the first bush's ripe frame - what a bush with no matching
  * `gfxIndex` draws. Undefined when nothing loaded. Pure + unit-tested.
  */
 export function buildBerryBushBinding(
@@ -71,14 +71,14 @@ export function buildBerryBushBinding(
   const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
   let fallback: LayeredBobRef | undefined;
   for (const r of refs) {
-    if (!loaded.has(r.ripe.stem)) continue; // no fruited atlas — drop it (placeholder)
+    if (!loaded.has(r.ripe.stem)) continue; // no fruited atlas - drop it (placeholder)
     const ripeRef: LayeredBobRef = { layer: r.ripe.stem, bob: r.ripe.bob };
     const floweringRef: LayeredBobRef = loaded.has(r.flowering.stem)
       ? { layer: r.flowering.stem, bob: r.flowering.bob }
-      : ripeRef; // no flower atlas — fall back to the fruited frame
+      : ripeRef; // no flower atlas - fall back to the fruited frame
     const bareRef: LayeredBobRef = loaded.has(r.bare.stem)
       ? { layer: r.bare.stem, bob: r.bare.bob }
-      : floweringRef; // no empty atlas — fall back to the flowering frame
+      : floweringRef; // no empty atlas - fall back to the flowering frame
     byGfxIndex[r.gfxIndex] = [bareRef, floweringRef, ripeRef]; // level 1 = bare, 2 = flowering, 3 = ripe
     fallback ??= ripeRef;
   }

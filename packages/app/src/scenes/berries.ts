@@ -7,11 +7,11 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The berries scene: prove wild berry bushes are forageable natural food. Hungry settlers each forage the
- * nearest ripe bush — a meal comes off the hunger bar, the bush goes bare, blooms flowering at the regrow
+ * nearest ripe bush - a meal comes off the hunger bar, the bush goes bare, blooms flowering at the regrow
  * midpoint, then holds
  * fruit again after {@link systems.BERRY_REGROW_TICKS}. A separate bush placed already-bare regrows on its
  * own, proving the growth loop independent of foraging. There is deliberately no food store, so the only way
- * a settler's hunger can fall is by foraging a bush — the headless half asserts exactly that (every hungry
+ * a settler's hunger can fall is by foraging a bush - the headless half asserts exactly that (every hungry
  * settler ends fed, every bush ends ripe again). The browser half is where a human judges the pixels: the
  * red-berry bush, the eat animation, the bush going bare the instant it's foraged, the white bloom at the
  * midpoint, and the berries growing back.
@@ -29,21 +29,21 @@ const STATION_GAP = 6;
 const STATIONS = 4;
 const FIRST_STATION_X = 5;
 /** A bush placed already bare (regrowing) to prove the growth loop runs without being foraged first. It
- *  blooms flowering at this absolute tick, then ripens one {@link systems.BERRY_STAGE_TICKS} later — both
+ *  blooms flowering at this absolute tick, then ripens one {@link systems.BERRY_STAGE_TICKS} later - both
  *  well inside the run. Sits between the middle stations (in the settler-centroid framing) and three rows
  *  below the bush row, so a human watches its full bare → white-bloom → red-berry cycle unoccluded by any
  *  forager; it starts bare (not ripe), so no station forager ever targets it. */
 const LONE_BARE_BUSH = { x: 14, y: 9, bloomAtTick: 300 } as const;
 /**
  * Long enough for the whole cycle to close: the foragers walk one tile + eat (~tens of ticks), then every
- * foraged bush regrows one {@link systems.BERRY_REGROW_TICKS} (1200) later — so the run must clear
+ * foraged bush regrows one {@link systems.BERRY_REGROW_TICKS} (1200) later - so the run must clear
  * ~forage + 1200 with margin for every bush (foraged and lone-bare) to be ripe again at the end.
  */
 const RUN_TICKS = 1500;
 /** Frames the whole bush row; ≠ 1 so `cameraFor` centres on the scene's settlers (zoom 1 keeps the fixed
  *  origin offset). */
 const INITIAL_ZOOM = 1.2;
-/** Clearly over the ¾·ONE eat threshold — these settlers seek food before anything else. */
+/** Clearly over the ¾·ONE eat threshold - these settlers seek food before anything else. */
 const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 
 const { BerryBush, Settler } = components;
@@ -86,12 +86,12 @@ export const berriesScene: SceneDefinition = {
       },
     },
     {
-      label: 'every hungry forager ended FED — the only food was bushes, so each one foraged',
+      label: 'every hungry forager ended FED - the only food was bushes, so each one foraged',
       predicate: (sim) => {
         let fed = 0;
         let total = 0;
         // One berry is a partial meal, not a reset: with needs frozen in this scene the bar sits exactly
-        // one EAT_HUNGER_RESTORE below the authored HUNGRY — and below the eat threshold, so nobody
+        // one EAT_HUNGER_RESTORE below the authored HUNGRY - and below the eat threshold, so nobody
         // goes back for seconds.
         const afterOneBerry = fx.sub(HUNGRY, systems.EAT_HUNGER_RESTORE);
         for (const e of sim.world.query(Settler)) {
@@ -102,7 +102,7 @@ export const berriesScene: SceneDefinition = {
       },
     },
     {
-      label: 'every bush ended RIPE — foraged bushes and the lone bare bush all regrew',
+      label: 'every bush ended RIPE - foraged bushes and the lone bare bush all regrew',
       predicate: (sim) => {
         for (const e of sim.world.query(BerryBush)) {
           if (sim.world.get(e, BerryBush).stage !== 'ripe') return false;

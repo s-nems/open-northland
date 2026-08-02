@@ -24,12 +24,12 @@ const WALK_SEQ = 'human_man_generic_walk';
 
 /**
  * The gallery layouts: play every sequence (`anim`), play the walk once per head look (`heads`), or play
- * the walk once per player colour (`colors` — the team-colour montage).
+ * the walk once per player colour (`colors` - the team-colour montage).
  */
 export type GalleryView = 'anim' | 'heads' | 'colors';
 
 /**
- * Parse `?view=` — `heads`/`looks` → the looks montage, `colors`/`colours` → the player-colour
+ * Parse `?view=` - `heads`/`looks` → the looks montage, `colors`/`colours` → the player-colour
  * montage, anything else (incl. absent) → the animation view.
  */
 export function parseView(raw: string | null): GalleryView {
@@ -39,7 +39,7 @@ export function parseView(raw: string | null): GalleryView {
 }
 
 /**
- * Parse `?color=` — an integer player-colour row `0..count-1` selects that colour for the anim/heads views;
+ * Parse `?color=` - an integer player-colour row `0..count-1` selects that colour for the anim/heads views;
  * absent or out of range → `null` (the un-recoloured baked look).
  */
 export function parseColor(raw: string | null, count: number): number | null {
@@ -48,7 +48,7 @@ export function parseColor(raw: string | null, count: number): number | null {
   return Number.isInteger(n) && n >= 0 && n < count ? n : null;
 }
 
-/** Parse `?dir=` — `full`/absent → `'full'`, an integer `0..GALLERY_DIRS-1` → that block, else → `'full'`. */
+/** Parse `?dir=` - `full`/absent → `'full'`, an integer `0..GALLERY_DIRS-1` → that block, else → `'full'`. */
 export function parseDirection(raw: string | null): GalleryDirection {
   if (raw === null || raw === 'full' || raw === 'all') return 'full';
   const n = Number.parseInt(raw, 10);
@@ -58,7 +58,7 @@ export function parseDirection(raw: string | null): GalleryDirection {
 /**
  * A readable label for a raw `[bobseq]` name: drop the `human_<species>_` prefix and turn the
  * `snake_case`/`CamelCase` remainder into spaced words (`human_man_Warrior_Broadsword_attack` → "Warrior
- * Broadsword attack"). Purely cosmetic — the raw name still uniquely identifies the sequence.
+ * Broadsword attack"). Purely cosmetic - the raw name still uniquely identifies the sequence.
  */
 export function prettyClipLabel(name: string): string {
   return name
@@ -114,7 +114,7 @@ export function buildGalleryClips(
 
 /**
  * The cells for the animation view: every sequence of the body, each drawn with the character's default
- * head (`heads[0]`). Pure over the loaded layers — the join of {@link buildGalleryClips} with the shared
+ * head (`heads[0]`). Pure over the loaded layers - the join of {@link buildGalleryClips} with the shared
  * (body, head).
  */
 export function buildAnimCells(
@@ -193,7 +193,7 @@ export function buildColorCells(
   return cells;
 }
 
-/** One character's loaded layers + `[bobseq]` rows — the input {@link buildRosterCells} joins into cells. */
+/** One character's loaded layers + `[bobseq]` rows - the input {@link buildRosterCells} joins into cells. */
 export interface RosterLoad {
   readonly char: VikingCharacter;
   readonly body: SpriteLayer;
@@ -224,7 +224,7 @@ export function buildRosterCells(loaded: readonly RosterLoad[], filter = ''): Ga
     for (let i = 0; i < char.headBmds.length; i++) {
       const layer = heads[i];
       const bmd = char.headBmds[i];
-      if (layer === undefined || bmd === undefined) continue; // a listed head that failed to load — skip
+      if (layer === undefined || bmd === undefined) continue; // a listed head that failed to load - skip
       const label = rosterLabel(char, bmd);
       if (needle !== '' && !label.toLowerCase().includes(needle)) continue;
       cells.push({ clip: walkClip, body, overlays: [layer], label });

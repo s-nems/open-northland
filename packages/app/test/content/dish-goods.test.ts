@@ -4,7 +4,7 @@ import { hasRealIr, rawIrUnderTest } from './helpers.js';
 
 const { EDIBLE_FORM_BY_DISH } = systems;
 
-/** Buildings that must be able to hold the edible forms — the settlement's larders. */
+/** Buildings that must be able to hold the edible forms - the settlement's larders. */
 const LARDERS = ['headquarters', 'stock_00', 'stock_01', 'stock_02'];
 
 interface IrGood {
@@ -28,7 +28,7 @@ interface Ir {
  * producing house, while `food_simple`/`food_extra` are slotted everywhere and produced by nothing.
  *
  * This suite asserts that shape against the generated IR rather than against a synthetic fixture, because
- * the fixture is what hid the bug in the first place — a test HQ that stocked every good passed happily
+ * the fixture is what hid the bug in the first place - a test HQ that stocked every good passed happily
  * while the real headquarters had no bread slot at all and the bakery deadlocked in game.
  */
 describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
@@ -53,7 +53,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
   it('no recipe takes a dish as an input', () => {
     const ir = irUnderTest();
     // The conversion on pickup is unconditional, so a house that CONSUMED a dish would have its
-    // craftsman fetch bread and arrive holding food_simple — a fetch that can never be delivered.
+    // craftsman fetch bread and arrive holding food_simple - a fetch that can never be delivered.
     // `goodtypes.ini` does name meat as sausage's production input, so this is not hypothetical; it is
     // inert only because no house declares that recipe.
     for (const dish of EDIBLE_FORM_BY_DISH.keys()) {
@@ -91,7 +91,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
         if (building === undefined) continue; // a stock tier this content set does not define
         expect(capacityOf(building, goodType), `'${larder}' has no ${edible} slot`).toBeGreaterThan(0);
       }
-      // No house makes the edible forms — they exist only as what a dish turns into on the way out.
+      // No house makes the edible forms - they exist only as what a dish turns into on the way out.
       // (A workshop may still STOCK one as an input: the coin mint feeds its staff from a food slot.)
       const producers = ir.buildings.filter((b) => (b.produces ?? []).includes(goodType));
       expect(producers.map((b) => b.id)).toEqual([]);

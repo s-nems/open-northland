@@ -64,7 +64,7 @@ describe('mapDatToTerrain', () => {
 
   it('emits the transitions layer from emt1..emt4 + the eatd dictionary VERBATIM (no compaction)', () => {
     // 2×1 grid: four per-cell u8 lanes (255 = none; v<255 → transition ⌊v/6⌋ + pair v%6). The
-    // dictionary and the lane values pass through untouched — the ⌊v/6⌋ join is positional.
+    // dictionary and the lane values pass through untouched - the ⌊v/6⌋ join is positional.
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
       { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
@@ -96,7 +96,7 @@ describe('mapDatToTerrain', () => {
 
   it('emits a transitions layer the loader schema accepts, and the schema rejects corrupt lanes', () => {
     // Close the emit→load loop: what mapDatToTerrain writes must pass parseTerrainMap's refines,
-    // and the refines must actually bite (wrong lane length; out-of-dictionary value) — the
+    // and the refines must actually bite (wrong lane length; out-of-dictionary value) - the
     // pipeline's own throws run pre-emission, so only the schema guards a hand-edited/stale file.
     const good = {
       width: 2,
@@ -158,7 +158,7 @@ describe('mapDatToTerrain', () => {
   });
 
   it('emits the per-cell elevation lane from lmhe (one byte per cell, not half-cell)', () => {
-    // 2×1 grid: lmlt is the 4×2 half-cell object lane, but lmhe is PER CELL — exactly width·height
+    // 2×1 grid: lmlt is the 4×2 half-cell object lane, but lmhe is PER CELL - exactly width·height
     // values (2), carried through verbatim (raw byte height, 0..250 observed).
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
@@ -171,7 +171,7 @@ describe('mapDatToTerrain', () => {
 
   it('collapses the half-cell lmms lane to each cell centre node in the shore layer', () => {
     // lmms is HALF-CELL resolution (2W×2H, unlike per-cell lmhe/embr). A 1×2 grid's lane is a 2×4
-    // node grid; each cell keeps its CENTRE node `(2x + (y&1), 2y)` — row 0 reads node index 0,
+    // node grid; each cell keeps its CENTRE node `(2x + (y&1), 2y)` - row 0 reads node index 0,
     // row 1 reads index 2·1·2 + 0 + 1 = 5, pinning the odd-row parity of the half-cell lattice.
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 2 }) },
@@ -183,7 +183,7 @@ describe('mapDatToTerrain', () => {
   });
 
   it('emits the per-cell brightness lane from embr (baked shading, carried verbatim)', () => {
-    // Like lmhe, embr is PER CELL — exactly width·height values. 127 = neutral, 0 = the border
+    // Like lmhe, embr is PER CELL - exactly width·height values. 127 = neutral, 0 = the border
     // fade-to-black, >127 = baked slope light; all carried through untouched (the response curve is
     // render-side).
     const bytes = encodeMapDat([
@@ -206,7 +206,7 @@ describe('mapDatToTerrain', () => {
   /**
    * Every optional layer degrades the same way: a corrupt or wrong-sized lane drops only that layer
    * and warns, and the nav grid always survives (the whole map used to be skipped for this). The
-   * per-case chunk lists stay verbatim — each pins its own byte-level evidence, notably the
+   * per-case chunk lists stay verbatim - each pins its own byte-level evidence, notably the
    * half-cell (`lmms`) vs per-cell (`lmhe`/`embr`) lane sizing.
    */
   const DEGRADE_CASES: readonly {

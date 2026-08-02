@@ -15,16 +15,16 @@ export * from './signpost-coverage.js';
 export * from './workforce/index.js';
 
 /**
- * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military), distinct
+ * AiPlayerSystem - the STRATEGIC per-player brain (build order, workforce, expansion, military), distinct
  * from the settler micro-planner in `settlers/planner/system.ts`. Each AI-flagged seat (the `AiPlayer`
  * component the `setPlayerAi` command sets) runs its enabled modules on a coarse staggered cadence and
  * enqueues the same `Command` union a human issues; CommandSystem applies them next tick through the one
  * mutation seam, so AI orders hash, log, and replay exactly like player input (replay discards the re-emitted
- * copies — see `stepReplaying`). Modules are pure functions of world state + the seeded RNG, never wall-clock
+ * copies - see `stepReplaying`). Modules are pure functions of world state + the seeded RNG, never wall-clock
  * or app-side reads.
  */
 
-/** One strategic concern of the AI player (see {@link AiModuleId} — the HAI toggle decomposition).
+/** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition).
  *  `run` returns the commands the seat issues this decision; the system enqueues them. */
 export interface AiPlayerModule {
   readonly id: AiModuleId;
@@ -44,7 +44,7 @@ export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
 ];
 
 /**
- * One tick of the strategic AI over `modules` — the system body, parameterized so tests can drive it
+ * One tick of the strategic AI over `modules` - the system body, parameterized so tests can drive it
  * with stub modules. Seats run in ascending player order (the canonical decision order); a seat is
  * due when the tick lands on its stagger slot, so up to MAX_PLAYERS seats spread their decision cost
  * across the interval instead of spiking on one tick.

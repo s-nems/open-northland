@@ -3,12 +3,12 @@
 **Area:** render, sim · **Priority:** P3
 **Needs user:** observe whether wonder stages have separate material bills in the running original.
 
-The eight wonders are separate single buildings (typeIds 47..54, one `kind: 'wonder'` each — the
+The eight wonders are separate single buildings (typeIds 47..54, one `kind: 'wonder'` each - the
 lighthouse, the gardens, the colossus, …, the 8th wonder), NOT an upgrade chain: their `[GfxHouse]`
 records map several `LogicType` size levels to the SAME typeId, so the `upgradeTarget` extraction
 correctly emits no chain link for them (a self-link is skipped). But those records DO carry
-`GfxBobConstructionLayer` rows — including `upgrade === 1` rows between the size levels (13 such rows
-across typeIds 47..53, tribe 5, in real `ir.json`) — meaning the original renders a wonder rising
+`GfxBobConstructionLayer` rows - including `upgrade === 1` rows between the size levels (13 such rows
+across typeIds 47..53, tribe 5, in real `ir.json`) - meaning the original renders a wonder rising
 through several authored construction stages of one building, with upgrade-overlay art between
 stages. Today OpenNorthland treats a wonder as a single-stage build: one from-scratch stage stack
 (the lowest-sizeIdx record group wins in `constructionRefsByType`), and the per-stage

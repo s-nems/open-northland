@@ -7,7 +7,7 @@ import { forEachPlacement } from './map-placements.js';
  * yields. A decoded map ships its trees/ore/stone as pure render decor (`map.objects`, drawn by the static
  * map-object layer); this module is the reverse lookup that lets the `?map=` entry also spawn them as real
  * `Resource` sim nodes so a gatherer can actually work them. Without it a map's trees are drawn but carry
- * no `Resource`, so hovering shows nothing and gatherers idle — only an admin-spawned node (a real sim
+ * no `Resource`, so hovering shows nothing and gatherers idle - only an admin-spawned node (a real sim
  * entity) was ever harvestable.
  *
  * The join is data-driven off the real `ir.json`, not hardcoded: each good's gathering pipeline lists the
@@ -15,12 +15,12 @@ import { forEachPlacement } from './map-placements.js';
  * outcrop for iron, …); inverting that index list → EditName → goodId names exactly the objects the
  * original treats as harvestable. Decor (grass, ferns, waves) appears in no harvest stage, so it is absent
  * from the map and never spawned. The pipeline's `goodId` string is the bridge across the two good-number
- * spaces — the IR's original numbering (`wood` = 5) and the app's hand-authored numbering (`GOOD_WOOD` = 1) —
+ * spaces - the IR's original numbering (`wood` = 5) and the app's hand-authored numbering (`GOOD_WOOD` = 1) -
  * so the caller resolves the returned id against `GATHERERS` by `id`.
  */
 
 /** What one harvestable object `EditName` resolves to: the good it yields and its own harvest-stage
- *  `[GfxLandscape]` record index (the species variant — "pine 02", not the good's representative). */
+ *  `[GfxLandscape]` record index (the species variant - "pine 02", not the good's representative). */
 export interface HarvestObjectRef {
   readonly goodId: string;
   readonly gfxIndex: number;
@@ -30,7 +30,7 @@ export interface HarvestObjectRef {
    *  frame list for a max valency of 3), so a level above this count reads as out of range. 0 when the
    *  record authors no frames. */
   readonly states: number;
-  /** The record's `LogicMaximumValency` — how many units a placement of it holds, which sizes a spawned
+  /** The record's `LogicMaximumValency` - how many units a placement of it holds, which sizes a spawned
    *  mineral deposit ({@link import('../game/sandbox/map-spawn.js').spawnMapResources}). Absent on an
    *  older `ir.json` with no `maxValency` lane; the spawn then falls back to the catalog constant. */
   readonly maxValency?: number;
@@ -39,9 +39,9 @@ export interface HarvestObjectRef {
 /**
  * Map each placed landscape-object `EditName` (e.g. `"yew 01"`, `"iron mine 03"`) to the `goodId` string it
  * yields when harvested and its own `[GfxLandscape]` record index, from the IR gathering pipeline's harvest
- * stage. Pure — one pass over the pipeline and the `landscapeGfx` index↔name table. An object in no harvest
+ * stage. Pure - one pass over the pipeline and the `landscapeGfx` index↔name table. An object in no harvest
  * stage is absent (a decor object stays decor). Degrades to an empty map when either lane is missing (an
- * older `ir.json`). The `gfxIndex` rides the spawn onto `Resource.gfxIndex` — an opaque render-variant tag
+ * older `ir.json`). The `gfxIndex` rides the spawn onto `Resource.gfxIndex` - an opaque render-variant tag
  * (app numbering) the snapshot carries into `DrawItem.gfxIndex`, so a pool-drawn node keeps its exact
  * original graphic instead of collapsing to one species per good. It never reaches the sim's footprint
  * resolution: collision stays the good's own record in the sim's content set (an unrelated number space).
@@ -71,9 +71,9 @@ export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, Harv
 }
 
 /** One harvestable node a decoded map defines: the `goodId` it yields, its variant `gfxIndex`, at a
- *  half-cell anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim — the
+ *  half-cell anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim - the
  *  same lane `collision.ts` reads). `placement` is the placement ordinal (triplet index) in
- *  `objects.placements` — the join key back to the static layer's drawn sprite for the same placement
+ *  `objects.placements` - the join key back to the static layer's drawn sprite for the same placement
  *  (the `?map=` entry's static→dynamic handover). */
 export interface MapResourceSpawn {
   readonly goodId: string;
@@ -88,12 +88,12 @@ export interface MapResourceSpawn {
    * static object layer's {@link import('./objects.js').stateIndexForLevel}.
    */
   readonly growth?: { readonly level: number; readonly states: number };
-  /** The source record's {@link HarvestObjectRef.maxValency} — the units a full placement of it holds. */
+  /** The source record's {@link HarvestObjectRef.maxValency} - the units a full placement of it holds. */
   readonly maxValency?: number;
 }
 
 /**
- * The harvestable resource nodes a decoded map's placed objects define — each placement whose EditName maps
+ * The harvestable resource nodes a decoded map's placed objects define - each placement whose EditName maps
  * to a good with a real gatherer trade (`spawnableGoodIds`, the `GATHERERS` ids). Pure and deterministic:
  * one pass over `map.objects.placements` in its native row-major order, so the caller creates entities (and
  * mints ids) in a fixed order. A good that maps but has no gatherer trade yet (e.g. `wheat`, `leather`) is
@@ -128,10 +128,10 @@ export function mapResourceSpawns(
 }
 
 /**
- * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11) —
+ * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11) -
  * the source-pinned marker that a placed bush object currently holds fruit, so it becomes a forageable
  * {@link import('@open-northland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
- * Exported as the single home for this constant — the render-side bush binding ({@link
+ * Exported as the single home for this constant - the render-side bush binding ({@link
  * import('./resource-gfx/index.js').resolveBerryBushRefs}) keys off the same value.
  */
 export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
@@ -145,7 +145,7 @@ export interface MapBerryBushSpawn {
   readonly placement: number;
 }
 
-/** The fruited-bush object `EditName`s the map defines — every `landscapeGfx` record whose `logicType` is
+/** The fruited-bush object `EditName`s the map defines - every `landscapeGfx` record whose `logicType` is
  *  {@link BUSH_WITH_FRUITS_LOGIC_TYPE} (e.g. "bush 01 fruits", "bush snow 02 fruits"), keyed to its record
  *  index (the render-variant `gfxIndex`). Degrades to empty on an older `ir.json` with no `landscapeGfx`. */
 function fruitedBushRecordByName(ir: ContentIr): ReadonlyMap<string, number> {
@@ -157,7 +157,7 @@ function fruitedBushRecordByName(ir: ContentIr): ReadonlyMap<string, number> {
 }
 
 /**
- * The forageable berry bushes a decoded map's placed objects define — each placement of a fruited-bush
+ * The forageable berry bushes a decoded map's placed objects define - each placement of a fruited-bush
  * object (`landscapeGfx.logicType === bush with fruits`). Pure and deterministic: one pass over
  * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
  * Bare/flowering bush placements are left out (they stay static decor rather than spawning ripe food).
@@ -176,7 +176,7 @@ export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapB
 
 /**
  * The object `EditName`s whose placements become sim `Resource` entities (their good has a gatherer
- * trade) — exactly the set {@link mapResourceSpawns} spawns. The static collision join must skip these
+ * trade) - exactly the set {@link mapResourceSpawns} spawns. The static collision join must skip these
  * (`buildCollisionTerrain skipObjectNames`): their blocking lives in the sim's dynamic
  * resource-footprint overlay, stamped at spawn and unstamped when the node is felled/depleted. Pure.
  */

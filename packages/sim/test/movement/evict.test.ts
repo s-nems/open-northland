@@ -43,21 +43,21 @@ import {
 } from '../footprint/building-placement/support.js';
 
 /**
- * Displacement — nothing a house lands on ends up sealed inside its walls. Settlers, from either side:
+ * Displacement - nothing a house lands on ends up sealed inside its walls. Settlers, from either side:
  * building-first (`evictSettlersFromFootprint`), the moment a plot becomes impassable (a placement onto
  * occupied ground, a construction finish, a home tier upgrade growing the walls), settlers standing inside
  * are pushed to the nearest free cell; settler-first (`evictSettlerFromBlockedSpawn`), a settler spawned
  * onto an already-standing body is pushed out, which is the case an authored map load hits. And work flags
  * (`evictWorkFlagsFromFootprint`): the placement gates ignore flags, so a house may legally land on one.
  * The HUT fixture's body is (0,0)+(1,0) with the door at (-1,0); anchored at (5,5) the body nodes are
- * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell {1,1}, stamped at (7,6) — the
- * odd anchor row shifts odd-dy cells one node +x (`footprintCellDx`) — reserved from level 0, and
+ * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell {1,1}, stamped at (7,6) - the
+ * odd anchor row shifts odd-dy cells one node +x (`footprintCellDx`) - reserved from level 0, and
  * walls to a flag though not to a walker, which is the flag/settler split these two suites pin.
  */
 
 const PLAYER = 0;
-const BEAR = 10; // testContent animal tribe — a herd of 3 that searchForLeaders
-const COW = 13; // testContent animal tribe — fully passive prey (no combat drive moves it)
+const BEAR = 10; // testContent animal tribe - a herd of 3 that searchForLeaders
+const COW = 13; // testContent animal tribe - fully passive prey (no combat drive moves it)
 const ANCHOR = { x: 5, y: 5 };
 const BODY = [
   { x: 5, y: 5 },
@@ -89,7 +89,7 @@ function settlerAtNode(
 /** The owner slot of a settler nothing owns: wildlife and scenery fixtures. */
 const NO_OWNER = undefined;
 
-/** A herd animal at a node — a `Settler` of an animal tribe with a self-led `HerdMember` and no Owner,
+/** A herd animal at a node - a `Settler` of an animal tribe with a self-led `HerdMember` and no Owner,
  *  the component shape `spawnAnimalHerd` builds. A passive tribe, so no combat drive ever moves it. */
 function animalAtNode(sim: Simulation, x: number, y: number): Entity {
   const e = settlerAtNode(sim, x, y, NO_OWNER, COW);
@@ -108,7 +108,7 @@ function onBody(sim: Simulation, e: Entity): boolean {
   return BODY.some((c) => c.x === n.x && c.y === n.y);
 }
 
-/** The one settler a spawn test created — throws when absent, so a dropped command fails loudly rather
+/** The one settler a spawn test created - throws when absent, so a dropped command fails loudly rather
  *  than passing vacuously. */
 function spawnedSettler(sim: Simulation): Entity {
   const all = [...sim.world.query(Settler)];
@@ -119,7 +119,7 @@ function spawnedSettler(sim: Simulation): Entity {
   return only;
 }
 
-/** Can the settler stand — and therefore leave — where it ended up? Walkable ground, clear of every
+/** Can the settler stand - and therefore leave - where it ended up? Walkable ground, clear of every
  *  building/resource walk-block, which is exactly what the pathfinder demands of a route's mid-cells. */
 function standable(sim: Simulation, e: Entity): boolean {
   const terrain = terrainOf(sim);
@@ -128,7 +128,7 @@ function standable(sim: Simulation, e: Entity): boolean {
   return terrain.isWalkable(node) && !dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(node);
 }
 
-describe('footprint displacement — settlers never end up standing inside walls', () => {
+describe('footprint displacement - settlers never end up standing inside walls', () => {
   it('placing a building onto standing settlers pushes them off every body cell', () => {
     const sim = mappedSim();
     const onAnchor = settlerAtNode(sim, 5, 5, PLAYER);
@@ -141,7 +141,7 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(nodeOf(sim, onAnchor)).not.toEqual(nodeOf(sim, onWall));
   });
 
-  it('spares the door cell — it is the passable gate, not a wall', () => {
+  it('spares the door cell - it is the passable gate, not a wall', () => {
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const atDoor = settlerAtNode(sim, ANCHOR.x + door.dx, ANCHOR.y + door.dy, PLAYER);
@@ -150,9 +150,9 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(nodeOf(sim, atDoor)).toEqual({ x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy });
   });
 
-  it('evicts a neutral settler and a herd animal — ownership never exempts a standing unit', () => {
+  it('evicts a neutral settler and a herd animal - ownership never exempts a standing unit', () => {
     const sim = mappedSim();
-    const unowned = settlerAtNode(sim, 5, 5); // no Owner — a scenario fixture
+    const unowned = settlerAtNode(sim, 5, 5); // no Owner - a scenario fixture
     const cow = animalAtNode(sim, 6, 5); // an animal is a Settler without an Owner
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
@@ -163,19 +163,19 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(nodeOf(sim, unowned)).not.toEqual(nodeOf(sim, cow)); // fanned onto distinct cells
   });
 
-  it('leaves a mid-transit walker alone — its own route plays out', () => {
+  it('leaves a mid-transit walker alone - its own route plays out', () => {
     const sim = mappedSim();
     const walker = settlerAtNode(sim, 6, 5, PLAYER);
     sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(10, 5) }); // passing through
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
-    // The walker was not teleported by the eviction — it is still travelling its own route.
+    // The walker was not teleported by the eviction - it is still travelling its own route.
     expect(sim.world.has(walker, MoveGoal) || onBody(sim, walker)).toBe(true);
   });
 
   it('never lands an evictee on a cell a neutral bystander occupies', () => {
     // Derived, not hardcoded (the flag suite's pattern): learn where a lone evictee lands, then re-run
-    // with a neutral unit already standing there — the class the spacing drive would never de-stack.
+    // with a neutral unit already standing there - the class the spacing drive would never de-stack.
     const lone = mappedSim();
     const solo = settlerAtNode(lone, 5, 5, PLAYER);
     lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
@@ -226,7 +226,7 @@ describe('footprint displacement — settlers never end up standing inside walls
   it('a settler spawned inside a standing house body is pushed outside it', () => {
     const sim = mappedSim();
     // The authored map-load order: every `placeBuilding` enqueues BEFORE any `spawnSettler`, so the
-    // building's own eviction pass runs while the settler does not yet exist — the spawn push is what
+    // building's own eviction pass runs while the settler does not yet exist - the spawn push is what
     // covers this. Both land in one tick, exactly as `enqueuePlacements` sends them.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 6, y: 5, owner: PLAYER });
@@ -241,8 +241,8 @@ describe('footprint displacement — settlers never end up standing inside walls
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
-    // Birth point ON the walls: the leader lands on (5,5) and the first scatter offset on (6,5) — both
-    // body cells — while the second lands on the door (4,5), a legal stand that must NOT be pushed.
+    // Birth point ON the walls: the leader lands on (5,5) and the first scatter offset on (6,5) - both
+    // body cells - while the second lands on the door (4,5), a legal stand that must NOT be pushed.
     sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: ANCHOR.x, y: ANCHOR.y });
     sim.step();
     const herd = [...sim.world.query(Settler, HerdMember)].sort((a, b) => a - b);
@@ -255,14 +255,14 @@ describe('footprint displacement — settlers never end up standing inside walls
     const doorMember = herd[2];
     if (doorMember === undefined) throw new Error('expected three herd members');
     expect(nodeOf(sim, doorMember)).toEqual({ x: 4, y: 5 });
-    // The two pushed members fanned onto distinct cells — the herd's shared claim set at work.
+    // The two pushed members fanned onto distinct cells - the herd's shared claim set at work.
     const keys = herd.map((e) => `${nodeOf(sim, e).x},${nodeOf(sim, e).y}`);
     expect(new Set(keys).size).toBe(3);
   });
 
   it('a batch claim set fans same-cell spawns onto distinct nodes, first taker keeping the cell', () => {
     // Called directly with one shared claim set, the way `spawnAnimalHerd` threads it: the second unit
-    // spawning on the very cell the first one holds is pushed beside it — the correlated same-command
+    // spawning on the very cell the first one holds is pushed beside it - the correlated same-command
     // stack nothing would ever clear (animals have no de-stacking drive).
     const sim = mappedSim();
     const first = animalAtNode(sim, 7, 7);
@@ -275,10 +275,10 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(standable(sim, second)).toBe(true);
   });
 
-  it('frees a fully enclosed spawn — the only case that is genuinely stuck', () => {
+  it('frees a fully enclosed spawn - the only case that is genuinely stuck', () => {
     // `findPath` exempts a blocked START, so standing on a body cell is not itself a wedge: a settler
     // walks off as soon as ONE step is passable. Only a cell whose every `steps()` edge is blocked has
-    // no way out — 50 of the 1041 real blocked spawns. KEEP's body is exactly that: the anchor plus its
+    // no way out - 50 of the 1041 real blocked spawns. KEEP's body is exactly that: the anchor plus its
     // eight lattice steps (E/W, the four diagonals, N/S), so a settler on the anchor is truly walled in.
     const KEEP = 30;
     const SOLID = [
@@ -328,7 +328,7 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(nodeOf(sim, spawnedSettler(sim))).toEqual({ x: 10, y: 10 });
   });
 
-  it('a settler spawned on the door cell stays — the door is a passable stand, not a wall', () => {
+  it('a settler spawned on the door cell stays - the door is a passable stand, not a wall', () => {
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const at = { x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy };
@@ -389,7 +389,7 @@ describe('footprint displacement — settlers never end up standing inside walls
     sim.world.add(home, Stockpile, { amounts: new Map<number, number>() });
     const beside = settlerAtNode(sim, 6, 5, PLAYER); // legal today, enclosed by HOME_L's body
     sim.enqueue({ kind: 'upgradeBuilding', building: home });
-    sim.step(); // opens the upgrade site (the small body doesn't reach (6,5) — the settler stays)
+    sim.step(); // opens the upgrade site (the small body doesn't reach (6,5) - the settler stays)
     // Deliver the difference and hammer the site out by hand; the finish adopts the larger tier.
     sim.world.get(home, Stockpile).amounts.set(STONE, 1);
     sim.world.get(home, UnderConstruction).labor = ONE;
@@ -402,18 +402,18 @@ describe('footprint displacement — settlers never end up standing inside walls
 /**
  * The sealed-nook rule: a stamp that closes the last open orthogonal side of a still-walkable cell it
  * touches displaces the settler resting there (the real repro: the upgrade scene's builder hammered from
- * the one-node gap between the HQ and the home, and the finished tier-2 wall sealed it — he rested on
+ * the one-node gap between the HQ and the home, and the finished tier-2 wall sealed it - he rested on
  * under the HQ sprite for good). The fixture: HOME_S at (5,5) upgrades to HOME_L, whose body grows to
  * (6,5); a U-shaped neighbour blocks (7,4), (8,5), (7,6), so the finish seals the nook at (7,5).
  */
-describe('footprint displacement — a finish that seals a nook beside the body displaces its occupant', () => {
+describe('footprint displacement - a finish that seals a nook beside the body displaces its occupant', () => {
   const HOME_S = 20;
   const HOME_L = 21;
   const U_WALLS = 22;
-  const U_WALLS_DOORED = 23; // same walls, door on its own anchor — the nook cell becomes a designated stand
+  const U_WALLS_DOORED = 23; // same walls, door on its own anchor - the nook cell becomes a designated stand
   const STONE = 1;
   const NOOK = { x: 7, y: 5 };
-  // Authored so the U anchored on the odd-row nook STAMPS (7,4), (8,5), (7,6) — the odd-dy rows
+  // Authored so the U anchored on the odd-row nook STAMPS (7,4), (8,5), (7,6) - the odd-dy rows
   // carry the parity shift (`footprintCellDx`), so their authored dx is one less than the stamp.
   const U_BODY = [
     { dx: -1, dy: -1 },
@@ -492,13 +492,13 @@ describe('footprint displacement — a finish that seals a nook beside the body 
   });
 
   it('leaves a settler beside the body alone while any orthogonal side stays open', () => {
-    const sim = sealNook(null); // no U neighbour — (7,4), (8,5), (7,6) stay free
+    const sim = sealNook(null); // no U neighbour - (7,4), (8,5), (7,6) stay free
     const beside = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
     constructionSystem(sim.world, ctxOf(sim));
     expect(nodeOf(sim, beside)).toEqual(NOOK);
   });
 
-  it('spares a door cell even when the stamp seals it — a door is a designated stand', () => {
+  it('spares a door cell even when the stamp seals it - a door is a designated stand', () => {
     const sim = sealNook(U_WALLS_DOORED); // the nook cell is the U building's own door
     const atDoor = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
     constructionSystem(sim.world, ctxOf(sim));
@@ -506,7 +506,7 @@ describe('footprint displacement — a finish that seals a nook beside the body 
   });
 });
 
-/** A bare flag marker at a node — a gatherer-less `Position + DeliveryFlag`, which is all the geometry
+/** A bare flag marker at a node - a gatherer-less `Position + DeliveryFlag`, which is all the geometry
  *  half of the push-out reads. */
 function flagAtNode(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
@@ -516,13 +516,13 @@ function flagAtNode(sim: Simulation, x: number, y: number): Entity {
 }
 
 /** The HUT's family body anchored at ANCHOR: the level-0 walls plus the growth cell a level-0 house
- *  already reserves. Wider than BODY (the walk-block set) — flag legality is family-body-wide. */
+ *  already reserves. Wider than BODY (the walk-block set) - flag legality is family-body-wide. */
 const FAMILY_BODY = HUT_FOOTPRINT.familyBody.map((c) => ({
   x: ANCHOR.x + footprintCellDx(ANCHOR.y, c),
   y: ANCHOR.y + c.dy,
 }));
 
-describe('footprint displacement — a work flag is never sealed inside a placed house', () => {
+describe('footprint displacement - a work flag is never sealed inside a placed house', () => {
   it('a house placed onto a flag pushes it to a legal field it could be re-planted on', () => {
     const sim = mappedSim();
     const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y); // on the anchor, under the walls-to-be
@@ -531,13 +531,13 @@ describe('footprint displacement — a work flag is never sealed inside a placed
     const at = nodeOf(sim, flag);
     expect(FAMILY_BODY).not.toContainEqual(at); // off the body…
     const terrain = terrainOf(sim);
-    // …and onto ground the plant rule actually accepts — the invariant the push exists to restore.
+    // …and onto ground the plant rule actually accepts - the invariant the push exists to restore.
     // Ignoring the flag itself, exactly as `setWorkFlag` does: a marker occupies its own cell.
     expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(at.x, at.y), flag)).toBe(true);
   });
 
   it('evicts a flag on a growth cell the level-0 walls do not yet cover', () => {
-    // The {1,1} family cell stamps at (7,6) — in familyBody but NOT in `blocked`, so the settler
+    // The {1,1} family cell stamps at (7,6) - in familyBody but NOT in `blocked`, so the settler
     // twin's walk-block set would leave it. A flag there is still illegal ground
     // (`workFlagPlacementBlocks` is family-body-wide), so it moves.
     const sim = mappedSim();
@@ -591,7 +591,7 @@ describe('footprint displacement — a work flag is never sealed inside a placed
   it('evicts a flag from a footprint-less type, which blocks only its anchor', () => {
     const sim = mappedSim();
     const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
-    const beside = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y); // off HQ's anchor — no body to be inside
+    const beside = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y); // off HQ's anchor - no body to be inside
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, flag)).not.toEqual({ x: ANCHOR.x, y: ANCHOR.y });
@@ -636,7 +636,7 @@ describe('footprint displacement — a work flag is never sealed inside a placed
   });
 });
 
-describe('footprint displacement — loose goods never end up buried under walls', () => {
+describe('footprint displacement - loose goods never end up buried under walls', () => {
   const WOOD_GOOD = 1; // testContent wood
   const STONE_GOOD = 4; // testContent stone
 
@@ -685,7 +685,7 @@ describe('footprint displacement — loose goods never end up buried under walls
       expect(standable(sim, pile)).toBe(true); // …on ground a fetcher can stand on
     }
     // Goods conserved, the trunk marker carried over (a gatherer still reclaims its drop), and the two
-    // piles landed on DISTINCT cells (one pile per landing tile — no burying a good under another).
+    // piles landed on DISTINCT cells (one pile per landing tile - no burying a good under another).
     const trunk = piles.find((p) => sim.world.has(p, GroundDrop));
     const heap = piles.find((p) => !sim.world.has(p, GroundDrop));
     if (trunk === undefined || heap === undefined) throw new Error('expected a trunk and a heap');
@@ -695,7 +695,7 @@ describe('footprint displacement — loose goods never end up buried under walls
     expect(nodeOf(sim, trunk)).not.toEqual(nodeOf(sim, heap));
   });
 
-  it('spares a heap on the door cell — the door stays a reachable stand', () => {
+  it('spares a heap on the door cell - the door stays a reachable stand', () => {
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const heap = pileAtNode(sim, ANCHOR.x + door.dx, ANCHOR.y + door.dy, WOOD_GOOD, 2);
@@ -716,10 +716,10 @@ describe('footprint displacement — loose goods never end up buried under walls
     expect(sim.world.get(moved, Stockpile).amounts.get(WOOD_GOOD)).toBe(1);
   });
 
-  it('a finish razes decor standing in the reserved zone — the placement rule, re-applied when a tier can grow', () => {
+  it('a finish razes decor standing in the reserved zone - the placement rule, re-applied when a tier can grow', () => {
     const sim = mappedSim();
     handRaisedSite(sim);
-    const bush = createBerryBush(sim.world, { x: 6, y: 6 }); // the growth cell — inside the reserved zone
+    const bush = createBerryBush(sim.world, { x: 6, y: 6 }); // the growth cell - inside the reserved zone
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.tryGet(bush, BerryBush)).toBeUndefined();
   });

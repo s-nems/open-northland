@@ -59,20 +59,20 @@ export const ContentSet = z.strictObject({
   gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
   /** The `[transition]` overlay table (`transitions.cif`) a decoded map's `transitions.types`
-   *  names join onto — the texture + six UV pairs per record (render-binding data). */
+   *  names join onto - the texture + six UV pairs per record (render-binding data). */
   gfxPatternTransitions: z.array(GfxPatternTransition).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) a {@link GfxPattern.logicType}
-   *  references — the walk/build/water flags the map-collision join classes real ground by. */
+   *  references - the walk/build/water flags the map-collision join classes real ground by. */
   trianglePatternTypes: z.array(TrianglePatternType).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
   /** `[gfxanimatomic]` atomic-action → directional body-animation bindings (render-binding data). */
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
-  /** `[gfxwalkatomic]` good → loaded-gait bindings — the original's own carry-look table. */
+  /** `[gfxwalkatomic]` good → loaded-gait bindings - the original's own carry-look table. */
   gfxWalkAtomics: z.array(GfxWalkAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
-  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor — render-binding data). */
+  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor - render-binding data). */
   buildingOverlays: z.array(BuildingOverlay).default([]),
   /** `[GfxHouse]` `GfxFlagPoint` sign-post anchors - where a building's sign chain plants (render-binding data). */
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),

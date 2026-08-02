@@ -15,22 +15,22 @@ import type { SystemContext } from '../systems/context.js';
 
 /**
  * The **housing capacity** a `tribe` currently has: the sum of the `homeSize` of its placed, fully **built**
- * `home` buildings — the extracted `logichousetype` `logichomesize` param (the population a residence
+ * `home` buildings - the extracted `logichousetype` `logichomesize` param (the population a residence
  * shelters: home level 00 → 1, ... level 04 → 5). The ceiling half of the HUD's population/housing readout;
  * births themselves are gated per home by its family slots (`familiesOf`), not by this sum.
  *
- * Only a **built** residence counts (`built >= ONE`) — a home still under construction shelters no one yet.
+ * Only a **built** residence counts (`built >= ONE`) - a home still under construction shelters no one yet.
  * A `home`-kind building type with no `homeSize` (none in the real data, but the schema defaults it to 0)
  * contributes nothing, as does a building whose type is absent from content.
  *
- * source-basis: the per-home capacity is the extracted `homeSize` param — faithful by construction; what the
+ * source-basis: the per-home capacity is the extracted `homeSize` param - faithful by construction; what the
  * capacity *gates* (births) is a later mechanic.
  */
 export function housingCapacity(world: World, ctx: SystemContext, tribe: number): number {
   let capacity = 0;
   for (const e of world.query(Building)) {
     const b = world.get(e, Building);
-    if (b.tribe !== tribe || b.built < ONE) continue; // wrong tribe, or not yet built — shelters no one
+    if (b.tribe !== tribe || b.built < ONE) continue; // wrong tribe, or not yet built - shelters no one
     const type = contentIndex(ctx.content).buildings.get(b.buildingType);
     if (type === undefined || type.kind !== 'home') continue; // not a residence
     capacity += type.homeSize;
@@ -39,7 +39,7 @@ export function housingCapacity(world: World, ctx: SystemContext, tribe: number)
 }
 
 /**
- * The current **population** of a `tribe`: the number of its living {@link Settler}s — the count half of the
+ * The current **population** of a `tribe`: the number of its living {@link Settler}s - the count half of the
  * HUD readout {@link housingCapacity} is the ceiling for. Counts every settler regardless of job (idle
  * settlers are still mouths to house); {@link tribePopulationByJob} is the same population broken out by
  * trade.
@@ -76,7 +76,7 @@ export function tribePopulationByJob(world: World, tribe: number): Map<number, n
 
 /**
  * The {@link tribePopulationByJob} map key for an idle, job-seeking adult (`Settler.jobType === null`). It is
- * `-1`, outside the valid `JobType.typeId` space (real ids are positive — the first record, `baby_female`, is
+ * `-1`, outside the valid `JobType.typeId` space (real ids are positive - the first record, `baby_female`, is
  * id 1), so it can never collide with a real job's count. A negative sentinel rather than `0`, because `0` is
  * a legitimate `JobType` id (`none`).
  */
@@ -85,7 +85,7 @@ export const IDLE_JOB = -1;
 /**
  * The total stock of each good a `tribe` holds across all its stores. A "store" here is any {@link Building}
  * (which carries the owning `tribe`) bearing a {@link Stockpile}; every placed building gets one (seeded from
- * its type's `stock` slots), so this spans warehouses, workplaces, and residences alike — the whole
+ * its type's `stock` slots), so this spans warehouses, workplaces, and residences alike - the whole
  * settlement's larder.
  *
  * Built by walking each store's canonical {@link stockpileEntries} (ascending goodType) and summing per good.
@@ -104,7 +104,7 @@ export function tribeStocks(world: World, tribe: number): Map<number, number> {
 }
 
 /**
- * A single node of the {@link goodsGraph} — one good's place in the recipe-DAG: its node layer (raw vs
+ * A single node of the {@link goodsGraph} - one good's place in the recipe-DAG: its node layer (raw vs
  * produced, from the good's classification flags), the inputs one production cycle consumes to make it
  * (`GoodType.productionInputs`), and which building types make it (joined from each building type's
  * `produces`/`recipe.outputs`).
@@ -112,18 +112,18 @@ export function tribeStocks(world: World, tribe: number): Map<number, number> {
 interface GoodsGraphNode {
   /**
    * The good's tier in the graph: `'raw'` = harvested from the map (`classification.producedOnMap`, e.g.
-   * wood/stone/wheat — no recipe), `'produced'` = made in a workplace (`classification.producedInHouse`,
+   * wood/stone/wheat - no recipe), `'produced'` = made in a workplace (`classification.producedInHouse`,
    * e.g. plank/flour/bread). `'unclassified'` covers a good the source marks as neither (the `none`/sentinel
-   * good, or a good whose flags default off) — it is still a node so an edge can point at it. A good flagged
+   * good, or a good whose flags default off) - it is still a node so an edge can point at it. A good flagged
    * both (none are in the real data) is reported as `'produced'`, since it has a recipe.
    */
   layer: 'raw' | 'produced' | 'unclassified';
   /** Whether this good can be consumed as a recipe input somewhere (`classification.inputGood`). */
   inputGood: boolean;
-  /** The goods (+ per-cycle amounts) one cycle consumes to make this good — empty for a raw good. */
+  /** The goods (+ per-cycle amounts) one cycle consumes to make this good - empty for a raw good. */
   inputs: readonly ProductionInput[];
   /**
-   * The building type ids that produce this good, ascending — the output side of the join. A good with no
+   * The building type ids that produce this good, ascending - the output side of the join. A good with no
    * producer (a raw good, or one nothing makes) has an empty list. Type ids, not entities: this is a static
    * read over `content`, independent of what is placed in any world.
    */
@@ -131,7 +131,7 @@ interface GoodsGraphNode {
 }
 
 /**
- * The goods graph as a derived read view over `content` — the recipe-DAG the pipeline already extracted as IR
+ * The goods graph as a derived read view over `content` - the recipe-DAG the pipeline already extracted as IR
  * (`GoodType.productionInputs` for the input edges, `GoodType.classification` for the node layers), joined
  * with the output side: which building types make each good (`BuildingType.produces`, falling back to a
  * `recipe`'s `outputs` when `produces` is empty). One {@link GoodsGraphNode} per good, so a panel can draw

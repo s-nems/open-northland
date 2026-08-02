@@ -6,7 +6,7 @@ import type { FogState } from '../systems/vision/index.js';
  * A canonical hash of ALL simulation state for determinism golden tests (see
  * {@link import('../simulation.js').Simulation.hashState}): tick, RNG state, every registered component
  * on every alive entity in canonical (ascending) order, then the fog masks. If two runs from the same
- * seed + inputs diverge in ANY hashed field, this changes — which is the point.
+ * seed + inputs diverge in ANY hashed field, this changes - which is the point.
  */
 export function hashSimState(
   world: World,
@@ -69,7 +69,7 @@ export function hashSimState(
       hashValue(val);
     }
   }
-  // The fog masks are simulated state living OUTSIDE the components (see systems/vision) — they mix their
+  // The fog masks are simulated state living OUTSIDE the components (see systems/vision) - they mix their
   // own canonical bytes in after the components.
   fog?.hashInto(mix);
   return h.toString(16).padStart(8, '0');

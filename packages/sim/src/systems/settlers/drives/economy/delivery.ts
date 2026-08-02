@@ -26,8 +26,8 @@ import { isPorterBoundToStore } from './haul-targets.js';
 
 /**
  * Reconcile the yard route {@link planDelivery} stamped on `e` against the settler's live state, before the
- * planner re-runs its ladder. The validity invariant of a stamped {@link YardDeliveryRoute} — the settler
- * still carries the routed good, is still bound to that flag, and the flag still stands — is enforced here
+ * planner re-runs its ladder. The validity invariant of a stamped {@link YardDeliveryRoute} - the settler
+ * still carries the routed good, is still bound to that flag, and the flag still stands - is enforced here
  * rather than at the read, so a route that outlived any of the three is dropped and the drive re-picks a
  * yard tile from scratch.
  *
@@ -73,7 +73,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     // producers instead keep their load and wait inside their completed workplace. These are the
     // existing no-sink branches, kept here beside delivery routing so their priority cannot drift. The
     // porter shed is a deliberate INSTANT set-down (`dropCarryAtOwnTile`, no animation) so it can re-haul
-    // this same tick — distinct from the orphaned-settler drop below, which plays the `startDrop` atomic.
+    // this same tick - distinct from the orphaned-settler drop below, which plays the `startDrop` atomic.
     if (
       workplace !== undefined &&
       isPorterBoundToStore(world, ctx, entity) &&
@@ -93,8 +93,8 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     }
     // Reaching here: no sink, and not a producer resting in a completed Building workplace. A settler still
     // bound to a LIVING sink (a store or a boat hold that is only momentarily full) keeps its load and waits
-    // — dropping would churn, since a bound carrier re-collects and re-drops. Only a genuinely orphaned
-    // settler — unbound, or bound to a workplace that has since been destroyed — sets the load down rather
+    // - dropping would churn, since a bound carrier re-collects and re-drops. Only a genuinely orphaned
+    // settler - unbound, or bound to a workplace that has since been destroyed - sets the load down rather
     // than stand holding it forever. `startDrop` plays the putdown; `dropCarriedLoad` banks it on the
     // settler's own tile, spilling to the nearest free tiles when that heap is full, so the load is off its
     // back and it re-plans (idle/de-stack) next tick.
@@ -103,7 +103,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   }
 
   // A load headed for a construction site is a live supply errand: stamp it so later-planned settlers
-  // count it as inbound (SupplyRun — no duplicate fetch of a unit already on someone's back).
+  // count it as inbound (SupplyRun - no duplicate fetch of a unit already on someone's back).
   if (world.has(store, UnderConstruction)) {
     stampSupplyRun(world, entity, inbound, { site: store, goodType: load.goodType, amount: load.amount });
   }
@@ -117,7 +117,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
       : undefined;
   if (priorYard !== undefined && sameYard === undefined) world.remove(entity, YardDeliveryRoute);
 
-  // Where the settler stands to deposit — one branch per sink shape.
+  // Where the settler stands to deposit - one branch per sink shape.
   let cell: NodeId | null;
   if (toFlag) {
     // A flag is a marker, not a stock sink: hold an unproven yard tile, else resume strictly after a proven

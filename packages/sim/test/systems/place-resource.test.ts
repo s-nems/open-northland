@@ -8,10 +8,10 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The `placeResource` command (and its shared {@link createResourceNode} assembly) at the COMPONENT
- * level — the fuzz proves determinism/replay, but not that the node is built with the right lifecycle
+ * level - the fuzz proves determinism/replay, but not that the node is built with the right lifecycle
  * markers. This pins the three shapes a good resolves to (felled tree / mined deposit / pluck-whole
  * node), the non-obvious `MineDeposit.initial === remaining` invariant, and the id-neutral skip of a
- * good with no footprint record — so a regression like `initial: 0` or a both-markers stamp fails here.
+ * good with no footprint record - so a regression like `initial: 0` or a both-markers stamp fails here.
  */
 
 const { Felling, MineDeposit, Resource, ResourceFootprint } = components;
@@ -45,7 +45,7 @@ function footprintedContent() {
     ],
     landscapeGfx: [
       ...base.landscapeGfx,
-      // [state, x, y, run] — one blocked cell at the node's own tile.
+      // [state, x, y, run] - one blocked cell at the node's own tile.
       {
         index: GFX_WOOD,
         logicType: LT_WOOD,
@@ -145,7 +145,7 @@ describe('placeResource command', () => {
     expect(e).not.toBeNull();
     if (e === null) return;
     const md = sim.world.get(e, MineDeposit);
-    expect(md.initial).toBe(5); // initial seeds from `remaining` — the non-obvious invariant
+    expect(md.initial).toBe(5); // initial seeds from `remaining` - the non-obvious invariant
     expect(md.levels).toBe(5);
     expect(sim.world.has(e, Felling)).toBe(false);
   });

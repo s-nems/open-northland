@@ -26,9 +26,9 @@ export const GOODS_ATLAS_STEM = 'ls_goods';
 /** The `editGroups` membership marking a `[GfxLandscape]` record as a good's on-map pile graphic. */
 const GOOD_PILE_GROUP = 'good piles all';
 /**
- * The broader `editGroups` membership marking any good's `ls_goods` graphic — the fallback icon source for a
+ * The broader `editGroups` membership marking any good's `ls_goods` graphic - the fallback icon source for a
  * good with no `good piles all` pile record. The potions (bottles, frames 125–129/145–149), amulets (rings,
- * 150–154) and fruit have only a `goods all` record — their own real `ls_goods` graphic + palette — never a
+ * 150–154) and fruit have only a `goods all` record - their own real `ls_goods` graphic + palette - never a
  * dedicated pile, so keying on it recovers a faithful bottle/ring/fruit icon instead of the neutral wood
  * fallback. A good with a pile record keeps it (piles preferred), so the 42 already-bound goods don't move.
  */
@@ -38,7 +38,7 @@ const ICON_PILE_STATE = 1;
 
 /** One good's icon binding: an `ls_goods` frame + the recolor palette (a goods-LUT row) it draws through. */
 export interface GoodIcon {
-  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic (the compact store icon). */
+  /** `ls_goods` atlas frame index (bob id) - the good's state-1 pile graphic (the compact store icon). */
   readonly frame: number;
   /** The recolor palette name (a goods-LUT `palettes` row). */
   readonly palette: string;
@@ -67,7 +67,7 @@ interface PileGfxLike {
 /**
  * Join goods onto the `[GfxLandscape]` good-pile records to produce, per good string id, its state-1
  * (smallest, single-unit) pile frame + recolor palette. Pure (no I/O), so the join rule is unit-tested.
- * A good with no on-map pile record — or a pile record with no palette / no frames — is omitted (no icon).
+ * A good with no on-map pile record - or a pile record with no palette / no frames - is omitted (no icon).
  */
 export function resolveGoodIcons(
   goods: readonly GoodLike[],
@@ -75,7 +75,7 @@ export function resolveGoodIcons(
 ): Record<string, GoodIcon> {
   // `ls_goods` records indexed by `logicType` (the good's `landscapeType`), split by group: the dedicated
   // pile record (`good piles all`) is preferred, the broader item record (`goods all`) is the fallback for a
-  // good with no pile (potions/amulets/fruit). First-wins is deterministic — `extractLandscapeGfx` preserves
+  // good with no pile (potions/amulets/fruit). First-wins is deterministic - `extractLandscapeGfx` preserves
   // file order, and a landscape type has one canonical record per group. A pile record is usually also in
   // `goods all`, so both maps may hold it; preferring the pile map keeps the already-bound goods unchanged.
   const pileByLogic = new Map<number, PileGfxLike>();
@@ -100,7 +100,7 @@ export function resolveGoodIcons(
       [...rec.frames].sort((a, b) => a.state - b.state)[0];
     const bobId = stateFrame?.bobIds[0];
     if (bobId === undefined) continue;
-    // Every growth state's first bob, ordered fewest→most units — the on-map heap indexes these by fill so
+    // Every growth state's first bob, ordered fewest→most units - the on-map heap indexes these by fill so
     // the pile grows with its contents (a single stone at state 1, a full heap at the record's max state).
     const fillFrames = [...rec.frames]
       .filter((f) => f.bobIds[0] !== undefined)

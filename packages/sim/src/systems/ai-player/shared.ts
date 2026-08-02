@@ -18,14 +18,14 @@ import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spati
 export { HEADQUARTERS_BUILDING_ID };
 
 /**
- * Ticks between one seat's decision passes — 2 s at the 12 ticks/s base clock. A genre-convention
+ * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. A genre-convention
  * approximation (Widelands/KaM/Petra re-evaluate strategy on seconds-scale timers, not per tick);
  * per-tick cost scales with decisions, not ticks.
  */
 export const AI_DECISION_INTERVAL_TICKS = 24;
 
 /** The building definition carrying the stable content id, or undefined when this content set lacks
- *  it — a module skips such an entry instead of failing, so partial content stays safe. */
+ *  it - a module skips such an entry instead of failing, so partial content stays safe. */
 export function buildingTypeByContentId(content: ContentSet, id: string): BuildingType | undefined {
   return content.buildings.find((b) => b.id === id);
 }
@@ -53,15 +53,15 @@ export function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<n
 const RESOURCE_BOX_REACH_START = 16;
 /**
  * The largest box walked before the live-resource searches fall back to the whole-map reference
- * scan. The cap only bounds the cost of a hopeless neighbourhood — the fallback reproduces the
- * exact linear winner past it — so it is a pure performance knob, not a decoded distance (named
+ * scan. The cap only bounds the cost of a hopeless neighbourhood - the fallback reproduces the
+ * exact linear winner past it - so it is a pure performance knob, not a decoded distance (named
  * approximation; the `RING_MAX_RADIUS` convention).
  */
 const RESOURCE_BOX_REACH_MAX = 512;
 
 /** The best `(Manhattan distance, entity id)` live `goodType` resource inside the Chebyshev `reach`
  *  box around `from`, or null. Candidates arrive ascending-id, so the strict `<` keeps the lowest
- *  id among the minimum distance — the same winner the reference scan picks. */
+ *  id among the minimum distance - the same winner the reference scan picks. */
 function bestLiveResourceInBox(
   world: World,
   goodType: number,
@@ -107,7 +107,7 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
     const exact = bestLiveResourceInBox(world, goodType, from, hit.distance);
     return (exact ?? hit).entity;
   }
-  // Nothing within the cap — the reference scan finds the same winner the uncapped search would.
+  // Nothing within the cap - the reference scan finds the same winner the uncapped search would.
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const e of canonicalResources(world)) {
@@ -124,14 +124,14 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
 }
 
 /**
- * Whether any not-yet-empty resource of `goodType` stands on the map — existence only, so the first
+ * Whether any not-yet-empty resource of `goodType` stands on the map - existence only, so the first
  * box holding a live node answers without ranking it. `near` seeds the expanding-box search (the
- * seat's HQ — collector goods are gathered around it); a null seed or a within-cap miss falls back
+ * seat's HQ - collector goods are gathered around it); a null seed or a within-cap miss falls back
  * to the early-exit canonical scan, which alone decides a truly dry map.
  */
 export function anyLiveResource(world: World, goodType: number, near: HalfCellNode | null): boolean {
   if (near !== null) {
-    // The existence-only index path: no collection, no sort, first hit returns — a map holding none of
+    // The existence-only index path: no collection, no sort, first hit returns - a map holding none of
     // the good (the gated iron entry on an iron-less map) pays box probes, not repeated full sorts.
     for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
       if (anyResourceNear(world, near.hx, near.hy, reach, (e) => isLiveResource(world, e, goodType))) {
@@ -161,8 +161,8 @@ export function isBuilt(world: World, e: Entity): boolean {
 }
 
 /**
- * The seat's canonical headquarters — the lowest-id owned BUILT {@link HEADQUARTERS_BUILDING_ID}
- * building — or null, in which case every strategic module idles for the seat.
+ * The seat's canonical headquarters - the lowest-id owned BUILT {@link HEADQUARTERS_BUILDING_ID}
+ * building - or null, in which case every strategic module idles for the seat.
  */
 export function headquartersOf(world: World, ctx: SystemContext, player: number): Entity | null {
   const buildings = contentIndex(ctx.content).buildings;
@@ -181,7 +181,7 @@ export function anchorNodeOf(world: World, e: Entity): HalfCellNode | null {
 }
 
 /** The integer-mean node of the entities' anchors (the settlement centroid when fed the seat's
- *  buildings), or null when none has a Position. Commutative sums — no canonical order needed. */
+ *  buildings), or null when none has a Position. Commutative sums - no canonical order needed. */
 export function anchorCentroid(world: World, entities: readonly Entity[]): HalfCellNode | null {
   let sx = 0;
   let sy = 0;
@@ -197,10 +197,10 @@ export function anchorCentroid(world: World, entities: readonly Entity[]): HalfC
 }
 
 /**
- * `from` pushed `push` nodes further away from `origin` along the straight `origin → from` ray — the
+ * `from` pushed `push` nodes further away from `origin` along the straight `origin → from` ray - the
  * outskirts bias shared by the tower spot and the `outskirts` placement affinity. Integer-trunc ray
  * projection (the `searchCentre` idiom): plain `/` on integer operands is IEEE-exact-rounded, hence
- * byte-identical across engines. Coincident points have no direction — `from` is returned as-is.
+ * byte-identical across engines. Coincident points have no direction - `from` is returned as-is.
  */
 export function outwardNode(origin: HalfCellNode, from: HalfCellNode, push: number): HalfCellNode {
   const dx = from.hx - origin.hx;
@@ -214,10 +214,10 @@ export function outwardNode(origin: HalfCellNode, from: HalfCellNode, push: numb
 }
 
 /**
- * The first node accepted while walking expanding Manhattan rings around `(cx, cy)` — the modules'
+ * The first node accepted while walking expanding Manhattan rings around `(cx, cy)` - the modules'
  * "closest legal spot" pick. Deterministic: ascending radius, then ascending dx, north (y−) before
  * south (y+), so the winner never depends on iteration state. `accept` must reject out-of-bounds
- * nodes itself. Cost is O(maxRadius²) accepts at worst — bounded, never a whole-map scan.
+ * nodes itself. Cost is O(maxRadius²) accepts at worst - bounded, never a whole-map scan.
  */
 export function firstRingNode(
   cx: number,

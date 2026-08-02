@@ -28,7 +28,7 @@ LogicType 0 1
 GfxBobId 0 200
 `;
 
-// The same logic typeIds (2, 3) recur for a HIGHER tribe with a DIFFERENT (cumulative) cost — the
+// The same logic typeIds (2, 3) recur for a HIGHER tribe with a DIFFERENT (cumulative) cost - the
 // real data's per-(tribe, typeId) divergence. The lowest-tribeType record must win deterministically.
 const GFXHOUSES_OTHER_TRIBE_INI = `[GfxHouse]
 EditName "saracen residence"
@@ -221,7 +221,7 @@ describe('extractBuildingFootprints', () => {
     // Level 1 grows: an extra cell in the -1 row and the (0,1) cell.
     expect(level1?.blocked).toContainEqual({ dx: 1, dy: -1 });
     expect(level1?.blocked).toContainEqual({ dx: 0, dy: 1 });
-    // familyBody = union of BOTH levels' bodies — identical on every level's typeId.
+    // familyBody = union of BOTH levels' bodies - identical on every level's typeId.
     expect(level0?.familyBody).toEqual(level1?.familyBody);
     expect(level0?.familyBody).toContainEqual({ dx: 0, dy: 1 }); // level 1's growth, visible at level 0
     // reserved = familyBody ∪ the build zone (the level-independent exclusion ring).

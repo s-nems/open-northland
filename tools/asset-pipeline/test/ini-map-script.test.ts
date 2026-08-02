@@ -161,7 +161,7 @@ playerfixcolors 1
 
   it('types the [multiplayer] table in the packed numeric skin (a lobby-openable ai slot)', () => {
     // Mirrors the packed SPECJALNA- MOSTY NA RZECE map.cif: playerdata authors one human slot, but
-    // playeroption offers human (1) on an ai slot too — the lobby's seat-eligibility table.
+    // playeroption offers human (1) on an ai slot too - the lobby's seat-eligibility table.
     const lines: CifLine[] = [
       { level: 1, text: 'playerdata' },
       { level: 2, text: 'player 0 1 1 0' },

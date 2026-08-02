@@ -8,7 +8,7 @@ import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
 /**
  * The static-layer REMOVAL seam of the `?map=` static→dynamic resource handover
  * ({@link MapObjectLayer.remove}): a first-worked node's built-once static drawing must come OUT and
- * stay out — a TALL object's pooled sprite detaches, a DECOR object's quad zeroes in place, and (the
+ * stay out - a TALL object's pooled sprite detaches, a DECOR object's quad zeroes in place, and (the
  * regression a visual check would only catch by luck) an ANIMATED decor quad must not be written back
  * by the play-head rewrite on the next tick. Display objects construct headlessly (the chunk-batcher
  * test relies on the same), so the buffer states are pinnable without a GL context.
@@ -40,7 +40,7 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
     const positions = decorPositions(layer);
     // Quad 0 (the removed object) degenerate; quad 1 (the kept sibling) untouched.
     expect([...positions.slice(0, 8)]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(positions[8]).toBe(100); // kept quad's x0 — still where writeObjectQuad put it
+    expect(positions[8]).toBe(100); // kept quad's x0 - still where writeObjectQuad put it
   });
 
   it('keeps an ANIMATED decor quad zeroed across play-head rewrites', () => {
@@ -49,7 +49,7 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
     const kept = decorObject(100, [FRAME_0, FRAME_1]);
     layer.set([removed, kept]);
     layer.remove(removed);
-    // Advance the animation clock twice — the rewrite loop must SKIP the removed (nulled) slot.
+    // Advance the animation clock twice - the rewrite loop must SKIP the removed (nulled) slot.
     layer.update(WIDE, 1);
     layer.update(WIDE, 2);
     const positions = decorPositions(layer);
@@ -67,7 +67,7 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
     expect(spriteLayer.children).toHaveLength(2);
     layer.remove(removed);
     expect(spriteLayer.children).toHaveLength(1);
-    layer.update(WIDE, 1); // the removed member is gone from its block — nothing re-attaches it
+    layer.update(WIDE, 1); // the removed member is gone from its block - nothing re-attaches it
     expect(spriteLayer.children).toHaveLength(1);
   });
 });

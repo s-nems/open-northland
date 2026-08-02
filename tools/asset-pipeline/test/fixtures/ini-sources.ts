@@ -120,12 +120,12 @@ name "fen_elder_idle"
 // `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines, a `jobtype`,
 // and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
 // `mainType` is the file's exact camelCase key (a lowercased `maintype` would silently vanish). Both
-// weapons share `type 4` across different tribes — the real data's `(tribetype, type)` composite key
+// weapons share `type 4` across different tribes - the real data's `(tribetype, type)` composite key
 // (type alone is not unique). The claw is `mainType 1, weight 0` and a melee weapon (no
 // `munitiontype`/`damagetype` -> the schema omits both, the ranged + damage-class markers absent); the
 // sling `mainType 6, weight 1` exercises non-zero capture and carries `munitiontype 3` (the all-lowercase
-// ammo-class key — a class enum, NOT good id 3), `speed 6` (the ranged projectile travel speed, another
-// all-lowercase key — melee weapons omit it), plus `damagetype 4` (another all-lowercase class key — the
+// ammo-class key - a class enum, NOT good id 3), `speed 6` (the ranged projectile travel speed, another
+// all-lowercase key - melee weapons omit it), plus `damagetype 4` (another all-lowercase class key - the
 // siege/damage-class marker, NOT good id 4). The sling also omits the range pair to exercise the schema's
 // range defaults of 1. The claw's `goodtype 0` is the natural-weapon sentinel (-> undefined); the sling's
 // `goodtype 22` is a real good (-> captured; 22 also exists in the IR-integration goods fixture below so

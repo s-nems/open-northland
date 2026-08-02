@@ -6,12 +6,12 @@ import { placeSandboxBerryBush, spawnSettlerDirect } from '../game/sandbox/index
 import type { SceneDefinition } from './types.js';
 
 /**
- * The children scene: prove the child eat drive — a hungry CHILD feeds itself like an adult (the
+ * The children scene: prove the child eat drive - a hungry CHILD feeds itself like an adult (the
  * original binds child eat animations, `setatomic 3/4 10`), while a BABY is cared for: its family
- * keeps it sated (its needs never accumulate — NeedsSystem) and it never self-feeds. Three stations,
+ * keeps it sated (its needs never accumulate - NeedsSystem) and it never self-feeds. Three stations,
  * each a hungry young settler beside its own ripe berry bush: the girl and boy walk over, play the
- * child eat clip, and a meal comes off their hunger bar (their bushes go bare); the baby — authored hungry, a state
- * real play can't reach, exactly so the planner's baby gate is checkable — ignores its bush (it stays
+ * child eat clip, and a meal comes off their hunger bar (their bushes go bare); the baby - authored hungry, a state
+ * real play can't reach, exactly so the planner's baby gate is checkable - ignores its bush (it stays
  * ripe). The browser half is where a human judges the pixels: the two child eat clips on the child
  * bodies and the baby never feeding.
  *
@@ -54,13 +54,13 @@ function spawnYoung(
 }
 
 function build(sim: Simulation): void {
-  // None of the young get a Residence, so the child stroll never fires — they stand when not feeding
+  // None of the young get a Residence, so the child stroll never fires - they stand when not feeding
   // (the stroll is the family scene's vignette; this one isolates the feed-or-not contrast).
   for (const station of [GIRL, BOY, BABY]) placeSandboxBerryBush(sim, station.x, ROW_Y);
   spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, CHILD_SPAWN_AGE_TICKS, HUNGRY);
   spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, CHILD_SPAWN_AGE_TICKS, HUNGRY);
-  // The baby is AUTHORED hungry — unreachable in real play (a cared-for baby's needs are frozen,
-  // NeedsSystem) — so the no-self-feed gate is observable: it sits beside ripe food and never eats.
+  // The baby is AUTHORED hungry - unreachable in real play (a cared-for baby's needs are frozen,
+  // NeedsSystem) - so the no-self-feed gate is observable: it sits beside ripe food and never eats.
   spawnYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0, HUNGRY);
 }
 
@@ -84,7 +84,7 @@ export const childrenScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'both children ended FED — the eat drive ran for them (the only food was their bushes)',
+      label: 'both children ended FED - the eat drive ran for them (the only food was their bushes)',
       predicate: (sim) => {
         const { children } = youngByStage(sim);
         // A berry is a partial meal: with needs frozen here the fed bar sits exactly one
@@ -96,7 +96,7 @@ export const childrenScene: SceneDefinition = {
       },
     },
     {
-      label: 'the hungry baby never self-fed — its authored hunger never moved (cared for, no eat drive)',
+      label: 'the hungry baby never self-fed - its authored hunger never moved (cared for, no eat drive)',
       predicate: (sim) => {
         const { babies } = youngByStage(sim);
         return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === HUNGRY);

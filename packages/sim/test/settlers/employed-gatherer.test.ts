@@ -19,8 +19,8 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * THE EMPLOYED GATHERER'S STORE FILTER (user rule 2026-07-16): a flag-less gatherer bound to a stocking
- * building forages ONLY for goods that building's stockpile stores — a smithy's collector fetches its
- * iron/wood, never the quarry's stone — narrowed further to one good by the `setGatherGood` command
+ * building forages ONLY for goods that building's stockpile stores - a smithy's collector fetches its
+ * iron/wood, never the quarry's stone - narrowed further to one good by the `setGatherGood` command
  * (stored in {@link GatherSelection}; `null` resets to every stored good). The fixture collector (job 7)
  * may harvest wood AND stone; the sawmill stores wood only, so stone is what the filter must exclude.
  */
@@ -46,7 +46,7 @@ function placeBuilding(sim: Simulation, buildingType: number, x: number, y: numb
   return e;
 }
 
-/** An OWNED collector employed at `workplace` (JobAssignment stamped directly — the planner only
+/** An OWNED collector employed at `workplace` (JobAssignment stamped directly - the planner only
  *  reads the binding, not how it was made). */
 function employedCollector(sim: Simulation, x: number, y: number, workplace: Entity): Entity {
   const e = settlerAt(sim, { jobType: COLLECTOR, position: { x: fx.fromInt(x), y: fx.fromInt(y) } });
@@ -74,7 +74,7 @@ function sceneSim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 8) });
 }
 
-describe('employed gatherer — the workplace store filter', () => {
+describe('employed gatherer - the workplace store filter', () => {
   it('forages only workplace-stored goods: skips a NEARER stone for the sawmill wood', () => {
     const sim = sceneSim();
     const mill = placeBuilding(sim, SAWMILL, 1, 1);
@@ -82,11 +82,11 @@ describe('employed gatherer — the workplace store filter', () => {
     const stone = placeStone(sim, 9, 1); // right beside the collector
     const tree = placeTree(sim, 14, 1); // farther away, but the only good the sawmill stores
     sim.run(200); // plenty to walk over and start felling
-    expect(sim.world.get(stone, Resource).remaining).toBe(5); // untouched — not a sawmill ware
+    expect(sim.world.get(stone, Resource).remaining).toBe(5); // untouched - not a sawmill ware
     // The wood was worked instead: the tree is being chopped (or already fell and was reaped).
     const chopped = !sim.world.isAlive(tree) || sim.world.get(tree, Felling).chopsLeft < CHOPS_TO_FELL;
     expect(chopped).toBe(true);
-    expect(sim.world.has(worker, GatherSelection)).toBe(false); // no pick made — filter alone did this
+    expect(sim.world.has(worker, GatherSelection)).toBe(false); // no pick made - filter alone did this
   });
 
   it('an unemployed roamer keeps the old behaviour: takes the nearest node regardless of good', () => {
@@ -96,7 +96,7 @@ describe('employed gatherer — the workplace store filter', () => {
     const stone = placeStone(sim, 9, 1);
     placeTree(sim, 14, 1);
     sim.run(120);
-    // The nearer stone is mined — possibly to depletion (a drained deposit entity is reaped entirely).
+    // The nearer stone is mined - possibly to depletion (a drained deposit entity is reaped entirely).
     const left = sim.world.isAlive(stone) ? sim.world.get(stone, Resource).remaining : 0;
     expect(left).toBeLessThan(5);
   });
@@ -109,7 +109,7 @@ describe('employed gatherer — the workplace store filter', () => {
     expect(sim.world.get(worker, GatherSelection).goodType).toBe(WOOD);
     const stone = placeStone(sim, 9, 1);
     sim.run(120);
-    expect(sim.world.get(stone, Resource).remaining).toBe(5); // pinned to wood — the stone is not its pick
+    expect(sim.world.get(stone, Resource).remaining).toBe(5); // pinned to wood - the stone is not its pick
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: null });
     expect(sim.world.has(worker, GatherSelection)).toBe(false);
   });

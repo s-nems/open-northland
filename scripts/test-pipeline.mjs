@@ -2,7 +2,7 @@
 // The executable form of the "pipeline/schema changes need a real pipeline run" gate
 // (docs/TESTING.md "Real-content test modes"): run the full asset pipeline against the owned game
 // copy into a throwaway directory, then run the real-content suite over that FRESH output via
-// `ON_CONTENT_DIR` — the checkout's `content/` is never touched. Manual/local only: it needs the
+// `ON_CONTENT_DIR` - the checkout's `content/` is never touched. Manual/local only: it needs the
 // copyrighted game copy (`CULTURES_GAME_DIR`, default `../Cultures 8th Wonder`; a mod installed in
 // the game folder is auto-detected, `CULTURES_MOD_ROOT` points at one unpacked elsewhere). On
 // failure the output directory is kept for inspection.
@@ -17,7 +17,7 @@ const gameDir = process.env.CULTURES_GAME_DIR ?? resolve(repoRoot, '../Cultures 
 const modRoot = process.env.CULTURES_MOD_ROOT;
 
 if (!existsSync(gameDir)) {
-  console.error(`test:pipeline needs the owned game copy — no directory at ${gameDir}`);
+  console.error(`test:pipeline needs the owned game copy - no directory at ${gameDir}`);
   console.error('Point CULTURES_GAME_DIR at your Cultures - 8th Wonder installation.');
   process.exit(1);
 }
@@ -26,7 +26,7 @@ const outDir = mkdtempSync(join(tmpdir(), 'open-northland-pipeline-'));
 const run = (cmd, args, extraEnv = {}) =>
   spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot, env: { ...process.env, ...extraEnv } });
 
-console.log(`test:pipeline — running the pipeline against "${gameDir}" into ${outDir}`);
+console.log(`test:pipeline - running the pipeline against "${gameDir}" into ${outDir}`);
 const pipeline = run('npm', [
   'run',
   'pipeline',
@@ -49,4 +49,4 @@ if (suite.status !== 0) {
 }
 
 rmSync(outDir, { recursive: true, force: true });
-console.log('test:pipeline green — the fresh pipeline output passed the real-content suite.');
+console.log('test:pipeline green - the fresh pipeline output passed the real-content suite.');

@@ -3,7 +3,7 @@ import { rampPalette } from './palette.js';
 
 /**
  * A small indexed picture (mixes runs and an escaped >= 0xC0 value), encoded with its palette. Pass a
- * `palette` to make two carriers distinguishable — the default ramp is shared, so two `samplePcx()`
+ * `palette` to make two carriers distinguishable - the default ramp is shared, so two `samplePcx()`
  * files are byte-identical and cannot prove which one a decoder read.
  */
 export const samplePcx = (

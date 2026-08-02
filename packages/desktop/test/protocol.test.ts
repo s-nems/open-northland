@@ -22,7 +22,7 @@ describe('routePathOf', () => {
     expect(routePathOf('setup', '/setup.html')).toBeUndefined();
   });
 
-  it('keeps the raw pathname raw — decoding belongs to the shared resolver', () => {
+  it('keeps the raw pathname raw - decoding belongs to the shared resolver', () => {
     expect(routePathOf('game', '/maps/two%20words.json')).toBe('/maps/two%20words.json');
   });
 });

@@ -9,7 +9,7 @@ import {
 } from './action-ring-layout.js';
 
 /**
- * The settler action menu's content — the command buttons and their icon bindings, kept as plain data
+ * The settler action menu's content - the command buttons and their icon bindings, kept as plain data
  * apart from the geometry engine (`action-ring-layout.ts`) so a warrior/scout variant is a new table, not
  * new code. The command→icon binding here was read off the running original by the user,
  * clockwise from the top-left button (source basis "settler action menu"); the frame names are glyph
@@ -24,7 +24,7 @@ import {
 const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
 /**
- * The "change profession" button — the one live default-menu button (opens the profession list window). Its
+ * The "change profession" button - the one live default-menu button (opens the profession list window). Its
  * icon is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
  */
 const CHANGE_JOB: ActionButton = {
@@ -75,9 +75,9 @@ const MAKE_DAUGHTER: ActionButton = {
 };
 
 /**
- * The scout's "Erect Signpost" button — the original's scout action ("Erect Signpost" gui string; it
+ * The scout's "Erect Signpost" button - the original's scout action ("Erect Signpost" gui string; it
  * replaces the civilian's alert/query pair in the top-right slots). Icon: frame 111 (`order_mine`,
- * the pickaxe glyph) — user-identified against the running original.
+ * the pickaxe glyph) - user-identified against the running original.
  */
 const ERECT_SIGNPOST: ActionButton = {
   kind: 'erect-signpost',
@@ -86,11 +86,11 @@ const ERECT_SIGNPOST: ActionButton = {
 };
 
 /**
- * What of the selected settler's state the menu depends on — computed by the view from the snapshot
+ * What of the selected settler's state the menu depends on - computed by the view from the snapshot
  * (a single selected settler; a multi-selection shows the static default menu).
  */
 export interface SettlerMenuState {
-  /** An adult man may change trade — women keep the woman role for life and a child's stage is the
+  /** An adult man may change trade - women keep the woman role for life and a child's stage is the
    *  GrowthSystem's, so both hide the button (the sim guards `setJob` the same way). */
   readonly canChangeJob: boolean;
   /** An unmarried, not-yet-marrying eligible adult (not a soldier/scout) may seek a partner. */
@@ -103,8 +103,8 @@ export interface SettlerMenuState {
   readonly erectSignpost: boolean;
 }
 
-/** The static default state — every family button hidden (multi-selection, no snapshot state); the
- *  change-profession button stays (a mixed selection may still re-trade its men — the sim filters). */
+/** The static default state - every family button hidden (multi-selection, no snapshot state); the
+ *  change-profession button stays (a mixed selection may still re-trade its men - the sim filters). */
 export const DEFAULT_MENU_STATE: SettlerMenuState = {
   canChangeJob: true,
   canMarry: false,
@@ -149,13 +149,13 @@ export function menuForSettler(state: SettlerMenuState): readonly ActionGroup[] 
         BOTTOM_LAST,
       ],
     },
-    // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) — the four "house assignment" buttons.
+    // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) - the four "house assignment" buttons.
     { group: RIGHT_ARM, buttons: [HOUSE_A, HOUSE_B, HOUSE_C, HOUSE_D] },
   ];
 }
 
 /**
- * The everything-visible civilian face (every dynamic button on) — the LAYOUT superset the geometry
+ * The everything-visible civilian face (every dynamic button on) - the LAYOUT superset the geometry
  * tests pin, not what any live selection renders (multi-selection shows
  * `menuForSettler(DEFAULT_MENU_STATE)`, family buttons hidden). {@link ALL_MENU_BUTTONS} extends it
  * with the scout-variant button for the view's icon bake.
@@ -168,7 +168,7 @@ export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = menuForSettler({
   erectSignpost: false,
 });
 
-/** Every button any menu state can show — the superset the view bakes its retained visuals from
+/** Every button any menu state can show - the superset the view bakes its retained visuals from
  *  (visuals key by button object identity, so this must enumerate the singletons, not rebuild them). */
 export const ALL_MENU_BUTTONS: readonly ActionButton[] = [
   ...HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons),

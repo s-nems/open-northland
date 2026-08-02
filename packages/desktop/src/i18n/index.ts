@@ -2,7 +2,7 @@ import { en, type Messages } from './en.js';
 import { pl } from './pl.js';
 
 /**
- * The installer's i18n API — its own small catalog shared by the main process and the setup
+ * The installer's i18n API - its own small catalog shared by the main process and the setup
  * renderer (both import this module; each process holds its own {@link activeLocale}). DOM access is
  * guarded so the Node main process can import it too. Mirrors the game's `packages/app/src/i18n`
  * conventions without sharing its browser-only runtime.

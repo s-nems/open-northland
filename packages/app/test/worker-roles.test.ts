@@ -11,7 +11,7 @@ import {
 
 /**
  * The right-click worker-role classification over REAL extracted content (the browser scene/map path),
- * whose building worker slots carry the raw `jobtypes.ini` job ids — NOT the sandbox-rebased ids the
+ * whose building worker slots carry the raw `jobtypes.ini` job ids - NOT the sandbox-rebased ids the
  * headless twin uses. This is the path that regressed once interactive views started running on real
  * content: a warehouse's raw hunter(15)/fisher(22) slots were misclassified as craftsmen and offered
  * ahead of the carrier, so a right-click made a settler a hunter instead of a Tragarz.
@@ -62,8 +62,8 @@ describe('workerRoleOf classifies the raw real trades', () => {
 
 describe('classification is independent of the id space (raw real vs sandbox-rebased)', () => {
   // The classifier is one pure function fed slots from either content base, so a trade must
-  // classify the same whether it arrives as its raw `jobtypes.ini` id or its sandbox-rebased id — the
-  // role is keyed off the de-rebased (canonical) id, not a per-base id table — the fix that removed the
+  // classify the same whether it arrives as its raw `jobtypes.ini` id or its sandbox-rebased id - the
+  // role is keyed off the de-rebased (canonical) id, not a per-base id table - the fix that removed the
   // dual raw∪rebased gatherer registration.
   it('a trade classifies the same raw and rebased', () => {
     for (const raw of [
@@ -81,7 +81,7 @@ describe('classification is independent of the id space (raw real vs sandbox-reb
 
   it('assignmentPriority over rebased slots offers the same trades, in the rebased space', () => {
     const rebasedWarehouse = WAREHOUSE_SLOTS.map((s) => ({ jobType: rebaseSlotJob(s.jobType) }));
-    // Only the carrier is offered (gatherers excluded), and it is the rebased carrier id — which equals
+    // Only the carrier is offered (gatherers excluded), and it is the rebased carrier id - which equals
     // the raw one, since the rebase leaves the carrier untouched.
     expect(assignmentPriority(rebasedWarehouse)).toEqual([rebaseSlotJob(REAL_JOB.carrier)]);
     const rebasedMill = MILL_SLOTS.map((s) => ({ jobType: rebaseSlotJob(s.jobType) }));
@@ -93,7 +93,7 @@ describe('classification is independent of the id space (raw real vs sandbox-reb
 });
 
 describe('assignmentPriority over real building slots', () => {
-  it('a warehouse offers only its carrier — the gatherer slots are never hand-assigned (the hunter bug)', () => {
+  it('a warehouse offers only its carrier - the gatherer slots are never hand-assigned (the hunter bug)', () => {
     expect(assignmentPriority(WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
   });
 
@@ -111,7 +111,7 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
     expect(assignmentPriorityFor(REAL_JOB.miller, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
   });
 
-  it('a carrier on a farm stays a carrier — its offered trade is promoted ahead of the farmer', () => {
+  it('a carrier on a farm stays a carrier - its offered trade is promoted ahead of the farmer', () => {
     expect(assignmentPriorityFor(REAL_JOB.carrier, FARM_SLOTS)).toEqual([REAL_JOB.carrier, REAL_JOB.farmer]);
   });
 
@@ -158,12 +158,12 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
   });
 
   it('a plain/idle settler is never offered a gatherer slot (only a gatherer current trade is)', () => {
-    // Idle on a warehouse still becomes a carrier — the default excludes gatherers for a non-gatherer.
+    // Idle on a warehouse still becomes a carrier - the default excludes gatherers for a non-gatherer.
     expect(assignmentPriorityFor(undefined, WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
   });
 });
 
-describe('trainsRatherThanEmploys — the barracks right-click split', () => {
+describe('trainsRatherThanEmploys - the barracks right-click split', () => {
   // The real ir.json barracks: `kind: training`, carrier slots only.
   const BARRACKS = { kind: BUILDING_KIND.training, workers: [{ jobType: REAL_JOB.carrier, count: 4 }] };
 

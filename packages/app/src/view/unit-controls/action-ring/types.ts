@@ -18,10 +18,10 @@ export interface SettlerActionsOptions {
   readonly selectionCentre: (snapshot: WorldSnapshot) => SelectionCentre | null;
   /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
   readonly professions: readonly PickerEntry[];
-  /** The running content — the ring reads the sim's job roles off it, so the marry and erect-signpost
+  /** The running content - the ring reads the sim's job roles off it, so the marry and erect-signpost
    *  buttons offer exactly what the matching command accepts. */
   readonly content: ContentSet;
-  /** Whether the whole current selection may take `jobType` right now — the picker offers only rows
+  /** Whether the whole current selection may take `jobType` right now - the picker offers only rows
    *  this returns true for (the `needforjob` tech tree; the `setJob` command enforces the same gate
    *  sim-side, so a hidden row could not have been obeyed anyway). */
   readonly jobUnlocked: (ids: readonly number[], jobType: number) => boolean;
@@ -47,14 +47,14 @@ export interface SettlerActions {
   /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
   toggle(): void;
   /**
-   * Open the default action menu — idempotent to the `menu` face. `atClient` is the client (CSS) point to
+   * Open the default action menu - idempotent to the `menu` face. `atClient` is the client (CSS) point to
    * pin the menu on: the right-click path passes the cursor (what the original stores at bring-up); omit it
    * and the menu pins on the selection's centroid instead (the Space path, which has no cursor).
    */
   open(atClient?: { readonly x: number; readonly y: number }): void;
   /** Force-close (e.g. on a selection clear). */
   close(): void;
-  /** True when a client point is over a visible menu button — the input router asks before world picking. */
+  /** True when a client point is over a visible menu button - the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }

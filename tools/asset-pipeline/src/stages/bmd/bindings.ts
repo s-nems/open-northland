@@ -28,7 +28,7 @@ export interface GraphicsBindingSet {
   readonly buildTimeBmds: ReadonlySet<string>;
 }
 
-/** The `(bmd, palette)` identity of a binding — the unit an atlas file is emitted (and deduped) per. */
+/** The `(bmd, palette)` identity of a binding - the unit an atlas file is emitted (and deduped) per. */
 export function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): string {
   return `${binding.bmd} ${binding.paletteName}`;
 }
@@ -50,12 +50,12 @@ function dedupeBindings(records: readonly BmdPaletteBinding[]): BmdPaletteBindin
 
 /**
  * Flattens the mod's richer `[jobbasegraphics]` records ({@link JobBaseGraphicsBinding}) into the flat
- * {@link BmdPaletteBinding} shape {@link import('./convert.js').convertBmdTree} already consumes — so the
+ * {@link BmdPaletteBinding} shape {@link import('./convert.js').convertBmdTree} already consumes - so the
  * human body/head bob sets reuse the exact same resolve→decode→atlas path as the readable `[jobgraphics]`
  * animals leg, with no second copy of the conversion logic. A human draws from a body bob (coloured by
  * `gfxpalettebasebody`) plus numbered head bobs (coloured by `gfxpalettebasehead`), so each indexed slot
  * becomes one binding paired with the matching palette. A slot whose palette `editname` is absent
- * is dropped here (there is nothing to resolve it against — not even a name `convertBmdTree` could
+ * is dropped here (there is nothing to resolve it against - not even a name `convertBmdTree` could
  * warn about); the `gfxpaletterandom` tint is a per-settler runtime range, not a bob palette, so it is
  * not emitted. The `logictribe`/`logicjob` cross-refs ride along on each binding. Head bobs carry no
  * shadow `.bmd` (the extractor never sets one); body `shadowBmd`s ride along for

@@ -5,7 +5,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { type AtomicEffect, fx, type Simulation } from '../../../src/index.js';
 
 /**
- * Unit + integration tests for the AtomicSystem — the executor half of the settler planner. It
+ * Unit + integration tests for the AtomicSystem - the executor half of the settler planner. It
  * advances a {@link CurrentAtomic}'s progress to ONE over `duration` ticks, and on completion applies
  * the typed {@link AtomicEffect} (harvest/pickup → Carrying, pileup → Stockpile, eat → hunger),
  * emits an `atomicCompleted` event, and removes the component. The fixture's goods are 1 = wood,

@@ -40,25 +40,25 @@ import {
 import { workerSlotsFor } from './worker-slots.js';
 
 /**
- * The sandbox building set — the per-building store slots, capacities, recipes, and worker overrides
+ * The sandbox building set - the per-building store slots, capacities, recipes, and worker overrides
  * the global {@link import('./content/index.js').sandboxContent} set assembles its `buildings` field from
  * ({@link buildSandboxBuildings}). The hand-authored catalog stays pinned to ir.json; the stock/recipe
  * pins here are sandbox balance, not extracted data (see the per-table notes).
  */
 
-// The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
+// The farm's wheat-only store capacity - EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
 // (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
 const FARM_WHEAT_CAPACITY = 25;
-// The mill's two-slot store — EXTRACTED: `logicstock 4 10 1` (wheat, 10) + `logicstock 11 20 0`
+// The mill's two-slot store - EXTRACTED: `logicstock 4 10 1` (wheat, 10) + `logicstock 11 20 0`
 // (flour, 20) on the "work mill 00" block (`DataCnmd/types/houses.ini`). The trailing logicstock int
 // is the consumed-here flag (every workshop input and the homes' food carry 1, every pure storage
-// slot 0), not an initial fill — so both slots start empty.
+// slot 0), not an initial fill - so both slots start empty.
 const MILL_WHEAT_CAPACITY = 10;
 const MILL_FLOUR_CAPACITY = 20;
-// The well's water-only store — EXTRACTED: `logicstock 1 1 0` on the "work well 00" block, one slot, 1
+// The well's water-only store - EXTRACTED: `logicstock 1 1 0` on the "work well 00" block, one slot, 1
 // water.
 const WELL_WATER_CAPACITY = 1;
-// The bakery's three-slot store — EXTRACTED: `logicstock 1 10 1` (water, 10) + `logicstock 11 10 1`
+// The bakery's three-slot store - EXTRACTED: `logicstock 1 10 1` (water, 10) + `logicstock 11 10 1`
 // (flour, 10) + `logicstock 19 20 0` (bread, 20) on the "work bakery 00" block; slots start empty (the
 // trailing int is the consumed-here flag: every workshop input and the homes' food carry 1, every pure
 // storage slot 0). The 1 water + 1 flour → 1 bread amounts are a NAMED APPROXIMATION
@@ -82,7 +82,7 @@ export interface StockSlot {
 }
 
 /**
- * The general-goods store set — the core economy goods (the gathered set + plank + coin) followed by every
+ * The general-goods store set - the core economy goods (the gathered set + plank + coin) followed by every
  * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
  * the whole catalog and the Magazyn panel lists each good (with its icon) across its category tab. The set
  * (which goods a store holds) is a sandbox balance pin, not extracted data.
@@ -100,7 +100,7 @@ const STORE_GOODS: readonly number[] = [
 ];
 
 /**
- * Build a general-goods store's slot list at one per-good capacity — every good in {@link STORE_GOODS}
+ * Build a general-goods store's slot list at one per-good capacity - every good in {@link STORE_GOODS}
  * gets the same cap.
  */
 function storeStock(capacity: number): readonly StockSlot[] {
@@ -108,13 +108,13 @@ function storeStock(capacity: number): readonly StockSlot[] {
 }
 
 /**
- * Per-good warehouse capacity by tier (`stock_00`/`stock_01`/`stock_02`) — a tier-N warehouse holds this
+ * Per-good warehouse capacity by tier (`stock_00`/`stock_01`/`stock_02`) - a tier-N warehouse holds this
  * many of each stored good. User-requested sandbox balance, not extracted data (the real `logicstock`
  * caps are 45/70/120); these are the project's chosen sandbox limits.
  */
 const WAREHOUSE_SLOT_CAPACITY = [100, 250, 500] as const;
 
-/** The HQ's per-good store capacity — user-requested sandbox balance, the same 500 as the top warehouse
+/** The HQ's per-good store capacity - user-requested sandbox balance, the same 500 as the top warehouse
  *  tier and not extracted data (the real `logicstock` HQ cap is 150). */
 const HQ_SLOT_CAPACITY = 500;
 
@@ -122,7 +122,7 @@ export interface SandboxBuildingRow {
   typeId: number;
   id: string;
   kind: string;
-  /** How many FAMILIES a home houses (`logichomesize` — see the sim's `familiesOf`); absent on
+  /** How many FAMILIES a home houses (`logichomesize` - see the sim's `familiesOf`); absent on
    *  non-residences. */
   homeSize?: number;
   stock?: readonly StockSlot[];
@@ -133,7 +133,7 @@ export interface SandboxBuildingRow {
     outputs: readonly { goodType: number; amount: number }[];
     ticks: number;
   }[];
-  /** The goods this workplace makes (`logicproduction`) — for a farm this is the field-farmed good and
+  /** The goods this workplace makes (`logicproduction`) - for a farm this is the field-farmed good and
    *  there are deliberately no `recipes` (the field loop, not the abstract in-house cycle, produces it). */
   produces?: readonly number[];
   workers?: readonly { jobType: number; count: number }[];
@@ -144,14 +144,14 @@ export interface SandboxBuildingRow {
 }
 
 /**
- * Per-building sandbox behaviour overrides, keyed by typeId — a data table, so {@link buildingRow}
+ * Per-building sandbox behaviour overrides, keyed by typeId - a data table, so {@link buildingRow}
  * stays a pure spread and a new special building means a new row here, not another branch. A `workers`
  * here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS} default (the
  * joinery pins its own collector-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
-  // The well — EXTRACTED shape (`DataCnmd/types/houses.ini` "work well 00"): a water-only store and
+  // The well - EXTRACTED shape (`DataCnmd/types/houses.ini` "work well 00"): a water-only store and
   // `logicproduction 1` (produces water), drawn by the standard recipe cycle from no inputs (water is
   // producedInHouse in `goodtypes.ini`, not map-gathered). The lone worker is a carrier (BUILDING_WORKER_SLOTS).
   [BUILDING_WELL]: {
@@ -159,7 +159,7 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     produces: [GOOD_WATER],
     recipes: [{ inputs: [], outputs: [{ goodType: GOOD_WATER, amount: 1 }], ticks: DEFAULT_RECIPE_TICKS }],
   },
-  // The bakery — EXTRACTED shape (`DataCnmd/types/houses.ini` "work bakery 00"): a water-in/flour-in/
+  // The bakery - EXTRACTED shape (`DataCnmd/types/houses.ini` "work bakery 00"): a water-in/flour-in/
   // bread-out three-slot store and `logicproduction 19` (produces bread), baked by the standard recipe
   // cycle (water + flour → bread). The worker slots (1 baker + 1 carrier) come from
   // BUILDING_WORKER_SLOTS; the generic producer drive gives the baker the fetch → bake → haul loop.
@@ -181,17 +181,17 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
       },
     ],
   },
-  // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-only store
+  // The grain farm - EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-only store
   // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately no recipe: the field
-  // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
+  // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat - the
   // worker slots (4 farmers + 1 carrier) come from BUILDING_WORKER_SLOTS below.
   [BUILDING_FARM]: {
     stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, initial: 0 }],
     produces: [GOOD_WHEAT],
   },
-  // The mill — EXTRACTED shape (`DataCnmd/types/houses.ini` "work mill 00"): a wheat-in (10) /
+  // The mill - EXTRACTED shape (`DataCnmd/types/houses.ini` "work mill 00"): a wheat-in (10) /
   // flour-out (20) two-slot store and `logicproduction 11` (produces flour), ground by the standard
-  // recipe cycle (wheat→flour 1:1 — a NAMED APPROXIMATION, `productionInputGoods 4` names the input
+  // recipe cycle (wheat→flour 1:1 - a NAMED APPROXIMATION, `productionInputGoods 4` names the input
   // but no readable amount field exists). The worker slots (2 millers + 1 carrier) come from
   // BUILDING_WORKER_SLOTS below; the generic producer drive gives the millers the whole
   // fetch-wheat → grind → haul-flour-out loop with no mill code.
@@ -276,9 +276,9 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   },
 };
 
-/** Per home tier: how many FAMILIES it houses (`houses.ini` `logichomesize` 1..5 — EXTRACTED; the
+/** Per home tier: how many FAMILIES it houses (`houses.ini` `logichomesize` 1..5 - EXTRACTED; the
  *  sim's `familiesOf` grouping counts against it) and its private larder capacity per food good
- *  (`logicstock 16/17 <cap> 1` — EXTRACTED: 5/10/15/15/15). */
+ *  (`logicstock 16/17 <cap> 1` - EXTRACTED: 5/10/15/15/15). */
 const HOME_TIERS = [
   { homeSize: 1, foodCapacity: 5 },
   { homeSize: 2, foodCapacity: 10 },
@@ -288,7 +288,7 @@ const HOME_TIERS = [
 ] as const;
 
 /** A home's residence data: its family capacity + the food-only larder its residents (and only its
- *  residents) eat from — the family mechanics' per-house gate. */
+ *  residents) eat from - the family mechanics' per-house gate. */
 function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
   const [smallestHome] = HOME_TIERS;
   const index = Math.max(0, Math.min(HOME_TIERS.length - 1, b.typeId - BUILDING_HOME_00));
@@ -323,7 +323,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
  * plus any extra buildings the caller declares. See {@link buildingRow} for the per-building shape.
  */
 export function buildSandboxBuildings(extras: SandboxContentExtras): Map<number, SandboxBuildingRow> {
-  // Real extracted footprints (live content) replace the hand-authored approximations wholesale — see
+  // Real extracted footprints (live content) replace the hand-authored approximations wholesale - see
   // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
   const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
     const real = extras.buildingFootprints;

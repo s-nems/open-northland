@@ -1,6 +1,6 @@
 /**
- * Standalone `CPalette` decoder — the 256-color palette stored as its own storable (id 0x3F6) in
- * `.cif`/`.lib` object graphs (used by bobs and maps). This is not the `.pcx` trailing palette —
+ * Standalone `CPalette` decoder - the 256-color palette stored as its own storable (id 0x3F6) in
+ * `.cif`/`.lib` object graphs (used by bobs and maps). This is not the `.pcx` trailing palette -
  * that one is RGB triples handled in `pcx.ts`; this one is the engine's native `[B,G,R,_]` table.
  *
  * Byte-level inspection of palettes from an owned game copy establishes a 0x400-byte body: 256
@@ -36,7 +36,7 @@ export interface Palette {
 /**
  * Decodes a standalone `CPalette` storable into 256 RGB triples. Throws a `palette:`-prefixed error on
  * a buffer too short for the header+body, or a header id that isn't 0x3F6 (a structurally wrong object
- * is a corrupt input — a batch pipeline should wrap the call per-file so one bad object can't abort the
+ * is a corrupt input - a batch pipeline should wrap the call per-file so one bad object can't abort the
  * run). Trailing bytes past the 0x400-byte body are ignored, matching the original's fixed-size read.
  */
 export function decodePalette(bytes: Uint8Array): Palette {

@@ -4,7 +4,7 @@ import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
 /** The authored-entity fixtures the join tests and the `runAuthoredSlice` tests share: a decoded map's
  *  `StaticObjects` rows, and the narrow IR they resolve against. */
 
-/** The narrow IR rows the joins read: two barracks levels, one job, one tribe — the same by-name keys
+/** The narrow IR rows the joins read: two barracks levels, one job, one tribe - the same by-name keys
  *  the real ir.json carries (buildingBobs editName+level, jobs name, tribes id). */
 export const AUTHORED_ROWS: AuthoredJoinRows = {
   buildingBobs: [

@@ -3,8 +3,8 @@ import { makeCellSampler } from './cell-field.js';
 /**
  * The terrain-brightness seam: the decoded map's `embr` lane (`content/maps/<id>.json` `brightness`,
  * per-cell u8) as a multiplicative shading field over the ground. The lane is the original's
- * pre-baked shading plane — slope light/shadow over the hills plus the fade-to-black map border (the
- * outermost 2–3 rows/columns hold 0) — so carrying it verbatim reproduces both looks without
+ * pre-baked shading plane - slope light/shadow over the hills plus the fade-to-black map border (the
+ * outermost 2–3 rows/columns hold 0) - so carrying it verbatim reproduces both looks without
  * inventing a lighting model. The ground mesh samples it per fragment from an R8 texture at
  * canonical-cell-coordinate UVs (`gpu/shading.ts`); this module's bilinear field is the
  * CPU-side sampler for everything else (the flat fallback, the map-object anchors, tests).
@@ -14,7 +14,7 @@ import { makeCellSampler } from './cell-field.js';
  * 1.25×): regressing luminance(original)/luminance(our unshaded render) against `embr` over 50
  * aligned open-ground cells fits ratio = embr/127.3 − 0.06 (rms 0.37, dominated by texture variance;
  * the border's embr=0 cells are black in the original). That pins the curve as linear luminance ×
- * embr/{@link BRIGHTNESS_NEUTRAL} with no offset — values above 127 brighten (up to 255 ≈ 2×), so
+ * embr/{@link BRIGHTNESS_NEUTRAL} with no offset - values above 127 brighten (up to 255 ≈ 2×), so
  * the shaders must not clamp the multiplier at 1.
  *
  * Landscape objects are shaded too, with one measured exception: mine decals, stones and grass track
@@ -22,7 +22,7 @@ import { makeCellSampler } from './cell-field.js';
  * even anchored on embr=0 border cells (flat regression over 118 canopies): the app grades each object
  * over the ground its footprint covers, minus that exemption (`content/object-shading.ts`).
  * Buildings and settlers draw unshaded, as the original does: its normal bob-print core
- * (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no brightness argument — only
+ * (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no brightness argument - only
  * landscape objects fold shade into their alpha blit. An earlier per-entity feet-cell multiplier was
  * dropped because one cell's value blackened whole footprints on baked slope-shadow.
  */
@@ -30,27 +30,27 @@ import { makeCellSampler } from './cell-field.js';
 /**
  * The lane value that leaves a texel unchanged (multiplier 1). Measured, not assumed: the flat-ground
  * histogram peaks at 127 and the corpus regression resolves 1/slope = 127.3 with ~zero intercept
- * (see the module note). Lane values map to `value / 127` — 0 = black (the map border), 255 ≈ 2×.
+ * (see the module note). Lane values map to `value / 127` - 0 = black (the map border), 255 ≈ 2×.
  */
 export const BRIGHTNESS_NEUTRAL = 127;
 
 /**
  * An immutable per-cell brightness field exposing one bilinear multiplier sampler (the CPU twin
- * of the shaded ground shader's texture sampling — same bilinear, same edge clamp). A field with no
- * lane (synthetic maps, older saves) is neutral — {@link shaded} is false and {@link brightnessAt}
- * returns 1 — so the unshaded mesh path stays byte-identical.
+ * of the shaded ground shader's texture sampling - same bilinear, same edge clamp). A field with no
+ * lane (synthetic maps, older saves) is neutral - {@link shaded} is false and {@link brightnessAt}
+ * returns 1 - so the unshaded mesh path stays byte-identical.
  */
 export interface BrightnessField {
-  /** False for the shared neutral field (no lane) — consumers skip the shading work entirely. */
+  /** False for the shared neutral field (no lane) - consumers skip the shading work entirely. */
   readonly shaded: boolean;
   /**
-   * The luminance multiplier (≥ 0, 1 = unchanged) at a continuous cell coordinate `(col, row)` —
+   * The luminance multiplier (≥ 0, 1 = unchanged) at a continuous cell coordinate `(col, row)` -
    * bilinear over the per-cell grid ÷ {@link BRIGHTNESS_NEUTRAL}, clamped at the map edges.
    */
   brightnessAt(col: number, row: number): number;
 }
 
-/** The neutral field — no brightness lane. Shared so an unshaded map allocates nothing. */
+/** The neutral field - no brightness lane. Shared so an unshaded map allocates nothing. */
 const NEUTRAL_FIELD: BrightnessField = { shaded: false, brightnessAt: () => 1 };
 
 /**
@@ -74,7 +74,7 @@ export function makeBrightnessField(
 }
 
 /**
- * Scale an `0xRRGGBB` colour's channels by `factor` (clamped to white) — the CPU twin of the shader
+ * Scale an `0xRRGGBB` colour's channels by `factor` (clamped to white) - the CPU twin of the shader
  * multiply, for draws that can't carry the lane per fragment: the unbound-cell fallback diamond, the
  * flat placeholder tint, and the tall map-object sprite tint.
  */

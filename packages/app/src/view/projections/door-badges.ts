@@ -65,7 +65,7 @@ export function computeDoorBadges(
     const workplace = workplaceOf(e);
     if (workplace === undefined) continue; // an unemployed / unbound settler shows no building badge
     const jobType = settlerJobType(e);
-    if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) — nothing to draw
+    if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) - nothing to draw
     const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [] };
     const role = roleOf(jobType);
     if (role === 'carrier') bucket.carriers.push(e.id);

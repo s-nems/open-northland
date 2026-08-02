@@ -13,15 +13,15 @@ import { mapResourceObjectNames } from '../src/game/sandbox/map-spawn.js';
 import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
 
 /**
- * The REAL-map gathering cycle end-to-end over the ACTUAL map content (`sandboxContent` — the exact
+ * The REAL-map gathering cycle end-to-end over the ACTUAL map content (`sandboxContent` - the exact
  * ContentSet `?map=` runs, with footprinted trees), in real-map density: a command-spawned wood
  * gatherer (flag auto-planted at its feet) inside a DENSE tree cluster must complete the full
  * fell → pick up the trunk → bank at the flag loop. Regression net for the reported "zbieracz ściął
- * drzewo, kłoda leży, a on stoi i nic nie robi" — a cycle stall shows up here as wood never reaching
+ * drzewo, kłoda leży, a on stoi i nic nie robi" - a cycle stall shows up here as wood never reaching
  * the flag heaps (the trunk left lying).
  *
  * The second test runs the SAME cycle over a collision grid built by the REAL map join
- * (`buildCollisionTerrain`) with tree placements — the exact double-blocking that stalled the live
+ * (`buildCollisionTerrain`) with tree placements - the exact double-blocking that stalled the live
  * map: baked-static tree cells never unblock when the tree falls, so the trunk lying there was
  * unreachable forever. `skipObjectNames` (the fix) leaves harvestables to their dynamic footprints.
  */
@@ -70,9 +70,9 @@ function bankedWood(sim: Simulation): number {
 }
 
 describe('map-style gathering cycle (sandbox content, footprinted trees, dense forest)', () => {
-  it('fells, picks the trunk up and banks it at the flag — never leaves the kłoda lying', () => {
+  it('fells, picks the trunk up and banks it at the flag - never leaves the kłoda lying', () => {
     const sim = new Simulation({ seed: 11, content: sandboxContent(), map: grassMap(40) });
-    // A command-spawned gatherer — the map path: the spawn handler plants its work flag at its feet.
+    // A command-spawned gatherer - the map path: the spawn handler plants its work flag at its feet.
     sim.enqueue({
       kind: 'spawnSettler',
       jobType: JOB_COLLECTOR,
@@ -85,7 +85,7 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     const gatherer = [...sim.world.query(WorkFlag)][0];
     expect(gatherer).toBeDefined();
 
-    // A dense map-like cluster: trees every 2 nodes in a 5×5 patch beside the gatherer — inside the
+    // A dense map-like cluster: trees every 2 nodes in a 5×5 patch beside the gatherer - inside the
     // flag radius, footprints overlapping work cells the way a real forest packs them.
     for (let ty = 34; ty <= 42; ty += 2) {
       for (let tx = 44; tx <= 52; tx += 2) {
@@ -105,9 +105,9 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     expect(looseWood(sim)).toBeLessThanOrEqual(WOOD_YIELD_PER_NODE);
   });
 
-  it('completes the cycle over the REAL collision join — a felled tree must unblock its cell', () => {
+  it('completes the cycle over the REAL collision join - a felled tree must unblock its cell', () => {
     // A synthetic decoded-map file: 40×40 open ground, a 5×5 tree cluster in the objects lane (the
-    // lane the STATIC collision join stamps) — the exact shape the live map stalls on.
+    // lane the STATIC collision join stamps) - the exact shape the live map stalls on.
     const treeName = 'cycle tree';
     const placements: number[] = [];
     for (let hy = 34; hy <= 42; hy += 2) {
@@ -119,14 +119,14 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
       typeIds: new Array(40 * 40).fill(0),
       objects: { types: [treeName], placements },
     };
-    // The collision view: the tree blocks its own node (walk) — enough to reproduce the wall.
+    // The collision view: the tree blocks its own node (walk) - enough to reproduce the wall.
     const ir: ContentIr = {
       landscapeGfx: [{ index: 900, editName: treeName, logicType: 4, walkBlockAreas: [[1, 0, 0, 1]] }],
       gatheringPipeline: [{ goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [900] } }],
     };
     // THE FIX under test: harvestable placements are skipped from the static grid (their blocking is
     // the dynamic resource footprint, unstamped on fell). Without the skip the felled tree's cell
-    // stays TERRAIN_BLOCKED forever and the trunk lying there is unreachable — the reported stall.
+    // stays TERRAIN_BLOCKED forever and the trunk lying there is unreachable - the reported stall.
     const grid: TerrainMap = buildCollisionTerrain(mapFile, ir, mapResourceObjectNames(ir));
     const sim = new Simulation({ seed: 12, content: sandboxContent(), map: grid });
     sim.enqueue({

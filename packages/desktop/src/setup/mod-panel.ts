@@ -8,7 +8,7 @@ import { el } from './dom.js';
  * Either way it reports the resolved mod root back to the page, which re-words the pick phase.
  */
 
-/** MB with no decimals — download progress copy ("312 / 594 MB"). */
+/** MB with no decimals - download progress copy ("312 / 594 MB"). */
 const mb = (bytes: number): string => `${Math.round(bytes / 1e6)}`;
 
 export interface ModPanelView {
@@ -66,7 +66,7 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
       onModRoot(await window.desktop.downloadMod());
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      // A user-initiated Cancel surfaces as an AbortError riding the IPC rejection — that is not a
+      // A user-initiated Cancel surfaces as an AbortError riding the IPC rejection - that is not a
       // failure and gets no fallback lecture.
       note.textContent = /abort/i.test(message)
         ? copy.cancelled

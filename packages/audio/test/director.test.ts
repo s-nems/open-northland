@@ -16,7 +16,7 @@ import {
 /**
  * The pure director: sim events + snapshot + camera → the sounds that should be audible. Jingles fire
  * non-spatially; action SFX are viewport-culled + positioned; unbound events are ignored; on-screen
- * terrain drives ambient loops. All headless — no AudioContext.
+ * terrain drives ambient loops. All headless - no AudioContext.
  */
 const bank: SoundBank = {
   staticGroups: [
@@ -27,7 +27,7 @@ const bank: SoundBank = {
     { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
     { name: 'Weapon Bow Long', sfx: [{ file: 'static/bow01.wav', params: [80] }] },
     { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
-    // The chat voice pair — resolved by logicSoundType id (the talk clip's authored voice cue).
+    // The chat voice pair - resolved by logicSoundType id (the talk clip's authored voice cue).
     { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
     {
       name: 'SocialTalk Female',
@@ -60,7 +60,7 @@ const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC, buildAtomicId: BUI
 const CANVAS_W = 800;
 const CANVAS_H = 600;
 const entity = (id: number): Entity => id as Entity;
-// Centre the camera on tile (5,5) — computed through the live projection so the fixture stays
+// Centre the camera on tile (5,5) - computed through the live projection so the fixture stays
 // valid whatever the calibrated pitch/model is (a hand-baked offset broke on every recalibration).
 const centre = tileToScreen(5, 5);
 const camera: Camera = {
@@ -107,7 +107,7 @@ function direct(
 
 describe('directAudio one-shots', () => {
   it('fires a positioned action SFX for an on-screen building placement', () => {
-    // `at` is a half-cell node: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
+    // `at` is a half-cell node: cell (5,5) anchors at node (11,10) - the same screen point as tile (5,5).
     const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
@@ -139,7 +139,7 @@ describe('directAudio one-shots', () => {
     expect(struck.oneShots).toHaveLength(1);
     expect(struck.oneShots[0]?.files).toEqual(['static/hammer01.wav']);
     expect(struck.oneShots[0]?.key).toBe('atomicSound:3');
-    // The swing's completion event carries no hammer (it moved to the strike cue) — no double knock.
+    // The swing's completion event carries no hammer (it moved to the strike cue) - no double knock.
     const done = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: BUILD_ATOMIC }]);
     expect(done.oneShots).toHaveLength(0);
   });
@@ -213,7 +213,7 @@ describe('directAudio combat SFX', () => {
 
 describe('directAudio spatial location is derived, not enumerated', () => {
   // The regression this guards: location used to be a hand-kept list of event kinds, and `resourceMined`
-  // was missing from it — so binding it a sound would have located it by an `ev.entity` it does not carry
+  // was missing from it - so binding it a sound would have located it by an `ev.entity` it does not carry
   // (it carries `node`), and it would have been silently silent. Nothing about it is in that list now; the
   // node comes off the event itself, so a newly-bound positioned kind works with no consumer edit.
   it('spatialises a positioned kind that no consumer enumerates', () => {
@@ -258,7 +258,7 @@ describe('directAudio death stinger owner filter', () => {
     expect(noLocal.oneShots).toHaveLength(0);
   });
 
-  // The jingle keys by death node, not by the reaped entity (see eventKey) — so a pile-up at one node
+  // The jingle keys by death node, not by the reaped entity (see eventKey) - so a pile-up at one node
   // debounces to a single stinger. Without an `at` it falls back to the entity key.
   it('keys the death jingle by node when the reaped unit had a position', () => {
     const located = direct(

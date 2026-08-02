@@ -13,7 +13,7 @@ const {
 /**
  * Pin the AI opening plan's content bindings against the real extracted content. The sim silently
  * `skip`s a plan entry whose id is unknown, so a typo amputates the AI's plan with no test failure
- * and no symptom beyond "the AI never builds X" — this suite is the tripwire: every id in
+ * and no symptom beyond "the AI never builds X" - this suite is the tripwire: every id in
  * `DEFAULT_BUILD_ORDER` and the workforce tables must resolve, every direct-place tier must carry a
  * construction bill (a bill-less site would finish instantly), every upgrade target must be reachable
  * over the `upgradeTarget` chain, and the per-building staffing targets must fit real worker slots
@@ -38,11 +38,11 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `building ${entry.building}`).toBeDefined();
       if (building === undefined) continue;
       if (entry.kind === 'place' || entry.kind === 'towerCoverage') {
-        // A place (or coverage-placed tower) entry raises a real construction site — an empty bill
+        // A place (or coverage-placed tower) entry raises a real construction site - an empty bill
         // would finish instantly.
         expect(building.construction.length, `construction bill of ${entry.building}`).toBeGreaterThan(0);
       } else {
-        // An upgrade entry names its TARGET tier — some lower tier must chain into it.
+        // An upgrade entry names its TARGET tier - some lower tier must chain into it.
         const reachable = content.buildings.some((from) => {
           let step = from.upgradeTarget;
           const visited = new Set<number>();
@@ -68,7 +68,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     for (const [id, staffing] of Object.entries(STAFFING_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `staffing override ${id}`).toBeDefined();
-      // The staffing cap is min(slot.count, tier) — a real slot must offer the highest tier's seats.
+      // The staffing cap is min(slot.count, tier) - a real slot must offer the highest tier's seats.
       const operatorWant = Math.max(staffing.operatorTarget ?? 0, staffing.operatorSurplus ?? 0);
       if (operatorWant > 0) {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
@@ -100,7 +100,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       for (const goodId of goods) {
         const good = content.goods.find((g) => g.id === goodId);
         expect(good, `craft good ${goodId}`).toBeDefined();
-        // The restriction must name a product the workplace actually makes — an unmakeable-only
+        // The restriction must name a product the workplace actually makes - an unmakeable-only
         // list issues no command and the workshop silently keeps crafting everything.
         expect(good !== undefined && produced.has(good.typeId), `${id} produces ${goodId}`).toBe(true);
       }

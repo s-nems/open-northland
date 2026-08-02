@@ -1,14 +1,14 @@
 /**
- * The committed catalog of `jobtypes.ini` job ids — the original's `[jobtype]` record numbers, transcribed
+ * The committed catalog of `jobtypes.ini` job ids - the original's `[jobtype]` record numbers, transcribed
  * verbatim. These are the semantic job ids the sim stamps on a settler, the profession roster offers, the
  * building worker slots staff, and the render/name reducers key bodies off, so they live in `catalog/`
  * where the game content (`game/sandbox/`), the binding reducers (`content/settler-gfx/`) and the
- * profession roster can all read them without either owning the other's vocabulary — the same charter as
+ * profession roster can all read them without either owning the other's vocabulary - the same charter as
  * `catalog/atomics.ts`. The sandbox's own derived ids (the rebased worker-slot band) live with the rebase,
  * in `game/sandbox/ids/economy/jobs.ts`.
  */
 
-/** No trade — the settler stands idle until assigned one. */
+/** No trade - the settler stands idle until assigned one. */
 export const JOB_IDLE = 0;
 
 // The age/sex life-stage classes + the two generic adults (`jobtypes.ini`/`logicdefines.inc` 1..6).
@@ -22,9 +22,9 @@ export const JOB_CHILD_MALE = 4;
 export const JOB_WOMAN = 5;
 export const JOB_CIVILIST = 6;
 
-// The builder trade — the real viking `jobtypes.ini` id 7. The planner puts this job on foundations.
+// The builder trade - the real viking `jobtypes.ini` id 7. The planner puts this job on foundations.
 export const JOB_BUILDER = 7;
-// The collector — the original's single outdoor gatherer trade (`jobtypes.ini` type 8). One collector
+// The collector - the original's single outdoor gatherer trade (`jobtypes.ini` type 8). One collector
 // fells wood, mines every deposit, and picks mushrooms (its real `allowedAtomics` cover all six harvest
 // atomics), so the sandbox's per-good {@link import('../game/sandbox/ids/economy/gatherers.js').GATHERERS}
 // rows all bind this one job rather than a per-good gatherer trade. Real ir.json numbers it the same, so a
@@ -33,7 +33,7 @@ export const JOB_COLLECTOR = 8;
 
 /**
  * The production trades, at their real `jobtypes.ini` ids. Baker/brewer/fisher/trader (20..22, 25) sit at
- * their real ids too — the synthetic gatherer band that used to shadow them is gone.
+ * their real ids too - the synthetic gatherer band that used to shadow them is gone.
  */
 export const JOB_JOINER = 9;
 export const JOB_ARMORER = 10;
@@ -50,18 +50,18 @@ export const JOB_BAKER = 20;
 export const JOB_BREWER = 21;
 export const JOB_FISHER = 22;
 
-// The carrier/porter — the real `jobtypes.ini` type 24. Ferries goods between stores; the sim's
+// The carrier/porter - the real `jobtypes.ini` type 24. Ferries goods between stores; the sim's
 // job-agnostic haul fallback. Not in `ADULT_CHARACTER_BY_JOB`, so it draws the civilian body.
 export const JOB_CARRIER = 24;
 export const JOB_TRADER = 25;
-/** The scout (`jobtypes.ini` type 27) — erects signposts (its one allowed atomic, build-guide 43). */
+/** The scout (`jobtypes.ini` type 27) - erects signposts (its one allowed atomic, build-guide 43). */
 export const JOB_SCOUT = 27;
 export const JOB_HERBALIST = 29; // jobtypes.ini "herb & mush guy"
 export const JOB_DRUID = 30;
 
 // Soldier jobs ride the real viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
-export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior (empty-hand body, brawls)
+export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed - the fists warrior (empty-hand body, brawls)
 // The base, unarmed soldier (`jobtypes.ini` type 31) is also the single profession the picker offers; a
 // weapon (a later step) specializes it into a spear/sword/bow class. Same job as {@link JOB_SOLDIER_UNARMED},
 // named for the picker.
@@ -84,6 +84,6 @@ export const JOB_HERO_SABER = 45; // hero_saber_hatschi
 export const JOB_HERO_AXE = 46; // hero_axe
 export const JOB_HEROINE_BOW = 47; // heroine_bow_xena
 
-/** The `jobtypes.ini` soldier band (unarmed base + weapon classes) — every one reads as "Żołnierz". */
+/** The `jobtypes.ini` soldier band (unarmed base + weapon classes) - every one reads as "Żołnierz". */
 export const SOLDIER_JOB_MIN = JOB_SOLDIER_UNARMED;
 export const SOLDIER_JOB_MAX = JOB_ARCHER_LONG;

@@ -11,10 +11,10 @@ import { isBaby } from './ageclass.js';
 // Need rise rates, in fixed-point [0,ONE] units per tick.
 //
 // source-basis (approximated): the original drives needs through per-animation `atomicanimations.ini`
-// `event <at> <channel> <delta>` tuples — an activity drains a channel while a satisfying animation restores it
-// — on a large integer scale not yet decoded. Hunger, fatigue, and enjoyment instead rise at a shared constant
+// `event <at> <channel> <delta>` tuples - an activity drains a channel while a satisfying animation restores it
+// - on a large integer scale not yet decoded. Hunger, fatigue, and enjoyment instead rise at a shared constant
 // rate calibrated to an observed 1× pace (user measurement): a bar loses 10% every 1min20s, so a full bar
-// drains in 800 s. Piety is the exception — it does not rise over time at all (see the header of
+// drains in 800 s. Piety is the exception - it does not rise over time at all (see the header of
 // {@link needsSystem}).
 
 /** Seconds a need bar takes to lose 10% at 1× (user's measured target); a full bar is ten such steps. */
@@ -28,7 +28,7 @@ export const HUNGER_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(TICKS_TO_DRAIN
 /** Fatigue drains at the same rate as hunger (user rule). */
 export const FATIGUE_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
 
-/** Enjoyment (the social/company bar) drains at the same rate as hunger — but only for non-fighters; a
+/** Enjoyment (the social/company bar) drains at the same rate as hunger - but only for non-fighters; a
  * soldier's/hero's company need is frozen (see {@link needsSystem}). Satisfied by the gossip drive
  * (`systems/social/gossip/`): settlers pair up and the talk/listen animation pulses refill the bar. */
 export const ENJOYMENT_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
@@ -40,14 +40,14 @@ export const ENJOYMENT_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
 export const NEED_INIT_MAX_DEFICIT_PERCENT = 50;
 
 /** One seeded starting need deficit in `[0, NEED_INIT_MAX_DEFICIT_PERCENT%]` of a full bar. Drawn from the
- * injected {@link Rng} (the sim's only legal randomness) at spawn — deterministic for a given seed. */
+ * injected {@link Rng} (the sim's only legal randomness) at spawn - deterministic for a given seed. */
 export function rollInitialNeed(rng: Rng): Fixed {
   const percent = rng.int(NEED_INIT_MAX_DEFICIT_PERCENT + 1); // 0..50 percent of a full bar
   return fx.div(fx.fromInt(percent), fx.fromInt(100));
 }
 
 /**
- * How much of the hunger bar one meal takes off: 40%, whatever was eaten — a foraged wild berry and a
+ * How much of the hunger bar one meal takes off: 40%, whatever was eaten - a foraged wild berry and a
  * stored meal are worth the same (observed original). A settler therefore eats several times between
  * spells of work instead of clearing the bar in one sitting.
  *
@@ -60,30 +60,30 @@ export function rollInitialNeed(rng: Rng): Fixed {
 export const EAT_HUNGER_RESTORE: Fixed = fx.div(fx.fromInt(40), fx.fromInt(100));
 
 /**
- * How much of the fatigue bar one sleep takes off: 20% — so rest is a repeated errand, not a one-shot
+ * How much of the fatigue bar one sleep takes off: 20% - so rest is a repeated errand, not a one-shot
  * reset, and a settler that has run its bar to the top beds down more than once.
  *
  * Source basis: observed original (user measurement). The civilist's `..._sleep` clip pulses
- * `event <at> 1 +4000` on the CHANGE_CONDITION channel twice (other bodies differ — the soldier's pulses
+ * `event <at> 1 +4000` on the CHANGE_CONDITION channel twice (other bodies differ - the soldier's pulses
  * four times), but that channel's reserve span is not readable, so the bar fraction is pinned by
  * observation rather than derived from the event values (approximated).
  */
 export const SLEEP_FATIGUE_RESTORE: Fixed = fx.div(fx.fromInt(20), fx.fromInt(100));
 
-/** Take `amount` off a need bar, floored at zero — the shared "a satisfier partially relieves a need"
+/** Take `amount` off a need bar, floored at zero - the shared "a satisfier partially relieves a need"
  *  step behind {@link EAT_HUNGER_RESTORE} and {@link SLEEP_FATIGUE_RESTORE}. */
 export function relieveNeed(current: Fixed, amount: Fixed): Fixed {
   const relieved = fx.sub(current, amount);
   return relieved < 0 ? fx.fromInt(0) : relieved;
 }
 
-/** How much piety a smith spends forging one weapon or piece of armor — the only thing that raises the piety
+/** How much piety a smith spends forging one weapon or piece of armor - the only thing that raises the piety
  * deficit now that it no longer rises over time (praying at a temple clears it). Applied once per completed
  * military-good production cycle to the worker on station (ProductionSystem). Source basis: design rule
- * (user-specified — the gods frown on arms-making); the magnitude is approximated. */
+ * (user-specified - the gods frown on arms-making); the magnitude is approximated. */
 export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10)); // 10% of the bar per weapon/armor
 
-/** Add {@link PIETY_PER_MILITARY_CYCLE} to a settler's piety deficit, clamped at {@link ONE} — the smith's
+/** Add {@link PIETY_PER_MILITARY_CYCLE} to a settler's piety deficit, clamped at {@link ONE} - the smith's
  * cost for forging one weapon/armor good. No-op if the entity is not (or no longer) a {@link Settler}. */
 export function chargeMilitaryPiety(world: World, settler: Entity): void {
   if (!world.has(settler, Settler)) return;
@@ -100,7 +100,7 @@ export function chargeMilitaryPiety(world: World, settler: Entity): void {
 export const STARVATION_DAMAGE_INTERVAL_TICKS = 10;
 /**
  * How many starvation bites empty a full `Health` pool: each bite is `max(1, ⌊max/240⌋)`, so death takes
- * 240..479 intervals for a pool ≥ 240 HP (truncation — the default 300-HP pool bites 1 and dies after 300
+ * 240..479 intervals for a pool ≥ 240 HP (truncation - the default 300-HP pool bites 1 and dies after 300
  * intervals × 10 ticks = 3000 ticks ≈ 2.5 minutes) and exactly `max` intervals for a smaller pool (the
  * 1-damage floor).
  *
@@ -111,11 +111,11 @@ export const STARVATION_DAMAGE_INTERVAL_TICKS = 10;
 export const STARVATION_BITES_TO_DIE = 240;
 
 /**
- * NeedsSystem — the rise half of settler needs, plus starvation damage.
+ * NeedsSystem - the rise half of settler needs, plus starvation damage.
  *
  * Each tick every {@link Settler}'s `hunger` and `fatigue` rise by their rate above, and `enjoyment` too for
- * every non-fighter (a soldier's/hero's company need is frozen — {@link isFighterJob}, user rule). Each is
- * clamped at `ONE` (a fully-spent settler stays pinned at the top of its bar until it acts — the
+ * every non-fighter (a soldier's/hero's company need is frozen - {@link isFighterJob}, user rule). Each is
+ * clamped at `ONE` (a fully-spent settler stays pinned at the top of its bar until it acts - the
  * `hungerInRange`/`fatigueInRange`/`enjoymentInRange` invariants require the need ∈ [0, ONE]). `piety` is not
  * touched here: it climbs only when the settler forges a weapon/armor good ({@link chargeMilitaryPiety},
  * driven by ProductionSystem, which applies its own `pietyInRange` clamp) and resets at a temple (the `pray`
@@ -128,11 +128,11 @@ export const STARVATION_BITES_TO_DIE = 240;
  * approximation: the original tracks no need bars for animals. Keyed on the tribe's empty tech graph, so a
  * jobless CIVILIZATION settler (its workplace demolished) still lives a full needs life.
  *
- * A BABY ({@link Age} carrier in a baby stage) is skipped whole: it is cared for — its family keeps it
+ * A BABY ({@link Age} carrier in a baby stage) is skipped whole: it is cared for - its family keeps it
  * fed and rested, so no need accumulates and it never starves (named approximation: the original's
  * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
  * bind a baby sleep animation with rest events (`setatomic 1/2 8 "viking_baby_*_sleep"`); it is
- * deliberately unwired — the family-care freeze covers rest too. A baby weans into childhood with its
+ * deliberately unwired - the family-care freeze covers rest too. A baby weans into childhood with its
  * birth needs, and from there the child eat/sleep drives take over (`settlers/drives/ladder.ts`). Keyed
  * on Age + stage like the planner's gate, so an adult fixture whose synthetic job id collides with a
  * baby id still lives a full needs life.
@@ -141,13 +141,13 @@ export const STARVATION_BITES_TO_DIE = 240;
  * STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the CleanupSystem
  * then reaps it like any other death). A JOBLESS settler is exempt: the eat drive lives in the job planner,
  * which skips it before any needs drive runs (`settlers/planner/system.ts`), so nothing could feed it. A
- * CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when food is
+ * CHILD is NOT exempt - the planner runs the eat drive for it, so like an adult it starves only when food is
  * truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a child's
  * 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold. Lengthening
  * childhood or raising the rise rate makes it live again.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
- * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.
+ * disabled, needs freeze where they are and starvation stops - the dev/admin lever scenes default to.
  */
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
@@ -162,7 +162,7 @@ export const needsSystem: System = (world, ctx) => {
     const risenFatigue = fx.add(settler.fatigue, FATIGUE_RISE_PER_TICK);
     settler.fatigue = risenFatigue > ONE ? ONE : risenFatigue;
     // Enjoyment (company) rises only for non-fighters; a soldier's/hero's stays put. Piety never rises here
-    // (forging weapons/armor is its only source — chargeMilitaryPiety).
+    // (forging weapons/armor is its only source - chargeMilitaryPiety).
     if (!isFighterJob(ctx.content, settler.jobType)) {
       const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
       settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;

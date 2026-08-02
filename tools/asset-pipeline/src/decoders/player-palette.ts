@@ -1,5 +1,5 @@
 /**
- * Player (team) colour palettes — the data behind "player 0 is blue, player 1 is red, …". The original
+ * Player (team) colour palettes - the data behind "player 0 is blue, player 1 is red, …". The original
  * *Cultures* engine gives each unit a per-creature palette composed from a base body palette plus a
  * player-colour ramp bound to the clothing/equipment patches; the unit's `.bmd` stores palette indices,
  * so the final colour is decided by whichever palette the index is read through. We reproduce that as a
@@ -7,14 +7,14 @@
  * `atlas.ts`) and the renderer reads each index through a per-player palette row in a LUT texture.
  *
  * How the player colour is applied: the RandomPalette recipe (`randompalette.ini`, `player_00…09`) binds the
- * `Player NN` ramp — a 16-colour ramp at colour-range 1 of a `playerNN.pcx` ({@link PLAYER_RAMP_START}) — onto
+ * `Player NN` ramp - a 16-colour ramp at colour-range 1 of a `playerNN.pcx` ({@link PLAYER_RAMP_START}) - onto
  * the men's clothing patches ({@link PLAYER_COLOR_BANDS}), so a per-player palette is the shared base body
  * palette with those bands overwritten by that player's ramp ({@link composePlayerPalette}). Confirmed
  * visually: the base `test_human_00`'s patch 10 is the cyan default vest, and remapping it turns the
  * civilian's vest the player colour.
  *
  * The original ships 10 player colours; we generate 16 (up to 16 players) by hue-rotating a reference ramp
- * for the extra six — a conscious divergence, logged in source basis. Pure functions only (palette maths on
+ * for the extra six - a conscious divergence, logged in source basis. Pure functions only (palette maths on
  * 768-byte RGB triples + RGBA LUT images); the I/O that reads the `.pcx` sources + writes the LUT PNG lives
  * in the pipeline stage.
  */
@@ -38,7 +38,7 @@ const PLAYER_RAMP_LENGTH = 16;
  * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it would paint a hauled log/clay slab
  * the team colour. The `player_NN` recipe never touches patch 15; only the separate `woman_NN` recipe
  * (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp (man → patch 10,
- * woman → patch 15) rather than this one shared band set — a deferred per-body-class follow-up; keeping
+ * woman → patch 15) rather than this one shared band set - a deferred per-body-class follow-up; keeping
  * patch 15 base-coloured is the faithful choice for the men who do the hauling.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
@@ -52,7 +52,7 @@ export interface PlayerColorDef {
   readonly name: string;
   /**
    * `pcx`: read the band from a shipped `playerNN.pcx` (the faithful 10). `synthetic`: hue-rotate the
-   * reference ramp to `hue` degrees (the 6 extras — a recorded divergence, no original equivalent).
+   * reference ramp to `hue` degrees (the 6 extras - a recorded divergence, no original equivalent).
    */
   readonly source:
     | { readonly kind: 'pcx'; readonly file: string }
@@ -62,7 +62,7 @@ export interface PlayerColorDef {
 /**
  * The 16 player colours, slot order = player id. Ids 0–9 are the original's `TPlayerColorId` order
  * (`logicdefines.inc`): blue is the human player's default, then red/yellow/cyan/green/purple/grey/orange/
- * neon/black. Ids 10–15 have no original equivalent — six hue-rotated ramps chosen to sit in the gaps
+ * neon/black. Ids 10–15 have no original equivalent - six hue-rotated ramps chosen to sit in the gaps
  * between the shipped hues (a divergence, see source basis). The `pcx` files are read from the game's
  * `Data/engine2d/bin/palettes/creatures/`.
  */
@@ -77,7 +77,7 @@ export const PLAYER_COLORS: readonly PlayerColorDef[] = [
   { id: 7, name: 'orange', source: { kind: 'pcx', file: 'player08.pcx' } },
   { id: 8, name: 'neon', source: { kind: 'pcx', file: 'player09.pcx' } },
   { id: 9, name: 'black', source: { kind: 'pcx', file: 'player10.pcx' } },
-  // Six extras with no original — hue-rotated to fill the gaps between the shipped hues.
+  // Six extras with no original - hue-rotated to fill the gaps between the shipped hues.
   { id: 10, name: 'spring', source: { kind: 'synthetic', hue: 140 } },
   { id: 11, name: 'teal', source: { kind: 'synthetic', hue: 168 } },
   { id: 12, name: 'azure', source: { kind: 'synthetic', hue: 205 } },
@@ -94,7 +94,7 @@ function assertPalette(p: Uint8Array, what: string): void {
 /**
  * A detached 768-byte copy of a palette. Deliberately not `p.slice()`: a decoded `.pcx` palette is a Node
  * `Buffer` (`Buffer.prototype.slice` returns a view that shares memory, unlike `Uint8Array.prototype.slice`),
- * so slicing it and writing to the "copy" would corrupt the shared base — every composed player palette would
+ * so slicing it and writing to the "copy" would corrupt the shared base - every composed player palette would
  * alias one buffer and collapse to the last one. `new Uint8Array` + `.set` always copies.
  */
 function copyPalette(p: Uint8Array): Uint8Array {
@@ -167,7 +167,7 @@ function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
 /**
  * Build a synthetic player source by hue-rotating `reference`'s band to `hueDeg`, keeping each entry's
  * saturation + value. This reuses a real ramp's dark→bright shape (so a synthesised colour shades like a
- * shipped one) while giving it a new hue — the basis for the six extra player colours. Returns a full
+ * shipped one) while giving it a new hue - the basis for the six extra player colours. Returns a full
  * 768-byte palette; only its band matters to {@link composePlayerPalette}. Grey/near-grey band entries
  * (saturation ~0, e.g. the ramp's dark anchor) stay neutral, since hue is meaningless there.
  */

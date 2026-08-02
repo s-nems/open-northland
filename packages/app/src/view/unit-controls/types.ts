@@ -23,7 +23,7 @@ export interface UnitControlsOptions {
   readonly elevation?: ElevationField;
   readonly humanPlayer: number;
   /** The observer session: every player's entities are pickable as if owned (attack targeting is
-   *  moot — with no side to fight for, no unit reads as an enemy). Default false. */
+   *  moot - with no side to fight for, no unit reads as an enemy). Default false. */
   readonly observer?: boolean;
   readonly lang: string;
   readonly professions: readonly PickerEntry[];
@@ -33,7 +33,7 @@ export interface UnitControlsOptions {
    *  choices); absent = identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: Command) => void;
-  /** The renderer's culled, depth-sorted draw list for the last drawn frame (empty before the first) —
+  /** The renderer's culled, depth-sorted draw list for the last drawn frame (empty before the first) -
    *  what a click hit-tests against, so selection and attack targeting inherit the frame's viewport and
    *  fog culls instead of re-deriving them from the snapshot. */
   readonly drawnItems: () => readonly DrawItem[];
@@ -59,7 +59,7 @@ export interface UnitControls {
   /** The green/red workplace-assignment wash for the render building-highlight layer, or null when the
    *  player isn't choosing a workplace. Read each frame by the game loop. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;
-  /** Whether the player is choosing a signpost spot ("Erect Signpost" mode) — the game loop shows the
+  /** Whether the player is choosing a signpost spot ("Erect Signpost" mode) - the game loop shows the
    *  placement overlay (dim where the erect click would be refused) while this is true. */
   readonly signpostPlacementActive: () => boolean;
   readonly tick: (snapshot: WorldSnapshot) => void;

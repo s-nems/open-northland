@@ -13,20 +13,20 @@ import { testContent } from '../../fixtures/content.js';
  */
 
 export const HEADQUARTERS = 1;
-export const SAWMILL = 2; // a workplace (one carpenter slot, a plank recipe) — its operator gets bound
+export const SAWMILL = 2; // a workplace (one carpenter slot, a plank recipe) - its operator gets bound
 export const SMITHY = 4; // tech-gated: viking `jobEnablesHouse 2 4` locks it behind a carpenter (job 2)
 export const WOODCUTTER = 1;
 export const CARPENTER = 2; // the job that unlocks the SMITHY for the viking tribe
 export const WOOD = 1;
-export const PLANK = 2; // the sawmill recipe's output — an HQ stock slot whose `initial` is 0
+export const PLANK = 2; // the sawmill recipe's output - an HQ stock slot whose `initial` is 0
 export const VIKING = 1;
-export const FRANK = 2; // a tribe absent from the fixture's tribe table — its tech-graph gates nothing
+export const FRANK = 2; // a tribe absent from the fixture's tribe table - its tech-graph gates nothing
 
 export function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
 }
 
-/** The nth canonical (ascending-id) entity, asserting it exists — keeps tests free of `!`. */
+/** The nth canonical (ascending-id) entity, asserting it exists - keeps tests free of `!`. */
 export function nthEntity(sim: Simulation, n: number): Entity {
   const ids = sim.world.canonicalEntities();
   const e = ids[n];

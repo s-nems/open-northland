@@ -31,7 +31,7 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * JobSystem (assignment half — the smallest slice): an IDLE settler (`jobType === null`) takes the
+ * JobSystem (assignment half - the smallest slice): an IDLE settler (`jobType === null`) takes the
  * job of an understaffed, tech-enabled, same-tribe workplace it qualifies for, gated by `needforjob`.
  *
  * The shared fixture's sawmill (building type 2) declares one carpenter slot (`workers jobType 2,
@@ -77,7 +77,7 @@ function settler(sim: Simulation, jobType: number | null, xp?: Map<number, numbe
   return e;
 }
 
-describe('JobSystem — idle settlers take open workplace jobs', () => {
+describe('JobSystem - idle settlers take open workplace jobs', () => {
   it('assigns an idle settler the worker job of an open, tech-enabled workplace', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     placeBuilding(sim, SAWMILL, 5, 5); // one carpenter slot, ungated
@@ -124,7 +124,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     expect(sim.world.get(a, Settler).jobType).toBe(WOODCUTTER);
     expect(sim.world.get(b, Settler).jobType).toBe(WOODCUTTER);
     expect(sim.world.get(c, Settler).jobType).toBe(WOODCUTTER);
-    expect(sim.world.get(d, Settler).jobType).toBe(CARRIER); // the woodcutter slots full — the transport slot next
+    expect(sim.world.get(d, Settler).jobType).toBe(CARRIER); // the woodcutter slots full - the transport slot next
     expect(sim.world.get(e, Settler).jobType).toBeNull(); // every slot filled
   });
 
@@ -143,7 +143,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
 
   it('leaves a loose carrier unposted when no transport slot is open anywhere', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    placeBuilding(sim, SAWMILL, 5, 5); // a carpenter slot — no carrier slot in this world
+    placeBuilding(sim, SAWMILL, 5, 5); // a carpenter slot - no carrier slot in this world
     const loose = settler(sim, CARRIER);
 
     jobSystem(sim.world, ctxOf(sim));
@@ -195,7 +195,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
   });
 
   // SKIPPED: the building tech-unlock gate (`buildingEnabled`/`jobEnablesHouse`) is disabled feature-wide
-  // — see docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
+  // - see docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
   it.skip('does not assign a job at a tech-gated workplace until its enabling job is present', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Give the smithy (type 4) a worker slot so it COULD offer a job; it is gated by `jobEnablesHouse
@@ -241,7 +241,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
 
   it('gates assignment on the settler clearing the job needforjob XP threshold', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // Taking the carpenter job requires 30 REPEATS of the wood track (typeId 1, factor 10 — 300 raw XP).
+    // Taking the carpenter job requires 30 REPEATS of the wood track (typeId 1, factor 10 - 300 raw XP).
     const tribe = sim.content.tribes[0];
     if (tribe === undefined) throw new Error('fixture has no tribe');
     tribe.jobRequirements.push({
@@ -265,7 +265,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
   it('clears a GENERAL-keyed gate through specific-good work (the miller←farmer-general chain)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Real content keys some job gates on a GENERAL track (`needforjob miller 10 farmer-general`)
-    // while the prerequisite job only ever works specific goods — the gate must count the trade's
+    // while the prerequisite job only ever works specific goods - the gate must count the trade's
     // total repeats (`requirementRepeats`), since work accrues only the matched specific track.
     const tribe = sim.content.tribes[0];
     if (tribe === undefined) throw new Error('fixture has no tribe');
@@ -338,7 +338,7 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
   });
 });
 
-describe('the civilist trade — the Cywil order pins a settler jobless', () => {
+describe('the civilist trade - the Cywil order pins a settler jobless', () => {
   const CIVILIST = 6; // the fixture's no-trade adult (the original's `jobtypes.ini` 6)
 
   it('setJob to civilist takes, and the assign pass never re-employs a job-6 settler', () => {
@@ -351,7 +351,7 @@ describe('the civilist trade — the Cywil order pins a settler jobless', () => 
     expect(sim.world.get(e, Settler).jobType).toBe(CIVILIST);
 
     jobSystem(sim.world, ctxOf(sim));
-    // Non-null jobType is never re-assigned, and no workplace declares a civilist slot — it idles.
+    // Non-null jobType is never re-assigned, and no workplace declares a civilist slot - it idles.
     expect(sim.world.get(e, Settler).jobType).toBe(CIVILIST);
 
     setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: e, jobType: WOODCUTTER });
@@ -495,8 +495,8 @@ describe('JobSystem: an automatic hire runs the trade-change reset', () => {
  * reporting for duty. Without them a workshop beside a walking route collects staff without bound
  * (the reported "30/2 collectors in the pottery") and the flag gatherer it swallows stops gathering.
  */
-describe('JobSystem — adopting the pre-employed settler standing on a workplace', () => {
-  /** Put `e` at the sawmill's tile — the adopt pass reads the tile under the settler's feet. */
+describe('JobSystem - adopting the pre-employed settler standing on a workplace', () => {
+  /** Put `e` at the sawmill's tile - the adopt pass reads the tile under the settler's feet. */
   function standOnSawmill(sim: Simulation, e: Entity): void {
     sim.world.get(e, Position).x = fx.fromInt(5);
     sim.world.get(e, Position).y = fx.fromInt(5);
@@ -521,7 +521,7 @@ describe('JobSystem — adopting the pre-employed settler standing on a workplac
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(first, JobAssignment)).toBe(true);
-    expect(sim.world.has(second, JobAssignment)).toBe(false); // the slot is taken — it stays loose
+    expect(sim.world.has(second, JobAssignment)).toBe(false); // the slot is taken - it stays loose
   });
 
   it('leaves a flag worker alone, pinned to a good or not', () => {

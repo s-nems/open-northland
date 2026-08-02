@@ -2,7 +2,7 @@ import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 
 /**
- * The details panel's shared geometry primitives — the panel-wide metrics and the section/panel rect
+ * The details panel's shared geometry primitives - the panel-wide metrics and the section/panel rect
  * builders every kind's layout (building, settler, compact) is measured from, so the height a section
  * reserves and the rows a section draws cannot drift apart. Metrics are design px (multiplied by uiscale
  * at build time, so consumers only see screen-px rects).
@@ -28,7 +28,7 @@ const TITLE_H = 18;
 const BODY_PAD_Y = 5;
 /** A plain text row (key/value lines, worker rows). */
 export const ROW_H = 15;
-/** Top padding that vertically centers a font-10 line in a {@link ROW_H} row — the one drawing metric
+/** Top padding that vertically centers a font-10 line in a {@link ROW_H} row - the one drawing metric
  *  every details-panel section (building, settler, compact) shares. */
 export const ROW_TEXT_PAD = 2;
 

@@ -20,7 +20,7 @@ export const selectionCentre = (
   let wx = 0;
   let wy = 0;
   const ids: number[] = [];
-  // The selection's common trade (undefined when mixed) — picks the per-profession menu variant.
+  // The selection's common trade (undefined when mixed) - picks the per-profession menu variant.
   let jobType: number | undefined;
   let mixed = false;
   // Ascending, because a Set iterates in click order while `ids` reaches the sim as command order (one

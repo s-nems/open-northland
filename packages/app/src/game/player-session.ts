@@ -21,7 +21,7 @@ const { isValidPlayer } = components;
 const OBSERVER = 'observer';
 const OVERSEER = 'overseer';
 
-/** `?player=observer|overseer` — either spectator pseudo-seat (the roster's `OBSERVER_SEAT` /
+/** `?player=observer|overseer` - either spectator pseudo-seat (the roster's `OBSERVER_SEAT` /
  *  `OVERSEER_SEAT`): a session with no fog view and every player's entities pickable. The seat-number
  *  reads ({@link localPlayerParam}) fall back to {@link HUMAN_PLAYER} for placement/HUD ownership. */
 export function observerParam(params: URLSearchParams): boolean {
@@ -29,7 +29,7 @@ export function observerParam(params: URLSearchParams): boolean {
   return player === OBSERVER || player === OVERSEER;
 }
 
-/** `?player=observer` — the read-only spectator: it selects and inspects any entity but issues no
+/** `?player=observer` - the read-only spectator: it selects and inspects any entity but issues no
  *  commands (the game view no-ops its command seam). False for the `overseer` god-mode, which keeps
  *  full control of every seat. */
 export function readOnlyObserverParam(params: URLSearchParams): boolean {
@@ -65,7 +65,7 @@ export function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number
 /**
  * Builds the owner→team-colour mapping for one map: the script roster's authored colours, then the
  * menu's `?colors=` overrides. A player outside the roster keeps its slot id as the colour (the
- * app-wide default — LUT row = player id — so scenes and roster-less maps look unchanged).
+ * app-wide default - LUT row = player id - so scenes and roster-less maps look unchanged).
  */
 export function playerColourMap(
   script: Pick<MapScript, 'players'> | null,

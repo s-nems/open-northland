@@ -3,14 +3,14 @@ import { join } from 'node:path';
 import { IR_VERSION } from '@open-northland/data';
 
 /**
- * The stamp `runPipeline` writes as its final step — both the completion marker (an interrupted
+ * The stamp `runPipeline` writes as its final step - both the completion marker (an interrupted
  * conversion never carries one) and the staleness signal an installed desktop shell compares against
  * its own bundled expectation to offer regeneration.
  */
 
 /**
  * Bump when a decoder/extraction change alters `content/` bytes without touching the IR schema
- * (IR_VERSION covers that leg) — e.g. a fixed palette decode or a new atlas emission. An installed
+ * (IR_VERSION covers that leg) - e.g. a fixed palette decode or a new atlas emission. An installed
  * shell treats a mismatch as "regeneration recommended", so forgetting a bump costs staleness
  * detection, never correctness.
  */
@@ -23,7 +23,7 @@ export interface PipelineManifest {
   readonly contentRevision: number;
 }
 
-/** What a conversion run by THIS build of the pipeline stamps — the comparison baseline. */
+/** What a conversion run by THIS build of the pipeline stamps - the comparison baseline. */
 export const CURRENT_MANIFEST: PipelineManifest = {
   irVersion: IR_VERSION,
   contentRevision: CONTENT_REVISION,

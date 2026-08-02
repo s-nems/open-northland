@@ -7,7 +7,7 @@ import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * `dropGood` — the "place this good on the ground" order. It drops a loose good pile as a bare
+ * `dropGood` - the "place this good on the ground" order. It drops a loose good pile as a bare
  * {@link Stockpile} + {@link Position} (NO {@link GroundDrop}/{@link Building} marker), so the pile draws as
  * a per-fill heap that GROWS with its contents and rests in place (not a felled-trunk pickup source). A
  * repeat drop of the same good on the same tile STACKS onto the existing pile, capped at
@@ -18,7 +18,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 const WOOD = 5;
 const STONE = 3;
 const UNKNOWN_GOOD = 99;
-const PIXELS_PER_TILE = 65536; // ONE — the fixed-point tile unit a Position uses.
+const PIXELS_PER_TILE = 65536; // ONE - the fixed-point tile unit a Position uses.
 
 function dropContent(): ContentSet {
   return parseContentSet({
@@ -59,7 +59,7 @@ describe('dropGood', () => {
     // A loose pile: no felled-trunk marker (draws as a growing heap, rests in place), no building.
     expect(sim.world.has(pile, GroundDrop)).toBe(false);
     expect(sim.world.has(pile, Building)).toBe(false);
-    // The pile holds exactly the dropped amount of the dropped good — nothing conjured, nothing lost.
+    // The pile holds exactly the dropped amount of the dropped good - nothing conjured, nothing lost.
     expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(4);
     const pos = sim.world.get(pile, Position);
     expect([pos.x, pos.y]).toEqual([6 * PIXELS_PER_TILE, 7 * PIXELS_PER_TILE]);
@@ -97,7 +97,7 @@ describe('dropGood', () => {
     sim.step();
 
     const piles = [...sim.world.query(Stockpile, Position)].filter((e) => !sim.world.has(e, Building));
-    expect(piles).toHaveLength(2); // two separate heaps on the same tile — neither overwritten
+    expect(piles).toHaveLength(2); // two separate heaps on the same tile - neither overwritten
   });
 
   it('skips a non-positive amount (id-neutral, still logged for faithful replay)', () => {
@@ -108,7 +108,7 @@ describe('dropGood', () => {
     expect(sim.commands.log).toHaveLength(1); // but recorded so replay stays faithful
   });
 
-  it('skips a good absent from the catalog (recoverable bad input — no throw, still logged)', () => {
+  it('skips a good absent from the catalog (recoverable bad input - no throw, still logged)', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'dropGood', good: UNKNOWN_GOOD, x: 0, y: 0, amount: 3 });
     expect(() => sim.step()).not.toThrow();

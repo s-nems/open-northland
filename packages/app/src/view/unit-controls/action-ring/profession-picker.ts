@@ -17,7 +17,7 @@ export interface ProfessionPickerOptions {
   readonly professions: readonly PickerEntry[];
   /** The bundled serif UI face (shared with the details panel); the picker composes it over its fallback. */
   readonly uiFont: UiFont;
-  /** A profession row was clicked — the caller issues the `setJob` command and closes the menu. */
+  /** A profession row was clicked - the caller issues the `setJob` command and closes the menu. */
   readonly onPick: (jobType: number) => void;
   /** The window was dismissed without a pick (the ✕ box or a backdrop click). */
   readonly onDismiss: () => void;
@@ -25,7 +25,7 @@ export interface ProfessionPickerOptions {
 
 export interface ProfessionPicker {
   /** Reveal the backdrop + window (the caller has already switched the menu to its `jobs` mode),
-   *  offering only the professions `unlocked` admits — the tech tree's discovered set for the current
+   *  offering only the professions `unlocked` admits - the tech tree's discovered set for the current
    *  selection. A group whose every row is filtered out hides its header too. */
   show(unlocked: (jobType: number) => boolean): void;
   /** Hide the backdrop + window. */

@@ -113,8 +113,8 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
-  // Advance on the combat node the reach check measured — its own node for a unit, its nearest wall cell for
-  // a building — so the chase walks toward where the swing lands. A building's full wall list rides along so
+  // Advance on the combat node the reach check measured - its own node for a unit, its nearest wall cell for
+  // a building - so the chase walks toward where the swing lands. A building's full wall list rides along so
   // a chaser whose nearest face is manned encircles to another.
   const chaseTarget: ChaseTarget = {
     entity: target,
@@ -130,7 +130,7 @@ function busyOrFelled(world: World, e: Entity): boolean {
 }
 
 /** A live player move order (a {@link PlayerOrder} that is not an {@link AttackOrder}) suppresses ALL
- *  auto-behavior en route — engage and flee alike, the reposition is authoritative. It dies on arrival, so
+ *  auto-behavior en route - engage and flee alike, the reposition is authoritative. It dies on arrival, so
  *  the unit's own stance takes over at the spot. */
 function suppressedByMoveOrder(world: World, e: Entity): boolean {
   return world.has(e, PlayerOrder) && !world.has(e, AttackOrder);
@@ -166,7 +166,7 @@ function resolveFleeState(
     return false;
   }
   // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase. A stale
-  // marker would outlive the flee — `fleeDrive` drops `Fleeing` but not `Engagement` — benching the unit
+  // marker would outlive the flee - `fleeDrive` drops `Fleeing` but not `Engagement` - benching the unit
   // (plannerSystem skips it) and keeping combat awake forever.
   world.remove(e, Engagement);
   fleeDrive(world, ctx, terrain, index, presence, e, attacker);
@@ -217,7 +217,7 @@ function huntSearchRests(
 }
 
 /** A travelling unit that is neither engaged nor ordered walks under another drive (an economy walk, or a
- *  DEFEND unit heading back to its anchor) — don't yank it into combat. An engaged or ordered one IS
+ *  DEFEND unit heading back to its anchor) - don't yank it into combat. An engaged or ordered one IS
  *  re-evaluated, so a chaser stops and swings the instant it is in reach. */
 function walksUnderAnotherDrive(world: World, e: Entity, travelling: boolean, ordered: boolean): boolean {
   return travelling && !world.has(e, Engagement) && !ordered;
@@ -269,9 +269,9 @@ function swingAt(
 }
 
 /** An unowned scenario CIV keeps the swing-in-place read and never advances on a target out of reach: its
- *  search radius was capped at `maxRange`, so this is unreachable — kept explicit rather than assumed away.
+ *  search radius was capped at `maxRange`, so this is unreachable - kept explicit rather than assumed away.
  *  An owned combatant advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked
- *  bear's charge — {@link resolveTarget} only admits a victim inside its aggro radius). */
+ *  bear's charge - {@link resolveTarget} only admits a victim inside its aggro radius). */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
 }

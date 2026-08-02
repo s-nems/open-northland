@@ -5,15 +5,15 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
  * The decor half of the map-object feature: flat ground decor (waves, grass, flowers, mine stains)
- * batched into per-block quad meshes under the entity sprites — one draw call per texture page per
+ * batched into per-block quad meshes under the entity sprites - one draw call per texture page per
  * block, built once; an animated batch's vertex/uv buffers are rewritten in place when the play-head
  * advances (and only while the block is visible). Translucency (waves, fern edges) rides in the atlas
- * texture's own alpha channel — there is no per-object opacity.
+ * texture's own alpha channel - there is no per-object opacity.
  *
  * On a brightness-shaded map ({@link MapObjectSprite.brightness}) each quad carries its anchor
- * cell's multiplier as a constant per-vertex `aBrightness` (the ground's shaded-mesh shader — same
+ * cell's multiplier as a constant per-vertex `aBrightness` (the ground's shaded-mesh shader - same
  * one-draw-call batching, full >1 range), because the original bakes the `embr` shading into these
- * ground-coupled decals too (measured on the corpus — see the field's doc).
+ * ground-coupled decals too (measured on the corpus - see the field's doc).
  */
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
@@ -64,7 +64,7 @@ interface QuadBatch {
 }
 
 /** Batch `objects` (all sharing `source`) into one mesh of quads, each written for its
- *  tick-0 frame — the shared build step for a decor group's static and animated halves. A batch with
+ *  tick-0 frame - the shared build step for a decor group's static and animated halves. A batch with
  *  any per-object brightness draws through the shaded ground shader, each quad's four vertices
  *  carrying its anchor cell's multiplier (constant per quad, so an animated rewrite never touches it). */
 function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSource): QuadBatch {
@@ -93,7 +93,7 @@ function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSour
 }
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
- *  A removed object's slot is `null` — its quad stays zeroed and the rewrite loop skips it. */
+ *  A removed object's slot is `null` - its quad stays zeroed and the rewrite loop skips it. */
 interface AnimatedDecorBatch {
   readonly objects: (MapObjectSprite | null)[];
   readonly positions: Float32Array;
@@ -103,7 +103,7 @@ interface AnimatedDecorBatch {
   readonly pageH: number;
 }
 
-/** Where one decor object's quad lives — the removal handle {@link DecorChunk.quads} hands the layer:
+/** Where one decor object's quad lives - the removal handle {@link DecorChunk.quads} hands the layer:
  *  zero the 8 floats at `quadIndex` (+ buffer update) and, for an animated batch, null its slot so the
  *  play-head rewrite never restores it. */
 interface DecorQuadRef {
@@ -117,7 +117,7 @@ interface DecorQuadRef {
 /**
  * One decor chunk: flat map objects batched by texture source into meshes (built once for static
  * objects; animated ones have their vertex/uv buffers rewritten in place when the play-head
- * advances — and only while the chunk is visible). AABB-culled like terrain chunks.
+ * advances - and only while the chunk is visible). AABB-culled like terrain chunks.
  */
 export interface DecorChunk {
   readonly container: Container;
@@ -127,10 +127,10 @@ export interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
-  /** Per-object removal handles (see {@link DecorQuadRef}) — how the layer takes one quad out of a
+  /** Per-object removal handles (see {@link DecorQuadRef}) - how the layer takes one quad out of a
    *  built batch when a virgin map resource is first worked (the `?map=` handover). */
   readonly quads: Map<MapObjectSprite, DecorQuadRef>;
-  /** The tick the animated buffers were last written for — per chunk, so a chunk scrolling into
+  /** The tick the animated buffers were last written for - per chunk, so a chunk scrolling into
    *  view while the sim is paused still gets caught up to the current tick's frame. */
   lastWrittenTick: number;
 }

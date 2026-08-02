@@ -6,12 +6,12 @@ import { JOB_CARRIER } from '../../catalog/jobs.js';
 import { staffableCrewFor } from '../../game/sandbox/index.js';
 import { GATHERER_BY_GOOD, type GatherCamp, MINE_DEPOSIT_SCALE, WAREHOUSE_IDS } from './placements.js';
 
-/** The world queries the sandbox scene's checks are stated in — staffing tallies, camp depletion, and
+/** The world queries the sandbox scene's checks are stated in - staffing tallies, camp depletion, and
  *  the seeded warehouse stores. */
 
 const { Building, JobAssignment, Resource, Settler, Stockpile } = components;
 
-/** Bound settlers per (building, jobType) — the check-side mirror of the JobSystem's staffing tally. */
+/** Bound settlers per (building, jobType) - the check-side mirror of the JobSystem's staffing tally. */
 function boundCrewCount(sim: Simulation, building: Entity, jobType: number): number {
   let n = 0;
   for (const e of sim.world.query(Settler, JobAssignment)) {
@@ -35,7 +35,7 @@ export function producingCrewsComplete(sim: Simulation): boolean {
   return true;
 }
 
-/** Total staffable slots across the placed settlement vs total bound settlers — the carriers' half of the
+/** Total staffable slots across the placed settlement vs total bound settlers - the carriers' half of the
  *  staffing proof (see {@link producingCrewsComplete}). */
 export function settlementFullyStaffed(sim: Simulation): boolean {
   let expected = 0;

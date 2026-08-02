@@ -8,16 +8,16 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * The `assignWorker` command — the player-directed twin of the JobSystem's automatic assignment: bind
+ * The `assignWorker` command - the player-directed twin of the JobSystem's automatic assignment: bind
  * an OWNED settler to a SPECIFIC building as a worker (set its `jobType` to the building's open slot +
  * stamp its {@link JobAssignment} binding). It applies the same-tribe / same-owner / per-building capacity
- * gates the JobSystem does, and enforces the per-settler XP threshold (`needforjob`) — a trade is earned by
+ * gates the JobSystem does, and enforces the per-settler XP threshold (`needforjob`) - a trade is earned by
  * the settler, so a hand assignment cannot mint an unqualified craftsman; it falls through to the next listed
  * job (the hauler slot). Only the tribe-tech gate (`jobEnablesJob`) is relaxed for the player, so a built
  * workshop is never refused for want of an enabling trade (the "mennica → tragarz" bug). See openings.ts.
  *
  * The shared fixture's sawmill (type 2) declares one carpenter slot; the HQ (type 1) declares three
- * woodcutter slots — mirrors job-system.test.ts.
+ * woodcutter slots - mirrors job-system.test.ts.
  */
 
 const VIKING = 1;
@@ -54,15 +54,15 @@ function settler(
 }
 
 // The sawmill offers only CARPENTER; the priority list carries it (plus the HQ's woodcutter, which the
-// sawmill doesn't offer — proving the building-doesn't-offer entry is skipped, not bound).
+// sawmill doesn't offer - proving the building-doesn't-offer entry is skipped, not bound).
 const WOODCUTTER = 1;
-const CARRIER = 36; // the twin mill's transport slot — the hauler fallback in the priority list
+const CARRIER = 36; // the twin mill's transport slot - the hauler fallback in the priority list
 const TWIN_MILL = 8; // building type: two carpenter slots + one carrier slot
 const WOOD_TRACK = 1; // the woodcutter-wood experience track (factor 10)
 const WOOD_FACTOR = 10;
 const CARPENTER_GATE_REPEATS = 10;
 
-/** Gate the carpenter trade behind {@link CARPENTER_GATE_REPEATS} repeats of the wood track — the shape
+/** Gate the carpenter trade behind {@link CARPENTER_GATE_REPEATS} repeats of the wood track - the shape
  *  real content uses (`needforjob 9 10 3`, the joiner behind collector-wood). */
 function gateCarpenter(sim: Simulation): void {
   const tribe = sim.content.tribes[0];
@@ -85,7 +85,7 @@ const assign = (entity: Entity, building: Entity): AssignWorkerCommand => ({
   jobPriority: [WOODCUTTER, CARPENTER],
 });
 
-describe('assignWorker — bind an owned settler to a chosen building', () => {
+describe('assignWorker - bind an owned settler to a chosen building', () => {
   it('sets the building’s worker job and binds the settler to THAT building', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = placeBuilding(sim, SAWMILL, 5, 5);
@@ -108,7 +108,7 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
     expect(sim.world.get(worker, JobAssignment).workplace).toBe(chosen);
   });
 
-  it('is a no-op at a FULL building (its one slot already staffed) — capacity is respected', () => {
+  it('is a no-op at a FULL building (its one slot already staffed) - capacity is respected', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = placeBuilding(sim, SAWMILL, 5, 5); // count 1
     const first = settler(sim);
@@ -134,7 +134,7 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
     expect(sim.world.get(worker, JobAssignment).workplace).toBe(millB); // moved off A onto B
   });
 
-  it('skips a NEUTRAL (unowned) settler — only a player’s own unit is assignable', () => {
+  it('skips a NEUTRAL (unowned) settler - only a player’s own unit is assignable', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = placeBuilding(sim, SAWMILL, 5, 5);
     const neutral = settler(sim, null); // no Owner
@@ -150,7 +150,7 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
     const hq = placeBuilding(sim, 1, 5, 5); // the HQ offers WOODCUTTER (job 1), not CARPENTER (job 2)
     const worker = settler(sim);
 
-    // Priority prefers CARPENTER, but the HQ doesn't offer it — so the walk skips to WOODCUTTER.
+    // Priority prefers CARPENTER, but the HQ doesn't offer it - so the walk skips to WOODCUTTER.
     assignWorker(sim.world, ctxOf(sim), {
       kind: 'assignWorker',
       entity: worker,
@@ -197,7 +197,7 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
       jobPriority: [CARPENTER, CARRIER],
     });
 
-    // The craft slot is open but unearned, so the next listed job wins — a tradesman first, else a hauler.
+    // The craft slot is open but unearned, so the next listed job wins - a tradesman first, else a hauler.
     expect(sim.world.get(fresh, Settler).jobType).toBe(CARRIER);
     expect(sim.world.get(fresh, JobAssignment).workplace).toBe(mill);
   });
@@ -218,7 +218,7 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
     expect(sim.world.get(veteran, Settler).jobType).toBe(CARPENTER);
   });
 
-  it('still relaxes the TRIBE-tech gate — a built workshop is never refused for a missing enabler', () => {
+  it('still relaxes the TRIBE-tech gate - a built workshop is never refused for a missing enabler', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const tribe = sim.content.tribes[0];
     if (tribe === undefined) throw new Error('fixture has no tribe');

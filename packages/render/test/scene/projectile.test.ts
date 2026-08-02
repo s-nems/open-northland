@@ -9,7 +9,7 @@ import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
  * the depth key.
  */
 
-describe('buildScene — projectile arc & aim', () => {
+describe('buildScene - projectile arc & aim', () => {
   it('classifies an in-flight Projectile and aims its rotation at the target', () => {
     // The shot at (1,1) homes on a target one column EAST (2,1): the screen heading is (+x, 0) → 0 rad.
     const shot = entity(1, 1, 1, {
@@ -60,14 +60,14 @@ describe('buildScene — projectile arc & aim', () => {
     const arrow = scene.find((d) => d.kind === 'projectile' && d.ref === 1);
     const chord = tileToScreen(2, 1).x - tileToScreen(0, 1).x;
     expect(arrow?.lift).toBeCloseTo(chord * PROJECTILE_ARC_PEAK_FRACTION); // 4·peak·½·½ = peak at mid-flight
-    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex — still the straight heading
+    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex - still the straight heading
     const flat = scene.find((d) => d.kind === 'projectile' && d.ref === 4);
     expect(arrow?.depth).toBe(flat?.depth); // arc never moves the depth key
   });
 
   it('caps the lob peak on a long chord (a max-range shot must not leave the screen)', () => {
     // Origin (0,1) → target (12,1): chord = 12 cells = 816 px, whose fractional peak (~98 px) exceeds
-    // the cap — the drawn peak clamps to PROJECTILE_ARC_PEAK_MAX_PX exactly at mid-flight (6,1).
+    // the cap - the drawn peak clamps to PROJECTILE_ARC_PEAK_MAX_PX exactly at mid-flight (6,1).
     const shot = entity(1, 6, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 12, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);

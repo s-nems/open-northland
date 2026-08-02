@@ -4,7 +4,7 @@ import { createEventThrottle } from './event-throttle.js';
 import type { PipelineEvent } from './ipc.js';
 
 /**
- * The pipeline runner forked as an Electron `utilityProcess` — the conversion is CPU-bound JS
+ * The pipeline runner forked as an Electron `utilityProcess` - the conversion is CPU-bound JS
  * (image decoding, zlib), so it must not share the main process event loop. argv: `<gameDir> <outDir>
  * [modRoot]` (empty third arg = auto-detect the mod inside the game folder). Progress goes to the
  * parent as {@link PipelineEvent}s; the pipeline's own console logs ride the piped stdio and are
@@ -12,7 +12,7 @@ import type { PipelineEvent } from './ipc.js';
  */
 
 /** The slice of Electron's `utilityProcess` parent port the child uses (typed locally so the child
- * stays a plain Node program — it must not import the `electron` module). */
+ * stays a plain Node program - it must not import the `electron` module). */
 interface ParentPort {
   postMessage(message: unknown): void;
 }

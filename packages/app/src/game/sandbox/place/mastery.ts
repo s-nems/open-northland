@@ -7,7 +7,7 @@ import { GATHERERS } from '../ids/index.js';
  * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums REPEATS
  * across its named tracks, so granting `rawXpForRepeats(track, amount)` into its FIRST track
  * satisfies it. Real extracted content gates iron/gold behind clay/stone-digging XP
- * (`needforgood 6/7 10` over tracks 4+5) — a fresh collector pinned to an iron camp would never
+ * (`needforgood 6/7 10` over tracks 4+5) - a fresh collector pinned to an iron camp would never
  * qualify and stands idle beside the deposit. A SCENE-ONLY veteran stamp: curated scenes exist to
  * show their camps working, so their pinned gatherers skip the apprenticeship; decoded maps spawn
  * fresh settlers that earn the gates in play. Empty on the synthetic sandbox content (it declares

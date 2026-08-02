@@ -12,7 +12,7 @@ describe('VIKING_VOICE_POOLS', () => {
     for (const cls of ['male', 'female', 'child'] as const) {
       expect(VIKING_VOICE_POOLS[cls].length).toBeGreaterThan(0);
     }
-    // The male and female pools are disjoint — no cross-sex group leaks into the other.
+    // The male and female pools are disjoint - no cross-sex group leaks into the other.
     const male = new Set(VIKING_VOICE_POOLS.male);
     expect(VIKING_VOICE_POOLS.female.some((g) => male.has(g))).toBe(false);
   });
@@ -26,7 +26,7 @@ describe('defaultBindings', () => {
     const chop = defaultBindings({ chopAtomicId: 24 }).byAtomic.get(24);
     expect(chop).toEqual({ kind: 'spatial', group: 'Woodcutter Axe' });
     // The builder's hammer knocks mid-swing at its PLAY_SOUND_FX cue (byAtomicSound → atomicSound), the
-    // per-swing twin of the buildingPlaced hammer — not on byAtomic, so it never doubles at completion.
+    // per-swing twin of the buildingPlaced hammer - not on byAtomic, so it never doubles at completion.
     const build = defaultBindings({ buildAtomicId: 39 });
     expect(build.byAtomicSound.get(39)).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
     expect(build.byAtomic.has(39)).toBe(false);

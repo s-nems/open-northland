@@ -6,7 +6,7 @@ import type { FetchBytes } from '../platform.js';
  * spams the network. Owned by the engine (decoding needs its `AudioContext`).
  */
 export class SampleCache {
-  /** file → decoded buffer (or an in-flight promise; a null result means load failed — don't retry). */
+  /** file → decoded buffer (or an in-flight promise; a null result means load failed - don't retry). */
   private readonly entries = new Map<string, AudioBuffer | null | Promise<AudioBuffer | null>>();
 
   constructor(
@@ -28,7 +28,7 @@ export class SampleCache {
         this.entries.set(file, buffer);
         return buffer;
       } catch {
-        this.entries.set(file, null); // remember the failure — don't re-fetch
+        this.entries.set(file, null); // remember the failure - don't re-fetch
         return null;
       }
     })();

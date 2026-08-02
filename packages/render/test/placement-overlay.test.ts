@@ -7,9 +7,9 @@ import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '
 
 /**
  * The build-placement overlay's agent-checkable halves. The wash itself is a GPU composite (each
- * side's overlap-fused diamonds rendered opaque off-screen, then drawn translucent — seamless by
+ * side's overlap-fused diamonds rendered opaque off-screen, then drawn translucent - seamless by
  * construction, no per-cell boundaries), which needs a real renderer + human eyes; what IS pinnable
- * headlessly is the pure band geometry ({@link overlayBounds} — the composite must cover every
+ * headlessly is the pure band geometry ({@link overlayBounds} - the composite must cover every
  * diamond incl. the stagger overhang and the terrain lift) and the cursor ghost's placement contract
  * (anchor, depth, hide/show).
  */
@@ -21,8 +21,8 @@ describe('overlayBounds', () => {
     const frame = { minCol: 2, maxCol: 6, minRow: 3, maxRow: 9 };
     const b = overlayBounds(frame, 0);
     // Frame cells are HALF-CELL nodes; each node diamond has half-extents (TILE_HALF_W, TILE_HALF_H/2)
-    // grown by a few-px fusing pad — so the box must STRICTLY clear every border node's centre by a
-    // diamond half-extent (the strictness is the pad's room; no more slack is required — the node
+    // grown by a few-px fusing pad - so the box must STRICTLY clear every border node's centre by a
+    // diamond half-extent (the strictness is the pad's room; no more slack is required - the node
     // lattice is rectangular, there is no stagger overhang to cover).
     const topLeft = halfCellToScreen(frame.minCol, frame.minRow);
     const bottomRight = halfCellToScreen(frame.maxCol, frame.maxRow);
@@ -69,7 +69,7 @@ describe('PlacementGhostLayer', () => {
     const W = 4;
     const H = 12;
     const elev = new Array<number>(W * H).fill(0);
-    elev[8 * W + 1] = 160; // a hill under CELL (1, 8) — node (2, 16)'s exact cell-space point
+    elev[8 * W + 1] = 160; // a hill under CELL (1, 8) - node (2, 16)'s exact cell-space point
     const field = makeElevationField(elev, W, H);
 
     const layer = makeLayer();

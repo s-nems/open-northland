@@ -16,21 +16,21 @@ import { aliveTribeJobs } from './alive-jobs.js';
 import { requirementRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
- *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md; when it lands,
+ *  the progression/experience system - see docs/tickets/sim/rework-building-unlock-gate.md; when it lands,
  *  the gate should consult `ProgressionRules` the way {@link jobEnabled}/{@link goodEnabled} do. Annotated
  *  `boolean` (not narrowed to the literal) so both branches of the gate stay live for the type checker. */
 const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 
 /**
- * The gating half of progression — is a building of `buildingType` unlocked for `tribe` right now?
+ * The gating half of progression - is a building of `buildingType` unlocked for `tribe` right now?
  *
  * In Cultures, a tribe can't build everything from the start: a house is enabled once a settler of the right
- * job is present in the tribe (`tribetypes` `jobEnablesHouse <jobType> <houseType>`) — a smithy gated on a
+ * job is present in the tribe (`tribetypes` `jobEnablesHouse <jobType> <houseType>`) - a smithy gated on a
  * smith existing, a barracks on a soldier. The read side of the `jobEnables` edges `extractJobEnables`
  * produces; see {@link tribeUnlockEnabled} for the shared rule.
  *
  * DISABLED: while {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true, so buildings
- * place, upgrade, staff, and get AI-targeted with no tech prerequisite — the whole `jobEnablesHouse`
+ * place, upgrade, staff, and get AI-targeted with no tech prerequisite - the whole `jobEnablesHouse`
  * gate is off until the rework re-enables it (the ticket above). It stays a live call at every gate site
  * so flipping the switch restores the behaviour with no code moves.
  */
@@ -47,7 +47,7 @@ export function buildingEnabled(
 /**
  * Is producing `goodType` unlocked for `tribe` right now? The `good` kind of the same `jobEnables`
  * tech-graph: `jobEnablesGood <jobType> <goodType>` means a settler of that job being present unlocks the
- * good. Consumed by ProductionSystem's cycle-start gate — a tannery makes no leather until the tribe has the
+ * good. Consumed by ProductionSystem's cycle-start gate - a tannery makes no leather until the tribe has the
  * tanner that enables it.
  */
 export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goodType: number): boolean {
@@ -72,7 +72,7 @@ export function recipeOutputsEnabled(
 
 /**
  * Is `jobType` itself unlocked for `tribe` right now? The `job` kind of the tech-graph:
- * `jobEnablesJob <jobType> <targetJob>` means a settler of `jobType` unlocks the target job — a
+ * `jobEnablesJob <jobType> <targetJob>` means a settler of `jobType` unlocks the target job - a
  * specialization a tribe can't staff until the prerequisite trade exists (a smith unlocking a weaponsmith).
  * Consumed by the JobSystem's assignment gate ({@link openJobAt}).
  */
@@ -85,7 +85,7 @@ export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobT
 /**
  * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`. The target is enabled when
  * either no edge of `kind` gates it (an ungated start target, like the headquarters), or a settler of any
- * gating job is currently alive in the tribe. A tribe absent from content gates nothing — every target stays
+ * gating job is currently alive in the tribe. A tribe absent from content gates nothing - every target stays
  * enabled, so a map with no tribe-type data still places its start buildings rather than silently rejecting
  * them. The tribe id matches the `TribeType` `typeId`, the same id `Settler.tribe`/`Building.tribe` carry.
  *
@@ -115,13 +115,13 @@ function tribeUnlockEnabled(
 /**
  * The ship types a `tribe` has currently unlocked, sorted ascending by `typeId` so the result order can't
  * depend on `content.vehicles` declaration order. Where the content-only {@link shipVehicles} answers *which
- * vehicles are ships*, this answers *which of those this tribe can field yet* — the gate a
+ * vehicles are ships*, this answers *which of those this tribe can field yet* - the gate a
  * boat-building/embark slice asks before letting a tribe spawn a hull.
  *
  * Composes the `passengerSlots` ship classification ({@link isShipVehicle}) with the `vehicle`-kind
  * tech-graph gate ({@link tribeUnlockEnabled}): a ship is unlocked when no `jobEnablesVehicle` edge
  * gates its `typeId`, or a settler of a gating job (e.g. a shipwright) is alive in the tribe. Both axes are
- * pinned to extracted data; this adds no mechanic — nothing embarks and no hull is spawned.
+ * pinned to extracted data; this adds no mechanic - nothing embarks and no hull is spawned.
  */
 export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: number): VehicleType[] {
   return ctx.content.vehicles
@@ -130,18 +130,18 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
 }
 
 /**
- * The threshold half of progression — does a settler's accrued XP satisfy a single `needfor*` requirement?
+ * The threshold half of progression - does a settler's accrued XP satisfy a single `needfor*` requirement?
  * The read side of the `{need,train}for{job,good}` table (`TribeType.jobRequirements`), consuming the
  * per-specialization XP `grantWorkExperience` accrues onto `Settler.experience` (keyed by the
  * `humanjobexperiencetypes` track typeId).
  *
  * A `needfor*` requirement demands `amount` experience measured in REPEATS of its `experienceTypes`
- * track(s) — completed works, not raw XP ("the carpenter needs 10 gathered logs"). The repeats scale
+ * track(s) - completed works, not raw XP ("the carpenter needs 10 gathered logs"). The repeats scale
  * is what makes the data's flat 5..30 amounts commensurable across tracks whose factors span 1..250
  * (source basis: the factor-invariant amounts themselves). {@link requirementRepeats} owns the whole
  * reading, including the general-track widening and the per-track truncation. A requirement with no
  * `experienceTypes` (none in the real data, but the schema permits it) is vacuously met. Only
- * `requirement === 'need'` is interpreted here — a `train` row is read by {@link schoolingMet}, not by
+ * `requirement === 'need'` is interpreted here - a `train` row is read by {@link schoolingMet}, not by
  * this one.
  *
  * source-basis (approximated): whether a two-`expType` line means "sum both" or "either alone" has no
@@ -172,7 +172,7 @@ export interface NeedSubject {
   readonly experience: ReadonlyMap<number, number>;
 }
 
-/** The {@link NeedSubject} of a live settler entity — the shared read at every gate call site. */
+/** The {@link NeedSubject} of a live settler entity - the shared read at every gate call site. */
 export function needSubjectOf(world: World, settler: Entity): NeedSubject {
   const s = world.get(settler, Settler);
   return { tribe: s.tribe, owner: ownerOf(world, settler), experience: s.experience };
@@ -210,7 +210,7 @@ export function settlerMeetsNeed(
   const fighterJob = target === 'job' && isFighterJob(ctx.content, targetId);
   if (!experienceGatesApply(world, owner) && !fighterJob) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
-  if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
+  if (tribeType === undefined) return true; // no requirement table for this tribe - nothing thresholds it
   if (
     fighterJob &&
     schoolingMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, targetId)
@@ -225,11 +225,11 @@ export function settlerMeetsNeed(
 }
 
 /**
- * Whether a settler has paid a job's barracks schooling — every `trainforjob` row for `targetId` met in
+ * Whether a settler has paid a job's barracks schooling - every `trainforjob` row for `targetId` met in
  * TRAINING repeats. The second, alternative path onto a fighter trade: its `needforjob` rows read the band's
  * own fight tracks (viking `needforjob 31 5 69`, a track only job 31 itself accrues), so a civilian could
  * never earn one by working, and the barracks drill is what enlists it
- * (`systems/settlers/drives/training.ts`). Meeting either path unlocks the trade — a veteran keeps qualifying
+ * (`systems/settlers/drives/training.ts`). Meeting either path unlocks the trade - a veteran keeps qualifying
  * on fight XP alone.
  *
  * A target with no `train` row is NOT schooled (false), so this can only widen the gate for the trades
@@ -237,7 +237,7 @@ export function settlerMeetsNeed(
  * `trainfor*` rows too (the school house's rows), and teaching those is a later slice.
  *
  * source-basis (readable-semantics inference): the data states both row kinds but not how they combine.
- * Reading them as alternatives is what makes the table consistent — a civilian can reach no fight track,
+ * Reading them as alternatives is what makes the table consistent - a civilian can reach no fight track,
  * so an AND would leave the whole band unreachable and the `trainfor*` rows dead. Refine if the
  * original's combination rule is ever observed; what that opens up meanwhile is scoped in
  * `docs/tickets/features/barracks-recruitment.md`.

@@ -9,15 +9,15 @@ import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
 /**
  * The shared one-time GPU options. WebGL preference + antialias-off cut the cross-machine pixel variance
  * that would otherwise make even an eyeball-the-PNG comparison noisy (golden-image diffs stay out of
- * scope — see docs/TESTING.md). `resolution: 1` + `autoDensity: false` keep the backing store in CSS
- * pixels, so one world pixel is one CSS pixel at camera scale 1 — the deterministic default the
+ * scope - see docs/TESTING.md). `resolution: 1` + `autoDensity: false` keep the backing store in CSS
+ * pixels, so one world pixel is one CSS pixel at camera scale 1 - the deterministic default the
  * fixed-size `?shot` capture depends on (its PNG bytes can't vary with the machine's devicePixelRatio).
  * {@link createWindowPixiApp} overrides these to render at device resolution.
  */
 const APP_OPTIONS = {
   // Pure black, like the original's void beyond the map edge: the `embr` border fade runs the ground
   // to (0,0,0), and any other clear colour re-exposes the edge diamonds as a sawtooth silhouette
-  // (observed against the reference corpus — its off-map area is exactly #000).
+  // (observed against the reference corpus - its off-map area is exactly #000).
   background: 0x000000,
   antialias: false,
   preference: 'webgl',
@@ -33,7 +33,7 @@ const APP_OPTIONS = {
 /**
  * Initialise a Pixi {@link Application} bound to an existing canvas at a fixed backing-store size. This
  * is the deterministic-capture variant (the `?shot` PNG must be byte-reproducible, so its dimensions can
- * never track a window) — an interactive entry wants {@link createWindowPixiApp} instead.
+ * never track a window) - an interactive entry wants {@link createWindowPixiApp} instead.
  */
 export async function createPixiApp(
   canvas: HTMLCanvasElement,
@@ -48,7 +48,7 @@ export async function createPixiApp(
 /**
  * Initialise a Pixi {@link Application} whose backing store tracks the window. Pixi's resize plugin
  * (`resizeTo: window`) re-sizes the renderer on every window resize, so with the canvas CSS-sized to
- * the viewport the world never stretches — resizing only grows/shrinks the visible field. Interactive
+ * the viewport the world never stretches - resizing only grows/shrinks the visible field. Interactive
  * entries (live slice, scenes, gallery) boot through this; read the live size from `app.screen` per
  * frame, never from a captured constant.
  *
@@ -57,7 +57,7 @@ export async function createPixiApp(
  * screen-space UI (the supersampled tool panel, text, rings) rasterizes crisp on HiDPI instead of
  * being nearest-upscaled by the browser. The nearest-sampled world pixel art is unaffected at integer
  * zooms (the same duplication moves from the browser's canvas upscale into GPU sampling). The DPR is
- * read once at boot — a mid-session monitor/zoom change keeps working, just at the boot density. Input
+ * read once at boot - a mid-session monitor/zoom change keeps working, just at the boot density. Input
  * handlers read `app.renderer.resolution` to map client px → screen px (`view/camera/screen-scale.ts`
  * `screenScale` in the app).
  */
@@ -80,21 +80,21 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
 /**
  * Load a decoded atlas PNG (a `<name>.png` the `.bmd`→atlas build emits) as a Pixi {@link TextureSource}
  * ready to bind as a {@link import('./sprite-sheet.js').SpriteSheet.source}. The GPU/pixel twin of the pure
- * {@link import('../data/sprites/index.js').atlasFromManifest} — together they turn a decoded
+ * {@link import('../data/sprites/index.js').atlasFromManifest} - together they turn a decoded
  * `<name>.{png,atlas.json}` pair into a {@link import('./sprite-sheet.js').SpriteSheet}. The default
  * `nearest` scaling keeps the pixel-art bobs crisp and cuts the cross-machine sampling variance
- * (matching {@link createPixiApp}'s antialias-off); the ground texture pages pass `linear` instead — the
+ * (matching {@link createPixiApp}'s antialias-off); the ground texture pages pass `linear` instead - the
  * original samples its terrain pages bilinearly (source basis, docs/SOURCES.md "terrain tessellation"),
  * which is what melts the transition masks into smooth seams. Real bob atlases are decoded from a
  * copyrighted game copy and gitignored (see AGENTS.md "Legal guardrails"); this only takes a URL, so the
- * bytes never live in the repo — the app serves them from the gitignored `content/` over the dev/shot
+ * bytes never live in the repo - the app serves them from the gitignored `content/` over the dev/shot
  * server.
  *
  * `alpha: 'straight'` is REQUIRED for palette-indexed sheets (`<stem>.indexed`): their red channel is a
  * palette INDEX, not colour, so Pixi's default premultiply-on-upload would scale the index by the frame's
  * graded coverage and every feathered pixel would look up the wrong LUT entry. The load passes Pixi's
- * `data.alphaMode: 'premultiplied-alpha'` — its only hook that decodes the bitmap with
- * `premultiplyAlpha: 'none'` (`loadTextures.ts`) — then relabels the source `no-premultiply-alpha`, so
+ * `data.alphaMode: 'premultiplied-alpha'` - its only hook that decodes the bitmap with
+ * `premultiplyAlpha: 'none'` (`loadTextures.ts`) - then relabels the source `no-premultiply-alpha`, so
  * the raw bytes survive decode AND upload. The `PalettedSprite` shader premultiplies its own output, so
  * straight-alpha sampling is the correct pairing. RGB atlases keep Pixi's premultiplied default (its
  * batcher blends premultiplied).

@@ -5,7 +5,7 @@ import type { TextureCache } from '../texture-cache.js';
 /**
  * The world renderer's screen-space chrome: the two full-screen quads that sit between the world and the
  * HUD (the pause wash and the post-fx vignette) plus the zoom-driven atlas sampling toggle. None of it is
- * world content — it neither rides the camera transform nor reads the snapshot.
+ * world content - it neither rides the camera transform nor reads the snapshot.
  *
  * Both quads are `app.stage` children whose add order IS their z-order, so this class never adds them
  * itself: {@link attach} is called at the one point in the renderer's constructor where they belong.
@@ -25,7 +25,7 @@ export class WorldChrome {
   /** The post-pass vignette sprite ({@link import('./frame.js').WorldRendererOptions.postFx}); null when
    *  off/unavailable. */
   private readonly vignette: Sprite | null;
-  /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} — exactly the
+  /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} - exactly the
    *  set to restore to nearest when the camera zooms back in. */
   private readonly linearPages = new Set<TextureSource>();
 
@@ -47,19 +47,19 @@ export class WorldChrome {
    * Mount the chrome quads on `stage`, in z-order: the vignette sits directly over the world so the grade
    * colours the map but never the chrome, and the pause wash over that, so pausing browns the map but
    * never the HUD or the tool panel. The caller must invoke this after adding the world layer and before
-   * adding the HUD — stage child order is the z-order and there is no sorting here.
+   * adding the HUD - stage child order is the z-order and there is no sorting here.
    */
   attach(stage: Container): void {
     if (this.vignette !== null) stage.addChild(this.vignette);
     stage.addChild(this.pauseWash);
   }
 
-  /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
+  /** Show/hide the paused-game wash - the app's loop control drives this alongside the sim pause. */
   setPaused(paused: boolean): void {
     this.pauseWash.visible = paused;
   }
 
-  /** Stretch the visible quads to the canvas — they are screen-sized, so this runs per drawn frame. */
+  /** Stretch the visible quads to the canvas - they are screen-sized, so this runs per drawn frame. */
   resize(width: number, height: number): void {
     if (this.pauseWash.visible) {
       this.pauseWash.width = width;
@@ -73,14 +73,14 @@ export class WorldChrome {
 
   /**
    * Match the SPRITE atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
-   * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases —
+   * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases -
    * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
    * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. The terrain pages
-   * are untouched — they load linear at every zoom (the original samples them bilinearly). Walks every
-   * cached page each frame while zoomed out ({@link linearPages} skips the write, not the visit) — a
+   * are untouched - they load linear at every zoom (the original samples them bilinearly). Walks every
+   * cached page each frame while zoomed out ({@link linearPages} skips the write, not the visit) - a
    * handful of atlases, so the scan is free. Known limit: the portrait
    * inset re-renders the world magnified in the same frame, so while zoomed out its cutout samples the
-   * flipped pages linear (slightly soft) — accepted; a per-render flip would touch every page twice a
+   * flipped pages linear (slightly soft) - accepted; a per-render flip would touch every page twice a
    * frame.
    */
   applyWorldSampling(scale: number): void {

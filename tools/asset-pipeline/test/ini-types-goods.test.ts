@@ -17,7 +17,7 @@ describe('extractGoods', () => {
         weight: 0,
         atomics: {},
         productionInputs: [],
-        // `isInputGoodFlag 1` only — a raw input good neither produced on-map nor in-house here.
+        // `isInputGoodFlag 1` only - a raw input good neither produced on-map nor in-house here.
         classification: { producedOnMap: false, producedInHouse: false, inputGood: true },
         // `landscapetype 12` present, but no `landscapeTo*` chain -> no `gathering` (not gathered).
         landscapeType: 12,
@@ -63,12 +63,12 @@ describe('extractGoods', () => {
         name: 'guildmark',
         weight: 0,
         atomics: { produce: 70 },
-        // `productionInputGoods 22 24` — one each of thornreed + palegrain (distinct ids, amount 1).
+        // `productionInputGoods 22 24` - one each of thornreed + palegrain (distinct ids, amount 1).
         productionInputs: [
           { goodType: 22, amount: 1 },
           { goodType: 24, amount: 1 },
         ],
-        // a produced (in-house) good — the output layer of the goods graph.
+        // a produced (in-house) good - the output layer of the goods graph.
         classification: { producedOnMap: false, producedInHouse: true, inputGood: false },
         source: src,
       },
@@ -78,14 +78,14 @@ describe('extractGoods', () => {
         name: 'dusktonic',
         weight: 0,
         atomics: { produce: 75 },
-        // `productionInputGoods 20 20 24 24 22` — a repeated id is the quantity (2× good20, 2× good24,
+        // `productionInputGoods 20 20 24 24 22` - a repeated id is the quantity (2× good20, 2× good24,
         // 1× good22), collapsed to a multiset in first-seen order.
         productionInputs: [
           { goodType: 20, amount: 2 },
           { goodType: 24, amount: 2 },
           { goodType: 22, amount: 1 },
         ],
-        // no classification flags in the fixture — all default false.
+        // no classification flags in the fixture - all default false.
         classification: noClass,
         source: src,
       },
@@ -106,7 +106,7 @@ describe('extractGoods', () => {
       { file: 'goodtypes.ini' },
     );
     expect(honey?.landscapeType).toBe(32);
-    // The absent harvest lane stays undefined — a faithful omission, not a guessed default. The felling/
+    // The absent harvest lane stays undefined - a faithful omission, not a guessed default. The felling/
     // mining params (chops/yield/deposit) are OBSERVED, absent from the source, so the extractor emits 0.
     expect(honey?.gathering).toEqual({
       pickup: 32,

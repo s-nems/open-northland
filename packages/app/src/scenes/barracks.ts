@@ -14,13 +14,13 @@ import type { SceneDefinition } from './types.js';
 /**
  * Barracks training: a colonist right-clicked onto the barracks walks in, drills, and comes back out a
  * soldier (see the sim's `schoolingMet` for why that is the only route). Three settlers hold the
- * contrast: the recruit, a serving soldier sent in after him (who only drills — his trade is already
+ * contrast: the recruit, a serving soldier sent in after him (who only drills - his trade is already
  * his), and a bystander who stays a colonist and stays refused.
  */
 
 const { Settler } = components;
 
-/** The TRAINING bucket a drill banks into — the veteran's proof that he really did drill. */
+/** The TRAINING bucket a drill banks into - the veteran's proof that he really did drill. */
 const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
@@ -44,7 +44,7 @@ function build(sim: Simulation): void {
   sim.enqueue({ kind: 'trainSoldier', entity: veteran, house: barracks });
 }
 
-/** The three settlers by role. Query order is spawn order, which {@link build} fixes just above — the one
+/** The three settlers by role. Query order is spawn order, which {@link build} fixes just above - the one
  *  place the mapping lives, so a reordered build changes it here rather than silently in each check. */
 function cast(sim: Simulation): {
   recruit: Entity | undefined;
@@ -55,7 +55,7 @@ function cast(sim: Simulation): {
   return { recruit, veteran, bystander };
 }
 
-/** Whether the settler would now be accepted for the soldier trade — the picker's filter, which mirrors
+/** Whether the settler would now be accepted for the soldier trade - the picker's filter, which mirrors
  *  the `setJob` gate, so a passing check means the row really is offered. */
 function soldierOffered(sim: Simulation, e: Entity): boolean {
   const settler = sim.world.get(e, Settler);

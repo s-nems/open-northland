@@ -29,7 +29,7 @@ export interface PaletteLutSource {
 export interface PaletteLutResult {
   /** `loadLayer`/`loadAtlasSource` stem of the `256 × N` LUT PNG under {@link BOBS_DIR}. */
   readonly stem: string;
-  /** LUT row order (row index = array index) — the app mirrors this to pick a row. */
+  /** LUT row order (row index = array index) - the app mirrors this to pick a row. */
   readonly names: string[];
   /** name → 768-byte palette, for colouring the preview atlases. Absent palettes are identity-filled. */
   readonly byName: Map<string, Uint8Array>;
@@ -71,7 +71,7 @@ export async function buildPaletteLut(
 
 /**
  * Stacks `orderedPalettes` (one 768-byte RGB row per LUT slot, in row order) into a `256 × N` player-LUT
- * PNG at `<BOBS_DIR>/<stem>.png`. The single emit step every palette-LUT stage ends with — the row
+ * PNG at `<BOBS_DIR>/<stem>.png`. The single emit step every palette-LUT stage ends with - the row
  * resolution differs per stage (fixed carrier files vs the goods alias graph), the write does not.
  */
 export async function writeLutPng(

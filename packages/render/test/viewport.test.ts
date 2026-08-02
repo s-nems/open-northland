@@ -12,7 +12,7 @@ import {
 } from '../src/index.js';
 
 /**
- * Unit tests for the pure viewport-culling math — the "what's on screen" half of scaling to big maps,
+ * Unit tests for the pure viewport-culling math - the "what's on screen" half of scaling to big maps,
  * self-verifiable without a GPU. They pin the two load-bearing properties: `cameraViewport` inverts the
  * camera transform exactly (a world corner maps back to the canvas corner), and `visibleTileRange`
  * bounds the iso diamond correctly and clamps to the grid (so an off-map pan draws nothing out of range).
@@ -108,7 +108,7 @@ describe('visibleTileRange', () => {
   });
 
   it('shifts the band as the viewport pans, staying within the grid', () => {
-    // Pan the box deep into the grid — the band must move off the origin and stay clamped.
+    // Pan the box deep into the grid - the band must move off the origin and stay clamped.
     const vp = {
       minX: 10 * 2 * TILE_HALF_W,
       maxX: 14 * 2 * TILE_HALF_W,

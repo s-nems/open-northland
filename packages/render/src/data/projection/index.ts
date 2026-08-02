@@ -1,6 +1,6 @@
 /**
  * The projection folder: the isometric tile/half-cell → screen mapping, the camera transform, and the
- * viewport-cull math inverted back out of it. Dependency-light and Pixi-free — the layer every other
+ * viewport-cull math inverted back out of it. Dependency-light and Pixi-free - the layer every other
  * `data/` folder and the GPU renderer hang off.
  *
  * Modules here import each other directly (`./iso.js`), never through this barrel: `iso.ts` documents the

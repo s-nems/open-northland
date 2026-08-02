@@ -8,7 +8,7 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  * `drillTicksLeft` by less than one exercise clip.
  *
  * Held through a needs detour, so a recruit that breaks off to eat comes back and drills off what it
- * still owes. A move order, an equip errand and a profession change each call it off — the settler was
+ * still owes. A move order, an equip errand and a profession change each call it off - the settler was
  * re-tasked.
  */
 export const TrainingOrder = defineComponent<{

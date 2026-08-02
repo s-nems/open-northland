@@ -25,7 +25,7 @@ import {
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
-// Warriors sieging enemy BUILDINGS — the target/order/damage/priority slice: a building joins the combat
+// Warriors sieging enemy BUILDINGS - the target/order/damage/priority slice: a building joins the combat
 // target index (never as a seeker), takes the weapon's vs-building (HOUSE) column, and is razed at 0 HP
 // through the demolish path. Auto-focus prefers units + HQ + towers on par, dropping to a plain building
 // only when none of those remains in sight (user rule).
@@ -33,7 +33,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 const VIKING = 1;
 // The soldier trades (`jobtypes.ini` 31 / 40): body collision and the ATTACK default apply only to a job the
 // content classifies as a fighter (`readviews/jobs.ts` isFighterJob, keyed on the `soldier_*` slug), so the
-// test warriors must carry that slug — a civilian one would make them collisionless ghosts that stack on one
+// test warriors must carry that slug - a civilian one would make them collisionless ghosts that stack on one
 // melee slot.
 const SOLDIER = 31;
 const ARCHER = 40;
@@ -43,10 +43,10 @@ const P2 = 2; // the defending player (owns the buildings)
 const HEADQUARTERS = 1;
 const TOWER = 2;
 const HOME = 3;
-const FORT = 4; // the walled type — a 2×2 half-cell body, so contact slots exist on every face
+const FORT = 4; // the walled type - a 2×2 half-cell body, so contact slots exist on every face
 
 const MELEE_VS_UNARMORED = 40;
-const MELEE_VS_BUILDING = 25; // the weapon's HOUSE (material 7) column — distinct from vs-unarmored
+const MELEE_VS_BUILDING = 25; // the weapon's HOUSE (material 7) column - distinct from vs-unarmored
 const BOW_VS_BUILDING = 15;
 
 /** One tribe fought across two players (the OWNER axis decides hostility), with a soldier mace carrying a
@@ -145,7 +145,7 @@ function warriorAt(sim: Simulation, x: number, y: number, owner: number, jobType
 }
 
 /** An enemy building placed directly (the test-setup exception) at visual cell (x,y) with a full HP pool
- *  (`hp` overridable — the encircle tests need a fort that outlives the whole warband's battering). */
+ *  (`hp` overridable - the encircle tests need a fort that outlives the whole warband's battering). */
 function buildingAt(
   sim: Simulation,
   x: number,
@@ -227,7 +227,7 @@ describe('warriors attack enemy buildings', () => {
   it('honours an explicit attack order on a building beyond sight radius', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(24, 1) });
     const soldier = warriorAt(sim, 0, 0, P1);
-    // Node distance 40 — far beyond SIGHT_RADIUS_NODES (16), so ATTACK-stance auto-engagement can never
+    // Node distance 40 - far beyond SIGHT_RADIUS_NODES (16), so ATTACK-stance auto-engagement can never
     // acquire it: only the order itself can drive this siege (the regression: attackUnit once rejected any
     // non-Settler target, silently dropping the order, while an in-sight fixture let auto-engage mask it).
     const home = buildingAt(sim, 20, 0, HOME, P2);
@@ -254,7 +254,7 @@ describe('warriors attack enemy buildings', () => {
 
   it('never lets wildlife (an unowned attacker) target a building', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(6, 1) });
-    // An unowned viking "soldier" — no Owner, so not a player's warrior. It carries a weapon but no side.
+    // An unowned viking "soldier" - no Owner, so not a player's warrior. It carries a weapon but no side.
     const feral = sim.world.create();
     sim.world.add(feral, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(feral, Settler, {
@@ -274,7 +274,7 @@ describe('warriors attack enemy buildings', () => {
     expect(sim.world.get(home, Health).hitpoints).toBe(sim.world.get(home, Health).max);
   });
 
-  // The FORT placed at visual cell (3,3): anchor node (6,6), body nodes (6,6),(7,6),(6,7),(7,7) — a 2×2
+  // The FORT placed at visual cell (3,3): anchor node (6,6), body nodes (6,6),(7,6),(6,7),(7,7) - a 2×2
   // half-cell block with exactly 8 orthogonal contact cells (the melee-1 slots) spread over four faces.
   const FORT_WALLS: readonly (readonly [number, number])[] = [
     [6, 6],
@@ -315,7 +315,7 @@ describe('warriors attack enemy buildings', () => {
 
     for (let i = 0; i < 400; i++) sim.step();
 
-    // All 8 contact cells around the 2×2 body are manned, each by its own soldier — the whole warband
+    // All 8 contact cells around the 2×2 body are manned, each by its own soldier - the whole warband
     // wrapped around the fort. A single-face slot deal could only ever fill the west band and left the
     // rest holding behind it.
     const manned = soldiers.filter((s) => distToFort(sim, s) === 1);
@@ -353,7 +353,7 @@ describe('warriors attack enemy buildings', () => {
 
     for (let i = 0; i < 400; i++) sim.step();
 
-    // 10 chasers, 8 slots: the surplus stands fast with NO nav components — the render sprite-state rule
+    // 10 chasers, 8 slots: the surplus stands fast with NO nav components - the render sprite-state rule
     // (PathFollow/PathRequest/MoveGoal ⇒ walking) then reads it as idle, not frozen mid-stride.
     const front = soldiers.filter((s) => distToFort(sim, s) === 1);
     expect(front.length).toBe(8);
@@ -377,7 +377,7 @@ describe('warriors attack enemy buildings', () => {
     const soldier = warriorAt(sim, 1, 1, P1);
 
     sim.enqueue({ kind: 'attackUnit', entity: soldier, target: fort });
-    // The target's whole west contact band lies under the friendly fort's body — statically walkable
+    // The target's whole west contact band lies under the friendly fort's body - statically walkable
     // grass, blocked only by the dynamic nav overlay, and routing denies a stand-in for such a goal.
     // Dealing one of those cells would fail the route and silently cancel the attack order; the slot
     // deal must skip them, so the soldier walks around to an open face and lands its swings.

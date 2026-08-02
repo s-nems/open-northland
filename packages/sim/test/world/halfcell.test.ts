@@ -9,7 +9,7 @@ import {
 } from '../../src/index.js';
 
 /**
- * The half-cell ↔ Position conversion seam (`nav/halfcell.ts`) — the one place a fractional
+ * The half-cell ↔ Position conversion seam (`nav/halfcell.ts`) - the one place a fractional
  * fixed-point Position becomes an integer node address and back. These pin the exact geometry the
  * whole grid vocabulary hangs on: cell (c,r) = node (2c+(r&1), 2r), a rectangular node lattice in
  * world space, quarters exact in fixed point.
@@ -56,9 +56,9 @@ describe('positionOfNode', () => {
   });
 
   it('places off-centre nodes at exact quarter-tile positions (stagger removed per row)', () => {
-    // Node (1,0): the E-mid node of cell (0,0) — even row, no stagger: x = ½.
+    // Node (1,0): the E-mid node of cell (0,0) - even row, no stagger: x = ½.
     expect(positionOfNode(1, 0)).toEqual({ x: Q(2), y: Q(0) });
-    // Node (0,2): row 1 (odd, stagger ½): x = 0 − ½ = −½ — the west-border seam transient.
+    // Node (0,2): row 1 (odd, stagger ½): x = 0 − ½ = −½ - the west-border seam transient.
     expect(positionOfNode(0, 2)).toEqual({ x: Q(-2), y: fx.fromInt(1) });
     // Node (2,1): row ½ (stagger ¼): x = 1 − ¼ = ¾.
     expect(positionOfNode(2, 1)).toEqual({ x: Q(3), y: Q(2) });
@@ -70,7 +70,7 @@ describe('nodeOfPosition', () => {
     for (let hy = 0; hy < 8; hy++) {
       for (let hx = 1; hx < 8; hx++) {
         // hx ≥ 1: node (0, hy) on an odd row sits at world x < 0 (the border seam) and legitimately
-        // truncates to hx 0 only via clamping — covered by the border case below.
+        // truncates to hx 0 only via clamping - covered by the border case below.
         const p = positionOfNode(hx, hy);
         expect(nodeOfPosition(p.x, p.y)).toEqual({ hx, hy });
       }

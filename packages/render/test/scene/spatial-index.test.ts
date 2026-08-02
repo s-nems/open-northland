@@ -10,7 +10,7 @@ import { entity, snapshotOf } from '../support/fixtures.js';
  * as a membership view. The index survives across snapshots: moves re-bucket, deaths stop answering.
  */
 
-/** A viewport framing just the anchor of tile `(x, y)` — the same ±10 px box the culling specs use. */
+/** A viewport framing just the anchor of tile `(x, y)` - the same ±10 px box the culling specs use. */
 function viewportAt(x: number, y: number): Viewport {
   const anchor = tileToScreen(x, y);
   return { minX: anchor.x - 10, maxX: anchor.x + 10, minY: anchor.y - 10, maxY: anchor.y + 10 };
@@ -27,7 +27,7 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
       entity(6, 1, 1, {}), // not drawable
     ]);
     const opts = {
-      // Frame tiles (1..2, 1..2): rows 1 and 2, columns 1 and 2 — everything but the far settler.
+      // Frame tiles (1..2, 1..2): rows 1 and 2, columns 1 and 2 - everything but the far settler.
       viewport: { ...viewportAt(1, 1), maxX: viewportAt(2, 1).maxX, maxY: viewportAt(1, 2).maxY },
       staticRefs: new Set([3]),
       fogVisible: (_x: number, tileY: number) => tileY < 2,
@@ -68,14 +68,14 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
     const oldSpot = collectSpriteScene(after, { viewport: viewportAt(1, 1), index });
     expect(oldSpot.items).toEqual([]);
     expect(oldSpot.liveRefs.has(1)).toBe(true); // alive, merely elsewhere
-    expect(oldSpot.liveRefs.has(2)).toBe(false); // dead — the pool may reap its sprite
+    expect(oldSpot.liveRefs.has(2)).toBe(false); // dead - the pool may reap its sprite
     const newSpot = collectSpriteScene(after, { viewport: viewportAt(40, 40), index });
     expect(newSpot.items.map((d) => d.ref)).toEqual([1]);
   });
 
   it('picks up an entity that became drawable after the index first saw it', () => {
     const index = new SpriteSpatialIndex();
-    // A bare mover: Position but no drawable marker — indexed as nothing.
+    // A bare mover: Position but no drawable marker - indexed as nothing.
     collectSpriteScene(snapshotOf([entity(1, 1, 1, {})]), { viewport: viewportAt(1, 1), index });
     const grown = collectSpriteScene(snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } })], 2), {
       viewport: viewportAt(1, 1),
@@ -89,7 +89,7 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
     const index = new SpriteSpatialIndex();
     const tree = entity(1, 1, 1, { Resource: { goodType: 1 } });
     collectSpriteScene(snapshotOf([tree]), { viewport: viewportAt(1, 1), index });
-    // The same OBJECT in the next snapshot — the sim's scenery clone cache hands these out verbatim.
+    // The same OBJECT in the next snapshot - the sim's scenery clone cache hands these out verbatim.
     const again = collectSpriteScene(snapshotOf([tree], 2), { viewport: viewportAt(1, 1), index });
     expect(again.items.map((d) => d.ref)).toEqual([1]);
     expect(again.liveRefs.has(1)).toBe(true);
@@ -170,7 +170,7 @@ describe('SpriteSpatialIndex directly', () => {
       snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } }), entity(2, 40, 40, { Settler: { tribe: 0 } })]),
     );
     // ±1e6 px spans ~61M bucket cells; scanning them (instead of the 2 populated buckets) hangs the
-    // pool tests that frame everything — this must return promptly with the full population.
+    // pool tests that frame everything - this must return promptly with the full population.
     const all = index.query({ minX: -1e6, maxX: 1e6, minY: -1e6, maxY: 1e6 });
     expect(all.map((e) => e.id).sort((a, b) => a - b)).toEqual([1, 2]);
   });
@@ -179,7 +179,7 @@ describe('SpriteSpatialIndex directly', () => {
     const index = new SpriteSpatialIndex();
     const first = snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } })]);
     index.update(first);
-    index.update(first); // same object — must not double-insert or advance liveness
+    index.update(first); // same object - must not double-insert or advance liveness
     expect(index.query(viewportAt(1, 1))).toHaveLength(1);
     expect(index.has(1)).toBe(true);
     index.update(snapshotOf([], 2));

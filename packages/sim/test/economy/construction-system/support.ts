@@ -18,7 +18,7 @@ import { fx, ONE, type SimEvent, type Simulation } from '../../../src/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
- * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
+ * Unit + integration tests for the ConstructionSystem - a construction site (`UnderConstruction`) rises to
  * `built = min(builder-work, delivered-material)`, ramping its `Health` with it, and FINISHES (consumes
  * the cost, removes the marker, fills Health, emits `buildingFinished`) the tick its builder work is
  * complete AND every material is present. A free (empty-cost) type finishes at once. A built chained
@@ -27,27 +27,27 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
  * block below); the unit tests drive `labor` by hand to isolate the system.
  *
  * Content is built with `parseContentSet` (not the shared fixture) so the `construction` cost is explicit
- * and the golden slice — whose buildings carry no cost and are placed already-built — is untouched.
+ * and the golden slice - whose buildings carry no cost and are placed already-built - is untouched.
  */
 
 export const VIKING = 1;
 export const STONE = 1;
 export const WOOD = 2;
 export const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 3·STRIKES_PER_UNIT swings)
-export const HEADQUARTERS = 1; // free — empty construction cost
+export const HEADQUARTERS = 1; // free - empty construction cost
 /** A workplace whose recipe turns wood into stone: its WOOD is a protected input reserve, its STONE the
- *  finished shelf a builder may still lift — both sides of the fetch reserve rule in one building. */
+ *  finished shelf a builder may still lift - both sides of the fetch reserve rule in one building. */
 export const WORKSHOP = 5;
 export const GRASS = 0;
-export const CARRIER = 36; // a job with no harvest atomics — it can only haul a load it already carries
+export const CARRIER = 36; // a job with no harvest atomics - it can only haul a load it already carries
 export const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
 export const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
-export const HOUSE_MAX_HP = 100; // the HOUSE fixture's `hitpoints` — small so the ramp is exact-integer to read
+export const HOUSE_MAX_HP = 100; // the HOUSE fixture's `hitpoints` - small so the ramp is exact-integer to read
 
-// The home level chain — `upgradeTarget`-linked typeIds, each a larger `home` with its own per-tier cost.
+// The home level chain - `upgradeTarget`-linked typeIds, each a larger `home` with its own per-tier cost.
 export const HOME_L0 = 2; // home level 00, homeSize 1, upgrades by paying L1's cost
 export const HOME_L1 = 3; // home level 01, homeSize 2, upgrades by paying L2's cost
-export const HOME_L2 = 4; // home level 02, homeSize 3 — top tier in this fixture (no upgradeTarget)
+export const HOME_L2 = 4; // home level 02, homeSize 3 - top tier in this fixture (no upgradeTarget)
 
 export function constructionContent(): ContentSet {
   return parseContentSet({
@@ -62,7 +62,7 @@ export function constructionContent(): ContentSet {
       { typeId: CARRIER, id: 'carrier' },
       // The builder trade: permitted to run the build-house atomic (the data-driven "who constructs"
       // gate the planner reads). No atomic animation is bound, so a build swing takes the default
-      // duration — enough to drive the labor loop in the end-to-end test.
+      // duration - enough to drive the labor loop in the end-to-end test.
       { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
@@ -73,13 +73,13 @@ export function constructionContent(): ContentSet {
         id: 'home_small',
         kind: 'home',
         homeSize: 2,
-        // 2× stone + 1× wood — a repeat in the source good-id list encodes the amount.
+        // 2× stone + 1× wood - a repeat in the source good-id list encodes the amount.
         construction: [
           { goodType: STONE, amount: 2 },
           { goodType: WOOD, amount: 1 },
         ],
         hitpoints: HOUSE_MAX_HP, // the life pool the ConstructionSystem ramps up as it rises
-        // A 2-cell body (anchor + one cell east) — the footprint the render's construction-plot decal
+        // A 2-cell body (anchor + one cell east) - the footprint the render's construction-plot decal
         // washes grey. Inert for the placement/build tests here (they bypass collision); read only by
         // constructionPlots below.
         footprint: {
@@ -197,7 +197,7 @@ export function placeSite(sim: Simulation, buildingType: number, stock: Record<n
   return e;
 }
 
-/** Fully hammer a site — the by-hand stand-in for the build swings a real builder runs, so a unit test
+/** Fully hammer a site - the by-hand stand-in for the build swings a real builder runs, so a unit test
  *  can isolate the ConstructionSystem's completion logic from the planner. */
 export function fullyHammer(sim: Simulation, site: Entity): void {
   sim.world.get(site, UnderConstruction).labor = ONE;
@@ -207,7 +207,7 @@ export function finishedEvents(sim: Simulation): readonly SimEvent[] {
   return sim.events.current().filter((ev) => ev.kind === 'buildingFinished');
 }
 
-/** An under-construction site placed at a given tile (empty hold — accumulates deliveries). */
+/** An under-construction site placed at a given tile (empty hold - accumulates deliveries). */
 export function siteAt(sim: Simulation, buildingType: number, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -256,7 +256,7 @@ export function loadedCarrierAt(
   return e;
 }
 
-/** The level chain plus the hauling + hammering trades — the delivery/e2e twin of
+/** The level chain plus the hauling + hammering trades - the delivery/e2e twin of
  *  {@link levelChainContent} (an upgrade site needs a builder's swings, like any site). */
 export function levelChainWithCarrier(): ContentSet {
   return parseContentSet({

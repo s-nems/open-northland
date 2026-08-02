@@ -25,7 +25,7 @@ import {
   wallAt,
 } from './support.js';
 
-describe('unit body collision — soft and civilian traffic', () => {
+describe('unit body collision - soft and civilian traffic', () => {
   it('civilians never collide: a worker walks straight through an enemy line, untouched', () => {
     const s = sim();
     wallAt(s, 10, P1);
@@ -37,7 +37,7 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(s.world.has(worker, Obstructed)).toBe(false);
   });
 
-  it('a ROUTED civilian is never detoured by standing bodies — routing skips the unit overlay', () => {
+  it('a ROUTED civilian is never detoured by standing bodies - routing skips the unit overlay', () => {
     // Same wall, but the worker goes through the real planner→routing pipeline (a MoveGoal, not a
     // hand-built path). The wall seals every row, so a detour is impossible: arriving at all proves
     // routing never composed the standing-unit overlay for a non-collider. The physical-layer twin
@@ -52,11 +52,11 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(s.world.has(worker, PathRequest)).toBe(false); // never flagged failed either
   });
 
-  it("a civilian's goal on a fighter-occupied node is never re-aimed — economy targets stay exact", () => {
+  it("a civilian's goal on a fighter-occupied node is never re-aimed - economy targets stay exact", () => {
     // A standing enemy soldier occupies the worker's exact destination. The surround rule re-aims a
     // COLLIDER's goal to a free stand-in; a civilian's goal must survive verbatim (the economy's
     // node-coincidence checks depend on arriving exactly where the goal was set). Asserted at the
-    // ARRIVAL tick — the idle-spacing drive legitimately nudges a settler off a shared node later.
+    // ARRIVAL tick - the idle-spacing drive legitimately nudges a settler off a shared node later.
     const s = sim();
     settlerAt(s, 16, 6, SOLDIER, P1); // a post exactly on the goal node
     const worker = settlerAt(s, 4, 6, WOODCUTTER, P0);
@@ -70,7 +70,7 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(nodeOf(s, worker)).toEqual({ x: 16, y: 6 }); // arrived ON the occupied node, not beside it
   });
 
-  it('unowned fighters never collide — neutral fixtures stay byte-identical to the pre-collision sim', () => {
+  it('unowned fighters never collide - neutral fixtures stay byte-identical to the pre-collision sim', () => {
     const s = sim();
     for (let hy = 0; hy < 12; hy++) settlerAt(s, 10, hy, SOLDIER, null); // an UNOWNED line
     const runner = settlerAt(s, 4, 6, SOLDIER, null); // an UNOWNED walker
@@ -80,15 +80,15 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 }); // passed straight through
   });
 
-  it('two owned civilians walking the same road are nudged apart — never drawn merged mid-walk', () => {
+  it('two owned civilians walking the same road are nudged apart - never drawn merged mid-walk', () => {
     const s = sim();
     const a = settlerAt(s, 4, 6, WOODCUTTER, P0);
-    const b = settlerAt(s, 4, 6, WOODCUTTER, P0); // spawned exactly stacked — the builders' case
+    const b = settlerAt(s, 4, 6, WOODCUTTER, P0); // spawned exactly stacked - the builders' case
     orderTo(s, a, 20, 6);
     orderTo(s, b, 20, 6);
 
     // After a short warm-up (route resolution + the first split ticks), the pair must never share an
-    // exact position again while BOTH walk — the soft nudge rides them apart and keeps them apart.
+    // exact position again while BOTH walk - the soft nudge rides them apart and keeps them apart.
     let bothWalkedTicks = 0;
     for (let t = 0; t < 250; t++) {
       s.step();
@@ -100,7 +100,7 @@ describe('unit body collision — soft and civilian traffic', () => {
       expect(pa.x === pb.x && pa.y === pb.y).toBe(false);
     }
     expect(bothWalkedTicks).toBeGreaterThan(20); // the walk was long enough to prove anything
-    // ...and the nudge never prevented the arrivals (both stood down at/next to the shared goal —
+    // ...and the nudge never prevented the arrivals (both stood down at/next to the shared goal -
     // the idle-spacing drive legitimately parks one beside it).
     expect(s.world.has(a, PathFollow)).toBe(false);
     expect(s.world.has(b, PathFollow)).toBe(false);
@@ -110,7 +110,7 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(s.world.has(b, Obstructed)).toBe(false);
   });
 
-  it('the civilian nudge stays ON inside a calm zone — town walkers spread and still arrive', () => {
+  it('the civilian nudge stays ON inside a calm zone - town walkers spread and still arrive', () => {
     const s = sim();
     const b = s.world.create();
     s.world.add(b, Position, positionOfNode(12, 6));
@@ -144,7 +144,7 @@ describe('unit body collision — soft and civilian traffic', () => {
   it('same-lane walkers form a COLUMN: the follower falls in behind, nobody is shoved off the lane', () => {
     // Two owned civilians share one eastbound lane (a pure E walk keeps the row constant, so ANY
     // lateral shove would show as a y change). The convoy rule must (a) never push either off the
-    // lane, (b) open a fore/aft gap, and (c) keep the column order stable — the reported jostle was
+    // lane, (b) open a fore/aft gap, and (c) keep the column order stable - the reported jostle was
     // the pair swapping/shoving sideways on every step.
     const s = sim();
     const a = settlerAt(s, 4, 6, WOODCUTTER, P0);
@@ -176,7 +176,7 @@ describe('unit body collision — soft and civilian traffic', () => {
     expect(Math.abs(nodeOf(s, b).x - 20) + Math.abs(nodeOf(s, b).y - 6)).toBeLessThanOrEqual(1);
   });
 
-  it('UNOWNED civilians walking together stay exactly merged — the Owner gate holds for the soft tier', () => {
+  it('UNOWNED civilians walking together stay exactly merged - the Owner gate holds for the soft tier', () => {
     const s = sim();
     const a = settlerAt(s, 4, 6, WOODCUTTER, null);
     const b = settlerAt(s, 4, 6, WOODCUTTER, null);

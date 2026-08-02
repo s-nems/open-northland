@@ -92,8 +92,8 @@ function toConsumingWorkplace(plan: PlannerContext, goodType: number): DeliveryV
   return hasRoom(world, ctx, workplace, goodType) ? workplace : null;
 }
 
-/** A flag-bound gatherer banks its harvest at its own flag. The flag carries no {@link Stockpile} — the
- *  load spreads onto loose ground heaps around it, each pinned to its tile — so there is no capacity gate. */
+/** A flag-bound gatherer banks its harvest at its own flag. The flag carries no {@link Stockpile} - the
+ *  load spreads onto loose ground heaps around it, each pinned to its tile - so there is no capacity gate. */
 function toOwnDeliveryFlag(plan: PlannerContext): DeliveryVerdict {
   const { world, entity } = plan;
   const flag = world.tryGet(entity, WorkFlag)?.flag;
@@ -139,7 +139,7 @@ function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict
 }
 
 /** A builder's own crew site. Bound, so it stays unconfined: the player's pin may point beyond the signpost
- *  area and `planBuilder` fetches for it regardless — a confined delivery would disagree with that fetch and
+ *  area and `planBuilder` fetches for it regardless - a confined delivery would disagree with that fetch and
  *  shuttle the material back to its source forever. */
 function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
   const { world, ctx, entity, tribe, owner, inbound } = plan;
@@ -171,7 +171,7 @@ function toNeedingConstructionSite(
 
 /**
  * A carrier posted at an input-less UTILITY (the well, the hive) feeds that utility's output to a nearby
- * BUILT recipe consumer — the bakery's water, the brewery's honey — before central storage, banking only the
+ * BUILT recipe consumer - the bakery's water, the brewery's honey - before central storage, banking only the
  * surplus later (user rule 2026-07-19). A site still under construction is skipped: it needs delivered build
  * material, not a recipe input.
  */
@@ -199,7 +199,7 @@ function toNearbyRecipeConsumer(
   );
 }
 
-/** The nearest store that can stock the good — the default for an unbound hauler. */
+/** The nearest store that can stock the good - the default for an unbound hauler. */
 function toNearestCapableStore(
   plan: PlannerContext,
   goodType: number,

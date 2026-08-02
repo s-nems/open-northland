@@ -4,19 +4,19 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 
 /**
- * The building-geometry debug overlay (`?debug=geometry`) — draws every placed building's logic
+ * The building-geometry debug overlay (`?debug=geometry`) - draws every placed building's logic
  * geometry over the world so a human can verify the extracted data against the drawn graphic:
  *
- *  - reserved cells (build-exclusion zone, `footprint.reserved`) — amber outline diamonds;
- *  - blocked cells (walk collision, `footprint.blocked`) — red filled diamonds;
- *  - the door node (`footprint.door`) — green filled diamond (the settler entry cell);
+ *  - reserved cells (build-exclusion zone, `footprint.reserved`) - amber outline diamonds;
+ *  - blocked cells (walk collision, `footprint.blocked`) - red filled diamonds;
+ *  - the door node (`footprint.door`) - green filled diamond (the settler entry cell);
  *  - the worker-icon anchor (door + the building's worker-icon offset: default one node right,
- *    per-building overrides in the app's `catalog/building-tweaks.ts`) — blue dot;
- *  - the anchor node — white cross (the building's own placement node);
+ *    per-building overrides in the app's `catalog/building-tweaks.ts`) - blue dot;
+ *  - the anchor node - white cross (the building's own placement node);
  *  - an optional label under the anchor.
  *
  * A debug tool, not a game surface: it rebuilds its whole (small) scene graph on every `set` and is
- * only fed when the flag is on and the building set changed — never per frame. It sits above the
+ * only fed when the flag is on and the building set changed - never per frame. It sits above the
  * sprite layer so the cells read over the building art (which is exactly what is being verified);
  * fills stay translucent so the art stays visible under them.
  */
@@ -29,7 +29,7 @@ export interface GeometryDebugCell {
 }
 
 /** One building's geometry. The cell channels (`blocked`/`reserved`/`door`) are AUTHORED-frame
- *  offsets from the IR footprint — the overlay applies the odd-row parity shift when drawing, the
+ *  offsets from the IR footprint - the overlay applies the odd-row parity shift when drawing, the
  *  same way the sim stamps them. `iconAnchor` is an already-resolved absolute node (the app computes
  *  it through the door helpers), so it is drawn verbatim. */
 export interface GeometryDebugItem {
@@ -46,7 +46,7 @@ export interface GeometryDebugItem {
   readonly label?: string | undefined;
 }
 
-/** Overlay palette — one colour per geometry channel (legend order = z order, back to front). */
+/** Overlay palette - one colour per geometry channel (legend order = z order, back to front). */
 const RESERVED_COLOR = 0xe0b040;
 const BLOCKED_COLOR = 0xd94040;
 const DOOR_COLOR = 0x40d960;

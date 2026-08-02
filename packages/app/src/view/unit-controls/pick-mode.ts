@@ -12,12 +12,12 @@ import {
 import type { UnitTargets } from './unit-targets.js';
 
 /**
- * The armed click-to-pick mode, or null when none is. The three are mutually exclusive by construction —
+ * The armed click-to-pick mode, or null when none is. The three are mutually exclusive by construction -
  * arming one replaces whatever was armed:
- *  - `workplace` ("przydziel miejsce pracy") — candidate buildings wash green/red and the next left-click
+ *  - `workplace` ("przydziel miejsce pracy") - candidate buildings wash green/red and the next left-click
  *    on a green one binds the settler to its matching slot.
- *  - `home` ("przypisz dom") — the residential twin: homes wash green/red and a green one takes the family.
- *  - `signpost` ("Erect Signpost") — the next left-click on the world orders the first scout to erect there.
+ *  - `home` ("przypisz dom") - the residential twin: homes wash green/red and a green one takes the family.
+ *  - `signpost` ("Erect Signpost") - the next left-click on the world orders the first scout to erect there.
  * A click on a red building / terrain, a right-click, Esc, or a selection change cancels any of them.
  */
 type PickMode =
@@ -41,7 +41,7 @@ export interface PickModeController {
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
-  /** Consume a mousedown while a mode is armed. Returns true when one was armed — the caller must then
+  /** Consume a mousedown while a mode is armed. Returns true when one was armed - the caller must then
    *  stop, because the press resolved or cancelled the mode and must not fall through to selection / an
    *  order. Left resolves a mode, any other button cancels it. */
   handleMouseDown(event: MouseEvent): boolean;
@@ -66,12 +66,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     cancel();
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit — cancel
+    if (building === null) return; // clicked terrain / a unit - cancel
     const snapshot = deps.snapshot();
     // The button places the settler's CURRENT trade only (it never re-trades): bind exactly the building's
     // matching slot, or cancel when the building doesn't offer it (a red building).
     const job = assignableJobForBuilding(snapshot, building, settlerId, buildingsByType);
-    if (job === null) return; // red — cancel
+    if (job === null) return; // red - cancel
     deps.enqueue({
       kind: 'assignWorker',
       entity: settlerId as Entity,
@@ -86,8 +86,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     cancel();
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit — cancel
-    if (!houseAssignableAt(deps.snapshot(), building, settlerId, buildingsByType)) return; // red — cancel
+    if (building === null) return; // clicked terrain / a unit - cancel
+    if (!houseAssignableAt(deps.snapshot(), building, settlerId, buildingsByType)) return; // red - cancel
     deps.enqueue({ kind: 'assignHouse', entity: settlerId as Entity, house: building as Entity });
   };
 
@@ -106,7 +106,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       // A left click orders the scout to erect on the clicked node. Legality is the sim command's gate
       // (an illegal spot is a logged no-op), so a bad click simply leaves the scout unmoved.
       // Named deviation (observed original, tutorial_001 briefing): the original erects with RIGHT-click
-      // on ground that is "lit up"; we place with LEFT-click and dim blocked ground instead — the same
+      // on ground that is "lit up"; we place with LEFT-click and dim blocked ground instead - the same
       // convention as our build placement, so the two placement modes read identically.
       case 'signpost': {
         const scout = mode.scouts[0];

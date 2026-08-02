@@ -8,7 +8,7 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Unit + integration tests for the PlannerSystem's navigation-planner slice — the seam that turns a
+ * Unit + integration tests for the PlannerSystem's navigation-planner slice - the seam that turns a
  * {@link MoveGoal} on a path-less, request-less entity into a {@link PathRequest}, and removes the
  * goal once the entity has arrived. This closes the intent→request→path→move loop end to end with
  * the real PathfindingSystem + MovementSystem inside a normal `step()`. The fixture's landscape has
@@ -19,7 +19,7 @@ const GRASS = 0;
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 
-/** The cell id of visual tile (x, y)'s ANCHOR NODE — sim grid coords are half-cell nodes. */
+/** The cell id of visual tile (x, y)'s ANCHOR NODE - sim grid coords are half-cell nodes. */
 function anchorCell(sim: Simulation, x: number, y: number): number {
   const n = cellAnchorNode(x, y);
   return sim.terrain?.nodeAt(n.hx, n.hy) as number;
@@ -38,7 +38,7 @@ function pos(sim: Simulation, e: Entity): { x: number; y: number } {
   return { x: fx.toFloat(p.x), y: fx.toFloat(p.y) };
 }
 
-describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => {
+describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
   it('issues a PathRequest from the entity cell to the goal cell when idle', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const goal = anchorCell(sim, 3, 0);
@@ -60,7 +60,7 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
     // Pre-seed a live request so the planner sees the entity as already travelling.
     sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: false });
     plannerSystem(sim.world, ctxOf(sim));
-    // Still the pre-seeded request (start 0, goal 1) — the planner did not overwrite/duplicate it.
+    // Still the pre-seeded request (start 0, goal 1) - the planner did not overwrite/duplicate it.
     expect(sim.world.get(e, PathRequest).goal).toBe(1);
   });
 
@@ -93,7 +93,7 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
     });
     plannerSystem(sim.world, ctxOf(sim));
     // A fresh request is issued right away; the stale path keeps the walker moving until the
-    // routing splice replaces it (carrying its momentum through the turn — movement inertia).
+    // routing splice replaces it (carrying its momentum through the turn - movement inertia).
     expect(sim.world.has(e, PathRequest)).toBe(true);
     expect(sim.world.get(e, PathRequest).goal).toBe(anchorCell(sim, 3, 0));
     expect(sim.world.has(e, PathFollow)).toBe(true);
@@ -102,7 +102,7 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
   it('routes from the NEAREST node centre, not the truncated one, when the walker is mid-leg', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, anchorCell(sim, 0, 0));
-    // Past the midpoint between nodes (5,0) and (6,0) — the nearest node is (6,0) AHEAD (cell (3,0)'s
+    // Past the midpoint between nodes (5,0) and (6,0) - the nearest node is (6,0) AHEAD (cell (3,0)'s
     // anchor), truncation says (5,0) behind. Routing from behind made a redirected walker visibly
     // backtrack through that node.
     sim.world.get(e, Position).x = fx.fromFloat(2.8);
@@ -112,20 +112,20 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
 
   it('routes from a walkable bracket node when the NEAREST node is impassable (mid-seam redirect)', () => {
     // A diagonal (±1,±2) leg is legal with one impassable flank (terrain.ts steps), so a walker
-    // part-way along it can sit nearest a WATER node. findPath rejects an unwalkable start outright —
+    // part-way along it can sit nearest a WATER node. findPath rejects an unwalkable start outright -
     // routing from that node would fail the request and strand the walker mid-leg; the planner must
     // skip to the nearest walkable bracket node instead. Node-level water needs a hand-authored
     // half-cell map (a cell fixture stamps uniform 2×2 blocks).
     const WATER = 1;
     const typeIds = new Array(16).fill(GRASS);
-    typeIds[1 * 4 + 2] = WATER; // node (2,1) — a flank of the diagonal leg (1,0) -> (2,2)
+    typeIds[1 * 4 + 2] = WATER; // node (2,1) - a flank of the diagonal leg (1,0) -> (2,2)
     const sim = new Simulation({
       seed: 1,
       content: testContent(),
       map: { resolution: 'half-cell', width: 4, height: 4, typeIds },
     });
     const e = travellerAt(sim, 0, 0, sim.terrain?.nodeAt(0, 0) as number);
-    // Part-way along the diagonal leg (1,0) -> (2,2): world (0.85, 0.7) — nearest bracket node is
+    // Part-way along the diagonal leg (1,0) -> (2,2): world (0.85, 0.7) - nearest bracket node is
     // the water flank (2,1); the walkable (2,2) must win instead.
     sim.world.get(e, Position).x = fx.fromFloat(0.5);
     sim.world.get(e, Position).y = fx.fromFloat(0.7);
@@ -140,7 +140,7 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
     const e = travellerAt(sim, 0, 0, goal);
     sim.world.get(e, Position).x = fx.fromFloat(2.2); // in the goal cell, but off its centre
     sim.step(); // plan (single-cell route) + resolve + walk toward the centre
-    expect(sim.world.has(e, MoveGoal)).toBe(true); // not yet satisfied — still centring
+    expect(sim.world.has(e, MoveGoal)).toBe(true); // not yet satisfied - still centring
     for (let t = 0; t < 20 && sim.world.has(e, MoveGoal); t++) sim.step();
     expect(sim.world.has(e, MoveGoal)).toBe(false); // satisfied ON the centre
     expect(pos(sim, e)).toEqual({ x: 2, y: 0 }); // parked exactly on the goal centre
@@ -174,7 +174,7 @@ describe('plannerSystem — navigation planner: MoveGoal -> PathRequest', () => 
   });
 });
 
-describe('plannerSystem — end-to-end: goal to arrival through the real schedule', () => {
+describe('plannerSystem - end-to-end: goal to arrival through the real schedule', () => {
   it('walks a settler to its goal cell and clears the goal on arrival', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const goal = anchorCell(sim, 3, 0);
@@ -208,7 +208,7 @@ describe('plannerSystem — end-to-end: goal to arrival through the real schedul
   });
 });
 
-describe('plannerSystem — determinism', () => {
+describe('plannerSystem - determinism', () => {
   it('two same-seed sims with the same goal reach the same state hash', () => {
     const runOne = (): string => {
       const s = new Simulation({ seed: 7, content: testContent(), map: grassMap(5, 1) });

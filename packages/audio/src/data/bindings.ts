@@ -15,34 +15,34 @@ export const JINGLE_DEATH = 25;
 export const JINGLE_HOUSE_BUILT = 26;
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
-/** Construction hammering — placed at a newly-sited building/boat. */
+/** Construction hammering - placed at a newly-sited building/boat. */
 export const GROUP_HAMMER_WOOD = 'Hammer Wood';
-/** Axe chops — the woodcutter working a tree (bound to the chop atomic by the caller). */
+/** Axe chops - the woodcutter working a tree (bound to the chop atomic by the caller). */
 export const GROUP_WOODCUTTER_AXE = 'Woodcutter Axe';
-/** Sawing — a workshop producing (bound to `goodProduced`). */
+/** Sawing - a workshop producing (bound to `goodProduced`). */
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
 // --- Combat impact / weapon SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set
 //     decoded from `soundfx.cif`). ---
-/** Melee swing swoosh — plays on every swing, hit or miss. The melee weapons share one swing wav set in
+/** Melee swing swoosh - plays on every swing, hit or miss. The melee weapons share one swing wav set in
  *  the bank (`Weapon Sword Short` / `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`),
  *  so one generic swing group covers sword/spear/fist. */
 export const GROUP_MELEE_SWING = 'Weapon Sword Short';
-/** Fist impact — a bare-handed civilian brawl connecting (LogicSoundType 93). */
+/** Fist impact - a bare-handed civilian brawl connecting (LogicSoundType 93). */
 export const GROUP_FIST_HIT = 'Weapon Fist Hit';
 /** Spear thrust connecting (LogicSoundType 68). */
 export const GROUP_SPEAR_HIT = 'Weapon Spear Hit';
-/** Sword blow connecting — the short-sword impact, the generic melee-thunk fallback too (LogicSoundType 82). */
+/** Sword blow connecting - the short-sword impact, the generic melee-thunk fallback too (LogicSoundType 82). */
 export const GROUP_SWORD_HIT = 'Weapon Sword Short Hit';
-/** Bow release — the string loosing an arrow (LogicSoundType 75, the long/hunter bow twang). */
+/** Bow release - the string loosing an arrow (LogicSoundType 75, the long/hunter bow twang). */
 export const GROUP_BOW_SHOT = 'Weapon Bow Long';
-/** Arrow impact — the shot landing its blow (LogicSoundType 77). */
+/** Arrow impact - the shot landing its blow (LogicSoundType 77). */
 export const GROUP_ARROW_HIT = 'Weapon Bow Hit';
 
 /**
  * The three melee weapon-classes (`weaponMainType`) with a distinct impact SFX in the
  * {@link defaultBindings} `byCombatWeapon` map. Saber/axe (4/5) and unclassified weapons have no entry
- * and fall through to the {@link GROUP_SWORD_HIT} generic melee thunk (`byEvent.combatHit`) — the mod
+ * and fall through to the {@link GROUP_SWORD_HIT} generic melee thunk (`byEvent.combatHit`) - the mod
  * ships no dedicated saber/axe impact group. Ranged classes (bow 6 / catapult 7) never emit a
  * `combatHit` (their hit is the arrow/rock `projectileHit`).
  */
@@ -50,11 +50,11 @@ const WEAPON_MAIN_TYPE_FIST = 1;
 const WEAPON_MAIN_TYPE_SPEAR = 2;
 const WEAPON_MAIN_TYPE_SWORD = 3;
 
-/** A settler's voice class — the axis the `?sounds` gallery groups the voice pools by. */
+/** A settler's voice class - the axis the `?sounds` gallery groups the voice pools by. */
 export type VoiceClass = 'male' | 'female' | 'child';
 
 /**
- * The viking voice pools, keyed by sex/age — `SoundFXStatic` group names from `soundfx.cif` (the mod's
+ * The viking voice pools, keyed by sex/age - `SoundFXStatic` group names from `soundfx.cif` (the mod's
  * `humans/sounds.cif` binds these same groups per tribe/sex). In play, a voice comes from the sim's
  * `chatVoice` cue, which names its group by `logicSoundType` id straight from the talk clip's authored
  * event (the SocialTalk pair 61/62); this table remains the gallery's audition listing of all the pools.

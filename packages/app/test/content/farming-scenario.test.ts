@@ -13,12 +13,12 @@ import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
- * The field-farming loop (sow → water → grow → reap → bank) over the MERGED REAL content — the twin
+ * The field-farming loop (sow → water → grow → reap → bank) over the MERGED REAL content - the twin
  * of the sim fixture's end-to-end run (`packages/sim/test/economy/farming/coordination.cases.ts`),
  * with the wheat good, the farmer trade, the farm building, and the tribe all resolved from the
  * pipeline's output. The farm/farmer are built component-directly exactly like that proven sim e2e
  * (bound crew mid-life, not a construction saga); what real content contributes is the id joins and
- * the overlaid `farming` block — the pieces a fixture can never regress. Skips without content.
+ * the overlaid `farming` block - the pieces a fixture can never regress. Skips without content.
  */
 
 const { Building, JobAssignment, Position, Settler, Stockpile } = components;
@@ -29,7 +29,7 @@ const MAP_CELLS = 10;
 const FARM_AT = { x: 5, y: 5 } as const;
 /** Wheat farms at ~500 ticks/stage × 5 stages on the clean-room balance (`catalog/farming.ts`). A lone
  *  farmer ploughs the whole 24-field plot before it starts watering, so the first sheaf lands well past
- *  one growth cycle — measured at tick ~7040, the plot itself full by ~2440
+ *  one growth cycle - measured at tick ~7040, the plot itself full by ~2440
  *  (docs/tickets/sim/farm-plot-cold-start.md). Which field ripens first moves with the sown node set,
  *  since a field's pace is a hash of its node, so this budget leaves room for that swing rather than
  *  sitting just past the observed figure. */
@@ -112,7 +112,7 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
       expect(violations, `invariant broke at tick ${t + 1}`).toEqual([]);
     }
     const banked = sim.world.get(farmEntity, Stockpile).amounts.get(wheat.typeId) ?? 0;
-    expect(banked, 'no wheat ever reached the farm store — the field loop stalled').toBeGreaterThan(0);
+    expect(banked, 'no wheat ever reached the farm store - the field loop stalled').toBeGreaterThan(0);
     // Past the 5 s default: {@link FARM_TICKS} steps, each re-checking every invariant over the world.
   }, 60_000);
 

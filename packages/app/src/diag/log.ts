@@ -1,20 +1,20 @@
 /**
- * The app-wide diagnostics logger — one backbone with named channels and severity levels, two sinks:
+ * The app-wide diagnostics logger - one backbone with named channels and severity levels, two sinks:
  * the browser console (dev-readable, level-filtered) and a bounded in-memory ring of plain
  * JSON-serializable entries. The diagnostics bundle serializes the ring so a tester report includes
  * everything logged before a failure.
  *
- * App-local by design: `packages/sim` stays log-free (purity — sim facts enter the log at the app
+ * App-local by design: `packages/sim` stays log-free (purity - sim facts enter the log at the app
  * boundary), and render/audio get access only when a real second caller appears. The core is
  * DOM-free so headless tests and node imports work; browser-only facts live in `env-header.ts`.
  */
 
 export type DiagLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/** Severity order for level filtering — a sink at level L passes entries ranked >= L. */
+/** Severity order for level filtering - a sink at level L passes entries ranked >= L. */
 const LEVEL_RANK: Readonly<Record<DiagLevel, number>> = { debug: 0, info: 1, warn: 2, error: 3 };
 
-/** One logged fact — plain data, JSON-serializable (data is normalized at log time). */
+/** One logged fact - plain data, JSON-serializable (data is normalized at log time). */
 export interface DiagEntry {
   /** Milliseconds since page/process start (the injected `now` clock; `performance.now()` by default). */
   readonly timeMs: number;
@@ -25,7 +25,7 @@ export interface DiagEntry {
   readonly data?: unknown;
 }
 
-/** The four console methods the console sink dispatches to — injectable so tests capture output. */
+/** The four console methods the console sink dispatches to - injectable so tests capture output. */
 export type ConsoleSink = Pick<Console, 'debug' | 'info' | 'warn' | 'error'>;
 
 export interface DiagLogOptions {
@@ -43,7 +43,7 @@ const DEFAULT_CONSOLE_LEVEL: DiagLevel = 'info';
 
 /**
  * Normalize log data to a JSON-safe value: an `Error` (the common `catch` payload) becomes a plain
- * `{name, message, stack}` object so `JSON.stringify` keeps it; everything else passes through —
+ * `{name, message, stack}` object so `JSON.stringify` keeps it; everything else passes through -
  * callers pass plain data, and the bundle serializer owns any last-resort fallback.
  */
 function toJsonSafe(data: unknown): unknown {
@@ -110,17 +110,17 @@ export class DiagLog {
     this.log(channel, 'error', message, data);
   }
 
-  /** Set the console echo threshold — globally, or for one channel (overriding the global level). */
+  /** Set the console echo threshold - globally, or for one channel (overriding the global level). */
   setConsoleLevel(level: DiagLevel | 'silent', channel?: string): void {
     if (channel !== undefined) this.channelConsoleLevels.set(channel, level);
     else this.consoleLevel = level;
   }
 
-  /** All retained entries, oldest first (a defensive copy — the ring stays private). */
+  /** All retained entries, oldest first (a defensive copy - the ring stays private). */
   entries(): readonly DiagEntry[] {
     return [...this.ring];
   }
 }
 
-/** The one app-wide logger instance — import this, not a per-module `new DiagLog()`. */
+/** The one app-wide logger instance - import this, not a per-module `new DiagLog()`. */
 export const diag = new DiagLog();

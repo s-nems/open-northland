@@ -4,14 +4,14 @@ import { computeSettlerBubbles } from '../src/view/projections/index.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
- * computeSettlerBubbles — the pure snapshot→bubble projection the render layer floats over a settler's
+ * computeSettlerBubbles - the pure snapshot→bubble projection the render layer floats over a settler's
  * head. It reads the standing family state the sim drives (a woman's `ChildOrder` shows the `child`
  * bubble until the birth; a `Wedding` in progress shows the `partner` bubble on both partners until they
  * marry) and the pressing needs (hunger/fatigue at the sim's satisfy thresholds show the `hungry`/`sleepy`
  * bubble). The bubble anchors on the settler's own `Position`.
  */
 
-const WOMAN = 5; // any adult job id — the projection keys on the components, not the trade
+const WOMAN = 5; // any adult job id - the projection keys on the components, not the trade
 const MAN = 6;
 
 /** An adult settler at tile `(x, y)` carrying exactly the given extra components. */
@@ -54,8 +54,8 @@ describe('computeSettlerBubbles', () => {
     ]);
   });
 
-  it('shows no hungry bubble at the EAT threshold — a settler that far along just goes and eats', () => {
-    const sated = fx.div(ONE, fx.fromInt(2)); // below the ¾·ONE sleep trigger — no sleepy bubble
+  it('shows no hungry bubble at the EAT threshold - a settler that far along just goes and eats', () => {
+    const sated = fx.div(ONE, fx.fromInt(2)); // below the ¾·ONE sleep trigger - no sleepy bubble
     const snap = snapshotOf([
       {
         // Over the eat trigger, so the drive is already taking it to a meal. This is the case that
@@ -67,7 +67,7 @@ describe('computeSettlerBubbles', () => {
         },
       },
       {
-        // Still climbing well past the eat trigger — it has been looking for food and not finding it.
+        // Still climbing well past the eat trigger - it has been looking for food and not finding it.
         id: 2,
         components: {
           Settler: { jobType: MAN, hunger: systems.HUNGER_BUBBLE_THRESHOLD, fatigue: sated },
@@ -84,7 +84,7 @@ describe('computeSettlerBubbles', () => {
     expect(systems.FATIGUE_BUBBLE_THRESHOLD).toBeGreaterThan(systems.FATIGUE_SLEEP_THRESHOLD);
   });
 
-  it('shows no sleepy bubble at the SLEEP threshold — a settler that far along just goes to bed', () => {
+  it('shows no sleepy bubble at the SLEEP threshold - a settler that far along just goes to bed', () => {
     const snap = snapshotOf([
       {
         id: 1,

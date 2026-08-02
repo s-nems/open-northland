@@ -3,7 +3,7 @@ import type { DecodedMap } from './lane.js';
 
 /**
  * The shared per-cell byte-lane decode: unpack the tagged chunk and carry it verbatim, enforcing the
- * one structural invariant these lanes share — one byte per cell (row-major, unpacked length ===
+ * one structural invariant these lanes share - one byte per cell (row-major, unpacked length ===
  * width·height, not the `2W × 2H` half-cell resolution the landscape-object lanes use). Returns
  * undefined when the map lacks the chunk (older/foreign saves); throws on a dims/length mismatch.
  */
@@ -31,7 +31,7 @@ export function elevationFromMapDat(decoded: DecodedMap): number[] | undefined {
 /**
  * The baked per-cell shading plane (`embr`). 127 is neutral (flat lit ground); lower values are baked
  * slope shadow, higher baked slope light (up to 255 ≈ 2×), and the map's outermost 2–3 rows/columns
- * hold 0 — the engine's fade-to-black border is in the lane. The render-side response curve
+ * hold 0 - the engine's fade-to-black border is in the lane. The render-side response curve
  * (luminance × brightness/127, calibrated against the corpus) lives in
  * `packages/render/src/data/brightness.ts`.
  */

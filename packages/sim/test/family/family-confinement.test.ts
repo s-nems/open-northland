@@ -20,7 +20,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Signpost confinement over the FAMILY searches — the family twins of confinement-drives.test.ts:
+ * Signpost confinement over the FAMILY searches - the family twins of confinement-drives.test.ts:
  * with `setSignpostNavigation` on, the housewife's hoard source, the marry partner pick, and the
  * `assignHouse` target are all gated to the settler's allowed area (local circle + reachable
  * guidepost network), while an in-area twin is still taken. Same geometry as the drives suite:
@@ -30,7 +30,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
 const PLAYER = 0;
-const FOOD = 16; // slug `food_simple` — the `food_` prefix is what makes it edible (isFood)
+const FOOD = 16; // slug `food_simple` - the `food_` prefix is what makes it edible (isFood)
 const WOMAN = 5;
 const CIVILIST = 6;
 const HOME = 2;
@@ -95,7 +95,7 @@ function homeAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** A loose food pile (Stockpile + Position, no Building) — a hoard/haul source. */
+/** A loose food pile (Stockpile + Position, no Building) - a hoard/haul source. */
 function foodPileAt(sim: Simulation, x: number, y: number, amount: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -103,7 +103,7 @@ function foodPileAt(sim: Simulation, x: number, y: number, amount: number): Enti
   return e;
 }
 
-/** Whether the settler committed to anything this tick — a walk or an atomic. */
+/** Whether the settler committed to anything this tick - a walk or an atomic. */
 function acted(sim: Simulation, e: Entity): boolean {
   return sim.world.has(e, MoveGoal) || sim.world.has(e, CurrentAtomic);
 }
@@ -116,7 +116,7 @@ describe('confinement gates the housewife hoard source', () => {
     sim.world.add(woman, Residence, { home });
     foodPileAt(sim, OUT_OF_AREA, 2, 3);
     sim.step();
-    expect(acted(sim, woman)).toBe(false); // the far pile is beyond her area — nothing to hoard
+    expect(acted(sim, woman)).toBe(false); // the far pile is beyond her area - nothing to hoard
 
     foodPileAt(sim, IN_AREA, 2, 3);
     sim.step();
@@ -133,7 +133,7 @@ describe('the same-side rule gates the housewife hoard source', () => {
     const enemyPile = foodPileAt(sim, IN_AREA, 2, 3); // in her area, but another player's larder
     sim.world.add(enemyPile, Owner, { player: PLAYER + 1 });
     sim.step();
-    expect(acted(sim, woman)).toBe(false); // an enemy's food is not hers to haul — nothing to hoard
+    expect(acted(sim, woman)).toBe(false); // an enemy's food is not hers to haul - nothing to hoard
 
     const myPile = foodPileAt(sim, IN_AREA + 1, 2, 3); // her own player's food, also in her area
     sim.world.add(myPile, Owner, { player: PLAYER });
@@ -150,7 +150,7 @@ describe('confinement gates the marry partner pick', () => {
     adultAt(sim, OUT_OF_AREA, 2, CIVILIST, false);
     sim.enqueue({ kind: 'marry', entity: woman });
     sim.step();
-    expect(sim.world.has(woman, Wedding)).toBe(false); // the only match is out of reach — auto-cancel
+    expect(sim.world.has(woman, Wedding)).toBe(false); // the only match is out of reach - auto-cancel
 
     adultAt(sim, IN_AREA, 2, CIVILIST, false);
     sim.enqueue({ kind: 'marry', entity: woman });

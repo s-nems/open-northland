@@ -1,5 +1,5 @@
 /**
- * The HUD folder: the pure, Pixi-free pipeline from a frozen `WorldSnapshot` to placed screen text —
+ * The HUD folder: the pure, Pixi-free pipeline from a frozen `WorldSnapshot` to placed screen text -
  * aggregation ({@link import('./model.js')} `buildHud`), then panel layout
  * ({@link import('./layout.js')} `layoutHud`), then screen-corner placement
  * ({@link import('./place.js')} `placeHud`). Each stage is a function of the previous stage's output, so

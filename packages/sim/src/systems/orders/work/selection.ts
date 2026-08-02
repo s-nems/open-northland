@@ -27,7 +27,7 @@ import { isOrderableSettler } from '../guards.js';
 
 /**
  * How far {@link setWorkFlag} snaps a click that landed on a blocked node. Sized to clear the body under
- * the cursor — a resource cluster or a building — while keeping the flag where the player pointed: past
+ * the cursor - a resource cluster or a building - while keeping the flag where the player pointed: past
  * this the click is treated as "not workable ground" rather than silently relocating the gatherer's yard.
  * Named approximation: the original's click tolerance is not decoded, and 3 tiles sits well inside
  * {@link DEFAULT_WORK_FLAG_RADIUS}, so a snapped flag still covers the patch the player aimed at.
@@ -35,22 +35,22 @@ import { isOrderableSettler } from '../guards.js';
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place / move one owned gatherer's work flag to node (x,y) — the player's "work here" order (the gathering
+ * Place / move one owned gatherer's work flag to node (x,y) - the player's "work here" order (the gathering
  * twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a {@link WorkFlag}
- * whose flag entity still exists, that flag is relocated to (x,y) — only the marker moves; the goods already
- * dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh flag — a pure
- * {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the ground around it, not into it) —
+ * whose flag entity still exists, that flag is relocated to (x,y) - only the marker moves; the goods already
+ * dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh flag - a pure
+ * {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the ground around it, not into it) -
  * is created there and bound with the trade's radius ({@link workFlagRadiusFor}). From then on the gatherer harvests only
  * within that flag's radius, carries only what it dug, and banks it there ({@link planGatherer}).
  *
  * The clicked node is snapped to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}
  * ({@link nearestWorkFlagPlacement}): the player aims at the patch to work, and a resource body blocks its
  * own cells, so "work this iron mine" lands on the ore itself. The snap carries the settler's signpost
- * confinement, so it can only land on ground that settler may work — a narrow stream snaps to its bank.
+ * confinement, so it can only land on ground that settler may work - a narrow stream snaps to its bank.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim; a dead/stale target, a
- * non-settler, a neutral (unowned) entity, a settler whose job cannot harvest — only a gatherer carries a
- * work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag — or a click with no legal node
+ * non-settler, a neutral (unowned) entity, a settler whose job cannot harvest - only a gatherer carries a
+ * work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag - or a click with no legal node
  * in snapping range (mid-lake, a walled-in pocket, wholly outside the settler's signpost area). Carries no
  * issuing-player yet; the per-player authority check lands with lockstep.
  */
@@ -78,17 +78,17 @@ export function setWorkFlag(
     ...(limit !== null ? { accept: (node) => limit.allowsNode(node) } : {}),
     withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
   });
-  if (target === null) return; // nothing legal in snapping range — the click was not on workable ground
+  if (target === null) return; // nothing legal in snapping range - the click was not on workable ground
   const c = terrain.coordsOf(target);
   const pos = positionOfNode(c.x, c.y);
 
   if (live !== undefined) {
-    // Relocate the existing flag — only the marker moves, and its gatherer sheds the delivery/nav state
+    // Relocate the existing flag - only the marker moves, and its gatherer sheds the delivery/nav state
     // that cached the old position (see {@link relocateWorkFlag}).
     relocateWorkFlag(world, live.flag, pos, e);
     return;
   }
-  // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.
+  // No live flag yet (fresh gatherer, or its flag was removed) - mint one here and bind / re-point.
   bindFreshFlag(world, ctx, e, pos);
   clearNavState(world, e);
 }
@@ -139,12 +139,12 @@ export function setGatherGood(
 }
 
 /**
- * Set a craft worker's product selection ({@link CraftSelection}) — which of its bound workplace's
+ * Set a craft worker's product selection ({@link CraftSelection}) - which of its bound workplace's
  * products it crafts, alternating when several are chosen (see the component doc for the rotation).
  * The selection is stored ascending and deduped (canonical; the rotation order is by goodType, not
  * click order) with the cursor reset. Goods the workplace's recipes don't make are dropped; a
  * selection with none left is ignored (recoverable bad input), and an empty selection restores the
- * all-products default by removing the component. Batches already grinding keep their product — the
+ * all-products default by removing the component. Batches already grinding keep their product - the
  * choice applies from the next cycle start, mirroring how a mid-harvest `setGatherGood` cancels only
  * the not-yet-banked work.
  */
@@ -160,7 +160,7 @@ export function setCraftGoods(
   const buildingType = world.tryGet(workplace, Building)?.buildingType;
   if (buildingType === undefined) return;
   const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
-  if (recipes === undefined) return; // not a recipe workplace — nothing to choose
+  if (recipes === undefined) return; // not a recipe workplace - nothing to choose
   if (command.goods.length === 0) {
     world.remove(e, CraftSelection); // back to the all-products default
     return;

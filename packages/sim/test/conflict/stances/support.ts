@@ -15,10 +15,10 @@ import type { MilitaryMode } from '../../../src/systems/readviews/index.js';
  * The four **military stances** (`MILITARY_MODE`) as a per-unit auto-engagement mode, plus the civilian
  * **flee** drive. This file pins the stance layer on top of the engagement half (melee-engagement.test.ts):
  * the job-based defaults, the `setStance` command, the ATTACK/DEFEND/IGNORE/FLEE gates, and the
- * order-over-stance precedence — all deterministic, no RNG.
+ * order-over-stance precedence - all deterministic, no RNG.
  *
  * The fixture's `test_axe` (viking tribe 1, job 1) has band `[1, 2]`, damage 50 vs unarmored; job 1
- * (woodcutter) is a CIVILIAN, so it defaults to FLEE — the tests give a combatant an explicit ATTACK/
+ * (woodcutter) is a CIVILIAN, so it defaults to FLEE - the tests give a combatant an explicit ATTACK/
  * DEFEND/IGNORE stance where they mean it to fight.
  */
 
@@ -31,7 +31,7 @@ export const P1 = 1;
 export const WOOD = 1; // the fixture's wood good (harvest atomic 24), what a woodcutter (job 1) gathers
 export const HARVEST_ATOMIC = 24;
 
-/** An owned combatant with an explicit stance at visual cell (x,y) (a direct spawn — full control over
+/** An owned combatant with an explicit stance at visual cell (x,y) (a direct spawn - full control over
  *  the mode). */
 export function combatant(
   sim: Simulation,
@@ -44,7 +44,7 @@ export function combatant(
   return combatantAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, owner, mode, opts);
 }
 
-/** An owned combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell
+/** An owned combatant standing exactly on half-cell node (hx, hy) - reach geometry a whole cell
  *  (2 nodes on a row) cannot express, e.g. an ODD node distance from a cell-anchored unit. */
 export function combatantAtNode(
   sim: Simulation,
@@ -81,7 +81,7 @@ export function combatantAtPosition(
   return e;
 }
 
-/** The nav node id of visual cell (x,y)'s ANCHOR node — where a unit minted at integer cell coords
+/** The nav node id of visual cell (x,y)'s ANCHOR node - where a unit minted at integer cell coords
  *  stands on the half-cell lattice. */
 export function cell(sim: Simulation, x: number, y: number): NodeId {
   const t = sim.terrain;

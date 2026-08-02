@@ -15,7 +15,7 @@ import type { SpareForce } from './pool.js';
 
 /**
  * The garrison hire: send a true surplus man to the barracks, where the drill enlists him
- * (`settlers/drives/training.ts`) — the seat's only route to a soldier (`schoolingMet`).
+ * (`settlers/drives/training.ts`) - the seat's only route to a soldier (`schoolingMet`).
  *
  * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound
  * is the breeding engine that grows the next recruits: a fighter neither marries nor fathers children
@@ -26,7 +26,7 @@ import type { SpareForce } from './pool.js';
  * Runs last in the workforce ladder, so a recruit is a man no collector post, no building slot, no builder
  * reserve and no flag wanted. One man per decision, so the labour force steps down gradually instead of
  * losing a whole crew's worth on the tick the surplus first appears. The seat picks its lowest-id built
- * barracks — a canonical pick, not the nearest: the drill's cost is the walk, and re-picking per recruit
+ * barracks - a canonical pick, not the nearest: the drill's cost is the walk, and re-picking per recruit
  * would send one batch to two houses.
  *
  * The seat's `military` HAI toggle gates it, even though it runs inside the workforce allocator: the
@@ -50,11 +50,11 @@ export function trainGarrison(
   const recruit = force.take(
     (e) => mayMarry(world, ctx.content, e) && isDrillCandidate(world, ctx, terrain, e, door),
   );
-  // No eligible surplus this decision — the rest waits for grown sons.
+  // No eligible surplus this decision - the rest waits for grown sons.
   return recruit === null ? [] : [{ kind: 'trainSoldier', entity: recruit, house }];
 }
 
-/** The seat's marriageable men beyond its marriageable women — the men the family plan will never
+/** The seat's marriageable men beyond its marriageable women - the men the family plan will never
  *  need as husbands. {@link mayMarry} decides both sides (it already rejects a recruit committed to
  *  a drill). A commutative sum, so it walks store order rather than paying for a canonical sort it
  *  cannot observe. */
@@ -82,7 +82,7 @@ function garrisonHouse(world: World, ctx: SystemContext, player: number): Entity
  * avoids); a settler whose tribe binds no schooling exercise clip banks nothing however long it drills;
  * and a settler the barracks door is shut to would be handed the errand only for the drill rung to
  * abandon it next tick. A man who drilled and was interrupted keeps his part-served schooling and is
- * eligible again — the next term finishes him.
+ * eligible again - the next term finishes him.
  */
 function isDrillCandidate(
   world: World,

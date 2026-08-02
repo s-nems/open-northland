@@ -11,9 +11,9 @@ import { testContent } from '../../fixtures/content.js';
 // opens at 50–100% satisfaction (`100 − deficit`).
 const HALF = fx.div(ONE, fx.fromInt(2));
 const VIKING = 1;
-const IDLE_JOB = 0; // the idle sentinel — a valid createSettler input on any content
+const IDLE_JOB = 0; // the idle sentinel - a valid createSettler input on any content
 
-describe('rollInitialNeed — seeded random starting needs (50–100% satisfaction)', () => {
+describe('rollInitialNeed - seeded random starting needs (50–100% satisfaction)', () => {
   it('never exceeds half a bar (deficit ≤ 50%) and is never negative', () => {
     const rng = new Rng(12345);
     for (let i = 0; i < 1000; i++) {
@@ -38,7 +38,7 @@ describe('rollInitialNeed — seeded random starting needs (50–100% satisfacti
   });
 });
 
-describe('createSettler — every settler spawns with seeded random needs', () => {
+describe('createSettler - every settler spawns with seeded random needs', () => {
   const spec = { jobType: IDLE_JOB, x: 0, y: 0, tribe: VIKING };
 
   it('seeds all four needs within [0, half a bar]', () => {

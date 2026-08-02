@@ -15,26 +15,26 @@ import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
-// Sleeping at home — a settler with a house walks to its door, goes inside, and comes back out rested;
+// Sleeping at home - a settler with a house walks to its door, goes inside, and comes back out rested;
 // the homeless keep the open-ground rule (./rest-spot.ts).
 //
-// Source basis: each tribe authors ONE at-home sleep clip, the civilist's — `viking_civilist_sleep_home`
+// Source basis: each tribe authors ONE at-home sleep clip, the civilist's - `viking_civilist_sleep_home`
 // (length 50) against the outdoor `viking_civilist_sleep` (length 237), and the same single pair in the
 // other four tribes. Both pulse the rest channel twice at `+4000` (`event <at> 1 +4000`), so for that
 // body a bed indoors buys the same rest in a fifth of the time. The other six outdoor clips (baby ×2,
 // child ×2, woman, soldier) have no twin and differ in their own pulses, so they sleep indoors at their
 // outdoor pace.
 //
-// APPROXIMATED — the trigger, not the clip: no `setatomic` binds the home clip, so the original's own
+// APPROXIMATED - the trigger, not the clip: no `setatomic` binds the home clip, so the original's own
 // rule for choosing it is not readable. This rung fires it whenever the settler is housed, with no
 // distance or time-of-day gate.
 //
 // The render draws no at-home clip: it knows only SLEEP_ATOMIC and would play the 237-entry outdoor
-// list against this 50-tick atomic. That is invisible only because `Resting` hides the sleeper — anyone
+// list against this 50-tick atomic. That is invisible only because `Resting` hides the sleeper - anyone
 // changing the hide rule has to bind the home clip too.
 
 /**
- * The suffix that turns a tribe's bound sleep clip into its at-home twin — the data names the pair
+ * The suffix that turns a tribe's bound sleep clip into its at-home twin - the data names the pair
  * `<clip>` / `<clip>_home` in every tribe. No `setatomic` binds the home clip (the original's house logic
  * plays it, not the atomic table), so it is resolved by name rather than through the binding table, the
  * same way the make-love clips are.
@@ -59,7 +59,7 @@ export function sleepAtHome(
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
   const door = interactionCell(world, ctx, terrain, home, here);
   if (limit !== null && !limit.allowsNode(door)) return false;
-  // A door this settler's routes just failed to reach — a house walled in by later building. Give up on
+  // A door this settler's routes just failed to reach - a house walled in by later building. Give up on
   // the bed rather than re-picking it every re-plan: this rung takes the settler for the tick, so a
   // settler looping on an unroutable door would never fall through to the open-ground rule and would
   // stay pinned at the top of its fatigue bar forever.
@@ -85,7 +85,7 @@ export function isSleepingAtHome(world: World, e: Entity): boolean {
 }
 
 /** How long one sleep indoors takes: the settler's `<clip>_home` length (50 ticks for the civilist), or
- *  its outdoor sleep length when its body has no home clip — only the civilist authors one, so every
+ *  its outdoor sleep length when its body has no home clip - only the civilist authors one, so every
  *  other trade sleeps indoors at the outdoor pace (named approximation). */
 function homeSleepDuration(ctx: SystemContext, settler: SettlerIdentity): number {
   const outdoor = needAtomicAnimationName(ctx.content, settler, SLEEP_ATOMIC_ID);

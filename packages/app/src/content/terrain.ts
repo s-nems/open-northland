@@ -13,7 +13,7 @@ import type { ContentIr } from './ir/rows.js';
 /**
  * The real-ground binding: draw the terrain from decoded `text_*.pcx` textures instead of the flat
  * `TILE_COLOURS` tint, served from the gitignored `content/` over the dev/shot vite server (the `/ir.json`
- * + `/textures/` routes — no copyrighted bytes in the repo). Two levels of fidelity:
+ * + `/textures/` routes - no copyrighted bytes in the repo). Two levels of fidelity:
  *
  *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact `GfxPattern`
  *    per cell triangle (baked into `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern
@@ -21,10 +21,10 @@ import type { ContentIr } from './ir/rows.js';
  *    joins the map's `transitions.types` names onto `gfxPatternTransitions` (the composed
  *    `<stem>.masked.png` RGBA overlay pages).
  *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): `terrainPatterns` binds
- *    each landscape typeId to one representative pattern (`buildTerrainPatterns` — a recorded deviation,
+ *    each landscape typeId to one representative pattern (`buildTerrainPatterns` - a recorded deviation,
  *    source basis).
  *
- * All ground pages load linear-filtered — the original samples its terrain pages bilinearly (docs/SOURCES.md
+ * All ground pages load linear-filtered - the original samples its terrain pages bilinearly (docs/SOURCES.md
  * "terrain tessellation"), melting pattern joins and transition masks into smooth seams; the sprite atlases
  * stay `nearest` (pixel art).
  */
@@ -109,7 +109,7 @@ export async function loadRealTerrain(
     const pageKey = pageKeyOf(row.texture);
     pageKeys.add(pageKey);
     const fallbackColour = debugColours.get(row.typeId);
-    // Spread the optional colour only when present — `exactOptionalPropertyTypes` rejects an explicit
+    // Spread the optional colour only when present - `exactOptionalPropertyTypes` rejects an explicit
     // `undefined` on an optional field.
     cellByType.set(row.typeId, {
       pageKey,
@@ -121,7 +121,7 @@ export async function loadRealTerrain(
   const patternByName = buildGroundPatternIndex(tables);
   for (const pattern of patternByName.values()) pageKeys.add(pattern.pageKey);
   // The transition-overlay join: every well-formed `[transition]` record by name. The page is the
-  // pipeline's composed RGBA `<texture stem>.masked.png` (RGB page + alpha mask in one picture) —
+  // pipeline's composed RGBA `<texture stem>.masked.png` (RGB page + alpha mask in one picture) -
   // the plain `<stem>.png` twin lacks the mask, so it is never referenced here.
   const transitionByName = new Map<string, TransitionPattern>();
   for (const row of tables.gfxPatternTransitions ?? []) {

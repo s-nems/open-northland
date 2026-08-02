@@ -4,13 +4,13 @@ import { clampedCellAt } from './cell-field.js';
 import { elevationLiftPerUnit } from './elevation.js';
 
 /**
- * Slope hillshading computed from the map's elevation lane — an OpenNorthland visual enhancement, not
+ * Slope hillshading computed from the map's elevation lane - an OpenNorthland visual enhancement, not
  * an original mechanism (the original's slope light is pre-baked into `embr`; `data/terrain/brightness.ts`).
  * A fixed north-west light (matching the direction the baked shadow art implies) shades each cell by
  * its elevation gradient, and the result composes with the shading lane two ways:
  *
  *  - **no `embr` lane** (synthetic grids, foreign maps): the hillshade IS the lane, so hills stop
- *    rendering flat-lit — a full-strength fallback around the neutral value;
+ *    rendering flat-lit - a full-strength fallback around the neutral value;
  *  - **`embr` present**: the baked plane already carries the original's slope light, so the hillshade
  *    only *accents* it at {@link HILLSHADE_ENHANCE} strength (a subtle relief boost, not a second
  *    competing light model).
@@ -21,7 +21,7 @@ import { elevationLiftPerUnit } from './elevation.js';
 
 /**
  * The fixed light direction (screen space: +x right, +y down, +z out of the ground plane), pointing
- * from the surface toward the light — upper-left, consistent with the baked cast-shadow art. Not
+ * from the surface toward the light - upper-left, consistent with the baked cast-shadow art. Not
  * normalized here; {@link composeShadingLane} normalizes once.
  */
 const HILLSHADE_LIGHT = { x: -0.6, y: -0.45, z: 0.7 } as const;
@@ -34,7 +34,7 @@ const HILLSHADE_LIGHT = { x: -0.6, y: -0.45, z: 0.7 } as const;
 const SLOPE_EXAGGERATION = 8;
 
 /** How strongly the hillshade accents a map that already carries the baked `embr` plane (0 = off,
- *  1 = full hillshade on top of the bake). Kept low — the bake is the faithful signal. */
+ *  1 = full hillshade on top of the bake). Kept low - the bake is the faithful signal. */
 const HILLSHADE_ENHANCE = 0.35;
 
 /** Clamp of the relative hillshade multiplier (flat = 1), keeping extreme synthetic slopes readable. */
@@ -46,7 +46,7 @@ const HILLSHADE_MAX = 1.45;
  * `embr` lane accented by elevation hillshade, or pure hillshade when the map has no `embr`, or the
  * inputs unchanged when there is no elevation to shade from. Returns a row-major u8-range lane
  * (neutral {@link BRIGHTNESS_NEUTRAL}) or `undefined` when there is nothing to shade with at all.
- * Pure — built once per map.
+ * Pure - built once per map.
  */
 export function composeShadingLane(
   brightness: readonly number[] | undefined,
@@ -57,7 +57,7 @@ export function composeShadingLane(
   const cells = width * height;
   if (elevation === undefined || elevation.length !== cells || cells === 0) return brightness;
   const relative = hillshadeField(elevation, width, height);
-  if (relative === null) return brightness; // flat map — nothing to shade from
+  if (relative === null) return brightness; // flat map - nothing to shade from
   const out = new Array<number>(cells);
   if (brightness === undefined || brightness.length !== cells) {
     for (let i = 0; i < cells; i++) {
@@ -80,7 +80,7 @@ function clampByte(v: number): number {
 
 /**
  * The relative hillshade multiplier per cell (flat ground = 1, lit slope > 1, shadowed slope < 1),
- * clamped to [{@link HILLSHADE_MIN}, {@link HILLSHADE_MAX}] — or `null` when the lane is entirely
+ * clamped to [{@link HILLSHADE_MIN}, {@link HILLSHADE_MAX}] - or `null` when the lane is entirely
  * flat (no relief to shade). Central-difference gradient in world px (the same lift-per-unit the
  * mesh warps by, over the projected cell spacing), Lambert against {@link HILLSHADE_LIGHT},
  * normalized so flat ground is exactly neutral.
@@ -91,7 +91,7 @@ function hillshadeField(
   height: number,
 ): readonly number[] | null {
   const liftPerUnit = elevationLiftPerUnit();
-  // World px per elevation unit over world px per neighbouring cell — the projected slope, exaggerated.
+  // World px per elevation unit over world px per neighbouring cell - the projected slope, exaggerated.
   const slopeX = (liftPerUnit / (2 * TILE_HALF_W)) * SLOPE_EXAGGERATION;
   const slopeY = (liftPerUnit / (2 * TILE_HALF_H)) * SLOPE_EXAGGERATION;
   const lightLen = Math.hypot(HILLSHADE_LIGHT.x, HILLSHADE_LIGHT.y, HILLSHADE_LIGHT.z);

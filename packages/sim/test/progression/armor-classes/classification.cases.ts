@@ -26,7 +26,7 @@ describe('armorByClass', () => {
     const byClass = armorByClass(armorContent());
     // two classes among the four records: light=1 (cloth, leather), heavy=2 (chain, plate)
     expect([...byClass.keys()].sort((a, b) => a - b)).toEqual([1, 2]);
-    // declared order is cloth, chain, leather, plate — so bucket 1 keeps cloth before leather,
+    // declared order is cloth, chain, leather, plate - so bucket 1 keeps cloth before leather,
     // bucket 2 keeps chain before plate (content.armor order, not re-sorted by typeId)
     expect(byClass.get(1)?.map((a) => a.id)).toEqual(['cloth', 'leather']);
     expect(byClass.get(2)?.map((a) => a.id)).toEqual(['chain', 'plate']);
@@ -37,7 +37,7 @@ describe('armorByClass', () => {
       ...SCAFFOLD,
       armor: [
         { typeId: 1, id: 'cloth', mainType: 1 },
-        { typeId: 2, id: 'no_class' }, // no mainType — dropped, not bucketed under undefined
+        { typeId: 2, id: 'no_class' }, // no mainType - dropped, not bucketed under undefined
       ],
     });
     const byClass = armorByClass(content);

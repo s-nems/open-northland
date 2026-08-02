@@ -234,7 +234,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
       }
       return;
     }
-    // Scenes and tools have no map to preview — leave the frame's black rectangle.
+    // Scenes and tools have no map to preview - leave the frame's black rectangle.
     preview.classList.remove('is-map');
     preview.hidden = true;
     preview.removeAttribute('src');
@@ -254,7 +254,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     settings.hidden = entry.kind === 'tool';
     start.textContent = entry.kind === 'tool' ? copy.open : copy.start;
     // A map with a decoded roster shows the player panel and shrinks the preview to make room
-    // (`has-players` — see details.css); everything else keeps the full-height preview.
+    // (`has-players` - see details.css); everything else keeps the full-height preview.
     if (entry.kind === 'map' && entry.players !== undefined) {
       players.show(entry.id, entry.players, entry.fixedColors === true);
     } else {

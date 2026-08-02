@@ -12,19 +12,19 @@ import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The unit-collision sign-off scene — the three player-facing promises of the body-collision deviation
+ * The unit-collision sign-off scene - the three player-facing promises of the body-collision deviation
  * (see `sim`'s `systems/movement/collision` for the model), each as its own vignette on one map:
  *
- *  1. **The wall** — a red spear line standing across the middle. A blue sword squad ordered past it must
+ *  1. **The wall** - a red spear line standing across the middle. A blue sword squad ordered past it must
  *     route around its ends (standing bodies are stamped into the walk overlay) and never pushes a red an
  *     ulp out of place.
- *  2. **The surround** — eight blue broadswords all ordered onto one node. The first arrival takes it; the
+ *  2. **The surround** - eight blue broadswords all ordered onto one node. The first arrival takes it; the
  *     rest settle on distinct nearby nodes around it instead of stacking into one sprite (the
  *     anti-death-ball rule).
- *  3. **The economy exemption** — two carriers ordered straight through the wall walk through the bodies
+ *  3. **The economy exemption** - two carriers ordered straight through the wall walk through the bodies
  *     untouched: civilians keep the original's pass-through, only fighters collide.
  *
- * No Health is stamped, so owner-hostility never starts a fight — the scene isolates collision. Everything
+ * No Health is stamped, so owner-hostility never starts a fight - the scene isolates collision. Everything
  * below is authored in half-cell node coordinates (the collision radius is sub-node, so cell resolution
  * would hide the geometry the human is judging).
  */
@@ -35,7 +35,7 @@ const MAP_H = 20;
 /** Long enough for both squads' marches to settle (the surround ring is the slowest). */
 const RUN_TICKS = 700;
 
-/** The red line: one spear-man per consecutive node — radii touching, a closed wall. */
+/** The red line: one spear-man per consecutive node - radii touching, a closed wall. */
 const WALL_X = 30;
 const WALL_Y_FIRST = 8;
 const WALL_Y_LAST = 24;
@@ -66,7 +66,7 @@ const SURROUND_MAX_SPREAD = 5;
 
 const { MoveGoal, Owner, Position, Settler } = components;
 
-/** A settler placed directly at a node (the sim-test idiom — the spawn command rounds to cell
+/** A settler placed directly at a node (the sim-test idiom - the spawn command rounds to cell
  *  anchors, too coarse for collision geometry). Mirrors the spawn handler's component set. */
 function settlerAtNode(sim: Simulation, job: number, x: number, y: number, player: number): Entity {
   const e = sim.world.create();
@@ -142,7 +142,7 @@ function wallUnmoved(sim: Simulation): boolean {
 function surroundFormedRing(sim: Simulation): boolean {
   const got = nodesOf(sim, HUMAN_PLAYER, JOB_SOLDIER_BROADSWORD);
   if (got.length !== SURROUND_STARTS.length) return false;
-  if (new Set(got).size !== got.length) return false; // all on distinct nodes — no stacking
+  if (new Set(got).size !== got.length) return false; // all on distinct nodes - no stacking
   let goalTaken = false;
   for (const key of got) {
     const [x, y] = key.split(',').map(Number);

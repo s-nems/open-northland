@@ -6,13 +6,13 @@ import { chargeMilitaryPiety } from '../../lifecycle/needs.js';
 import type { WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * Charge each smith who finished forging this tick a fixed slice of piety — producing a weapon or piece of
+ * Charge each smith who finished forging this tick a fixed slice of piety - producing a weapon or piece of
  * armor is the only thing that raises the piety deficit (NeedsSystem no longer raises piety over time; praying
  * at a temple clears it). Applied once per completed cycle whose PRODUCT is a military good
- * ({@link import('../../../core/content-index.js').ContentIndex.militaryGoods} keyed on `cycle.goodType` — the
+ * ({@link import('../../../core/content-index.js').ContentIndex.militaryGoods} keyed on `cycle.goodType` - the
  * per-product batch model's one output), to the operators on station in canonical order (a lone-smith workshop
  * charges its one worker per sword). A non-military batch (a mill's flour) is a no-op, and so is an
- * unstaffed-by-design workplace — its anonymous operator is no entity to charge.
+ * unstaffed-by-design workplace - its anonymous operator is no entity to charge.
  * Source basis: design rule (user-specified).
  */
 export function chargeMilitaryPietyCost(

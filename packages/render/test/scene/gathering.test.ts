@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { buildScene } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
-/** Unit tests for {@link buildScene}'s gathering-economy classification — resource nodes, ground drops,
+/** Unit tests for {@link buildScene}'s gathering-economy classification - resource nodes, ground drops,
  *  and stockpile piles/flags resolve to the right draw kind + fields. */
 
-describe('buildScene — resource + stockpile (gathering economy) classification', () => {
+describe('buildScene - resource + stockpile (gathering economy) classification', () => {
   it("carries a resource node's goodType (the per-good node join key)", () => {
     const scene = buildScene(
       snapshotOf([entity(1, 1, 1, { Resource: { goodType: 7, remaining: 5 } })]),
@@ -26,7 +26,7 @@ describe('buildScene — resource + stockpile (gathering economy) classification
     ).find((d) => d.kind === 'resource');
     expect(mined?.level).toBe(3);
     expect(mined?.levels).toBe(5); // the ladder size rides along so the resolver can rescale it
-    // A plain node (no MineDeposit) carries no level — the binding draws its full-state frame.
+    // A plain node (no MineDeposit) carries no level - the binding draws its full-state frame.
     const plain = buildScene(
       snapshotOf([entity(1, 1, 1, { Resource: { goodType: 4, remaining: 5 } })]),
       FLAT_3x2,
@@ -79,7 +79,7 @@ describe('buildScene — resource + stockpile (gathering economy) classification
     ).find((d) => d.kind === 'stockpile');
     expect(most?.goodType).toBe(2);
     expect(most?.fill).toBe(5);
-    // On a tie the first (lowest goodType) wins — deterministic, order-independent.
+    // On a tie the first (lowest goodType) wins - deterministic, order-independent.
     const tie = buildScene(
       snapshotOf([
         entity(1, 1, 1, {

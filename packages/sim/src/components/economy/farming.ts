@@ -2,21 +2,21 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 
 /**
- * Marks a {@link Resource} node that is a **sown field** — the wheat a farm's worker plants, waters and
+ * Marks a {@link Resource} node that is a **sown field** - the wheat a farm's worker plants, waters and
  * reaps, faithful to the original's field-farming vocabulary (`goodtypes.ini` wheat: `atomicForPlanting
  * 34` / `atomicForCultivating 35` / `atomicForHarvesting 29`, `isProducedOnMapFlag 1`; the field's
  * growth states are the `landscapetypes.ini` `wheat (growing)` lane, `maximumValency 5`). Stamped by the
  * `sow` atomic effect from the good's content `farming` block; the CropGrowthSystem advances it and the
  * farmer drive (planFarmer) works it. The loop: sown at `stage` 1 with `Resource.remaining` **0** (a
- * growing field yields nothing — the remaining-0 gate is what keeps every generic harvest scan off an
- * unripe field), grows a stage each {@link ticksPerStage} ticks ONLY while `watered` — watering is the growth
+ * growing field yields nothing - the remaining-0 gate is what keeps every generic harvest scan off an
+ * unripe field), grows a stage each {@link ticksPerStage} ticks ONLY while `watered` - watering is the growth
  * FUEL, and each stage step consumes it (a named approximation: the engine's watering semantics are
  * not decoded; see systems/economy/fields.ts),
  * and at the final stage (`stage === stages`) becomes ripe: `Resource.remaining` is set to `yieldUnits`,
  * so the reap swing (the plain `harvest` effect, branched by THIS marker) drops the whole yield as a
  * ground sheaf pile ({@link GroundDrop}, the good's `landscapeToPickup` look) and removes the field.
  *
- * `farm` is the workplace whose worker sowed it — the farm's OWN fields are the ones its farmers water/
+ * `farm` is the workplace whose worker sowed it - the farm's OWN fields are the ones its farmers water/
  * reap (two farms never work each other's fields); a stale id after demolition just strands a wild field
  * (harvest-scannable once ripe, else inert). A field blocks neither walking nor building: it carries a
  * {@link ResourceFootprint} declaring empty walk/build areas, which is how the original's wheat landscape
@@ -33,11 +33,11 @@ export const Crop = defineComponent<{
   /** Whole ticks accumulated toward the next stage (exact integer compare, like CurrentAtomic). */
   growth: number;
   /** THIS field's ticks per growth stage, drawn at sow from the content's nominal rate and its
-   *  `growthSpreadPercent` band by a hash of the node — so fields planted together ripen apart
+   *  `growthSpreadPercent` band by a hash of the node - so fields planted together ripen apart
    *  (systems/economy/fields.ts `stageTicksAt`). */
   ticksPerStage: number;
-  /** Whether the field holds a live watering — the GROWTH FUEL: only a watered field grows, and each
-   *  stage step consumes the watering (thirsty again until a farmer returns with the can — see
+  /** Whether the field holds a live watering - the GROWTH FUEL: only a watered field grows, and each
+   *  stage step consumes the watering (thirsty again until a farmer returns with the can - see
    *  systems/economy/fields.ts). */
   watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
@@ -45,28 +45,28 @@ export const Crop = defineComponent<{
 }>('Crop');
 
 /**
- * A farmer's **in-flight field intent** — which node its current farm action (reap / sheaf pickup /
+ * A farmer's **in-flight field intent** - which node its current farm action (reap / sheaf pickup /
  * sow / water) targets. Stamped by the planFarmer drive when it issues the action and removed the
  * moment the settler replans (replan.ts), so it exists exactly while the farmer is walking to or swinging
  * at the target. Its ONE purpose is work division: the planner folds every live FarmTask into the
- * tick's claim set, so a second farmer never picks a node a colleague is already en route to — the
+ * tick's claim set, so a second farmer never picks a node a colleague is already en route to - the
  * fix for two farmers shadowing each other sowing/reaping the same spot (and what makes N farmers
  * scale field throughput ~N×). `sow` marks a plant-walk, which also counts toward the farm's field
  * cap while the field doesn't exist yet. A stale task (the target raced away, the farmer got
- * preempted) over-claims one node for at most the ticks until that farmer replans — self-correcting.
+ * preempted) over-claims one node for at most the ticks until that farmer replans - self-correcting.
  * Inert on every golden that farms nothing (the separate-component pattern).
  */
 export const FarmTask = defineComponent<{
   /** The farm workplace the action serves (the `byFarm` sow-count key). */
   farm: Entity;
-  /** The claimed half-cell node (a `NodeId` — the crop/sheaf node, or the free node being sown). */
+  /** The claimed half-cell node (a `NodeId` - the crop/sheaf node, or the free node being sown). */
   node: NodeId;
-  /** True for a sow intent — it reserves one of the farm's crew-scaled field slots while in flight. */
+  /** True for a sow intent - it reserves one of the farm's crew-scaled field slots while in flight. */
   sow: boolean;
 }>('FarmTask');
 
 /**
- * A {@link Crop} field cut off from its farm — no work stance is both unblocked and routable from the
+ * A {@link Crop} field cut off from its farm - no work stance is both unblocked and routable from the
  * farm's door. Stamped and cleared by the FieldReclaimSystem (systems/economy/field-reclaim.ts, which
  * owns the rule and its pacing); the field is destroyed once the state holds for a sustained span,
  * returning its `maxFields` slot to the plot. Absent on every reachable field, so goldens without
@@ -78,11 +78,11 @@ export const StrandedField = defineComponent<{
 }>('StrandedField');
 
 /**
- * A settler that has stepped INSIDE a building — stamped by the drive that put it there (the farmer
+ * A settler that has stepped INSIDE a building - stamped by the drive that put it there (the farmer
  * waiting out a chore at its workplace, a sleeper in its own bed, a recruit drilling at the barracks)
  * and shed the moment nothing holds it in, so it exists exactly while the settler is in there.
  * Mostly a render fact: the original's off-duty workers wait inside the house, not lined up at the
- * door — the render hides a Resting settler (it "went in") and it steps back out the tick work appears.
+ * door - the render hides a Resting settler (it "went in") and it steps back out the tick work appears.
  * Several drives read it as the is-inside test as well, so who may hold it and when is a real contract:
  * `systems/settlers/indoors.ts` owns it. Inert on every golden that farms nothing.
  */

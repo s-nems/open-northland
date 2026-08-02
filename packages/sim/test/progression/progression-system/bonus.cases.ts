@@ -24,7 +24,7 @@ import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 import { CARRIER, CARRIER_TRACK, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
-describe('experienceBonus — the repeats → bonus curve', () => {
+describe('experienceBonus - the repeats → bonus curve', () => {
   it('matches the reference table within 2 points at repeats 1..11', () => {
     // The user-specified reference bonus percentages the K = 4.9 fit targets.
     const reference = [17, 29, 38, 45, 51, 56, 60, 63, 66, 68, 70];
@@ -52,7 +52,7 @@ describe('experienceBonus — the repeats → bonus curve', () => {
   });
 });
 
-describe('scoutVisionBonusNodes — signpost craft widens the scout eye a little', () => {
+describe('scoutVisionBonusNodes - signpost craft widens the scout eye a little', () => {
   it('scales the curve to whole extra nodes, capped well below a 2x eye', () => {
     expect(scoutVisionBonusNodes(0)).toBe(0);
     expect(scoutVisionBonusNodes(10)).toBe(4); // ~69% of the 6-node cap, truncated
@@ -60,7 +60,7 @@ describe('scoutVisionBonusNodes — signpost craft widens the scout eye a little
   });
 });
 
-describe('scaledWorkRepeats — experience buys fewer repetitions, never faster ones', () => {
+describe('scaledWorkRepeats - experience buys fewer repetitions, never faster ones', () => {
   it('leaves the count whole at no bonus and halves it at mastery', () => {
     expect(scaledWorkRepeats(15, ZERO)).toBe(15);
     expect(scaledWorkRepeats(15, ONE)).toBe(8); // 15/2 rounded
@@ -77,7 +77,7 @@ describe('scaledWorkRepeats — experience buys fewer repetitions, never faster 
   });
 });
 
-describe('fightDamageBonus — hits with a weapon class buy extra damage', () => {
+describe('fightDamageBonus - hits with a weapon class buy extra damage', () => {
   it('is zero untrained and caps at +50% at combat mastery', () => {
     expect(fightDamageBonus(0)).toBe(ZERO);
     expect(fightDamageBonus(FIGHT_MASTERY_HITS)).toBe(FIGHT_DAMAGE_BONUS_MAX);
@@ -98,7 +98,7 @@ describe('fightDamageBonus — hits with a weapon class buy extra damage', () =>
   });
 });
 
-describe('work-credit wiring — an experienced gatherer fells in fewer swings, not faster ones', () => {
+describe('work-credit wiring - an experienced gatherer fells in fewer swings, not faster ones', () => {
   const WOOD_MASTERY_XP = 1000; // 100 repeats at the fixture wood track's factor 10
 
   /** A woodcutter with `xp` on its wood track, a 3-chop tree, and one completed swing (duration 1). */
@@ -128,7 +128,7 @@ describe('work-credit wiring — an experienced gatherer fells in fewer swings, 
     expect(novice.sim.world.get(novice.tree, Felling).chopsLeft).toBe(2);
     const master = swingOnce(WOOD_MASTERY_XP);
     expect(master.sim.world.get(master.tree, Felling).chopsLeft).toBe(1);
-    // A whole credit banks no fraction — the novice atomic keeps its historical shape.
+    // A whole credit banks no fraction - the novice atomic keeps its historical shape.
     expect(novice.sim.world.get(novice.settler, CurrentAtomic).workCredit).toBeUndefined();
   });
 
@@ -141,7 +141,7 @@ describe('work-credit wiring — an experienced gatherer fells in fewer swings, 
       const atomic = sim.world.get(settler, CurrentAtomic);
       atomic.elapsed = 0;
       atomic.duration = 1;
-      delete atomic.restTail; // strip any breather — this drives raw swings only
+      delete atomic.restTail; // strip any breather - this drives raw swings only
       atomicSystem(sim.world, ctxOf(sim));
     };
     rearm();
@@ -151,7 +151,7 @@ describe('work-credit wiring — an experienced gatherer fells in fewer swings, 
   });
 });
 
-describe('operatorProductionBonus — the transport trade never boosts output', () => {
+describe('operatorProductionBonus - the transport trade never boosts output', () => {
   it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
@@ -160,7 +160,7 @@ describe('operatorProductionBonus — the transport trade never boosts output', 
   });
 });
 
-describe('experienceRepeats — raw XP back to completed-work repeats', () => {
+describe('experienceRepeats - raw XP back to completed-work repeats', () => {
   const track = { typeId: 1, id: 't', jobType: 1, experienceFactor: 100 };
 
   it('divides the accrual rate back out, truncating partial credit', () => {

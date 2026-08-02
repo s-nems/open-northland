@@ -7,7 +7,7 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * The loader seam: a decoded `content/maps/<id>.json` grid (the shape the pipeline's
- * `convertMapDatTree` emits — `{ width, height, typeIds }`) is validated by `parseTerrainMap` and fed
+ * `convertMapDatTree` emits - `{ width, height, typeIds }`) is validated by `parseTerrainMap` and fed
  * into the sim in place of the synthetic grass grid. This is the last leg of the terrain-graph item:
  * proving a real map's grid loads → `buildTerrainGraph` → navigation, all the way through the harness.
  *
@@ -15,8 +15,8 @@ import { testContent } from '../fixtures/content.js';
  * does), so these tests parse a JSON *string* exactly as a file read would yield, then drive the sim.
  */
 
-const GRASS = 0; // fixture landscape typeId 0 — walkable
-const WATER = 1; // fixture landscape typeId 1 — not walkable
+const GRASS = 0; // fixture landscape typeId 0 - walkable
+const WATER = 1; // fixture landscape typeId 1 - not walkable
 
 function asTerrainMap(map: ReturnType<typeof parseTerrainMap>): TerrainMap {
   return halfCellMapFromCells(map);
@@ -24,7 +24,7 @@ function asTerrainMap(map: ReturnType<typeof parseTerrainMap>): TerrainMap {
 
 /**
  * The literal text of a `content/maps/<id>.json` file: a 5×5 grass field with a water wall down
- * column x=2 except a gap at the bottom row (y=4) — a route exists only around the wall, so a pathing
+ * column x=2 except a gap at the bottom row (y=4) - a route exists only around the wall, so a pathing
  * settler must detour, exercising the real decoded grid the same way a map file would.
  */
 function mapFileJson(): string {
@@ -61,7 +61,7 @@ describe('parseTerrainMap (the content/maps loader)', () => {
       entities: {
         buildings: [{ name: 'viking barracks', level: 0, player: 1, hx: 4, hy: 6, rot: 2 }],
         humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 2, hy: 2 }],
-        // animals omitted — the schema defaults it to [] so consumers never branch on undefined
+        // animals omitted - the schema defaults it to [] so consumers never branch on undefined
       },
     });
     expect(map.entities?.buildings[0]?.name).toBe('viking barracks');
@@ -75,7 +75,7 @@ describe('parseTerrainMap (the content/maps loader)', () => {
       objects: { types: ['palm 03'], placements: [1, 0, 0], levels: [3] },
     });
     expect(map.objects?.levels).toEqual([3]);
-    // levels stays optional — a map decoded before the lmlv lane was understood still parses.
+    // levels stays optional - a map decoded before the lmlv lane was understood still parses.
     const bare = parseTerrainMap({
       ...JSON.parse(mapFileJson()),
       objects: { types: ['palm 03'], placements: [1, 0, 0] },
@@ -88,7 +88,7 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     // Per-cell height: exactly width*height (25) raw byte values (0..250 observed).
     const map = parseTerrainMap({ ...base, elevation: Array.from({ length: 25 }, (_, i) => i % 235) });
     expect(map.elevation?.length).toBe(25);
-    // elevation stays optional — a map decoded before the lmhe lane was emitted still parses.
+    // elevation stays optional - a map decoded before the lmhe lane was emitted still parses.
     expect(parseTerrainMap(base).elevation).toBeUndefined();
     // a half-cell-resolution lane (100 = 4*25) is rejected: the lane is per-CELL, not per-half-cell.
     expect(() => parseTerrainMap({ ...base, elevation: Array.from({ length: 100 }, () => 0) })).toThrow(
@@ -101,7 +101,7 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     // Per-cell baked shading (`embr`): exactly width*height (25) raw byte values, 127 = neutral.
     const map = parseTerrainMap({ ...base, brightness: Array.from({ length: 25 }, (_, i) => i * 10) });
     expect(map.brightness?.length).toBe(25);
-    // brightness stays optional — a map decoded before the embr lane was emitted still parses.
+    // brightness stays optional - a map decoded before the embr lane was emitted still parses.
     expect(parseTerrainMap(base).brightness).toBeUndefined();
     expect(() => parseTerrainMap({ ...base, brightness: Array.from({ length: 100 }, () => 0) })).toThrow(
       /brightness length 100 != /,

@@ -8,7 +8,7 @@
 export const PALETTE_ENTRIES = 256;
 
 /**
- * Byte length of a 256-entry RGB palette (`256 × 3`) — the format-neutral colour-table currency the
+ * Byte length of a 256-entry RGB palette (`256 × 3`) - the format-neutral colour-table currency the
  * `.pcx` trailer, the standalone `CPalette`, the `.bmd` atlas colouring, and the cursor DIB all
  * exchange. One name so the `768` magic literal never recurs per decoder.
  */
@@ -16,7 +16,7 @@ export const PALETTE_RGB_BYTES = PALETTE_ENTRIES * 3;
 
 /**
  * Guards that `palette` is exactly one full RGB palette ({@link PALETTE_RGB_BYTES}), throwing a
- * `${prefix}:`-namespaced error otherwise — the single copy of the length check every indexed decoder
+ * `${prefix}:`-namespaced error otherwise - the single copy of the length check every indexed decoder
  * (`atlas`/`cursor`/`pcx`/`palette`/`player-palette`) ran inline. A wrong length is a programmer error
  * (decoded palettes are always 768 bytes), not recoverable input. `what` names the offending buffer for
  * callers that validate more than one (e.g. `player-palette`'s base vs source).

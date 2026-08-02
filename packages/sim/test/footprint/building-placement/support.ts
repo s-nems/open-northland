@@ -19,18 +19,18 @@ import {
 import { testContent } from '../../fixtures/content.js';
 
 /**
- * The building GROUND-FOOTPRINT mechanics — the original's free placement model:
+ * The building GROUND-FOOTPRINT mechanics - the original's free placement model:
  *  - a house places anywhere its footprint FITS (no grid fields): its reserved zone on walkable
  *    ground, clear of resource nodes, and zone-vs-zone clear of every existing house (two reserved
  *    rings may not overlap);
- *  - a standing house (from the grey foundation on) walk-blocks its body cells — paths route around;
+ *  - a standing house (from the grey foundation on) walk-blocks its body cells - paths route around;
  *  - a level-0 house reserves its whole family's space (the `reserved` zone is family-constant);
  *  - settlers interact with a footprinted house at its DOOR cell, not its anchor tile.
  * The footprint fixture mirrors the extracted `[GfxHouse]` shape (blocked ⊂ familyBody ⊂ reserved,
- * door outside the walls); synthetic footprint-less types keep the old behavior — also pinned here.
+ * door outside the walls); synthetic footprint-less types keep the old behavior - also pinned here.
  *
  * ALL integer grid coordinates here (anchors, command payloads, footprint offsets) are HALF-CELL
- * NODE coords on the 2W×2H lattice — the original's logic grid, which the extracted
+ * NODE coords on the 2W×2H lattice - the original's logic grid, which the extracted
  * LogicWalkBlockArea/LogicBuildBlockArea offsets always addressed.
  */
 
@@ -38,7 +38,7 @@ export const GRASS = 0;
 export const WATER = 1;
 export const VIKING = 1;
 export const WOODCUTTER = 1;
-export const HQ = 1; // testContent headquarters — footprint-less
+export const HQ = 1; // testContent headquarters - footprint-less
 export const HUT = 10; // the footprinted fixture type added below
 
 // A 2-node body at level 0 that grows to 3 nodes at the family max, with a one-node margin ring
@@ -51,7 +51,7 @@ export const HUT_FOOTPRINT = {
   familyBody: [
     { dx: 0, dy: 0 },
     { dx: 1, dy: 0 },
-    { dx: 1, dy: 1 }, // the max level's growth — reserved from level 0
+    { dx: 1, dy: 1 }, // the max level's growth - reserved from level 0
   ],
   // familyBody + a 1-node margin: rows y=-1..2, x=-1..2 (16 nodes).
   reserved: [-1, 0, 1, 2].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
@@ -80,7 +80,7 @@ export function placementContent(): ContentSet {
   });
 }
 
-/** A W×H cell-resolution grass grid whose cells a test can overwrite before upsampling — each cell
+/** A W×H cell-resolution grass grid whose cells a test can overwrite before upsampling - each cell
  *  stamps its 2×2 half-cell block, so one water/margin CELL blocks four NODES. */
 export function grassCells(
   width: number,
@@ -93,13 +93,13 @@ export function mappedSim(map: TerrainMap = grassMap(16, 16)): Simulation {
   return new Simulation({ seed: 1, content: placementContent(), map });
 }
 
-/** The sim's terrain graph — every test here builds a mapped sim, so absence is a fixture bug. */
+/** The sim's terrain graph - every test here builds a mapped sim, so absence is a fixture bug. */
 export function terrainOf(sim: Simulation): TerrainGraph {
   if (sim.terrain === undefined) throw new Error('mapped sim expected');
   return sim.terrain;
 }
 
-/** The `index`-th placed building entity in ascending-id order — throws when absent (a fixture bug). */
+/** The `index`-th placed building entity in ascending-id order - throws when absent (a fixture bug). */
 export function placedBuilding(sim: Simulation, index = 0): Entity {
   const e = [...sim.world.query(Building)].sort((a, b) => a - b)[index];
   if (e === undefined) throw new Error(`no building at index ${index}`);
@@ -114,7 +114,7 @@ export function buildingsPlaced(sim: Simulation): number {
  * The placement rule re-derived independently of the production code path: a direct
  * {@link eachBlockerCell} walk into sparse string-keyed sets, then the reserved/body probe. The shipped
  * rule reads a memoized dense `Uint8Array` mask instead, and its cache verifier re-stamps through that
- * same path — so this is the only oracle that can catch a wrong channel routing or wrong `y*width+x`
+ * same path - so this is the only oracle that can catch a wrong channel routing or wrong `y*width+x`
  * arithmetic inside it. String keys (not a numeric packing) so an off-map blocker cannot alias onto a
  * real node here either.
  */
@@ -126,7 +126,7 @@ export function referenceCanPlace(
   y: number,
 ): boolean {
   const footprint = buildingFootprintOf(sim.content, buildingType);
-  if (footprint === undefined) return true; // no collision model — places freely
+  if (footprint === undefined) return true; // no collision model - places freely
   const obstacles = new Set<string>();
   const exclusions = new Set<string>();
   eachBlockerCell(sim.world, sim.content, (bx, by, channel) => {

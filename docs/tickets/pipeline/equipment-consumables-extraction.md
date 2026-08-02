@@ -4,7 +4,7 @@
 
 The sim's equipment component axis exists, but the extractor does not populate `equip`
 (`packages/data/src/schema/economy/goods.ts`) on the real `ir.json`, and the potion/amulet goods
-have no icons — their `landscapeType` has no `good piles all` record (the same gap leaves `fruit`
+have no icons - their `landscapeType` has no `good piles all` record (the same gap leaves `fruit`
 iconless).
 
 Interim: the app overlays the clean-room classification by good slug at load
@@ -17,13 +17,13 @@ stay overlaid wherever the shipped `equip` lacks them. A wholesale "extracted wi
 `withEquipClass` defers entirely when `good.equip` ships) would silently strip every worn effect on
 real content.
 
-**Source basis:** weapons/armour/amulets don't wear — their `equip.wears` is false (the sim's
+**Source basis:** weapons/armour/amulets don't wear - their `equip.wears` is false (the sim's
 `packages/sim/src/components/equipment.ts` already pins this).
 
 ## Scope
 
 - Populate the `equip` lane from the readable data.
-- Bind icons for the iconless equippables (potions ×6, amulets ×6, fruit) — nearest-extractor
+- Bind icons for the iconless equippables (potions ×6, amulets ×6, fruit) - nearest-extractor
   mirror, not hand-built art.
 
 ## Verify

@@ -5,7 +5,7 @@ import { atomicSystem, EAT_HUNGER_RESTORE } from '../../../src/systems/index.js'
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
-describe('atomicSystem — effects', () => {
+describe('atomicSystem - effects', () => {
   it('harvest grants one unit onto the settler AND depletes the node by one', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
@@ -27,13 +27,13 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(resource, Resource).remaining).toBe(0); // stays at floor, no negative
   });
 
-  it('harvest on an already-gone node yields NOTHING (the swing struck air — goods conserved)', () => {
+  it('harvest on an already-gone node yields NOTHING (the swing struck air - goods conserved)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     const resource = sim.world.create(); // never given a Resource component (felled/destroyed already)
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim)); // must not throw on the missing node
-    // A vanished node means the swing hit nothing — no unit is conjured onto the back (a chop that
+    // A vanished node means the swing hit nothing - no unit is conjured onto the back (a chop that
     // landed after another collector already felled the tree carries nothing).
     expect(sim.world.has(e, Carrying)).toBe(false);
   });
@@ -52,7 +52,7 @@ describe('atomicSystem — effects', () => {
     const e = sim.world.create();
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
     startAtomic(sim, e, { kind: 'pickup', goodType: PLANK, amount: 1, from: null }, 1);
-    // Overwriting the load would destroy the carried wood — that's a planner bug, so it throws.
+    // Overwriting the load would destroy the carried wood - that's a planner bug, so it throws.
     expect(() => atomicSystem(sim.world, ctxOf(sim))).toThrow(/already carries good/);
   });
 
@@ -69,7 +69,7 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.has(settler, Carrying)).toBe(false); // fully unloaded
   });
 
-  it('pileup respects capacity — overflow stays on the settler', () => {
+  it('pileup respects capacity - overflow stays on the settler', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
     const store = sim.world.create();
@@ -163,7 +163,7 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(target, Health).max).toBe(1000); // pool ceiling untouched
   });
 
-  it('attack never drives hitpoints below zero (clamped — a hit never heals)', () => {
+  it('attack never drives hitpoints below zero (clamped - a hit never heals)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
     const target = sim.world.create();

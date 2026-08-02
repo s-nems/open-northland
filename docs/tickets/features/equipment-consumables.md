@@ -4,11 +4,11 @@
 **Blocked by:** [equipment extraction](../pipeline/equipment-consumables-extraction.md)
 
 The equipment component axis exists but the consumption behavior does not: the consume/drink drive
-is unbuilt. (The extraction half — populating `equip` in `ir.json` + icons for the iconless
-equippables — is the blocking pipeline ticket above.)
+is unbuilt. (The extraction half - populating `equip` in `ir.json` + icons for the iconless
+equippables - is the blocking pipeline ticket above.)
 
 **Source basis:** `CHANGE_ENERGY` (bucket 2) IS the food/hunger bar; only sleep writes the
-tiredness bar (bucket 1) — so **mead restores hunger only** ("mead also restores sleep" is a
+tiredness bar (bucket 1) - so **mead restores hunger only** ("mead also restores sleep" is a
 conflation with the internal ENERGY naming). Items have discrete uses shown as %. Effect
 magnitudes for heal/potion/amulet are NOT readable → named calibration constants.
 
@@ -22,4 +22,4 @@ magnitudes for heal/potion/amulet are NOT readable → named calibration constan
 ## Verify
 
 - `npm test`.
-- A scene where a hungry settler drinks mead and the hunger bar visibly refills — **user's eyes**.
+- A scene where a hungry settler drinks mead and the hunger bar visibly refills - **user's eyes**.

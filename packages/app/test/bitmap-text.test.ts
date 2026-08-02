@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CP1250_HIGH_ENTRIES, cp1250Byte } from '../src/hud/bitmap-text.js';
 
 /**
- * Pins the hand-typed Unicode→CP1250 glyph mapping to the real code page via the platform decoder —
+ * Pins the hand-typed Unicode→CP1250 glyph mapping to the real code page via the platform decoder -
  * a typo'd entry would otherwise regress as silently missing/wrong glyphs in the HUD text.
  */
 describe('bitmap-text CP1250 glyph mapping', () => {
@@ -24,6 +24,6 @@ describe('bitmap-text CP1250 glyph mapping', () => {
   it('passes Latin-1-range codepoints through unchanged and rejects unmapped high ones', () => {
     expect(cp1250Byte('ó'.codePointAt(0) as number)).toBe(0xf3);
     expect(cp1250Byte(0x40)).toBe(0x40);
-    expect(cp1250Byte(0x4e00)).toBeUndefined(); // CJK — no CP1250 slot
+    expect(cp1250Byte(0x4e00)).toBeUndefined(); // CJK - no CP1250 slot
   });
 });

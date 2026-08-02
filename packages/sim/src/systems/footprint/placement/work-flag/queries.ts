@@ -6,7 +6,7 @@ import { closer, forEachRingOffset } from '../../geometry.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount, workFlagPlacementBlocks } from './incremental-blocks.js';
 
-// The work-flag placement queries — the command-gate and spawn-time picks over the incremental
+// The work-flag placement queries - the command-gate and spawn-time picks over the incremental
 // blocked set (./incremental-blocks.ts).
 
 export function canPlaceWorkFlag(
@@ -23,8 +23,8 @@ export function canPlaceWorkFlag(
 
 /**
  * The greatest Manhattan ring radius {@link nearestWorkFlagPlacement} expands before falling back to
- * the whole-map reference scan. The cap only bounds the cost of a hopeless neighbourhood — the
- * fallback reproduces the exact linear winner past it — so it is a pure performance knob, not a
+ * the whole-map reference scan. The cap only bounds the cost of a hopeless neighbourhood - the
+ * fallback reproduces the exact linear winner past it - so it is a pure performance knob, not a
  * decoded distance (named approximation; the `RING_MAX_RADIUS` convention).
  */
 const PLACEMENT_RING_MAX_RADIUS = 48;
@@ -32,13 +32,13 @@ const PLACEMENT_RING_MAX_RADIUS = 48;
 /** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
  * this when a gatherer spawns or changes trade, because its feet may currently be inside a resource or
  * building body, and the player's `setWorkFlag` uses it to snap a click that landed on one. This is a
- * one-shot command/spawn query, never per-tick planner work — but it runs once per employment command, so
+ * one-shot command/spawn query, never per-tick planner work - but it runs once per employment command, so
  * a box-select `setJob` burst pays it per settler: expanding rings, never a whole-map scan, below the cap.
  *
  * `opts.ignoreFlag` excludes one flag's own spacing from the blocked set, so relocating a flag can land
  * back on ground its current marker reserves. `opts.accept` is an extra per-node gate the winner must also
  * pass (the player order's signpost confinement). `opts.withinRadius` makes the search BOUNDED: it stops at
- * that ring and returns null instead of falling back to the whole-map scan — what a player click wants
+ * that ring and returns null instead of falling back to the whole-map scan - what a player click wants
  * (snap off the body under the cursor, never teleport the flag across the map). Note `from` itself is the
  * `r = 0` candidate, so a caller need not pre-test it. */
 export function nearestWorkFlagPlacement(
@@ -73,7 +73,7 @@ export function nearestWorkFlagPlacement(
   }
   if (withinRadius !== undefined) return null; // a bounded caller wants "nothing near", not a far spot
   // Nothing within the cap. The rings covered every node at distance ≤ cap, so only farther nodes can
-  // match — the whole-map reference scan finds the same winner the uncapped search would.
+  // match - the whole-map reference scan finds the same winner the uncapped search would.
   let best: NodeId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
@@ -92,7 +92,7 @@ export function nearestWorkFlagPlacement(
 }
 
 /**
- * The version of the WORK-FLAG blocker inputs — {@link placementBlockerVersion} plus the `DeliveryFlag`
+ * The version of the WORK-FLAG blocker inputs - {@link placementBlockerVersion} plus the `DeliveryFlag`
  * generation, since this rule also consumes the marker channel the building rule ignores, plus the
  * flag-MOVE count the generation cannot see. The signpost placement overlay keys its memoized band
  * probe on this.

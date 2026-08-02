@@ -1,5 +1,5 @@
 /**
- * PNG container encoder/decoder — wraps straight 8-bit RGBA pixels in a PNG file (and reads them back).
+ * PNG container encoder/decoder - wraps straight 8-bit RGBA pixels in a PNG file (and reads them back).
  *
  * Unlike the other decoders this ports no original game format: PNG is the pipeline's output container.
  * `decodePcx` (and later `decodeBmd`) produce indexed pixels → `expandToRgba` → `encodePng` → a `.png`
@@ -12,7 +12,7 @@
  * that use the other four row filters (1..4) are rejected with a clear `png:` error rather than silently
  * corrupted; the oracle pixel-diff step can extend it to read those when needed.
  *
- * Pure functions (no I/O): bytes in, bytes out. zlib is via node:zlib — this is an offline build tool,
+ * Pure functions (no I/O): bytes in, bytes out. zlib is via node:zlib - this is an offline build tool,
  * not the deterministic sim, so Node APIs are fair game here.
  */
 
@@ -24,7 +24,7 @@ const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 const IHDR_BYTES = 13;
 const BIT_DEPTH = 8;
 const COLOR_TYPE_RGBA = 6;
-const CHANNELS = 4; // R,G,B,A — bytes per pixel at 8-bit colour type 6
+const CHANNELS = 4; // R,G,B,A - bytes per pixel at 8-bit colour type 6
 const FILTER_NONE = 0;
 
 // CRC-32 (ISO 3309, reflected, polynomial 0xEDB88320) over chunk type + data, per the PNG spec.
@@ -65,7 +65,7 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
 /**
  * Encodes straight 8-bit RGBA pixels into a PNG (colour type 6, no interlace, filter-0 scanlines, one
  * zlib-deflated IDAT). Throws a `png:`-prefixed error on dimensions that don't describe a valid image or
- * an `rgba` buffer whose length disagrees with them — programmer errors, not recoverable boundary cases.
+ * an `rgba` buffer whose length disagrees with them - programmer errors, not recoverable boundary cases.
  */
 export function encodePng(image: RgbaImage): Uint8Array {
   const { width, height, rgba } = image;
@@ -84,7 +84,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
   for (let y = 0; y < height; y++) {
     filtered.set(rgba.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
   }
-  const idat = deflateSync(filtered); // a Buffer, i.e. a Uint8Array — chunk() only reads it
+  const idat = deflateSync(filtered); // a Buffer, i.e. a Uint8Array - chunk() only reads it
 
   const ihdr = new Uint8Array(IHDR_BYTES);
   const hv = new DataView(ihdr.buffer);
@@ -105,7 +105,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
  * Inverse of {@link encodePng}: parses the minimal shape we emit and returns straight RGBA. Throws a
  * `png:`-prefixed error on a bad signature, a chunk that overruns the buffer, a CRC mismatch, a header
  * we don't support (non-8-bit, non-RGBA, interlaced), a non-None row filter, or a truncated pixel
- * stream. These are malformed/unsupported inputs — a boundary failure the caller should surface per-file.
+ * stream. These are malformed/unsupported inputs - a boundary failure the caller should surface per-file.
  */
 export function decodePng(bytes: Uint8Array): RgbaImage {
   if (bytes.length < SIGNATURE.length || !signatureMatches(bytes)) {

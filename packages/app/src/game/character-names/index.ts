@@ -3,7 +3,7 @@ import { FALLBACK_POOL, NAME_POOLS } from './pools.js';
 
 /**
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
- * A name is a first name plus a patronymic surname — "Bjørn Ulfsson", "Astrid Sveinsdóttir" — over the
+ * A name is a first name plus a patronymic surname - "Bjørn Ulfsson", "Astrid Sveinsdóttir" - over the
  * first-name × father-name cross product.
  *
  * These names are cosmetic and derived, not sim state: a settler's name is a pure function of its tribe,
@@ -18,7 +18,7 @@ const PATRONYMIC_SUFFIX: Readonly<Record<Sex, string>> = {
   female: 'sdóttir',
 };
 
-/** The golden ratio's conjugate — the multiplier fraction that spreads consecutive ids most evenly. */
+/** The golden ratio's conjugate - the multiplier fraction that spreads consecutive ids most evenly. */
 const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
 
 function gcd(x: number, y: number): number {
@@ -34,7 +34,7 @@ function gcd(x: number, y: number): number {
 
 /**
  * A multiplier coprime to `m`, near the golden-ratio fraction of `m`. Multiplying an id by it (mod `m`)
- * is a bijection that scatters *consecutive* ids across the whole range — so a batch of settlers spawned
+ * is a bijection that scatters *consecutive* ids across the whole range - so a batch of settlers spawned
  * with clustered ids gets well-spread names instead of all sharing one (the "everyone Ragnarsson" bug).
  * `m <= 1` (a degenerate/empty pool) has no non-trivial multiplier and would loop forever, so return 1.
  */
@@ -74,10 +74,10 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
  * The personal name shown for a settler: a faction- and sex-appropriate first name plus a surname, both
  * picked from a {@link nameGridCell} permutation of the stable entity id.
  *
- * Family seam — `surnameFromEntityId`: with no sim marriage/lineage system yet, every settler carries their
+ * Family seam - `surnameFromEntityId`: with no sim marriage/lineage system yet, every settler carries their
  * own patronymic (a woman's ends `-sdóttir`, a man's `-sson`). When such a system exists, pass the husband's
  * (for a wife) or father's (for a child) entity id here: the settler then inherits that person's surname
- * verbatim — the male `-sson` patronymic of the same father-name — so a whole household shares one surname.
+ * verbatim - the male `-sson` patronymic of the same father-name - so a whole household shares one surname.
  *
  * Precondition: `surnameFromEntityId` must be a male entity (a husband/father). The inherited surname equals
  * that owner's own displayed surname only because both resolve on the male grid, which holds for a male

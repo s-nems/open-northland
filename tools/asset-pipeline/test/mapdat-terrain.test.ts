@@ -21,7 +21,7 @@ describe('reduceHalfCellsToCell', () => {
   });
 
   it('breaks ties by the lowest value, independent of half-cell order', () => {
-    // Four distinct values — each count 1, so the tie-break selects the minimum every time.
+    // Four distinct values - each count 1, so the tie-break selects the minimum every time.
     expect(reduceHalfCellsToCell(8, 1, 4, 2)).toBe(1);
     expect(reduceHalfCellsToCell(2, 4, 1, 8)).toBe(1);
     // Two pairs tied at count 2 -> the smaller of the two pair values.
@@ -95,7 +95,7 @@ describe('lmltToTerrainMap', () => {
     expect(map.typeIds).toEqual(new Array(cells).fill(VOID_TYPE_ID));
   });
 
-  it('is deterministic — same layer + dims yield byte-identical typeIds', () => {
+  it('is deterministic - same layer + dims yield byte-identical typeIds', () => {
     // 3×1 grid = a 6×2 half-cell lane.
     const halfCells = [
       1,
@@ -114,7 +114,7 @@ describe('lmltToTerrainMap', () => {
     const a = lmltToTerrainMap(layer(halfCells), { width: 3, height: 1 });
     const b = lmltToTerrainMap(layer(halfCells), { width: 3, height: 1 });
     expect(a.typeIds).toEqual(b.typeIds);
-    expect(a.typeIds).toEqual([1, 7, 4]); // 1<2 tie, uniform 7, 4<9 tie — raw values unshifted
+    expect(a.typeIds).toEqual([1, 7, 4]); // 1<2 tie, uniform 7, 4<9 tie - raw values unshifted
   });
 
   it('throws when the layer length is not width × height × 4', () => {

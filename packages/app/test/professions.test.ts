@@ -7,7 +7,7 @@ import { professionLabel } from '../src/i18n/index.js';
 describe('profession catalog + i18n', () => {
   it('offers every profession as a job that setJob can actually assign (no dead picker rows)', () => {
     // `setJob` silently no-ops a jobType absent from `content.jobs` (packages/sim), so every catalog
-    // profession MUST be present in the sandbox content — this is the guard against a click that does nothing.
+    // profession MUST be present in the sandbox content - this is the guard against a click that does nothing.
     const jobs = new Set(sandboxContent().jobs.map((j) => j.typeId));
     for (const p of PROFESSIONS) {
       expect(jobs.has(p.jobType), `profession "${p.key}" (job ${p.jobType}) missing from content.jobs`).toBe(
@@ -28,7 +28,7 @@ describe('profession catalog + i18n', () => {
     const soldiers = PROFESSIONS.filter((p) => p.key === 'soldier');
     expect(soldiers).toHaveLength(1);
     expect(soldiers[0]?.jobType).toBe(JOB_SOLDIER);
-    // Any job in the jobtypes.ini soldier band (31..41) — including the scene-only weapon classes —
+    // Any job in the jobtypes.ini soldier band (31..41) - including the scene-only weapon classes -
     // resolves to that one soldier profession for the label.
     expect(isSoldierJob(JOB_SOLDIER)).toBe(true);
     expect(professionDefForJob(JOB_SOLDIER)?.key).toBe('soldier');
@@ -50,14 +50,14 @@ describe('profession catalog + i18n', () => {
     for (const trade of ['builder', 'mason', 'smith', 'baker', 'farmer', 'tailor', 'druid'] as const) {
       expect(keys.has(trade), `missing trade "${trade}"`).toBe(true);
     }
-    // The jester (jobtypes.ini 28) is deliberately NOT a profession — 8th Wonder doesn't field it.
+    // The jester (jobtypes.ini 28) is deliberately NOT a profession - 8th Wonder doesn't field it.
     const JESTER_JOB = 28;
     expect(PROFESSIONS.some((p) => p.jobType === JESTER_JOB)).toBe(false);
   });
 
   it('builds a grouped picker list: Cywil leads ungrouped, then a header opens each category', () => {
     const entries = pickerEntries();
-    // The leading row assigns the original's civilist job (6) — the no-trade adult no workplace employs.
+    // The leading row assigns the original's civilist job (6) - the no-trade adult no workplace employs.
     expect(entries[0]).toEqual({ kind: 'profession', jobType: JOB_CIVILIST, label: 'Cywil' });
     expect(entries[1]?.kind).toBe('header');
     const rows = entries.filter((e) => e.kind === 'profession');

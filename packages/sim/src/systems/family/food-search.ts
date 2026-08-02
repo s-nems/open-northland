@@ -19,7 +19,7 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to
  * before falling back to the linear scan. A pure performance knob (the fallback reproduces the exact
- * linear winner), mirroring the interaction-cell index's bound — not a decoded distance (named
+ * linear winner), mirroring the interaction-cell index's bound - not a decoded distance (named
  * approximation).
  */
 const RING_MAX_RADIUS = 48;
@@ -27,14 +27,14 @@ const RING_MAX_RADIUS = 48;
 /**
  * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding a
  * unit that reaches her back as an edible ({@link lowestStockedFood}) EXCEPT a home (a larder feeds
- * only its own residents). Both family food-seekers — the
- * child-order haul stage and the housewife hoard rung — run per woman per tick, so the whole-world
+ * only its own residents). Both family food-seekers - the
+ * child-order haul stage and the housewife hoard rung - run per woman per tick, so the whole-world
  * `Stockpile+Position` scan lives HERE, once per tick, and each seeker pays a bounded ring search
  * (`NodeBuckets.nearest`); a world with no external food at all answers every seeker in O(1).
  *
  * The winner is byte-identical to the linear scan this replaces: distance is half-cell Manhattan from
- * the store's own position node, tie-broken by ascending entity id — exactly `NodeBuckets.nearest`'s
- * documented order — and the out-of-ring fallback reruns the original loop over the (pre-filtered)
+ * the store's own position node, tie-broken by ascending entity id - exactly `NodeBuckets.nearest`'s
+ * documented order - and the out-of-ring fallback reruns the original loop over the (pre-filtered)
  * candidates. Candidacy is snapshotted lazily on first query; that is exact within a pass, because
  * stock only mutates on atomic COMPLETION (a later system phase), never while a planner/family pass
  * issues actions.
@@ -52,13 +52,13 @@ export class ExternalFoodIndex {
   /**
    * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the
    * seeker's signpost confinement ({@link SpatialGate}, null when unlimited): a source whose own node
-   * lies outside the allowed area is invisible to her — the family searches obey the same "local
+   * lies outside the allowed area is invisible to her - the family searches obey the same "local
    * circle plus the reachable guidepost network" rule every economy search does. `avoid` is her
-   * failed-goal veto ({@link unreachableGoalVeto}), probed at the source's interaction cell — the node
-   * `fetchFrom` actually walks — so a re-plan reaches the second source instead of the doomed one.
+   * failed-goal veto ({@link unreachableGoalVeto}), probed at the source's interaction cell - the node
+   * `fetchFrom` actually walks - so a re-plan reaches the second source instead of the doomed one.
    *
    * `owner` is the seeker's player: she hauls food only out of her own side's stores, never an enemy
-   * larder ({@link ownersCompatible}) — the same-side rule the store scans apply, on this family fetch
+   * larder ({@link ownersCompatible}) - the same-side rule the store scans apply, on this family fetch
    * path too. The shared candidate list is owner-blind (built once for every family); the per-seeker
    * `accept` is where her side is checked.
    */
@@ -84,7 +84,7 @@ export class ExternalFoodIndex {
     if (store === null) return null;
     const goodType = lowestStockedFood(this.world, this.ctx, store);
     // Unreachable while the candidacy invariant above holds (stock mutates only on atomic completion);
-    // a null here would mean a mid-pass mutation drained the winner — fail the query, don't guess.
+    // a null here would mean a mid-pass mutation drained the winner - fail the query, don't guess.
     return goodType === null ? null : { store, goodType };
   }
 
@@ -116,7 +116,7 @@ export class ExternalFoodIndex {
     return contentIndex(this.ctx.content).buildings.get(building.buildingType)?.kind === 'home';
   }
 
-  /** The exact pre-index linear pick — strictly-nearer over the ascending-id candidates — covering
+  /** The exact pre-index linear pick - strictly-nearer over the ascending-id candidates - covering
    *  sources beyond {@link RING_MAX_RADIUS} (anything within it would have won the ring). */
   private linearNearest(from: { hx: number; hy: number }, accept: (e: Entity) => boolean): Entity | null {
     let best: { store: Entity; dist: number } | null = null;

@@ -30,8 +30,8 @@ import { HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.
 
 /**
  * The work-flag blocked set feeds command gates and the auto-flag plant, so the incremental state
- * must see every input change: a flag ADD, REMOVE and — the one `componentGeneration` alone cannot
- * see — an in-place MOVE must each land in the set. The state is ONE live set per world (identity
+ * must see every input change: a flag ADD, REMOVE and - the one `componentGeneration` alone cannot
+ * see - an in-place MOVE must each land in the set. The state is ONE live set per world (identity
  * stable across changes, contents caught up on read); the `verifyCaches` verifier proves it equal
  * to a full re-derive under the fuzz/invariant runs.
  */
@@ -78,7 +78,7 @@ describe('workFlagPlacementBlocks incremental state', () => {
 
     const idle = blocksOf(sim);
     for (let t = 0; t < 3; t++) sim.step();
-    expect(blocksOf(sim)).toBe(idle); // the state is one live set per world — identity holds
+    expect(blocksOf(sim)).toBe(idle); // the state is one live set per world - identity holds
 
     setWorkFlag(sim.world, ctxOf(sim), flagCmd(g, A.x, A.y)); // ADD (a fresh flag entity)
     const added = blocksOf(sim);

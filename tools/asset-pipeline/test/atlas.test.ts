@@ -27,7 +27,7 @@ import { packLineControl } from './fixtures/bmd.js';
  * empty bobs still get an id-addressable (0×0) entry.
  */
 
-/** A 256-entry RGB palette where index `i` maps to `(i, i+1, i+2)` mod 256 — distinct, easy to assert.
+/** A 256-entry RGB palette where index `i` maps to `(i, i+1, i+2)` mod 256 - distinct, easy to assert.
  *  Deliberately not the shared `rampPalette` fixture: this formula makes the expected triples readable. */
 const sequentialPalette = (): Uint8Array => {
   const p = new Uint8Array(768);
@@ -43,7 +43,7 @@ const sequentialPalette = (): Uint8Array => {
  * Builds a `Bmd` whose bobs are described as `{ type, width, height, packed, lines, areaX, areaY }`.
  * Each bob's `lines[y]` is the line-control entry for its LOCAL row `y`: a number = packed offset
  * (xMin 0), an object = explicit `{ offset, xMin }` (xMin is the local first column), or `'empty'` = a
- * fully transparent row. Bobs share one packed-line stream by carrying their own offsets — like the real
+ * fully transparent row. Bobs share one packed-line stream by carrying their own offsets - like the real
  * container. The line-control array stacks each bob's scanlines contiguously, so each bob gets a `misc`
  * base = the sum of prior bobs' heights (its first-line index), exactly as the real format lays it out;
  * `areaX`/`areaY` are independent DRAW offsets (they do NOT shift pixels into the frame here).
@@ -154,7 +154,7 @@ describe('packBobAtlas', () => {
   it('packs a single bob at the gutter origin and records its rect + offset', () => {
     // One 8-bit bob, draw offset (3,4) size 2×1, raw run of 2 -> indices [7,8]. The run starts at LOCAL
     // column xMin=0, so the two pixels land at frame columns 0,1 (area.x/area.y are the draw offset, NOT
-    // applied to the local pixel grid — they surface only as the frame's offsetX/offsetY).
+    // applied to the local pixel grid - they surface only as the frame's offsetX/offsetY).
     const bmd = makeBmd([
       {
         type: BOB_TYPE_8BIT,
@@ -306,7 +306,7 @@ describe('packIndexedBobAtlas', () => {
       const o = (y * img.width + x) * 4;
       return [...img.rgba.subarray(o, o + 4)];
     };
-    // Indexed atlas carries the raw index in red (7, 8), alpha opaque — not the palette colour.
+    // Indexed atlas carries the raw index in red (7, 8), alpha opaque - not the palette colour.
     expect(px(indexed.image, ATLAS_GUTTER, ATLAS_GUTTER)).toEqual([7, 0, 0, 255]);
     expect(px(indexed.image, ATLAS_GUTTER + 1, ATLAS_GUTTER)).toEqual([8, 0, 0, 255]);
   });
@@ -314,7 +314,7 @@ describe('packIndexedBobAtlas', () => {
 
 describe('packShadowBobAtlas', () => {
   it('bakes 1-bit mask pixels black at SHADOW_ALPHA and leaves unset pixels transparent', () => {
-    // One 1-bit mask bob (the shadow `.bmd` type), 3×1: draw 1, skip 1, draw 1 — a mask raw run
+    // One 1-bit mask bob (the shadow `.bmd` type), 3×1: draw 1, skip 1, draw 1 - a mask raw run
     // carries no pixel bytes (see decodeBobFrame's mask branch).
     const bmd = makeBmd([
       {
@@ -335,7 +335,7 @@ describe('packShadowBobAtlas', () => {
     expect(px(ATLAS_GUTTER, ATLAS_GUTTER)).toEqual([0, 0, 0, SHADOW_ALPHA]);
     expect(px(ATLAS_GUTTER + 1, ATLAS_GUTTER)).toEqual([0, 0, 0, 0]);
     expect(px(ATLAS_GUTTER + 2, ATLAS_GUTTER)).toEqual([0, 0, 0, SHADOW_ALPHA]);
-    // The manifest keeps the bob's draw offset — the renderer anchors the shadow like any frame.
+    // The manifest keeps the bob's draw offset - the renderer anchors the shadow like any frame.
     const frame = frameOf(manifest, 10);
     expect(frame.offsetX).toBe(-2);
     expect(frame.offsetY).toBe(-1);

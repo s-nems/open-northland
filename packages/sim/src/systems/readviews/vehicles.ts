@@ -1,6 +1,6 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
 
-// Pure read views over the extracted vehicle IR — the data-defined ship/boat classification the Sea/Northland
+// Pure read views over the extracted vehicle IR - the data-defined ship/boat classification the Sea/Northland
 // slice (water travel, boats as mobile stores, embark/disembark) builds on. No mechanic here; see ./index.ts
 // for why read views are grouped together.
 
@@ -26,7 +26,7 @@ export function shipVehicles(content: ContentSet): VehicleType[] {
 }
 
 /**
- * The largest ship cargo capacity in content — the maximum `stockSlots` over {@link shipVehicles} (`ship
+ * The largest ship cargo capacity in content - the maximum `stockSlots` over {@link shipVehicles} (`ship
  * small` 50, `ship big` 200), or 0 when no ship exists. Unlike the tribe unlock gates this is the static
  * content capacity: it does not gate on a tribe's tech graph, since the unlock rides on the later boat-entity
  * slice.
@@ -42,25 +42,25 @@ export function largestShipCapacity(content: ContentSet): number {
 }
 
 /**
- * The good types a vehicle's hold may carry, as a membership set — the "what" filter beside
+ * The good types a vehicle's hold may carry, as a membership set - the "what" filter beside
  * {@link largestShipCapacity}'s "how much". A vehicle with no `logicgood` (the catapult) yields an empty set.
  * Applies to carts as well as ships.
  *
- * source-basis: the extracted `logicgood` param — carts and both ships enumerate the full haulable-goods list
+ * source-basis: the extracted `logicgood` param - carts and both ships enumerate the full haulable-goods list
  * (49 ids) while the catapult lists none.
  */
 export function vehicleCargoGoods(vehicle: VehicleType): Set<number> {
   return new Set(vehicle.cargoGoods);
 }
 
-/** Whether a vehicle's hold may carry `goodType` — the single-good form of {@link vehicleCargoGoods}. */
+/** Whether a vehicle's hold may carry `goodType` - the single-good form of {@link vehicleCargoGoods}. */
 export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean {
   return vehicle.cargoGoods.includes(goodType);
 }
 
 /**
  * A {@link VehicleType}'s footprint/size class: the extracted `logicSize` (0 = land cart, 1 = catapult,
- * 2 = ship in the base data). A coarser axis than {@link isShipVehicle}'s boat/cart split — it separates the
+ * 2 = ship in the base data). A coarser axis than {@link isShipVehicle}'s boat/cart split - it separates the
  * catapult from the carts, which that predicate lumps together as "not a ship".
  *
  * The schema defaults `logicSize` to 0, so this returns a plain number: 0 *is* the cart footprint, not a "no

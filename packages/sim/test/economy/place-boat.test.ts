@@ -6,11 +6,11 @@ import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * `placeBoat` — the **boats as mobile stores** entity slice the plan Sea/Northland item
+ * `placeBoat` - the **boats as mobile stores** entity slice the plan Sea/Northland item
  * names: a placed {@link Vehicle} hull carrying an (empty) {@link Stockpile}, the boat analogue of
  * `placeBuilding`. The placement is gated by the tribe's ship-unlock tech graph (`tribeShipsUnlocked`):
  * only a `vehicle_ship` row the tribe has currently UNLOCKED is fielded; a cart, a catapult, an unknown
- * id, or a not-yet-unlocked ship is a recoverable bad command — skipped (still logged for replay).
+ * id, or a not-yet-unlocked ship is a recoverable bad command - skipped (still logged for replay).
  *
  * Fixture mirrors the real `vehicletypes.ini` shape (as in `tribe-ships-unlocked.test.ts`): two land
  * carts (no passengers) and two ships (passenger-carrying). The SMALL ship (typeId 3, stockSlots 50) is
@@ -22,7 +22,7 @@ const VIKING = 1;
 const SHIPWRIGHT = 10;
 const SHIP_SMALL = 3; // gated behind a shipwright
 const SHIP_BIG = 4; // ungated start ship
-const HANDCART = 1; // a cart — never a ship, so never placeable as a boat
+const HANDCART = 1; // a cart - never a ship, so never placeable as a boat
 
 const VIKING_VEHICLES = [
   { typeId: SHIP_BIG, id: 'ship_big', stockSlots: 200, passengerSlots: 9, logicSize: 2 },
@@ -91,10 +91,10 @@ describe('placeBoat', () => {
 
   it('gates a tech-locked ship: skipped (still logged) until its enabling job exists', () => {
     const sim = fresh();
-    // No shipwright yet — the small ship is locked behind `jobEnablesVehicle 10 3`, so it is skipped.
+    // No shipwright yet - the small ship is locked behind `jobEnablesVehicle 10 3`, so it is skipped.
     sim.enqueue({ kind: 'placeBoat', vehicleType: SHIP_SMALL, x: 0, y: 0, tribe: VIKING });
     sim.step();
-    expect([...sim.world.query(Vehicle)]).toHaveLength(0); // gated out — no hull placed
+    expect([...sim.world.query(Vehicle)]).toHaveLength(0); // gated out - no hull placed
     expect(sim.commands.log).toHaveLength(1); // but still recorded for faithful replay
 
     // Spawn the enabling shipwright, then retry: the small ship now unlocks and is placed.
@@ -108,15 +108,15 @@ describe('placeBoat', () => {
     expect(sim.world.get(hulls[0] as Entity, Vehicle).vehicleType).toBe(SHIP_SMALL);
   });
 
-  it('refuses a land cart — a cart is a vehicle but never a ship, so it is not placeable as a boat', () => {
+  it('refuses a land cart - a cart is a vehicle but never a ship, so it is not placeable as a boat', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'placeBoat', vehicleType: HANDCART, x: 0, y: 0, tribe: VIKING });
     sim.step();
-    expect([...sim.world.query(Vehicle)]).toHaveLength(0); // not a ship — skipped
+    expect([...sim.world.query(Vehicle)]).toHaveLength(0); // not a ship - skipped
     expect(sim.commands.log).toHaveLength(1); // still logged for faithful replay
   });
 
-  it('refuses an unknown vehicle type id (recoverable bad input — no throw, still logged)', () => {
+  it('refuses an unknown vehicle type id (recoverable bad input - no throw, still logged)', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'placeBoat', vehicleType: 999, x: 0, y: 0, tribe: VIKING });
     expect(() => sim.step()).not.toThrow();
@@ -124,7 +124,7 @@ describe('placeBoat', () => {
     expect(sim.commands.log).toHaveLength(1);
   });
 
-  it('gates per tribe — a shipwright in another tribe does not unlock the gated ship', () => {
+  it('gates per tribe - a shipwright in another tribe does not unlock the gated ship', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'spawnSettler', jobType: SHIPWRIGHT, x: 1, y: 0, tribe: 2 }); // wrong tribe
     sim.step();

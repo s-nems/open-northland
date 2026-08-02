@@ -23,7 +23,7 @@ function fakeRaf(): {
       queue.delete(id);
     },
     // Fire the currently-pending callbacks once; a callback may enqueue the next frame (which this
-    // flush does NOT run — one flush = one animation frame).
+    // flush does NOT run - one flush = one animation frame).
     flush: (nowMs = 0) => {
       const due = [...queue.values()];
       queue.clear();

@@ -20,20 +20,20 @@ import type { Rect } from '../geometry.js';
 import { boundWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
- * The animated worker sprites drawn in the details panel's "Pracownicy" field — the settlers bound to
+ * The animated worker sprites drawn in the details panel's "Pracownicy" field - the settlers bound to
  * the selected building, drawn as on the map (their real body/head, team colour and current-action
  * animation) but with no terrain behind them, so the player sees who is working there.
  *
  * It is a live overlay, not part of the baked panel texture: the panel re-bakes at most 4 Hz (its values
- * barely change), but an animation must advance every frame — so the worker sprites are drawn straight to
+ * barely change), but an animation must advance every frame - so the worker sprites are drawn straight to
  * the stage, one z above the baked panel, and re-resolved each tick. It reuses the world renderer's own
  * frame machinery ({@link buildSpriteScene} → {@link resolveLayers}) and draws each layer with a
  * {@link PalettedSprite} (the same team-coloured indexed-atlas mesh the map uses), self-placed by feet
- * anchor + scale — no camera. Without a loaded {@link SpriteSheet} (a bare checkout) it simply draws
+ * anchor + scale - no camera. Without a loaded {@link SpriteSheet} (a bare checkout) it simply draws
  * nothing, so the panel still works.
  */
 
-/** A worker who has stepped inside the building stands frozen on this fixed animation tick — a still
+/** A worker who has stepped inside the building stands frozen on this fixed animation tick - a still
  *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
  *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
 const INDOOR_POSE_TICK = 0;
@@ -54,7 +54,7 @@ interface WorkerHit {
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
-  /** One display object per (panel slot, layerIndex) — reused across frames AND across whichever worker
+  /** One display object per (panel slot, layerIndex) - reused across frames AND across whichever worker
    *  occupies the slot, hidden when unused. Keyed by slot, not by entity, so a session spent clicking
    *  through buildings cannot grow this map past the field's slot count × the deepest layer stack. */
   private readonly sprites = new Map<string, PalettedSprite | Sprite>();
@@ -62,7 +62,7 @@ export class WorkerSpriteOverlay {
    *  doesn't mint a Texture every frame. */
   private readonly plainTextures = new Map<object, Texture>();
   private readonly drawn = new Set<string>();
-  /** This frame's clickable worker boxes, rebuilt each update — the seam {@link hitTest} reads. */
+  /** This frame's clickable worker boxes, rebuilt each update - the seam {@link hitTest} reads. */
   private hits: WorkerHit[] = [];
 
   constructor(
@@ -79,10 +79,10 @@ export class WorkerSpriteOverlay {
 
   /**
    * Redraw the workers of `buildingId` into `field` (screen px). A null building / field, or no sprite
-   * sheet, clears the overlay. Called from the panel's `tick`, which skips it while its inputs hold — the
+   * sheet, clears the overlay. Called from the panel's `tick`, which skips it while its inputs hold - the
    * animation clock is `snapshot.tick`, so it advances once per sim tick.
    * `opts.siteCrew` selects the live build crew instead of the bound workers; `opts.groups` (a home's
-   * residents, one id list per family) overrides the bound-worker scan entirely — the field then draws
+   * residents, one id list per family) overrides the bound-worker scan entirely - the field then draws
    * each family as a close cluster with a breather gap before the next.
    */
   update(
@@ -133,8 +133,8 @@ export class WorkerSpriteOverlay {
     const slotW = inner.h * SLOT_W_FRAC;
     const feetY = inner.y + inner.h;
 
-    // Resolve every drawn worker's layers first: the field shares ONE zoom — the tallest body fills
-    // CHAR_FILL of the field height — so a baby beside its parents reads baby-sized instead of each
+    // Resolve every drawn worker's layers first: the field shares ONE zoom - the tallest body fills
+    // CHAR_FILL of the field height - so a baby beside its parents reads baby-sized instead of each
     // body being blown up to the same height.
     const resolved = workers.map((id) => {
       const item = items.get(id);
@@ -143,7 +143,7 @@ export class WorkerSpriteOverlay {
       const clock = item.frozen === true ? INDOOR_POSE_TICK : snapshot.tick;
       // Size the worker off its NEUTRAL standing frame (INDOOR_POSE_TICK), not the live animation frame:
       // each walk-cycle frame is a differently-trimmed pixel rect (arms/legs extended → taller bbox), so
-      // normalising the current frame's height would rescale the whole body every step — the "camera bob"
+      // normalising the current frame's height would rescale the whole body every step - the "camera bob"
       // size pulse. The stance frame is stable, so the drawn size holds constant while the gait's own
       // per-frame offsets still animate the body within it.
       const stanceLayers = resolveLayers(this.sheet, item, INDOOR_POSE_TICK);
@@ -161,7 +161,7 @@ export class WorkerSpriteOverlay {
       gapOffset += (gapBefore?.[i] ?? 0) * slotW;
       if (r === null) return;
       const cellX = inner.x + slotW * i + gapOffset;
-      if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
+      if (cellX + slotW > inner.x + inner.w + 1) return; // no room - overflow past the field's right edge
       const feetX = cellX + slotW / 2;
       const lut = this.sheet?.palette;
       // Same (armor tier, player) LUT row the world pool binds, so the portrait matches the map look.
@@ -177,7 +177,7 @@ export class WorkerSpriteOverlay {
     this.container.visible = true;
   }
 
-  /** The entity whose sprite covers screen point (x, y), or null — so a click in the field selects that
+  /** The entity whose sprite covers screen point (x, y), or null - so a click in the field selects that
    *  worker (the panel routes it, deselecting the building), exactly like clicking the settler on the map. */
   hitTest(x: number, y: number): number | null {
     for (const h of this.hits) {

@@ -69,7 +69,7 @@ export interface WorldMarksFrame {
 
 export class WorldMarks {
   private readonly selection = new SelectionLayer();
-  /** Blood on hits and bones on deaths — two containers, since blood paints over the struck body and
+  /** Blood on hits and bones on deaths - two containers, since blood paints over the struck body and
    *  bones litter the ground under it. */
   private readonly effects = new CombatEffectsLayer();
   /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite

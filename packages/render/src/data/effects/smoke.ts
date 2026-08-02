@@ -4,16 +4,16 @@ import { frac } from './blood.js';
 /**
  * The pure half of the damage-smoke overlay: how many smoke emitters a damaged building shows and where
  * each puff of a looping plume is at a tick. Smoke is a pure function of the building's CURRENT HP
- * fraction — every {@link DAMAGE_SMOKE_STEP} of the pool lost adds one emitter, and any HP rise (repair,
+ * fraction - every {@link DAMAGE_SMOKE_STEP} of the pool lost adds one emitter, and any HP rise (repair,
  * an upgrade refilling the pool) sheds them again with no extra wiring. Procedural grey puffs (a named
- * approximation — the decoded `fx smoke` loop art is the ambient-fx ticket's swap-in); tick-driven, so a
+ * approximation - the decoded `fx smoke` loop art is the ambient-fx ticket's swap-in); tick-driven, so a
  * `?shot` capture and a paused game reproduce exactly.
  */
 
 /** The HP fraction lost per additional smoke emitter (20% → up to {@link MAX_SMOKE_EMITTERS} plumes). */
 export const DAMAGE_SMOKE_STEP = 0.2;
 
-/** The most emitters one building shows — heavy damage reads as a burning roofline, not a screen of fog. */
+/** The most emitters one building shows - heavy damage reads as a burning roofline, not a screen of fog. */
 export const MAX_SMOKE_EMITTERS = 4;
 
 /** Concurrent puffs per emitter (phase-staggered fractions of the loop, so the plume never gaps). */
@@ -45,19 +45,19 @@ export function damageSmokeEmitters(hpFrac: number): number {
 
 /** The roof wedge emitter spots are pinned to, as bounds-box fractions: at most `halfSpread` from the
  *  center line, starting `topV` below the sprite top, dropping `slope` per unit of center offset, with
- *  up to `jitter` extra seeded depth. A named approximation of building silhouettes — sprites narrow
+ *  up to `jitter` extra seeded depth. A named approximation of building silhouettes - sprites narrow
  *  toward the top, so a spot high in a box CORNER would smoke from thin air beside the roof. */
 export const EMITTER_WEDGE = { halfSpread: 0.32, topV: 0.1, slope: 0.35, jitter: 0.08 } as const;
 
 /** Where emitter `i` of a building sits, as fractions of the sprite's bounds box: `u` across the width,
- *  `v` down from the top. Spots lie on the centered {@link EMITTER_WEDGE} — the farther from the center
- *  line, the lower — so a plume's source stays on the building's pixels. Each emitter owns one
+ *  `v` down from the top. Spots lie on the centered {@link EMITTER_WEDGE} - the farther from the center
+ *  line, the lower - so a plume's source stays on the building's pixels. Each emitter owns one
  *  horizontal band (seeded rotation per building, seeded jitter within it), so every crossed damage
- *  step smokes from a visibly NEW spot — the plume count reads as a damage gauge. Stable across frames
+ *  step smokes from a visibly NEW spot - the plume count reads as a damage gauge. Stable across frames
  *  (no per-frame jitter). */
 export function emitterSpot(seed: number, i: number): { u: number; v: number } {
   const band = (i + Math.floor(frac(seed, 97) * MAX_SMOKE_EMITTERS)) % MAX_SMOKE_EMITTERS;
-  // The spot's center offset in [-1, 1] — stratified by band, so spots never clump.
+  // The spot's center offset in [-1, 1] - stratified by band, so spots never clump.
   const c = ((band + 0.2 + 0.6 * frac(seed, i * 2)) / MAX_SMOKE_EMITTERS) * 2 - 1;
   return {
     u: 0.5 + EMITTER_WEDGE.halfSpread * c,
@@ -75,7 +75,7 @@ export interface SmokePuffPose {
 
 /**
  * Puff `puff` of emitter `emitter` at `tick`: each loops over {@link SMOKE_PUFF_PERIOD_TICKS}, rising
- * {@link SMOKE_RISE_PX} while it swells and thins — born small and faint at the emitter, densest shortly
+ * {@link SMOKE_RISE_PX} while it swells and thins - born small and faint at the emitter, densest shortly
  * after, dissolved at the top. Puffs stagger the loop by even fractions (plus a seeded phase per
  * emitter), so the plume is continuous. Deterministic in (seed, emitter, puff, tick).
  */
@@ -91,7 +91,7 @@ export function smokePuff(seed: number, emitter: number, puff: number, tick: num
     x: drift * t,
     y: -SMOKE_RISE_PX * t,
     radius: SMOKE_MIN_R + (SMOKE_MAX_R - SMOKE_MIN_R) * t,
-    // Quick birth fade-in, then a slow thinning that only dives near the top — the plume stays dense
+    // Quick birth fade-in, then a slow thinning that only dives near the top - the plume stays dense
     // through most of its rise (a legible column), yet still hits 0 at the wrap so re-birth never pops.
     alpha: Math.min(1, t * 4) * (1 - t * t) * SMOKE_PEAK_ALPHA,
   };

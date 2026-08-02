@@ -10,7 +10,7 @@ import {
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
-/** Resolve a vehicle by its `id` from a content set (throws if absent — a test-fixture programmer error). */
+/** Resolve a vehicle by its `id` from a content set (throws if absent - a test-fixture programmer error). */
 function vehicle(content: ContentSet, id: string): VehicleType {
   const found = content.vehicles.find((v) => v.id === id);
   if (found === undefined) throw new Error(`fixture has no vehicle "${id}"`);
@@ -18,14 +18,14 @@ function vehicle(content: ContentSet, id: string): VehicleType {
 }
 
 /**
- * The ship-vehicle read view — `shipVehicles`/`isShipVehicle`/`largestShipCapacity` classify the
+ * The ship-vehicle read view - `shipVehicles`/`isShipVehicle`/`largestShipCapacity` classify the
  * `vehicle_ship` rows out of `content.vehicles` *by the data alone* (a vehicle that carries passengers,
  * `passengerSlots > 0`), the seed the Sea/Northland slice (water travel, boats as mobile stores) builds
- * on — never by a hardcoded name. A pure read over content; no world, no mechanic added.
+ * on - never by a hardcoded name. A pure read over content; no world, no mechanic added.
  *
  * The fixture mirrors the real `vehicletypes.ini` shape: two land carts (`handcart`/`oxcart`,
  * `passengerslots 0`), a `catapult` (a siege engine, also `passengerslots 0`), and the two ships
- * (`ship small` `passengerslots 19` / `ship big` `passengerslots 9`) — declared OUT of typeId order so
+ * (`ship small` `passengerslots 19` / `ship big` `passengerslots 9`) - declared OUT of typeId order so
  * the sort is exercised. The `stockSlots`/`logicSize` values are the real ones (carts 15/30, catapult 0,
  * ships 50/200; ship `logicsize 2` vs cart `0`/catapult `1`), so the classification rests on the same
  * params the pipeline pins.
@@ -37,7 +37,7 @@ function vehicleContent(): ContentSet {
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     vehicles: [
-      // ship big (typeId 4) declared first — a ship: passengerSlots > 0. Proves the sort, not order.
+      // ship big (typeId 4) declared first - a ship: passengerSlots > 0. Proves the sort, not order.
       // cargoGoods mirrors the real ships' full haulable-goods enumeration (sampled to a few ids here).
       {
         typeId: 4,
@@ -47,9 +47,9 @@ function vehicleContent(): ContentSet {
         logicSize: 2,
         cargoGoods: [16, 17, 1],
       },
-      // handcart (typeId 1) — a land cart: no passengers.
+      // handcart (typeId 1) - a land cart: no passengers.
       { typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
-      // ship small (typeId 3) declared after the big ship — proves the sort puts it first.
+      // ship small (typeId 3) declared after the big ship - proves the sort puts it first.
       {
         typeId: 3,
         id: 'ship_small',
@@ -58,9 +58,9 @@ function vehicleContent(): ContentSet {
         logicSize: 2,
         cargoGoods: [16, 17, 1],
       },
-      // catapult (typeId 5) — a siege engine, NOT a ship: it carries no passengers (logicSize 1) or cargo.
+      // catapult (typeId 5) - a siege engine, NOT a ship: it carries no passengers (logicSize 1) or cargo.
       { typeId: 5, id: 'catapult', stockSlots: 0, passengerSlots: 0, logicSize: 1 },
-      // oxcart (typeId 2) — a land cart: no passengers.
+      // oxcart (typeId 2) - a land cart: no passengers.
       { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
     ],
   });
@@ -71,9 +71,9 @@ describe('isShipVehicle', () => {
     const content = vehicleContent();
     expect(isShipVehicle(vehicle(content, 'ship_small'))).toBe(true);
     expect(isShipVehicle(vehicle(content, 'ship_big'))).toBe(true);
-    expect(isShipVehicle(vehicle(content, 'handcart'))).toBe(false); // a cart — no passengers
+    expect(isShipVehicle(vehicle(content, 'handcart'))).toBe(false); // a cart - no passengers
     expect(isShipVehicle(vehicle(content, 'oxcart'))).toBe(false);
-    expect(isShipVehicle(vehicle(content, 'catapult'))).toBe(false); // siege engine — passengerSlots 0
+    expect(isShipVehicle(vehicle(content, 'catapult'))).toBe(false); // siege engine - passengerSlots 0
   });
 });
 
@@ -171,14 +171,14 @@ describe('vehicleSizeOf', () => {
     // The three-way partition, the coarser axis than the boat/cart isShipVehicle split.
     expect(vehicleSizeOf(vehicle(content, 'handcart'))).toBe(0);
     expect(vehicleSizeOf(vehicle(content, 'oxcart'))).toBe(0);
-    expect(vehicleSizeOf(vehicle(content, 'catapult'))).toBe(1); // siege engine — distinct from a cart
+    expect(vehicleSizeOf(vehicle(content, 'catapult'))).toBe(1); // siege engine - distinct from a cart
     expect(vehicleSizeOf(vehicle(content, 'ship_small'))).toBe(2);
     expect(vehicleSizeOf(vehicle(content, 'ship_big'))).toBe(2);
   });
 
-  it('is a plain number (defaults to 0, never undefined) — a vehicle with no logicSize reads 0', () => {
+  it('is a plain number (defaults to 0, never undefined) - a vehicle with no logicSize reads 0', () => {
     // A minimal vehicle that omits logicSize: the schema default (0, the cart footprint) applies, so the
-    // accessor returns a number, not undefined — the weight-field shape, not the class-enum shape.
+    // accessor returns a number, not undefined - the weight-field shape, not the class-enum shape.
     const content = parseContentSet({
       manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
@@ -196,7 +196,7 @@ describe('vehicleSizeOf', () => {
     const content = vehicleContent();
     const cata = vehicle(content, 'catapult');
     const cart = vehicle(content, 'handcart');
-    expect(isShipVehicle(cata)).toBe(isShipVehicle(cart)); // both false — the boat axis can't tell them apart
+    expect(isShipVehicle(cata)).toBe(isShipVehicle(cart)); // both false - the boat axis can't tell them apart
     expect(vehicleSizeOf(cata)).not.toBe(vehicleSizeOf(cart)); // the size axis does (1 vs 0)
   });
 });

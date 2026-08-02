@@ -19,15 +19,15 @@ import { deferOrderDuringAtomic, isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
 /**
- * The scout's BUILD-GUIDE action id — the one atomic the scout job allows (`jobtypes.ini` type 27
+ * The scout's BUILD-GUIDE action id - the one atomic the scout job allows (`jobtypes.ini` type 27
  * `allowatomic 43`; `logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_BUILD_GUIDE 43`). The viking
- * binding plays `viking_scout_build_guide` (15 frames, the hammer swing — extracted `gfxAtomics`
+ * binding plays `viking_scout_build_guide` (15 frames, the hammer swing - extracted `gfxAtomics`
  * tribe 1 / job 27 / action 43).
  */
 export const BUILD_GUIDE_ATOMIC_ID = 43;
 
 /**
- * Order one owned scout to erect a signpost at (x,y) — the `placeSignpost` handler. Validates the
+ * Order one owned scout to erect a signpost at (x,y) - the `placeSignpost` handler. Validates the
  * issuer (an orderable settler whose job is scout) and the spot ({@link canPlaceSignpost}), then sends
  * the scout there as a normal {@link moveUnit} walk carrying an {@link ErectSignpostOrder}; the
  * {@link signpostOrderSystem} swings the hammer on arrival. Recoverable bad input (skipped, still
@@ -47,7 +47,7 @@ export function placeSignpost(
   const player = world.get(e, Owner).player;
   if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return;
   // A non-interruptible atomic (typically the scout's own previous build-guide swing) parks the WHOLE
-  // command — deferring only the inner moveUnit would strand an ErectSignpostOrder the parked move erases
+  // command - deferring only the inner moveUnit would strand an ErectSignpostOrder the parked move erases
   // on apply. Replayed (revalidating the spot) once the swing completes, so an AI re-order mid-swing no
   // longer destroys the swing.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
@@ -60,13 +60,13 @@ export function placeSignpost(
 }
 
 /**
- * SignpostOrderSystem — turns an arrived {@link ErectSignpostOrder} into the one-shot build-guide
+ * SignpostOrderSystem - turns an arrived {@link ErectSignpostOrder} into the one-shot build-guide
  * hammer swing. Runs after {@link import('./movement.js').playerOrderSystem} (which retires the walk)
  * and before the plannerSystem (so the swing starts before the economy could re-task the scout).
  *
  * Per scout under an order: while the erect swing runs, wait for its effect; on arrival at the goal,
- * re-validate the spot (the world may have changed en route — a rival post, a new building) and start
- * the atomic — the signpost itself spawns when the swing completes (the `erectSignpost` effect, one
+ * re-validate the spot (the world may have changed en route - a rival post, a new building) and start
+ * the atomic - the signpost itself spawns when the swing completes (the `erectSignpost` effect, one
  * strike, instant, free). The order is dropped when the scout stopped being a scout, another action
  * took over (a need drive), the walk failed, or the spot became illegal.
  */
@@ -74,20 +74,20 @@ export const signpostOrderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless: no orders were issuable
   // Canonical order: two scouts arriving the same tick at mutually-exclusive spots (overlapping spacing
-  // circles) race — the lower entity id must win, not whichever the store iterated first.
+  // circles) race - the lower entity id must win, not whichever the store iterated first.
   for (const e of canonicalById(world.query(Settler, ErectSignpostOrder))) {
     const settler = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
     if (!isScoutJob(ctx.content, settler.jobType) || owner === undefined) {
-      world.remove(e, ErectSignpostOrder); // re-professioned or unowned mid-walk — the intent dies
+      world.remove(e, ErectSignpostOrder); // re-professioned or unowned mid-walk - the intent dies
       continue;
     }
     const goal = world.get(e, ErectSignpostOrder).goal;
     const atomic = world.tryGet(e, CurrentAtomic);
     if (atomic !== undefined) {
-      if (atomic.effect.kind === 'erectSignpost') continue; // swinging the hammer — wait for the effect
+      if (atomic.effect.kind === 'erectSignpost') continue; // swinging the hammer - wait for the effect
       if (world.has(e, PlayerOrder)) continue; // the walk's own preamble (setting a carried load down)
-      world.remove(e, ErectSignpostOrder); // a need drive took over — the order is abandoned
+      world.remove(e, ErectSignpostOrder); // a need drive took over - the order is abandoned
       continue;
     }
     const p = world.get(e, Position);
@@ -108,6 +108,6 @@ export const signpostOrderSystem: System = (world, ctx) => {
       continue;
     }
     if (world.has(e, PlayerOrder)) continue; // still walking the order out
-    world.remove(e, ErectSignpostOrder); // walk failed or was superseded — return to autonomy
+    world.remove(e, ErectSignpostOrder); // walk failed or was superseded - return to autonomy
   }
 };

@@ -6,7 +6,7 @@ import { sandboxScene } from '../src/scenes/sandbox/index.js';
 
 /**
  * A gatherer's drop-off FLAG is a pure marker with no back-reference to its gatherer, so a click on a
- * flag resolves to the gatherer to select via {@link gathererByFlag} — the inverse of the WorkFlag edge.
+ * flag resolves to the gatherer to select via {@link gathererByFlag} - the inverse of the WorkFlag edge.
  * This proves that inverse over the real sandbox scene, where every human gatherer is bound to its own
  * flag (the wiring the click handler in `view/unit-controls/` relies on).
  */
@@ -27,7 +27,7 @@ describe('flag → gatherer resolution (selecting a gatherer by clicking its fla
       expect(workFlagOf(ent)).toBe(flag);
     }
 
-    // 1:1 — the map covers every human gatherer that carries a flag, with none collapsed (no shared flag).
+    // 1:1 - the map covers every human gatherer that carries a flag, with none collapsed (no shared flag).
     const humanGathererFlags = snap.entities.filter(
       (e) => ownerPlayerOf(e) === HUMAN_PLAYER && workFlagOf(e) !== undefined,
     ).length;

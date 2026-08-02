@@ -6,7 +6,7 @@ import type { SystemContext } from '../../context.js';
 import { constructionWorkCell } from '../../footprint/index.js';
 import { isUnreachableGoal } from '../unreachable-goals.js';
 
-/** The three reachability layers {@link unreachableWorkCell} probes — bundled so its call sites name
+/** The three reachability layers {@link unreachableWorkCell} probes - bundled so its call sites name
  *  what they pass instead of ordering four lookalike positional arguments. */
 export interface WorkCellGates {
   readonly terrain: TerrainGraph;
@@ -16,7 +16,7 @@ export interface WorkCellGates {
 
 /**
  * Whether walking to `cell` to work it is provably doomed: the goal is unwalkable, dynamically blocked
- * (`findPath` rejects a blocked GOAL — only the start is exempt), in another static component, or a goal
+ * (`findPath` rejects a blocked GOAL - only the start is exempt), in another static component, or a goal
  * one of this settler's own routes just failed on. Targeting such a cell anyway strands the settler in a
  * park→re-pick→fail loop, so every target scan skips it until the ground opens up. Standing on the cell
  * already (`here`) needs no walk, so it is never doomed.
@@ -38,12 +38,12 @@ export function unreachableWorkCell(gates: WorkCellGates, here: NodeId, cell: No
 
 /**
  * The failed-goal veto for the construction-SITE picks, or undefined when the seeker remembers no
- * failures. A site is bucketed by its finished building's door, but no site route ever walks there —
- * deliveries and builder stands go to a perimeter work cell — so the cell-keyed `avoid` veto would
+ * failures. A site is bucketed by its finished building's door, but no site route ever walks there -
+ * deliveries and builder stands go to a perimeter work cell - so the cell-keyed `avoid` veto would
  * never match; this probes the memo at the stand the seeker would walk now
  * ({@link constructionWorkCell} from `here`). Approximation: the crew-spacing claim may land on a
  * different perimeter cell than this nearest-stand key, but the settler that just failed has not
- * moved, so its failed stand is typically the nearest one (exact for a crew-less site) — which is
+ * moved, so its failed stand is typically the nearest one (exact for a crew-less site) - which is
  * what breaks the sealed-site re-pick loop.
  */
 export function unreachableSiteStand(

@@ -6,8 +6,8 @@ import { plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { buildingAt, cell, ctxOf, grassMap, settlerAt } from './producer-supply/support.js';
 
-// Consumer self-service at shared utility buildings (the well, the hive): a producer worker — or its bound
-// carrier — short a recipe input that NO store holds draws its own from an input-less utility that mints it
+// Consumer self-service at shared utility buildings (the well, the hive): a producer worker - or its bound
+// carrier - short a recipe input that NO store holds draws its own from an input-less utility that mints it
 // (MODE 1, the draw), and a carrier POSTED to a utility feeds nearby recipe consumers before central storage
 // (MODE 2, the delivery preference). The utility goods/buildings live in a LOCAL content extension (not the
 // shared fixture, whose typeIds 10..14 the placement tests already claim for footprinted houses).
@@ -22,13 +22,13 @@ const WELL = 10;
 const HIVE = 11;
 const BAKERY = 12;
 const BREWERY = 13;
-const WAREHOUSE = 7; // testContent's general storage — extended below to stock the utility outputs
+const WAREHOUSE = 7; // testContent's general storage - extended below to stock the utility outputs
 const PICKUP_ATOMIC = 22; // water binds no produce atomic → the draw falls back to the pickup gesture
 const HONEY_PRODUCE_ATOMIC = 45; // honey binds this produce atomic → the draw uses it
 
 const DRAW_TICKS = 4; // the well/hive recipe's own work time (small, so a self-service run closes fast)
 
-/** testContent extended with the utility goods and the well/hive/bakery/brewery — a shared utility that
+/** testContent extended with the utility goods and the well/hive/bakery/brewery - a shared utility that
  *  mints its good from no inputs (water/honey), the consumers that need it (bakery/brewery), and utility-good
  *  slots on the warehouse so a posted carrier has a central-storage fallback sink. */
 function utilityContent(): ContentSet {
@@ -37,7 +37,7 @@ function utilityContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      { typeId: WATER, id: 'water', weight: 1 }, // no produce atomic — a draw of it uses the fallback gesture
+      { typeId: WATER, id: 'water', weight: 1 }, // no produce atomic - a draw of it uses the fallback gesture
       { typeId: BREAD, id: 'bread', weight: 1 },
       { typeId: HONEY, id: 'honey', weight: 1, atomics: { produce: HONEY_PRODUCE_ATOMIC } },
       { typeId: ALE, id: 'ale', weight: 1 },
@@ -57,7 +57,7 @@ function utilityContent(): ContentSet {
             }
           : b,
       ),
-      // The well: a carrier-only slot and an INPUT-LESS water recipe — unstaffed-by-design; a consumer
+      // The well: a carrier-only slot and an INPUT-LESS water recipe - unstaffed-by-design; a consumer
       // draws its own by running the recipe in place.
       {
         typeId: WELL,
@@ -78,7 +78,7 @@ function utilityContent(): ContentSet {
         recipes: [{ inputs: [], outputs: [{ goodType: HONEY, amount: 1 }], ticks: DRAW_TICKS }],
       },
       // The bakery: a baker (the carpenter job as operator) + a carrier, water → bread. Its water input has
-      // no field/harvest source — it comes only from the well's self-service draw.
+      // no field/harvest source - it comes only from the well's self-service draw.
       {
         typeId: BAKERY,
         id: 'bakery',
@@ -127,7 +127,7 @@ function utilityContent(): ContentSet {
   });
 }
 
-describe('utility self-service — MODE 1: a consumer draws a missing input from a shared utility', () => {
+describe('utility self-service - MODE 1: a consumer draws a missing input from a shared utility', () => {
   it('walks to the well when no store holds its water input', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const bakery = buildingAt(sim, BAKERY, 0, 0); // needs water for its water → bread recipe; holds none
@@ -136,7 +136,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // No store holds water and the bakery can't bake — the baker heads for the well to draw its own.
+    // No store holds water and the bakery can't bake - the baker heads for the well to draw its own.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 3, 0));
   });
 
@@ -164,7 +164,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
     const atomic = sim.world.get(brewer, CurrentAtomic);
     // Honey binds a produce atomic (HONEY_PRODUCE_ATOMIC) but the draw uses the neutral pickup gesture
-    // for every good and worker — the drawer's trade is not the utility's (no beekeeper-only animation).
+    // for every good and worker - the drawer's trade is not the utility's (no beekeeper-only animation).
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'draw', goodType: HONEY, utility: hive });
   });
@@ -190,7 +190,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The nearer source wins — here the stocked warehouse at cell 3, not the farther well at cell 5.
+    // The nearer source wins - here the stocked warehouse at cell 3, not the farther well at cell 5.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 3, 0));
   });
 
@@ -203,7 +203,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The adjacent well wins over the distant stocked warehouse — the baker draws its own water at cell 1
+    // The adjacent well wins over the distant stocked warehouse - the baker draws its own water at cell 1
     // instead of trekking to cell 6.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 1, 0));
   });
@@ -218,7 +218,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     plannerSystem(sim.world, ctxOf(sim));
 
     // Proximity alone would send the baker one cell to the brewery; the source rule sends it to the
-    // warehouse at cell 6 — water comes from the well or from storage, never out of a rival's vat.
+    // warehouse at cell 6 - water comes from the well or from storage, never out of a rival's vat.
     expect(sim.world.get(baker, MoveGoal).cell).toBe(cell(sim, 6, 0));
     expect(sim.world.get(brewery, Stockpile).amounts.get(WATER)).toBe(5);
   });
@@ -231,7 +231,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The well MAKES water, so its shelf is a source like any warehouse — and picking the standing
+    // The well MAKES water, so its shelf is a source like any warehouse - and picking the standing
     // unit up beats re-cranking the recipe for one.
     expect(sim.world.get(baker, CurrentAtomic).effect).toEqual({
       kind: 'pickup',
@@ -241,7 +241,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
     });
   });
 
-  it('end to end: an UNSTAFFED well feeds the bakery — bread is baked with nobody posted at the well', () => {
+  it('end to end: an UNSTAFFED well feeds the bakery - bread is baked with nobody posted at the well', () => {
     const sim = new Simulation({ seed: 2, content: utilityContent(), map: grassMap(6, 1) });
     const bakery = buildingAt(sim, BAKERY, 0, 0);
     buildingAt(sim, WELL, 1, 0); // built, but NO settler is ever posted to it
@@ -259,7 +259,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
 
   it('is deterministic: the same seed drives the draw→carry→bake loop to a byte-identical state', () => {
     // A run-twice tripwire for the new `draw` atomic (the fuzz catalog has no input-less utility, so the
-    // draw path would otherwise get no seeded run-twice coverage — engine review 2026-07-19).
+    // draw path would otherwise get no seeded run-twice coverage - engine review 2026-07-19).
     const run = (): string => {
       const sim = new Simulation({ seed: 4, content: utilityContent(), map: grassMap(6, 1) });
       const bakery = buildingAt(sim, BAKERY, 0, 0);
@@ -272,7 +272,7 @@ describe('utility self-service — MODE 1: a consumer draws a missing input from
   });
 });
 
-describe('utility self-service — MODE 2: a posted utility carrier feeds nearby consumers first', () => {
+describe('utility self-service - MODE 2: a posted utility carrier feeds nearby consumers first', () => {
   it('routes the well’s water to a nearby bakery before central storage', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const well = buildingAt(sim, WELL, 5, 0);
@@ -283,14 +283,14 @@ describe('utility self-service — MODE 2: a posted utility carrier feeds nearby
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The water goes to the bakery (cell 2), NOT the nearer warehouse (cell 4) — consumers before storage.
+    // The water goes to the bakery (cell 2), NOT the nearer warehouse (cell 4) - consumers before storage.
     expect(sim.world.get(porter, MoveGoal).cell).toBe(cell(sim, 2, 0));
   });
 
   it('falls back to central storage when no consumer has room', () => {
     const sim = new Simulation({ seed: 1, content: utilityContent(), map: grassMap(6, 1) });
     const well = buildingAt(sim, WELL, 5, 0);
-    buildingAt(sim, BAKERY, 2, 0, [[WATER, 10]]); // its water slot is FULL (cap 10) — no room
+    buildingAt(sim, BAKERY, 2, 0, [[WATER, 10]]); // its water slot is FULL (cap 10) - no room
     buildingAt(sim, WAREHOUSE, 4, 0); // the warehouse fallback
     const porter = settlerAt(sim, 5, 0, CARRIER, well);
     sim.world.add(porter, Carrying, { goodType: WATER, amount: 1 });

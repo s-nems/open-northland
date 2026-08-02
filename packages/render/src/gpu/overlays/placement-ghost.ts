@@ -8,21 +8,21 @@ import type { TextureCache } from '../texture-cache.js';
 import { mintLayerSprite } from './layer-sprite.js';
 
 /**
- * The build-placement cursor ghost — the held building's own sprite, translucent, snapped to the
+ * The build-placement cursor ghost - the held building's own sprite, translucent, snapped to the
  * hovered half-cell node (the anchor grid buildings actually place on), exactly the original's
  * build-mode cursor. The app decides where (the hovered node) and whether (it hides the ghost over
- * ground the placement probe rejects — in the original the house icon vanishes over blocked ground);
+ * ground the placement probe rejects - in the original the house icon vanishes over blocked ground);
  * this layer only projects that decision.
  *
  * Lives inside the depth-sorted sprite layer with a feet-anchor depth key, so the ghost occludes and
- * is occluded like the real house would be — sliding it behind a standing tree reads correctly.
+ * is occluded like the real house would be - sliding it behind a standing tree reads correctly.
  * Retained: the sprite stack is rebuilt only when the building type changes; a hover move just
  * repositions the container. The frame resolution is the exact path a placed building's sprite takes
  * ({@link resolveLayers}), so the ghost always previews what the placement will draw; without a sheet
  * (or an unbound type) it degrades to a translucent placeholder diamond at the same anchor.
  */
 
-/** What the app hands the layer each frame while a placement cursor hovers a placeable node —
+/** What the app hands the layer each frame while a placement cursor hovers a placeable node -
  *  `col`/`row` are half-cell coordinates on the `2W×2H` lattice. A held building previews its own
  *  sprite stack; the scout's pending signpost previews the owner's guidepost post. */
 export type PlacementGhost =
@@ -60,7 +60,7 @@ export class PlacementGhostLayer {
     const p = halfCellToScreen(ghost.col, ghost.row);
     const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
     this.container.position.set(p.x, p.y - lift);
-    // Depth by the pre-lift feet anchor, like every pooled sprite — the ghost interleaves correctly.
+    // Depth by the pre-lift feet anchor, like every pooled sprite - the ghost interleaves correctly.
     this.container.zIndex = depthKey(p.x, p.y);
     this.container.visible = true;
   }

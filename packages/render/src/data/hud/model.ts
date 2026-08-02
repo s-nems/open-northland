@@ -11,7 +11,7 @@ import { readStockpileAmounts } from '../snapshot/index.js';
  * boundary, and counts/sums are order-independent, so the values match the sim views by construction.
  */
 
-/** The HUD job-key for an idle, job-seeking adult — the sim's own sentinel, re-exported so a consumer
+/** The HUD job-key for an idle, job-seeking adult - the sim's own sentinel, re-exported so a consumer
  *  reading {@link JobCount.jobType} can name it without importing sim. */
 export const IDLE_JOB = SIM_IDLE_JOB;
 
@@ -30,17 +30,17 @@ export interface StockCount {
 }
 
 /**
- * The display model for one tribe's HUD at a tick — flat, sorted, plain data. The pixel layer reads
+ * The display model for one tribe's HUD at a tick - flat, sorted, plain data. The pixel layer reads
  * these arrays in paint order.
  */
 export interface HudModel {
-  /** The tick this model was built for (the snapshot's tick) — a HUD can show "tick N". */
+  /** The tick this model was built for (the snapshot's tick) - a HUD can show "tick N". */
   readonly tick: number;
   /** The tribe this model summarizes. */
   readonly tribe: number;
-  /** Total living settlers of the tribe (every settler, idle or working, baby or adult — all mouths). */
+  /** Total living settlers of the tribe (every settler, idle or working, baby or adult - all mouths). */
   readonly population: number;
-  /** Per-job head-counts, ascending by `jobType` (idle's `-1` sorts first) — a stable display order. */
+  /** Per-job head-counts, ascending by `jobType` (idle's `-1` sorts first) - a stable display order. */
   readonly jobs: readonly JobCount[];
   /** Per-good stock totals across the tribe's stores, ascending by `goodType`; zero entries omitted. */
   readonly stocks: readonly StockCount[];

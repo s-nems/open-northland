@@ -5,7 +5,7 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
 /**
  * The real-data half of the need-atomic clip resolution. Two rules are pure string/id joins against the
  * served content, so a pipeline change can silently degrade them to a shorter fallback clip instead of
- * failing — these pin them against the actual IR.
+ * failing - these pin them against the actual IR.
  *
  *  - the CIVILIST fallback: `setatomic` binds eat only for jobs 3,4,5,6,31,34 and sleep for 1–6,31, so a
  *    builder/collector/farmer/carrier binds neither and must borrow the civilist clip rather than land on
@@ -21,7 +21,7 @@ const CARRIER = 24;
 const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
 
-/** The unresolved-chain default in `readviews/animations.ts` — no real clip may collapse to it. */
+/** The unresolved-chain default in `readviews/animations.ts` - no real clip may collapse to it. */
 const DEFAULT_ATOMIC_DURATION = 4;
 
 describe.runIf(hasRealIr())('need-atomic clips resolve against the served content', () => {
@@ -34,7 +34,7 @@ describe.runIf(hasRealIr())('need-atomic clips resolve against the served conten
       { tribe: VIKING, jobType: CIVILIST },
       SLEEP_ATOMIC,
     );
-    // The civilist's own bindings — the lengths the fallback hands everyone else.
+    // The civilist's own bindings - the lengths the fallback hands everyone else.
     expect(civilistEat).toBe(50); // viking_civilist_eat_slot_food
     expect(civilistSleep).toBe(237); // viking_civilist_sleep
 

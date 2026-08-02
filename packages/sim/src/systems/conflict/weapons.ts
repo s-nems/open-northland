@@ -15,7 +15,7 @@ import {
   isRangedWeapon,
 } from '../readviews/index.js';
 
-// The combat weapon layer — resolve what an attacker fights with (the worn / (tribe, job) /
+// The combat weapon layer - resolve what an attacker fights with (the worn / (tribe, job) /
 // animal-tribe weapon and its clamped reach band), which armor material a target presents, and the
 // swing itself (the `attack` CurrentAtomic carrying the pre-resolved damage).
 
@@ -29,7 +29,7 @@ import {
  * `minRange` is the near reach a ranged weapon can't fire below (the original's `hunter_bow` is
  * `minimumrange 3, maximumrange 17`, verified in the mod's `DataCnmd/types/weapons.ini`); a melee weapon is
  * `minRange 1`. A target sharing the attacker's node (distance 0) is below every weapon's near reach and is
- * not hit — only a concern when herd scatter stacks entities on one node.
+ * not hit - only a concern when herd scatter stacks entities on one node.
  *
  * Three resolution paths, the worn override taking precedence:
  *
@@ -67,15 +67,15 @@ export function attackerWeapon(
   }
   // A settler's weapon binds by (tribe, job), first match in source order.
   const weapon = index.weaponsByTribeAndJob.get(tribe)?.get(jobType);
-  if (weapon === undefined) return null; // unarmed — no resolvable weapon
+  if (weapon === undefined) return null; // unarmed - no resolvable weapon
   return withReach(weapon);
 }
 
 /** Resolve a {@link WeaponType}'s reach band, clamped sane (`1 ≤ minRange ≤ maxRange`): `maxRange` floored
  *  at 1 (a weapon always reaches its own node), `minRange` floored at 1 and never exceeding the far reach.
- *  Range values are consumed verbatim as half-cell (node) Manhattan distances — the original's logic grid is
+ *  Range values are consumed verbatim as half-cell (node) Manhattan distances - the original's logic grid is
  *  the half-cell lattice, so its distance params live in that space (source basis: the 2W×2H lane/placement
- *  layout; no combat-code oracle — if live-original observation later contradicts this, scale here). */
+ *  layout; no combat-code oracle - if live-original observation later contradicts this, scale here). */
 function withReach(weapon: WeaponType): { minRange: number; maxRange: number; weapon: WeaponType } {
   const maxRange = Math.max(1, weapon.maxRange);
   const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
@@ -92,7 +92,7 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
   const worn = world.tryGet(target, Equipment)?.armor;
   if (worn != null) return armorMaterialForGood(ctx.content, worn.goodType) ?? ARMOR_MATERIAL.NONE;
   const armor = world.tryGet(target, Armor);
-  if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target — the unarmored column
+  if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target - the unarmored column
   return armorMaterialForClass(ctx.content, armor.armorClass);
 }
 
@@ -136,12 +136,12 @@ export function startAttack(
       kind: 'attack',
       target,
       damage,
-      // Omit an absent hit-frame / mainType / projectile so the effect carries no `undefined`-valued keys —
+      // Omit an absent hit-frame / mainType / projectile so the effect carries no `undefined`-valued keys -
       // the fallback-to-completion, no-XP, and melee-hit paths are the field's absence, not a sentinel.
       ...(hitAt !== undefined ? { hitAt } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
       // A melee swing carries the weapon's reach so the executor can re-check it at the hit frame and whiff
-      // if the target stepped out — through the same `withReach` clamp the CombatSystem engaged with, so the
+      // if the target stepped out - through the same `withReach` clamp the CombatSystem engaged with, so the
       // engage and whiff bands can't desync. A ranged swing homes via its projectile instead.
       ...(projectile === undefined ? { maxRange: withReach(weapon).maxRange } : { projectile }),
     },
@@ -149,13 +149,13 @@ export function startAttack(
     targetTile: null,
   });
   // The melee swoosh is announced at the strike frame by the executor (see `resolveAttackHit`), not here at
-  // windup — the audible twin of a bow's release `projectileLaunched`, kept in sync with the visible strike.
+  // windup - the audible twin of a bow's release `projectileLaunched`, kept in sync with the visible strike.
 }
 
 /**
- * The numeric atomic id a combatant runs to attack — the original's `setatomic <job> 81 "..._attack"`
+ * The numeric atomic id a combatant runs to attack - the original's `setatomic <job> 81 "..._attack"`
  * (id 81 is the attack slot across every fighting job's bindings; e.g. `viking_soldier_attack_*`,
- * `viking_hunter_attack` — verified in `DataCnmd/tribetypes12/tribetypes.ini`). Like the other atomic
+ * `viking_hunter_attack` - verified in `DataCnmd/tribetypes12/tribetypes.ini`). Like the other atomic
  * ids it is the content cross-reference / animation join key; the typed `attack` effect is the behavior
  * (drain the target's hitpoints, AtomicSystem).
  */

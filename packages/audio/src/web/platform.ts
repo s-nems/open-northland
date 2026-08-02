@@ -10,7 +10,7 @@ export type ContextFactory = () => AudioContext | null;
 /** Fetch one wav's bytes by URL; reject on any failure (the sample cache memoises the failure). */
 export type FetchBytes = (url: string) => Promise<ArrayBuffer>;
 
-/** A `Math.random`-shaped source of [0, 1) — injected so clip/settler picks are testable. */
+/** A `Math.random`-shaped source of [0, 1) - injected so clip/settler picks are testable. */
 export type RandomFn = () => number;
 
 /** The real Web Audio context, with the old-Safari `webkitAudioContext` fallback. */

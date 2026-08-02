@@ -24,7 +24,7 @@ import { resolveLayers } from './resolve-layers.js';
 
 /**
  * The retained per-entity sprite pool: one display object per drawable entity, keyed by its monotonic,
- * never-reused entity id and reused across frames — the steady state mints no display objects. Each
+ * never-reused entity id and reused across frames - the steady state mints no display objects. Each
  * frame the pool is reconciled to the culled, depth-sorted draw list: an entity that scrolled
  * off-screen stays pooled (it may scroll back), one that left the snapshot (died) is destroyed.
  * Per-frame heap allocation is small plain data (draw items, resolved layers) at O(visible), bounded
@@ -42,15 +42,15 @@ import { resolveLayers } from './resolve-layers.js';
 const POOL_REAP_BUDGET = 32;
 
 /**
- * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
+ * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state - built once per
  * frame by the {@link import('../world-renderer/index.js').WorldRenderer} (one small object per frame, not per
  * entity).
  */
 export interface PoolFrame {
   readonly snapshot: WorldSnapshot;
-  /** The (margin-inflated) world-space box the camera frames — the sprite cull rectangle. */
+  /** The (margin-inflated) world-space box the camera frames - the sprite cull rectangle. */
   readonly viewport: Viewport;
-  /** The sim tick the snapshot belongs to — the animation clock for looping gaits. */
+  /** The sim tick the snapshot belongs to - the animation clock for looping gaits. */
   readonly tick: number;
   /** The camera transform (needed to self-place the screen-space paletted settler meshes). */
   readonly camera: Camera;
@@ -63,12 +63,12 @@ export interface PoolFrame {
    *  two tick anchors. `1` draws raw tick positions (the static `?shot` entry). */
   readonly alpha: number;
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource
-   *  nodes) — skipped by the scene build, so the pool never touches them. */
+   *  nodes) - skipped by the scene build, so the pool never touches them. */
   readonly staticRefs?: ReadonlySet<number>;
   /** The fog-of-war cull (`data/fog/mask.ts`): entities on tiles this rejects stay pooled but undrawn.
    *  Absent = no fog (every pre-fog view). */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
-  /** The viewer's remembered statics (`data/fog/ghosts.ts`) — drawn dimmed on explored ground in
+  /** The viewer's remembered statics (`data/fog/ghosts.ts`) - drawn dimmed on explored ground in
    *  place of their fog-culled (or dead) entities. Absent = no fog or nothing remembered. */
   readonly ghosts?: readonly FogGhost[];
   /** The workplace-assignment highlight: building id → assignable (green) / not (red). A building in this
@@ -91,32 +91,32 @@ export interface PortraitView {
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
-  /** The retained viewport index the scene build walks instead of every snapshot entity — kept across
+  /** The retained viewport index the scene build walks instead of every snapshot entity - kept across
    *  frames so an unchanged entity costs one pointer compare per snapshot (see {@link SpriteSpatialIndex}). */
   private readonly spatial = new SpriteSpatialIndex();
   /** The pooled entities currently attached to {@link spriteLayer} (drawn this frame). The detach and
    *  paletted-placement passes iterate this instead of the whole pool so their per-frame cost tracks the
-   *  screen (O(visible)), never every entity ever seen — the pool only shrinks on death. Kept in sync with
+   *  screen (O(visible)), never every entity ever seen - the pool only shrinks on death. Kept in sync with
    *  each entity's `attached` flag: added on attach, removed on detach. */
   private readonly attached = new Set<PooledEntity>();
   /** The death reap's round-robin cursor: a Map-key iterator carried across frames, `undefined` between
    *  passes so a fresh one restarts from the front. See {@link reap}. */
   private reapCursor: MapIterator<number> | undefined;
   private frameId = 0;
-  /** The last {@link reconcile}'s culled, depth-sorted draw list — retained so read-only per-frame
+  /** The last {@link reconcile}'s culled, depth-sorted draw list - retained so read-only per-frame
    *  consumers (the ground-pile hover targets) reuse it instead of building the scene a second time. */
   private lastItems: readonly SpriteDrawItem[] = [];
-  /** This frame's drawn (culled) damaged finished buildings — {@link DrawItem.hpFrac} carriers, rebuilt
+  /** This frame's drawn (culled) damaged finished buildings - {@link DrawItem.hpFrac} carriers, rebuilt
    *  each {@link reconcile} for the damage-smoke overlay ({@link damagedBuildings}). */
   private readonly damaged: DamagedBuilding[] = [];
-  /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
+  /** The details-panel portrait's force-hide/solo bookkeeping - everything the pool holds for the
    *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
-   *   objects) — pooled entities attach here.
+   *   objects) - pooled entities attach here.
    * @param textures the renderer's shared frame→texture cache.
    * @param sheet the loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity.
    */
@@ -140,7 +140,7 @@ export class SpritePool {
    */
   reconcile(frame: PoolFrame): void {
     // One indexed pass yields both the culled draw list and the pre-cull liveness view the destroy
-    // step needs — the retained `spatial` index keeps the build walking the buckets under the
+    // step needs - the retained `spatial` index keeps the build walking the buckets under the
     // viewport, not the map (a decoded map's ~40k placements per frame).
     const scene = collectSpriteScene(frame.snapshot, {
       viewport: frame.viewport,
@@ -158,7 +158,7 @@ export class SpritePool {
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
-      // A live damaged building (never a fog ghost) joins the frame's smoke list — collected here, off
+      // A live damaged building (never a fog ghost) joins the frame's smoke list - collected here, off
       // the already-culled draw list, so the overlay's cost tracks the screen.
       if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
         this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
@@ -171,7 +171,7 @@ export class SpritePool {
       // An entity absent from last frame's draw list still holds the motion track from whenever it was
       // last drawn, so resuming the lerp would glide it in from that stale anchor. Reset to first-sighting
       // and let trackMotion snap (its own SNAP_DISTANCE only catches gaps over 128 px). Worst on a fog
-      // reveal — the entity walks on unseen, then appears mid-screen anywhere under that threshold from
+      // reveal - the entity walks on unseen, then appears mid-screen anywhere under that threshold from
       // where it vanished; a viewport-culled one re-enters 512 px off-canvas (SPRITE_CULL_MARGIN) and an
       // indoor one is frozen on its door cell, so those snap invisibly. Reads `lastSeen` before the stamp
       // below overwrites it.
@@ -196,7 +196,7 @@ export class SpritePool {
       }
       pe.lastSeen = this.frameId;
       // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map. It stays
-      // reconciled/attached (so `anchorOf` + the portrait pass still serve it) — the portrait's
+      // reconciled/attached (so `anchorOf` + the portrait pass still serve it) - the portrait's
       // second render reveals it, then hides it again before the main stage render.
       if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
     }
@@ -206,7 +206,7 @@ export class SpritePool {
     // pool keeps this scan bounded by the screen. Deleting the current entry mid-iteration is well-defined
     // for a Set.
     for (const pe of this.attached) {
-      if (pe.lastSeen === this.frameId) continue; // still drawn this frame — keep attached
+      if (pe.lastSeen === this.frameId) continue; // still drawn this frame - keep attached
       this.spriteLayer.removeChild(pe.container);
       pe.attached = false;
       this.attached.delete(pe);
@@ -239,24 +239,24 @@ export class SpritePool {
     }
   }
 
-  /** This frame's drawn damaged finished buildings (ref + remaining HP fraction) — the damage-smoke
+  /** This frame's drawn damaged finished buildings (ref + remaining HP fraction) - the damage-smoke
    *  overlay's input, valid until the next {@link reconcile}. */
   damagedBuildings(): readonly DamagedBuilding[] {
     return this.damaged;
   }
 
-  /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
+  /** Entities drawn last frame + sprites currently pooled - for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
     return { drawn: this.lastItems.length, pooled: this.pool.size };
   }
 
-  /** The last {@link reconcile}'s culled, depth-sorted draw list — valid until the next reconcile.
+  /** The last {@link reconcile}'s culled, depth-sorted draw list - valid until the next reconcile.
    *  Read-only reuse for consumers that would otherwise rebuild the same scene from the snapshot. */
   drawnItems(): readonly DrawItem[] {
     return this.lastItems;
   }
 
-  /** The entity's world-space sprite box as drawn this frame — the picker's hit box + the selection
+  /** The entity's world-space sprite box as drawn this frame - the picker's hit box + the selection
    *  ring's footprint sizer. See {@link import('./pick.js').boundsOf}. */
   boundsOf(ref: number): EntityBounds | undefined {
     return boundsOf(this.pool.get(ref), this.frameId);
@@ -268,17 +268,17 @@ export class SpritePool {
     return pixelHit(this.pool.get(ref), this.frameId, wx, wy);
   }
 
-  /** The inter-tick lerped feet anchor an entity was drawn at this frame — the selection ring glides on
+  /** The inter-tick lerped feet anchor an entity was drawn at this frame - the selection ring glides on
    *  it. See {@link import('./pick.js').anchorOf}. */
   anchorOf(ref: number): { x: number; y: number } | undefined {
     return anchorOf(this.pool.get(ref), this.frameId);
   }
 
   /**
-   * Scope the details-panel portrait's second render — the pool's half of the inset borrow. Re-places
+   * Scope the details-panel portrait's second render - the pool's half of the inset borrow. Re-places
    * the screen-space team-colour meshes for the inset camera (plain sprites + terrain ride the re-aimed
    * `worldLayer` transform; the paletted meshes self-place, so they can't), reveals the force-hidden
-   * subject, solos an indoor one, runs `render`, then restores all of it even if the render throws — so
+   * subject, solos an indoor one, runs `render`, then restores all of it even if the render throws - so
    * a failed cutout can't leave a real unit hidden on the main map, its siblings blanked, or the meshes
    * placed for the wrong camera. `render` receives the sprite layer to keep visible while blanking the
    * rest of the world for an indoor solo, or null when the subject renders with the world around it.
@@ -312,7 +312,7 @@ export class SpritePool {
   }
 
   /**
-   * Destroy every pooled entity — including ones currently detached (culled off-screen), which a
+   * Destroy every pooled entity - including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
    * renderer's dispose.
    */
@@ -328,7 +328,7 @@ export class SpritePool {
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
     // Fixed-timestep interpolation over the lifted feet: the sim advances in 12 Hz ticks, so drawing raw
     // snapshot anchors steps a walking bob ~4 px every fifth frame. Track the last two tick anchors of the
-    // terrain-lifted feet (`item.y − lift`, riding the ground up a hill — the lift is bilinear along the
+    // terrain-lifted feet (`item.y − lift`, riding the ground up a hill - the lift is bilinear along the
     // walk, so it lerps as smoothly as the motion) and draw at `prev + (curr − prev)·alpha`, the frame's
     // fractional progress into the current tick, so motion is continuous at any display rate, half a tick
     // behind the sim (~42 ms). See {@link trackMotion} for the pure half. `item.lift` is 0 on a flat map.

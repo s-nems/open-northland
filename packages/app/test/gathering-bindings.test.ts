@@ -17,9 +17,9 @@ const GOODS = {
   mud: GOOD_MUD,
 } as const;
 
-describe('gathering scene — per-good + stump binding resolution (each draws its OWN object)', () => {
+describe('gathering scene - per-good + stump binding resolution (each draws its OWN object)', () => {
   // A synthetic decoded IR mirroring the real join for the scene's goods (matched by id-slug) + the
-  // dead-tree debris record. The scene typeIds differ from these pipeline goodTypes on purpose — the
+  // dead-tree debris record. The scene typeIds differ from these pipeline goodTypes on purpose - the
   // render binds by slug (nodes/piles) or by a single default (the stump).
   const ir: ContentIr = {
     landscapeGfx: [
@@ -88,16 +88,16 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     fill,
   });
 
-  it('resolves wood to the yew (default layer) and stone to its own rock family — not the same bob', () => {
+  it('resolves wood to the yew (default layer) and stone to its own rock family - not the same bob', () => {
     const wood = resolveResourceDraw(resource, node(GOODS.wood));
     const stone = resolveResourceDraw(resource, node(GOODS.stone));
-    expect(wood).toEqual({ bob: 60 }); // bare — the default tree layer
+    expect(wood).toEqual({ bob: 60 }); // bare - the default tree layer
     expect(stone).toEqual({ bob: 10, layer: 'ls_ground.rock03' }); // its own mine/rock atlas
     expect(wood).not.toEqual(stone); // the whole point: no longer all the yew
   });
 
   it('steps a mined deposit node down by level (empty→full); no level / over-range → the full frame', () => {
-    // A clay mine record with 5 fill states, authored highest-first (state 5 full → state 1 dregs) — the
+    // A clay mine record with 5 fill states, authored highest-first (state 5 full → state 1 dregs) - the
     // real ls_ground mine shape. buildResourceBinding orders them empty→full, resolveResourceDraw indexes
     // by the node's shrink-by-level fill.
     const mine: ContentIr = {
@@ -141,7 +141,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
   });
 
   it('marks a level whose bob its own atlas lacks INVISIBLE (the freshly-sown wheat sentinel)', () => {
-    // The real `wheat mine 01` shape: states 2–5 are atlas frames, state 1 names bob 4000 — an
+    // The real `wheat mine 01` shape: states 2–5 are atlas frames, state 1 names bob 4000 - an
     // out-of-atlas sentinel the original uses for "draw nothing" (a freshly-sown, still-bare field).
     const wheat: ContentIr = {
       landscapeGfx: [
@@ -174,7 +174,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     expect(draw(2)).toEqual({ bob: 87, layer: 'ls_meadows.wheat01' }); // sprouts from stage 2
     expect(draw(5)).toEqual({ bob: 7, layer: 'ls_meadows.wheat01' }); // the ripe stand
 
-    // A record whose levels are ALL missing keeps its refs — a genuinely broken binding must surface
+    // A record whose levels are ALL missing keeps its refs - a genuinely broken binding must surface
     // as the placeholder, not silently vanish.
     const broken = buildResourceBinding(
       resolveGatheringRefs([{ typeId: 9, id: 'wheat' }], wheat),

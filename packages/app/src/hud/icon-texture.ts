@@ -21,9 +21,9 @@ import { type Application, Container, type Sprite } from 'pixi.js';
  * the returned display sprite on the settlers' centroid every frame.
  */
 
-/** Oversample cap — the small disc icons are already crisp by here; the cap bounds texture memory. */
+/** Oversample cap - the small disc icons are already crisp by here; the cap bounds texture memory. */
 const MAX_SUPERSAMPLE = 6;
-/** Oversample floor — a smooth downscaled circle wants a bit more headroom than the strip's flat edges.
+/** Oversample floor - a smooth downscaled circle wants a bit more headroom than the strip's flat edges.
  *  At small effective scales this floor deliberately exits oversampleFor's (1, 2] downscale window (e.g.
  *  uiscale 1 at DPR 1 → ratio ~2.9): the slight linear-tap undersample is accepted for the rim smoothing. */
 const MIN_SUPERSAMPLE = 3;
@@ -31,7 +31,7 @@ const MIN_SUPERSAMPLE = 3;
 export interface BakedIcon {
   /** The display sprite (add to the scene graph); position it each frame with {@link placeBakedIcon}. */
   readonly display: Sprite;
-  /** The drawn size in CSS px (`frame.width/height × scale`) — the caller centres by it. */
+  /** The drawn size in CSS px (`frame.width/height × scale`) - the caller centres by it. */
   readonly width: number;
   readonly height: number;
   dispose(): void;
@@ -58,7 +58,7 @@ export function bakeRoundIcon(opts: {
 
   // Place the mesh so the frame's content box fills the texture: origin cancels the frame's draw offset,
   // zoom = ss, resolution = the texture size (a PalettedSprite maps native px → target px itself via its own
-  // uScreen — it doesn't ride the scene-graph transform). The detached container is owned by dispose.
+  // uScreen - it doesn't ride the scene-graph transform). The detached container is owned by dispose.
   sprite.place(-frame.offsetX * ss, -frame.offsetY * ss, ss, texW, texH);
   const offscreen = new Container();
   offscreen.addChild(sprite);
@@ -80,7 +80,7 @@ export function bakedIconOrigin(
 ): { readonly x: number; readonly y: number } {
   return {
     // Centre horizontally; the Y-flip draws the sprite upward from its origin, so anchor at the box bottom
-    // (centre + height/2) — a sign error here silently renders every icon vertically off-centre.
+    // (centre + height/2) - a sign error here silently renders every icon vertically off-centre.
     x: Math.round(rect.x + rect.w / 2 - width / 2),
     y: Math.round(rect.y + rect.h / 2 + height / 2),
   };

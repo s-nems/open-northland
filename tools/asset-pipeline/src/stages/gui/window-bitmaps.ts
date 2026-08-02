@@ -9,15 +9,15 @@ import { readSourceFile } from '../source-files.js';
 /**
  * Window-fill bitmaps that the engine draws through an element palette instead of their embedded one.
  * `Data/gui/bitmaps/bg.pcx` expands to grey marble through its embedded palette, but every in-game window
- * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
+ * body in the original renders it warm brown - the `bg_normal` element palette applied to the same indices
  * matches those screenshots (verified visually at 1024×768; the palette's name also states the pairing).
- * `bg_selected` — the original's selected-item card body, which is exactly what the selection info panel is —
+ * `bg_selected` - the original's selected-item card body, which is exactly what the selection info panel is -
  * shows as a grey-blue marble in the original, and its embedded palette (a warm olive) does not reproduce
- * that. `bg_normal` is the pairing chosen here not because a decoded draw-site or the palette name pins it —
- * by name `bg_hilite`/`bg_invert` would fit "selected" better — but because, among the loaded element
+ * that. `bg_normal` is the pairing chosen here not because a decoded draw-site or the palette name pins it -
+ * by name `bg_hilite`/`bg_invert` would fit "selected" better - but because, among the loaded element
  * palettes, `bg_normal` is the one whose indices reproduce the observed grey-blue (avg ≈ #3c4043): an
  * observation-anchored approximation, weaker-evidenced than the `bg` pairing above. Unlike `bg` it needs no
- * shadow lift — its darkest veins hold luma ≈ 48 (p1) through `bg_normal`, so they never read as cracked black.
+ * shadow lift - its darkest veins hold luma ≈ 48 (p1) through `bg_normal`, so they never read as cracked black.
  * The remaining three `bg_*` bitmaps match the original through their embedded palettes, so only these two
  * are baked. `softenShadows` additionally lifts the swapped palette's near-black entries
  * ({@link liftPaletteShadows}).
@@ -29,19 +29,19 @@ const WINDOW_BITMAP_RECOLORS: ReadonlyArray<{ bitmap: string; palette: string; s
 
 /**
  * Shadow floor for the window-body bake (luma points, 0–255). A cosmetic lift applied on top of the
- * `bg`→`bg_normal` swap above — the original engine does not lift; it is inferred from screenshots,
+ * `bg`→`bg_normal` swap above - the original engine does not lift; it is inferred from screenshots,
  * not decoded behaviour. Sampled off the same native 1024×768 screenshot the panel
  * geometry is calibrated against: the original body's luma percentiles are ≈ [18, 23, 31, 38, 45, 55, 63]
- * (p1…p99) — its texture never drops near black — while a straight `bg_normal` swap leaves the marble
+ * (p1…p99) - its texture never drops near black - while a straight `bg_normal` swap leaves the marble
  * veins at 0–9 (p1–p5), the "cracked black" look. Palette entries below the floor are pulled up toward it,
  * keeping {@link BODY_SHADOW_KEEP} of their depth (`luma' = FLOOR − (FLOOR − luma) · KEEP`), which lands
- * pure black at ≈20 — the original's p1.
+ * pure black at ≈20 - the original's p1.
  */
-const BODY_SHADOW_FLOOR = 31; // the original body's p25 — the vein lift's anchor
+const BODY_SHADOW_FLOOR = 31; // the original body's p25 - the vein lift's anchor
 const BODY_SHADOW_KEEP = 0.35;
 /** Hue for near-black entries (which have none of their own to scale): the original body's sampled average. */
 const BODY_SHADOW_TINT = [60, 36, 19] as const;
-/** Below this luma an entry's own hue is noise — recolour it from {@link BODY_SHADOW_TINT} instead. */
+/** Below this luma an entry's own hue is noise - recolour it from {@link BODY_SHADOW_TINT} instead. */
 const BODY_SHADOW_HUE_MIN = 4;
 
 /** The near-black luma every entry is lifted at least to (the {@link BODY_SHADOW_KEEP} residual of a pure-black

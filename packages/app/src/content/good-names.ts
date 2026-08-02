@@ -2,14 +2,14 @@ import { type Locale, type Messages, messages } from '../i18n/index.js';
 import { loadGoodsManifest } from './goods-gfx.js';
 
 /**
- * Localized good display names — the loadable seam for the pipeline's per-locale good-name tables
+ * Localized good display names - the loadable seam for the pipeline's per-locale good-name tables
  * (`content/goods/manifest.json` `names`: locale → good string id → name, extracted from the game's own
  * `text/<lang>/strings/gameobjects/goods.{ini,cif}`, following the app-wide `?lang=` value). Authored names
  * keep the UI complete in a bare checkout; extracted content overrides them when the local pipeline output
  * is available.
  *
- * Keyed by good string id (not typeId), stable across the sandbox and the extracted IR — the same key the
- * icon manifest uses — so one lookup serves every scene and both good-id namespaces.
+ * Keyed by good string id (not typeId), stable across the sandbox and the extracted IR - the same key the
+ * icon manifest uses - so one lookup serves every scene and both good-id namespaces.
  */
 
 /** The locales the pipeline emits (see `GOOD_NAME_LOCALES` in the goods stage). Preference order for fallback. */
@@ -27,7 +27,7 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
 /**
  * Names for goods that exist only in the sandbox (no game `[goodtype]`, so no string-table entry): the demo
  * `plank` the joinery slice produces. Kept here (not in the pipeline manifest) because they have no faithful
- * source — a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
+ * source - a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
  */
 function localeMessages(locale: GoodLocale): Messages['goods'] {
   const appLocale: Locale = locale === 'pl' ? 'pol' : 'eng';

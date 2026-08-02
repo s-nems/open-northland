@@ -4,7 +4,7 @@ import { mayAttack, mayHunt } from '../../../src/systems/index.js';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
 
-/** `jobtypes.ini` 15 "hunter" — the trade the fixtures declare with the slug `mayHunt` classifies on. */
+/** `jobtypes.ini` 15 "hunter" - the trade the fixtures declare with the slug `mayHunt` classifies on. */
 const HUNTER_JOB = 15;
 
 describe('mayAttack (the combat hostility relation)', () => {
@@ -28,7 +28,7 @@ describe('mayAttack (the combat hostility relation)', () => {
   it('lets a civilization engage an AGGRESSIVE animal but leaves a PASSIVE animal alone', () => {
     const content = tribeContent();
     expect(mayAttack(content, 1, 8)).toBe(true); // viking -> aggressive bear
-    expect(mayAttack(content, 1, 9)).toBe(false); // viking -> passive wolves (no record) — hunting is separate
+    expect(mayAttack(content, 1, 9)).toBe(false); // viking -> passive wolves (no record) - hunting is separate
   });
 
   it('lets an aggressive animal attack a civilization (the unprovoked drive)', () => {
@@ -94,7 +94,7 @@ describe('mayHunt (the hunter predation relation)', () => {
       animals: [{ id: 'tame_bee', tribeType: 5, cannotBeAttacked: true, hitpointsAdult: 200 }],
       huntPrey: [{ tribeType: 5, yields: [{ goodType: 21, amount: 1 }] }],
     });
-    // The cannotBeAttacked exemption holds for hunting too — a hunter can no more strike it than a soldier.
+    // The cannotBeAttacked exemption holds for hunting too - a hunter can no more strike it than a soldier.
     expect(mayHunt(content, HUNTER_JOB, 5)).toBe(false);
   });
 });

@@ -18,7 +18,7 @@ don't cover those bodies:
   100-tick atomic (she holds the last stance for the tail), the boy's is 119 against 100 (his
   get-up is cut off). The civilist's 237/237 is the only exact pair.
 
-Check first whether the missing lists are absent from the original data or merely not extracted —
+Check first whether the missing lists are absent from the original data or merely not extracted -
 `tools/asset-pipeline` and the `[gfxanimatomic]` source rows are the place to settle that. If they
 are genuinely absent, the fallback needs to be a named approximation rather than the cycling strip.
 
@@ -35,6 +35,6 @@ records; the per-job atomic lengths from `atomicanimations.ini`.
 
 ## Verify
 
-- No sim behaviour changes — this is render-only, so no goldens move.
+- No sim behaviour changes - this is render-only, so no goldens move.
 - `?anim&char=woman&filter=eat` / `&char=boy&filter=sleep` in the animation gallery, and a **human
   pass**: the motion must play once, not loop.

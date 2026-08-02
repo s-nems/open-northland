@@ -8,7 +8,7 @@ import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The settler-bubble layer — the decoded thought bubble (`ls_gui_bubbles`) floating over a settler's
+ * The settler-bubble layer - the decoded thought bubble (`ls_gui_bubbles`) floating over a settler's
  * head while it is in a standing family state (a make-child order, a wedding walk) or a pressing need
  * (too hungry / too sleepy to keep working). A client-side projection of the read-only snapshot (never sim
  * state): the app scans each settler's `ChildOrder` / `Wedding` / need components and hands over the
@@ -16,7 +16,7 @@ import { retireUndrawn } from './retained-pool.js';
  * zooming with the world (a child of the camera's `worldLayer`, above the sprites).
  *
  * Anchored like the selection rings, not the door badges: a settler moves (a wedding walk), so the bubble
- * rides the sprite pool's drawn, inter-tick-lerped bounds — its top edge and horizontal centre — so it
+ * rides the sprite pool's drawn, inter-tick-lerped bounds - its top edge and horizontal centre - so it
  * glides with the interpolated bob and sits just over the head. A settler the pool didn't draw this frame
  * (standing inside a house) falls back to the raw snapshot projection of its `Position`.
  *
@@ -30,7 +30,7 @@ import { retireUndrawn } from './retained-pool.js';
  * without `content/`) the layer draws nothing.
  */
 
-/** Which standing state a bubble marks — the make-child order, a wedding in progress, or a pressing
+/** Which standing state a bubble marks - the make-child order, a wedding in progress, or a pressing
  *  hunger/sleep need. Each kind selects its own frame from the bubble sheet. */
 export type SettlerBubbleKind = 'child' | 'partner' | 'hungry' | 'sleepy';
 
@@ -62,10 +62,10 @@ interface BubbleGfx extends SettlerBubbleGfx {
  */
 export interface SettlerBubbleFrame {
   readonly bubbles: readonly SettlerBubble[];
-  /** The pool's drawn sprites — the head is the sprite box's top edge, so a bubble glides with the
+  /** The pool's drawn sprites - the head is the sprite box's top edge, so a bubble glides with the
    *  interpolated bob. */
   readonly drawn?: DrawnGeometry;
-  /** The terrain height field — lifts the raw-projection fallback onto sloped ground. */
+  /** The terrain height field - lifts the raw-projection fallback onto sloped ground. */
   readonly elevation?: ElevationField;
 }
 
@@ -73,7 +73,7 @@ export interface SettlerBubbleFrame {
 const BUBBLE_GAP = 6;
 /** Feet→head estimate (world px) when the pool has no sprite bounds for the settler (indoors / no pool). */
 const HEAD_ABOVE_FEET = 40;
-/** Draw scale of the 64×32 bubble frame — shrunk so it reads as a marker over the small settler bob. */
+/** Draw scale of the 64×32 bubble frame - shrunk so it reads as a marker over the small settler bob. */
 const BUBBLE_SCALE = 0.85;
 
 interface BubbleNode {

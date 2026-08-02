@@ -11,7 +11,7 @@ export const OBSTRUCTED_REROUTE_TICKS = 4;
 /** Reroutes without reaching the goal before a walker stands down entirely. */
 export const OBSTRUCTED_MAX_REROUTES = 4;
 
-/** Minimum total progress per tick of the obstruction window — one third of walking gait. */
+/** Minimum total progress per tick of the obstruction window - one third of walking gait. */
 export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(3));
 
 /** End the current grind window while preserving a non-zero reroute tally for this walk. */

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 /** Runner config for the benchmarks (`npm run bench:sim`, `npm run bench:map`; see docs/TESTING.md).
- *  Nothing else collects `*.bench.ts` — that is what keeps them out of `npm test`. Each script passes
+ *  Nothing else collects `*.bench.ts` - that is what keeps them out of `npm test`. Each script passes
  *  a filename filter, so adding a bench file here never joins another script's run. */
 export default defineConfig({
   test: {

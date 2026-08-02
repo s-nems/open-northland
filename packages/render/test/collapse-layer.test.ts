@@ -20,7 +20,7 @@ import type { SpriteAtlas, SpriteSheet } from '../src/index.js';
 /**
  * The building-collapse transient: `buildingDestroyed` (combat raze and player demolish alike) folds into
  * a short sink window during which the body is drawn with its lowest pixel rows clipped at the ground line
- * and the graphic shifted down by the same amount — the mirror of the construction rise (the original's
+ * and the graphic shifted down by the same amount - the mirror of the construction rise (the original's
  * `PrintBob_UsingCollapseTimeMask`). The fixture sheet's fake TextureSource is never sampled, so the layer
  * runs headless; what these pin is the fold lifecycle and the crop/sink arithmetic.
  */
@@ -107,7 +107,7 @@ describe('collapseDustPuff', () => {
   it('is deterministic, billows in at the crash, and settles to nothing by the end of the tail', () => {
     expect(collapseDustPuff(9, 3, 7, 20)).toEqual(collapseDustPuff(9, 3, 7, 20));
     expect(collapseDustPuff(9, 3, 0, 20).alpha).toBeLessThanOrEqual(
-      // The cloud-wide envelope is still ramping at age 0 — never denser than mid-sink.
+      // The cloud-wide envelope is still ramping at age 0 - never denser than mid-sink.
       Math.max(...Array.from({ length: COLLAPSE_TICKS }, (_, a) => collapseDustPuff(9, 3, a, 20).alpha)),
     );
     for (let i = 0; i < DUST_PUFFS; i++) {
@@ -128,7 +128,7 @@ describe('collapseDustPuff', () => {
   });
 
   it('holds the cloud dense through the whole sink window before the settle fade', () => {
-    // At every tick of the sink at least one puff is well past its birth fade — no gap in the mask.
+    // At every tick of the sink at least one puff is well past its birth fade - no gap in the mask.
     for (let age = DUST_SETTLE_TICKS / 2; age <= COLLAPSE_TICKS; age++) {
       const best = Math.max(
         ...Array.from({ length: DUST_PUFFS }, (_, i) => collapseDustPuff(9, i, age, 20).alpha),
@@ -152,7 +152,7 @@ describe('CollapseLayer', () => {
     expect(spr.position.y).toBe(-BODY_H); // the frame's own draw offset (feet-anchored)
 
     // The dust cloud is minted last (drawn over the sprites' crop edge), centered on the body's base
-    // line, one unit circle per puff — churning from the first tick.
+    // line, one unit circle per puff - churning from the first tick.
     const dust = node.children[node.children.length - 1] as Container;
     expect(dust.children).toHaveLength(DUST_PUFFS);
     expect(dust.position.y).toBe(0); // the fixture frame's bottom edge (offsetY + height) is the ground
@@ -164,7 +164,7 @@ describe('CollapseLayer', () => {
     expect(spr.position.y).toBe(-BODY_H + BODY_H / 2);
     expect(dust.children.some((p) => p.alpha > 0)).toBe(true); // the cloud masks the cut
 
-    // Fully sunk: the body is hidden but the node stays — the dust settles over the empty plot.
+    // Fully sunk: the body is hidden but the node stays - the dust settles over the empty plot.
     layer.ingest([], COLLAPSE_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS);
     expect(spriteLayer.children).toHaveLength(1);

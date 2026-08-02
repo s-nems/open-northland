@@ -1,5 +1,5 @@
 /**
- * Temporarily blanking a container's children and putting back exactly what was blanked — the shared
+ * Temporarily blanking a container's children and putting back exactly what was blanked - the shared
  * half of the details-panel portrait's second render, which hides the world (or the sprite layer's
  * siblings) around its subject, draws the cutout, and restores. Plain display-object visibility flags,
  * owned by no layer: both the sprite pool's solo pass and the portrait's world pass use it.

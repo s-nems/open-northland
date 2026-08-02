@@ -3,7 +3,7 @@ import { ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import type { Fixed, Simulation } from '../../src/index.js';
 
-/** Tribe 1 in the synthetic fixtures — the default settler tribe. */
+/** Tribe 1 in the synthetic fixtures - the default settler tribe. */
 const VIKING = 1;
 
 /** Per-need overrides; any need left out defaults to `ZERO` (a freshly-spawned, contented settler). */

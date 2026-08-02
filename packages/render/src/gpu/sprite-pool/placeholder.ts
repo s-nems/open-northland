@@ -2,7 +2,7 @@ import type { Graphics } from 'pixi.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 
 /**
- * The placeholder markers a pooled entity draws when no atlas frame binds it (or no sheet is loaded) —
+ * The placeholder markers a pooled entity draws when no atlas frame binds it (or no sheet is loaded) -
  * flat, depth-sortable geometry coloured by kind, built once per entity.
  */
 
@@ -16,10 +16,10 @@ const KIND_COLOURS: Record<SpriteKind, number> = {
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
   grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
   signpost: 0xdeb060, // a pale-wood post marker (the scout's guidepost), distinct from the darker trunk
-  projectile: 0xe8dcc0, // the pale wooden arrow shaft — read by drawArrow (not the generic box path)
+  projectile: 0xe8dcc0, // the pale wooden arrow shaft - read by drawArrow (not the generic box path)
 };
 
-/** The arrow's shaft length / head size / stroke width (px at world scale) — sized to read as a
+/** The arrow's shaft length / head size / stroke width (px at world scale) - sized to read as a
  *  munition next to a ~24 px settler without dominating it. */
 const ARROW_LENGTH = 22;
 const ARROW_HEAD = 5;
@@ -31,7 +31,7 @@ const ARROW_STROKE = 2;
 const FOOTPRINT_HALF_W = 9;
 const FOOTPRINT_HALF_H = 5;
 
-/** How high (world px) above its ground anchor the arrow flies — roughly a settler's torso, so a shot
+/** How high (world px) above its ground anchor the arrow flies - roughly a settler's torso, so a shot
  *  crosses between fighters instead of skimming their feet. A drawn-look choice, tunable by eye. */
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
 
@@ -79,7 +79,7 @@ const boundsByKind = new Map<SpriteKind, PlaceholderBounds>();
 
 /**
  * The feet-local box a placeholder marker occupies: its body box widened to at least the ground footprint
- * diamond it stands on, and floored at the diamond's lower tip — so an unbound entity is clickable over
+ * diamond it stands on, and floored at the diamond's lower tip - so an unbound entity is clickable over
  * the marker {@link drawPlaceholder} actually draws.
  */
 export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
@@ -95,12 +95,12 @@ export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
 
 /**
  * Draw a feet-anchored sprite placeholder into `g`, relative to its container origin `(0,0)`: a small
- * footprint diamond on the ground + a body box rising from it, coloured by kind — so an unbound entity
+ * footprint diamond on the ground + a body box rising from it, coloured by kind - so an unbound entity
  * (or the no-atlas default) still shows depth-sortable geometry. Built once per entity (kind is stable);
  * only its visibility toggles per frame.
  */
 export function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {
-  if (kind === 'projectile') return drawArrow(g); // an arrow, not a box — rotated to its flight heading
+  if (kind === 'projectile') return drawArrow(g); // an arrow, not a box - rotated to its flight heading
   const colour = KIND_COLOURS[kind];
   const { bodyW, bodyH } = placeholderBody(kind);
   g.moveTo(0, -FOOTPRINT_HALF_H)

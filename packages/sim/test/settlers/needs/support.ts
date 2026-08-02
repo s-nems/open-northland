@@ -10,11 +10,11 @@ export { ctxOf, grassMap };
 const WOOD = 1;
 const WOODCUTTER = 1;
 
-/** The ¾·ONE need level at which a survival drive (eat/sleep/pray/forage) fires — used bare as an
+/** The ¾·ONE need level at which a survival drive (eat/sleep/pray/forage) fires - used bare as an
  *  exactly-at-threshold start. */
 export const NEED_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
-/** A need level one whole unit (`ONE`) past `v` — unambiguously over a drive threshold. */
+/** A need level one whole unit (`ONE`) past `v` - unambiguously over a drive threshold. */
 export function justAbove(v: Fixed): Fixed {
   return fx.add(v, fx.fromInt(1));
 }

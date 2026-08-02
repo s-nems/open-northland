@@ -19,7 +19,7 @@ export function crossMap(): TerrainMap {
   });
 }
 
-/** A raw half-cell grid, all grass except the listed water nodes — for node-granular fixtures the
+/** A raw half-cell grid, all grass except the listed water nodes - for node-granular fixtures the
  *  2×2-block upsampler cannot express. */
 export function rawGrid(
   width: number,

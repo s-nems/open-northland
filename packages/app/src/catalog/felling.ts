@@ -1,5 +1,5 @@
 /**
- * OBSERVED felling calibration — the one global source for the multi-hit wood harvest, so "how many chops
+ * OBSERVED felling calibration - the one global source for the multi-hit wood harvest, so "how many chops
  * fell a tree" and "the wood a felled tree yields" are never re-picked per scene. Every scene that plants a
  * fellable wood good builds its `gathering` params and its trees' `Felling`/`Resource` from these constants,
  * so the felling pace can't drift between scenes (the recurring per-scene-magic-number complaint). Add a new

@@ -5,16 +5,16 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE — the determinism tripwire.
+ * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE - the determinism tripwire.
  *
  * The lower-level golden tests pin one mechanic each over tens of ticks; this is the *integration*
  * golden. It drives the **whole vertical slice** end-to-end for ~1000 ticks through the real
  * `Simulation.step()` schedule (CommandSystem → AI planner → pathfinding → movement → atomic executor
  * → production → carrier) and pins two complementary fingerprints of the run:
  *
- *  - the final canonical **state hash** (`hashState()`) — every component on every entity; one bit of
+ *  - the final canonical **state hash** (`hashState()`) - every component on every entity; one bit of
  *    drift anywhere changes it. This catches *that* something changed.
- *  - the **atomic-action trace** — the ordered list of `atomicCompleted` events as
+ *  - the **atomic-action trace** - the ordered list of `atomicCompleted` events as
  *    `"tick:entity:atomicId"`, collected every tick. The hash says state diverged; the trace says
  *    *which behavior* diverged and *when*, in human-readable terms. This is the agent's self-check
  *    that the settler economy still does the same thing tick-for-tick. The atomic ids are the
@@ -23,22 +23,22 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  *
  * Invariants run **after every tick** (not just at the end), so a system that transiently breaks the
  * world (negative stock, hunger out of range) is caught at the exact tick it happens, not masked by a
- * later recovery. If any golden below moves, it must be an *intentional* mechanic change — name it in
+ * later recovery. If any golden below moves, it must be an *intentional* mechanic change - name it in
  * the commit (see packages/sim/AGENTS.md "the golden rule of the goldens").
  *
- * Scenario (a self-supplying woodcutter + a self-servicing carpenter + a carrier — the slice's exit goal):
+ * Scenario (a self-supplying woodcutter + a self-servicing carpenter + a carrier - the slice's exit goal):
  *   - a 6×1 grass strip;
  *   - a HEADQUARTERS store (x=5, starting with 10 wood) and a SAWMILL workplace (x=4), both placed via
  *     the COMMAND log (exercising CommandSystem) so the run also pins the placement seam;
  *   - a WOODCUTTER and a CARRIER spawned via commands, plus a CARPENTER spawned **on** the sawmill
- *     (x=4) as its operator — the SAWMILL's `workers` slot names the carpenter job, and the production
+ *     (x=4) as its operator - the SAWMILL's `workers` slot names the carpenter job, and the production
  *     worker-presence gate only runs the mill while that operator is present;
- *   - two finite FELLABLE wood nodes (placed directly — no map/resource command yet), each felled over
+ *   - two finite FELLABLE wood nodes (placed directly - no map/resource command yet), each felled over
  *     3 chops and dropping a 4-wood trunk (the wood good's `gathering` felling spec).
  * The whole goods chain runs end to end and conserves goods: the woodcutter FELLS each tree (3 chops
  * yielding nothing → the tree drops a ground trunk holding its whole 4 wood) and banks the felled wood
- * at its own work flag → the CARRIER — posted to the HQ's transport slot on tick 1 by the JobSystem's
- * report-in pass (hauling is worked only through an assignment) — ferries the flag-banked wood into
+ * at its own work flag → the CARRIER - posted to the HQ's transport slot on tick 1 by the JobSystem's
+ * report-in pass (hauling is worked only through an assignment) - ferries the flag-banked wood into
  * the HQ and hauls finished planks there too → the carpenter runs its own supply→produce→deliver
  * loop, fetching the HQ's wood into the mill (the input-supply drive) and hauling planks back out.
  * 2 stumps are left where the trees stood; goods are conserved throughout, invariant-clean for the
@@ -47,7 +47,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 const WOOD = 1;
 const WOODCUTTER = 1;
-const CARPENTER = 2; // the sawmill's `workers` jobType — its operator
+const CARPENTER = 2; // the sawmill's `workers` jobType - its operator
 const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
@@ -56,7 +56,7 @@ const HARVEST_ATOMIC = 24;
 
 interface GoldenRun {
   readonly hash: string;
-  /** The atomic-action trace as compact `"tick:entity:atomicId"` strings — the behavioral fingerprint. */
+  /** The atomic-action trace as compact `"tick:entity:atomicId"` strings - the behavioral fingerprint. */
   readonly trace: readonly string[];
   readonly produced: number;
   readonly invariantViolations: readonly string[];
@@ -70,7 +70,7 @@ interface GoldenRun {
 function runSlice(seed: number, ticks: number): GoldenRun {
   const sim = new Simulation({ seed, content: testContent(), map: grassMap(6, 1) });
 
-  // Placement via the command log (CommandSystem applies these on tick 1) — the seam the UI uses.
+  // Placement via the command log (CommandSystem applies these on tick 1) - the seam the UI uses.
   // Command coords are half-cell nodes: cell x on row 0 sits at node (2x, 0).
   sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
@@ -90,9 +90,9 @@ function runSlice(seed: number, ticks: number): GoldenRun {
     experience: [[1, 300]],
   });
 
-  // Finite FELLABLE wood nodes (no resource command exists yet — placed directly, like the lower
+  // Finite FELLABLE wood nodes (no resource command exists yet - placed directly, like the lower
   // goldens). The wood good declares the felling lifecycle (chops + whole yield), so each tree is
-  // chopped DOWN over several swings and drops a trunk the collector then carries off — the multi-hit
+  // chopped DOWN over several swings and drops a trunk the collector then carries off - the multi-hit
   // harvest + drop-on-ground. `yieldPerNode` 4 keeps each tree worth 4 wood (2 trees
   // → 8 harvested), so the goods total is unchanged (10 stored + 8 → 18 planks).
   const woodFell = sim.content.goods.find((g) => g.id === 'wood')?.gathering;
@@ -130,7 +130,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   // The golden atomic-action trace. Atomic ids: 24 = harvest/CHOP (a swing at a tree), 23 = pileup
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
-  // its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free; it carries no
+  // its WORK FLAG (auto-planted at its feet when it spawns - a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
   // wood into the mill and hauls finished planks back out). Cadence notes: a default settler walks a
   // cell in 18 ticks, the inter-swing breather lands after every 2nd swing of a worker's burst, and a

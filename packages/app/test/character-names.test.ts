@@ -40,14 +40,14 @@ describe('characterName', () => {
   it('is a first name plus a sex-matched Norse patronymic', () => {
     const man = characterName(VIKING, JOB_CIVILIST, false, 3);
     const woman = characterName(VIKING, JOB_WOMAN, false, 3);
-    // "<First> <Father>sson" / "<First> <Father>sdóttir" — two words, patronymic suffix by sex.
+    // "<First> <Father>sson" / "<First> <Father>sdóttir" - two words, patronymic suffix by sex.
     expect(man.split(' ')).toHaveLength(2);
     expect(man.endsWith('sson')).toBe(true);
     expect(woman.endsWith('sdóttir')).toBe(true);
   });
 
   it('gives a faction- and sex-appropriate name that matches the drawn body', () => {
-    // A viking woman draws from the female pool, a viking man from the male pool — the two produce
+    // A viking woman draws from the female pool, a viking man from the male pool - the two produce
     // disjoint names (differing patronymic suffix guarantees it), so a woman never gets a man's name.
     const femaleNames = new Set(
       Array.from({ length: 40 }, (_, id) => characterName(VIKING, JOB_WOMAN, false, id)),
@@ -65,7 +65,7 @@ describe('characterName', () => {
 
   it('spreads surnames across a batch of clustered ids (no shared family name by accident)', () => {
     // Regression: settlers spawned together get consecutive entity ids. The surname must NOT be constant
-    // across such a batch (the old "everyone Ragnarsson / every soldier Bjørnsson" bug) — the coprime grid
+    // across such a batch (the old "everyone Ragnarsson / every soldier Bjørnsson" bug) - the coprime grid
     // scatter gives each a well-spread surname. 50 consecutive ids must yield many distinct surnames.
     const surnames = new Set(
       Array.from({ length: 50 }, (_, id) => characterName(VIKING, JOB_CIVILIST, false, id).split(' ')[1]),
@@ -76,8 +76,8 @@ describe('characterName', () => {
   it('inherits a husband/father surname through the family seam', () => {
     const husbandId = 12;
     const husbandSurname = characterName(VIKING, JOB_CIVILIST, false, husbandId).split(' ')[1];
-    // A wife (female body) married to him takes his surname verbatim — the male "…sson", not her own
-    // "…sdóttir" — and keeps her own first name.
+    // A wife (female body) married to him takes his surname verbatim - the male "…sson", not her own
+    // "…sdóttir" - and keeps her own first name.
     const wife = characterName(VIKING, JOB_WOMAN, false, 40, husbandId);
     expect(wife.endsWith('sson')).toBe(true);
     expect(wife.split(' ')[1]).toBe(husbandSurname);
@@ -89,7 +89,7 @@ describe('characterName', () => {
     expect(maiden.split(' ')[1]).not.toBe(husbandSurname);
   });
 
-  it('very rarely repeats — a large settlement of consecutive ids stays unique', () => {
+  it('very rarely repeats - a large settlement of consecutive ids stays unique', () => {
     // The first-name × father-name cross product is thousands wide, so far more settlers than any real
     // settlement get a unique name. 1500 consecutive ids (either sex) must all differ.
     const count = 1500;

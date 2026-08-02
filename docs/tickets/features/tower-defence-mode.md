@@ -3,7 +3,7 @@
 **Area:** sim, app · **Priority:** P2
 
 No garrison fire, no defence-mode command exists (`core/commands.ts` has neither). Buildings can now
-BE attacked and razed (warriors target enemy structures — `systems/conflict/`), but no building fires
+BE attacked and razed (warriors target enemy structures - `systems/conflict/`), but no building fires
 back; this ticket is the return-fire half.
 
 **Source basis (extracted):** towers logictype 40/41, maintype 5 FIGHT, garrison `logicworker`
@@ -21,5 +21,5 @@ are unreadable → named approximations, log the choices.
 
 ## Verify
 
-- `npm test` — existing goldens byte-identical.
-- `?scene=tower-defence` — **user's eyes** (arrows from the tower, attackers fall, tower falls).
+- `npm test` - existing goldens byte-identical.
+- `?scene=tower-defence` - **user's eyes** (arrows from the tower, attackers fall, tower falls).

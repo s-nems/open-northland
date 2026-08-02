@@ -21,12 +21,12 @@ import {
 import { indexSourceAssets } from './stages/source-files.js';
 
 /**
- * Runs the full conversion of an owned game copy into the IR under `args.out` — the one pipeline
+ * Runs the full conversion of an owned game copy into the IR under `args.out` - the one pipeline
  * entry both hosts share (the CLI in `cli.ts`, the desktop shell's first-run installer). `progress`
  * feeds a live UI (see `progress.ts`); the stage summary `console.log`s stay for the CLI transcript.
  */
 export async function runPipeline(args: Args, progress?: PipelineProgress): Promise<void> {
-  // The culturesnation mod is required — fail fast with the download pointer before any stage
+  // The culturesnation mod is required - fail fast with the download pointer before any stage
   // writes, rather than deep in IR validation (see resolveModRoot).
   const roots: SourceRoots = { game: args.game, mod: await resolveModRoot(args.game, args.modRoot) };
   console.log(`[pipeline] game=${args.game} mod=${roots.mod} out=${args.out}`);
@@ -38,7 +38,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // when the unpack writes nothing (a copy that ships no `.lib`).
   await mkdir(args.out, { recursive: true });
 
-  // Stages run in dependency order — unpack first, then the passes that read its output. Prefer the
+  // Stages run in dependency order - unpack first, then the passes that read its output. Prefer the
   // mod's readable .ini sources over base .cif; docs/SOURCES.md carries the full source → decoder map.
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   progress?.stage?.('unpack');
@@ -65,7 +65,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   const atlases = await convertBmdTree(graphics, args.out, assets, progress?.item);
   const { bindings, palettes } = graphics;
   // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
-  // distinct body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
+  // distinct body .bmd geometries behind them - the gap is the per-creature recolour fan-out.
   const distinct = new Set(atlases.map((a) => a.png)).size;
   const distinctBmd = new Set(atlases.map((a) => a.bmd)).size;
   console.log(
@@ -91,7 +91,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
     return undefined;
   });
   // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
-  // graded edge alpha survives — see stages/player-colors.ts convertGuidepostPlayerAtlases).
+  // graded edge alpha survives - see stages/player-colors.ts convertGuidepostPlayerAtlases).
   const guideAtlases = await convertGuidepostPlayerAtlases(args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
@@ -143,7 +143,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   );
 
   // Compose each ground-transition overlay's RGB texture + alpha-mask .pcx pair into one RGBA
-  // `<stem>.masked.png` — the plain per-file pcx pass above can't carry the separate mask, and the
+  // `<stem>.masked.png` - the plain per-file pcx pass above can't carry the separate mask, and the
   // renderer alpha-blends these pages over the base ground triangles. Needs the extracted
   // `[transition]` table, hence after writeIr.
   progress?.stage?.('transitions');
@@ -159,7 +159,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   );
 
   // Decode each map's binary terrain grid (map.dat hoix container -> lmlt landscape-type layer -> one
-  // per-cell typeId) into maps/<id>.json — the TerrainMap the sim's buildTerrainGraph consumes. Joins
+  // per-cell typeId) into maps/<id>.json - the TerrainMap the sim's buildTerrainGraph consumes. Joins
   // onto the same-folder map.cif's MapInfo id.
   progress?.stage?.('maps');
   const terrains = await convertMapDatTree(roots, args.out, progress?.item);

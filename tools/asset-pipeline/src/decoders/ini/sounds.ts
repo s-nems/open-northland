@@ -9,7 +9,7 @@ const SOUNDS_ROOT = 'data/engine2d/bin/sounds/';
 
 /**
  * Normalizes a `SFX` wav path (`Data\Engine2D\Bin\Sounds\Gui\Click_Confirm.wav`) to the key the audio
- * layer fetches — forward-slashed, lower-cased, and made relative to {@link SOUNDS_ROOT} so it
+ * layer fetches - forward-slashed, lower-cased, and made relative to {@link SOUNDS_ROOT} so it
  * joins straight onto the served `/sounds/<file>` route (`gui/click_confirm.wav`). A path that does
  * not sit under the sounds root is kept as-is (lower-cased) rather than dropped.
  */
@@ -22,7 +22,7 @@ function normalizeSoundPath(path: string): string {
 /**
  * `soundfx.cif` disagrees with itself on key/section case (`SFX`/`sfx`, `Name`/`name`,
  * `PatternGroup`/`patternGroup`, `SoundFXAmbient`/`SoundFxAmbient`), and the original engine reads it
- * case-insensitively — so the sound extractor matches on lower-cased keys throughout, unlike the
+ * case-insensitively - so the sound extractor matches on lower-cased keys throughout, unlike the
  * CamelCase-stable graphics tables above.
  */
 function soundProps(sec: RuleSection, key: string): RuleProp[] {

@@ -47,7 +47,7 @@ When one path exists in more than one place, the layers resolve mod overlay, the
 `.pcx`, 4 `.bmd`, 3 `.fnt`, 2 `.bmp`). The basis is data consistency rather than a direct observation
 of the original: the mod's `mapmoveableanimations/animations.ini` indexes 312 bobs of
 `CR_Hum_Body_74.bmd`, which only the loose copy carries, while the archive copy has the base game's 96
-— matching the base `animations.cif`, whose one sequence indexes 96. A mod-installed tree is
+- matching the base `animations.cif`, whose one sequence indexes 96. A mod-installed tree is
 self-consistent only under loose-first.
 
 Only the stages that read both places carry the archive layer (the `.pcx` conversion, the atlas source

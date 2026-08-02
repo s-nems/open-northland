@@ -2,7 +2,7 @@ import { Sprite, Texture } from 'pixi.js';
 import { readable2dContext } from './drawable-resource.js';
 
 /**
- * The world post pass — an OpenNorthland visual enhancement, not an original mechanism: one
+ * The world post pass - an OpenNorthland visual enhancement, not an original mechanism: one
  * screen-space multiply sprite over the world (under the HUD) carrying a radial vignette with a warm
  * grade baked into its gradient. Deliberately NOT a Pixi `Filter` on the world layer: the team-colour
  * `PalettedSprite` meshes hand-roll their screen→clip projection (see `gpu/paletted-sprite/`), so a
@@ -19,7 +19,7 @@ const GRADE_CENTRE = { r: 255, g: 250, b: 242 } as const;
 const VIGNETTE_STRENGTH = 0.22;
 /** Fraction of the corner radius where the vignette starts falling off (inside it: pure centre grade). */
 const VIGNETTE_INNER_RADIUS = 0.55;
-/** Baked gradient texture size (px) — the linear-sampled radial gradient upscales smoothly. */
+/** Baked gradient texture size (px) - the linear-sampled radial gradient upscales smoothly. */
 const VIGNETTE_TEXTURE_SIZE = 512;
 
 /**

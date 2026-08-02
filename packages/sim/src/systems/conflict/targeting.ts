@@ -11,28 +11,28 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
 
-// The combat TARGETING relations — who may fight whom (the player/tribe/predation/anger axes) and
+// The combat TARGETING relations - who may fight whom (the player/tribe/predation/anger axes) and
 // how far a combatant spots an enemy. The leaf of the conflict/ split: flee.ts, weapons.ts and
 // combat.ts all consult these; nothing here reaches back into them.
 
 /**
- * How far (Manhattan half-cell nodes) an OWNED combatant can **spot** an enemy to advance on it — the
+ * How far (Manhattan half-cell nodes) an OWNED combatant can **spot** an enemy to advance on it - the
  * aggro/advance radius the walk-into-melee drive searches within. APPROXIMATED (source basis "Combat
  * sight radius"): humans carry NO readable sight/aggro field in the data (only animals have leash
  * radii), so this is a calibration-by-observation constant pending a look at the running original,
- * not a pinned param — doubled with the half-cell migration so it covers the same on-screen radius
+ * not a pinned param - doubled with the half-cell migration so it covers the same on-screen radius
  * the old 8-cell value did. The weapon's extracted `[minRange, maxRange]` band (where a swing lands)
  * is separate and faithful.
  */
 export const SIGHT_RADIUS_NODES = 16;
 
 /** How far a hostile wild animal (an aggressive wolf, a provoked bear) spots a civilization victim to
- *  advance on — the animal twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat
+ *  advance on - the animal twin of {@link SIGHT_RADIUS_NODES}. Approximated (source basis "Combat
  *  sight radius"): no readable aggro field exists; half a soldier's sight reads as an ambush radius
  *  (the wolf lunges when a settler strays close), not a map-wide hunt. */
 export const ANIMAL_AGGRO_RADIUS_NODES = 8;
 
-/** Whether `t` is a live target this attacker may swing at — a positioned, `Health`-bearing enemy
+/** Whether `t` is a live target this attacker may swing at - a positioned, `Health`-bearing enemy
  *  settler OR an enemy building (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget}
  *  hostility relation holds. The shared predicate behind both the attack-order validity check and the
  *  ring-search filter. A building is a target only for an OWNED attacker (a player's warriors siege
@@ -50,7 +50,7 @@ export function isValidTarget(
   if (world.get(t, Health).hitpoints <= 0) return false;
   const building = world.tryGet(t, Building);
   if (building !== undefined) {
-    // Only a player's own units besiege buildings — an animal (no Owner) never turns on a structure.
+    // Only a player's own units besiege buildings - an animal (no Owner) never turns on a structure.
     if (!world.has(self, Owner)) return false;
     // And only a player-owned building is a siege target: an ownerless structure (a scenario fixture)
     // belongs to nobody, and admitting it would contradict the dormancy gate's owned-buildings-only tail
@@ -74,23 +74,23 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
 
 /**
  * Whether the attacker entity `self` (of `attackerTribe`/`attackerJob`) may swing at target `t` (of
- * `targetTribe`) — the composed hostility relation the ring-search filter and the attack-order check
+ * `targetTribe`) - the composed hostility relation the ring-search filter and the attack-order check
  * both consult, so the two directions of a fight stay consistent. In order:
  *
- *  1. **Owner (player) hostility** — when BOTH `self` and `t` carry an {@link Owner}, the player axis is
+ *  1. **Owner (player) hostility** - when BOTH `self` and `t` carry an {@link Owner}, the player axis is
  *     AUTHORITATIVE: different players → enemies, same player → friendly (a player's mixed-tribe army never
  *     fights itself; two players fielding the same tribe DO fight). The tribe/hunt/anger relations don't
- *     apply to an owned-vs-owned pair (both sides are player-commanded units, never wildlife). Binary — no
+ *     apply to an owned-vs-owned pair (both sides are player-commanded units, never wildlife). Binary - no
  *     alliances/diplomacy (source basis "Combat hostility axis").
- *  2. Otherwise (at least one side **unowned** — wildlife, an economy fixture, the golden path) the content
+ *  2. Otherwise (at least one side **unowned** - wildlife, an economy fixture, the golden path) the content
  *     relations decide, unchanged: the {@link mayAttack} **tribe hostility** (same-tribe friendly, civ-vs-civ
  *     enemies, civ→aggressive-animal, animals don't war on each other), the {@link mayHunt} **predation**
  *     (a hunter may strike UNOWNED huntable prey - claimed livestock is property), and the per-entity
  *     **provoked-anger** override
- *     (a struck `getAngry` animal — a live {@link Anger} — makes a civ⇄animal fight valid in both directions).
+ *     (a struck `getAngry` animal - a live {@link Anger} - makes a civ⇄animal fight valid in both directions).
  *
  * Determinism: a pure read of the two entities' `Owner`, plus `content` + the relevant `Anger` against
- * `ctx.tick`; no RNG/wall-clock. A lapsed timer is not reaped here (a const-time candidate check) — the
+ * `ctx.tick`; no RNG/wall-clock. A lapsed timer is not reaped here (a const-time candidate check) - the
  * once-per-tick reaping is {@link hostileAnimalNow} on the attacker pass; an expired timer reads not-angry.
  */
 export function mayTarget(
@@ -114,7 +114,7 @@ export function mayTarget(
   if (targetOwner === undefined && mayHunt(ctx.content, attackerJob, targetTribe)) return true;
   const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
-  // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never civ-vs-civ.
+  // The anger override only bridges a civilization-vs-animal pair - never animal-vs-animal, never civ-vs-civ.
   if (attackerIsAnimal === targetIsAnimal) return false;
   // The ANIMAL side of the pair must carry a live anger timer (a provoked getAngry animal).
   const animalEntity = attackerIsAnimal ? self : t;
@@ -123,15 +123,15 @@ export function mayTarget(
 }
 
 /**
- * Whether the animal entity `e` (of `tribe`) is **hostile right now** — an always-`aggressive` animal,
+ * Whether the animal entity `e` (of `tribe`) is **hostile right now** - an always-`aggressive` animal,
  * OR a passive `getAngry` animal that has been **provoked** and whose {@link Anger} timer is still live
  * (`ctx.tick < anger.until`). This is the per-entity layer the content-only {@link mayAttack} can't
  * carry: aggression-by-record is a content fact, but provoked anger is per-entity state.
  *
- * Side effect: a **lapsed** timer (`ctx.tick >= until`) is **removed** here — the animal has cooled off,
+ * Side effect: a **lapsed** timer (`ctx.tick >= until`) is **removed** here - the animal has cooled off,
  * so it reverts to passive and the stale component is reaped (keeping the hash from accumulating dead
  * timers). Removing on read is safe: the combatant scan visits each entity once per tick, and an expired
- * timer carries no remaining meaning. Pure of RNG/wall-clock — the live/lapsed test is the exact integer
+ * timer carries no remaining meaning. Pure of RNG/wall-clock - the live/lapsed test is the exact integer
  * `tick < until`.
  */
 export function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: number): boolean {
@@ -139,6 +139,6 @@ export function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tr
   const anger = world.tryGet(e, Anger);
   if (anger === undefined) return false; // never provoked
   if (ctx.tick < anger.until) return true; // still angry
-  world.remove(e, Anger); // cooled off — revert to passive, reap the stale timer
+  world.remove(e, Anger); // cooled off - revert to passive, reap the stale timer
   return false;
 }

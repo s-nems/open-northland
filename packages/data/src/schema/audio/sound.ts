@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * One `SFX "<path>" <n…>` line: the wav to play plus the record's trailing integer parameters,
- * kept verbatim. Their meaning is positional and section-specific — {@link SoundStaticGroup} carries
+ * kept verbatim. Their meaning is positional and section-specific - {@link SoundStaticGroup} carries
  * one volume int (0–100); {@link SoundAmbient} carries a `(volume, probability, …)` triple driving
  * the sparse one-shot birds. The raw list is kept rather than naming each slot: the format is only
  * partially reversed.
@@ -21,9 +21,9 @@ export type SoundSfx = z.infer<typeof SoundSfx>;
  * animation/job/combat frame.
  */
 export const SoundStaticGroup = z.strictObject({
-  /** `Name` — the group's join key (e.g. `"Gui_Click"`, `"Bear Sounds"`, `"Viking male ok 13"`). */
+  /** `Name` - the group's join key (e.g. `"Gui_Click"`, `"Bear Sounds"`, `"Viking male ok 13"`). */
   name: z.string(),
-  /** `LogicSoundType` — the numeric engine trigger this group answers to; absent = never auto-triggered. */
+  /** `LogicSoundType` - the numeric engine trigger this group answers to; absent = never auto-triggered. */
   logicSoundType: z.number().int().nonnegative().optional(),
   /** The group's interchangeable wavs (the engine chooses one per play). */
   sfx: z.array(SoundSfx).default([]),
@@ -37,7 +37,7 @@ export type SoundStaticGroup = z.infer<typeof SoundStaticGroup>;
  * birds) plays sparsely by the per-`SFX` probability params.
  */
 export const SoundAmbient = z.strictObject({
-  /** `Name` — the ambient's handle (e.g. `"Water See"`, `"All Trees"`). */
+  /** `Name` - the ambient's handle (e.g. `"Water See"`, `"All Trees"`). */
   name: z.string(),
   /** `PatternGroup` names this ambient covers (join onto the terrain pattern groups), lower-cased. */
   patternGroups: z.array(z.string()).default([]),
@@ -50,13 +50,13 @@ export type SoundAmbient = z.infer<typeof SoundAmbient>;
 
 /**
  * A `SoundFXJingle` group: a non-positional life-event stinger (birth, death, house built, marriage,
- * mission won/lost, …) bound to a numeric `MusicType`. Jingles play at full volume with no pan — they
+ * mission won/lost, …) bound to a numeric `MusicType`. Jingles play at full volume with no pan - they
  * are UI feedback, not world sound.
  */
 export const SoundJingle = z.strictObject({
-  /** `Name` — the jingle handle (e.g. `"Birth"`, `"House Built"`). */
+  /** `Name` - the jingle handle (e.g. `"Birth"`, `"House Built"`). */
   name: z.string(),
-  /** `MusicType` — the numeric engine trigger; absent = handle-only. */
+  /** `MusicType` - the numeric engine trigger; absent = handle-only. */
   musicType: z.number().int().nonnegative().optional(),
   /** The jingle's wav(s). */
   sfx: z.array(SoundSfx).default([]),
@@ -64,7 +64,7 @@ export const SoundJingle = z.strictObject({
 export type SoundJingle = z.infer<typeof SoundJingle>;
 
 /**
- * The decoded `soundfx.cif` sound bank — render-binding data the pure sim ignores; the browser audio
+ * The decoded `soundfx.cif` sound bank - render-binding data the pure sim ignores; the browser audio
  * layer joins its groups onto sim events + on-screen terrain to decide what plays. Empty on a checkout
  * whose pipeline hasn't been run against a game copy (`soundfx.cif` absent), so the app degrades to
  * silence, never a crash.

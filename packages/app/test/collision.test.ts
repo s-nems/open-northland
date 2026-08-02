@@ -36,16 +36,16 @@ function fixtureMap() {
   a[1 * W + 2] = water; // half-water shoreline: triangle B is still land
   b[2 * W + 4] = mountain;
   a[0 * W + 4] = snow;
-  a[3 * W + 1] = sand; // walk+build but no biocanplanton — the whole cell must reject the plough
+  a[3 * W + 1] = sand; // walk+build but no biocanplanton - the whole cell must reject the plough
   return parseTerrainMap({
     width: W,
     height: H,
-    typeIds: new Array(W * H).fill(1), // the raw lane (ignored by the join — 1 = "void" ground)
+    typeIds: new Array(W * H).fill(1), // the raw lane (ignored by the join - 1 = "void" ground)
     ground: { patterns: ['meadow 01', 'water 01', 'mountain 01', 'snow 01', 'sand 01'], a, b },
     objects: {
       types: ['tree deciduous 01'],
-      // Two trees on the 2W×2H grid: one anchored on an EVEN half-cell row (4, 6) — stamped
-      // verbatim — and one on an ODD row (8, 3), whose odd-dy rows take the parity shift.
+      // Two trees on the 2W×2H grid: one anchored on an EVEN half-cell row (4, 6) - stamped
+      // verbatim - and one on an ODD row (8, 3), whose odd-dy rows take the parity shift.
       placements: [4, 6, 0, 8, 3, 0],
       levels: [3, 3],
     },
@@ -73,11 +73,11 @@ const IR = {
     {
       editName: 'tree deciduous 01',
       // Full state 3: a 1-node trunk body + a 3-node build ring row above it (the real rows' shape;
-      // offsets are HALF-CELL offsets — even-row anchors stamp them verbatim, odd-row anchors
+      // offsets are HALF-CELL offsets - even-row anchors stamp them verbatim, odd-row anchors
       // parity-shift the odd-dy rows, which the two placements below pin).
       walkBlockAreas: [
         [3, 0, 0, 1],
-        [1, 2, 0, 1], // a LOWER state's row on a DIFFERENT node — the full-state collapse must drop it
+        [1, 2, 0, 1], // a LOWER state's row on a DIFFERENT node - the full-state collapse must drop it
       ],
       buildBlockAreas: [
         [3, -1, -1, 3],
@@ -90,7 +90,7 @@ const IR = {
 /** The bridge fixture's placement column: the west abutment. */
 const BRIDGE_HX = 3;
 /** The corridor's node row, and the placement's own (cell row 1's 2×2 block spans node rows 2..3).
- *  EVEN, so the parapet rows stamp verbatim — the parity shift has its own test above. */
+ *  EVEN, so the parapet rows stamp verbatim - the parity shift has its own test above. */
 const CORRIDOR_NODE_Y = 2;
 /** The south parapet's node row: the bridge's walk body, one row off the corridor. */
 const PARAPET_NODE_Y = 3;
@@ -98,8 +98,8 @@ const PARAPET_NODE_Y = 3;
 /**
  * `specjalna_mosty_na_rzece` in miniature: two land banks split by a water column, crossed at cell
  * row 1 by the half-water cell the mapmaker painted under the bridge sprite. The bridge's walk area
- * is a parapet outline like the real records — two rails with the crossing corridor open between
- * them — so the crossing survives only when a half-water cell stays walkable.
+ * is a parapet outline like the real records - two rails with the crossing corridor open between
+ * them - so the crossing survives only when a half-water cell stays walkable.
  */
 function bridgeMap() {
   const W = 5;
@@ -129,7 +129,7 @@ const BRIDGE_IR = {
     {
       editName: 'bridge stone',
       editGroups: ['misc_bridges'],
-      // The two parapet rails (dy ±1), leaving the anchor's own row open — the hollow outline the
+      // The two parapet rails (dy ±1), leaving the anchor's own row open - the hollow outline the
       // real `LogicWalkBlockArea` records draw. The build area covers the corridor as well.
       walkBlockAreas: [
         [1, 0, -1, 4],
@@ -184,18 +184,18 @@ describe('buildCollisionTerrain', () => {
   });
 
   it('classes walkable-but-unbuildable ground (mountain, snow) as margin, not impassable', () => {
-    expect(at(8, 4)).toBe(TERRAIN_MARGIN); // mountain cell (4,2), triangle B — walkable in the real table
+    expect(at(8, 4)).toBe(TERRAIN_MARGIN); // mountain cell (4,2), triangle B - walkable in the real table
     expect(at(8, 0)).toBe(TERRAIN_MARGIN); // snow cell (4,0), triangle A
   });
 
-  it('classes walk+build ground with no biocanplanton (sand) as barren — open to all but the plough', () => {
-    expect(at(2, 6)).toBe(TERRAIN_BARREN); // sand cell (1,3), triangle A — the whole cell rejects sowing
+  it('classes walk+build ground with no biocanplanton (sand) as barren - open to all but the plough', () => {
+    expect(at(2, 6)).toBe(TERRAIN_BARREN); // sand cell (1,3), triangle A - the whole cell rejects sowing
     expect(at(3, 7)).toBe(TERRAIN_BARREN);
   });
 
   it("stamps a placed object's full-state walk body as blocked and its build ring as margin", () => {
     expect(at(4, 6)).toBe(TERRAIN_BLOCKED); // the trunk at its anchor node (walk-block wins over its own build ring)
-    expect(at(6, 6)).toBe(TERRAIN_OPEN); // the lower-state row's node (anchor+2) — collapsed away
+    expect(at(6, 6)).toBe(TERRAIN_OPEN); // the lower-state row's node (anchor+2) - collapsed away
     // The build-only ring nodes around it (dy=-1 row spans hx 3..5; dy=0 row spans hx 3,5).
     expect(at(3, 5)).toBe(TERRAIN_MARGIN);
     expect(at(4, 5)).toBe(TERRAIN_MARGIN);
@@ -205,7 +205,7 @@ describe('buildCollisionTerrain', () => {
   });
 
   it("shifts an odd-row anchor's odd-dy rows one node +x (the original lmwb parity rule)", () => {
-    expect(at(8, 3)).toBe(TERRAIN_BLOCKED); // the trunk on its own anchor node (dy 0 — never shifts)
+    expect(at(8, 3)).toBe(TERRAIN_BLOCKED); // the trunk on its own anchor node (dy 0 - never shifts)
     // The dy=-1 build row (odd dy) spans dx -1..1 but stamps at hx 8..10, one node +x.
     expect(at(8, 2)).toBe(TERRAIN_MARGIN);
     expect(at(9, 2)).toBe(TERRAIN_MARGIN);
@@ -221,10 +221,10 @@ describe('buildCollisionTerrain', () => {
     const g = buildCollisionTerrain(fixtureMap(), withoutLane);
     const gAt = (x: number, y: number): number => g.typeIds[y * g.width + x] as number;
     expect(gAt(2, 2)).toBe(TERRAIN_IMPASSABLE); // water on both triangles
-    expect(gAt(4, 2)).toBe(TERRAIN_MARGIN); // half-water — still walkable under the fallback flags
-    expect(gAt(8, 4)).toBe(TERRAIN_MARGIN); // mountain — the fallback pins the same real flags
+    expect(gAt(4, 2)).toBe(TERRAIN_MARGIN); // half-water - still walkable under the fallback flags
+    expect(gAt(8, 4)).toBe(TERRAIN_MARGIN); // mountain - the fallback pins the same real flags
     expect(gAt(8, 0)).toBe(TERRAIN_MARGIN); // snow
-    expect(gAt(2, 6)).toBe(TERRAIN_BARREN); // sand — walk+build in the fallback too, still no plough
+    expect(gAt(2, 6)).toBe(TERRAIN_BARREN); // sand - walk+build in the fallback too, still no plough
   });
 
   it('routes a crossing through the bridge corridor, not over its parapet', () => {

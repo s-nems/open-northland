@@ -10,7 +10,7 @@ import type { ContentIr } from './ir/rows.js';
  */
 
 /**
- * True when the bank actually carries at least one clip (in any category) — the one "is there anything
+ * True when the bank actually carries at least one clip (in any category) - the one "is there anything
  * to play / show?" test shared by the live {@link createSoundDriver} and the `?sounds` gallery, so their
  * silent/empty decisions can't drift (add a 4th category and both update together). Narrows `sounds` to a
  * present, non-empty {@link SoundBank}.
@@ -23,7 +23,7 @@ export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundB
 
 /**
  * Build a {@link SoundDriver} from the fetched IR, or `null` when it carries no sound bank (content
- * absent, or an `ir.json` generated before sounds were extracted) — the caller then runs silent.
+ * absent, or an `ir.json` generated before sounds were extracted) - the caller then runs silent.
  * `chopAtomicId`/`buildAtomicId` bind the woodcutter-chop / builder-hammer atomics (content ids the app
  * owns) to their axe / hammer SFX.
  */

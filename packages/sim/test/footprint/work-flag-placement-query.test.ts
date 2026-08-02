@@ -6,7 +6,7 @@ import { ctxOf, mappedSim, terrainOf } from './building-placement/support.js';
 /**
  * {@link nearestWorkFlagPlacement}'s two bounded-search options, the ones the player's `setWorkFlag`
  * snap rides on: `withinRadius` (give up near rather than fall back to the whole-map winner) and
- * `accept` (an extra per-node gate — the settler's signpost confinement). The `accept` gate belongs in
+ * `accept` (an extra per-node gate - the settler's signpost confinement). The `accept` gate belongs in
  * the search rather than on its winner: applied afterwards, a click near the confinement edge snaps
  * outward and is then rejected, which is the silent no-op the snap exists to remove.
  */
@@ -24,7 +24,7 @@ describe('nearestWorkFlagPlacement bounded options', () => {
     const terrain = terrainOf(sim);
     const from = terrain.nodeAt(8, 8);
     // Everything west of x=12 is refused, so the origin no longer qualifies and the winner must be the
-    // nearest ACCEPTED node — not the origin, and not merely the nearest unblocked one.
+    // nearest ACCEPTED node - not the origin, and not merely the nearest unblocked one.
     const eastOnly = (node: NodeId): boolean => terrain.coordsOf(node).x >= 12;
 
     const picked = nearestWorkFlagPlacement(sim.world, ctxOf(sim), terrain, from, { accept: eastOnly });

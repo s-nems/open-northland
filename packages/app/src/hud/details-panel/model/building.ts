@@ -28,7 +28,7 @@ export interface BuildingPanelModel {
   readonly level: number;
   readonly builtPct: number;
   readonly stock: readonly StockRow[];
-  /** One row per worker slot (trade), each with its filled/capacity — the per-trade limits the panel
+  /** One row per worker slot (trade), each with its filled/capacity - the per-trade limits the panel
    *  lists. See {@link workerSlotsFor}. */
   readonly workerSlots: readonly WorkerSlotRow[];
   /** Non-null for a `home`-kind building: the workers window becomes the residents window
@@ -38,16 +38,16 @@ export interface BuildingPanelModel {
   /** Approximation until a real building-defense mode component exists. */
   readonly defenseLabel: string;
   readonly production: ProductionModel | null;
-  /** Non-null while the building is a construction site — the panel then swaps its production/stock/
+  /** Non-null while the building is a construction site - the panel then swaps its production/stock/
    *  workers windows for the one Construction window (those sections mean nothing before completion). */
   readonly construction: ConstructionModel | null;
   /** Whether the general section offers the Upgrade button (housewindow 110): a BUILT building whose
    *  type has an `upgradeTarget` level to rise into. False while it is a site. */
   readonly upgradable: boolean;
   /** Whether the general section offers the Cancel-upgrade button (housewindow 112): a running
-   *  upgrade site (`Upgrading`) — aborting restores the previous level, delivered materials lost. */
+   *  upgrade site (`Upgrading`) - aborting restores the previous level, delivered materials lost. */
   readonly cancelable: boolean;
-  /** The upgrade target tier's material cost — the level-difference bill the sim charges to raise this
+  /** The upgrade target tier's material cost - the level-difference bill the sim charges to raise this
    *  building (its target's own `construction`, mirroring {@link constructionModel}'s upgrading branch).
    *  Empty unless {@link upgradable}; surfaced by the Upgrade button's hover tooltip. */
   readonly upgradeCost: readonly UpgradeCostRow[];

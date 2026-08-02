@@ -27,13 +27,13 @@ import {
   WOOD,
 } from '../support.js';
 
-describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (not on the flag)', () => {
+describe('flag-bound gatherer - goods pile on the GROUND, capped and pinned (not on the flag)', () => {
   const PLAYER = 0;
   const nodeOfTile = (t: number): { x: number; y: number } => ({ x: 2 * t, y: 0 });
 
   it('spills a full tile onto the ADJACENT half-cell, capped and tile-to-tile (no gaps, no teleport)', () => {
     // Two trees in radius (2·yield = 8 wood > the 5-per-tile cap): the flag tile fills to 5, the spill lands
-    // on the NEXT half-cell node over — capped heaps packed side by side, not scattered a full tile apart.
+    // on the NEXT half-cell node over - capped heaps packed side by side, not scattered a full tile apart.
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
     bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
@@ -49,7 +49,7 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
     for (const h of heaps) {
       expect(sim.world.get(h, Stockpile).amounts.get(WOOD) ?? 0).toBeLessThanOrEqual(MAX_GROUND_STACK);
     }
-    // The two heaps sit on ADJACENT half-cell nodes (node distance 1) — packed tile-to-tile on the lattice,
+    // The two heaps sit on ADJACENT half-cell nodes (node distance 1) - packed tile-to-tile on the lattice,
     // not a full cell (distance 2) apart with a settler-sized gap between them.
     const nodes = heaps.map((h) => {
       const p = sim.world.get(h, Position);
@@ -62,7 +62,7 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
 
   it('re-fills a drained (0-unit) yard heap instead of stalling on it (no livelock)', () => {
     // A porter can empty a yard heap to {WOOD:0} (a bare pile, so nothing auto-removed it in this fixture).
-    // The gatherer must be able to top that same tile back up — not read it as "a different good" and freeze
+    // The gatherer must be able to top that same tile back up - not read it as "a different good" and freeze
     // carrying its load forever. Pre-seed the drained heap on the flag's own yard tile, then harvest+deliver.
     const sim = new Simulation({ seed: 8, content: testContent(), map: grassMap(20, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
@@ -78,7 +78,7 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
     expect(heaps).toHaveLength(1); // topped up the SAME drained heap, not littered a second
     expect(heaps[0]).toBe(drained);
     expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // the load was actually banked, not stuck on its back
-    expect(sim.world.has(gatherer, Carrying)).toBe(false); // hands free — no livelock
+    expect(sim.world.has(gatherer, Carrying)).toBe(false); // hands free - no livelock
     expect(violations).toEqual([]);
   });
 
@@ -146,7 +146,7 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
     expect(heapX).toBe(5); // dropped by the flag's original spot
     expect(heapFill).toBe(TREE_WOOD_YIELD);
 
-    // Relocate the flag far away — only the MARKER moves; the goods stay pinned to their tile.
+    // Relocate the flag far away - only the MARKER moves; the goods stay pinned to their tile.
     setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, ...nodeOfTile(15) });
 
     expect(fx.toInt(sim.world.get(flag, Position).x)).toBe(15); // the flag moved…

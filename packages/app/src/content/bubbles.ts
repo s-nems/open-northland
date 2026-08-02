@@ -6,7 +6,7 @@ const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';
 
 /**
  * The `ls_gui_bubbles` frame each bubble kind draws (the bob index the `?icons` gallery labels). Both
- * romance states show the heart thought-bubble (frame 2) — the sheet's love bubble; the two are told
+ * romance states show the heart thought-bubble (frame 2) - the sheet's love bubble; the two are told
  * apart by context (a lone woman at home vs. a walking pair). The need bubbles are frame 0 (sleep) and
  * frame 4 (hunger). Source basis: the decoded bubble sheet (`ls_gui_bubbles.bmd`); the frame→state map is
  * observed original behavior (no readable ini names the frames), one constant to change per kind.
@@ -21,7 +21,7 @@ const BUBBLE_FRAME_ID: Readonly<Record<SettlerBubbleKind, number>> = {
 /**
  * Resolve the decoded settler-bubble art for the render bubble layer: the palette-baked `ls_gui_bubbles`
  * sheet and the frame each {@link SettlerBubbleKind} draws. The RGBA preview stem is loaded, not the
- * recolourable indexed sheet — a settler bubble is never team-coloured, so it draws as a plain sprite.
+ * recolourable indexed sheet - a settler bubble is never team-coloured, so it draws as a plain sprite.
  * Returns `null` when the atlas is absent (a checkout without `content/`), so the renderer degrades to no
  * bubbles.
  */

@@ -7,25 +7,25 @@ import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 // grouped here.
 
 /**
- * The `atomicanimations.ini` `event <at> <type> <value>` channel ids — the numbered need bar a timed event
+ * The `atomicanimations.ini` `event <at> <type> <value>` channel ids - the numbered need bar a timed event
  * restores or drains; {@link atomicEventChannelDelta} looks them up. The wider `type` vocabulary
  * (sounds/cues/yields at ids 8..36) stays an undocumented render/effect channel space.
  *
  * source-basis: the original's own channel ids from the mod's readable `atomicanimations.ini`.
  */
 export const ATOMIC_EVENT_CHANNEL = {
-  /** Rest/fatigue bar — `..._sleep` animations restore it. */
+  /** Rest/fatigue bar - `..._sleep` animations restore it. */
   REST: 1,
-  /** Hunger bar — `..._eat_slot_food` restores it. */
+  /** Hunger bar - `..._eat_slot_food` restores it. */
   HUNGER: 2,
-  /** Leisure/enjoyment bar — `..._enjoy` and `..._make_love` restore it. */
+  /** Leisure/enjoyment bar - `..._enjoy` and `..._make_love` restore it. */
   LEISURE: 3,
-  /** Piety bar — `..._pray` restores it. */
+  /** Piety bar - `..._pray` restores it. */
   PIETY: 4,
 } as const;
 
 /**
- * The `event <at> <type>` type id marking the frame a swing's blow lands — a bare timing cue with no
+ * The `event <at> <type>` type id marking the frame a swing's blow lands - a bare timing cue with no
  * magnitude (`event <at> 25`), so the CombatSystem resolves the hit at that frame rather than at animation
  * completion (a spear thrust connects at frame 17 of its 27-frame swing). {@link atomicEventFrame} reads it.
  *
@@ -34,7 +34,7 @@ export const ATOMIC_EVENT_CHANNEL = {
 export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 
 /**
- * The `event <at> <type>` type id marking the frame a swing plays its sound FX — a mid-animation timing cue
+ * The `event <at> <type>` type id marking the frame a swing plays its sound FX - a mid-animation timing cue
  * like {@link ATOMIC_EVENT_TYPE_ATTACK}, so the builder's hammer knock lands on the visual strike rather
  * than at completion. The AtomicSystem fires an `atomicSound` event at this frame; an animation with no such
  * event plays no mid-swing sound (a consumer may still sound its completion).
@@ -44,7 +44,7 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
 
 /**
- * The `event <at> <type> <value>` type id that grants TRAINING experience — the schooling XP a drill
+ * The `event <at> <type> <value>` type id that grants TRAINING experience - the schooling XP a drill
  * repetition banks, summed by {@link atomicEventChannelDelta} like a need channel.
  *
  * source-basis (extracted): `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_GET_TRAINING`; type 29 appears
@@ -54,9 +54,9 @@ export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
 export const ATOMIC_EVENT_TYPE_TRAINING_EXPERIENCE = 29;
 
 /**
- * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job> <atomic>
+ * Resolve an {@link AtomicAnimation} by its exact `name` - the join key a tribe's `setatomic <job> <atomic>
  * "anim"` binding references ({@link AtomicAnimation.name}, not the lowercased `id`). Returns `undefined`
- * for an unresolved name — expected, since the readable mod set is a subset of the base-game animations — so
+ * for an unresolved name - expected, since the readable mod set is a subset of the base-game animations - so
  * callers fall back to a default duration. The {@link contentIndex} table is built first-wins over
  * declaration order.
  */
@@ -64,14 +64,14 @@ export function atomicAnimationByName(content: ContentSet, name: string): Atomic
   return contentIndex(content).atomicAnimationsByName.get(name);
 }
 
-/** Duration (ticks) used when an atomic's animation-length chain doesn't resolve — a non-zero default
+/** Duration (ticks) used when an atomic's animation-length chain doesn't resolve - a non-zero default
  *  so an unresolved atomic still takes visible time rather than completing instantly. */
 const DEFAULT_ATOMIC_DURATION = 4;
 
 /**
  * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe binds
  * `(jobType, atomicId)` to an animation name (`setatomic`, last-wins) and `atomicAnimations` gives that
- * name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't resolve — a missing
+ * name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't resolve - a missing
  * timing must not hang or zero-out the atomic.
  */
 export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
@@ -82,7 +82,7 @@ export function atomicDuration(content: ContentSet, settler: SettlerIdentity, at
  * The animation a settler plays for a NEED atomic (eat, sleep), falling back to the tribe's CIVILIST
  * clip when the settler's own trade binds none. Most working trades bind none: `setatomic` covers eat
  * for jobs 3,4,5,6,31,34 and sleep for 1–6,31, so a builder, collector, farmer, carrier or scout has
- * neither — yet each of them clearly eats and sleeps in the original. The generic-body clip is what it
+ * neither - yet each of them clearly eats and sleeps in the original. The generic-body clip is what it
  * plays, which is also what the render already assumes (every civilian look draws through
  * `logicJob: 6`). Without this the whole working population would resolve to
  * {@link DEFAULT_ATOMIC_DURATION} and eat in a third of a second.
@@ -94,7 +94,7 @@ export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity
   return atomicDurationForName(content, needAtomicAnimationName(content, settler, atomicId));
 }
 
-/** The resolved need-atomic animation name behind {@link needAtomicDuration} — exposed so a caller that
+/** The resolved need-atomic animation name behind {@link needAtomicDuration} - exposed so a caller that
  *  derives a sibling clip by name (the at-home sleep twin) starts from the same fallback. */
 export function needAtomicAnimationName(
   content: ContentSet,
@@ -108,7 +108,7 @@ export function needAtomicAnimationName(
 }
 
 /**
- * The duration (ticks) of a named animation — its `atomicanimations.ini` `length`, or
+ * The duration (ticks) of a named animation - its `atomicanimations.ini` `length`, or
  * {@link DEFAULT_ATOMIC_DURATION} when the name is undefined / unresolved / zero-length. The name-keyed half
  * of {@link atomicDuration}, for a caller that already resolved the animation name.
  */
@@ -119,7 +119,7 @@ export function atomicDurationForName(content: ContentSet, animation: string | u
 }
 
 /**
- * Resolve the animation name a settler's tribe binds `(jobType, atomicId)` to — the `setatomic` join key,
+ * Resolve the animation name a settler's tribe binds `(jobType, atomicId)` to - the `setatomic` join key,
  * last-wins over the file-order bindings (matching the original's config-override semantics, the rule the
  * {@link contentIndex} binding table is built with). Returns `undefined` when the settler has no job, its
  * tribe isn't in content, or no binding matches.
@@ -134,7 +134,7 @@ export function atomicAnimationName(
 }
 
 /**
- * Whether the named atomic animation may be interrupted mid-play (`atomicanimations.ini` `interruptable 1`) —
+ * Whether the named atomic animation may be interrupted mid-play (`atomicanimations.ini` `interruptable 1`) -
  * an idle/walk a settler can abandon the instant a higher-priority drive fires, versus a harvest swing or
  * attack that must play to completion. Returns `false` for an unknown name, the safe default that never
  * preempts work with no timing record.
@@ -142,7 +142,7 @@ export function atomicAnimationName(
  * Named approximation: most clips carry NO `interruptable` key and extraction defaults them to `false`.
  * The data's shape backs that reading (idles/walks/talk/sleep are marked `1`, the work swings are unmarked,
  * the few explicit `0` rows are dock/animal clips), but the original engine's missing-key default is
- * unverified — flipping it would make eat/harvest obey orders instantly.
+ * unverified - flipping it would make eat/harvest obey orders instantly.
  */
 export function isInterruptibleAtomic(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.interruptible ?? false;
@@ -150,7 +150,7 @@ export function isInterruptibleAtomic(content: ContentSet, name: string): boolea
 
 /**
  * The initial facing-direction index the named atomic animation pins (`atomicanimations.ini`
- * `startdirection`), or `undefined` when it pins none (only ~10% of base animations carry one) — the original
+ * `startdirection`), or `undefined` when it pins none (only ~10% of base animations carry one) - the original
  * orients a settler by it at the start of a directional atomic (a chop facing the tree). Carries `undefined`
  * through rather than coercing to `0` ("north") because "no pinned facing" is distinct from "face north".
  */
@@ -159,7 +159,7 @@ export function atomicStartDirection(content: ContentSet, name: string): number 
 }
 
 /**
- * The net signed delta the named atomic animation contributes to one event `channel` — the sum of
+ * The net signed delta the named atomic animation contributes to one event `channel` - the sum of
  * `event.value` over every `event`/`eventx` whose `type` equals `channel` (see
  * {@link ATOMIC_EVENT_CHANNEL}). A restoring animation totals positive (`..._eat_slot_food` over `HUNGER` =
  * `+4000`), a draining one negative. Returns `0` for an unknown name, for an animation with no event on that
@@ -178,9 +178,9 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
 }
 
 /**
- * Whether the named atomic animation carries any extended (`eventx`) event — the rare second event stream the
+ * Whether the named atomic animation carries any extended (`eventx`) event - the rare second event stream the
  * source spells with the `eventx` key instead of plain `event`. In the real data `eventx` lines bracket a
- * production run — the worker's rest/hunger bars draining while they labour, plus start/end markers —
+ * production run - the worker's rest/hunger bars draining while they labour, plus start/end markers -
  * clustered on `*_produce_*`, so this doubles as the "is this a producing animation that self-drains the
  * worker" marker. Returns `false` for an unknown name.
  */
@@ -190,7 +190,7 @@ export function atomicHasExtendedEvents(content: ContentSet, name: string): bool
 
 /**
  * The frame (`at`) of the named animation's first `event`/`eventx` of `eventType`, or `undefined` when the
- * animation carries none (or the name doesn't resolve) — the mid-animation timing cue behind
+ * animation carries none (or the name doesn't resolve) - the mid-animation timing cue behind
  * {@link ATOMIC_EVENT_TYPE_ATTACK}, whose consumers fall back to completion when there is no such event. The
  * first matching event wins, so an animation with several of the same type resolves to the earliest by
  * declaration order.

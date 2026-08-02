@@ -26,10 +26,10 @@ function grassMap(cells: number) {
 /**
  * Decoded-map apprenticeship rule: authored humans spawn with NO experience, so real content's
  * `needforgood` gates (iron/gold behind clay/stone-digging repeats, `needforgood 6/7 10` over
- * tracks 4+5) hold until the settler earns them in play — the scene-only veteran stamp
+ * tracks 4+5) hold until the settler earns them in play - the scene-only veteran stamp
  * (`gatherMasteryExperience`) deliberately does NOT apply here.
  */
-describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates', () => {
+describe.runIf(hasRealIr())('authored decoded-map humans - gathering XP gates', () => {
   it('a fresh authored collector cannot dig iron until it earns the clay/stone repeats', async () => {
     const { merge } = await loadContentUnderTest();
     const map = grassMap(MAP_CELLS);
@@ -53,7 +53,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
     expect(sim.world.get(collector, Settler).jobType).toBe(JOB_COLLECTOR);
     expect(sim.world.get(collector, Settler).experience.size).toBe(0); // spawns fresh, no veteran stamp
 
-    // Plant iron beside the unit and flag it there — the gate must keep the deposit untouched.
+    // Plant iron beside the unit and flag it there - the gate must keep the deposit untouched.
     const ironSpec = GATHERERS.find((g) => g.good === GOOD_IRON);
     expect(ironSpec).toBeDefined();
     if (ironSpec === undefined) return;

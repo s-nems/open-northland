@@ -156,7 +156,7 @@ describe('gui stage', () => {
   });
 
   it('drops only a malformed stringn line, not the bare strings that follow it', async () => {
-    // A non-numeric `stringn` id must NOT poison the running id — otherwise every following bare `string`
+    // A non-numeric `stringn` id must NOT poison the running id - otherwise every following bare `string`
     // (the shipped tables are long auto-incrementing runs) would be silently lost.
     await writeGame(
       join('Data', 'text', 'eng', 'strings', 'ingamegui', 'ingameguimain.cif'),
@@ -171,7 +171,7 @@ describe('gui stage', () => {
     );
     await convertGuiStrings({ game, mod: undefined }, out, ['eng']);
     const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
-    expect(eng.main['0']).toBe('AfterBad'); // survived — the bad stringn didn't NaN-poison the counter
+    expect(eng.main['0']).toBe('AfterBad'); // survived - the bad stringn didn't NaN-poison the counter
     expect(eng.main['5']).toBe('Ok');
     expect(Object.values(eng.main)).not.toContain('Bad'); // only the malformed line itself is gone
   });
@@ -215,8 +215,8 @@ describe('gui stage', () => {
 
 /**
  * `liftPaletteShadows` arithmetic invariant (the window-body "cracked black" fix). This pins the pure
- * math — every entry ends at or above the near-black floor, entries already above the floor are untouched,
- * and hue is preserved on a mid entry — so the sampled-percentile intent can't silently regress; the actual
+ * math - every entry ends at or above the near-black floor, entries already above the floor are untouched,
+ * and hue is preserved on a mid entry - so the sampled-percentile intent can't silently regress; the actual
  * fidelity (does the wood match the original) stays a human visual call per plan step 3.
  */
 describe('liftPaletteShadows', () => {

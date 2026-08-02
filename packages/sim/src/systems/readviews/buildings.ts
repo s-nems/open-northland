@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-/** The stable content id of the start building a fortress-style map opens with — the seat's
+/** The stable content id of the start building a fortress-style map opens with - the seat's
  *  headquarters. Both the AI's per-seat HQ resolver and the combat siege-priority classifier
  *  ({@link buildingCombatClass}) key on it. Lives here (the building read views) because it is a
  *  building content fact, not an AI-only constant. */
@@ -25,7 +25,7 @@ export function buildingCombatClass(ctx: SystemContext, buildingType: number): B
   return 'other';
 }
 
-/** Whether `t` is a low-priority (`'other'`) building — the autofocus fallback tier. A settler, an HQ,
+/** Whether `t` is a low-priority (`'other'`) building - the autofocus fallback tier. A settler, an HQ,
  *  or a tower is NOT low-priority; the two-pass target search prefers those and drops to this tier only
  *  when none is in sight. A non-building entity is never low-priority. */
 export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t: Entity): boolean {
@@ -34,11 +34,11 @@ export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t:
 }
 
 /**
- * Whether a building TYPE is the barracks — the house a settler drills at to become a soldier. The
+ * Whether a building TYPE is the barracks - the house a settler drills at to become a soldier. The
  * original's `logicmaintype 4` (LEARN) class holds exactly two houses ({@link BUILDING_KIND.training}),
  * and the barracks is the one that employs anybody: `logicworker 24 4` (four haulers keeping its arsenal
  * stocked) against the school's none. A structural signature like {@link isTemple}'s, because the field
- * that names the difference outright — `logicSchoolSize`, 25 at the barracks against the school's 5 — is
+ * that names the difference outright - `logicSchoolSize`, 25 at the barracks against the school's 5 - is
  * readable but not carried into the IR yet (docs/tickets/features/barracks-training.md).
  */
 export function isBarracksType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
@@ -56,16 +56,16 @@ export function isBarracks(world: World, ctx: SystemContext, building: Entity): 
 }
 
 /**
- * Whether a building is a temple — the satisfier site for the piety need (where a settler runs the `pray`
+ * Whether a building is a temple - the satisfier site for the piety need (where a settler runs the `pray`
  * atomic). The original's "work temple" (`logichousetype` `logictype 37`, the `HOUSE_TYPE_WORK_TEMPLE`
  * constant) is a `logicmaintype 3` workplace that, unlike a real production workplace, declares no
- * `logicworker`, no `logicstock`, no `logicproduction` — so it surfaces in the IR as `kind === 'workplace'`
+ * `logicworker`, no `logicstock`, no `logicproduction` - so it surfaces in the IR as `kind === 'workplace'`
  * with an empty `workers`, empty `stock`, and no `recipes`. That "workplace with nothing to make and no one to
  * staff it" shape is how a temple is told apart from a sawmill/mill.
  *
  * Approximated: the temple→pray need→satisfier link lives below the readable rule files (the original binds
  * the religious building to the pray slot at the engine level, not in `houses.ini`), so the satisfier is
- * inferred from this structural signature — like the food→eat-slot binding ({@link isFood}) is inferred from
+ * inferred from this structural signature - like the food→eat-slot binding ({@link isFood}) is inferred from
  * the `food_` id prefix. Refine to a content flag if the building→need binding is later decoded. Cross-system:
  * the AI pray-drive planner uses it to find the nearest temple to walk to.
  */

@@ -28,10 +28,10 @@ export type WorkSeatClaims = Map<Entity, number>;
  * the workshop, fetch a missing input, haul an output out, then loiter by the door with nothing left to do.
  *
  * Source basis: that a workshop stops on a full product slot and resumes once a unit leaves is observed
- * original behavior. A craftsman making its own trip is source-permitted — every craft trade in
+ * original behavior. A craftsman making its own trip is source-permitted - every craft trade in
  * `jobtypes.ini` carries `baseatomics 6` (the civilist block), which grants the pickup/pileup atomics
- * 22/23, so the baker holds them exactly as the carrier does. What is NOT decoded is trip scheduling —
- * who goes first when both a craftsman and a bound carrier could make the run — so the rung order here
+ * 22/23, so the baker holds them exactly as the carrier does. What is NOT decoded is trip scheduling -
+ * who goes first when both a craftsman and a bound carrier could make the run - so the rung order here
  * (seat, then blocked shelf, then input, then output) stays a named approximation. So does sending a
  * craftsman whose ware the shelf cannot start out for its input at all ({@link workSeatCount}); nothing
  * decoded says whether the original's restricted craftsman leaves or waits inside.
@@ -68,7 +68,7 @@ export function planProducer(
   // still serves the shop. The output haul below stays merged either way.
   const supply = own.length === 0 ? recipe : mergeRecipes(own);
 
-  // The nearest source of a missing input — a store that holds it (fetch) OR a shared utility that mints
+  // The nearest source of a missing input - a store that holds it (fetch) OR a shared utility that mints
   // it (draw, e.g. cranking the well for water), whichever is closer.
   const source = nearestMissingInputSource(
     targets.stockpileCells,
@@ -92,7 +92,7 @@ export function planProducer(
   // serves the settlement, so it may not return before the output stock fills.
   if (haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
-  // no production — it may loiter beside the door rather than stand on it.
+  // no production - it may loiter beside the door rather than stand on it.
   loiterByDoor(plan, workplace, spacing, false);
 }
 
@@ -106,8 +106,8 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
-  // The carrier tops the input slots toward CAPACITY, from the nearest source of each — a store (fetch)
-  // or a shared utility it cranks itself (draw), whichever is closer — before hauling output out.
+  // The carrier tops the input slots toward CAPACITY, from the nearest source of each - a store (fetch)
+  // or a shared utility it cranks itself (draw), whichever is closer - before hauling output out.
   const restockToCapacity = true;
   const source = nearestMissingInputSource(
     targets.stockpileCells,
@@ -129,7 +129,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
 
   if (haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A carrier that is itself the workplace's operator (a well's lone carrier draws its water) must keep
-  // standing ON the door so the ProductionSystem's presence gate still fires — it is never "bored". A
+  // standing ON the door so the ProductionSystem's presence gate still fires - it is never "bored". A
   // carrier at a workshop run by other operators (a mill's miller) drives nothing, so it may loiter beside.
   loiterByDoor(plan, workplace, spacing, isWorkplaceOperator(world, ctx, workplace, worker.jobType));
 }
@@ -161,21 +161,21 @@ function routeToInputSource(
   );
 }
 
-/** Stand ON the workplace's door and step inside — an operator holding a work seat (it drives the
+/** Stand ON the workplace's door and step inside - an operator holding a work seat (it drives the
  *  ProductionSystem's presence gate, and the render hides a settler that has gone in). */
 function holdInsideWorkplace(plan: PlannerContext, workplace: Entity): void {
   const { world, ctx, terrain, entity, here } = plan;
   enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here));
 }
 
-/** Loiter visibly BESIDE the workplace door — a player-owned bound worker with nothing to do this tick
+/** Loiter visibly BESIDE the workplace door - a player-owned bound worker with nothing to do this tick
  *  (no seat, no input to fetch, no output to haul). Unlike {@link holdInsideWorkplace} it never stands on
  *  the door (so it neither runs the craft nor hides indoors) and never steps inside: the settler
  *  waits in the default standing pose next to its workplace, the user-directed "bored by the door" look.
- *  Once in place it may strike up an idle chat with a nearby fellow idler (the bottom-rung gossip — bored
+ *  Once in place it may strike up an idle chat with a nearby fellow idler (the bottom-rung gossip - bored
  *  crews chatter at their doors; the Chat fence hands it back the moment real work reappears).
  *  Unowned economy/golden fixtures keep the original wait-inside behaviour (walk to the door and step
- *  in) so their state hashes stay byte-identical — the loiter spread is a player-facing polish,
+ *  in) so their state hashes stay byte-identical - the loiter spread is a player-facing polish,
  *  and only owned units carry the {@link Owner} the spacing machinery gates on. */
 function loiterByDoor(
   plan: PlannerContext,

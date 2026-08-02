@@ -3,7 +3,7 @@
 **Area:** sim · **Focus:** movement/settlers · **Priority:** P3
 
 The footprint eviction pass now refuses to LAND a displaced settler on a building's door node or on a
-sealed nook (a walkable cell whose every orthogonal neighbour is walk-blocked) — see
+sealed nook (a walkable cell whose every orthogonal neighbour is walk-blocked) - see
 `nearestFreeCellOutside` in `packages/sim/src/systems/movement/evict.ts` and `buildingDoorNodes` in
 `systems/footprint/blocked.ts`. The idle spacing drives still can: `deStackIdle`'s `nearestFreeCell`
 and `loiterCell`'s yard scan (`systems/settlers/drives/spacing.ts`) accept any unblocked unoccupied cell, so a
@@ -16,12 +16,12 @@ Apply the same two target rules to both drives: exclude `buildingDoorNodes` (loi
 excludes only its OWN anchor) and require at least one unblocked orthogonal neighbour. Both sets are
 already built per planner tick in `PlannerSpacing` consumers, so memoise them on `PlannerSpacing`
 beside its `blockedCells()` view. Keep canonical search order; expect no golden movement unless a scenario actually
-rests a unit on a door/nook (if one moves, that is the intended behavior change — name it in the
+rests a unit on a door/nook (if one moves, that is the intended behavior change - name it in the
 commit). Test like `evict.test.ts`'s nook cases: a stack beside a doored/U-walled fixture must fan
 out onto open cells only.
 
 The rest-spot rung (`systems/settlers/drives/rest-spot.ts` `isOpenGround`) has a third version of the
-"require an unblocked neighbour" clearance — for choosing where a tired settler lies down. There are
+"require an unblocked neighbour" clearance - for choosing where a tired settler lies down. There are
 now three "where may a unit come to rest" rules in the tree: `evict.ts`, the two drives this ticket
 names, and rest-spot. The BFS underneath them is already shared (`ringSearch`, `nav/ring-search.ts`);
 what is still duplicated is the `accept` predicate each one passes it, so fold those onto one shared

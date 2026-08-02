@@ -16,7 +16,7 @@ import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell
- * placements — every tree, stone, bush, mine decal and animated wave) into the renderer's
+ * placements - every tree, stone, bush, mine decal and animated wave) into the renderer's
  * {@link MapObjectSprite}s. Each placement's `EditName` joins onto the `landscapeGfx` IR table
  * (the full `[GfxLandscape]` extract) for its body atlas (`/bobs/<stem>.<palette>.*`), its frame
  * list and its animation flags; the join and the atlases both live in the gitignored `content/`,
@@ -33,14 +33,14 @@ export interface MapObjectsData {
 
 /**
  * Which `GfxFrames` state list a placement's 1-based `lmlv` level picks. The level counts what
- * remains/has grown — level 1 is the lowest state (sapling / near-depleted deposit / rubble wall) and
- * level N the highest (full-grown / full deposit / intact) — while the record's lists are authored
+ * remains/has grown - level 1 is the lowest state (sapling / near-depleted deposit / rubble wall) and
+ * level N the highest (full-grown / full deposit / intact) - while the record's lists are authored
  * highest-first (a tree's full-grown state first, a clay deposit's 74×51 full pile before its 32×18
  * dregs), so the index is `N − level`. Pinned by calibration-by-observation on the bridge-map corpus:
  * the north forest is `lmlv=3` throughout and the original draws it full-grown (an isolated lmlv=3
  * cypress matches the full-grown frame at 0.99 vs 0.84/0.87 for the younger states), and the deposit
  * records' big-to-small list order matches level-as-remaining (source basis "Landscape-object
- * layer"). Any out-of-range level — including the wall "intact" sentinel `100` — falls back to the
+ * layer"). Any out-of-range level - including the wall "intact" sentinel `100` - falls back to the
  * first (full) list. Pure.
  */
 export function stateIndexForLevel(level: number, stateCount: number): number {
@@ -58,7 +58,7 @@ async function loadLayerOrNull(key: string, shadowStem?: string): Promise<Sprite
   }
 }
 
-/** The decoded human bone-pile records — the resting `cadaver human bones` states of `ls_skeletons.bmd`
+/** The decoded human bone-pile records - the resting `cadaver human bones` states of `ls_skeletons.bmd`
  *  (each a single still frame). The render effects layer draws one at each death, so a battlefield leaves
  *  the same bones the original's cadaver landscape objects do (the map viewer shows them on `cn_0`). */
 const HUMAN_BONES_EDIT_NAMES = ['cadaver human bones01', 'cadaver human bones02', 'cadaver human bones03'];
@@ -91,26 +91,26 @@ export async function loadCombatBones(
 /**
  * Resolve every placed object into a render-ready {@link MapObjectSprite}:
  *
- *  - **frames** — the `GfxFrames` state list the placement's `lmlv` level picks
+ *  - **frames** - the `GfxFrames` state list the placement's `lmlv` level picks
  *    ({@link stateIndexForLevel}), each bob id resolved through the atlas manifest (0×0 frames
  *    dropped). A record with `loopAnimation` plays the whole list at the sim tick rate (waves,
  *    swaying trees, fire); a static record shows the list's first frame.
  *  - **paint order**: {@link drawsAsFlatDecor} draws under the entity sprites; everything else
  *    depth-sorts against settlers by its feet anchor, or by {@link deckFarRow} where that row is
  *    wrong.
- *  - **position** — the half-cell `(hx, hy)` projected onto the plain half-cell lattice
- *    (`halfCellToScreen` — the `emla` grid the original places on; no row stagger at this level).
- *  - **phase** — a slow spatial gradient (`hx + hy`), so a looping bob's neighbours stay within a
+ *  - **position** - the half-cell `(hx, hy)` projected onto the plain half-cell lattice
+ *    (`halfCellToScreen` - the `emla` grid the original places on; no row stagger at this level).
+ *  - **phase** - a slow spatial gradient (`hx + hy`), so a looping bob's neighbours stay within a
  *    frame of each other (the wave sheet reads as continuous) while the surface drifts across the map
- *    instead of pulsing as one identical stamp (the map stores no per-object phase — source basis).
+ *    instead of pulsing as one identical stamp (the map stores no per-object phase - source basis).
  *
- * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
+ * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped - a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
  *
  * Returns the sprites plus a placement-ordinal → sprite map (`byPlacement`, keyed by triplet index in
  * `objects.placements`): the join the `?map=` entry uses to hand a first-worked resource node's static
- * sprite over to the live sim pool (`WorldRenderer.removeMapObject`). Every placement — harvestable or
- * decor — draws here; the sim pool skips the virgin harvestables via the static-refs set instead.
+ * sprite over to the live sim pool (`WorldRenderer.removeMapObject`). Every placement - harvestable or
+ * decor - draws here; the sim pool skips the virgin harvestables via the static-refs set instead.
  */
 export interface LoadedMapObjects {
   readonly sprites: MapObjectSprite[];
@@ -120,7 +120,7 @@ export interface LoadedMapObjects {
 /**
  * Body + shadow frames of one state's bob-id list, resolved in one pass so the pair stays
  * index-aligned across the 0×0-frame drops (the shadow set parallels the body's bob ids; a pose
- * without a silhouette holds `undefined`). Null when no body frame survives — the caller falls
+ * without a silhouette holds `undefined`). Null when no body frame survives - the caller falls
  * back to another state or the placeholder.
  */
 export function pairedStateFrames(
@@ -151,7 +151,7 @@ export async function loadMapObjects(
       recordByName.set(row.editName, row);
     }
   }
-  // The logicType ids whose objects stay full-bright (trees — the measured exemption).
+  // The logicType ids whose objects stay full-bright (trees - the measured exemption).
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
   // Resolve each used type once: its record, atlas layer (+ its shadow twin, keyed by the record's
   // `shadowBmd`), frame list and decor split.
@@ -190,7 +190,7 @@ export async function loadMapObjects(
      *  {@link footprintBrightness} grades it against. */
     readonly walkFootprint: readonly FootprintCell[];
   }
-  // One ResolvedType per (type, state list) — index [typeIndex][stateIndex]; empty lists collapse
+  // One ResolvedType per (type, state list) - index [typeIndex][stateIndex]; empty lists collapse
   // to null so a placement whose state resolves nothing falls back to state 0 below.
   const resolved: (ResolvedType | null)[][] = objects.types.map((type) => {
     const record = recordByName.get(type);
@@ -260,10 +260,10 @@ export async function loadMapObjects(
       // objects (`frames.length <= 1`) ignore phase, so this only staggers looping bobs.
       phase: hx + hy,
       // Translucency (the waves' watery blend, the ferns' feathered edges) is the Double8Bit bobs'
-      // per-pixel alpha, baked into the atlas by the pipeline — no flat per-object opacity remains.
+      // per-pixel alpha, baked into the atlas by the pipeline - no flat per-object opacity remains.
       // Named approximation: the engine's alpha blit folds the shade into the pixel alpha
       // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` colour multiplier below
-      // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
+      // with the baked alpha unchanged - identical at neutral shade, divergent on embr-shaded cells.
       ...(shade !== undefined ? { brightness: footprintBrightness(shade, hx, hy, type.walkFootprint) } : {}),
     };
     out.push(sprite);

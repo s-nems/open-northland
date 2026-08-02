@@ -1,11 +1,11 @@
 /**
  * URL query-param helpers shared by the app entries (`?zoom` / `?speed` / `?cols` / `?seed` / `?ticks`)
  * and the menu↔game navigation. The one home for `window.location.search` handling, so an entry never
- * re-declares its own copy (the parsers used to drift — `?cols` demanded `> 0`, `?seed`/`?ticks` allowed
+ * re-declares its own copy (the parsers used to drift - `?cols` demanded `> 0`, `?seed`/`?ticks` allowed
  * `>= 0`; that split is now the `min` argument of {@link intParam}).
  */
 
-/** The player-facing settings that carry between the menu and a running game — kept across a scene/map
+/** The player-facing settings that carry between the menu and a running game - kept across a scene/map
  *  switch (menu → game, {@link import('../entries/menu/settings.js').targetSearch}) and a quit back to
  *  the menu ({@link menuSearch}). Everything else (the entry selector `scene`/`map`/…) is dropped. */
 export const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'progression', 'debug'] as const;
@@ -51,7 +51,7 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
 }
 
 /**
- * Parse `?ai=<seat>[,<seat>...]` — the seats to hand to the strategic AI player (`setPlayerAi`) when a
+ * Parse `?ai=<seat>[,<seat>...]` - the seats to hand to the strategic AI player (`setPlayerAi`) when a
  * map starts. A verification-oriented hook for watching the AI play on a real map; the durable
  * flag-vacant-seats flow is docs/tickets/features/vacant-seat-ai-player.md. Malformed entries are
  * dropped; an absent param means no AI seats.

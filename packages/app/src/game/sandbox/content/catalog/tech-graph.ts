@@ -31,10 +31,10 @@ import {
 } from '../../ids/index.js';
 
 /**
- * The sandbox tribe's `jobEnables` tech graph — what the sim's `buildingEnabled`/`goodEnabled`/`jobEnabled`
+ * The sandbox tribe's `jobEnables` tech graph - what the sim's `buildingEnabled`/`goodEnabled`/`jobEnabled`
  * gate reads. Each edge means a settler of `jobType` being alive in the tribe unlocks `targetId`.
  *
- * Source basis: a faithful subset of the extracted viking `tribetypes.ini jobEnables` (ir.json) — every edge
+ * Source basis: a faithful subset of the extracted viking `tribetypes.ini jobEnables` (ir.json) - every edge
  * below is a real viking edge, restricted to the collector's economy edges, the husbandry gates, and the two
  * soldier specializations the sandbox models (not the full 265-edge graph). The collector/soldier rows reuse
  * the original typeIds; the husbandry rows resolve against the sandbox's own good ids and rebased slot jobs.
@@ -55,9 +55,9 @@ const COLLECTOR_GATED_HOUSES: readonly number[] = [
 ];
 
 /** The map-gathered goods gated on the collector (real ir.json `jobEnablesGood 8 <good>`). Gating a good gates
- *  its production recipe, not its harvest — inert in the sandbox (no recipe outputs these) but the faithful
+ *  its production recipe, not its harvest - inert in the sandbox (no recipe outputs these) but the faithful
  *  shape. The food-chain goods are left ungated here: water is ungated in ir.json too, but wheat/flour/bread
- *  are really gated on the farmer/miller/baker — an approximation, since the sandbox omits those enable-jobs. */
+ *  are really gated on the farmer/miller/baker - an approximation, since the sandbox omits those enable-jobs. */
 const COLLECTOR_GATED_GOODS: readonly number[] = [GOOD_WOOD, GOOD_STONE, GOOD_IRON, GOOD_GOLD, GOOD_MUSHROOM];
 
 /** The husbandry chain's gates (real ir.json `jobEnablesGood`): the HUNTER unlocks the animal products

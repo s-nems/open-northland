@@ -6,7 +6,7 @@ import { tribeStocks } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The stocks read model — `tribeStocks` sums each good a tribe holds across all its stores (any
+ * The stocks read model - `tribeStocks` sums each good a tribe holds across all its stores (any
  * `Building` carrying a `Stockpile`). It is the goods half of the HUD read model (`tribePopulation`
  * is the population half): a pure, deterministic derived view, no mechanic added. Determinism is
  * covered by the addition-commutes argument (a sum is order-independent); these tests pin the
@@ -80,7 +80,7 @@ describe('tribeStocks', () => {
     expect(stocks.get(PLANK)).toBe(4);
   });
 
-  it('is per-tribe — another tribe’s stock is not counted', () => {
+  it('is per-tribe - another tribe’s stock is not counted', () => {
     const sim = new Simulation({ seed: 1, content: stocksContent() });
     placeStore(sim, VIKING, new Map([[WOOD, 10]]));
     placeStore(sim, OTHER_TRIBE, new Map([[WOOD, 99]]));
@@ -93,6 +93,6 @@ describe('tribeStocks', () => {
     const sim = new Simulation({ seed: 1, content: stocksContent() });
     placeStore(sim, VIKING, new Map([[WOOD, 0]])); // a slot with capacity but nothing in it
     const stocks = tribeStocks(sim.world, VIKING);
-    expect(stocks.get(WOOD)).toBe(0); // present as 0, not undefined — a consumer filters if it wants
+    expect(stocks.get(WOOD)).toBe(0); // present as 0, not undefined - a consumer filters if it wants
   });
 });

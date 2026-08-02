@@ -22,13 +22,13 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 /**
  * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (historical plan phase 3). A wood node is FELLED, not gathered
  * unit-by-unit: the collector chops it down over `chopsToFell` swings (each yielding NOTHING onto its
- * back), then the tree falls — the standing node is removed, its whole `yieldPerNode` yield drops at
+ * back), then the tree falls - the standing node is removed, its whole `yieldPerNode` yield drops at
  * its cell as a bare {@link GroundDrop} trunk pile, and a {@link Stump} decor is left behind. The
  * collector then carries the trunk off to a store (multiple trips at a 1-unit on-foot carry). Goods
  * are conserved: nothing is created or lost by the tree coming down.
  *
  * The felling constants come from CONTENT (the wood good's `gathering.chopsToFell`/`yieldPerNode`,
- * OBSERVED calibration values — source basis), read here so the tests carry no magic literals.
+ * OBSERVED calibration values - source basis), read here so the tests carry no magic literals.
  */
 
 const WOOD = 1;
@@ -36,7 +36,7 @@ const WOODCUTTER = 1; // fixture job allowed the wood harvest atomic (24)
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
-// The felling spec the sim stamps onto a fellable node — read from the fixture, not hardcoded.
+// The felling spec the sim stamps onto a fellable node - read from the fixture, not hardcoded.
 const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gathering;
 const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
@@ -80,7 +80,7 @@ function trunkPile(sim: Simulation): Entity | undefined {
 }
 
 /** Total materialised wood in the world: every stockpile's wood + every carried wood load. The
- *  conservation yardstick — before the tree falls this is 0, after it is exactly the tree's yield. */
+ *  conservation yardstick - before the tree falls this is 0, after it is exactly the tree's yield. */
 function totalWood(sim: Simulation): number {
   let total = 0;
   for (const e of sim.world.query(Stockpile)) total += sim.world.get(e, Stockpile).amounts.get(WOOD) ?? 0;
@@ -91,7 +91,7 @@ function totalWood(sim: Simulation): number {
   return total;
 }
 
-describe('felling — chopping a tree down', () => {
+describe('felling - chopping a tree down', () => {
   it('the fixture pins a real felling spec (chops + yield both positive)', () => {
     expect(CHOPS_TO_FELL).toBeGreaterThan(0);
     expect(TREE_WOOD_YIELD).toBeGreaterThan(0);
@@ -119,7 +119,7 @@ describe('felling — chopping a tree down', () => {
 
     for (let i = 0; i < CHOPS_TO_FELL; i++) chopOnce(sim, cutter, tree);
 
-    // The standing node is gone entirely — the planner never re-scans a depleted stump-to-be.
+    // The standing node is gone entirely - the planner never re-scans a depleted stump-to-be.
     expect(sim.world.has(tree, Resource)).toBe(false);
     expect(sim.world.has(tree, Felling)).toBe(false);
     // A trunk pile holding the WHOLE yield sits at the node's cell, marked GroundDrop.
@@ -157,12 +157,12 @@ describe('felling — chopping a tree down', () => {
       node: tree,
       goodType: WOOD,
       amount: TREE_WOOD_YIELD,
-      at: { hx: 4, hy: 0 }, // half-cell node of tile (2,0) — every event `at` is a node
+      at: { hx: 4, hy: 0 }, // half-cell node of tile (2,0) - every event `at` is a node
     });
   });
 });
 
-describe('felling — ground drop cleanup', () => {
+describe('felling - ground drop cleanup', () => {
   it('a GroundDrop trunk is reaped once a pickup empties it', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const pile = sim.world.create();
@@ -186,7 +186,7 @@ describe('felling — ground drop cleanup', () => {
     expect(sim.world.get(cutter, Carrying).amount).toBe(1); // the unit moved onto the collector
   });
 
-  it('a bare loose HEAP (no GroundDrop marker) is ALSO reaped once emptied — no zombie zero-heap', () => {
+  it('a bare loose HEAP (no GroundDrop marker) is ALSO reaped once emptied - no zombie zero-heap', () => {
     // A gatherer-yard / player-dropped heap carries no marker; when a pickup drains it, it must vanish like a
     // trunk does (a lingering {WOOD:0} heap would mis-render as a flag and read as "free but unfillable").
     const sim = new Simulation({ seed: 1, content: testContent() });
@@ -210,7 +210,7 @@ describe('felling — ground drop cleanup', () => {
     expect(sim.world.get(cutter, Carrying).amount).toBe(1);
   });
 
-  it('a persistent STORE (a Building warehouse) is NOT reaped when emptied — it stays open for deposits', () => {
+  it('a persistent STORE (a Building warehouse) is NOT reaped when emptied - it stays open for deposits', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const store = sim.world.create();
     sim.world.add(store, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -234,7 +234,7 @@ describe('felling — ground drop cleanup', () => {
   });
 });
 
-describe('felling — the planner fell-vs-collect split', () => {
+describe('felling - the planner fell-vs-collect split', () => {
   it('a collector standing on its fresh trunk picks the wood up rather than walking to a distant tree', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     // A collectable trunk right under the woodcutter, a standing tree far to the right.
@@ -247,7 +247,7 @@ describe('felling — the planner fell-vs-collect split', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // It started a pickup of the trunk it stands on — not a MoveGoal toward the far tree.
+    // It started a pickup of the trunk it stands on - not a MoveGoal toward the far tree.
     expect(sim.world.has(cutter, MoveGoal)).toBe(false);
     const atomic = sim.world.get(cutter, CurrentAtomic);
     expect(atomic.effect.kind).toBe('pickup');
@@ -268,9 +268,9 @@ describe('felling — the planner fell-vs-collect split', () => {
   });
 });
 
-describe('felling — end-to-end through the real schedule', () => {
+describe('felling - end-to-end through the real schedule', () => {
   it('a woodcutter fells a tree and delivers exactly its yield to the store; goods are conserved', () => {
-    // Strip: woodcutter@0, a fellable tree@3, a warehouse store@4 (a real typed store — a delivery sink
+    // Strip: woodcutter@0, a fellable tree@3, a warehouse store@4 (a real typed store - a delivery sink
     // must be a Building/Vehicle, never a bare loose pile).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
     makeWoodcutter(sim, 0, 0);

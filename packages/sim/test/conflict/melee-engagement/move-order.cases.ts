@@ -14,7 +14,7 @@ import { attackUnit, moveUnit } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
 
-describe('a player order is authoritative — it overrides the autonomous drives (economy AND auto-combat)', () => {
+describe('a player order is authoritative - it overrides the autonomous drives (economy AND auto-combat)', () => {
   it('moveUnit drops a soldier’s Engagement/AttackOrder so the order supersedes the fight', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
@@ -23,8 +23,8 @@ describe('a player order is authoritative — it overrides the autonomous drives
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(a, Engagement)).toBe(true); // it is fighting (advancing on the enemy)
 
-    // The player orders it to walk AWAY (the far cell's anchor node — command coords are half-cell
-    // nodes) — the order clears the combat state and stamps the move + hold.
+    // The player orders it to walk AWAY (the far cell's anchor node - command coords are half-cell
+    // nodes) - the order clears the combat state and stamps the move + hold.
     const away = cellAnchorNode(9, 0);
     moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: away.hx, y: away.hy });
     expect(sim.world.has(a, Engagement)).toBe(false); // the fight is dropped
@@ -36,19 +36,19 @@ describe('a player order is authoritative — it overrides the autonomous drives
   it('the CombatSystem does not re-engage a unit under a move order, even with an enemy IN REACH', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const a = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, { owner: P0 });
-    fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 }); // adjacent — would auto-attack without the order
+    fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 }); // adjacent - would auto-attack without the order
 
     const away = cellAnchorNode(9, 0); // command coords are half-cell nodes
     moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: away.hx, y: away.hy });
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(a, CurrentAtomic)).toBe(false); // no swing — the order wins over the adjacent enemy
+    expect(sim.world.has(a, CurrentAtomic)).toBe(false); // no swing - the order wins over the adjacent enemy
     expect(sim.world.has(a, Engagement)).toBe(false); // and it is not dragged back into engagement
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // still carrying the order out
     expect(sim.world.has(a, MoveGoal)).toBe(true);
   });
 
-  it('an explicit attackUnit order still engages — the OPPOSITE intent is honoured, not suppressed', () => {
+  it('an explicit attackUnit order still engages - the OPPOSITE intent is honoured, not suppressed', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const a = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, { owner: P0 });
     const target = fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 });
@@ -56,7 +56,7 @@ describe('a player order is authoritative — it overrides the autonomous drives
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target });
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(a, PlayerOrder)).toBe(false); // attackUnit clears a move order — the two are exclusive
+    expect(sim.world.has(a, PlayerOrder)).toBe(false); // attackUnit clears a move order - the two are exclusive
     expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target });
   });
 

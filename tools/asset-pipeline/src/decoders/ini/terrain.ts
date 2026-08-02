@@ -17,14 +17,14 @@ import {
 /**
  * Extracts `[GfxPattern]` sections from `Data/engine2d/inis/patterns/pattern.cif` (`.cif`-only, with
  * CamelCase keys + a CamelCase section header like {@link extractLandscapeGraphics}) into validated
- * {@link GfxPattern} IR — the texture→cell binding for the triangle-mesh terrain (927 records). Each
+ * {@link GfxPattern} IR - the texture→cell binding for the triangle-mesh terrain (927 records). Each
  * pattern names a `text_NNN.pcx` ground texture, the two triangles' 6-int UV tuples (`GfxCoordsA`/
  * `GfxCoordsB`) and a `LogicType` ({@link TrianglePatternType.type} cross-ref; `0` = the misc/border
  * tiles that classify to no logic type).
  *
  * Unlike the throw/skip extractors, this keeps every record and never drops or reorders one: the
  * record has no explicit id, so {@link GfxPattern.id} is its 0-based position and a map references a
- * pattern by that index — skipping a malformed record would renumber the rest. The visual fields are
+ * pattern by that index - skipping a malformed record would renumber the rest. The visual fields are
  * therefore read defensively (a wrong-arity coord set → `undefined` via {@link getIntTuple}) rather than
  * aborting the offline batch, so even a degenerate record still occupies its positional slot. The `id`
  * counter advances only on a matched section, so it stays the pattern index even if other section kinds
@@ -56,7 +56,7 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
  * Extracts the `[transition]` ground-overlay records from `transitions.cif` into validated
  * {@link GfxPatternTransition} IR (38 records in the real data). Each record carries its RGB
  * texture + separate alpha-mask picture and six repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
- * lines — kept in file order because a map lane's `value % 6` selects the pair positionally.
+ * lines - kept in file order because a map lane's `value % 6` selects the pair positionally.
  * The sibling `[pointtype]` sections (editor grouping metadata) are not extracted. Like
  * {@link extractPatterns}, every matched record keeps its positional {@link GfxPatternTransition.index}
  * and reads visual fields defensively (a wrong-arity coord line is dropped, not fatal).

@@ -9,7 +9,7 @@ export const AtomicBinding = z.strictObject({
 export type AtomicBinding = z.infer<typeof AtomicBinding>;
 
 /**
- * One tech-graph edge from `tribetypes` `jobEnables<Kind> <jobType> <targetId>` — having a settler
+ * One tech-graph edge from `tribetypes` `jobEnables<Kind> <jobType> <targetId>` - having a settler
  * of `jobType` in the tribe unlocks a target the tribe can then produce/build/train/use. The four
  * source keys (`jobEnablesGood`/`jobEnablesHouse`/`jobEnablesJob`/`jobEnablesVehicle`) differ only in
  * what kind of id the target is, so they unify into one record discriminated by `kind`; the target
@@ -34,17 +34,17 @@ export type JobEnables = z.infer<typeof JobEnables>;
 
 /**
  * One experience requirement from `tribetypes` `{need,train}for{job,good} <targetId> <amount>
- * <expType> [expType2]` — the experience-threshold half of progression, sitting under the
+ * <expType> [expType2]` - the experience-threshold half of progression, sitting under the
  * {@link JobEnables} who-unlocks-it gate. Two orthogonal dimensions:
  *
- * - `requirement`: `need` (`needfor*` — the XP the settler must already have accrued to unlock the
- *   target) vs `train` (`trainfor*` — the schooling time/XP to acquire it at a training house, paid
+ * - `requirement`: `need` (`needfor*` - the XP the settler must already have accrued to unlock the
+ *   target) vs `train` (`trainfor*` - the schooling time/XP to acquire it at a training house, paid
  *   in a synthetic "school" experience type, not a real work track).
- * - `target`: `job` (`*forjob` — the unlocked job id) vs `good` (`*forgood` — the unlocked good id).
+ * - `target`: `job` (`*forjob` - the unlocked job id) vs `good` (`*forgood` - the unlocked good id).
  *
  * `experienceTypes` mostly name `humanjobexperiencetypes` `typeId`s, but they span an id space wider
- * than that 70-entry table — `need` lines reach 72/73/75 and `train` lines pay in synthetic "school"
- * markers (observed 57/77), none of which are in the experience table — so they are captured but
+ * than that 70-entry table - `need` lines reach 72/73/75 and `train` lines pay in synthetic "school"
+ * markers (observed 57/77), none of which are in the experience table - so they are captured but
  * deliberately not cross-validated. Kept in source order.
  */
 export const JobRequirementKind = z.enum(['need', 'train']);
@@ -55,7 +55,7 @@ export type JobRequirementTarget = z.infer<typeof JobRequirementTarget>;
 export const JobRequirement = z.strictObject({
   /** `need` (XP already accrued) vs `train` (schooling), from the `need`/`train` key prefix. */
   requirement: JobRequirementKind,
-  /** `job` vs `good`, from the `forjob`/`forgood` key suffix — which table `targetId` indexes. */
+  /** `job` vs `good`, from the `forjob`/`forgood` key suffix - which table `targetId` indexes. */
   target: JobRequirementTarget,
   /** The unlocked target id, keyed within `target`'s type table (the first int). */
   targetId: TypeId,
@@ -76,11 +76,11 @@ export const TribeType = z.strictObject({
    * at the content boundary; `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
    */
   hitpoints: z.number().int().nonnegative().default(0),
-  /** `setatomic` bindings in file order — a tribe's atomic→animation vocabulary, per job. */
+  /** `setatomic` bindings in file order - a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
-  /** `jobEnables*` tech-graph edges in file order — what each job unlocks for the tribe. */
+  /** `jobEnables*` tech-graph edges in file order - what each job unlocks for the tribe. */
   jobEnables: z.array(JobEnables).default([]),
-  /** `{need,train}for{job,good}` XP/schooling requirements in file order — the gate's threshold half. */
+  /** `{need,train}for{job,good}` XP/schooling requirements in file order - the gate's threshold half. */
   jobRequirements: z.array(JobRequirement).default([]),
   source: Provenance.optional(),
 });
@@ -109,10 +109,10 @@ export type AtomicEvent = z.infer<typeof AtomicEvent>;
  * animations, so absent names aren't dangling.
  */
 export const AtomicAnimation = z.strictObject({
-  /** Filesystem-safe slug of `name`. Display-only — it lowercases, so resolve `setatomic` bindings
+  /** Filesystem-safe slug of `name`. Display-only - it lowercases, so resolve `setatomic` bindings
    *  against `name`, not `id`. */
   id: z.string(),
-  /** The animation's exact name — the resolvable key referenced by `tribetypes` `setatomic`. */
+  /** The animation's exact name - the resolvable key referenced by `tribetypes` `setatomic`. */
   name: z.string(),
   /** Duration in animation ticks (`length`). */
   length: z.number().int().nonnegative().default(0),

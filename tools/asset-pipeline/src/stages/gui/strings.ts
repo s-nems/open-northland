@@ -33,7 +33,7 @@ export interface GuiStringsResult {
 
 /**
  * Decodes the nine `ingamegui*.cif` UI string tables for each language into one `content/gui/strings/<lang>.json`
- * of `{ <table>: { <stringId>: <displayText> } }` — the display id is not the container slot id but the
+ * of `{ <table>: { <stringId>: <displayText> } }` - the display id is not the container slot id but the
  * running string id, and the text is CP1250 display text ({@link decodeCifStringTable}, shared with the
  * map folders' `strings.cif`). A missing table warns-and-skips (that table is simply absent from the
  * language's JSON); a language with no tables at all is skipped entirely.
@@ -61,7 +61,7 @@ export async function convertGuiStrings(
       tableCount++;
       stringCount += Object.keys(byId).length;
     }
-    if (tableCount === 0) continue; // no tables for this language — emit nothing
+    if (tableCount === 0) continue; // no tables for this language - emit nothing
     const path = join(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
     await writeJsonFile(outDir, path, tables);
     done.push({ lang, path, tables: tableCount, strings: stringCount });

@@ -32,7 +32,7 @@ export function expectJobRolesMatchTheOldBands(content: ContentSet): void {
   }
 }
 
-/** The job typeIds of each role the content declares, ascending — so a suite can prove its coverage
+/** The job typeIds of each role the content declares, ascending - so a suite can prove its coverage
  *  instead of passing vacuously on a content set with no fighters at all. */
 export function jobRoleIds(content: ContentSet): {
   soldiers: number[];

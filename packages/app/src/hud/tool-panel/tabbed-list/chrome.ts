@@ -19,15 +19,15 @@ import type { TabbedListItem, TabbedListLayout, TabbedListRow } from './model.js
 /** How a tabbed-list window draws, and where each text run sits. Separate from the controller, which
  *  keeps only state, input and lifecycle. */
 
-/** Text sizes (design px) — a larger title/tab heading over the body-size list rows. */
+/** Text sizes (design px) - a larger title/tab heading over the body-size list rows. */
 const TITLE_PX = 13;
 const TAB_PX = 11;
 const ROW_PX = 11;
-/** Approx. cap height (design px) of the body text — used to vertically centre a run in a chrome rect. */
+/** Approx. cap height (design px) of the body text - used to vertically centre a run in a chrome rect. */
 const TEXT_CAP_H = 10;
 /** Left inset (design px) of a row label inside its button-card. */
 const ROW_INSET_X = 8;
-/** Vertical inset (design px) of a card inside its row slot — the gap that separates the cards. */
+/** Vertical inset (design px) of a card inside its row slot - the gap that separates the cards. */
 const CARD_INSET_Y = 2;
 /** Design-px inset of the headline strip inside the window frame (so the frame reads around it). */
 const HEADLINE_INSET = 2;
@@ -44,7 +44,7 @@ export interface TabbedListLayers {
   readonly runs: TextRun[];
 }
 
-/** The card plate inside a row slot — inset vertically so consecutive cards read as separate plates. */
+/** The card plate inside a row slot - inset vertically so consecutive cards read as separate plates. */
 export function cardRect(row: TabbedListRow<unknown>, scale: number): Rect {
   return {
     x: row.rect.x,

@@ -25,7 +25,7 @@ import { stampPost } from './support.js';
  */
 
 const SCOUT = 27;
-const SOLDIER = 31; // a fighter trade — exempt from confinement
+const SOLDIER = 31; // a fighter trade - exempt from confinement
 const HUNTER = 15; // exempt like the scout - bounded by its work flag, never the signpost network
 const P0 = 0;
 
@@ -57,7 +57,7 @@ function ordered(sim: Simulation, e: Entity): boolean {
   return sim.world.has(e, MoveGoal) || sim.world.has(e, PlayerOrder);
 }
 
-describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
+describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
   it('defaults OFF: a civilian walks anywhere', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(128, 8) });
     const u = ownedUnit(sim, 2, 2, 1);
@@ -66,7 +66,7 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
     expect(ordered(sim, u)).toBe(true);
   });
 
-  it('ON: a goal beyond the local circle is refused — the settler stays put', () => {
+  it('ON: a goal beyond the local circle is refused - the settler stays put', () => {
     const sim = confinedSim();
     const u = ownedUnit(sim, 2, 2, 1);
     sim.enqueue({ kind: 'moveUnit', entity: u, x: 4 + 2 * LOCAL_NAV_RADIUS_NODES, y: 4 });
@@ -97,7 +97,7 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
   it('ON: a reachable signpost group extends the walkable area to its circles', () => {
     const sim = confinedSim();
     const u = ownedUnit(sim, 2, 2, 1);
-    // Post A at tile 12 (24 nodes east — the local circle's rim) links the settler to the network;
+    // Post A at tile 12 (24 nodes east - the local circle's rim) links the settler to the network;
     // post B at tile 26 (28 nodes past A, overlapping at radius 16) carries it further east.
     stampPost(sim, 12, 2, 16);
     stampPost(sim, 26, 2, 16);
@@ -110,7 +110,7 @@ describe('setSignpostNavigation + moveUnit — the confinement rule', () => {
   it('ON: a disconnected far group does NOT open a corridor', () => {
     const sim = confinedSim(192);
     const u = ownedUnit(sim, 2, 2, 1);
-    // A lone far post whose circle covers the goal — but no chain reaches it from the settler.
+    // A lone far post whose circle covers the goal - but no chain reaches it from the settler.
     stampPost(sim, 60, 2, 16);
     sim.enqueue({ kind: 'moveUnit', entity: u, x: 120, y: 4 });
     sim.step();
@@ -186,10 +186,10 @@ describe('confinement gates the gatherer scan', () => {
     sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
     const g = makeWoodcutter(sim, 2, 2);
     sim.world.add(g, Owner, { player: P0 });
-    // A tree 40 tiles east — far beyond the 12-tile local circle.
+    // A tree 40 tiles east - far beyond the 12-tile local circle.
     const tree = placeFellableTree(sim, 42, 2);
     for (let t = 0; t < 30; t++) sim.step();
-    expect(sim.world.has(g, MoveGoal)).toBe(false); // no known way to any work — idles
+    expect(sim.world.has(g, MoveGoal)).toBe(false); // no known way to any work - idles
     expect(sim.world.get(tree, Resource).remaining).toBeGreaterThan(0);
 
     // A chain of two posts bridges the local circle to the tree's ground.

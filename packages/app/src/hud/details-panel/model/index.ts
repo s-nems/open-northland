@@ -199,7 +199,7 @@ export function buildUnitPanelModel(
     // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
     // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
     const young = comps.Age !== undefined;
-    // Whether the experience tree gates THIS settler (an AI-owned unit is never gated) — read once for
+    // Whether the experience tree gates THIS settler (an AI-owned unit is never gated) - read once for
     // the work menus and the unlock forecast.
     const progressionGated = progressionGatesSettler(snapshot, ent);
     // A child's age in years, read off the sim's measured tick↔year rate (adulthood at 12 years ends the

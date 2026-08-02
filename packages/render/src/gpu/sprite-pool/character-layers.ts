@@ -6,9 +6,9 @@ import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
  * Resolve a per-job settler character's layers: the job's own body frame plus one stable head overlay
- * per individual (picked by entity id — ids are monotonic, never reused — so a crowd shows varied faces
+ * per individual (picked by entity id - ids are monotonic, never reused - so a crowd shows varied faces
  * without per-frame flicker, the render-side analogue of the original's per-individual random head).
- * The head may resolve through its OWN binding (the head-borrow case — a carry variant whose head bobs
+ * The head may resolve through its OWN binding (the head-borrow case - a carry variant whose head bobs
  * are empty plays the base walk's head instead).
  */
 export function resolveCharacterLayers(
@@ -36,7 +36,7 @@ export function resolveCharacterLayers(
   const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(char.body.atlas, bob);
   if (bodyFrame !== null) {
-    // atlasW/H ride along for the paletted mesh path — see ResolvedLayer.
+    // atlasW/H ride along for the paletted mesh path - see ResolvedLayer.
     layers.push({
       source: char.body.source,
       frame: bodyFrame,

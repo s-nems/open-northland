@@ -7,28 +7,28 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Unit tests for the PlannerSystem harvest planner's `needforgood` XP-THRESHOLD gate — the *who-may-do-it*
+ * Unit tests for the PlannerSystem harvest planner's `needforgood` XP-THRESHOLD gate - the *who-may-do-it*
  * progression gate, the per-settler sibling of the production-side tribe-presence `jobEnablesGood`
  * gate. A settler may only harvest a resource whose harvested good its accrued XP clears (`needforgood
  * <good> <amount> <expType…>`); a settler that hasn't reached the threshold won't even pick the node.
  *
- * The shared fixture's only `needforgood` is on PLANK (good 2) — never a harvestable good — so it
+ * The shared fixture's only `needforgood` is on PLANK (good 2) - never a harvestable good - so it
  * leaves the harvest planner inert. To exercise the gate we inject a `needforgood` on WOOD (the
  * fixture's one harvestable good) into the in-memory IR: producing/harvesting wood (good 1) needs 20
- * REPEATS of the wood track (typeId 1, factor 10 — 200 raw XP). The woodcutter accrues that very
- * track by harvesting wood, so the gate is self-consistent — a fresh woodcutter is held out until
+ * REPEATS of the wood track (typeId 1, factor 10 - 200 raw XP). The woodcutter accrues that very
+ * track by harvesting wood, so the gate is self-consistent - a fresh woodcutter is held out until
  * pre-seeded XP clears it.
  */
 
 const WOOD = 1;
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
-const WOOD_FACTOR = 10; // that track's experienceFactor — raw XP per completed harvest repeat
+const WOOD_FACTOR = 10; // that track's experienceFactor - raw XP per completed harvest repeat
 const WOODCUTTER = 1;
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
 /**
- * A content set whose viking tribe gates harvesting WOOD behind `needforgood 1 20 [1]` — a 20-repeat
+ * A content set whose viking tribe gates harvesting WOOD behind `needforgood 1 20 [1]` - a 20-repeat
  * wood-track threshold on a harvestable good (the shared fixture only thresholds PLANK, which is never
  * harvested). The IR is plain post-parse data, so a test may author the requirement directly.
  */
@@ -69,7 +69,7 @@ function woodAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-describe('PlannerSystem harvest planner — needforgood XP-threshold gate', () => {
+describe('PlannerSystem harvest planner - needforgood XP-threshold gate', () => {
   it('does not target a wood node when the settler is below the wood threshold', () => {
     const sim = new Simulation({ seed: 1, content: woodGatedContent(), map: grassMap(4, 1) });
     const cutter = woodcutterAt(sim, 0, 0, 20 * WOOD_FACTOR - 1); // one raw XP short of 20 repeats
@@ -103,7 +103,7 @@ describe('PlannerSystem harvest planner — needforgood XP-threshold gate', () =
       ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
     });
 
-    // Cleared: the planner heads for the (distant) node — a MoveGoal toward the wood cell.
+    // Cleared: the planner heads for the (distant) node - a MoveGoal toward the wood cell.
     expect(sim.world.has(cutter, MoveGoal)).toBe(true);
   });
 

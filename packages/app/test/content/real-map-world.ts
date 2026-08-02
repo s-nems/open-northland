@@ -14,11 +14,11 @@ import { grantAssistantDefaults } from '../../src/view/assistant-grants.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
- * The one headless build of a REAL decoded map — the same chain `entries/map.ts` assembles for
+ * The one headless build of a REAL decoded map - the same chain `entries/map.ts` assembles for
  * `?map=<id>&ai=<seats>&fog=<mode>` (real merged content → collision terrain → {@link runAuthoredSlice}
  * → fog → AI seats → their assistant grants → map objects). Shared by the real-content scenario tests
  * and the real-map benchmark so neither drifts from the browser boot the way two copies would. Only
- * the render half is skipped, and `?speed=` with it — speed multiplies the RAF loop, not the sim.
+ * the render half is skipped, and `?speed=` with it - speed multiplies the RAF loop, not the sim.
  */
 
 /** The seed the browser's vertical slice runs on (`SLICE_SEED` in `entries/map.ts`). */
@@ -39,7 +39,7 @@ export interface RealMapWorldOptions {
 
 export interface RealMapWorld {
   readonly sim: Simulation;
-  /** The raw fetched-IR document, exactly what the browser flow hands these consumers — callers assert
+  /** The raw fetched-IR document, exactly what the browser flow hands these consumers - callers assert
    *  against real ids (building typeIds, good ids) through it rather than inlining decoded numbers. */
   readonly ir: ContentIr & AuthoredJoinRows;
   /** The map's size in visual CELLS, not the half-cell nodes `sim.terrain` is indexed in. */
@@ -50,7 +50,7 @@ export function realMapPath(mapId: string): string {
   return resolve(contentDir(), `maps/${mapId}.json`);
 }
 
-/** Build the world. Throws when the map is absent or resolves no authored placements — a run that
+/** Build the world. Throws when the map is absent or resolves no authored placements - a run that
  *  silently started on an empty world would report a clean bill of health it never earned. */
 export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMapWorld> {
   const { merge } = await loadContentUnderTest();
@@ -71,7 +71,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   // Each AI seat's assistant, so a headless run measures an economy that dresses itself like the browser's.
   // The entry also grants to the seat the person controls; a headless run has none.
   grantAssistantDefaults(sim, merge.content, options.aiSeats);
-  // The map's own trees/stone/clay as harvestable Resource nodes — the collectors flag themselves beside these.
+  // The map's own trees/stone/clay as harvestable Resource nodes - the collectors flag themselves beside these.
   spawnMapResources(sim, map.objects, ir);
   if (options.berryBushes === true) spawnMapBerryBushes(sim, map.objects, ir);
   return { sim, ir, mapCells: { width: map.width, height: map.height } };

@@ -23,14 +23,14 @@ import {
 
 /**
  * The DISH→EDIBLE conversion (`readviews/food.ts`): a good the original stocks only inside the house
- * that cooks it — bread, candy, meat, fish, fruit, sausage — leaves that house as `food_simple` /
+ * that cooks it - bread, candy, meat, fish, fruit, sausage - leaves that house as `food_simple` /
  * `food_extra`, the forms every warehouse and home actually holds. Fixture: good 7 = bread (a dish,
  * slotted only in building 21 = the kitchen), good 3 = food_simple, and the HQ holds food but never a
- * loaf. Without the conversion a dish is a dead end — no store can take it, so no carrier lifts it and
+ * loaf. Without the conversion a dish is a dead end - no store can take it, so no carrier lifts it and
  * the kitchen wedges at a full shelf with its staff idle, which is the reported bug.
  */
 describe('a dish leaves the kitchen as the edible it becomes', () => {
-  it('no store can hold the dish itself — the conversion is the only way out', () => {
+  it('no store can hold the dish itself - the conversion is the only way out', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0);
     const ctx = ctxOf(sim);
@@ -58,7 +58,7 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
   it('a baker with a full bread shelf carries one out instead of standing idle', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // The reported situation: the shelf is at the brim (5 loaves) with input on hand, so nothing can
-    // start until a loaf leaves. The HQ is the sink — for food, not for bread.
+    // start until a loaf leaves. The HQ is the sink - for food, not for bread.
     const kitchen = buildingAt(sim, KITCHEN, 0, 0, [
       [WOOD, 10],
       [BREAD, 5],
@@ -68,7 +68,7 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // It lifts the good the kitchen actually holds — the conversion happens when the swing completes.
+    // It lifts the good the kitchen actually holds - the conversion happens when the swing completes.
     const atomic = sim.world.get(baker, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'pickup', goodType: BREAD, amount: 1, from: kitchen });
@@ -92,12 +92,12 @@ describe('a dish leaves the kitchen as the edible it becomes', () => {
 
     const larder = sim.world.get(hq, Stockpile).amounts;
     const shelf = sim.world.get(kitchen, Stockpile).amounts;
-    // Loaves banked as food, and the freed shelf let the oven run again — the stall is gone.
+    // Loaves banked as food, and the freed shelf let the oven run again - the stall is gone.
     expect(larder.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
     expect(produced).toBeGreaterThan(0);
     expect(larder.get(BREAD) ?? 0).toBe(0); // the HQ never holds a loaf as a loaf
     // Amounts are conserved even though identity is not: every loaf ever baked is on the shelf, banked
-    // as one unit of food, or in flight on a carrier's back — none created, none lost in the swap.
+    // as one unit of food, or in flight on a carrier's back - none created, none lost in the swap.
     let inFlight = 0;
     for (const e of sim.world.query(Carrying)) {
       const load = sim.world.get(e, Carrying);

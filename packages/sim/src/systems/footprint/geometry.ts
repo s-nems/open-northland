@@ -8,11 +8,11 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
-// The footprint GEOMETRY primitives — node keys, node distance, footprint-cell translation and the
+// The footprint GEOMETRY primitives - node keys, node distance, footprint-cell translation and the
 // nearest-cell picks. The leaf of the footprint/ package (and of systems/ as a whole).
 
 /** Injective per-node key for a spatial set/bucket (integer node `x`,`y`). A string so a consumer with
- *  no terrain handle (hence no map width) can still key by node — and so a negative/off-map coordinate
+ *  no terrain handle (hence no map width) can still key by node - and so a negative/off-map coordinate
  *  can never alias onto a real node the way a numeric `y*width+x` packing would. Re-exported by
  *  spatial/nodes.ts (whose `NodeBuckets` keys with it); defined here because that module already
  *  imports from this package, keeping the leaf import graph acyclic. */
@@ -20,7 +20,7 @@ export function nodeKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
-/** Whether two cell sets hold exactly the same nodes — the blocked-set memo verifiers' held-vs-fresh
+/** Whether two cell sets hold exactly the same nodes - the blocked-set memo verifiers' held-vs-fresh
  *  compare (building/resource blocked caches, the work-flag blocked set). */
 export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
   if (a.size !== b.size) return false;
@@ -28,7 +28,7 @@ export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boole
   return true;
 }
 
-/** Integer Manhattan distance between two nodes — the cheap reach/nearness heuristic the AI planner,
+/** Integer Manhattan distance between two nodes - the cheap reach/nearness heuristic the AI planner,
  *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
  *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ../spatial/nodes.ts. */
 export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
@@ -38,12 +38,12 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
 }
 
 /**
- * Visit every offset at Manhattan distance exactly `radius` — for each `dy` in `[-radius, radius]` the
+ * Visit every offset at Manhattan distance exactly `radius` - for each `dy` in `[-radius, radius]` the
  * one or two columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 visits `(0, 0)` alone. The
  * shared ring-geometry step of every expanding Manhattan ring search (NodeBuckets.nearest, the
  * interaction-cell index, the yard/spill searches, work-flag placement); each caller keeps its own
- * bounds policy and per-node pick. Offsets come ascending `(dy, dx)` — ascending node id on the
- * row-major grid — but every current pick is order-independent (a min-id or a sort), so the order is
+ * bounds policy and per-node pick. Offsets come ascending `(dy, dx)` - ascending node id on the
+ * row-major grid - but every current pick is order-independent (a min-id or a sort), so the order is
  * pinned for reading, not load-bearing.
  */
 export function forEachRingOffset(radius: number, visit: (dx: number, dy: number) => void): void {
@@ -89,7 +89,7 @@ export function translatedCells(
   return out;
 }
 
-/** Compare nearest-candidate picks by distance, then canonical cell/node id — the one `(distance, id)`
+/** Compare nearest-candidate picks by distance, then canonical cell/node id - the one `(distance, id)`
  *  tie-break every nearest scan shares. Re-exported by spatial/nodes.ts. */
 export function closer(dist: number, cell: number, bestDist: number, bestCell: number): boolean {
   return dist < bestDist || (dist === bestDist && cell < bestCell);
@@ -140,7 +140,7 @@ export const ANCHOR_ONLY: readonly FootprintCell[] = Object.freeze([{ dx: 0, dy:
 /** The cells of `buildingType` that a work flag may not occupy, anchor-relative: its family body (a
  *  level-0 house reserves its top tier's space), or the bare anchor for a footprint-less type. One
  *  definition so the rule that REFUSES a flag here (`eachBlockerCell`'s OBSTACLE channel) and the
- *  push-out that CLEARS one from here (`evictWorkFlagsFromFootprint`) cannot drift apart — were they to,
+ *  push-out that CLEARS one from here (`evictWorkFlagsFromFootprint`) cannot drift apart - were they to,
  *  a placement would leave a flag on ground the plant rule rejects. */
 export function buildingFlagBody(content: ContentSet, buildingType: number): readonly FootprintCell[] {
   const fp = buildingFootprintOf(content, buildingType);
@@ -151,7 +151,7 @@ export function buildingFlagBody(content: ContentSet, buildingType: number): rea
  *  a region-index box query needs to cover it. See {@link reservedZoneOf}. */
 export interface ReservedZone {
   readonly zone: ReadonlySet<NodeId>;
-  /** Chebyshev bound of the reserved cells — the box `reach` a region-index `near` query must span to be a
+  /** Chebyshev bound of the reserved cells - the box `reach` a region-index `near` query must span to be a
    *  provable superset of the zone. */
   readonly reach: number;
 }

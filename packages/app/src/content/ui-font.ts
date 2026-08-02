@@ -1,15 +1,15 @@
 /**
- * The details panel's vector text face — a deliberate, named approximation of the original UI font.
+ * The details panel's vector text face - a deliberate, named approximation of the original UI font.
  *
  * The original game draws HUD text with a small (~10 px) bitmap `.fnt` face (decoded by the `fonts`
  * pipeline stage, drawn by `hud/bitmap-text.ts`), a transitional serif. At the panel's fractional UI
- * scale a 10 px bitmap has no sub-pixel detail to stay crisp — upscaling reads as the "postrzępiona"
- * (frayed) text the original bitmap path produced. So the details panel swaps it for Tinos — a
- * metric-compatible "Times"-class serif (Apache-2.0; see `public/fonts/LICENSE-Tinos.txt`) — rendered as
+ * scale a 10 px bitmap has no sub-pixel detail to stay crisp - upscaling reads as the "postrzępiona"
+ * (frayed) text the original bitmap path produced. So the details panel swaps it for Tinos - a
+ * metric-compatible "Times"-class serif (Apache-2.0; see `public/fonts/LICENSE-Tinos.txt`) - rendered as
  * vector Pixi text that stays sharp at any scale. The bitmap path stays for the tool-panel HUD.
  *
  * Coverage: the UI strings are Polish (CP1250-origin), so two woff2 subsets are registered under one family
- * — Latin (ASCII + Latin-1 + the punctuation range the tables use) and Latin-Extended (the Polish
+ * - Latin (ASCII + Latin-1 + the punctuation range the tables use) and Latin-Extended (the Polish
  * diacritics ą ć ę ł ń ó ś ź ż). The browser (and the canvas text raster Pixi uses) composes glyphs across
  * both faces of the family.
  */
@@ -37,7 +37,7 @@ interface FontSubset {
 }
 
 /**
- * The two Tinos subsets. `unicodeRange`s are the canonical Google-Fonts `latin` / `latin-ext` ranges — the
+ * The two Tinos subsets. `unicodeRange`s are the canonical Google-Fonts `latin` / `latin-ext` ranges - the
  * `latin` range already includes U+2000–206F (the em dash / ellipsis / curly quotes the string tables use),
  * so ASCII + Latin-1 + those punctuation marks come from `latin` and the Polish letters from `latin-ext`.
  */
@@ -60,14 +60,14 @@ export interface UiFont {
   readonly family: string;
 }
 
-/** The `document.fonts` methods used here — `add` is absent from this TS lib.dom revision though every browser ships it. */
+/** The `document.fonts` methods used here - `add` is absent from this TS lib.dom revision though every browser ships it. */
 type FontRegistry = { add(font: FontFace): void };
 
 let uiFontOnce: Promise<UiFont> | null = null;
 
 /**
  * Register the bundled Tinos subsets as one browser font family and resolve once they are ready to raster.
- * Memoized (several panels share the family). Degrades to the serif fallback stack — never throws — when
+ * Memoized (several panels share the family). Degrades to the serif fallback stack - never throws - when
  * the `FontFace` API is absent (headless test / SSR) or a subset fails to load, so a `Text` always renders.
  */
 export function loadUiFont(): Promise<UiFont> {

@@ -14,7 +14,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('productionSystem — gating', () => {
+describe('productionSystem - gating', () => {
   it('does not start a cycle when the input good is missing', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { mill } = sawmill(sim, [[WOOD, 0]]);
@@ -25,7 +25,7 @@ describe('productionSystem — gating', () => {
 
   it('does not produce while the workplace is still under construction (built < ONE)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // A staffed sawmill with its input present — but the building is still a construction site
+    // A staffed sawmill with its input present - but the building is still a construction site
     // (built < ONE). Its delivered build materials happen to include the recipe input (WOOD), yet an
     // unbuilt workplace must produce nothing: the build-completion gate, not an output-good accident.
     const { mill } = sawmill(sim, [
@@ -34,7 +34,7 @@ describe('productionSystem — gating', () => {
     ]);
     sim.world.get(mill, Building).built = fx.fromInt(0); // demote to under-construction
     for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(mill, Production)).toBe(false); // never started — site doesn't produce
+    expect(sim.world.has(mill, Production)).toBe(false); // never started - site doesn't produce
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (not raided)
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
 
@@ -47,7 +47,7 @@ describe('productionSystem — gating', () => {
 
   it('enforces per-good output capacity: no cycle starts when the output is full', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // Plank already at its cap (20) — no room for the +1 output, so production must not start
+    // Plank already at its cap (20) - no room for the +1 output, so production must not start
     // (and so must not consume the input either). This is the capacity enforcement.
     const { mill } = sawmill(sim, [
       [WOOD, 5],
@@ -77,11 +77,11 @@ describe('productionSystem — gating', () => {
 
   it('does not start a cycle when the output good is gated-out (jobEnablesGood, no enabling settler)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // Inputs present, output room free, carpenter operator on the tile — but NO woodcutter exists in
+    // Inputs present, output room free, carpenter operator on the tile - but NO woodcutter exists in
     // the tribe, and PLANK is gated by `jobEnablesGood 1 2`. So the tech-graph gate blocks production.
     const { mill } = sawmill(sim, [[WOOD, 5]], true, false);
     for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(mill, Production)).toBe(false); // gated out — never started
+    expect(sim.world.has(mill, Production)).toBe(false); // gated out - never started
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (no waste)
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
   });
@@ -92,7 +92,7 @@ describe('productionSystem — gating', () => {
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // blocked while the woodcutter is absent
 
-    // A woodcutter joins the tribe — the jobEnablesGood gate for PLANK now opens.
+    // A woodcutter joins the tribe - the jobEnablesGood gate for PLANK now opens.
     spawnSettler(sim, WOODCUTTER, 9, 9);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // produced once unlocked

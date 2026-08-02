@@ -8,7 +8,7 @@ import { ctxOf } from '../fixtures/context.js';
 
 /**
  * The planner's stranded-route recovery (see the block in systems/settlers/planner/replan.ts): a failed walk
- * is parked (Stranded — paced, not per-tick), then shed and re-planned; drives with their own failure
+ * is parked (Stranded - paced, not per-tick), then shed and re-planned; drives with their own failure
  * protocol keep their signal; an authoritative order ends the park at once.
  */
 
@@ -25,7 +25,7 @@ function strandOn(s: Simulation, e: Entity, goalTile: number): void {
   s.world.add(e, PathRequest, { start: anchorCell(s, 0, 0), goal, failed: true });
 }
 
-describe('plannerSystem — stranded-route recovery (a failed walk no longer freezes a settler)', () => {
+describe('plannerSystem - stranded-route recovery (a failed walk no longer freezes a settler)', () => {
   it('parks the failed route first (no per-tick retry), then sheds it and re-plans', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
@@ -37,7 +37,7 @@ describe('plannerSystem — stranded-route recovery (a failed walk no longer fre
     expect(s.world.get(e, PathRequest).failed).toBe(true); // …with the dead route kept as the marker
 
     for (let i = 0; i < 10; i++) s.step();
-    expect(s.world.has(e, Stranded)).toBe(true); // still parked mid-pace — no thrashing retries
+    expect(s.world.has(e, Stranded)).toBe(true); // still parked mid-pace - no thrashing retries
     expect(s.world.has(e, CurrentAtomic)).toBe(false);
 
     // After the retry pace it re-plans: the woodcutter walks off and starts chopping the tree.
@@ -50,14 +50,14 @@ describe('plannerSystem — stranded-route recovery (a failed walk no longer fre
     expect(s.world.has(e, Stranded)).toBe(false);
   });
 
-  it('a fresh move order ends the park at once — the marker never outlives the cancel', () => {
+  it('a fresh move order ends the park at once - the marker never outlives the cancel', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     strandOn(s, e, 3);
     s.step();
     expect(s.world.has(e, Stranded)).toBe(true); // parked
 
-    orderMove(s, e, 2, 0); // moveUnit clears PathRequest directly (keeps PathFollow) — Stranded must go too
+    orderMove(s, e, 2, 0); // moveUnit clears PathRequest directly (keeps PathFollow) - Stranded must go too
     s.step();
     expect(s.world.has(e, Stranded)).toBe(false); // no stale pacing left to skip the NEXT park
     expect(s.world.has(e, MoveGoal)).toBe(true); // and the ordered walk starts immediately
@@ -72,7 +72,7 @@ describe('plannerSystem — stranded-route recovery (a failed walk no longer fre
 
     plannerSystem(s.world, ctxOf(s));
 
-    expect(s.world.has(e, Stranded)).toBe(false); // not parked —
+    expect(s.world.has(e, Stranded)).toBe(false); // not parked -
     expect(s.world.get(e, PathRequest).failed).toBe(true); // the playerOrderSystem reads this itself
   });
 });

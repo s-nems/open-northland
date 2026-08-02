@@ -22,7 +22,7 @@ import {
 import { applyTradeChange } from './trade-change.js';
 
 /**
- * JobSystem (assignment half) — give an idle settler the job of an understaffed workplace it qualifies for,
+ * JobSystem (assignment half) - give an idle settler the job of an understaffed workplace it qualifies for,
  * and bind it to that specific building ({@link JobAssignment}).
  *
  * In Cultures a settler isn't born into a fixed trade: an unemployed colonist takes up an open job at a
@@ -30,22 +30,22 @@ import { applyTradeChange } from './trade-change.js';
  * binding it records is the single source of truth the AI planner reads (the walk-to-workplace drive heads for
  * the bound building; the staffs-here pin latches only on it).
  *
- * Two passes per settler, in canonical (ascending entity-id) order — the first open match wins, so the
+ * Two passes per settler, in canonical (ascending entity-id) order - the first open match wins, so the
  * assignment never depends on component-store insertion order (the AGENTS.md rule: a pick must be canonical):
- *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it staffs, and
+ *  1. **Adopt** - an already-employed settler with no binding that is standing on a workplace it staffs, and
  *     whose slots still have room, is bound to the building under its feet. This makes the binding
  *     authoritative for a settler spawned pre-employed onto its station. A gatherer that already works a
- *     flag is exempt ({@link worksAFlag}). **1b. Report in** — a loose carrier not standing
+ *     flag is exempt ({@link worksAFlag}). **1b. Report in** - a loose carrier not standing
  *     on a post takes the first open transport slot anywhere (see the pass 1b comment): the haul drive works
  *     only through a binding, so an unposted carrier would otherwise never work.
- *  2. **Assign** — an idle settler (`jobType === null`) is matched to the first open workplace, in canonical
+ *  2. **Assign** - an idle settler (`jobType === null`) is matched to the first open workplace, in canonical
  *     order, and bound to it. A workplace is open when all hold:
  *      - it is a same-tribe building whose type declares a `workers` slot (`logicworker <job> <count>`
- *        — {@link buildingWorkerJobs}),
+ *        - {@link buildingWorkerJobs}),
  *      - that worker job is understaffed at that building: fewer settlers are bound to this building for that
  *        job than the slot's `count` (per-building, so two same-type mills staff independently),
  *      - the building is tech-enabled for the tribe ({@link buildingEnabled}),
- *      - the worker job itself is tech-enabled for the tribe ({@link jobEnabled} — the `jobEnablesJob` gate: a
+ *      - the worker job itself is tech-enabled for the tribe ({@link jobEnabled} - the `jobEnablesJob` gate: a
  *        job a settler must already be present to unlock), and
  *      - the settler's accrued XP clears the job's `needforjob` threshold ({@link settlerMeetsNeed}).
  */
@@ -72,21 +72,21 @@ export const jobSystem: System = (world, ctx) => {
 
     // Wildlife never takes a trade: an animal is a permanently idle `jobType: null` Settler, so
     // without this skip every creature on a map re-scans every workplace's openness each tick
-    // (O(animals × buildings) — the RTS-scale budget). No opening could ever match anyway: no content
+    // (O(animals × buildings) - the RTS-scale budget). No opening could ever match anyway: no content
     // building carries an animal tribe, so the workplace-tribe match blocks (NOT the unlock gate - an
     // animal tribe's EMPTY tech graph gates nothing, `tribeUnlockEnabled` answers true).
     if (isAnimalTribe(ctx.content, settler.tribe)) continue;
 
     // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs
-    // it — employment would immediately send it walking beyond its allowed area. The adopt pass needs no
-    // gate (the building is under the settler's feet — inside its local circle by definition).
+    // it - employment would immediately send it walking beyond its allowed area. The adopt pass needs no
+    // gate (the building is under the settler's feet - inside its local circle by definition).
     const limit = terrain === undefined ? null : navigationLimitFor(world, ctx.content, terrain, e);
     const withinArea =
       limit === null || terrain === undefined
         ? undefined
         : (b: Entity): boolean => {
             const inode = interactionNodeOf(b);
-            if (inode === null) return true; // no resolvable cell — leave the openness gates to decide
+            if (inode === null) return true; // no resolvable cell - leave the openness gates to decide
             return limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y));
           };
     const query: OpeningsQuery = {
@@ -100,14 +100,14 @@ export const jobSystem: System = (world, ctx) => {
     };
 
     if (settler.jobType !== null) {
-      // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
+      // Pass 1 - adopt a pre-employed, unbound settler standing on a workplace it staffs.
       const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, query, settler.jobType);
       if (here !== null) {
         bind(world, ctx, staffing, e, here, settler.jobType);
       } else if (isCarrierJob(ctx, settler.jobType)) {
-        // Pass 1b — a loose carrier reports in: transport is worked only through an assignment (the planner's
+        // Pass 1b - a loose carrier reports in: transport is worked only through an assignment (the planner's
         // haul rung requires a binding), so an unbound carrier takes the first open transport slot in canonical
-        // building order. First-in-canonical-order is a named approximation — the original's posting rule isn't
+        // building order. First-in-canonical-order is a named approximation - the original's posting rule isn't
         // decoded, and nearest-post would need the spatial seam and can move goldens. Same openness gate as
         // every other assignment; no open slot means it stays loose and idle until one appears.
         const post = openPostFor(buildings, query, settler.jobType);
@@ -132,7 +132,7 @@ export const jobSystem: System = (world, ctx) => {
  * Whether the settler already has a post: a live work flag. A flag IS a gatherer's workplace (the
  * ground it works and delivers to), so the workshop doors it crosses hauling to and from that flag are
  * incidental. Without this test it is conscripted by whatever door it walks past that employs its
- * trade, and its patch goes unworked — the reported "collectors piling up in the pottery".
+ * trade, and its patch goes unworked - the reported "collectors piling up in the pottery".
  *
  * A pin ({@link setGatherGood}) is not required: the auto-planted flag every fresh gatherer carries
  * (`plantWorkFlagAtFeet`) is just as much a post as a pinned one.
@@ -166,10 +166,10 @@ function bind(
 }
 
 /**
- * The workplace a settler is standing on that it staffs — used to adopt a pre-employed, unbound
+ * The workplace a settler is standing on that it staffs - used to adopt a pre-employed, unbound
  * settler (bind it to the building under its feet). A candidate is a same-tribe same-tile {@link Building}
- * that works its workers — a `recipe` workplace (a producing workshop, not a passive store/HQ) or a farm
- * (producing a field-farmed good, {@link farmWorkGood}, with no recipe but a field loop) — whose `workers`
+ * that works its workers - a `recipe` workplace (a producing workshop, not a passive store/HQ) or a farm
+ * (producing a field-farmed good, {@link farmWorkGood}, with no recipe but a field loop) - whose `workers`
  * slots name `jobType` AND still have room for one ({@link jobUnderstaffed}). A gatherer that already works
  * a flag is never adopted ({@link worksAFlag}). The first such building in canonical order is the binding.
  * Returns the building or null.
@@ -179,7 +179,7 @@ function bind(
  * mirrors the AI staffs-here pin's predicate (recipe + worker-job + same tile), so the building adopted here is
  * the one the AI already holds the settler on. The capacity gate is the only openness rule this pass runs:
  * the tech/XP gates stay off (a map may author a settler onto a station it could not apply for), but a slot
- * count is an invariant — every other path respects it, and without it a workshop beside a busy walking
+ * count is an invariant - every other path respects it, and without it a workshop beside a busy walking
  * route accumulates unbounded staff.
  */
 function workplaceStaffedHereBy(
@@ -193,7 +193,7 @@ function workplaceStaffedHereBy(
   if (worksAFlag(world, settler)) return null;
   const sp = world.tryGet(settler, Position);
   if (sp === undefined) return null;
-  // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket
+  // Only the buildings whose interaction tile is the settler's own tile can be adopted - the bucket
   // already restricts to them (in ascending-id order), so the loop just applies the type gates.
   const spNode = nodeOfPosition(sp.x, sp.y);
   for (const b of buildingsByNode.at(spNode.hx, spNode.hy)) {

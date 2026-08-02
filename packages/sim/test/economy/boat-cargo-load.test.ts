@@ -17,12 +17,12 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * The cargo-LOAD gate for **boats as mobile stores** — the *load half* of the empty hull `placeBoat`
+ * The cargo-LOAD gate for **boats as mobile stores** - the *load half* of the empty hull `placeBoat`
  * sets up. A carrier deposits a hauled good into a placed {@link Vehicle} hull's {@link Stockpile}
  * exactly like a building store, but the per-good capacity is now read off the ship's `VehicleType`:
  *  - a good on the ship's `cargoGoods` (`logicgood`) allow-list gets the whole `stockSlots` hold
  *    capacity (it may ride),
- *  - a good NOT on the allow-list gets capacity 0 (refused — never deposited into the hull).
+ *  - a good NOT on the allow-list gets capacity 0 (refused - never deposited into the hull).
  *
  * This is `stockCapacity` gaining a Vehicle branch (`systems/stores.ts`); the existing
  * `nearestStoreFor` store scan + `pileup` deposit route through it unchanged, so the whole load path
@@ -35,11 +35,11 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 const WOOD = 1;
 const PLANK = 2;
-const CARRIER = 36; // fixture job with no allowedAtomics — it can only haul
+const CARRIER = 36; // fixture job with no allowedAtomics - it can only haul
 const SAWMILL = 2; // workplace: recipe wood->plank
 const VIKING = 1;
 const BOAT = 3; // a ship: passengers => isShipVehicle, allows PLANK only
-const HOLD = 1; // the boat's stockSlots — a tiny hold so the capacity cap is observable
+const HOLD = 1; // the boat's stockSlots - a tiny hold so the capacity cap is observable
 
 /** `testContent()` plus a single boat vehicle that carries PLANK (not WOOD) with a `HOLD`-slot hold. */
 function boatContent(): ContentSet {
@@ -50,7 +50,7 @@ function boatContent(): ContentSet {
   });
 }
 
-/** A carrier POSTED to `boundTo` (the hull's loader) — the haul rung works only through a binding. */
+/** A carrier POSTED to `boundTo` (the hull's loader) - the haul rung works only through a binding. */
 function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -75,7 +75,7 @@ function sawmillAt(sim: Simulation, x: number, y: number, planks: number): Entit
   return e;
 }
 
-/** Place a boat hull (Vehicle + empty Stockpile) directly — the post-`placeBoat` state. */
+/** Place a boat hull (Vehicle + empty Stockpile) directly - the post-`placeBoat` state. */
 function boatAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -84,7 +84,7 @@ function boatAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
+describe('boat cargo-load gate - stockCapacity over a Vehicle hull', () => {
   it('allows a carryable good up to the hold capacity, refuses a non-carryable good', () => {
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
     const boat = boatAt(sim, 0, 0);
@@ -98,7 +98,7 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
   it('a carrier hauls a carryable plank INTO the boat hull (deposited via the real schedule)', () => {
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
     const boat = boatAt(sim, 2, 0); // the only store that can take them
-    const carrier = carrierAt(sim, 0, 0, boat); // posted to the hull — its loader
+    const carrier = carrierAt(sim, 0, 0, boat); // posted to the hull - its loader
     const mill = sawmillAt(sim, 1, 0, 2); // 2 planks waiting
 
     let inHold = 0;
@@ -114,12 +114,12 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
     void carrier;
   });
 
-  it('does not over-fill the hold past its capacity — surplus stays at the source', () => {
+  it('does not over-fill the hold past its capacity - surplus stays at the source', () => {
     // 3 planks but a HOLD=1 hold: the boat takes exactly 1, the carrier keeps hauling but the hold is
     // full for plank so nothing more is deposited (no nowhere-else store -> the rest stays at the mill).
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
     const boat = boatAt(sim, 2, 0);
-    carrierAt(sim, 0, 0, boat); // posted to the hull — its loader
+    carrierAt(sim, 0, 0, boat); // posted to the hull - its loader
     const mill = sawmillAt(sim, 1, 0, 3);
 
     for (let i = 0; i < 200; i++) sim.step();
@@ -131,7 +131,7 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
   it('refuses a forbidden good directly even when a unit is already in the carrier-deposit path', () => {
     // A carrier standing ON the boat, already carrying WOOD (not on the allow-list): the deposit gate
-    // (`stockCapacity(boat, WOOD) === 0`) means the pileup atomic moves nothing — wood never enters the
+    // (`stockCapacity(boat, WOOD) === 0`) means the pileup atomic moves nothing - wood never enters the
     // hold. This is the allow-list refusal at the deposit seam. The carrier is unbound (not this boat's
     // loader), so with no sink for the wood it sets the load down rather than stand holding it forever.
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });

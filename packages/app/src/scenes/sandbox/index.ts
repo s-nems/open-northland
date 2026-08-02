@@ -40,12 +40,12 @@ import {
 const { Chat, Owner, Settler } = components;
 
 /**
- * The main sandbox scene: a compact, fully staffed viking settlement over a resource-gathering base — the
+ * The main sandbox scene: a compact, fully staffed viking settlement over a resource-gathering base - the
  * production inspection world. The village carries the FULL viking catalog (all 41 building types, every
  * level of every chain) packed to the placement rule's limits, every building staffed to its worker
  * capacity, and all three warehouse tiers pre-filled to their limits; gathering camps hug the village
  * (a forest, a quarry, a clay pit, iron and gold outcrops, a mushroom grove), each with per-gatherer
- * delivery flags and good-pinned bindings. The scene defines only placement — content, rules, and
+ * delivery flags and good-pinned bindings. The scene defines only placement - content, rules, and
  * controls stay in `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
  */
 
@@ -58,7 +58,7 @@ const MAP_H = 96;
  */
 export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
-/** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
+/** Enough for the slowest first delivery - a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
  *  carried to its flag, and banked. Measured: every headless check passes by tick 825 (deterministic,
  *  seed 41); 1200 keeps ~1.45× headroom. */
 const RUN_TICKS = 1200;
@@ -81,7 +81,7 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
         unitsScale: g.mode === 'mine' ? MINE_DEPOSIT_SCALE : 1,
       });
     }
-    // One flag per gatherer (the flag-click selection inverse is 1:1 — a flag resolves to its one
+    // One flag per gatherer (the flag-click selection inverse is 1:1 - a flag resolves to its one
     // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
     // (radius + good filter) and banks its harvest at its own flag (see spawnBoundGatherer).
     for (let i = 0; i < camp.gatherers; i++) {
@@ -97,7 +97,7 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
 }
 
 /**
- * The authored settlement — village + gathering camps — placed with its top-left tile at (`ox`,`oy`).
+ * The authored settlement - village + gathering camps - placed with its top-left tile at (`ox`,`oy`).
  * The scene builds one at the origin; the sim benchmark tiles several ({@link SANDBOX_SETTLEMENT_PITCH}
  * apart) to reach RTS-scale population off this one authored layout. ~72 settlers, 41 buildings.
  */
@@ -150,7 +150,7 @@ export const sandboxScene: SceneDefinition = {
     },
     {
       label: 'every gathering camp is being worked (its nodes are partly consumed)',
-      // Node depletion is the harvest witness — the banked heaps are the wrong one, because the village
+      // Node depletion is the harvest witness - the banked heaps are the wrong one, because the village
       // carriers legitimately haul them off to the stores as part of the living economy.
       predicate: (sim) => CAMPS.every((camp) => remainingUnits(sim, camp.good) < initialUnits(camp)),
     },
@@ -159,7 +159,7 @@ export const sandboxScene: SceneDefinition = {
       predicate: (sim) => CAMPS.some((camp) => yardGood(sim, camp.good) > 0),
     },
     {
-      label: 'bored crews chatter — some pair is mid-chat at the sampled tick (gossip runs needs-off)',
+      label: 'bored crews chatter - some pair is mid-chat at the sampled tick (gossip runs needs-off)',
       predicate: (sim) => {
         for (const _ of sim.world.query(Chat)) return true;
         return false;

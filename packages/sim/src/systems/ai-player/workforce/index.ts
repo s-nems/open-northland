@@ -28,11 +28,11 @@ export { builderJobOf } from './pool.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
 /**
- * The CollectResources module — the seat's one workforce allocator (user plan). Every adult
+ * The CollectResources module - the seat's one workforce allocator (user plan). Every adult
  * non-fighter man is classified against the live world, and the wanted roles are drawn out of the
  * spare pool in the priority order the returned array spells out: the essentials first, then the
- * tiers the surplus pays for — collector top-ups and the surplus staffing tier rank behind every
- * target post (user rule: extra collectors and the third farmer are of little use early) — and the
+ * tiers the surplus pays for - collector top-ups and the surplus staffing tier rank behind every
+ * target post (user rule: extra collectors and the third farmer are of little use early) - and the
  * garrison last of all. No second module ever races this one for a person. A transient conflict
  * with the live world self-heals on the next decision because every target is recomputed from
  * state, never remembered.
@@ -66,9 +66,9 @@ function runWorkforce(
   ];
 }
 
-/** The scout hire and retire: the scout exists exactly while signpost work remains — an idle scout turns back into a
+/** The scout hire and retire: the scout exists exactly while signpost work remains - an idle scout turns back into a
  *  builder; the lattice calls one up again when a post is missing. Only an UNMARRIED man is hired
- *  (user rule — a scout is away on a mission and its wife would wait forever); a married
+ *  (user rule - a scout is away on a mission and its wife would wait forever); a married
  *  scout already working is retired only through the normal idle path, never mid-post. A scout
  *  mid-action is left alone: `setJob` cancels the running atomic, so retiring one mid-meal would
  *  throw the meal away (see signpost-coverage.ts). */
@@ -89,7 +89,7 @@ function allocateScout(
     if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: keepScoutAs });
   }
   for (const [i, scout] of scouts.entries()) {
-    if (keepScoutAs !== null && i === 0) continue; // the working scout — keep
+    if (keepScoutAs !== null && i === 0) continue; // the working scout - keep
     if (world.has(scout, CurrentAtomic)) continue;
     if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue;
     if (builderJob !== null) commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
@@ -97,7 +97,7 @@ function allocateScout(
   return commands;
 }
 
-/** A module allocating against `order`'s collector gating — parameterized like `buildOrderModule`,
+/** A module allocating against `order`'s collector gating - parameterized like `buildOrderModule`,
  *  so tests drive it with fixture orders. */
 export function workforceModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {

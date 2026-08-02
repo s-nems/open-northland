@@ -5,7 +5,7 @@
 
 `navigationLimitFor` (`packages/sim/src/systems/signposts/network.ts`) centres the settler's LOCAL
 circle (`LOCAL_NAV_RADIUS_NODES`) on its CURRENT position, re-evaluated per query. Consequence (named
-in the code): the confinement is trivially bypassed by repeated in-circle hops — any goal ≤ 24 nodes
+in the code): the confinement is trivially bypassed by repeated in-circle hops - any goal ≤ 24 nodes
 away is always allowed, so a player can march a civilian anywhere in 12-tile steps, and an autonomous
 worker re-centres its circle every completed job and can drift arbitrarily far off the network.
 

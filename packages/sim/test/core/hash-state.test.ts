@@ -9,7 +9,7 @@ import { testContent } from '../fixtures/content.js';
 /**
  * `hashState()` is the determinism tripwire: any state a run can diverge in must move the hash.
  * String-typed component fields carry real state (an `AtomicEffect`'s `kind` discriminant,
- * `ChildOrder.child`), so these guard the branch that mixes them — without it two runs differing
+ * `ChildOrder.child`), so these guard the branch that mixes them - without it two runs differing
  * only in such a field hash identically and the divergence surfaces much later, somewhere else.
  */
 

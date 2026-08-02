@@ -53,7 +53,7 @@
   filter: saturate(0.82) contrast(1.06) sepia(0.08);
 }
 
-/* Scenes/tools (and a map mid-generation) carry no src — honour `hidden` so the frame's black
+/* Scenes/tools (and a map mid-generation) carry no src - honour `hidden` so the frame's black
    rectangle shows instead of the browser's broken-image glyph (the `display: block` above would
    otherwise beat the UA `[hidden]` rule). */
 .game-menu__preview[hidden] {

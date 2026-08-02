@@ -36,7 +36,7 @@ export function rebaseSlotJob(jobType: number): number {
 }
 
 /**
- * De-rebase a job id back to its raw `jobtypes.ini` id — the inverse of {@link rebaseSlotJob} for the ids
+ * De-rebase a job id back to its raw `jobtypes.ini` id - the inverse of {@link rebaseSlotJob} for the ids
  * it lifts (>= {@link WORKER_SLOT_JOB_BASE}), leaving the functional band (builder/collector/carrier/
  * soldiers, all < BASE) untouched. The single normalization seam so a job's role is classified in one id
  * space whether it arrived as a raw real-content id or a sandbox-rebased slot id.

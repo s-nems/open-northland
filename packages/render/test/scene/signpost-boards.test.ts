@@ -4,12 +4,12 @@ import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
  * Pins the board prepass to the half-cell seam: a post on an ODD row anchors at node `2c + 1`, so its
- * link decision must read that staggered node — a bare `c · 2` would place it half a cell west and draw
+ * link decision must read that staggered node - a bare `c · 2` would place it half a cell west and draw
  * boards the sim's confinement never granted.
  */
 
 const PLAYER = 1;
-/** Unequal radii summing to 11 nodes — unequal so the pair also proves the SUM is the reach, and 11 so
+/** Unequal radii summing to 11 nodes - unequal so the pair also proves the SUM is the reach, and 11 so
  *  that reach falls between the staggered and unstaggered node: at a 2-node row gap `withinNodeRadius`
  *  admits dx ≤ 10 nodes and rejects 11. */
 const RADIUS_A = 6;

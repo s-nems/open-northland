@@ -5,7 +5,7 @@ import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
  * The selection ring is a projection consumer too: it anchors at a unit's feet, so on a hill it must
- * ride the SAME elevation lift the sprite pool applies to the bob — else the ring floats on the flat
+ * ride the SAME elevation lift the sprite pool applies to the bob - else the ring floats on the flat
  * ground beneath the lifted unit. Pixi `Container`/`Graphics` construct without a GL context (geometry
  * + transform only), so the ring's world-space position is agent-checkable here.
  */

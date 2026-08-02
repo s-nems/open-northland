@@ -15,10 +15,10 @@ import {
 } from '../grammar.js';
 
 /**
- * Extracts `[atomicanimation]` sections into validated {@link AtomicAnimation} IR — the timing/effect
+ * Extracts `[atomicanimation]` sections into validated {@link AtomicAnimation} IR - the timing/effect
  * layer the atomic vocabulary points at. Each section is keyed by `name` (the join target of a tribe's
  * `setatomic` binding); `length`/`interruptable`/`startdirection` are scalars, and `event`/`eventx`
- * lines become ordered {@link AtomicEvent}s carrying their raw `(at, type, value?)` numbers — the event
+ * lines become ordered {@link AtomicEvent}s carrying their raw `(at, type, value?)` numbers - the event
  * vocabulary is undocumented and captured faithfully, not interpreted. Throws on a section without a
  * `name` (it would be unreferenceable), matching {@link extractGoods}'s throw-on-malformed stance.
  */
@@ -71,11 +71,11 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * Each `damagevalue <armorClass> <value>` line becomes one entry in the string-keyed `damage` record
  * (matching the original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
  * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked by `validateCrossReferences`).
- * `tribetype` is captured because a weapon's `type` id is not globally unique — the original keys a
+ * `tribetype` is captured because a weapon's `type` id is not globally unique - the original keys a
  * weapon by `(tribetype, type)`, so the same id recurs once per tribe (see {@link WeaponType}). The
  * class-enum fields (`mainType`, `munitiontype`, `damagetype`, `speed`) and the `goodtype`-0 sentinel
  * are documented at their field reads below and on {@link WeaponType}. Note `mainType` is the file's
- * exact camelCase key — a lowercased `maintype` would silently vanish (AGENTS.md). The combat extras
+ * exact camelCase key - a lowercased `maintype` would silently vanish (AGENTS.md). The combat extras
  * (`soundtype_*`, `createsmoke`) are not in the schema yet and are skipped. Throws
  * on a section missing the required numeric `type` (matches {@link extractGoods}).
  */
@@ -92,7 +92,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
       if (Number.isNaN(armorClass) || Number.isNaN(value)) continue;
       damage[String(armorClass)] = value;
     }
-    // `goodtype 0` is the natural-weapon sentinel (fist/claw — no craftable good); good ids start at
+    // `goodtype 0` is the natural-weapon sentinel (fist/claw - no craftable good); good ids start at
     // 1, so drop a 0 to `undefined` rather than let it dangle in the cross-ref (the armor class-0 /
     // damage["0"] = "unarmored" pattern, one axis over).
     const goodTypeRaw = getInt(sec, 'goodtype');
@@ -104,13 +104,13 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         tribeType: getInt(sec, 'tribetype'),
         mainType: getInt(sec, 'mainType'),
         weight: getInt(sec, 'weight'),
-        // `munitiontype` is all-lowercase in the source (unlike `mainType`) — the ammo class a ranged
+        // `munitiontype` is all-lowercase in the source (unlike `mainType`) - the ammo class a ranged
         // weapon fires (bow/catapult); absent on melee weapons, so it doubles as the "is ranged" marker.
         munitionType: getInt(sec, 'munitiontype'),
         // `speed` (all-lowercase) is the ranged projectile's travel speed (bow 8, catapult 3); like
         // `munitiontype` it is carried only by ranged rows and absent on melee weapons → undefined.
         speed: getInt(sec, 'speed'),
-        // `damagetype` is all-lowercase too — the damage class (siege marker, catapult-only, value 2);
+        // `damagetype` is all-lowercase too - the damage class (siege marker, catapult-only, value 2);
         // absent on every other weapon → undefined. A class enum, not a cross-ref (no other table).
         damageType: getInt(sec, 'damagetype'),
         minRange: getInt(sec, 'minimumrange'),
@@ -126,13 +126,13 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
 }
 
 /**
- * Extracts `[armortype]` sections (base `Data/logic/armortypes.ini` — plain `.ini` despite the
+ * Extracts `[armortype]` sections (base `Data/logic/armortypes.ini` - plain `.ini` despite the
  * `<CULTURES_CIF_BEGIN>` header line, which the parser ignores like `goodtypes`/`vehicletypes`; the
  * mod ships no readable twin) into validated {@link ArmorType} IR. An armor's `type` is the armor class
  * a {@link WeaponType.damage} record keys against (`damagevalue <armorClass> <value>`), so this table
- * makes those keys resolvable — the prerequisite the later CombatSystem read side joins on (a weapon's
+ * makes those keys resolvable - the prerequisite the later CombatSystem read side joins on (a weapon's
  * damage vs. a target's armor `blockingValue`). Captured per record: `mainType`, `goodType` (the good
- * that is the armor — cross-checked against the good table), `materialType`, `weight`, `blockingValue`.
+ * that is the armor - cross-checked against the good table), `materialType`, `weight`, `blockingValue`.
  * Throws on a section missing the required numeric `type` (matches {@link extractWeapons}).
  */
 export function extractArmor(sections: readonly RuleSection[], src: SourceRef): ArmorType[] {
@@ -159,15 +159,15 @@ export function extractArmor(sections: readonly RuleSection[], src: SourceRef): 
 }
 
 /**
- * Extracts `[vehicletype]` sections (base `Data/logic/vehicletypes.ini` — the mod ships no readable
+ * Extracts `[vehicletype]` sections (base `Data/logic/vehicletypes.ini` - the mod ships no readable
  * twin, and the file is plain `.ini` like `goodtypes`/`landscapetypes`) into validated
  * {@link VehicleType} IR. The carry capacity is `stockslots` (the param the later multi-good carrier
  * slice consumes); `passengerslots` and `logicsize` round out the type record. The per-vehicle
- * `logicgood` cargo allow-list is carried (the goodtypes a hold may hold — the `cargoGoods` filter
+ * `logicgood` cargo allow-list is carried (the goodtypes a hold may hold - the `cargoGoods` filter
  * the Sea/Northland boat-as-mobile-store consumes), read with {@link getIntList} since each
  * `logicgood N` is a repeated single-value line. The `logicpassenger` board-list, vector/slot
  * graphics (`stockvector`/`vehicleslots`), the draft-animal (`logicdragginganimaltribe`) and `debug*`
- * extras are still skipped — they belong with the later embark/transport + graphics slices, not this
+ * extras are still skipped - they belong with the later embark/transport + graphics slices, not this
  * type-table extract. Throws on a section missing the required numeric `type` (matches
  * {@link extractWeapons}'s throw-on-malformed stance).
  */
@@ -194,13 +194,13 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
 }
 
 /**
- * Extracts `[animaltype]` sections (base `Data/logic/animaltypes.ini` — plain `.ini` despite the
+ * Extracts `[animaltype]` sections (base `Data/logic/animaltypes.ini` - plain `.ini` despite the
  * `<CULTURES_CIF_BEGIN>` header line, like `armortypes`/`vehicletypes`; the mod ships no readable twin)
- * into validated {@link AnimalType} IR — the per-tribe behaviour of the non-controllable creature
+ * into validated {@link AnimalType} IR - the per-tribe behaviour of the non-controllable creature
  * tribes the civ-vs-animal combat slice consumes. Unlike every other type table, an animal record keys
  * on `tribetype` (the cross-ref into the tribe table), not `type`: the source has no `type` id and an
  * animal's identity is its owning tribe. A record missing `tribetype` is dropped (a couple of
- * leftover/disabled stubs in the real file carry none) — it cannot resolve to a tribe. This is the one
+ * leftover/disabled stubs in the real file carry none) - it cannot resolve to a tribe. This is the one
  * extractor that drops-on-missing-key rather than throwing ({@link extractWeapons}'s stance): here the
  * key is genuinely absent in real data (a disabled record), not malformed. The 0/1 flags become booleans
  * (`getInt(...) === 1`); the magnitude fields stay ints. The graphics/sound/spawn extras are skipped.
@@ -210,7 +210,7 @@ export function extractAnimals(sections: readonly RuleSection[], src: SourceRef)
   for (const sec of sections) {
     if (sec.name !== 'animaltype') continue;
     const tribeType = getInt(sec, 'tribetype');
-    if (tribeType === undefined) continue; // a disabled/leftover stub with no tribe key — can't resolve, drop it
+    if (tribeType === undefined) continue; // a disabled/leftover stub with no tribe key - can't resolve, drop it
     const name = getStr(sec, 'name');
     animals.push(
       AnimalType.parse({

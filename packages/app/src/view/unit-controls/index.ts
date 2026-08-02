@@ -16,37 +16,37 @@ import { createUnitTargets } from './unit-targets.js';
 export type { UnitControls, UnitControlsOptions } from './types.js';
 
 /**
- * The interactive unit-control layer — the RTS "select and command" input the human drives, wired on
+ * The interactive unit-control layer - the RTS "select and command" input the human drives, wired on
  * top of the pure picking math ({@link import('../picking.js')}) and the info panel
  * ({@link import('../../hud/details-panel/index.js')}). It is app-layer I/O (DOM + floats), reading the mouse/keyboard
  * and issuing sim **commands** through the one-way seam; it never touches sim state directly.
  *
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
- *  - **LPM click** — select the unit/building under the cursor (Shift adds to the selection).
+ *  - **LPM click** - select the unit/building under the cursor (Shift adds to the selection).
  *  - **Sign rows** - either button on a building's sign-chain row selects the settler the row stands
  *    for; only a direct PPM on the unit itself opens its action menu.
- *  - **LPM drag** — a marquee box; on release, select every owned unit whose feet fall inside it.
- *  - **PPM** on one of your own units — select it and bring up its action menu (the original's
- *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an enemy unit — order the
+ *  - **LPM drag** - a marquee box; on release, select every owned unit whose feet fall inside it.
+ *  - **PPM** on one of your own units - select it and bring up its action menu (the original's
+ *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an enemy unit - order the
  *    selected combatants to attack it (the `attackUnit` command: they chase and strike that target);
- *    **PPM** on the ground — order them to walk there (a group fans out into a formation cluster, a single
- *    unit goes exactly there — the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
+ *    **PPM** on the ground - order them to walk there (a group fans out into a formation cluster, a single
+ *    unit goes exactly there - the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
  *    original's RTS convention.
- *  - **Space** — toggle the original-art action menu around the selected settler
+ *  - **Space** - toggle the original-art action menu around the selected settler
  *    ({@link import('./action-ring/index.js')}): the full default menu in original art, of which only "change
  *    profession" is wired today (it opens a profession picker). The info card (needs / building state) is
- *    always shown bottom-right the moment something is selected — no keypress needed.
- *  - **Esc** — clear the selection.
+ *    always shown bottom-right the moment something is selected - no keypress needed.
+ *  - **Esc** - clear the selection.
  *
  * Only the human player's own units are pickable (the targets are pre-filtered by `Owner.player`), so a
  * drag never grabs wildlife or another player's settlers. Selection is client view state (a Set of ids),
- * fed each frame to the renderer's selection rings via {@link selectedIds} — never into the sim.
+ * fed each frame to the renderer's selection rings via {@link selectedIds} - never into the sim.
  */
 
 /** Shared empty id set (no per-call allocation when nothing is selected). */
 const EMPTY_IDS: ReadonlySet<number> = new Set();
 
-/** Equal membership of two id sets — tells whether a re-selection actually changed the selection. */
+/** Equal membership of two id sets - tells whether a re-selection actually changed the selection. */
 const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean => {
   if (a.size !== b.size) return false;
   for (const id of a) if (!b.has(id)) return false;
@@ -56,7 +56,7 @@ const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
-  // Bumped on every actual selection change — the memo key for the projections that read `selected`,
+  // Bumped on every actual selection change - the memo key for the projections that read `selected`,
   // which the snapshot identity alone cannot invalidate (a click re-selects within the same tick).
   let selectionVersion = 0;
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
@@ -98,7 +98,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: (id) => pickMode.armWorkplace(id),
     onAssignHome: (id) => pickMode.armHome(id),
-    // Remove-from-home needs no target — it acts on the settler's current home, so it enqueues directly
+    // Remove-from-home needs no target - it acts on the settler's current home, so it enqueues directly
     // (no pick mode, unlike assign-home).
     onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
     onSetGatherGood: (id, goodType) =>
@@ -138,7 +138,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   const marquee = createSelectionMarquee();
 
-  // The pickable target sets a click hit-tests against — owned units/buildings, enemy units, and the
+  // The pickable target sets a click hit-tests against - owned units/buildings, enemy units, and the
   // gatherers' work-flag proxies. See unit-targets.ts (they read only the snapshot + the injected render
   // frame data, so they live apart from the selection/order logic here).
   const unitTargets = createUnitTargets({
@@ -177,7 +177,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const changed = (): void => {
-    panel.render(opts.snapshot(), selected); // the info card is always-on — render reflects the new selection
+    panel.render(opts.snapshot(), selected); // the info card is always-on - render reflects the new selection
   };
 
   const setSelection = (ids: Iterable<number>, add: boolean): void => {
@@ -196,7 +196,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (!sameSelection(before, selected)) actions.close();
   };
 
-  // Clicking a worker sprite in the details panel selects just that settler (dropping the building) —
+  // Clicking a worker sprite in the details panel selects just that settler (dropping the building) -
   // the same result as clicking it on the map, so the panel flips to the settler's info card.
   selectFromPanel = (id) => setSelection([id], false);
 
@@ -214,7 +214,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const onMouseDown = (e: MouseEvent): void => {
-    // The HUD claims its own clicks before any world picking — a press over the tool panel / an open window /
+    // The HUD claims its own clicks before any world picking - a press over the tool panel / an open window /
     // a placement-in-progress / an open action-ring button never starts a selection or issues an order. The
     // ring claim covers the right button too (its own listener only consumes left clicks), so right-clicking
     // a ring button doesn't fall through to a world move/attack order.
@@ -223,11 +223,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // panel-owned mousedown listener racing this one).
     if (panel.handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
-    // An armed pick mode consumes the press outright — a world click resolves it (left) or cancels it
+    // An armed pick mode consumes the press outright - a world click resolves it (left) or cancels it
     // (any other button), and never falls through to selection / an order.
     if (pickMode.handleMouseDown(e)) return;
     if (e.button === 2) {
-      // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
+      // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile -
       // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
       if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
       else {
@@ -262,7 +262,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // A door-badge sign row selects the settler it stands for - tested first, because the chain
       // floats over the house body and the building's own pixel hit would swallow it. Then a
       // settler/building under the cursor; failing that, a gatherer's flag selects its gatherer,
-      // then an own signpost (direct click only — the marquee never grabs a post).
+      // then an own signpost (direct click only - the marquee never grabs a post).
       const hit =
         pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation) ??
         pickTopAt(unitTargets.owned(), w.x, w.y) ??
@@ -310,14 +310,14 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     signpostPlacementActive: pickMode.signpostActive,
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
-    // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over
+    // consumer that gates on this - the admin spawn palette, the world hover tooltip - treats a point over
     // the panel as HUD, not world (so a spawn click / a pile tooltip never fires under the open panel).
     claimsPointer: (x, y) =>
       opts.claimPointer?.(x, y) === true || panel.claimsPointer(x, y) || actions.claimsPointer(x, y),
     tick: (snapshot) => {
       panel.tick(snapshot);
       // Re-anchor the action ring on the current selection's on-screen centroid (a no-op while it is
-      // closed / nothing is selected). Reuses the frame's snapshot + the live camera — no extra scan.
+      // closed / nothing is selected). Reuses the frame's snapshot + the live camera - no extra scan.
       actions.update(opts.camera(), snapshot);
     },
     dispose: () => {

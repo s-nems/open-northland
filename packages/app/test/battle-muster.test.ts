@@ -5,7 +5,7 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
 /**
  * The battle scene's MUSTER guard: every spawn command must actually land (the spawn handler
  * silently skips a jobType missing from the content set, and the scene's end-state casualty check
- * cannot tell "died fighting" from "never spawned" — this test closes that hole by counting the
+ * cannot tell "died fighting" from "never spawned" - this test closes that hole by counting the
  * army right after spawn, before any fighting).
  */
 it('the battle scene musters its full 200 fighters, 50 per weapon class', () => {

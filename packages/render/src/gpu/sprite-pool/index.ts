@@ -9,7 +9,7 @@
  * {@link import('./presentation.js')} (the pose, clock and eased reveal an item presents this frame),
  * {@link import('./pooled-entity.js')} (the per-entity retained state) and
  * {@link import('./placeholder.js')} (the unbound-entity markers). The details-panel portrait's
- * force-hide/solo protocol — the pool's contract with its one overlay collaborator — is
+ * force-hide/solo protocol - the pool's contract with its one overlay collaborator - is
  * {@link import('./portrait-subject.js')}.
  */
 export { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';

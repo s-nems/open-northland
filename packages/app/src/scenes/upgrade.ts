@@ -17,7 +17,7 @@ import type { SceneDefinition } from './types.js';
 /**
  * The building-upgrade scene: the `upgradeBuilding` command re-opens a built level-1 home as a
  * construction site (its old body keeps standing, the plot washes grey, housing suspends), a builder
- * fetches the level DIFFERENCE — the next tier's own bill, not the cumulative from-scratch cost —
+ * fetches the level DIFFERENCE - the next tier's own bill, not the cumulative from-scratch cost -
  * from the pre-stocked headquarters and hammers the site out, and the home finishes as the level-2
  * tier with its inventory intact.
  *
@@ -29,14 +29,14 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 26;
 const MAP_H = 18;
 const HQ = { x: 9, y: 6 } as const;
-/** The scene-driven home — upgraded by a build-time command. */
+/** The scene-driven home - upgraded by a build-time command. */
 const UPGRADED_HOME = { x: 14, y: 6 } as const;
 /** A second home left untouched, so the human exercises the Upgrade button on it in the browser. */
 const BUTTON_HOME = { x: 20, y: 11 } as const;
 const BUILDER = { x: 12, y: 7 } as const;
 /** An idle collector (no resources on the grass to gather): the real viking tech graph gates the home
- *  tiers on the collector's presence (`jobEnablesHouse 8`), so without one the browser run — which
- *  plays this scene on real content — would skip the `upgradeBuilding` command at the tech gate. */
+ *  tiers on the collector's presence (`jobEnablesHouse 8`), so without one the browser run - which
+ *  plays this scene on real content - would skip the `upgradeBuilding` command at the tech gate. */
 const COLLECTOR = { x: 7, y: 9 } as const;
 /** The L0→L1 difference is the sandbox L1 parcel (4 wood + 3 stone = 7 units): the lone builder
  *  alternates one HQ fetch trip and ~26 hammer strikes per unit (~1k ticks a unit observed), so the
@@ -59,12 +59,12 @@ function build(sim: Simulation): void {
   sim.enqueue({ kind: 'upgradeBuilding', building: home });
 }
 
-/** The upgraded home once the mechanic lands — the scene's single next-tier building — or null. */
+/** The upgraded home once the mechanic lands - the scene's single next-tier building - or null. */
 function upgradedHome(sim: Simulation): Entity | null {
   return buildingOfType(sim, NEXT_TIER);
 }
 
-/** What the HQ is missing versus its filled capacity — the materials the upgrade drew out of it. */
+/** What the HQ is missing versus its filled capacity - the materials the upgrade drew out of it. */
 function hqDrawnGoods(sim: Simulation): Map<number, number> {
   const drawn = new Map<number, number>();
   const def = buildingDef(sim, BUILDING_HEADQUARTERS);
@@ -96,14 +96,14 @@ export const upgradeScene: SceneDefinition = {
       },
     },
     {
-      label: 'the upgrade markers are gone — a finished building is a plain Building again',
+      label: 'the upgrade markers are gone - a finished building is a plain Building again',
       predicate: (sim) => {
         const e = upgradedHome(sim);
         return e !== null && !sim.world.has(e, UnderConstruction) && !sim.world.has(e, Upgrading);
       },
     },
     {
-      label: 'the HQ paid exactly the level DIFFERENCE — the next tier own bill, no cumulative surcharge',
+      label: 'the HQ paid exactly the level DIFFERENCE - the next tier own bill, no cumulative surcharge',
       predicate: (sim) => {
         const bill = buildingDef(sim, NEXT_TIER)?.construction ?? [];
         const drawn = hqDrawnGoods(sim);
@@ -112,7 +112,7 @@ export const upgradeScene: SceneDefinition = {
       },
     },
     {
-      label: 'the second home is untouched (still level 1) — the browser Upgrade-button target',
+      label: 'the second home is untouched (still level 1) - the browser Upgrade-button target',
       predicate: (sim) => {
         const e = buildingOfType(sim, BUILDING_HOME_00);
         if (e === null) return false;

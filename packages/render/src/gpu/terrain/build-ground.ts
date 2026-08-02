@@ -64,7 +64,7 @@ function pushTriangle(
 }
 
 /** One batched {@link import('pixi.js').Mesh} per texture page per draw layer + a fallback
- *  {@link import('pixi.js').Graphics} for unbound triangles, per block — built once from the grid
+ *  {@link import('pixi.js').Graphics} for unbound triangles, per block - built once from the grid
  *  (no per-frame re-batch); the per-block split is what lets the layer's cull skip off-screen ground. */
 export function buildTextured(
   parent: Container,
@@ -119,7 +119,7 @@ export function buildTextured(
 
 /**
  * The 1:1 per-triangle ground: each cell's two triangles draw the exact {@link GroundPattern} the
- * decoded map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east — see
+ * decoded map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east - see
  * `data/terrain/tessellation.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
  * the two overlay layers, all batched per texture page per layer per block. The per-map pattern
  * and transition names are resolved through {@link TerrainTextureSet.groundFor} /
@@ -145,7 +145,7 @@ function buildGround(
       return { source, pageKey: pattern.pageKey, pattern };
     });
   // Resolve the map's transition dictionary once (index-aligned; `⌊lane/6⌋` indexes it). A name
-  // the IR lacks (or a page that failed to load) resolves null — that overlay is skipped.
+  // the IR lacks (or a page that failed to load) resolves null - that overlay is skipped.
   const transitions = terrain.transitions;
   const resolvedTransitions: (ResolvedTransition | null)[] = (transitions?.types ?? []).map((name) => {
     const t = textures.transitionFor?.(name);
@@ -215,7 +215,7 @@ function buildGround(
           );
         }
         if (transitions !== undefined) {
-          // Layer 1 (`emt1`/`emt2`) composites ON TOP of layer 2 (`emt3`/`emt4`) — paint order
+          // Layer 1 (`emt1`/`emt2`) composites ON TOP of layer 2 (`emt3`/`emt4`) - paint order
           // lives in the batcher's layer buckets, so push order here is immaterial.
           pushOverlay(transitions.a1[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay1');
           pushOverlay(transitions.b1[cell] ?? TRANSITION_NONE, nodesB, 'b', 'overlay1');

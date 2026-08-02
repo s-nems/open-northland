@@ -4,11 +4,11 @@ import { type DrawItem, resolveResourceDraw } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
 /**
- * Unit tests for the per-good resource / stockpile resolvers — a node's species+level frame, a ground
+ * Unit tests for the per-good resource / stockpile resolvers - a node's species+level frame, a ground
  * pile's per-fill heap vs the delivery flag, and a freshly-felled trunk (grounddrop) via its own binding.
  */
 
-describe('resolveResourceDraw — per-good resource node binding', () => {
+describe('resolveResourceDraw - per-good resource node binding', () => {
   function resource(goodType?: number): DrawItem {
     return { ...drawItem('resource'), ...(goodType !== undefined ? { goodType } : {}) };
   }
@@ -39,13 +39,13 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
   });
 
   it('indexes a mined deposit by its level (empty→full); no level / over-range → the full frame', () => {
-    // A 3-level deposit — the shrink-by-level frames run empty (index 0) → full (last).
+    // A 3-level deposit - the shrink-by-level frames run empty (index 0) → full (last).
     const deposit = {
       byGood: {
         3: [
-          { layer: 'ls_ground.clay01', bob: 60 }, // level 1 — dregs
+          { layer: 'ls_ground.clay01', bob: 60 }, // level 1 - dregs
           { layer: 'ls_ground.clay01', bob: 62 }, // level 2
-          { layer: 'ls_ground.clay01', bob: 64 }, // level 3 — full
+          { layer: 'ls_ground.clay01', bob: 64 }, // level 3 - full
         ],
       },
       default: 0,
@@ -83,7 +83,7 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
     expect(resolveResourceDraw(mine, { ...resource(3), level: 2, levels: 5 })).toEqual({ bob: 21 });
   });
 
-  it('indexes a GROUND DROP by its fill (unit count) — one dug ore draws the single-piece frame', () => {
+  it('indexes a GROUND DROP by its fill (unit count) - one dug ore draws the single-piece frame', () => {
     // The trunk binding routes grounddrop items through this resolver; the ore pickup records author a
     // 5-state fewest→most ladder (state ≡ units), so fill 1 → first frame, a stacked drop grows.
     const ore = {
@@ -102,7 +102,7 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
   });
 });
 
-describe('resolveStockpileDraw — per-good ground piles + delivery flag', () => {
+describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
   function pile(goodType?: number, fill?: number): DrawItem {
     return {
       ...drawItem('stockpile'),
@@ -143,7 +143,7 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
   });
 
-  it('draws a filled loose pile as its heap ALONE — no flag planted through the goods', () => {
+  it('draws a filled loose pile as its heap ALONE - no flag planted through the goods', () => {
     expect(resolveStockpileDraw(binding, pile(5, 3))).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
   });
 
@@ -151,7 +151,7 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     expect(resolveStockpileDraw(binding, pile())).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
   });
 
-  it('draws a delivery flag as the flag marker alone (it holds no goods — its heaps are separate entities)', () => {
+  it('draws a delivery flag as the flag marker alone (it holds no goods - its heaps are separate entities)', () => {
     // A flag is a pure marker (no goodType): it resolves to the flag graphic. The goods it collects are
     // SEPARATE loose piles the scene depth-sorts a hair behind it (FLAG_PAINT_STEP), never layers of one draw.
     expect(resolveStockpileDraw(binding, { ...pile(), isFlag: true })).toEqual({
@@ -161,7 +161,7 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
   });
 });
 
-describe('resolveSpriteBobId — grounddrop (freshly-felled trunk) via the trunk binding', () => {
+describe('resolveSpriteBobId - grounddrop (freshly-felled trunk) via the trunk binding', () => {
   function drop(goodType?: number): DrawItem {
     return { ...drawItem('grounddrop'), ...(goodType !== undefined ? { goodType } : {}) };
   }

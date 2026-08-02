@@ -5,7 +5,7 @@ import { signpostBoardsOf } from '../../src/data/scene/signpost-boards.js';
 import { enterableStoresOf, targetPositionsOf } from '../../src/data/scene/snapshot-index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
-/** The combat attack atomic (id 81) — the same numeric contract `snapshot-index.ts` transcribes. */
+/** The combat attack atomic (id 81) - the same numeric contract `snapshot-index.ts` transcribes. */
 const ATTACK_ATOMIC_ID = 81;
 
 /** A snapshot whose entity list counts full walks: `for...of` passes, not the index reads an id lookup
@@ -68,7 +68,7 @@ describe('targetPositionsOf', () => {
     expect(targetPositionsOf(snap).size).toBe(0);
   });
 
-  it('memoizes by snapshot identity — a second frame over the same tick reuses the index', () => {
+  it('memoizes by snapshot identity - a second frame over the same tick reuses the index', () => {
     const snap = snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },

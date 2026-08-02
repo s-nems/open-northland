@@ -20,14 +20,14 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  */
 
 const VIKING = 1;
-/** A type id absent from every fixture table — the unknown-id skip path. */
+/** A type id absent from every fixture table - the unknown-id skip path. */
 const INVALID_TYPE = 99;
 /** A FOOTPRINTED building type added on top of the fixture tables (see {@link fuzzContent}), so the
- *  stream exercises the ground-collision gate and `force`'s collision-skip — random anchors on the
+ *  stream exercises the ground-collision gate and `force`'s collision-skip - random anchors on the
  *  small map often clip the reserved ring off the edge or overlap an earlier house. */
 const FOOTPRINTED_TYPE = 5;
 /** A HOME building type added on top of the fixture tables (see {@link fuzzContent}) so `assignHouse`
- *  and the family loop reach their ACCEPT paths — without it every fuzzed house assignment dies on the
+ *  and the family loop reach their ACCEPT paths - without it every fuzzed house assignment dies on the
  *  `builtHomeType` gate and the wedding/birth machinery never runs under the harness. The id must be
  *  FREE in the fixture (9; 1–8 are taken): `contentIndex.buildings` is first-wins, so a shadowed id
  *  would place as this type but resolve to the fixture's entry in every system. */
@@ -36,23 +36,23 @@ const HOME_TYPE = 9;
  *  ACCEPT path: the home re-opens as an upgrade site (stash + separate hold + difference bill) and can
  *  organically finish when the fuzzed stream happens to deliver its wood and hammer it. Id 10 is free. */
 const HOME_TIER2_TYPE = 10;
-/** The fixture's `food_simple` good — what the fuzz home's larder stocks and the preamble drops. */
+/** The fixture's `food_simple` good - what the fuzz home's larder stocks and the preamble drops. */
 const FOOD_GOOD = 3;
 /** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / home / unknown. */
 const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, HOME_TYPE, INVALID_TYPE] as const;
 
-/** A footprinted RESOURCE good the stream drops at runtime via `placeResource` — reuses the fixture's
+/** A footprinted RESOURCE good the stream drops at runtime via `placeResource` - reuses the fixture's
  *  wood good (typeId 1, whose felling lifecycle is already modelled), joined to a landscape logic type +
  *  a gfx record carrying a 1-cell walk/build/work footprint. With this, a `placeResource{good:1}` runs
  *  the CREATE path (footprint stamp + the incremental blocked-cell cache) under the fuzzed stream, not
  *  just the skip path; other goods stay footprint-less and skip. Fuzz-local (the golden fixtures stay
- *  untouched — a footprint on a shared good would re-gate their pinned resource placements). */
+ *  untouched - a footprint on a shared good would re-gate their pinned resource placements). */
 const RESOURCE_GOOD = 1;
 const RESOURCE_LANDSCAPE_TYPE = 20;
 const RESOURCE_GFX_INDEX = 200;
 
 /** The fixture content plus the footprinted hut, the home, the woman job, and the footprinted wood
- *  resource — all fuzz-local so the golden fixtures stay untouched (a footprint on a shared type would
+ *  resource - all fuzz-local so the golden fixtures stay untouched (a footprint on a shared type would
  *  re-gate the goldens' pinned placements; a female slug would re-sex their spawns). */
 function fuzzContent() {
   const base = testContent();
@@ -76,7 +76,7 @@ function fuzzContent() {
         kind: 'home',
         homeSize: 3,
         stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
-        // The upgrade difference bill: 1 wood — deliverable by the fuzzed carriers/drops.
+        // The upgrade difference bill: 1 wood - deliverable by the fuzzed carriers/drops.
         construction: [{ goodType: RESOURCE_GOOD, amount: 1 }],
       },
       {
@@ -105,7 +105,7 @@ function fuzzContent() {
         logicType: RESOURCE_LANDSCAPE_TYPE,
         maxValency: 3,
         isWorkable: true,
-        // [state, x, y, run] — one blocked cell at the node's own tile (the full-state footprint).
+        // [state, x, y, run] - one blocked cell at the node's own tile (the full-state footprint).
         walkBlockAreas: [[1, 0, 0, 1]],
         buildBlockAreas: [[1, 0, 0, 1]],
         workAreas: [[1, 0, 0, 1]],
@@ -125,14 +125,14 @@ function fuzzContent() {
 }
 /** A `woman`-slug job added on top of the fixture tables (see {@link fuzzContent}): a spawn with it
  *  stamps {@link import('../../src/components/index.js').Female}, so `marry` can find opposite-sex
- *  pairs and `makeChild`/the hoard rung run their accept paths — the fixture's own jobs are all male. */
+ *  pairs and `makeChild`/the hoard rung run their accept paths - the fixture's own jobs are all male. */
 const WOMAN_TYPE = 7;
 /** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / woman / unknown. */
 const JOB_TYPES = [0, 1, 2, 15, 27, 36, WOMAN_TYPE, INVALID_TYPE] as const;
 /** Herd tribes: bear pack / bee / boar / cow / deer, the hitpoints-0 decorative butterfly (spawns
- *  nothing), plus two non-animals (viking, unknown) — skipped. */
+ *  nothing), plus two non-animals (viking, unknown) - skipped. */
 const HERD_TRIBES = [10, 11, 12, 13, 14, 15, VIKING, INVALID_TYPE] as const;
-/** The viking woodcutter's weapon (test_axe) and leather armor — the combatant-spawn extras. */
+/** The viking woodcutter's weapon (test_axe) and leather armor - the combatant-spawn extras. */
 const AXE = 7;
 const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
@@ -163,27 +163,27 @@ const EQUIP_ORDER_GOODS = [
   UNKNOWN_EQUIP_GOOD,
   INVALID_TYPE,
 ] as const;
-/** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
+/** Owner slots: two valid players + one out-of-range (skipped → neutral) - exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
-/** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
+/** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) - exercises `setStance`. */
 const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
-/** Fog modes: the three valid `FOG_MODE`s + one out-of-range (skipped) — exercises `setFogMode`, the
+/** Fog modes: the three valid `FOG_MODE`s + one out-of-range (skipped) - exercises `setFogMode`, the
  *  VisionSystem's rebuild/downgrade/reset paths, and the fog-mask bytes `hashState` mixes in. */
 const FOG_MODES = [0, 1, 2, 9] as const;
-/** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] — live, dead, and never-created. */
+/** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] - live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
-/** The AIMED family commands (rolls 24–26) draw ids from [1, NUCLEUS_ID_RANGE] instead — the band the
+/** The AIMED family commands (rolls 24–26) draw ids from [1, NUCLEUS_ID_RANGE] instead - the band the
  *  {@link runFuzz} preamble's home + six adults land in (plus early stream spawns/buildings, so
  *  wrong-kind and same-sex skips stay in the mix). The wide-range variants (rolls 21–23) alone
  *  virtually never hit an eligible target in a 300-tick stream, leaving the wedding/household/birth
- *  machinery — RNG-consuming, mid-tick-spawning, the likeliest desync source — fuzz-untouched. */
+ *  machinery - RNG-consuming, mid-tick-spawning, the likeliest desync source - fuzz-untouched. */
 const NUCLEUS_ID_RANGE = 8;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
 const COMMAND_EVERY = 4;
-/** Hash checkpoint cadence — a run-twice divergence is localized to a 50-tick window. */
+/** Hash checkpoint cadence - a run-twice divergence is localized to a 50-tick window. */
 const CHECKPOINT_EVERY = 50;
 
-// A 12×12-CELL map — the graph is its 24×24 half-cell lattice, and command coords draw from the
+// A 12×12-CELL map - the graph is its 24×24 half-cell lattice, and command coords draw from the
 // full NODE range so the fuzz exercises off-centre anchors (buildings/spawns on any half-cell).
 const MAP_W = 12;
 const MAP_H = 12;
@@ -198,7 +198,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
   return v;
 }
 
-/** One random command — a pure function of `rng` alone (NEVER world state; see the module doc). */
+/** One random command - a pure function of `rng` alone (NEVER world state; see the module doc). */
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
@@ -207,9 +207,9 @@ function nextCommand(rng: Rng): Command {
   const roll = rng.int(41);
   switch (roll) {
     case 31:
-      // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
+      // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
       // AiPlayerSystem then runs its cadence over the seat) + an out-of-range one (skipped, still
-      // logged). Sometimes with a partial module override — the full-record fill must hash and
+      // logged). Sometimes with a partial module override - the full-record fill must hash and
       // replay identically.
       return {
         kind: 'setPlayerAi',
@@ -230,7 +230,7 @@ function nextCommand(rng: Rng): Command {
         house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
       };
     case 26:
-      // A make-child order at a random id: women/men/children/unmarried — mostly no-ops, all replayable.
+      // A make-child order at a random id: women/men/children/unmarried - mostly no-ops, all replayable.
       return {
         kind: 'makeChild',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
@@ -238,23 +238,23 @@ function nextCommand(rng: Rng): Command {
       };
     case 33:
       // A house un-assignment at a random id: real housed families, unhoused adults, children,
-      // unowned/dead targets — mostly no-ops, all replayable.
+      // unowned/dead targets - mostly no-ops, all replayable.
       return { kind: 'unassignHouse', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 34:
-      // An AIMED house un-assignment — likely to hit a nucleus adult the stream's assignHouse rolls housed.
+      // An AIMED house un-assignment - likely to hit a nucleus adult the stream's assignHouse rolls housed.
       return { kind: 'unassignHouse', entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity };
     case 27:
-      // An AIMED marry (see NUCLEUS_ID_RANGE) — likely to hit a live adult and actually start a wedding.
+      // An AIMED marry (see NUCLEUS_ID_RANGE) - likely to hit a live adult and actually start a wedding.
       return { kind: 'marry', entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity };
     case 28:
-      // An AIMED house assignment — likely to bind a nucleus adult to the preamble's built home.
+      // An AIMED house assignment - likely to bind a nucleus adult to the preamble's built home.
       return {
         kind: 'assignHouse',
         entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
         house: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
       };
     case 29:
-      // An AIMED make-child order — accepted once a nucleus wife is married (the stream's weddings).
+      // An AIMED make-child order - accepted once a nucleus wife is married (the stream's weddings).
       return {
         kind: 'makeChild',
         entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
@@ -289,7 +289,7 @@ function nextCommand(rng: Rng): Command {
         ...(combatant
           ? { hitpoints: COMBATANT_HITPOINTS, armorClass: LEATHER, weaponTypeId: AXE, moveSpeed: 4 }
           : {}),
-        // Occasionally the settler also wears equipment (an `Equipment` stamp) — the used-up percent
+        // Occasionally the settler also wears equipment (an `Equipment` stamp) - the used-up percent
         // varies with the rng so the pct→Fixed conversion is fuzzed for run-twice + replay equality.
         ...(rng.int(3) === 0
           ? {
@@ -304,18 +304,18 @@ function nextCommand(rng: Rng): Command {
             }
           : {}),
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
-        // Occasionally spawn a veteran (starting XP pairs) — the experience stamp must hash and
+        // Occasionally spawn a veteran (starting XP pairs) - the experience stamp must hash and
         // replay identically.
         ...(rng.int(4) === 0 ? { experience: [[rng.int(8), 1 + rng.int(200)]] as const } : {}),
         // Occasionally an authored gatherer resource pick (a decoded map's `setproducedgood`): the
-        // harvestable wood good — a stamp only the gatherer trades in JOB_TYPES take — or an unknown
+        // harvestable wood good - a stamp only the gatherer trades in JOB_TYPES take - or an unknown
         // good the handler must reject. Both branches must hash and replay identically.
         ...(rng.int(4) === 0 ? { gatherGood: rng.int(2) === 0 ? RESOURCE_GOOD : INVALID_TYPE } : {}),
       };
     }
     case 2:
       // Occasionally the count override (a map's one-record spawn), including the 0/negative shapes
-      // the clamp must floor to one creature — both must hash and replay identically.
+      // the clamp must floor to one creature - both must hash and replay identically.
       return {
         kind: 'spawnAnimalHerd',
         tribe: pick(rng, HERD_TRIBES),
@@ -324,7 +324,7 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(3) === 0 ? { count: pick(rng, [0, 1, 2, -5] as const) } : {}),
       };
     case 3:
-      // The fixture ships no vehicles, so EVERY placeBoat is the skipped-but-logged path — replay
+      // The fixture ships no vehicles, so EVERY placeBoat is the skipped-but-logged path - replay
       // must reproduce the same state through a log full of no-op commands.
       return {
         kind: 'placeBoat',
@@ -335,7 +335,7 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
       };
     case 4:
-      // Random target ids hit live buildings, live NON-buildings (settlers, herds — must be
+      // Random target ids hit live buildings, live NON-buildings (settlers, herds - must be
       // skipped), dead entities, and ids never created. All four must resolve deterministically.
       return { kind: 'demolish', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 5:
@@ -360,10 +360,10 @@ function nextCommand(rng: Rng): Command {
         mode: pick(rng, STANCE_MODES),
       };
     case 8: {
-      // A resource node dropped at a random tile: good 1 (wood — FOOTPRINTED, so the create path runs:
+      // A resource node dropped at a random tile: good 1 (wood - FOOTPRINTED, so the create path runs:
       // footprint stamp + the incremental blocked-cell cache, including overlap counts when nodes stack)
       // and good 4 / unknown (no footprint → the skip path, still logged). One lifecycle marker per node
-      // (tree / deposit / pluck-whole) — mutually exclusive, per the command contract.
+      // (tree / deposit / pluck-whole) - mutually exclusive, per the command contract.
       const life = rng.int(3);
       return {
         kind: 'placeResource',
@@ -384,12 +384,12 @@ function nextCommand(rng: Rng): Command {
         kind: 'assignWorker',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
-        // A fuzzed preference list (0..2 job ids, valid + unknown) — exercises the priority walk, the
+        // A fuzzed preference list (0..2 job ids, valid + unknown) - exercises the priority walk, the
         // building-doesn't-offer skip, and the empty-list no-op path.
         jobPriority: Array.from({ length: rng.int(3) }, () => pick(rng, JOB_TYPES)),
       };
     case 10:
-      // A loose good pile dropped at a random tile: good 1 (wood — in the catalog, so the CREATE path runs:
+      // A loose good pile dropped at a random tile: good 1 (wood - in the catalog, so the CREATE path runs:
       // a bare Stockpile+Position loose pile, NO GroundDrop, that rests in place) and an unknown good / a
       // zero amount (the skip path, still logged). Exercises `dropGood` under the fuzzed stream.
       return {
@@ -397,17 +397,17 @@ function nextCommand(rng: Rng): Command {
         good: pick(rng, [RESOURCE_GOOD, INVALID_TYPE]),
         x,
         y,
-        amount: rng.int(4), // 0..3 — 0 hits the non-positive-amount skip
+        amount: rng.int(4), // 0..3 - 0 hits the non-positive-amount skip
       };
     case 11:
       // A work-flag order at a random id + tile: hits owned gatherers (a flag is created, then relocated on
       // a repeat), non-gatherer / unowned / dead ids (skipped). Exercises setWorkFlag's create/move/skip
-      // paths — including a WorkFlag/DeliveryFlag entity conjured mid-stream, whose delivery then spreads a
+      // paths - including a WorkFlag/DeliveryFlag entity conjured mid-stream, whose delivery then spreads a
       // yard heap the drop/reap machinery must handle.
       return { kind: 'setWorkFlag', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
     case 12:
       // The global needs toggle: flips the WorldRules singleton mid-stream (creating it on first use),
-      // freezing/unfreezing needs + starvation — the world-scope rule must hash and replay like any state.
+      // freezing/unfreezing needs + starvation - the world-scope rule must hash and replay like any state.
       return { kind: 'setNeedsEnabled', enabled: rng.int(2) === 0 };
     case 13:
       // Debug kill at a random id: hits live settlers/animals (Health drained → reaped next tick), plus
@@ -432,11 +432,11 @@ function nextCommand(rng: Rng): Command {
       return { kind: 'debugFillStockpile', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 16:
       // Debug complete-construction at a random id: hits construction sites (forced to built + event) +
-      // built/non-building/dead ids (skipped — no UnderConstruction marker). Exercises the force-finish.
+      // built/non-building/dead ids (skipped - no UnderConstruction marker). Exercises the force-finish.
       return { kind: 'debugCompleteConstruction', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 17:
       // The fog-of-war mode: flips the FogRules singleton mid-stream across all three modes (plus an
-      // invalid one — the skip path). Exercises the VisionSystem's RECON rebuild/downgrade,
+      // invalid one - the skip path). Exercises the VisionSystem's RECON rebuild/downgrade,
       // sticky REVEAL, the OFF reset, the combat/flee fog gates, and the mask bytes in hashState.
       return { kind: 'setFogMode', mode: pick(rng, FOG_MODES) };
     case 18:
@@ -460,7 +460,7 @@ function nextCommand(rng: Rng): Command {
       };
     case 20:
       // A craft-selection order at a random id: empty (all-products reset), single and multi-good picks,
-      // duplicates, and invalid goods — against bound craft workers plus unemployed/wrong-kind/dead
+      // duplicates, and invalid goods - against bound craft workers plus unemployed/wrong-kind/dead
       // targets. The command must hash and replay even when validation turns it into a no-op.
       return {
         kind: 'setCraftGoods',
@@ -475,26 +475,26 @@ function nextCommand(rng: Rng): Command {
       return { kind: 'placeSignpost', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
     case 22:
       // The signpost-navigation toggle: flips the SignpostRules singleton mid-stream, confining/freeing
-      // every civilian's target scans + move orders — the rule must hash and replay like any state.
+      // every civilian's target scans + move orders - the rule must hash and replay like any state.
       return { kind: 'setSignpostNavigation', enabled: rng.int(2) === 0 };
     case 23:
-      // A signpost tear-down at a random id: live signposts (destroyed — the network memo, blockers, and
+      // A signpost tear-down at a random id: live signposts (destroyed - the network memo, blockers, and
       // vision must all re-derive) and non-signpost / dead targets (skipped).
       return { kind: 'demolishSignpost', signpost: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 35:
       // The profession-progression toggle: flips the ProgressionRules singleton mid-stream, lifting and
-      // restoring the needfor*/jobEnables gates on staffing, harvest picks, and AI collector re-posts —
+      // restoring the needfor*/jobEnables gates on staffing, harvest picks, and AI collector re-posts -
       // the rule must hash and replay like any state (the setSignpostNavigation pattern).
       return { kind: 'setProfessionProgression', enabled: rng.int(2) === 0 };
     case 30:
-      // An upgrade order at a random id: built chained homes (re-opened as an upgrade site — stash,
+      // An upgrade order at a random id: built chained homes (re-opened as an upgrade site - stash,
       // separate hold, difference bill), plus unbuilt sites / top-tier or unchained types / non-building
       // / dead ids (skipped). Exercises the upgradeBuilding accept + skip paths, the Upgrading stash in
       // hashState, and the upgrade-finish flip when the stream feeds the site.
       return { kind: 'upgradeBuilding', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     case 32:
       // An upgrade abort at a random id: live upgrade sites (stash restored, site hold discarded,
-      // `built` back to ONE — the markers must come off in hashState), plus plain construction sites /
+      // `built` back to ONE - the markers must come off in hashState), plus plain construction sites /
       // built buildings / non-building / dead ids (skipped). Exercises the cancelUpgrade accept + skip
       // paths against the upgradeBuilding rolls above.
       return { kind: 'cancelUpgrade', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
@@ -552,7 +552,7 @@ function nextCommand(rng: Rng): Command {
 
 interface FuzzRun {
   readonly finalHash: string;
-  /** `hashState()` at every CHECKPOINT_EVERY-th tick — localizes a run-twice divergence. */
+  /** `hashState()` at every CHECKPOINT_EVERY-th tick - localizes a run-twice divergence. */
   readonly checkpoints: readonly string[];
   readonly violations: readonly string[];
   readonly log: readonly LoggedCommand[];
@@ -560,7 +560,7 @@ interface FuzzRun {
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
-  // A fixed family nucleus ahead of the stream — a built home and three owned couples-to-be — so the
+  // A fixed family nucleus ahead of the stream - a built home and three owned couples-to-be - so the
   // AIMED family rolls (24–26) have eligible targets and the wedding → household → child machinery runs
   // under the fuzz harness. Part of the input by construction (identical for both live runs), and
   // recorded in the log like every command, so replay fidelity covers it too.
@@ -569,10 +569,10 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN_TYPE, x: 6 + 4 * i, y: 6, tribe: VIKING, owner: 0 });
     sim.enqueue({ kind: 'spawnSettler', jobType: 0, x: 6 + 4 * i, y: 14, tribe: VIKING, owner: 0 });
   }
-  // Loose food outside the home — the source the housed women's hoard rung and a child order's haul
+  // Loose food outside the home - the source the housed women's hoard rung and a child order's haul
   // stage draw from.
   sim.enqueue({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
-  // An independent generator stream (any fixed derivation of the fuzz seed works — it only must
+  // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
   const checkpoints: string[] = [];
@@ -581,13 +581,13 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     // House one nucleus woman and man on the second tick (ids are monotonic from 1: the home, then the
     // six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
     // AFTER that tick's commands applied, so a tick-1 assignHouse dies on the built gate. Fixed input,
-    // logged like every command — replay fidelity covers it.
+    // logged like every command - replay fidelity covers it.
     if (t === 1) {
       sim.enqueue({ kind: 'assignHouse', entity: 2 as Entity, house: 1 as Entity });
       sim.enqueue({ kind: 'assignHouse', entity: 3 as Entity, house: 1 as Entity });
       sim.enqueue({ kind: 'marry', entity: 2 as Entity });
     }
-    // A child order for the housed wife once her scripted wedding has had time to finish — arms the
+    // A child order for the housed wife once her scripted wedding has had time to finish - arms the
     // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
     // seed where the wedding hasn't completed just exercises the unmarried skip instead).
     if (t === 150) sim.enqueue({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
@@ -599,7 +599,7 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     }
     if (sim.tick % CHECKPOINT_EVERY === 0) checkpoints.push(sim.hashState());
   }
-  // The log is plain data owned by this sim instance — copy the array so it outlives store reuse.
+  // The log is plain data owned by this sim instance - copy the array so it outlives store reuse.
   return { finalHash: sim.hashState(), checkpoints, violations, log: [...sim.commands.log] };
 }
 

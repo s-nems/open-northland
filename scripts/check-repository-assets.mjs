@@ -24,7 +24,7 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/fonts/tinos-latinext-400.woff2',
   // Original OpenNorthland branding (commissioned art, no original-game material): the menu
   // logo and the emblem as favicon/app icon. docs/images/logo.webp intentionally duplicates
-  // the menu logo — the README needs a stable path, the menu a Vite-fingerprinted one.
+  // the menu logo - the README needs a stable path, the menu a Vite-fingerprinted one.
   'packages/app/src/entries/menu/assets/logo.webp',
   'packages/desktop/build/icon.icns',
   'packages/desktop/build/icon.png',

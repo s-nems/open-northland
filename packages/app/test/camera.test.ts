@@ -17,7 +17,7 @@ import {
  * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here
  * (including `screenScale`, the CSS-px → Pixi-screen-px mapping every drag/pick/hit-test rides on).
  * The DOM wiring (`createCameraController`'s mouse/wheel/key listeners) and the *feel* of the result are
- * human-gated — see the `npm run dev` check in the iteration closeout.
+ * human-gated - see the `npm run dev` check in the iteration closeout.
  */
 
 /** A canvas stub with a `width×height` device-px backing store shown in a `cssW×cssH` CSS box. */
@@ -31,7 +31,7 @@ const fakeCanvas = (width: number, height: number, cssW: number, cssH: number): 
 describe('screenScale', () => {
   it('maps CSS px to Pixi SCREEN px through the renderer resolution (not raw backing-store px)', () => {
     // A DPR-2 window canvas: 2560×1600 device px at resolution 2 = a 1280×800 SCREEN, in a 1280×800 CSS
-    // box → 1 screen px per CSS px. Dividing by resolution is the point — raw device px would give 2.
+    // box → 1 screen px per CSS px. Dividing by resolution is the point - raw device px would give 2.
     expect(screenScale(fakeCanvas(2560, 1600, 1280, 800), 2)).toMatchObject({ sx: 1, sy: 1 });
     // The ?shot-style canvas: a fixed resolution-1 backing store CSS-stretched to a smaller box.
     const s = screenScale(fakeCanvas(1280, 800, 1000, 625), 1);
@@ -64,7 +64,7 @@ describe('cameraCenteredOnTile', () => {
     const cam = cameraCenteredOnTile(tileX, tileY, zoom, w, h);
     const s = tileToScreen(tileX, tileY);
     expect(cam.scale).toBe(zoom);
-    // screen = world*scale + offset — the tile lands dead centre.
+    // screen = world*scale + offset - the tile lands dead centre.
     expect(cam.offsetX + s.x * zoom).toBeCloseTo(w / 2);
     expect(cam.offsetY + s.y * zoom).toBeCloseTo(h / 2);
   });

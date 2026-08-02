@@ -78,15 +78,15 @@ const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>>
 const BORDER_COLOR = 0x1a1206;
 /** Placeholder household dot colours - one per family shape ({@link HouseholdKind}). */
 const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
-  single: 0xd9d9d9, // grey — one settler lives here
-  couple: 0xff7a9c, // pink — a married couple
-  family: 0xffd24d, // gold — a couple raising a child
+  single: 0xd9d9d9, // grey - one settler lives here
+  couple: 0xff7a9c, // pink - a married couple
+  family: 0xffd24d, // gold - a couple raising a child
 };
 /** Hearts (make-love) drawing: colour, per-heart radius and the column they float in above the stack. */
 const HEART_COLOR = 0xff4d78;
 const HEART_RADIUS = 3.5;
 const HEART_GAP = 12;
-const HEART_LIFT = 26; // px above the stack's top — "hearts over the house"
+const HEART_LIFT = 26; // px above the stack's top - "hearts over the house"
 const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising, not stacked
 const HEART_COUNT = 3;
 

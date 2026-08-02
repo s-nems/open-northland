@@ -1,6 +1,6 @@
 /** The shared blob-download helper for the diagnostics report and the trace export. */
 
-/** Milliseconds to keep a downloaded blob's object URL alive — Firefox aborts a download whose URL
+/** Milliseconds to keep a downloaded blob's object URL alive - Firefox aborts a download whose URL
  *  is revoked before it starts, and the bundle download is the crash-path artifact. */
 const REVOKE_DELAY_MS = 10_000;
 

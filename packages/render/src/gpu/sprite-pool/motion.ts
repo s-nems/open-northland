@@ -1,6 +1,6 @@
 /**
  * Inter-tick motion interpolation for pooled sprites: 12 Hz sim steps draw as continuous frame-rate
- * motion. Pure mutation of plain data + testable without a GPU — the interpolation decision split out
+ * motion. Pure mutation of plain data + testable without a GPU - the interpolation decision split out
  * from the Pixi mutation, like {@link import('./reconcile.js').reconcileSprites}.
  */
 import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
@@ -15,13 +15,13 @@ const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE
 
 /**
  * World-px jump between two consecutive tick anchors past which the motion track snaps instead of
- * lerping — a spawn/teleport, not a walk. The fastest legit case is a multi-tick catch-up frame of a
+ * lerping - a spawn/teleport, not a walk. The fastest legit case is a multi-tick catch-up frame of a
  * running unit (≈ 5 ticks × 17 px); real teleports jump hundreds of px, so the band between is safe.
  */
 export const SNAP_DISTANCE = 128;
 
 /**
- * World px the feet cover per authored walk frame — one cell (`2·TILE_HALF_W`) over the 12-frame cycle.
+ * World px the feet cover per authored walk frame - one cell (`2·TILE_HALF_W`) over the 12-frame cycle.
  * Dividing actual travel by this distance makes the frame clock follow the body's pace;
  * {@link WALK_ANIMATION_RATE} adds the requested slight animation-only lead without changing movement
  * distance.
@@ -29,7 +29,7 @@ export const SNAP_DISTANCE = 128;
 const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 
 /**
- * Cap on the gait-clock rate in frames per tick — covers the legit fast case (a data-paced animal
+ * Cap on the gait-clock rate in frames per tick - covers the legit fast case (a data-paced animal
  * whose `movespeed` beats the universal 18-ticks-per-cell walk, e.g. movespeed 8 reads 2.25×) with
  * headroom, while a mistracked jump below the snap threshold can't spin the legs cartoonishly.
  * No run/sprint gait exists, so nothing legit approaches the cap.
@@ -37,7 +37,7 @@ const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 const MAX_GAIT_RATE = 2.5;
 
 /** Ticks a `moving`-state track must sit still before the pool presents the idle pose instead of a frozen
- *  mid-stride walk frame — a sim state that reads `moving` with no actual displacement (an unserviced
+ *  mid-stride walk frame - a sim state that reads `moving` with no actual displacement (an unserviced
  *  route, a stalled chase) must not hold a leg in the air. Four ticks (⅓ s) of true stillness clears the
  *  slowest legit case (the brake floor still covers ~1.9 px/tick) without flickering a normal stop. */
 export const STALL_TICKS_TO_IDLE = 4;
@@ -55,7 +55,7 @@ export interface MotionTrack {
   y: number;
   prevX: number;
   prevY: number;
-  /** The anchor to draw at this frame — `prev` lerped toward `curr` by the frame alpha. */
+  /** The anchor to draw at this frame - `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
   /**
@@ -66,7 +66,7 @@ export interface MotionTrack {
    * 17 ticks while the body crosses a cell in 18; a body-pressed or braking walker's legs slow with it too.
    */
   gaitPhase: number;
-  /** Consecutive ticks the anchor moved at most the stall epsilon — feeds {@link isStalled}. Reset by
+  /** Consecutive ticks the anchor moved at most the stall epsilon - feeds {@link isStalled}. Reset by
    *  real travel and by snaps (a teleport is not standing still). */
   stillTicks: number;
 }
@@ -82,7 +82,7 @@ export function isStalled(m: MotionTrack): boolean {
  * fixed-timestep fraction, clamped to [0,1]). A new tick rolls current→previous and advances the
  * {@link MotionTrack.gaitPhase} walk-cycle clock by the distance actually covered; a first sighting or
  * a jump past {@link SNAP_DISTANCE} (a spawn/teleport, not a walk) snaps both anchors so nothing
- * glides across the map (and leaves the gait clock alone — a teleport is not strides). Writes into the
+ * glides across the map (and leaves the gait clock alone - a teleport is not strides). Writes into the
  * caller's track instead of returning a fresh point so the per-frame reconcile stays allocation-free
  * in the steady state (the retained-pool contract).
  */

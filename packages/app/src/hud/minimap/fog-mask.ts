@@ -10,7 +10,7 @@ export interface FogMaskLayer {
 
 /**
  * The fog mask over the minimap ground: one cell-resolution alpha raster stretched over `mapRect` (the
- * map picture in panel-local coords, constant for the session) with linear filtering — the same soft
+ * map picture in panel-local coords, constant for the session) with linear filtering - the same soft
  * edge the world wash shows. The sprite is parented here, so the caller must create the layer in draw
  * order: child order is draw order, and the mask belongs under the dots. Its buffer and texture live
  * for the session and are rewritten in place, only when the fog generation moves.

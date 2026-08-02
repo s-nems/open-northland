@@ -10,13 +10,13 @@ import {
 import { landscapeRow } from './support/landscape.js';
 
 /**
- * The forageable-berry-bush render binding — the self-verifiable half of "draw a bush per growth stage".
+ * The forageable-berry-bush render binding - the self-verifiable half of "draw a bush per growth stage".
  * Proves the three-stage twin join (`fruits`→`flower`/`empty`, matched by editName) and the load-then-
  * drop-unloaded fallback chain (flowering→ripe, bare→flowering) deterministically without a browser; the
  * pixels are the `?scene=berries` acceptance scene's job.
  */
 
-const FRUITS_LT = BUSH_WITH_FRUITS_LOGIC_TYPE; // 11 — only these records seed a bush ref
+const FRUITS_LT = BUSH_WITH_FRUITS_LOGIC_TYPE; // 11 - only these records seed a bush ref
 const FLOWER_LT = 10;
 const EMPTY_LT = 9;
 
@@ -32,7 +32,7 @@ function bushRow(
 }
 
 // bush 01: fruits + flower share the `bush01` palette (one served stem), empty draws from the `tree01`
-// palette (the original's naked-bush look) — a distinct stem, so its atlas can be absent independently.
+// palette (the original's naked-bush look) - a distinct stem, so its atlas can be absent independently.
 const BUSH01_FRUITS = bushRow(806, FRUITS_LT, 'bush01', 288, 'bush 01 fruits');
 const BUSH01_FLOWER = bushRow(805, FLOWER_LT, 'bush01', 279, 'bush 01 flower');
 const BUSH01_EMPTY = bushRow(325, EMPTY_LT, 'tree01', 270, 'bush 01 empty');
@@ -52,7 +52,7 @@ function oneRef(...rows: readonly LandscapeGfxRow[]): BerryBushRef {
   return ref;
 }
 
-describe('resolveBerryBushRefs — the fruited-bush record + its flower/empty twins', () => {
+describe('resolveBerryBushRefs - the fruited-bush record + its flower/empty twins', () => {
   it('resolves all three stages to distinct stem/bob draws, keyed by the fruited record index', () => {
     expect(oneRef(BUSH01_FRUITS, BUSH01_FLOWER, BUSH01_EMPTY)).toEqual({
       gfxIndex: 806,
@@ -86,14 +86,14 @@ describe('resolveBerryBushRefs — the fruited-bush record + its flower/empty tw
   });
 });
 
-describe('berryBushAtlasStems — the atlases every stage draws from', () => {
+describe('berryBushAtlasStems - the atlases every stage draws from', () => {
   it('collects the ripe, flowering and bare served stems (deduped)', () => {
     const refs = resolveBerryBushRefs(irOf(BUSH01_FRUITS, BUSH01_FLOWER, BUSH01_EMPTY));
     expect(berryBushAtlasStems(refs)).toEqual(new Set([RIPE_STEM, BARE_STEM]));
   });
 });
 
-describe('buildBerryBushBinding — the per-variant three-frame level list', () => {
+describe('buildBerryBushBinding - the per-variant three-frame level list', () => {
   const refs = resolveBerryBushRefs(irOf(BUSH01_FRUITS, BUSH01_FLOWER, BUSH01_EMPTY));
 
   it('binds [bare, flowering, ripe] (level 1/2/3) when every stage atlas loaded', () => {

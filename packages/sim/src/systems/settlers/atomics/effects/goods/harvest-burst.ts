@@ -15,7 +15,7 @@ import { workSpeedBonus } from '../../../../progression/bonus.js';
 export const HARVEST_SWINGS_PER_REST = 2;
 
 /**
- * Whether the swing that just resolved against `node` left its multi-swing job still in progress — the
+ * Whether the swing that just resolved against `node` left its multi-swing job still in progress - the
  * executor then chains the next swing (or the breather) directly instead of releasing the settler for a
  * tick, since the one-tick planner gap between swings draws a flick of the idle pose mid-work. True for a
  * standing {@link Felling} tree with chops left, and for any node mid-unit - a {@link MineDeposit} or a
@@ -30,7 +30,7 @@ export function continuesHarvest(world: World, node: Entity): boolean {
   if (felling !== undefined) return felling.chopsLeft > 0;
   const deposit = world.tryGet(node, MineDeposit);
   // A deposit is mid-unit while its strike counter is advanced. A trained swing can free a unit AND
-  // bank a remainder here — the executor releases on the extraction result, not this test, and the
+  // bank a remainder here - the executor releases on the extraction result, not this test, and the
   // banked strikes persist on the node across the pickup trip.
   if (deposit !== undefined) return (deposit.strikes ?? 0) > 0;
   // A bare node mid-unit (the multi-stroke pluck, `Resource.strikes`) chains like a deposit does.
@@ -40,7 +40,7 @@ export function continuesHarvest(world: World, node: Entity): boolean {
 /**
  * Whether the swing that just resolved against `node` should chain into the inter-swing breather: a
  * {@link continuesHarvest} job whose SETTLER has landed {@link HARVEST_SWINGS_PER_REST} swings since its
- * last breather (the atomic's own `swingsSinceRest`, counted by {@link beginRestTail} — a per-worker
+ * last breather (the atomic's own `swingsSinceRest`, counted by {@link beginRestTail} - a per-worker
  * count, since an experienced worker's swing advances the node's counters by more than one and their
  * parity no longer tracks swings). Off-boundary swings chain straight into the next swing instead.
  */
@@ -53,7 +53,7 @@ function restAfterHarvest(world: World, atomic: RestTailAtomic, node: Entity): b
  * The idle breather a gatherer stands between work-swing bursts, in ticks (1.25 s at 12 ticks/s).
  *
  * source-basis (observed): the original's collector swings a couple of times in a row, rests ~0.5–1 s, and
- * swings again, but the readable data carries no rest field — `atomicanimations.ini` lengths cover only the
+ * swings again, but the readable data carries no rest field - `atomicanimations.ini` lengths cover only the
  * swing itself (its trailing idle pad is ~4 frames, far shorter).
  */
 const HARVEST_REST_TICKS = 15;
@@ -66,12 +66,12 @@ type RestTailAtomic = Pick<
 /**
  * Hold a just-completed harvest swing open as its inter-swing breather when the settler's swing count
  * calls for one ({@link restAfterHarvest}), reporting whether the tail began; never after the final
- * swing (felled/depleted/plucked — the settler moves straight on to carrying).
+ * swing (felled/depleted/plucked - the settler moves straight on to carrying).
  *
  * The tail is the SAME atomic extended, not a second one, so the render keeps the swing's binding and
  * stands its ready stance instead of snapping to another animation. Invariant: `duration` carries
  * {@link HARVEST_REST_TICKS} extra ticks exactly while `restTail` is set, and {@link endRestTail} is the
- * one reversal of both — the pair must stay matched or an inflated duration reaches `hashState()`.
+ * one reversal of both - the pair must stay matched or an inflated duration reaches `hashState()`.
  */
 export function beginRestTail(world: World, atomic: RestTailAtomic, node: Entity): boolean {
   atomic.swingsSinceRest = (atomic.swingsSinceRest ?? 0) + 1;

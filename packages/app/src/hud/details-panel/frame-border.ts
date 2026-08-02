@@ -6,7 +6,7 @@ import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 
 /**
- * The details panel's rope-and-knot window border — the {@link import('./chrome.js')} drawing kit's
+ * The details panel's rope-and-knot window border - the {@link import('./chrome.js')} drawing kit's
  * self-contained border sub-concern. Edge strips are tiled along their length (stretching smears the rope
  * pattern) and the knot corners drawn at native size, all through the `frame` palette. No-op when
  * `content/` is absent (`art === null`); the caller then strokes a flat window outline instead.
@@ -15,7 +15,7 @@ import type { DetailsPanelAssets } from './assets.js';
 /** The window-border rope strips' decoded native thickness (128×3 / 3×128 atlas rects). */
 const FRAME_EDGE = 3;
 /**
- * The knot corners' decoded native size — must track atlas frames 0–3 (7×7 bottom pair / 10×10 top
+ * The knot corners' decoded native size - must track atlas frames 0–3 (7×7 bottom pair / 10×10 top
  * pair); if the step-3 pass reassigns those frames, update these with them.
  */
 const CORNER_TOP = 10;
@@ -31,7 +31,7 @@ interface FrameBorderDeps {
 }
 
 /**
- * Build the rope-and-knot border drawer over the panel's `front` sprite layer. Returns `frameBorder(r)` —
+ * Build the rope-and-knot border drawer over the panel's `front` sprite layer. Returns `frameBorder(r)` -
  * the only piece the window fill needs; the strip-tiling and per-piece placement stay private to this kit.
  */
 export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: Rect) => void } {
@@ -90,7 +90,7 @@ export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: 
 
   /**
    * The rope-and-knot window border. Frame ids: rope strips 5–8, knot corners 0–3 (10×10 top pair,
-   * 7×7 bottom pair) — corner placement and strip orientation are montage-calibrated guesses pending
+   * 7×7 bottom pair) - corner placement and strip orientation are montage-calibrated guesses pending
    * the plan's step-3 human pass over the sheet.
    */
   const frameBorder = (r: Rect): void => {

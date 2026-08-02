@@ -28,7 +28,7 @@ function recordRun(
     sim.step();
     hashes.push(sim.hashState());
   }
-  // The log is a plain value (LoggedCommand[]) — the replay inputs the tests reconstruct from.
+  // The log is a plain value (LoggedCommand[]) - the replay inputs the tests reconstruct from.
   return { log: [...sim.commands.log], hashes };
 }
 
@@ -37,7 +37,7 @@ describe('replay', () => {
     const schedule = new Map<number, Command[]>([
       [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],
-      // Two commands on the SAME tick — a single Map value (a duplicate Map key drops one) — so the
+      // Two commands on the SAME tick - a single Map value (a duplicate Map key drops one) - so the
       // FIFO same-tick apply order is also exercised end to end.
       [
         5,
@@ -103,7 +103,7 @@ describe('replay', () => {
     ]);
     const { log, hashes } = recordRun(3, 50, schedule, grassMap(4, 1));
 
-    // Replay to tick 50 even though the last command applied at tick 2 — the sim keeps stepping.
+    // Replay to tick 50 even though the last command applied at tick 2 - the sim keeps stepping.
     const reconstructed = replay({
       content: testContent(),
       seed: 3,
@@ -122,11 +122,11 @@ describe('replay', () => {
     ]);
     const { log, hashes } = recordRun(1, 15, schedule);
 
-    // The whole point of a scrubber: jump to tick 5 — BEFORE the tick-10 command — and get the live
+    // The whole point of a scrubber: jump to tick 5 - BEFORE the tick-10 command - and get the live
     // state AT tick 5 (the woodcutter not yet present). This is faithful, not a divergence.
     const at5 = replay({ content: testContent(), seed: 1, log, untilTick: 5 });
     expect(at5.tick).toBe(5);
-    expect(at5.world.entityCount).toBe(1); // only the HQ — the tick-10 settler isn't replayed yet
+    expect(at5.world.entityCount).toBe(1); // only the HQ - the tick-10 settler isn't replayed yet
     expect(at5.hashState()).toBe(hashes[4]);
   });
 
@@ -136,7 +136,7 @@ describe('replay', () => {
 
   it('faithfully replays a skipped (recoverable-bad) command that is still in the log', () => {
     const schedule = new Map<number, Command[]>([
-      // A tech-gated building with no enabling job is skipped but STILL logged — replay must re-issue
+      // A tech-gated building with no enabling job is skipped but STILL logged - replay must re-issue
       // it on the same tick so the recoverable-failure path is reproduced bit-for-bit.
       [1, [{ kind: 'placeBuilding', buildingType: 999, x: 0, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],

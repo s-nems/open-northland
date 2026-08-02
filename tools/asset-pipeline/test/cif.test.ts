@@ -190,7 +190,7 @@ describe('decodeCifStringArray', () => {
 });
 
 describe('decodeCifStringTable', () => {
-  it('decodes CP1250 display letters through the full seam (ś, not S — the reported bug)', () => {
+  it('decodes CP1250 display letters through the full seam (ś, not S - the reported bug)', () => {
     // The real ingameguihumanwindow.cif string 130. 0xBF is ż and 0x9C is ś in CP1250; the earlier
     // windows-1252 latin1 alias mangled ś (0x9C → U+0153 → &0xff → 0x53 'S'), so this string shipped
     // as "Najwyższe DoSwiadczenie". Guards the byte-preserving `.cif` seam end to end.

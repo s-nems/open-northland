@@ -27,11 +27,11 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * When a settler's carrying is interrupted — a profession change, an enemy scaring it, a move order — it sets
+ * When a settler's carrying is interrupted - a profession change, an enemy scaring it, a move order - it sets
  * its load down (the {@link DROP_ATOMIC_ID} drop atomic, so a drop animation plays) and only then does the
  * interrupting thing, instead of carrying the good onward. The drop is stacking-aware: the
  * whole load lands on the settler's own tile, spilling any remainder over {@link MAX_GROUND_STACK} to the
- * nearest free hexes. A move order on a carrying settler is honoured too — it sets the load down first, then
+ * nearest free hexes. A move order on a carrying settler is honoured too - it sets the load down first, then
  * walks off empty-handed (never hauling it to the ordered spot). Fixture: good 1 = wood, job 1 = woodcutter
  * (a civilian, default FLEE), tribe 1 = viking.
  */
@@ -65,13 +65,13 @@ function carryingWoodcutter(sim: Simulation, x: number, y: number, amount = 1): 
   return e;
 }
 
-/** The tile Position a settler at (x,y) drops onto — its half-cell node snapped to the lattice. */
+/** The tile Position a settler at (x,y) drops onto - its half-cell node snapped to the lattice. */
 function dropTileOf(x: number, y: number): { x: number; y: number } {
   const node = nodeOfPosition(fx.fromInt(x), fx.fromInt(y));
   return positionOfNode(node.hx, node.hy);
 }
 
-/** Every loose ground heap (bare Stockpile+Position — no building/trunk marker) and its wood count. */
+/** Every loose ground heap (bare Stockpile+Position - no building/trunk marker) and its wood count. */
 function looseWoodPiles(sim: Simulation): { pile: Entity; wood: number }[] {
   const out: { pile: Entity; wood: number }[] = [];
   for (const e of sim.world.query(Stockpile, Position)) {
@@ -81,7 +81,7 @@ function looseWoodPiles(sim: Simulation): { pile: Entity; wood: number }[] {
   return out;
 }
 
-describe('dropCarriedLoad — set the whole load on the ground', () => {
+describe('dropCarriedLoad - set the whole load on the ground', () => {
   it('places the entire load on the own tile and clears Carrying', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
@@ -120,7 +120,7 @@ describe('dropCarriedLoad — set the whole load on the ground', () => {
   });
 });
 
-describe('setJob on a carrying settler — drop first, then re-employ', () => {
+describe('setJob on a carrying settler - drop first, then re-employ', () => {
   it('starts the drop atomic instead of vanishing the load, then lands it on the ground', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
@@ -142,7 +142,7 @@ describe('setJob on a carrying settler — drop first, then re-employ', () => {
   });
 });
 
-describe('a move order on a carrying settler — drop first, then walk', () => {
+describe('a move order on a carrying settler - drop first, then walk', () => {
   it('sets the load down before walking (drop atomic, no walk yet), then walks off empty-handed', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
@@ -167,11 +167,11 @@ describe('a move order on a carrying settler — drop first, then walk', () => {
     expect(sim.world.get(e, Position).x).toBeGreaterThan(startX); // walked toward tile 8 (to the right)
   });
 
-  it('halts a settler already walking — it stops to drop, not drops on the move', () => {
+  it('halts a settler already walking - it stops to drop, not drops on the move', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
     // Simulate a porter mid-haul: a live walk route at full gait toward tile 9 (the drop must interrupt this,
-    // not run alongside it — the non-zero speed means a surviving PathFollow would advance the settler this tick).
+    // not run alongside it - the non-zero speed means a surviving PathFollow would advance the settler this tick).
     sim.world.add(e, PathFollow, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(1) }],
       index: 0,
@@ -185,7 +185,7 @@ describe('a move order on a carrying settler — drop first, then walk', () => {
     sim.enqueue({ kind: 'moveUnit', entity: e, x: dest.hx, y: dest.hy });
     sim.step();
 
-    // The walk is halted the moment the drop starts — no PathFollow ticking under the drop animation, and the
+    // The walk is halted the moment the drop starts - no PathFollow ticking under the drop animation, and the
     // settler has not advanced (a surviving route would have stepped it toward tile 9 this tick).
     expect(sim.world.get(e, CurrentAtomic).effect.kind).toBe('drop');
     expect(sim.world.has(e, PathFollow)).toBe(false); // stopped to set the load down
@@ -194,14 +194,14 @@ describe('a move order on a carrying settler — drop first, then walk', () => {
   });
 });
 
-describe('a carrying settler with nowhere to deliver — drop, do not stand holding it', () => {
+describe('a carrying settler with nowhere to deliver - drop, do not stand holding it', () => {
   it('sets the load down when no store or workplace can take it, instead of standing frozen forever', () => {
     const sim = freshSim();
     // An owned settler carrying wood with no JobAssignment and no store anywhere on the map: the planner's
     // delivery target resolves to null every tick, so before this fix it stood holding the load indefinitely.
     const e = carryingWoodcutter(sim, 3, 1, 1);
 
-    sim.step(); // the CARRYING planner rung runs first — with no sink it starts the drop
+    sim.step(); // the CARRYING planner rung runs first - with no sink it starts the drop
 
     const atomic = sim.world.get(e, CurrentAtomic);
     expect(atomic.effect.kind).toBe('drop');
@@ -214,7 +214,7 @@ describe('a carrying settler with nowhere to deliver — drop, do not stand hold
   });
 });
 
-describe('an enemy interrupting a carrying settler — drop, then flee', () => {
+describe('an enemy interrupting a carrying settler - drop, then flee', () => {
   it('sets the load down before it runs (drop atomic first, no Fleeing yet), then flees empty-handed', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 20, 0, HUMAN_PLAYER, MILITARY_MODE.FLEE);

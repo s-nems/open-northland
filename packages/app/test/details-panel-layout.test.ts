@@ -27,7 +27,7 @@ import type { Rect } from '../src/hud/geometry.js';
 import { PANEL_SCREEN, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
-/** The watchtower (`tower_00`, catalog typeId 40) — a store-less building (declares no stock slots). */
+/** The watchtower (`tower_00`, catalog typeId 40) - a store-less building (declares no stock slots). */
 const BUILDING_TOWER = 40;
 
 /** The settings menu's `?uiscale` steps as numbers - a newly offered scale joins the coverage. */
@@ -54,7 +54,7 @@ describe('details panel layout', () => {
     expect(
       viewOfKind(modelOf([1], [{ id: 1, components: { Signpost: { player: 1 } } }]), 'signpost').model.kind,
     ).toBe('signpost');
-    // Both multi-select kinds share the one compact strip — the pairing the type keeps and the reason
+    // Both multi-select kinds share the one compact strip - the pairing the type keeps and the reason
     // the discriminant is the layout's kind, not the model's.
     expect(viewOfKind(modelOf([1, 2], [settler(1), settler(2)]), 'compact').model.kind).toBe('multi-settler');
   });
@@ -272,7 +272,7 @@ describe('details panel layout', () => {
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 
-  it('swaps to the Construction window while a site rises — no production/stock sections', () => {
+  it('swaps to the Construction window while a site rises - no production/stock sections', () => {
     const model = buildUnitPanelModel(
       {
         tick: 0,
@@ -296,11 +296,11 @@ describe('details panel layout', () => {
     expect(site.production).toBeNull();
     expect(site.stock).toBeNull();
     expect(site.stockTabHits).toHaveLength(0);
-    // The workers window STAYS — it shows the live building crew during construction.
+    // The workers window STAYS - it shows the live building crew during construction.
     expect(site.workers).not.toBeNull();
   });
 
-  /** The rect every mapped field must have become — no real layout rect can carry these coords. */
+  /** The rect every mapped field must have become - no real layout rect can carry these coords. */
   const SENTINEL: Rect = { x: -1, y: -1, w: -1, h: -1 };
 
   const isRect = (v: object): v is Rect =>
@@ -325,7 +325,7 @@ describe('details panel layout', () => {
   it('mapLayout transforms EVERY rect in a layout (an unmapped new field fails here)', () => {
     const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
       buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
-    // The HQ (tabbed store + buttons), a farm site (the Construction branch) and a gatherer settler —
+    // The HQ (tabbed store + buttons), a farm site (the Construction branch) and a gatherer settler -
     // between them every optional section a layout can carry is present.
     const layouts: readonly DetailsLayout[] = [
       buildingLayoutOf(modelOf(buildingEntity(1, BUILDING_HEADQUARTERS))),

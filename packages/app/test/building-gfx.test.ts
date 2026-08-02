@@ -19,7 +19,7 @@ import type { BuildingBobRow } from '../src/content/ir/rows.js';
 /** The default building atlas family (the shared kindLayers.building layer) shared by every reducer test. */
 const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };
 
-/** The `.bmd` of the default family — a row's home unless it overrides it with another family's. */
+/** The `.bmd` of the default family - a row's home unless it overrides it with another family's. */
 const DEFAULT_BMD = 'data/x/ls_houses_viking.bmd';
 
 /**
@@ -51,17 +51,17 @@ describe('buildingBobRefsByType', () => {
     bobRow(6, 41, { level: 4 }),
     bobRow(10, 131),
     bobRow(10, 131),
-    // hive + bakery — the other transcribed-constant default-family types, to pin byte-identity across all 5.
+    // hive + bakery - the other transcribed-constant default-family types, to pin byte-identity across all 5.
     bobRow(11, 91),
     bobRow(15, 105, { level: 1 }),
-    // HQ (typeId 1) — viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
+    // HQ (typeId 1) - viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
     bobRow(1, 34, { bmd: VIKING4_BMD, editName: 'viking headquarters' }),
     bobRow(1, 44, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
-    // also in viking4/house02 — excluded by palette preference
+    // also in viking4/house02 - excluded by palette preference
     bobRow(1, 34, { bmd: VIKING4_BMD, paletteName: 'house02', editName: 'viking headquarters' }),
-    // viking2 family is NOT loaded this rung — dropped (the constant/default backs typeId 20)
+    // viking2 family is NOT loaded this rung - dropped (the constant/default backs typeId 20)
     bobRow(20, 10, { bmd: VIKING2_BMD }),
-    // a frank house (other tribe) — filtered out
+    // a frank house (other tribe) - filtered out
     bobRow(6, 888, { tribeId: 2, level: 4, bmd: 'data/x/ls_houses_frank.bmd' }),
   ];
 
@@ -96,7 +96,7 @@ describe('buildingBobRefsByType', () => {
   });
 
   it('disambiguates a multi-bob typeId by canonical editName even over a lower bobId', () => {
-    // Synthetic: the canonical "viking headquarters" carries the HIGHER bob — editName must win, proving
+    // Synthetic: the canonical "viking headquarters" carries the HIGHER bob - editName must win, proving
     // the pick is the named building and not just the lowest-bob tiebreak.
     const flipped = [
       bobRow(1, 7, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
@@ -124,7 +124,7 @@ describe('buildingBobRefsByType', () => {
   it('anchors the bmd match to a path separator (no basename-concat false positive)', () => {
     const tricky = [
       bobRow(1, 5),
-      // ends with the default basename string but NOT after a `/` — must NOT match the default family.
+      // ends with the default basename string but NOT after a `/` - must NOT match the default family.
       bobRow(2, 9, { bmd: 'data/x/evil_ls_houses_viking.bmd' }),
     ];
     expect(buildingBobRefsByType(tricky, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 1: 5 });
@@ -136,8 +136,8 @@ describe('buildingBobRefsByType', () => {
   });
 
   // The PRODUCTION families list (the seven viking families loaded in loadHumanSpriteSheet). Drives the
-  // reducer with the real BUILDING_FAMILIES so the rung's claim — "EVERY viking building draws its own
-  // bob" — is pinned without a browser: each family's representative type routes to its OWN atlas layer,
+  // reducer with the real BUILDING_FAMILIES so the rung's claim - "EVERY viking building draws its own
+  // bob" - is pinned without a browser: each family's representative type routes to its OWN atlas layer,
   // including the two house02 families that close the set (stock / brewery / coin mint), and the default
   // stays a bare id. No viking [GfxHouse] type is dropped any more.
   describe('with the production BUILDING_FAMILIES (all seven viking families loaded)', () => {
@@ -151,20 +151,20 @@ describe('buildingBobRefsByType', () => {
       bobRow(27, 50, { bmd: 'data/x/ls_houses_viking3.bmd' }), // armory
       bobRow(1, 34, { bmd: VIKING4_BMD, editName: 'viking headquarters' }), // HQ
       bobRow(37, 39, { bmd: VIKING4_BMD, paletteName: 'housedruid01' }), // temple
-      bobRow(7, 53, { paletteName: 'house02' }), // stock — house02 on ls_houses_viking.bmd
-      bobRow(16, 220, { bmd: VIKING2_BMD, paletteName: 'house02' }), // brewery — house02 on ls_houses_viking2.bmd
-      bobRow(33, 170, { bmd: VIKING2_BMD, paletteName: 'house02' }), // coin mint — house02 on ls_houses_viking2.bmd
+      bobRow(7, 53, { paletteName: 'house02' }), // stock - house02 on ls_houses_viking.bmd
+      bobRow(16, 220, { bmd: VIKING2_BMD, paletteName: 'house02' }), // brewery - house02 on ls_houses_viking2.bmd
+      bobRow(33, 170, { bmd: VIKING2_BMD, paletteName: 'house02' }), // coin mint - house02 on ls_houses_viking2.bmd
     ];
 
     it('routes each viking type to its own loaded family layer (the rung is render-only, data already there)', () => {
       expect(buildingBobRefsByType(real, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES)).toEqual({
-        6: 41, // default building layer — a bare id
+        6: 41, // default building layer - a bare id
         13: { layer: 'ls_houses_viking.housemiller01', bob: 70 },
         31: { layer: 'ls_houses_viking2.house01', bob: 150 },
         27: { layer: 'ls_houses_viking3.house01', bob: 50 },
         1: { layer: 'ls_houses_viking4.house01', bob: 34 },
         37: { layer: 'ls_houses_viking4.housedruid01', bob: 39 },
-        // The two house02 families close the set — stock / brewery / coin mint now bind their own bob.
+        // The two house02 families close the set - stock / brewery / coin mint now bind their own bob.
         7: { layer: 'ls_houses_viking.house02', bob: 53 },
         16: { layer: 'ls_houses_viking2.house02', bob: 220 },
         33: { layer: 'ls_houses_viking2.house02', bob: 170 },
@@ -204,7 +204,7 @@ describe('constructionRefsByType', () => {
     const rows = [
       row({ stackIdx: 2, bobId: 1, fromPct: 20 }),
       row({ stackIdx: 0, bobId: 3, fromPct: 10, toPct: 70 }),
-      row({ stackIdx: 3, bobId: 11, upgrade: true }), // the `1` row — not a from-scratch stage
+      row({ stackIdx: 3, bobId: 11, upgrade: true }), // the `1` row - not a from-scratch stage
       row({ stackIdx: 1, bobId: 2, toPct: 50 }),
     ];
     expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
@@ -219,7 +219,7 @@ describe('constructionRefsByType', () => {
   it('layer-qualifies a stage in a loaded named family and prefers the default palette', () => {
     const rows = [
       row({ bmd: 'data/x/ls_houses_viking4.bmd', bobId: 34 }),
-      row({ paletteName: 'house02', bobId: 999 }), // the other skin — ignored while house01 rows exist
+      row({ paletteName: 'house02', bobId: 999 }), // the other skin - ignored while house01 rows exist
     ];
     expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
       2: [{ layer: 'ls_houses_viking4.house01', bob: 34, fromPct: 0, toPct: 100 }],
@@ -235,7 +235,7 @@ describe('constructionRefsByType', () => {
     expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
   });
 
-  it('never interleaves two records sharing one typeId — one (editName, level) group wins', () => {
+  it('never interleaves two records sharing one typeId - one (editName, level) group wins', () => {
     // The real-data shapes: the HQ's two editName variants at level 0, and a pottery-style typeId
     // mapped at two levels within one record. Each stack must come from ONE record-level group.
     const variants = [
@@ -260,9 +260,9 @@ describe('constructionRefsByType', () => {
   });
 });
 
-describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rotor)', () => {
+describe('buildingOverlayRefsByType - the type-4 GfxOverlay join (the mill rotor)', () => {
   const MILLER_LAYER = 'ls_houses_viking.housemiller01';
-  // The mill's own recolour family — not the shared viking4 FAMILIES the other rungs load.
+  // The mill's own recolour family - not the shared viking4 FAMILIES the other rungs load.
   const MILLER_FAMILIES = [
     { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'housemiller01', layer: MILLER_LAYER },
   ];
@@ -298,9 +298,9 @@ describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rot
   it('drops other tribes, an unloaded family, and picks the lowest level group', () => {
     const rows = [
       ...millRows,
-      row({ tribeId: 3, frames: [999] }), // byzantine — another tribe
+      row({ tribeId: 3, frames: [999] }), // byzantine - another tribe
       row({ typeId: 20, bmd: 'data/x/ls_houses_viking9.bmd' }), // unloaded family → dropped
-      row({ level: 1, frames: [111] }), // a higher size level — the level-0 group wins
+      row({ level: 1, frames: [111] }), // a higher size level - the level-0 group wins
     ];
     const out = buildingOverlayRefsByType(rows, 1, DEFAULT_FAMILY, MILLER_FAMILIES);
     expect(Object.keys(out)).toEqual(['13']);

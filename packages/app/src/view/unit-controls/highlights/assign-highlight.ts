@@ -14,14 +14,14 @@ import {
 } from '../../../game/snapshot.js';
 
 /**
- * The "przydziel miejsce pracy" (assign a workplace) highlight — the pure snapshot projection behind the
+ * The "przydziel miejsce pracy" (assign a workplace) highlight - the pure snapshot projection behind the
  * button + the green/red building tint. Unlike the right-click (which best-fits a trade), this button
  * places the settler's CURRENT profession: it greens exactly the buildings that offer that trade with a
  * free slot and binds the settler to it, never re-trading them. A miller greens only mills; a coin-maker
  * only mints; a gatherer only the warehouses / workshops that carry a gatherer slot.
  *
  * A building offers the current trade when one of its worker slots is the same trade canonically
- * ({@link canonicalJobType} — a settler's picker id 14 and a building's rebased slot id 1014 are both
+ * ({@link canonicalJobType} - a settler's picker id 14 and a building's rebased slot id 1014 are both
  * coin-maker) and that slot still has room (`held < count` at this building). The sim still enforces its
  * own tech/XP gate on the `assignWorker` command; here green = "an own, built building with my trade's free
  * slot", the candidacy + capacity half the player reads at a glance.
@@ -32,7 +32,7 @@ export interface AssignBuildingInfo {
   readonly workers?: readonly { readonly jobType: number; readonly count: number }[] | undefined;
 }
 
-/** The bound-settler headcount per (building id, jobType) — the capacity check reads it. */
+/** The bound-settler headcount per (building id, jobType) - the capacity check reads it. */
 type Staffing = Map<number, Map<number, number>>;
 
 function buildStaffing(snapshot: WorldSnapshot): Staffing {
@@ -50,7 +50,7 @@ function buildStaffing(snapshot: WorldSnapshot): Staffing {
 }
 
 /**
- * The candidacy gate — the worker slots of a building this settler could be assigned to at all, or null
+ * The candidacy gate - the worker slots of a building this settler could be assigned to at all, or null
  * when it is not a candidate: another owner's / tribe's building, a construction site (takes builders, not
  * workers), or a building that employs nobody (a home). The single home of "which buildings the assign
  * gesture considers", shared by the highlight (a non-candidate is skipped, not tinted red) and the click
@@ -71,7 +71,7 @@ function candidateSlots(
 }
 
 /**
- * The building's slot job that IS the settler's current trade with a free seat, or null — the exact job
+ * The building's slot job that IS the settler's current trade with a free seat, or null - the exact job
  * the button would bind. Matches by canonical trade ({@link canonicalJobType}) so a picker-assigned trade
  * (raw id) lines up with the building's rebased slot id, and checks live capacity at this building. This
  * is the whole "assign my current profession here" rule: no fallback to another trade.
@@ -108,7 +108,7 @@ export function computeAssignHighlight(
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
     const slots = candidateSlots(e, settler, buildingsByType);
-    if (slots === null) continue; // not a candidate — skipped, never tinted
+    if (slots === null) continue; // not a candidate - skipped, never tinted
     const ok = currentTradeSlotAt(currentJob, slots, staffing.get(e.id)) !== null;
     items.push({ id: e.id, ok });
   }
@@ -116,7 +116,7 @@ export function computeAssignHighlight(
 }
 
 /**
- * The job the button would bind the settler to at ONE building — its current trade's free slot, or null
+ * The job the button would bind the settler to at ONE building - its current trade's free slot, or null
  * when the building doesn't offer that trade (a red building). The click-resolution twin of
  * {@link computeAssignHighlight}: a green building returns its matching slot job, a red one returns null
  * (the click cancels).
@@ -131,6 +131,6 @@ export function assignableJobForBuilding(
   const building = entityById(snapshot, buildingId);
   if (settler === undefined || !isSettler(settler) || building === undefined) return null;
   const slots = candidateSlots(building, settler, buildingsByType);
-  if (slots === null) return null; // not a candidate — the click cancels
+  if (slots === null) return null; // not a candidate - the click cancels
   return currentTradeSlotAt(settlerJobType(settler), slots, buildStaffing(snapshot).get(buildingId));
 }

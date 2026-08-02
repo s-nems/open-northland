@@ -6,10 +6,10 @@ import { testContent } from '../../fixtures/content.js';
 
 import { ACCEL_STEP, followerAt, grassMap, pos, ticksToArrive } from './support.js';
 
-describe('movementSystem — inertia: corners and braking', () => {
+describe('movementSystem - inertia: corners and braking', () => {
   it('sheds speed through a corner (momentum projected onto the new heading) and recovers', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
-    // East for two cells, then the SE lattice edge — a real heading change at (2,0).
+    // East for two cells, then the SE lattice edge - a real heading change at (2,0).
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 1, y: 0 },
@@ -19,7 +19,7 @@ describe('movementSystem — inertia: corners and braking', () => {
     // Walk until the corner waypoint (2,0) has just been consumed: index now points at (2,1).
     while (sim.world.get(e, PathFollow).index < 3) sim.step();
     const afterTurn = sim.world.get(e, PathFollow).speed;
-    // The E heading is (ONE, 0); the SE edge heading ≈ (0.667, 0.745) in world axes — the dot is
+    // The E heading is (ONE, 0); the SE edge heading ≈ (0.667, 0.745) in world axes - the dot is
     // ≈ 0.667·ONE, so the corner keeps ≈ ⅔ of the cruise gait: visibly slowed, far from a stop.
     expect(afterTurn).toBeLessThan(MOVE_SPEED_PER_TICK);
     expect(afterTurn).toBeGreaterThan(fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(2)));
@@ -71,7 +71,7 @@ describe('movementSystem — inertia: corners and braking', () => {
 
   it('a reversal (180° re-target) stops the gait dead and re-accelerates from rest', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    // East one cell, then back west — the dot of opposite headings is negative.
+    // East one cell, then back west - the dot of opposite headings is negative.
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 1, y: 0 },
@@ -85,7 +85,7 @@ describe('movementSystem — inertia: corners and braking', () => {
   });
 });
 
-describe('movementSystem — per-entity pace (MoveSpeed)', () => {
+describe('movementSystem - per-entity pace (MoveSpeed)', () => {
   it('a MoveSpeed follower ramps and advances at its own perTick, not the universal default', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = followerAt(sim, 0, 0, [
@@ -95,13 +95,13 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
     // A faster override: ONE/16 = 4096 ulp/tick gait (vs the default divCeil(ONE/18) = 3641).
     sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)) });
     sim.step(); // consume wp0 (already on it), index -> 1; ramp is one accel-step (divCeil(4096/3) = 1366) warm
-    sim.step(); // first move toward wp1 at 2·1366 = 2732 — the entity's OWN ramp, not the default's
+    sim.step(); // first move toward wp1 at 2·1366 = 2732 - the entity's OWN ramp, not the default's
     expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(2732 / ONE));
   });
 
   it('a degenerate few-ulp gait still completes (the ULP floor prevents a permanent stall)', () => {
     // `ONE/movespeed` truncation can mint a perTick of 2 (movespeed 30000) or even 0 (movespeed
-    // > 65536); an unguarded 0-ulp gait would make no progress from rest, ever — the walker never
+    // > 65536); an unguarded 0-ulp gait would make no progress from rest, ever - the walker never
     // moves and the path never completes. The one-ULP gait floor (+ ceil-minted accel/brake
     // quanta) keeps such a walker absurdly slow but the sim total. Short legs so the crawl fits a
     // bounded test.
@@ -117,7 +117,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
     expect(ticksToArrive(sim, zeroGaitWalker, 500)).toBeGreaterThan(0); // floored to 1 ulp/tick
 
     // The NON-AXIS killer: the world metric inflates a diagonal leg past BOTH grid components, so a
-    // 1-ulp step truncates to (0,0) — without stepTowardPoint's dominant-component ulp guard this
+    // 1-ulp step truncates to (0,0) - without stepTowardPoint's dominant-component ulp guard this
     // walker stalled forever (the arrival snap needs dist <= speed, which a stationary walker never
     // reaches). The guard advances one grid ulp per tick, so the crawl still terminates.
     const diagonalWalker = followerAt(sim, 0, 0, [{ x: 0.002, y: 0.002 }]);

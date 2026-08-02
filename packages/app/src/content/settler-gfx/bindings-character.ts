@@ -16,7 +16,7 @@ import { DIRS } from './sequences.js';
  * Build the per-`goodType` loaded-gait table for one body from the original's `[gfxwalkatomic]` table
  * ({@link import('../ir/joins.js').carryWalkSeqs}, good slug → body bobseq for this job): bind `moving` to the
  * named ×8 cycle and `idle` to its first-frame hold (the still loaded pose a depositor stands in). The
- * result is keyed on the RUNNING content set's `typeId` — `carrySeqBySlug` is in the decoded IR's
+ * result is keyed on the RUNNING content set's `typeId` - `carrySeqBySlug` is in the decoded IR's
  * id-space, and the slug is what survives between the two (the sandbox's honey is not the IR's honey).
  *
  * A good with no record for this job is omitted, which is the source's own answer rather than a gap: it
@@ -43,7 +43,7 @@ export function carryAnimsByGood(
  * Build one character's {@link SettlerStateBinding} from its spec + its body's decoded `[bobseq]` rows:
  * walk → `moving`, the wait (loop or walk-hold) → `idle`, the spec's atomics → `byAtomic`, and the
  * per-good carry table → `carrying`. Returns `null` when neither the walk nor a loop wait resolves (an
- * IR predating this body's sequences) — the character is then dropped and its jobs fall back to the
+ * IR predating this body's sequences) - the character is then dropped and its jobs fall back to the
  * default look, never a bogus frame range. Pure.
  */
 export function characterBinding(
@@ -55,7 +55,7 @@ export function characterBinding(
   carrySeqBySlug?: ReadonlyMap<string, string>,
   attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
   /** Per-atomic `[gfxanimatomic]` frame-list tables (atomic id → seq name → per-`<dir>` lists) for the
-   *  spec's {@link CharacterSpec.dirListAtomics} — the attack mechanism generalized (farmer clips). */
+   *  spec's {@link CharacterSpec.dirListAtomics} - the attack mechanism generalized (farmer clips). */
   actionFrameLists?: ReadonlyMap<number, ReadonlyMap<string, readonly (readonly number[])[]>>,
 ): SettlerStateBinding | null {
   const walk = eightDirAnim(seqByName, spec.walkSeq);
@@ -71,7 +71,7 @@ export function characterBinding(
     const row = seqByName.get(action.seq);
     if (row === undefined || row.length <= 0) continue;
     // A clean ×8 action (the chop 120, the pray 120) is directional; a non-×8 one (eat 17, sleep 20,
-    // pick_up 19) plays its whole strip facing-locked — the same `clipDirs` reading the waits use.
+    // pick_up 19) plays its whole strip facing-locked - the same `clipDirs` reading the waits use.
     const anim: DirectionalAnim =
       row.length % DIRS === 0
         ? { start: row.start, dirs: DIRS, stride: row.length / DIRS }
@@ -86,7 +86,7 @@ export function characterBinding(
   // The combat attack swing → a FrameListAnim on {@link ATTACK_ATOMIC}: the swing pool's `start` from the
   // `[bobseq]` row, its per-direction layout from the extracted viking `[gfxanimatomic]` frame lists
   // (keyed by the same seq name), reordered from the source's <dir> space into the render's facing order
-  // ({@link frameListsByFacing}). Bound only when both resolve — a body/IR missing either just has no
+  // ({@link frameListsByFacing}). Bound only when both resolve - a body/IR missing either just has no
   // attack animation (the unit stands its ready pose mid-swing), never a bogus uniform slice.
   if (spec.attack !== undefined) {
     const row = seqByName.get(spec.attack);
@@ -99,7 +99,7 @@ export function characterBinding(
 
   // The frame-list actions beyond the attack (the farmer's field clips): each binds only when both its
   // `[bobseq]` row and its per-atomic `[gfxanimatomic]` lists resolve, overriding any plain `atomics`
-  // fallback for the same id — missing data leaves that fallback (or nothing) in place, never a bogus
+  // fallback for the same id - missing data leaves that fallback (or nothing) in place, never a bogus
   // uniform slice. Same reorder into facing space as the attack swing.
   for (const [atomicId, entry] of Object.entries(spec.dirListAtomics ?? {})) {
     const { seq: seqName, ticksPerFrame } =
@@ -132,7 +132,7 @@ export function characterBinding(
       : undefined;
 
   // The loaded gait, from the original's own `[gfxwalkatomic]` table. When that table covers this job,
-  // it is complete: a good it omits genuinely draws no load, so no generic fallback is applied — one
+  // it is complete: a good it omits genuinely draws no load, so no generic fallback is applied - one
   // would put a wood log in the hands of every good the table leaves out. The `<prefix>wood` gait is the
   // floor only for an IR without the lane, where the alternative is hauling nothing at all.
   const carryByGood = carrySeqBySlug !== undefined ? carryAnimsByGood(seqByName, carrySeqBySlug, goods) : {};
@@ -163,10 +163,10 @@ export function characterBinding(
 
 /**
  * The head-side twin of a per-good carry table: which anim the head overlay resolves through per good.
- * Most of the man's carry-walk variants ship empty head bobs (19 of 27 in the real decode — the
+ * Most of the man's carry-walk variants ship empty head bobs (19 of 27 in the real decode - the
  * head is authored once, on the base walk), so a head drawn at the carry range's own ids would vanish:
  * a stone-hauler would walk headless. For each good this checks the head atlas at the carry cycle's
- * first frame — authored → the good keeps its own range; empty → the head borrows the base walk at
+ * first frame - authored → the good keeps its own range; empty → the head borrows the base walk at
  * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (source basis
  * "Character animation gallery"). Returns the input table by identity when nothing borrows (no walk to
  * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure.

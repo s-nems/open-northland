@@ -1,5 +1,5 @@
-/* The boot card (view/boot-progress.ts). Deliberately the main menu's vocabulary — same backdrop, serif,
-   carved-wood frame and gold — so menu → loading → game reads as one screen rather than three. The menu
+/* The boot card (view/boot-progress.ts). Deliberately the main menu's vocabulary - same backdrop, serif,
+   carved-wood frame and gold - so menu → loading → game reads as one screen rather than three. The menu
    navigates by full page load, so the backdrop is already in the HTTP cache when this card draws. */
 
 .boot-card {
@@ -43,7 +43,7 @@
   background: repeating-linear-gradient(8deg, rgba(255, 235, 181, 0.018) 0 1px, transparent 1px 5px);
 }
 
-/* The carved frame around the bar — the menu's language-switch panel, widened. */
+/* The carved frame around the bar - the menu's language-switch panel, widened. */
 .boot-card__frame {
   position: relative;
   box-sizing: border-box;

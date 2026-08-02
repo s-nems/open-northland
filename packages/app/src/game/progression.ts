@@ -1,12 +1,12 @@
 /**
- * The `?progression=` URL flag — the profession-progression toggle's app-facing vocabulary, shared by
+ * The `?progression=` URL flag - the profession-progression toggle's app-facing vocabulary, shared by
  * the menu setting and the game entries:
  *
- *  - `on`  — the experience tech tree gates professions (the sim default); an explicit `on` also
+ *  - `on`  - the experience tech tree gates professions (the sim default); an explicit `on` also
  *            overrides a scene built with `progression: false`, mirroring the fog override.
- *  - `off` — every settler knows every civilian trade from the start (fighters stay barracks-gated).
+ *  - `off` - every settler knows every civilian trade from the start (fighters stay barracks-gated).
  *
- * Absent or unrecognized, the world keeps whatever it set for itself — and no command is enqueued,
+ * Absent or unrecognized, the world keeps whatever it set for itself - and no command is enqueued,
  * so an untouched URL leaves the command stream byte-identical to a pre-toggle run.
  */
 export type ProgressionParamValue = 'on' | 'off';

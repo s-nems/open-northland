@@ -1,5 +1,5 @@
 /**
- * The CPU-readable image kinds a loaded Pixi texture's `TextureSource.resource` can be — shared by the
+ * The CPU-readable image kinds a loaded Pixi texture's `TextureSource.resource` can be - shared by the
  * consumers that need the atlas pixels back off the loaded image (the pick alpha masks, the construction
  * reveal bakes). Everything else (a render texture, a compressed source) is not canvas-drawable and the
  * caller degrades.
@@ -18,7 +18,7 @@ export function isDrawableResource(resource: unknown): resource is DrawableResou
 
 /**
  * A fresh `width`×`height` 2d context for reading a drawable's pixels back (`willReadFrequently` so the
- * platform keeps it CPU-side), or `null` when no canvas/context is available — a headless env without
+ * platform keeps it CPU-side), or `null` when no canvas/context is available - a headless env without
  * `OffscreenCanvas` or `document`, or a context the platform refuses. Never throws; the caller degrades.
  * The shared readback surface behind the alpha-mask build and the construction-reveal bake.
  */

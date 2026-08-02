@@ -36,7 +36,7 @@ import {
   WORKSHOP,
 } from './support.js';
 
-/** Step until `settler` starts a pickup and return that effect — which store it chose to lift from. */
+/** Step until `settler` starts a pickup and return that effect - which store it chose to lift from. */
 function firstPickup(sim: Simulation, settler: Entity): AtomicEffect | null {
   for (let i = 0; i < 400; i++) {
     sim.step();
@@ -46,15 +46,15 @@ function firstPickup(sim: Simulation, settler: Entity): AtomicEffect | null {
   return null;
 }
 
-describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () => {
+describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () => {
   it('a construction site is a valid delivery sink for its outstanding materials, but not random goods', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent(), map: grassMap(4, 1) });
     const carrier = loadedCarrierAt(sim, 0, 0, STONE, 1); // carrying a stone the house needs
-    const site = siteAt(sim, HOUSE, 2, 0); // empty — needs 2 stone + 1 wood
+    const site = siteAt(sim, HOUSE, 2, 0); // empty - needs 2 stone + 1 wood
 
     // Loaded, the carrier should head FOR the site (it has room for the stone it needs).
     sim.step();
-    // It either set a MoveGoal toward the site or, once adjacent, is en route — verify it picked the site.
+    // It either set a MoveGoal toward the site or, once adjacent, is en route - verify it picked the site.
     let stoneAtSite = 0;
     for (let i = 0; i < 60 && stoneAtSite === 0; i++) {
       sim.step();
@@ -82,11 +82,11 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       built = sim.world.get(site, Building).built >= ONE;
     }
     expect(built).toBe(true); // delivered material + builder work together completed the build
-    // The cost was consumed into the structure — the materials don't linger as stock.
+    // The cost was consumed into the structure - the materials don't linger as stock.
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
     expect(sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
-    expect(sim.world.has(site, UnderConstruction)).toBe(false); // finished — a plain Building now
-    // No construction material is left IN FLIGHT — every unit the carriers held reached the site (the
+    expect(sim.world.has(site, UnderConstruction)).toBe(false); // finished - a plain Building now
+    // No construction material is left IN FLIGHT - every unit the carriers held reached the site (the
     // cost above is 0 because it was delivered THEN consumed, so this is the "nothing stuck en route" half).
     let materialInFlight = 0;
     for (const e of sim.world.query(Carrying)) {
@@ -99,7 +99,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
   it('a builder self-supplies: fetches material from a warehouse to its own site, then builds it', () => {
     const sim = new Simulation({ seed: 4, content: constructionContent(), map: grassMap(8, 1) });
     const site = siteAt(sim, HOUSE, 4, 0); // needs 2 stone + 1 wood, empty hold
-    // A warehouse holding the full cost — the builder must carry it over itself (no carriers). It is a
+    // A warehouse holding the full cost - the builder must carry it over itself (no carriers). It is a
     // BUILDING store (not a bare Stockpile), so the gatherer-yard reaper never mistakes it for a loose
     // ground heap and removes it once the builder drains it (isYardHeap excludes Building stores).
     const warehouse = sim.world.create();
@@ -125,16 +125,16 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       }
     }
     expect(built).toBe(true); // the builder hauled every material itself and hammered the site up
-    // The global one-good-per-person rule: no lift ever exceeds CARRY_CAPACITY — three units take
-    // three trips (source basis: observed original behavior — no on-foot batch exists in the game).
+    // The global one-good-per-person rule: no lift ever exceeds CARRY_CAPACITY - three units take
+    // three trips (source basis: observed original behavior - no on-foot batch exists in the game).
     expect(maxCarried).toBe(1);
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // drawn from the warehouse
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // and spent into the build
   });
 
-  it('a missing material never blocks the others — the builder fetches what IS available and builds partway', () => {
+  it('a missing material never blocks the others - the builder fetches what IS available and builds partway', () => {
     // The house bill is 2 stone + 1 wood; the warehouse holds ONLY the wood. The least-covered pick on an
-    // empty hold is stone (tie broken by ascending goodType), which has no source anywhere — the builder
+    // empty hold is stone (tie broken by ascending goodType), which has no source anywhere - the builder
     // must fall through the bill and fetch the wood rather than wait, then hammer the delivered third and
     // hold for the stone (the fetch-any-available-line rule).
     const sim = new Simulation({ seed: 12, content: constructionContent(), map: grassMap(8, 1) });
@@ -153,7 +153,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(woodAtSite).toBe(1); // fetched despite stone (the least-covered line) having no source
     expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
 
-    // With the wood on hand the builder hammers the delivered third and no further — the site keeps
+    // With the wood on hand the builder hammers the delivered third and no further - the site keeps
     // standing (still under construction), waiting for stone to appear.
     let built = sim.world.get(site, Building).built;
     for (let i = 0; i < 200; i++) {
@@ -165,7 +165,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.has(site, UnderConstruction)).toBe(true); // still waiting for the stone
   });
 
-  it('only ONE builder fetches the last missing unit — the supply-run reservation stops the duplicate', () => {
+  it('only ONE builder fetches the last missing unit - the supply-run reservation stops the duplicate', () => {
     const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(8, 1) });
     const site = siteAt(sim, HOUSE, 4, 0); // cost 2 stone + 1 wood…
     sim.world.get(site, Stockpile).amounts.set(STONE, 1);
@@ -177,7 +177,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     builderAt(sim, 3, 0);
     builderAt(sim, 5, 0);
 
-    // Run through the hammer-then-fetch phase: the warehouse must only ever lose the ONE lifted stone —
+    // Run through the hammer-then-fetch phase: the warehouse must only ever lose the ONE lifted stone -
     // without the SupplyRun reservation both builders raced to fetch it and the surplus wandered off.
     let minWarehouseStone = 3;
     for (let i = 0; i < 240; i++) {
@@ -192,11 +192,11 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(minWarehouseStone).toBe(2);
   });
 
-  it('a builder COHORT self-supplying one site never over-fetches — the inbound tally sums concurrent runs', () => {
+  it('a builder COHORT self-supplying one site never over-fetches - the inbound tally sums concurrent runs', () => {
     // Four builders, one foundation needing 2 stone + 1 wood, one warehouse holding a big surplus of both.
     // Each tick several builders replan at once and read the shared inbound tally: it must fold every
     // concurrent SupplyRun so the crew fetches exactly the 3 outstanding units (spread across materials),
-    // never a duplicate — the tally reproducing the old per-call full-store scan under real concurrency.
+    // never a duplicate - the tally reproducing the old per-call full-store scan under real concurrency.
     const sim = new Simulation({ seed: 11, content: constructionContent(), map: grassMap(10, 1) });
     const site = siteAt(sim, HOUSE, 5, 0); // cost 2 stone + 1 wood, empty hold
     const warehouse = sim.world.create();
@@ -212,7 +212,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 
     // Track the warehouse LOW-WATER mark across every step, not just the final stock: a final-only check
     // self-heals, because a crew that ignored each other's inbound runs over-fetches, the site rejects the
-    // surplus (stockCapacity gate), and the extra loads wander back INTO the warehouse — restoring the
+    // surplus (stockCapacity gate), and the extra loads wander back INTO the warehouse - restoring the
     // final count. Only 2 stone + 1 wood are ever genuinely needed, so with the tally folding concurrent
     // runs the low-water mark must be exactly 9−2 / 9−1; a broken fold would dip it lower.
     let built = false;
@@ -225,7 +225,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       minWood = Math.min(minWood, sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0);
     }
     expect(built).toBe(true);
-    expect(minStone).toBe(7); // only the 2 stone the site needs were ever lifted — never a duplicate
+    expect(minStone).toBe(7); // only the 2 stone the site needs were ever lifted - never a duplicate
     expect(minWood).toBe(8); // only the 1 wood
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(7); // 9 − 2 spent
     expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(8); // 9 − 1 spent
@@ -236,7 +236,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     // and a warehouse holding the wood. The whole crew COULD hammer the delivered stone up to the 2/3 cap,
     // but that would stall on one late fetch trip. Instead only the lead (lowest-id) builder is pinned to
     // the hammer; the other two try to fetch first, and the SupplyRun reservation lets exactly ONE claim
-    // the single missing wood — so the deficit closes in parallel with the hammering (the user's rule:
+    // the single missing wood - so the deficit closes in parallel with the hammering (the user's rule:
     // "4 build, 1 goes for the last resource").
     const sim = new Simulation({ seed: 21, content: constructionContent(), map: grassMap(12, 3) });
     const site = siteAt(sim, HOUSE, 6, 1); // cost 2 stone + 1 wood
@@ -245,7 +245,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
     sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[WOOD, 3]]) });
-    const lead = builderAt(sim, 5, 1); // lowest id — the pinned hammerer
+    const lead = builderAt(sim, 5, 1); // lowest id - the pinned hammerer
     const second = builderAt(sim, 7, 1);
     const third = builderAt(sim, 6, 2);
 
@@ -263,7 +263,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {
     // A stone pile left INSIDE a standing house's walk-blocked body (the leftover the footprint goods
     // eviction could not land, or hand-dropped state): geometrically the nearest source, but its stand
-    // is unreachable — committing to it would path-fail and strand the builder on a retry loop. The
+    // is unreachable - committing to it would path-fail and strand the builder on a retry loop. The
     // pick must skip it for the farther, reachable pile.
     const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(32, 8) });
     const terrain = sim.terrain;
@@ -278,7 +278,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     const house = sim.world.create(); // a built HOUSE: walls on nodes (10,4) and (12,4)
     sim.world.add(house, Position, positionOfNode(10, 4));
     sim.world.add(house, Building, { buildingType: HOUSE, tribe: VIKING, built: ONE, level: 0 });
-    const buried = sim.world.create(); // on the wall node — nearer to the builder than the free pile
+    const buried = sim.world.create(); // on the wall node - nearer to the builder than the free pile
     sim.world.add(buried, Position, positionOfNode(10, 4));
     sim.world.add(buried, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
     const free = sim.world.create();
@@ -292,7 +292,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The fetch was stamped for the site's stone — and the walk goal is the REACHABLE pile's tile,
+    // The fetch was stamped for the site's stone - and the walk goal is the REACHABLE pile's tile,
     // not the nearer buried one.
     expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: STONE });
     expect(sim.world.get(builder, MoveGoal).cell).toBe(terrain.nodeAt(20, 4));
@@ -301,7 +301,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
   it("a builder fetch walks past a workshop's input reserve to the farther warehouse", () => {
     // The joinery complaint: every construction bill is paid in goods the workshops also consume, so the
     // nearest wood was routinely the joinery's own reserve and the builder emptied the shop it was
-    // standing next to. The workshop's wood is its recipe input — off limits — so the pick must fall
+    // standing next to. The workshop's wood is its recipe input - off limits - so the pick must fall
     // through to the warehouse, however much farther it stands (user rule 2026-07-27).
     const sim = new Simulation({ seed: 11, content: constructionContent(), map: grassMap(12, 1) });
     // Empty hold and no stone anywhere, so the bill falls through to its wood line (the fetch-any-
@@ -317,10 +317,10 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(firstPickup(sim, builder)).toMatchObject({ goodType: WOOD, from: warehouse });
   });
 
-  it("still lifts a workshop's OUTPUT — the pottery's own bricks pay for its upgrade", () => {
+  it("still lifts a workshop's OUTPUT - the pottery's own bricks pay for its upgrade", () => {
     // The other half of the rule: the finished shelf is not a reserve. `work_pottery_01`'s bill is paid
     // in brick, which the pottery itself makes, and no recipe in real content consumes brick, tile,
-    // pillar or ornament at all — so a builder must still be able to lift a producer's product.
+    // pillar or ornament at all - so a builder must still be able to lift a producer's product.
     const sim = new Simulation({ seed: 12, content: constructionContent(), map: grassMap(12, 1) });
     const site = siteAt(sim, HOUSE, 0, 0); // empty hold; stone is the least-covered line
     const workshop = builtBuildingAt(sim, WORKSHOP, 4, 0, [[STONE, 5]]); // stone = its recipe OUTPUT
@@ -354,7 +354,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.has(carrier, SiteAssignment)).toBe(false); // only the builder trade assigns
 
     // The pinned builder walks PAST the nearer stocked site and raises its assigned one to completion
-    // FIRST — the nearer site untouched until then (afterwards the pin retires and it may move on).
+    // FIRST - the nearer site untouched until then (afterwards the pin retires and it may move on).
     let nearLaborWhenFarFinished = -1;
     for (let i = 0; i < 400 && nearLaborWhenFarFinished < 0; i++) {
       sim.step();
@@ -366,17 +366,17 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(far, Building).built).toBe(ONE);
   });
 
-  it('a PINNED builder routes its load to a site beyond the signpost area — the bound-site sink', () => {
+  it('a PINNED builder routes its load to a site beyond the signpost area - the bound-site sink', () => {
     // assignBuilder deliberately has no confinement gate (a pinned foundation is how the network's
     // frontier grows) and routing treats the builder's own SiteAssignment as a bound sink
-    // (`toOwnCrewSite`) —
+    // (`toOwnCrewSite`) -
     // so a builder pinned far outside its local circle still fetches from an in-area store and ROUTES
     // the load to the pinned site instead of shedding it on "no in-area sink" (the old livelock).
     // The fixture HOUSE has no door and blocks its anchor. Construction routing must therefore use a
     // legal perimeter cell rather than inheriting the finished-building interaction point.
     const sim = new Simulation({ seed: 13, content: constructionContent(), map: grassMap(60, 8) });
     sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
-    const SITE_TILE_X = 20; // node x 40 — far beyond the 24-node local circle around the builder
+    const SITE_TILE_X = 20; // node x 40 - far beyond the 24-node local circle around the builder
     const site = siteAt(sim, HOUSE, SITE_TILE_X, 1);
     const warehouse = sim.world.create();
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -432,7 +432,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(nearer, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
   });
 
-  it("a builder raises only its OWN player's site — a same-tribe enemy foundation is left alone", () => {
+  it("a builder raises only its OWN player's site - a same-tribe enemy foundation is left alone", () => {
     // A 4-row map so a site footprint doesn't wall off the corridor between the two.
     const sim = new Simulation({ seed: 7, content: constructionContent(), map: grassMap(8, 4) });
     // Two same-tribe (VIKING) foundations, different players; both fully stocked (hammer-ready).
@@ -444,7 +444,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       sim.world.get(site, Stockpile).amounts.set(STONE, 2);
       sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
     }
-    // My builder sits NEARER the enemy site (x=5 vs the enemy at 6, mine at 2) — proximity alone would
+    // My builder sits NEARER the enemy site (x=5 vs the enemy at 6, mine at 2) - proximity alone would
     // pull an ownership-blind builder onto the enemy foundation.
     const builder = builderAt(sim, 5, 2);
     sim.world.add(builder, Owner, { player: 0 });
@@ -460,7 +460,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(enemy, Stockpile).amounts.get(STONE)).toBe(2); // material untouched
   });
 
-  it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {
+  it('is deterministic - two same-seed delivery+build runs reach the same finished state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(6, 1) });
       siteAt(sim, HOUSE, 3, 0);
@@ -477,14 +477,14 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 
 /**
  * Upgrade-site delivery: a built home re-opened by the `upgradeBuilding` command is a construction
- * site again, so the SAME carrier + builder machinery serves it — at the target tier's own cost (the
+ * site again, so the SAME carrier + builder machinery serves it - at the target tier's own cost (the
  * level difference). A built home never attracts upgrade materials on its own: demand starts with the
  * command, never before it.
  */
-describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)', () => {
+describe('constructionSystem - upgrade-site DELIVERY dispatch (carrier path)', () => {
   it('end-to-end: the command opens the site, carriers haul the difference, a builder hammers it up', () => {
     const sim = new Simulation({ seed: 2, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-    const home = builtBuildingAt(sim, HOME_L0, 3, 0); // L0 (homeSize 1) — the L1 difference is 2 stone
+    const home = builtBuildingAt(sim, HOME_L0, 3, 0); // L0 (homeSize 1) - the L1 difference is 2 stone
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 1, 0, STONE, 1);
     builderAt(sim, 5, 0);
@@ -506,7 +506,7 @@ describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)',
     }
   });
 
-  it('a built home attracts NO upgrade materials before the command — the carrier sets its load down', () => {
+  it('a built home attracts NO upgrade materials before the command - the carrier sets its load down', () => {
     // Upgrade demand starts with the command: an untouched built L0 advertises no stone room (its type
     // has no stock slots), so the carrier finds no sink and sets the stone down rather than stand
     // holding it forever.
@@ -519,7 +519,7 @@ describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)',
     expect(sim.world.get(home, Building).buildingType).toBe(HOME_L0); // unchanged
   });
 
-  it('is deterministic — two same-seed upgrade-delivery runs reach the same state hash', () => {
+  it('is deterministic - two same-seed upgrade-delivery runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: levelChainWithCarrier(), map: grassMap(6, 1) });
       const home = builtBuildingAt(sim, HOME_L0, 3, 0);

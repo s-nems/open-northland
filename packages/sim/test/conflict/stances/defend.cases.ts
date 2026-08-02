@@ -26,7 +26,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
+describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
   it('ignores an enemy OUTSIDE the defend radius (holds its post)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
@@ -63,7 +63,7 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND, { hitpoints: 100000 });
     const anchorX = 10;
     sim.world.get(guard, Stance).anchorCell = cell(sim, anchorX, 0);
-    // A tough enemy that marches in (ATTACK) — it reaches the defend radius during the run, so the guard
+    // A tough enemy that marches in (ATTACK) - it reaches the defend radius during the run, so the guard
     // engages and chases; both are far too tough to die, so the fight lasts the whole run.
     combatant(sim, 16, 0, P1, MILITARY_MODE.ATTACK, { hitpoints: 100000 });
 
@@ -73,9 +73,9 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     expect(Math.abs(gx - anchorX) * 2).toBeLessThanOrEqual(DEFEND_LEASH_NODES);
   });
 
-  it('holds its post against the economy — a militia-job guard does not wander off to work', () => {
+  it('holds its post against the economy - a militia-job guard does not wander off to work', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
-    // A DEFEND unit on a CIVILIAN job (woodcutter) — without the economy-skip it would walk off to harvest.
+    // A DEFEND unit on a CIVILIAN job (woodcutter) - without the economy-skip it would walk off to harvest.
     const guard = combatant(sim, 5, 0, P0, MILITARY_MODE.DEFEND, { jobType: WOODCUTTER });
     // A wood node it could harvest, off to the side.
     const wood = sim.world.create();

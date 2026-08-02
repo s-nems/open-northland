@@ -5,12 +5,12 @@ import { diag } from '../diag/index.js';
  * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite
  * middleware. This is app-layer I/O (a browser `fetch`, never allowed in the pure sim); everything
  * downstream (`sliceTerrain`, `runSlice`, the renderer) consumes the validated result. A checkout
- * without `content/` degrades to the synthetic strip — the maps are gitignored.
+ * without `content/` degrades to the synthetic strip - the maps are gitignored.
  */
 
 /**
  * A map id is a bare filename stem (no slashes/dots), so `?map=oasis_o_plenty` can only ever fetch a
- * single `content/maps/<id>.json` — never a traversal out of the maps dir. Returns null for an id that
+ * single `content/maps/<id>.json` - never a traversal out of the maps dir. Returns null for an id that
  * isn't a safe stem, so the caller falls back to the synthetic strip rather than fetching junk.
  */
 function safeMapId(id: string): string | null {
@@ -56,8 +56,8 @@ export async function loadTerrainMap(
 
 /**
  * Load a decoded map's script sidecar (`content/maps/<id>.script.json`, served at
- * `/maps/<id>.script.json`) — the player roster, diplomacy and mission triggers. Returns null
- * without noise on a 404 (a map without playerdata, or `content/` absent — normal absence), and
+ * `/maps/<id>.script.json`) - the player roster, diplomacy and mission triggers. Returns null
+ * without noise on a 404 (a map without playerdata, or `content/` absent - normal absence), and
  * null with a warning on a malformed file, so the entry degrades to the roster-less defaults.
  */
 export async function loadMapScript(id: string, fetchImpl: typeof fetch = fetch): Promise<MapScript | null> {
