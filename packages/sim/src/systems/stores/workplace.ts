@@ -1,9 +1,9 @@
-import type { Recipe } from '@open-northland/data';
+import type { GoodQuantity, Recipe } from '@open-northland/data';
 import { Building } from '../../components/index.js';
 import { isCarrierJobId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 
 // What a building's TYPE declares: what it makes, the job slots it offers, the goods it stores. The
 // operator concept (which of those slots run the craft, and who fills them) is ./operators.ts.
@@ -18,10 +18,39 @@ import type { SystemContext } from '../context.js';
  * OPERATOR fetches against its own rotation's narrower view instead (`operatorRecipes`); the bound carrier
  * keeps this one, since it supplies every operator.
  */
-export function mergedRecipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
+export function mergedRecipeOf(world: World, ctx: ContentContext, building: Entity): Recipe | undefined {
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
   return contentIndex(ctx.content).mergedRecipeByBuilding.get(b.buildingType);
+}
+
+/**
+ * Whether a fetch may lift `goodType` out of `store`. A workshop's stock of a good its own recipe
+ * CONSUMES is the reserve it needs to run, so nobody else may take it: the bakery draws water from the
+ * well or from storage, never out of the brewery's vat (user rule 2026-07-27).
+ *
+ * Keyed on recipe inputs alone: a stock slot no recipe of that tier consumes stays strippable
+ * (`work_joinery_00`'s iron) rather than becoming a sink nothing could empty, and a building declaring
+ * no recipe — storage, homes, the barracks, towers — is untouched by the rule. A finished shelf yields
+ * unless its own maker also consumes the product (`work_animal_farm` breeds the sheep it shears).
+ */
+export function mayFetchGoodFrom(
+  world: World,
+  ctx: ContentContext,
+  store: Entity,
+  goodType: number,
+): boolean {
+  return !recipeConsumes(mergedRecipeOf(world, ctx, store)?.inputs, goodType);
+}
+
+/** {@link mayFetchGoodFrom}'s test with the recipe already in hand (undefined = runs none), for a walk
+ *  that resolves one store's recipe and then measures many goods against it. */
+export function recipeConsumes(inputs: readonly GoodQuantity[] | undefined, goodType: number): boolean {
+  if (inputs === undefined) return false;
+  for (const input of inputs) {
+    if (input.goodType === goodType) return true;
+  }
+  return false;
 }
 
 /**

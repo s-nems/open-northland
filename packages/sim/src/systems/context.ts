@@ -39,3 +39,7 @@ export interface SystemContext {
 }
 
 export type System = (world: World, ctx: SystemContext) => void;
+
+/** The slice of a {@link SystemContext} a pure content lookup reads. A helper taking this is callable
+ *  outside a tick — from a read view, which holds a `ContentSet` and no live context. */
+export type ContentContext = Pick<SystemContext, 'content'>;

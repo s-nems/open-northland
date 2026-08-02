@@ -24,6 +24,7 @@ import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
 import { isFighterJob, isScoutJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
+import { mergedRecipeOf, recipeConsumes } from '../../stores/index.js';
 import { nearestStoreHolding } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import type { PlannerPass } from './pass.js';
@@ -239,10 +240,11 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
 type GrantedStock = ReadonlyMap<number, ReadonlyMap<number, number>>;
 
 /**
- * Total store/pile stock of every granted good, per granting player (sites excluded - a site is a
- * sink, never a source), in ONE walk of the candidate stores rather than one per player and good:
- * the owner test is the expensive part and it resolves once per store. An unowned pile counts for
- * every player ({@link ownersCompatible}), as it did per-player before.
+ * Total store/pile stock of every granted good, per granting player (a construction site and a
+ * workshop's own input reserve excluded - neither is a source, matching {@link nearestStoreHolding}),
+ * in ONE walk of the candidate stores rather than one per player and good: the owner test is the
+ * expensive part and it resolves once per store. An unowned pile counts for every player
+ * ({@link ownersCompatible}), as it did per-player before.
  *
  * The reservation bound, not a reachability promise: it counts stock in other signpost networks and
  * buried piles too (approximation), so it can run loose by a few unreachable units - the per-settler
@@ -252,7 +254,7 @@ function collectGrantedStock(
   pass: PlannerPass,
   grants: ReadonlyMap<number, readonly GrantSpec[]>,
 ): GrantedStock {
-  const { world, targets } = pass;
+  const { world, ctx, targets } = pass;
   const byPlayer = new Map<number, Map<number, number>>();
   for (const [player, specs] of grants) {
     byPlayer.set(player, new Map(specs.map((spec) => [spec.goodType, 0])));
@@ -261,11 +263,15 @@ function collectGrantedStock(
     if (world.has(store, UnderConstruction)) continue;
     const owner = ownerOf(world, store);
     const amounts = world.get(store, Stockpile).amounts;
+    // The reserve rule keyed by store, hoisted beside the owner: it cannot vary by player, and the
+    // inner walk is stores × players × goods. `mayFetchGoodFrom` is the same test one lookup down.
+    const reserved = mergedRecipeOf(world, ctx, store)?.inputs;
     for (const [player, totals] of byPlayer) {
       if (!ownersCompatible(player, owner)) continue;
       for (const [goodType, held] of totals) {
         const units = amounts.get(goodType);
-        if (units !== undefined) totals.set(goodType, held + units);
+        if (units === undefined || recipeConsumes(reserved, goodType)) continue;
+        totals.set(goodType, held + units);
       }
     }
   }

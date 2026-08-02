@@ -18,6 +18,7 @@ import {
   buildingProduces,
   isYardHeap,
   MAX_GROUND_STACK,
+  mayFetchGoodFrom,
   mergedRecipeOf,
   stockCapacity,
 } from '../../../stores/index.js';
@@ -196,13 +197,15 @@ export function buriedUnderBuilding(
 
 /**
  * The nearest store (a {@link Stockpile} on a positioned entity) that HOLDS at least one unit of
- * `goodType` — a SOURCE to fetch from, by Manhattan distance from `here`, ascending-cell-id tie-break,
- * scanned in canonical entity-id order. A construction site is **excluded** (it is a delivery sink, not a
- * source — a builder never strips the material it just delivered), and so is a loose pile buried under a
- * building's walls ({@link buriedUnderBuilding} — an unreachable stand would strand the fetcher), but a
- * warehouse or a reachable loose ground pile that holds the good is fair game. Returns the source store
- * or null if none holds the good. The counter to {@link nearestStoreFor} (which finds a store that can
- * TAKE a good); the builder drive uses it to fetch a construction material its site is short on.
+ * `goodType` and may be stripped of it — a SOURCE to fetch from, by Manhattan distance from `here`,
+ * ascending-cell-id tie-break, scanned in canonical entity-id order. Excluded: a construction site (a
+ * delivery sink, not a source — a builder never strips the material it just delivered), a loose pile
+ * buried under a building's walls ({@link buriedUnderBuilding} — an unreachable stand would strand the
+ * fetcher), and a workshop's own input reserve ({@link mayFetchGoodFrom}). A warehouse, a reachable
+ * ground pile, and a producer's finished shelf are fair game. Returns the source store or null if none
+ * yields the good. The counter to
+ * {@link nearestStoreFor} (which finds a store that can TAKE a good); the builder drive uses it to fetch
+ * a construction material its site is short on, and the equip/grant errands to fetch a wearable.
  */
 export function nearestStoreHolding(
   index: InteractionCellIndex,
@@ -218,9 +221,9 @@ export function nearestStoreHolding(
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
-  // accept just excludes sites, stores that don't hold the good, and buried piles. `gate` is the
-  // fetcher's signpost confinement: a store standing outside its allowed area is not a source it knows
-  // the way to.
+  // accept just excludes sites, stores that don't hold the good or may not yield it, and buried piles.
+  // `gate` is the fetcher's signpost confinement: a store standing outside its allowed area is not a
+  // source it knows the way to.
   const walls = buildingBlockedCells(world, ctx, terrain);
   return (
     index.nearest(
@@ -228,6 +231,7 @@ export function nearestStoreHolding(
       (e) =>
         !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
         (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
+        mayFetchGoodFrom(world, ctx, e, goodType) &&
         !buriedUnderBuilding(world, terrain, walls, e)
           ? QUALIFIES
           : null,

@@ -101,9 +101,11 @@ function armouryAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** The shared fixture plus a brewery-shaped workplace: it declares a recipe that MAKES an equippable
- *  (mead out of wood) and a shelf for it. The armoury cannot stand in - it declares no recipe, so a
- *  producer filter growing onto the fetch scan would slip past it. */
+/** The shared fixture plus a brewery-shaped workplace, carrying an equippable on BOTH sides of its
+ *  recipe: it makes mead (its shelf is a fetch source) out of wood and shoes (its shoe slot is a
+ *  reserve no errand may lift - the `work_coin_mint` shape, which strikes an amulet out of a pair).
+ *  The armoury cannot stand in - it declares no recipe, so a producer filter growing onto the fetch
+ *  scan would slip past it. */
 function brewhouseContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
@@ -117,22 +119,30 @@ function brewhouseContent(): ContentSet {
         workers: [{ jobType: CARPENTER, count: 1 }],
         stock: [
           { goodType: WOOD, capacity: 10, initial: 0 },
+          { goodType: SHOES, capacity: 10, initial: 0 },
           { goodType: MEAD, capacity: 10, initial: 0 },
         ],
         recipes: [
-          { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: MEAD, amount: 1 }], ticks: 20 },
+          {
+            inputs: [
+              { goodType: WOOD, amount: 1 },
+              { goodType: SHOES, amount: 1 },
+            ],
+            outputs: [{ goodType: MEAD, amount: 1 }],
+            ticks: 20,
+          },
         ],
       },
     ],
   });
 }
 
-/** A built brewhouse holding `mead` bottles on its own output shelf. */
-function brewhouseAt(sim: Simulation, x: number, y: number, mead: number): Entity {
+/** A built brewhouse holding the given stock. */
+function brewhouseAt(sim: Simulation, x: number, y: number, stock: Array<[number, number]>): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: BREWHOUSE, tribe: VIKING, built: fx.fromInt(1), level: 0 });
-  sim.world.add(e, Stockpile, { amounts: new Map([[MEAD, mead]]) });
+  sim.world.add(e, Stockpile, { amounts: new Map(stock) });
   sim.world.add(e, Owner, { player: HUMAN_PLAYER });
   return e;
 }
@@ -299,7 +309,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     const sim = new Simulation({ seed: 1, content: brewhouseContent(), map: grassMap(16, 6) });
     setNeedsEnabled(sim.world, false);
     const settler = ownedSettler(sim, 2, 2);
-    const brewhouse = brewhouseAt(sim, 12, 2, 3);
+    const brewhouse = brewhouseAt(sim, 12, 2, [[MEAD, 3]]);
 
     sim.enqueue(equip(settler, MEAD, 'misc', 0));
     sim.run(ERRAND_TICKS);
@@ -307,6 +317,25 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.get(settler, Equipment).misc[0]?.goodType).toBe(MEAD);
     expect(sim.world.get(brewhouse, Stockpile).amounts.get(MEAD)).toBe(2);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
+  });
+
+  it("leaves a workshop's own input reserve alone, and the menu never offers it", () => {
+    // The twin of the case above. The brewhouse's shoes are what it brews WITH, so the errand may not
+    // strip them however badly the settler wants boots - and the pick menu must agree, or the row
+    // promises a pair no click can deliver.
+    const sim = new Simulation({ seed: 1, content: brewhouseContent(), map: grassMap(16, 6) });
+    setNeedsEnabled(sim.world, false);
+    const settler = ownedSettler(sim, 2, 2);
+    const brewhouse = brewhouseAt(sim, 12, 2, [[SHOES, 3]]);
+
+    expect(sim.equipPickList(settler, 'boots')).toEqual([]);
+
+    sim.enqueue(equip(settler, SHOES, 'boots', 0));
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.tryGet(settler, Equipment)?.boots ?? null).toBeNull();
+    expect(sim.world.get(brewhouse, Stockpile).amounts.get(SHOES)).toBe(3);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false); // the drive found no source and gave up
   });
 });
 

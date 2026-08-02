@@ -14,12 +14,12 @@ import type { SystemContext } from '../../../../context.js';
 import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
 import { buildingBlockedCells } from '../../../../footprint/index.js';
 import {
+  mayFetchGoodFrom,
   recipesByProductOf,
   stockCapacity,
   typeProducesGoodWithoutInputs,
 } from '../../../../stores/index.js';
 import { buriedUnderBuilding, type InteractionCellIndex } from '../../../targets/index.js';
-import { mayFetchGoodFrom } from '../store-policy.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.

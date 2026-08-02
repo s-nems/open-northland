@@ -33,22 +33,6 @@ export function isFarmCarrierHaulOutRole(
   );
 }
 
-/**
- * Whether a supply run may lift `goodType` out of `store`. A workshop's stock of a good its own
- * recipe CONSUMES is the reserve it needs to run, so nobody else may take it: the bakery draws water
- * from the well or from storage, never out of the brewery's vat (user rule 2026-07-27). Everything
- * else still yields — a warehouse, a loose pile, a producer's finished shelf, and a stock slot no
- * recipe of that tier consumes (`work_joinery_00`'s iron), which would otherwise become a sink
- * nothing could empty.
- *
- * Scoped to recipe inputs: homes, the barracks and towers declare no recipe, so their larders and
- * garrison stock stay strippable exactly as before this rule.
- */
-export function mayFetchGoodFrom(world: World, ctx: SystemContext, store: Entity, goodType: number): boolean {
-  const recipe = mergedRecipeOf(world, ctx, store);
-  return !(recipe?.inputs.some((i) => i.goodType === goodType) ?? false);
-}
-
 /** A positioned stockpile that accepts general deliveries rather than running a recipe. */
 export function isStorageSink(world: World, ctx: SystemContext, store: Entity): boolean {
   return (
