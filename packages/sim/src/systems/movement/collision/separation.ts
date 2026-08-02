@@ -1,15 +1,12 @@
-import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
+import { Position } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
 import { worldDistance } from '../../../nav/world-metric.js';
 import type { System } from '../../context.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
-import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 import { MOVE_SPEED_PER_TICK } from '../system.js';
-import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
+import { collectColliders } from './separation/colliders.js';
+import { SeparationGates } from './separation/gates.js';
 import { separationGridPoint, separationWorldPoint } from './separation/geometry.js';
 import {
   clearGrind,
@@ -77,79 +74,12 @@ export const separationSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no lattice to collide on
 
-  // Soft movers currently walking - the only entities this system ever displaces. The firm subset (owned
-  // fighters) additionally resolves against posts and keeps the obstruction grind window.
   const scratch = separationScratch(world);
-  const { movers, firmMovers } = scratch;
-  for (const e of world.query(PathFollow, Position)) {
-    if (!hasSoftCollision(world, e)) continue;
-    movers.push(e);
-    if (hasBodyCollision(world, ctx.content, e)) firmMovers.add(e);
-  }
-  // An Obstructed counter survives only on a firm walker: arrival/re-route/re-tasking ends the grind, and a
-  // profession change away from the fighting trades sheds it with the firm tier.
-  for (const e of canonicalById(world.query(Obstructed))) {
-    if (!world.has(e, PathFollow) || !hasBodyCollision(world, ctx.content, e)) world.remove(e, Obstructed);
-  }
-  if (movers.length === 0) return; // dormancy: nobody walking → nothing can overlap anything
-  movers.sort((a, b) => a - b);
-
-  // Standing colliders - the immovable posts firm movers resolve against. Derived only when a firm mover
-  // exists: soft-only traffic (a civilian economy tick) never reads the index, so it skips the full-settler
-  // scan + sort entirely.
-  const { posts } = scratch;
-  if (firmMovers.size > 0) {
-    for (const e of world.query(Settler, Position)) {
-      if (hasBodyCollision(world, ctx.content, e) && isStanding(world, e)) posts.push(e);
-    }
-  }
-  const postIndex = new NodeBuckets(world, canonicalById(posts));
-  const moverIndex = new NodeBuckets(world, movers);
-
-  // The tick's pre-separation mover snapshot - positions and headings - so a pair's two halves are computed
-  // from the same state regardless of processing order. Headings must come from the snapshot, not a live
-  // component read: the grind bookkeeping below can drop an earlier-processed mover's PathFollow mid-loop (a
-  // re-route/stand-down in a converging crowd), so a live read on a later mover's neighbour would throw - and
-  // would make the pair split order-dependent.
-  const { before, snapshotPool } = scratch;
-  for (const e of movers) {
-    const p = world.get(e, Position);
-    const f = world.get(e, PathFollow); // present by the movers query above
-    const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: f.hx, hy: f.hy };
-    snapshot.x = p.x;
-    snapshot.y = p.y;
-    snapshot.hx = f.hx;
-    snapshot.hy = f.hy;
-    before.set(e, snapshot);
-  }
-
-  // Lazy shared per-tick state: zones/overlay are built only if some pair actually interacts.
-  let zones: Map<number, Set<NodeId>> | undefined;
-  const { ghostMemo } = scratch;
-  const isGhostMover = (e: Entity): boolean => {
-    let ghost = ghostMemo.get(e);
-    if (ghost === undefined) {
-      zones ??= calmZonesByPlayer(world, terrain);
-      const p = world.get(e, Position);
-      const hx = nodeHxOfPosition(p.x, p.y);
-      const hy = nodeHyOfPosition(p.y);
-      ghost =
-        terrain.inBounds(hx, hy) &&
-        (zones.get(world.get(e, Owner).player)?.has(terrain.nodeAt(hx, hy)) ?? false);
-      ghostMemo.set(e, ghost);
-    }
-    return ghost;
-  };
-  let blockedOverlay: BlockOverlay | undefined;
-  const safeLanding = (x: Fixed, y: Fixed): boolean => {
-    const hx = nodeHxOfPosition(x, y);
-    const hy = nodeHyOfPosition(y);
-    if (!terrain.inBounds(hx, hy)) return false;
-    const node = terrain.nodeAt(hx, hy);
-    if (!terrain.isWalkable(node)) return false;
-    blockedOverlay ??= dynamicBlockOverlay(world, ctx, terrain);
-    return !blockedOverlay.has(node);
-  };
+  const colliders = collectColliders(world, ctx, scratch);
+  if (colliders === null) return; // dormancy: nobody walking → nothing can overlap anything
+  const { movers, firmMovers, before, moverIndex, postIndex } = colliders;
+  const gates = new SeparationGates(world, ctx, terrain, scratch.ghostMemo);
+  const { nearMovers, nearPosts } = scratch;
 
   for (const e of movers) {
     const start = before.get(e);
@@ -161,7 +91,6 @@ export const separationSystem: System = (world, ctx) => {
     // Gather this mover's neighbourhood. Radius < both bucket pitches, so bodies within reach live in the 3×3
     // bucket block around the mover's own node (truncation adds at most one node). Posts matter only to a firm
     // mover - a civilian passes through every standing body.
-    const { nearMovers, nearPosts } = scratch;
     nearMovers.length = 0;
     nearPosts.length = 0;
     for (let dx = -1; dx <= 1; dx++) {
@@ -179,7 +108,7 @@ export const separationSystem: System = (world, ctx) => {
     // A firm mover in its own town drops to the soft tier (no post resolve, no grind): fighters queueing at
     // their own stores never wedge. The soft nudge below stays on for everyone - capped under the arrival
     // brake floor, it cannot jam town flow, only un-merge the sprites.
-    const ghost = isFirm && isGhostMover(e);
+    const ghost = isFirm && gates.isGhost(e);
 
     const push = resolveMoverPush(e, start, nearMovers, before);
 
@@ -194,15 +123,14 @@ export const separationSystem: System = (world, ctx) => {
     // (nearPosts empty / skipped) keeps the soft candidate.
     if (!ghost) cand = resolveAgainstPosts(e, cand, nearPosts, world);
 
-    // Landing safety: never displace onto unwalkable/blocked ground - drop the offending axis, then
-    // the whole displacement (the walker's own path point is always a legal stand).
+    // Drop the offending axis, then the whole displacement: the walker's own path point always stands.
     if (cand.x !== p.x || cand.y !== p.y) {
-      if (safeLanding(cand.x, cand.y)) {
+      if (gates.allowsLanding(cand.x, cand.y)) {
         p.x = cand.x;
         p.y = cand.y;
-      } else if (safeLanding(cand.x, p.y)) {
+      } else if (gates.allowsLanding(cand.x, p.y)) {
         p.x = cand.x;
-      } else if (safeLanding(p.x, cand.y)) {
+      } else if (gates.allowsLanding(p.x, cand.y)) {
         p.y = cand.y;
       }
     }
@@ -218,9 +146,9 @@ export const separationSystem: System = (world, ctx) => {
  */
 function resolveMoverPush(
   e: Entity,
-  start: MoverSnapshot,
+  start: Readonly<MoverSnapshot>,
   nearMovers: readonly Entity[],
-  before: ReadonlyMap<Entity, MoverSnapshot>,
+  before: ReadonlyMap<Entity, Readonly<MoverSnapshot>>,
 ): { x: Fixed; y: Fixed } {
   const startW = separationWorldPoint(start.x, start.y);
   let pushX = ZERO;
