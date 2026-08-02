@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsc --build ../content-resolver && vite",
+    "dev": "tsc --build && vite",
     "build": "tsc --build && vite build",
     "preview": "vite preview",
-    "shot": "tsc --build ../content-resolver && node scripts/shot.mjs"
+    "shot": "tsc --build && node scripts/shot.mjs"
   },
   "dependencies": {
     "@open-northland/audio": "*",

@@ -6,8 +6,9 @@ import { defineConfig, type Plugin } from 'vite';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
 // wraps the same build and serves the same routes over its app:// protocol.
-// This config imports @open-northland/content-resolver' dist (gitignored), so the `dev`/`shot`
-// scripts run `tsc --build ../content-resolver` first — a fresh checkout must not need a full build.
+// Vite resolves every `@open-northland/*` import to that package's `dist/` (gitignored), so `dev` and
+// `shot` run `tsc --build` first: without it the server silently serves a stale sim/render/data
+// surface and the app crashes on a member the current source has but the last build did not.
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),
