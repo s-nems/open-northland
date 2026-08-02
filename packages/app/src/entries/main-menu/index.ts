@@ -1,6 +1,7 @@
 import { messages } from '../../i18n/index.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
 import { startMenuScene } from './live-scene.js';
+import { mapSelectScreen } from './map-select.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus } from './model.js';
 
 /** Shown verbatim under the logo, per the accepted design frame. */
@@ -113,10 +114,15 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   void startMenuScene(sceneLayer, canvas, params);
 
   let screen: MenuScreen = 'main';
+  const screenFor = (next: MenuScreen): HTMLElement => {
+    if (next === 'main') return mainScreen(show);
+    if (next === 'newGame') return mapSelectScreen(show);
+    return placeholderScreen(next, show);
+  };
   const show = (next: MenuScreen): void => {
     screen = next;
     root.classList.toggle('is-sub', next !== 'main');
-    content.replaceChildren(next === 'main' ? mainScreen(show) : placeholderScreen(next, show));
+    content.replaceChildren(screenFor(next));
     content.classList.remove('is-entering');
     void content.offsetWidth; // reflow so the crossfade animation restarts
     content.classList.add('is-entering');
@@ -128,6 +134,9 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
 
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+      // Esc inside a non-empty text field is the field's own clear (native for type=search);
+      // only an empty field lets it bubble up into back-navigation.
+      if (event.target instanceof HTMLInputElement && event.target.value !== '') return;
       const target = backTarget(screen);
       if (target !== null) show(target);
       return;

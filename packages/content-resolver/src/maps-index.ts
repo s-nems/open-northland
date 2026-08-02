@@ -88,18 +88,31 @@ function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonl
   };
 }
 
-/** Reads `<id>.script.json`'s roster (+ colour locking), or undefined when absent/malformed. */
+/** Reads `<id>.script.json`'s roster (+ colour locking and multiplayer capability), or undefined
+ *  when absent/malformed. */
 function playersOf(
   mapsRoot: string,
   id: string,
-): { readonly slots: readonly MapsIndexPlayerSlot[]; readonly fixedColors: boolean } | undefined {
+):
+  | {
+      readonly slots: readonly MapsIndexPlayerSlot[];
+      readonly fixedColors: boolean;
+      readonly multiplayer: boolean;
+    }
+  | undefined {
   const parsed = readSidecar(mapsRoot, id, '.script.json');
   if (typeof parsed !== 'object' || parsed === null) return undefined;
   const { players, multiplayer } = parsed as Record<string, unknown>;
   if (!Array.isArray(players)) return undefined;
   const mp = multiplayerOf(multiplayer);
   const slots = players.map((p) => playerSlotOf(p, mp)).filter((s) => s !== undefined);
-  return slots.length > 0 ? { slots, fixedColors: mp.fixedColors } : undefined;
+  return slots.length > 0
+    ? {
+        slots,
+        fixedColors: mp.fixedColors,
+        multiplayer: typeof multiplayer === 'object' && multiplayer !== null,
+      }
+    : undefined;
 }
 
 /**
@@ -123,6 +136,7 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
         minimap: existsSync(join(mapsRoot, `${id}.png`)),
         ...(players !== undefined ? { players: players.slots } : {}),
         ...(players?.fixedColors ? { fixedColors: true } : {}),
+        ...(players?.multiplayer ? { multiplayer: true } : {}),
       };
     });
 }
