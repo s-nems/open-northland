@@ -2,7 +2,7 @@
 // the original's `[GfxHouse]` records (`blocked` walk-block body, `familyBody` max-level body,
 // `reserved` build-exclusion zone, `door` entry cell) and the `[GfxLandscape]` resource areas.
 // A leaf package: consumed by the CommandSystem (placement validation), the PathfindingSystem
-// (the walk-block overlay), the AI planner + JobSystem + ProductionSystem (door-cell interaction),
+// (the walk-block overlay), the AI planner + ProductionSystem (door-cell interaction),
 // never importing any system.
 //
 // A completed building TYPE without a footprint (synthetic test content; the one real graphics-less type)

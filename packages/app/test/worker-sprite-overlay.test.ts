@@ -88,6 +88,27 @@ describe('WorkerSpriteOverlay animation clock', () => {
   });
 });
 
+describe('WorkerSpriteOverlay field selection', () => {
+  it('falls through an EMPTY resident grouping to the site crew, rather than blanking the field', () => {
+    // A home still going up: it houses nobody (no families), but the crew raising it must still show.
+    const stage = new Container();
+    const overlay = new WorkerSpriteOverlay(stubApp(stage), SHEET, 0);
+    const site: Ent = {
+      id: BUILDING,
+      components: { Building: { buildingType: 1 }, UnderConstruction: { labor: 0 }, ...at(2, 2) },
+    };
+    const builder: Ent = {
+      id: 1,
+      components: { Settler: { jobType: 0 }, SiteAssignment: { site: BUILDING }, ...at(2, 2) },
+    };
+
+    overlay.update(snapshotOf([builder, site]), BUILDING, FIELD, { siteCrew: true, groups: [] });
+
+    expect(drawnBobs(stage)).toHaveLength(1);
+    overlay.dispose();
+  });
+});
+
 describe('WorkerSpriteOverlay hit boxes', () => {
   it('answers each slot with the worker drawn there, and stops answering a vacated slot', () => {
     const stage = new Container();

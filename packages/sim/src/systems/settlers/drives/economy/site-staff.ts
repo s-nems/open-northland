@@ -8,23 +8,17 @@ import { claimWorkCell, deStackIdle } from '../spacing.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
 /**
- * SITE STAFF - what a worker posted to a building that is still going up does until it stands. A building
- * takes its staff from the moment its foundation is placed (same slots, same per-slot limits - see
- * `openWorkerJobFromList`), and an upgrade keeps the crew it already had, so both cases land here:
+ * SITE STAFF - a worker posted to a building that is still going up hauls its construction bill (a carrier)
+ * or waits at it (every other trade). Waiting rather than working is the readable original: `jobtypes.ini`
+ * gives every bound trade we model `mustHaveFinishedWorkHouseFlag 1`, collapsed to a blanket here (its 0
+ * rows - hunter/scout/jester - never bind a workplace at all).
  *
- *  - a **carrier** posted to the site hauls its construction bill, exactly as the builders' own supply trips
- *    do ({@link fetchNeededMaterial} - the delivery drive then routes the load to the site). This is the
- *    whole point of posting a hauler to a foundation: the crew stops walking its own material.
- *  - **every other trade** - a baker with no oven yet - waits at the site instead of working: its trade needs
- *    the finished workhouse (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data
- *    collapsed to a blanket here - every bound trade we model sets 1, and the 0 rows (hunter/scout/jester)
- *    never bind a workplace). Standing AT the site rather than wherever it happened to be is what makes the
- *    wait readable on screen. A carrier with nothing left to fetch waits with them.
+ * The stand goes through {@link claimWorkCell}, so staff spread over the site's perimeter alongside the
+ * build crew. The binding survives the rise, so work starts the tick the building is finished.
  *
- * The wait stand goes through {@link claimWorkCell}, the same spread the build crew uses, so staff and
- * builders share the site's perimeter instead of stacking on one cell; with no free perimeter cell the
- * settler just de-stacks where it is. The binding survives the build either way, so work starts the tick the
- * building is finished.
+ * source-basis: that a posted worker exists before completion at all is a user rule,
+ * as is a carrier supplying its own site; the original has no pre-completion staff to observe. Only the
+ * "wait, do not work" half is readable data.
  */
 export function planSiteStaff(
   plan: PlannerContext,

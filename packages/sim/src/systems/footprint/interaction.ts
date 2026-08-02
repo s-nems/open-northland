@@ -33,7 +33,7 @@ export type InteractionNode = { readonly x: number; readonly y: number };
  * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node
  * itself (the pre-footprint same-node model, which synthetic content keeps). This is the single
  * seam every "walk to the building / are we at the building" consumer resolves through (the AI
- * walk targets + arrival checks, the JobSystem adopt bucket, the production worker-presence gate),
+ * walk targets + arrival checks, the production worker-presence gate),
  * so the walk goal and the presence test can never disagree about where "at the building" is -
  * with the walls now blocking, the anchor node itself is typically unreachable, and the door is
  * where the original's settlers enter. A door node OFF the map (impossible for a gate-placed

@@ -14,18 +14,15 @@ import { buildingOfType } from '../src/scenes/sandbox-queries.js';
 
 /**
  * The sandbox tribe's `jobEnablesHouse` gate (tech-graph.ts): the warehouse (house 7) is gated on a collector
- * being present. Both employment paths - the JobSystem's auto assign and the player's `assignWorker` command -
- * run through the same `buildingEnabled` gate, so with no collector alive neither staffs it and with one alive
- * both do.
+ * being present, and the `assignWorker` order runs through that `buildingEnabled` gate - so with no collector
+ * alive it refuses the post, and with one alive it takes it.
  */
 
 const { JobAssignment, Settler } = components;
 const MAP = grassTerrain(24, 20);
 const WAREHOUSE = { x: 10, y: 6 } as const;
 const CARRIER_ROW_Y = WAREHOUSE.y + 3;
-/** The warehouse's carrier-slot count (`BUILDING_WORKER_SLOTS[7]`): carrier id 24 sorts before the rebased
- *  gatherer slots, so idle settlers fill the carrier slots first - the same reason the warehouse scene sees
- *  exactly three carriers. */
+/** The warehouse's carrier-slot count (`BUILDING_WORKER_SLOTS[7]`) - what the posts below may fill. */
 const CARRIERS = 3;
 
 /** A fresh sim over the real sandbox content, needs off (a jobless enabler must not starve mid-run). */
@@ -55,7 +52,7 @@ function carriersEmployedBy(sim: Simulation, store: Entity): number {
 // SKIPPED: the building tech-unlock gate (`buildingEnabled`/`jobEnablesHouse`) is disabled feature-wide
 // - see docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
 describe.skip('sandbox jobEnablesHouse gate - the warehouse employment catch-22', () => {
-  it('with no enabler, the gated warehouse employs nobody and assignWorker is a no-op', () => {
+  it('with no enabler, a post to the gated warehouse is refused', () => {
     const sim = makeSim();
     placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y, HUMAN_PLAYER);
     const idlers = Array.from({ length: CARRIERS }, (_, i) =>
@@ -64,29 +61,32 @@ describe.skip('sandbox jobEnablesHouse gate - the warehouse employment catch-22'
     sim.run(50);
 
     const store = warehouse(sim);
-    // The auto-assign pass no-ops: house 7 is gated on a collector, and none exists.
+    for (const e of idlers) {
+      sim.enqueue({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
+    }
+    sim.run(2);
+
+    // House 7 is gated on a collector and none exists, so the gated building offers no open job.
     expect(carriersEmployedBy(sim, store)).toBe(0);
     for (const e of idlers) expect(sim.world.get(e, Settler).jobType).toBeNull();
-
-    // The explicit player command hits the same gate - a gated building offers no open job.
-    const idle = idlers[0];
-    if (idle === undefined) throw new Error('missing idle settler');
-    sim.enqueue({ kind: 'assignWorker', entity: idle, building: store, jobPriority: [JOB_CARRIER] });
-    sim.run(2);
-    expect(sim.world.get(idle, Settler).jobType).toBeNull();
-    expect(sim.world.has(idle, JobAssignment)).toBe(false);
   });
 
-  it('with a collector alive, the warehouse unlocks and its carriers are employed', () => {
+  it('with a collector alive, the warehouse unlocks and takes its carriers', () => {
     const sim = makeSim();
     placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y, HUMAN_PLAYER);
     // The tech enabler - a lone collector far from the store, the gatherer the HQ would seed in a real game.
     spawnSandboxSettler(sim, JOB_COLLECTOR, 2, 2, HUMAN_PLAYER);
-    for (let i = 0; i < CARRIERS; i++) {
-      spawnIdleSettler(sim, WAREHOUSE.x - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER);
-    }
+    const idlers = Array.from({ length: CARRIERS }, (_, i) =>
+      spawnIdleSettler(sim, WAREHOUSE.x - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER),
+    );
     sim.run(50);
 
-    expect(carriersEmployedBy(sim, warehouse(sim))).toBe(CARRIERS);
+    const store = warehouse(sim);
+    for (const e of idlers) {
+      sim.enqueue({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
+    }
+    sim.run(2);
+
+    expect(carriersEmployedBy(sim, store)).toBe(CARRIERS);
   });
 });

@@ -51,8 +51,9 @@ export function planPorter(plan: PlannerContext): boolean {
  * that store can take it. Nobody
  * else ferries: a settler of another trade with nothing to do idles, and an unemployed or unbound settler
  * does no work at all - transport is a job one is hired for, never a default pastime (observed original
- * behaviour; a carrier works only through its assignment, and the JobSystem's report-in pass is what binds
- * a loose carrier to an open transport slot).
+ * behaviour). A carrier works only through its assignment, and only `assignWorker` stamps one, so an
+ * unposted carrier is inert BY DESIGN: giving a settler the trade is half the decision, posting it is the
+ * other half.
  * `anyHaulable` is the planner's per-tick dormancy gate - when nothing is haulable anywhere the
  * per-settler scan is provably null and skipped. Returns false when this settler may not / need not
  * haul (the caller de-stacks it).

@@ -5,9 +5,9 @@
 The seat's opening hunter is retired to the civilian pool once its level-2 bakery stands
 (`allocateOpeningHunter`, `packages/sim/src/systems/ai-player/workforce/hunter.ts` - user decision:
 the hunt ends when game runs short, and the animal farm is a separate concern). He is the seat's ONLY
-hunter: `JobSystem` never auto-drafts one (`resolveOpenWorkerJob` skips hunter slots), and
-`staffBuildings` never staffs the headquarters' hunter seat, which is both a harvest slot and a slot
-on a `storage` building (`staffing.ts` staffs transport only there).
+hunter: nothing employs a settler on its own any more, and `staffBuildings` never staffs the
+headquarters' hunter seat, which is both a harvest slot and a slot on a `storage` building
+(`staffing.ts` staffs transport only there).
 
 Verified consequence on real content, with profession progression at its default ON. The enabling
 edges live in the `[tribetype]` section, not in `goodtypes.ini` (owned copy:
@@ -28,10 +28,11 @@ The build order places `work_animal_farm` (`build-order/entries.ts:98`) well bef
 `work_bakery_01` upgrade (`:119`), so this is the steady state of every AI game, not an edge case.
 
 Leather is the reachable half of a wider branch: the same block carries `jobEnablesJob 15 16/17`
-(breeder, sewer) and `jobEnablesHouse 15 17/18/44/45` (animal farm, level-0 sewery, both ships). The
-AI dodges most of it today - `buildingEnabled` is a kill-switched no-op (`progression/unlocks.ts`) and
-`assignWorker` is `playerDirected`, which skips the tribe gate - but the JobSystem's automatic draft
-and the human profession picker do not, so scope the whole branch rather than leather alone.
+(breeder, sewer) and `jobEnablesHouse 15 17/18/44/45` (animal farm, level-0 sewery, both ships). Only
+the `good` half still bites: `buildingEnabled` is a kill-switched no-op (`progression/unlocks.ts`) and
+the `job` half is read by nothing at all (see
+[jobEnablesJob is unmodeled](job-enables-job-unmodeled.md)). Scope the goods branch, and decide the
+`job` half there rather than here.
 
 ## Scope
 

@@ -17,8 +17,8 @@ import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { workerRoleOf } from '../worker-roles.js';
 import { gatherMasteryExperience } from './mastery.js';
 
-/** A freshly placed site: nothing built, nothing hammered. */
-const FRESH = fx.fromInt(0);
+/** Fixed-point zero - a fresh site's `built` and `labor`. */
+const NONE = fx.fromInt(0);
 
 /**
  * Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command.
@@ -31,7 +31,7 @@ export function placeSandboxBuilding(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly underConstruction?: boolean; readonly fillStock?: boolean } = {},
+  opts: { readonly fillStock?: boolean } = {},
 ): void {
   // Scenes author in whole tiles; the command seam speaks half-cell nodes.
   const node = cellAnchorNode(x, y);
@@ -43,8 +43,6 @@ export function placeSandboxBuilding(
     tribe: PRIMARY_TRIBE,
     owner,
     force: true,
-    // A construction site starts as a grey foundation a builder raises (default: fully built).
-    ...(opts.underConstruction ? { underConstruction: true } : {}),
     // A pre-stocked fixture (a scene's full warehouse): every stock slot seeded to its capacity.
     ...(opts.fillStock ? { fillStock: true } : {}),
   });
@@ -92,7 +90,9 @@ export function placeBuiltSandboxBuilding(
  * staff to it, or to pin a builder). Stamps what a placed site carries: anchor Position, a `built = 0`
  * {@link components.Building} under an `UnderConstruction` marker, the empty Stockpile that is its
  * delivered-material hold, a 1-hitpoint Health pool when the type has one (the ConstructionSystem ramps
- * it), and the owner. Scene setup only.
+ * it), and the owner. Scene setup only, and a plainer site than the `placeBuilding` command's: it runs no
+ * footprint eviction, clears no decor under the body, and announces no `buildingPlaced` - author it on
+ * ground that is already clear.
  */
 export function placeSandboxSite(
   sim: Simulation,
@@ -107,8 +107,8 @@ export function placeSandboxSite(
   const node = cellAnchorNode(x, y);
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
-  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: FRESH, level: 0 });
-  sim.world.add(e, UnderConstruction, { labor: FRESH });
+  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: NONE, level: 0 });
+  sim.world.add(e, UnderConstruction, { labor: NONE });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
   if (def?.hitpoints !== undefined) sim.world.add(e, Health, { hitpoints: 1, max: def.hitpoints });
   sim.world.add(e, Owner, { player: owner });
@@ -134,7 +134,15 @@ export function buildingDoorNode(
   x: number,
   y: number,
 ): { hx: number; hy: number } {
-  const anchor = cellAnchorNode(x, y);
+  return doorNodeFrom(sim, typeId, cellAnchorNode(x, y));
+}
+
+/** {@link buildingDoorNode} from an anchor node already in hand. */
+function doorNodeFrom(
+  sim: Simulation,
+  typeId: number,
+  anchor: { hx: number; hy: number },
+): { hx: number; hy: number } {
   const door = buildingDef(sim, typeId)?.footprint?.door;
   if (door === undefined) return { hx: anchor.hx, hy: anchor.hy };
   return { hx: anchor.hx + footprintCellDx(anchor.hy, door), hy: anchor.hy + door.dy };
@@ -186,12 +194,7 @@ function bindCrewAtDoor(
   const { Building, JobAssignment, Position } = components;
   const pos = sim.world.get(building, Position);
   const anchor = nodeOfPosition(pos.x, pos.y);
-  const type = sim.world.get(building, Building).buildingType;
-  const door = buildingDef(sim, type)?.footprint?.door;
-  const node =
-    door === undefined
-      ? anchor
-      : { hx: anchor.hx + footprintCellDx(anchor.hy, door), hy: anchor.hy + door.dy };
+  const node = doorNodeFrom(sim, sim.world.get(building, Building).buildingType, anchor);
   for (let i = 0; i < count; i++) {
     const e = systems.createSettler(sim.world, sim.content, sim.rng, {
       jobType,
@@ -209,10 +212,9 @@ function bindCrewAtDoor(
 
 /**
  * The worker slots a scene staffs at `buildingType`, from the sim's loaded content: the craft slots of a
- * producing building (a recipe workshop or a farm), plus every carrier slot. GATHERER slots are left open,
- * at a workshop any more than at a store: a gatherer belongs on the map working its own flag, so staffing
- * one here would only park a harvester at a door. A scene wanting a gatherer on a workshop's roster binds
- * it itself.
+ * producing building (a recipe workshop or a farm), plus every carrier slot. GATHERER slots are left open -
+ * a gatherer belongs on the map working its own flag, so staffing one here would only park a harvester at a
+ * door. A scene wanting a gatherer on a workshop's roster binds it itself.
  */
 export function staffableCrewFor(
   sim: Simulation,

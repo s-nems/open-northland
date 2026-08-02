@@ -77,7 +77,7 @@ export function workerSlotName(originalJobType: number): string {
 
 /**
  * Per-building worker + carrier capacity, by typeId - how many settlers of each job a building employs,
- * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
+ * so `assignWorker` can staff it and the door-badge shows one marker per worker.
  * Source basis: extracted from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
  * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim - the counts and the worker/carrier
  * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are rebased

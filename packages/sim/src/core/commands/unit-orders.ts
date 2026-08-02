@@ -32,8 +32,9 @@ export type UnitOrderCommand =
   | {
       /**
        * Change one owned settler's profession: set its `jobType` and reset it to a fresh idle worker of the new
-       * trade (drop its workplace binding, cancel its action/route/order)
-       * so the JobSystem re-employs it. The civilist job (`jobtypes.ini` 6) is an ordinary assignable
+       * trade (drop its workplace binding, cancel its action/route/order), leaving it unposted - a trade
+       * whose work runs through a binding waits for an `assignWorker`. The civilist job (`jobtypes.ini` 6)
+       * is an ordinary assignable
        * record no workplace employs, so assigning it is the original's "make this settler a civilian".
        * Skipped for a dead/stale target, a non-settler, a neutral entity, an unknown `jobType`, or a
        * still-growing child. See `setJob`.
@@ -78,16 +79,16 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Assign one owned settler to work at a specific `building` (the player-directed "employ this colonist
-       * here", the counterpart to the JobSystem's automatic assignment): bind it to that workplace
+       * Assign one owned settler to work at a specific `building` ("employ this colonist here" - the one
+       * way a settler becomes employed): bind it to that workplace
        * ({@link JobAssignment}) and set its `jobType` to the building's open worker slot, the same
        * re-idle-to-a-fresh-worker reset as {@link setJob} but pinned to a building the player chose. The bound
        * settler then walks to and staffs that building through the normal AI planner.
        *
        * `jobPriority` is the caller's ordered preference over which of the building's worker jobs to fill -
-       * the sim walks it and binds the settler to the first job genuinely open for it (the same per-building
-       * openness gate the JobSystem applies: an understaffed slot at a same-tribe, tech-enabled building whose
-       * job the settler qualifies for). The list only reorders/filters candidates - every entry still passes
+       * the sim walks it and binds the settler to the first job genuinely open for it (an understaffed slot
+       * at a same-tribe building whose job the settler qualifies for - a building still under construction
+       * offers its slots too). The list only reorders/filters candidates - every entry still passes
        * the sim's gate, so a hand assignment can never reach a state the economy wouldn't (in *Cultures* a
        * right-click makes a colonist a tradesman first, a hauler only if the trade is full or the settler
        * lacks its skill). A job the building doesn't offer (or that's full/gated) is skipped; an empty list,

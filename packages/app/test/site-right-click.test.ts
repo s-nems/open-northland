@@ -1,8 +1,8 @@
-import { lastByTypeId } from '@open-northland/data';
+import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { Command, Entity, WorldSnapshot } from '@open-northland/sim';
-import { components, fx, ONE, Simulation } from '@open-northland/sim';
+import { components, fx, ONE, Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_BUILDER } from '../src/catalog/jobs.js';
+import { JOB_BUILDER, JOB_JOINER } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import type { Pickable } from '../src/view/picking.js';
@@ -46,8 +46,14 @@ function settlerAt(sim: Simulation, jobType: number | null, x: number, y: number
   return e;
 }
 
-/** Right-click `site` with `settler` selected and return the commands it enqueued. */
-function rightClickSite(sim: Simulation, settler: Entity, site: Entity): Command[] {
+/** Right-click `site` with `settler` selected and return the commands it enqueued. `content` overrides the
+ *  sim's own content set - the routing decision is a pure function of (snapshot, content). */
+function rightClickSite(
+  sim: Simulation,
+  settler: Entity,
+  site: Entity,
+  content: ContentSet = sim.content,
+): Command[] {
   const issued: Command[] = [];
   const snapshot = sim.snapshot();
   const pickable: Pickable = { ref: site, x: 0, y: 0 };
@@ -62,7 +68,7 @@ function rightClickSite(sim: Simulation, settler: Entity, site: Entity): Command
     selected: new Set<number>([settler]),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
-    content: sim.content,
+    content,
     mapSize: { width: 16, height: 16 },
     toWorld: () => ({ x: 0, y: 0 }),
     enqueue: (command) => issued.push(command),
@@ -91,6 +97,27 @@ describe('right-clicking a construction site', () => {
     const builder = settlerAt(sim, JOB_BUILDER, 2, 4);
 
     expect(rightClickSite(sim, builder, site)).toEqual([{ kind: 'assignBuilder', entity: builder, site }]);
+  });
+
+  it('puts ANY trade that may raise a foundation on it, not just the builder id', () => {
+    // Real content gives the build-house atomic to the joiner and armorer as well as the builder; the
+    // sandbox catalog gives it to the builder alone, so the case grants it to a second trade by hand.
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const site = siteAt(sim, bakery(sim).typeId, 4, 4);
+    const joiner = settlerAt(sim, JOB_JOINER, 2, 4);
+    const content = sim.content;
+    const alsoBuilds: ContentSet = {
+      ...content,
+      jobs: content.jobs.map((job) =>
+        job.typeId === JOB_JOINER
+          ? { ...job, allowedAtomics: [...job.allowedAtomics, systems.BUILD_HOUSE_ATOMIC_ID] }
+          : job,
+      ),
+    };
+
+    expect(rightClickSite(sim, joiner, site, alsoBuilds)).toEqual([
+      { kind: 'assignBuilder', entity: joiner, site },
+    ]);
   });
 
   it('hires any other trade into the building the foundation will become', () => {

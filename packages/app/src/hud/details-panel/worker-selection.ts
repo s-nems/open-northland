@@ -36,34 +36,37 @@ export function groupedWorkers(
   return { ids, gaps };
 }
 
-/** The (snapshot-ordered, capped) settler ids bound to `buildingId`. With
- *  `siteCrew` (a construction site - builders are never JobAssignment-bound to it) a settler counts by
- *  its persistent crew membership (`SiteAssignment` - hammering, waiting for material, or detoured, it
- *  stays listed), and a plain hauler shows transiently while depositing there
- *  (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). A view read, so snapshot
- *  order is fine.
+/** The (capped) settler ids to draw for `buildingId`, most-belonging first: its POSTED staff (bound by
+ *  `JobAssignment`), then - with `siteCrew` (a construction site - builders are never JobAssignment-bound
+ *  to it) - the crew raising it, counted by persistent crew membership (`SiteAssignment` - hammering,
+ *  waiting for material, or detoured, it stays listed) plus a plain hauler showing transiently while
+ *  depositing there (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). Posted
+ *  first because a site's build crew is usually older than the posting and would otherwise fill the cap
+ *  with the very settlers the strip above is NOT counting. Within each group, snapshot order - a view
+ *  read, so ascending id is fine.
  *
- *  A recruit on a barracks drill (`TrainingOrder`) is listed too, from the order to the last repetition,
- *  but after the staff, so a crowded field drops a visitor rather than a working post. It is the only
+ *  A recruit on a barracks drill (`TrainingOrder`) is listed last, from the order to the last repetition,
+ *  so a crowded field drops a visitor rather than a working post. It is the only
  *  sight of him for the half of that the map hides him, standing frozen inside the house. */
 export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
-  const staff: number[] = [];
+  const posted: number[] = [];
+  const crew: number[] = [];
   const drilling: number[] = [];
   for (const e of actorsOf(snapshot)) {
-    if (staff.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
     const supply = e.components.SupplyRun as { site?: unknown } | undefined;
-    const crew = e.components.SiteAssignment as { site?: unknown } | undefined;
+    const site = e.components.SiteAssignment as { site?: unknown } | undefined;
     const drill = e.components.TrainingOrder as { house?: unknown } | undefined;
-    const working =
+    const raising =
       siteCrew &&
-      (num(crew?.site) === buildingId ||
+      (num(site?.site) === buildingId ||
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
-    if (num(assignment?.workplace) === buildingId || working) staff.push(e.id);
-    else if (num(drill?.house) === buildingId && drilling.length < MAX_WORKERS) drilling.push(e.id);
+    if (num(assignment?.workplace) === buildingId) posted.push(e.id);
+    else if (raising) crew.push(e.id);
+    else if (num(drill?.house) === buildingId) drilling.push(e.id);
   }
-  return [...staff, ...drilling].slice(0, MAX_WORKERS);
+  return [...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
 }

@@ -9,14 +9,14 @@
  * `JOB_TYPE_HUMAN_WOMAN = 5`, `JOB_TYPE_HUMAN_CIVILIST = 6`) and the matching `Data/logic/jobtypes.ini`
  * records. Those ids are already in the extracted `JobType` IR; this module is the sim-side recognition that
  * ids 1–4 are the non-working life stages, so a birth (`spawn/newborn.ts`) creates a baby rather
- * than an instantly-employable adult, and the JobSystem leaves a baby/child unemployed.
+ * than an instantly-employable adult.
  *
  * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the
  * needs-drives (the original's "a baby is cared for, it doesn't self-feed"), while a CHILD runs the needs
  * ladder (the original binds child eat/sleep animations - see `settlers/drives/ladder.ts`). The planner
  * keys on the `Age` component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a
  * synthetic fixture's adult job id can equal a real age-class id, but only a born-young settler
- * carries `Age`. `isNonWorkingAge` stays the structural id→stage predicate the JobSystem uses.
+ * carries `Age`. `isNonWorkingAge` stays the structural id→stage predicate.
  *
  * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation);
  * the growth cadence - both stage boundaries and the total - is observed on the running original
@@ -58,9 +58,9 @@ export function isChild(jobType: number | null): boolean {
 
 /**
  * Whether a `jobType` is a non-working age class - a baby or child (ids 1–4), not yet eligible for an adult
- * trade, and neither assigned nor counted as a worker by the JobSystem. (`woman`, id 5, is an adult role the
- * original does employ - domestic/`make_love` - so it is deliberately not a non-working stage.) `null` (an
- * idle, job-seeking adult) is not an age class - only a born stage is.
+ * trade nor countable as a worker. (`woman`, id 5, is an adult role the original does employ -
+ * domestic/`make_love` - so it is deliberately not a non-working stage.) `null` (a trade-less adult) is not
+ * an age class - only a born stage is.
  */
 export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
@@ -120,7 +120,7 @@ function isMaleStage(jobType: number | null): boolean {
  *
  * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
  * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
- * `Age` component is removed - a grown settler is just an idle adult the JobSystem employs next.
+ * `Age` component is removed - a grown settler is just an adult waiting for the player to give it work.
  *
  * Removing `Age` on graduation is collect-then-mutate-safe: `query(Age, Settler)` yields entity ids, and the
  * removal happens after the loop, never mid-iterating a structure the query is walking.

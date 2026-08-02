@@ -60,7 +60,7 @@ export { craftablePool } from './production/rotation.js';
  */
 export const productionSystem: System = (world, ctx) => {
   // Settlers bucketed by their node once per tick, so each workplace's operator lookup is an O(1) door-node
-  // probe instead of a full settler scan (jobSystem builds the mirror index over buildings for staffing).
+  // probe instead of a full settler scan.
   // Built lazily by the first operator lookup, so a tick with no workshop needing one - no workshop at
   // all, or every one starved/blocked (anyCycleStartable gates before the lookup) - pays no settler scan
   // or sort; deferring moves nothing, since the constructor reads only the Settler+Position query and

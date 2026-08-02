@@ -25,7 +25,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  *
  * Fixture wiring (see fixtures/content.ts): the SAWMILL (buildingType 2) has recipe wood→plank and a
  * plank output slot; the HEADQUARTERS (buildingType 1) is a passive store with a plank slot (cap 150),
- * no recipe, and a carrier transport slot the JobSystem's report-in pass posts a loose carrier to
+ * no recipe, and a carrier transport slot a carrier is posted to
  * (the end-to-end runs below rely on it; the planner-level tests bind explicitly).
  */
 
@@ -204,7 +204,7 @@ describe('carrier - choosing what to haul', () => {
     // Planks wait at the sawmill and the HQ could take them - but hauling belongs to the carrier
     // trade AND to a post: a settler of another idle trade (the fixture farmer, nothing to farm
     // here) and a carrier with no binding both stand idle. Planner-level (plannerSystem only), so the
-    // JobSystem's report-in pass doesn't bind the loose carrier first.
+    // carrier is deliberately left unposted.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     hqAt(sim, 4, 0);
     const loose = carrierAt(sim, 0, 0); // carrier trade, no post

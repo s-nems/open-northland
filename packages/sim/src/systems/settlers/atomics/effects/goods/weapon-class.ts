@@ -10,10 +10,7 @@ import {
 import { contentIndex } from '../../../../../core/content-index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-// Deliberately the module, not `economy/jobs/index.js`: that barrel re-exports the JobSystem, whose
-// import graph reaches back into the atomics effects, so routing the trade flip through it would
-// close an import cycle.
-import { applyTradeChange } from '../../../../economy/jobs/trade-change.js';
+import { applyTradeChange } from '../../../../economy/jobs/index.js';
 import { baseSoldierJobType, isSoldierJob, WEAPON_MAIN_TYPE } from '../../../../readviews/index.js';
 
 /**
@@ -54,7 +51,7 @@ export function takeUpWeaponGood(world: World, ctx: SystemContext, e: Entity, go
     return;
   }
   if (weapon.jobType !== settler.jobType) {
-    world.remove(e, JobAssignment); // re-employed by the JobSystem, as on any profession change
+    world.remove(e, JobAssignment); // its old post is not this class's, as on any profession change
     applyTradeChange(world, ctx, e, weapon.jobType);
   }
   if (world.has(e, Weapon)) world.get(e, Weapon).weaponTypeId = weapon.typeId;

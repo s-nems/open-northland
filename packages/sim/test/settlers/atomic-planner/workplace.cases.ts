@@ -18,8 +18,8 @@ describe('atomicPlanner - walk-to-workplace drive (a BOUND operator reaches ITS 
   const CARPENTER = 2; // the sawmill's worker job; harvests nothing (empty allowedAtomics)
   const SAWMILL = 2; // a producing workplace (recipe plank<-wood) employing the carpenter
 
-  // The walk drive now reads the JobAssignment binding the JobSystem sets - the operator heads for
-  // *its* mill, not the nearest one. These planner unit tests set the binding directly (the JobSystem
+  // The walk drive reads the JobAssignment binding an `assignWorker` order sets - the operator heads for
+  // *its* mill, not the nearest one. These planner unit tests set the binding directly (the order
   // integration is exercised in job-system.test.ts) so they test the AI drive in isolation.
   function carpenterAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
     const e = sim.world.create();
@@ -76,7 +76,7 @@ describe('atomicPlanner - walk-to-workplace drive (a BOUND operator reaches ITS 
     plannerSystem(sim.world, ctxOf(sim));
 
     // With no binding the drive has no station to walk to, and a carpenter harvests nothing - so it
-    // idles rather than being lured to a mill the JobSystem never assigned it.
+    // idles rather than being lured to a mill nobody posted it to.
     expect(sim.world.has(carp, MoveGoal)).toBe(false);
   });
 

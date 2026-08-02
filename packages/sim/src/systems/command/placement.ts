@@ -31,9 +31,9 @@ import { upgradeTierOf } from '../stores/index.js';
 /**
  * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed: drop the binding
  * and reset the settler to idle (`jobType = null`). Without this a demolished workplace would strand its
- * operators - the binding would dangle on a dead entity (the AI/JobSystem consumers only defend against a
- * stale binding, none clears it), so the worker would neither produce nor be re-employable. Faithful to the
- * original: pulling down a building turns its workers back into job-seekers.
+ * operators - the binding would dangle on a dead entity (its consumers only defend against a stale binding,
+ * none clears it), so the worker would neither produce nor be postable elsewhere. Faithful to the original:
+ * pulling down a building turns its workers back into job-seekers - here, ones the player re-posts.
  *
  * The scan only mutates the matched settlers (no chosen-entity pick), so iterating store order is permitted.
  * Matches are collected before mutating because `world.remove` deletes from the `JobAssignment` store that
@@ -46,7 +46,7 @@ export function unbindWorkersOf(world: World, building: Entity): void {
   }
   for (const e of bound) {
     world.remove(e, JobAssignment);
-    setSettlerJob(world, e, null); // back to idle - the JobSystem re-assigns it next tick
+    setSettlerJob(world, e, null); // trade-less again; the player picks its next post
   }
 }
 

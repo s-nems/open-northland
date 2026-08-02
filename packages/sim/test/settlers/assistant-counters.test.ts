@@ -302,7 +302,7 @@ describe('the training queue', () => {
   it('drafts an unemployed (null-job) man once no workplace wants him', () => {
     const sim = trainSim();
     const house = barracksAt(sim, 6, 3);
-    // Fill the barracks' four hauler slots, so the JobSystem has no opening to win the man first -
+    // Fill the barracks' four hauler slots, so no transport opening is left there -
     // an unemployed man with an opening nearby is the economy's to hire, not the assistant's.
     for (let i = 0; i < BARRACKS_WORKER_SLOTS; i++) {
       const hauler = settlerAt(sim, CARRIER, 10 + i, 2);

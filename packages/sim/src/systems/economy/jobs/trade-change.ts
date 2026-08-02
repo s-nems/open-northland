@@ -37,12 +37,11 @@ import { syncWorkFlagToJob } from '../work-flag.js';
  * Take up `jobType`: retire what the OLD trade owned (its errands, its auto-combat state, the gear the new
  * trade may not wear) and stamp the new trade's defaults. The single home of "this settler's trade
  * changed", so the employment orders (`orders/work/employment.ts`), the barracks drill
- * (`settlers/drives/training.ts`) and the JobSystem's automatic hire cannot apply half of it each.
+ * (`settlers/drives/training.ts`) and the armed-class flip cannot apply half of it each.
  *
  * It re-tasks nothing: cancelling the settler's action, route and player order is the ordered paths' own
- * step ({@link import('../../orders/work/employment.js').reidleAsJob}), so an automatic hire never eats
- * what the player told the settler to do. The binding is likewise the caller's: `setJob` drops it,
- * `assignWorker` and the JobSystem set a new one ({@link import('./binding.js').bindEmployment}).
+ * step ({@link import('../../orders/work/employment.js').reidleAsJob}). The binding is likewise the
+ * caller's: `setJob` drops it, `assignWorker` sets one ({@link import('./binding.js').bindEmployment}).
  */
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   setSettlerJob(world, e, jobType);

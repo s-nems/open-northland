@@ -82,8 +82,9 @@ export class WorkerSpriteOverlay {
    * sheet, clears the overlay. Called from the panel's `tick`, which skips it while its inputs hold - the
    * animation clock is `snapshot.tick`, so it advances once per sim tick.
    * `opts.siteCrew` selects the live build crew instead of the bound workers; `opts.groups` (a home's
-   * residents, one id list per family) overrides the bound-worker scan entirely - the field then draws
-   * each family as a close cluster with a breather gap before the next.
+   * residents, one id list per family) overrides the bound-worker scan - the field then draws each family
+   * as a close cluster with a breather gap before the next. An EMPTY grouping is not an override: a home
+   * still going up houses nobody yet, and blanking its field would hide the crew raising it.
    */
   update(
     snapshot: WorldSnapshot,
@@ -99,7 +100,8 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const grouped = groups !== undefined ? groupedWorkers(snapshot, groups) : undefined;
+    const resident = groups !== undefined ? groupedWorkers(snapshot, groups) : undefined;
+    const grouped = resident !== undefined && resident.ids.length > 0 ? resident : undefined;
     const workers = grouped?.ids ?? boundWorkers(snapshot, buildingId, siteCrew);
     if (workers.length === 0) {
       this.hideRest();

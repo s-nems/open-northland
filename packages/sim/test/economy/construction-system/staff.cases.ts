@@ -29,6 +29,10 @@ import { ctxOf, grassMap } from './support.js';
  * An upgrade is the one asymmetry the player feels: the site reports the slots of the tier it currently IS
  * (the target tier is adopted only on completion), so the extra seats a higher tier brings cannot be filled
  * until the upgrade finishes.
+ *
+ * source-basis: user rule ("obowiązuje taki sam limit pracowników jak w budynku … limit
+ * jest poziomu podstawowego a nie ulepszonego"). The original never staffs before completion, so there is
+ * no oracle for the timing - only the slot counts and the tier chain behind it are extracted.
  */
 
 const VIKING = 1;

@@ -97,8 +97,8 @@ export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'longbow', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
 ];
 
-/** The civilian units: a townsperson (the civilist trade grown boys take - the JobSystem leaves him
- *  loose, the assistant's train queues may draft him), a carrier, and the collector (the one outdoor
+/** The civilian units: a townsperson (the civilist trade grown boys take - he stays loose until posted,
+ *  though the assistant's train queues may draft him), a carrier, and the collector (the one outdoor
  *  gatherer trade - every gathered good is worked by the same collector, so one preset, not one per
  *  good). */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [

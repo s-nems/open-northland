@@ -64,13 +64,11 @@ export function spawnSettlerDirect(
 }
 
 /**
- * Spawn an unemployed settler (jobType null) directly (scene setup, pre-tick-0) and return it. Unlike
- * {@link spawnSandboxSettler} (which spawns a settler already doing a named job), an idle settler is the
- * one the JobSystem's second pass employs - it binds an idle settler to the first canonical building with an
- * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
- * warehouse/HQ is not adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
- * so its haulers arrive as idle settlers the JobSystem assigns. {@link JOB_IDLE} is the command wire
- * form of `jobType: null` - the sim normalizes it at creation, so the spawn lands trade-less as is.
+ * Spawn an unemployed settler (jobType null) directly (scene setup, pre-tick-0) and return it - the
+ * colonist a fixture hands the player to trade and post, where {@link spawnSandboxSettler} spawns one
+ * already doing a named job. It does no work until something employs it, which only an `assignWorker`
+ * order does. {@link JOB_IDLE} is the command wire form of `jobType: null` - the sim normalizes it at
+ * creation, so the spawn lands trade-less as is.
  */
 export function spawnIdleSettler(
   sim: Simulation,

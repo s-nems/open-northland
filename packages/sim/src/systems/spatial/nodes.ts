@@ -73,7 +73,7 @@ export function forEachIndexNode(
  * iterable would silently change ring-search winners. Answers "what is on node (x,y)?" in O(1) via
  * {@link NodeBuckets.at}, replacing a full-world scan for on-node checks. The bucket grid is the half-cell
  * node lattice (`nodeOfPosition`). By default an entity buckets by its {@link Position}'s node; an optional
- * `nodeOf` resolver overrides that per entity (the JobSystem buckets buildings by their door-aware
+ * `nodeOf` resolver overrides that per entity (a caller may bucket buildings by their door-aware
  * {@link interactionNode}) - an entity the resolver maps to `null` (and a Position-less one) is dropped. The
  * nested numeric maps keep negative/off-map probes collision-free without string keys; rebuilt each tick
  * (derived state, never hashed).

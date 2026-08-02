@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Felling, JobAssignment, Position, Resource, Settler } from '../../src/components/index.js';
+import { Building, Felling, Position, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -53,6 +53,7 @@ const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
 const VIKING = 1;
+const HUMAN = 0; // the owner the posted crew needs - assignWorker is an owned-unit order
 const HARVEST_ATOMIC = 24;
 
 interface GoldenRun {
@@ -76,7 +77,10 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING });
+  // The two settlers the slice POSTS carry an owner: `assignWorker` is an owned-unit order. The
+  // woodcutter and the buildings stay neutral (a neutral owner is compatible with any), so only the
+  // posting itself gained a prerequisite.
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING, owner: HUMAN });
   // The sawmill's operator (carpenter) is spawned standing ON the sawmill (node 8): the worker-presence
   // gate runs the mill only while it is staffed, and the planner pins a settler on a workplace it
   // staffs so the carpenter stays put. It spawns with the fixture's `needforgood PLANK` threshold
@@ -88,6 +92,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
     x: 8,
     y: 0,
     tribe: VIKING,
+    owner: HUMAN,
     experience: [[1, 300]],
   });
 
@@ -115,7 +120,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
     sim.step();
     // Employment is directed, never automatic, so the slice posts its own crew: the carpenter to the
     // sawmill it stands on and the carrier to the HQ's transport slot. Enqueued after tick 1, the first
-    // tick on which the CommandSystem has actually created the buildings and settlers these name.
+    // tick on which the CommandSystem has created the buildings and settlers these commands name.
     if (sim.tick === 1) staffSlice(sim);
     for (const ev of sim.events.current()) {
       if (ev.kind === 'atomicCompleted') trace.push(`${sim.tick}:${ev.entity}:${ev.atomicId}`);
@@ -129,25 +134,45 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   return { hash: sim.hashState(), trace, produced, invariantViolations };
 }
 
-/** Post the slice's crew: the carpenter to the sawmill it stands on, the carrier to the headquarters'
- *  transport slot. Stamped straight onto the entities the placement commands just created - the
- *  `assignWorker` order is owned-only and the slice's fixture is deliberately unowned, so it binds the
- *  way a scene fixture does. Each is resolved by its type, never by a hard-coded entity id. */
+/** Post the slice's crew through the command seam, like every other change it makes: the carpenter to the
+ *  sawmill it stands on, the carrier to the headquarters' transport slot. Each entity is resolved by its
+ *  type/trade rather than by a hard-coded id, and a second match is a fixture bug - the resolution must not
+ *  depend on store order for the pinned hash to mean anything. */
 function staffSlice(sim: Simulation): void {
-  const buildingOfType = (buildingType: number): Entity => {
-    for (const e of sim.world.query(Building)) {
-      if (sim.world.get(e, Building).buildingType === buildingType) return e;
-    }
-    throw new Error(`golden slice: no building of type ${buildingType}`);
-  };
-  const settlerOfJob = (jobType: number): Entity => {
-    for (const e of sim.world.query(Settler)) {
-      if (sim.world.get(e, Settler).jobType === jobType) return e;
-    }
-    throw new Error(`golden slice: no settler of job ${jobType}`);
-  };
-  sim.world.add(settlerOfJob(CARPENTER), JobAssignment, { workplace: buildingOfType(SAWMILL) });
-  sim.world.add(settlerOfJob(CARRIER), JobAssignment, { workplace: buildingOfType(HEADQUARTERS) });
+  sim.enqueue({
+    kind: 'assignWorker',
+    entity: theSettlerOfJob(sim, CARPENTER),
+    building: theBuildingOfType(sim, SAWMILL),
+    jobPriority: [CARPENTER],
+  });
+  sim.enqueue({
+    kind: 'assignWorker',
+    entity: theSettlerOfJob(sim, CARRIER),
+    building: theBuildingOfType(sim, HEADQUARTERS),
+    jobPriority: [CARRIER],
+  });
+}
+
+function theBuildingOfType(sim: Simulation, buildingType: number): Entity {
+  return theOne(
+    [...sim.world.query(Building)].filter((e) => sim.world.get(e, Building).buildingType === buildingType),
+    `building of type ${buildingType}`,
+  );
+}
+
+function theSettlerOfJob(sim: Simulation, jobType: number): Entity {
+  return theOne(
+    [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === jobType),
+    `settler of job ${jobType}`,
+  );
+}
+
+function theOne(matches: readonly Entity[], what: string): Entity {
+  const only = matches[0];
+  if (matches.length !== 1 || only === undefined) {
+    throw new Error(`golden slice: expected exactly one ${what}, found ${matches.length}`);
+  }
+  return only;
 }
 
 describe('golden: the vertical slice over ~1000 ticks', () => {
@@ -174,48 +199,47 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '125:8:23',
     '152:7:23',
     '156:5:22',
-    '171:8:22',
-    '197:8:23',
+    '172:8:22',
+    '198:8:23',
     '200:5:23',
     '214:7:22',
-    '243:8:22',
+    '244:8:22',
     '265:5:24',
     '268:5:24',
-    '269:8:23',
-    '276:7:23',
+    '271:8:23',
+    '277:7:23',
     '286:5:24',
     '290:5:22',
-    '315:8:22',
-    '341:8:23',
+    '317:8:22',
+    '342:8:23',
     '352:5:23',
-    '374:7:22',
-    '387:8:22',
-    '413:8:23',
+    '377:7:22',
+    '388:8:22',
     '414:5:22',
-    '459:8:22',
-    '472:7:23',
+    '414:8:23',
+    '460:8:22',
     '476:5:23',
-    '485:8:23',
-    '531:8:22',
-    '557:8:23',
-    '570:7:22',
-    '603:8:22',
-    '629:8:23',
-    '668:7:23',
-    '675:8:22',
-    '701:8:23',
-    '747:8:22',
-    '766:7:22',
-    '773:8:23',
-    '819:8:22',
-    '845:8:23',
-    '864:7:23',
-    '891:8:22',
-    '917:8:23',
-    '962:7:22',
-    '963:8:22',
-    '989:8:23',
-    '993:8:22',
+    '476:7:23',
+    '486:8:23',
+    '532:8:22',
+    '558:8:23',
+    '574:7:22',
+    '604:8:22',
+    '630:8:23',
+    '672:7:23',
+    '678:8:22',
+    '704:8:23',
+    '750:8:22',
+    '770:7:22',
+    '776:8:23',
+    '822:8:22',
+    '853:8:23',
+    '870:7:23',
+    '900:8:22',
+    '926:8:23',
+    '969:7:22',
+    '972:8:22',
+    '998:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -227,7 +251,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('da5232aa');
+    expect(run.hash).toBe('0d010571');
   });
 
   it('matches the golden atomic-action trace', () => {
