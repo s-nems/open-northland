@@ -48,11 +48,8 @@ type BlockerChannel =
 export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, RESOURCE_ANCHOR };
 
 /** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
- *  ignores the channel must not pay for the delivery-flag store walk; `ignoreFlag` is the flag being
- *  re-placed (it may not block itself). */
-export interface MarkerScan {
-  readonly ignoreFlag: Entity | undefined;
-}
+ *  ignores the channel must not pay for the delivery-flag store walk. */
+export type MarkerScan = 'with-markers' | 'without-markers';
 
 /** A blocker-cell consumer - see {@link eachBlockerCell} for the channel contract. */
 export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
@@ -110,8 +107,8 @@ export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit)
 }
 
 /**
- * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - when
- * `markers` is given - delivery flags contribute. Consumers filter by channel; a cell may be visited on
+ * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - under
+ * `'with-markers'` - delivery flags contribute. Consumers filter by channel; a cell may be visited on
  * more than one channel, and every consumer takes set unions / mask writes (membership, no pick), so
  * store-iteration order cannot change any later answer.
  */
@@ -119,15 +116,12 @@ export function eachBlockerCell(
   world: World,
   content: ContentSet,
   visit: BlockerVisit,
-  markers?: MarkerScan,
+  markers: MarkerScan = 'without-markers',
 ): void {
   for (const e of world.query(Resource, Position)) resourceBlockerCells(world, e, visit);
   for (const e of world.query(Building, Position)) buildingBlockerCells(world, content, e, visit);
-  if (markers !== undefined) {
-    for (const e of world.query(DeliveryFlag, Position)) {
-      if (e === markers.ignoreFlag) continue;
-      markerBlockerCells(world, e, visit);
-    }
+  if (markers === 'with-markers') {
+    for (const e of world.query(DeliveryFlag, Position)) markerBlockerCells(world, e, visit);
   }
   for (const e of world.query(Signpost, Position)) signpostBlockerCells(world, e, visit);
 }
