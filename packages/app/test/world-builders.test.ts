@@ -3,44 +3,44 @@ import { components } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { GRASS } from '../src/catalog/buildings.js';
 import { TERRAIN_IMPASSABLE } from '../src/catalog/terrain.js';
-import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
+import { runAuthoredMap, runBareMap, runDemoWorld, terrainSceneFor } from '../src/game/world/index.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
-import { authoredMap, mixedGrid } from './support/slice-maps.js';
+import { authoredMap, mixedGrid } from './support/world-maps.js';
 
 /**
- * The demo scenario the live + shot entries share: the terrain projection and the three sims built over
- * it - the demo slice, a bare imported map, and a map's authored entities.
+ * The three worlds a playable entry can land on - the demo strip, a bare imported map, and a map's
+ * authored entities - plus the terrain projection they share.
  */
 
-describe('sliceTerrain', () => {
+describe('terrainSceneFor', () => {
   it('projects an injected map, else the synthetic grass strip', () => {
     // Default (no map) = the reproducible 6×1 grass strip the shot PNG + golden depend on.
-    const fallback = sliceTerrain();
+    const fallback = terrainSceneFor();
     expect(fallback.width).toBe(6);
     expect(fallback.height).toBe(1);
     expect(fallback.typeIds).toEqual(new Array(6).fill(GRASS));
 
     // An injected (loaded) map drives the terrain instead.
-    const loaded = sliceTerrain({ width: 2, height: 1, typeIds: [4, 9] });
+    const loaded = terrainSceneFor({ width: 2, height: 1, typeIds: [4, 9] });
     expect(loaded).toEqual({ width: 2, height: 1, typeIds: [4, 9] });
   });
 });
 
-describe('runSlice on a loaded map', () => {
+describe('runDemoWorld on a loaded map', () => {
   it('builds + steps the sim over the real grid without a content gap', () => {
     // The plain strip uses only the grass class; this grid uses {5,16,22}. If the global sandbox content did
     // not fold those in, buildTerrainGraph would throw "landscape typeId N absent from content".
-    const sim = runSlice(7, 30, mixedGrid(4, 8));
+    const sim = runDemoWorld(7, 30, mixedGrid(4, 8));
     expect(sim.terrain?.width).toBe(4);
     expect(sim.terrain?.height).toBe(8);
     expect(sim.terrain?.nodeCount).toBe(32);
   });
 
-  it('places the slice entities on the first walkable cells of the grid, not the strip', () => {
+  it('places the demo entities on the first walkable cells of the grid, not the strip', () => {
     const { Position, Building, Settler, Resource, DeliveryFlag } = components;
     // ticks=1 so the placeBuilding/spawnSettler commands (applied on tick 1) have run - the two wood
     // nodes are created directly, but the command entities only exist after the first step.
-    const sim = runSlice(7, 1, mixedGrid(4, 8));
+    const sim = runDemoWorld(7, 1, mixedGrid(4, 8));
 
     // Seven positioned entities: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
     // (Resource), and the woodcutter's WORK FLAG (a Position + DeliveryFlag, auto-planted at its feet on
@@ -58,23 +58,23 @@ describe('runSlice on a loaded map', () => {
   });
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
-    const a = runSlice(7, 60, mixedGrid(4, 8)).hashState();
-    const b = runSlice(7, 60, mixedGrid(4, 8)).hashState();
+    const a = runDemoWorld(7, 60, mixedGrid(4, 8)).hashState();
+    const b = runDemoWorld(7, 60, mixedGrid(4, 8)).hashState();
     expect(a).toBe(b);
   });
 
   it('falls back to the synthetic strip when a loaded map has too few walkable cells', () => {
     // TERRAIN_IMPASSABLE is the demo's non-walkable water class; an all-impassable grid has 0 walkable
-    // cells, so placement can't fit the slice - runSlice must degrade to the 6×1 strip rather than throw.
+    // cells, so placement can't fit - runDemoWorld must degrade to the 6×1 strip rather than throw.
     const allWater: TerrainMap = {
       resolution: 'half-cell',
       width: 3,
       height: 3,
       typeIds: new Array(9).fill(TERRAIN_IMPASSABLE),
     };
-    expect(() => runSlice(7, 1, allWater)).not.toThrow();
-    const fallback = runSlice(7, 1, allWater).hashState();
-    const strip = runSlice(7, 1).hashState();
+    expect(() => runDemoWorld(7, 1, allWater)).not.toThrow();
+    const fallback = runDemoWorld(7, 1, allWater).hashState();
+    const strip = runDemoWorld(7, 1).hashState();
     // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
     expect(fallback).toBe(strip);
   });
@@ -100,11 +100,11 @@ describe('runBareMap (imported map with no authored entities)', () => {
   });
 });
 
-describe('runAuthoredSlice (map.cif StaticObjects → sim commands)', () => {
+describe('runAuthoredMap (map.cif StaticObjects to sim commands)', () => {
   it('places the resolved buildings + settlers at their authored nodes', () => {
     const { Position, Building, Settler } = components;
     // ticks=1: placeBuilding/spawnSettler commands apply on the first step.
-    const sim = runAuthoredSlice(7, 1, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS);
+    const sim = runAuthoredMap(7, 1, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS);
     expect(sim).not.toBeNull();
     if (sim === null) throw new Error('expected an authored sim');
 
@@ -136,12 +136,12 @@ describe('runAuthoredSlice (map.cif StaticObjects → sim commands)', () => {
       humans: [],
       animals: [],
     };
-    expect(runAuthoredSlice(7, 1, authoredMap(), unresolvable, AUTHORED_ROWS)).toBeNull();
+    expect(runAuthoredMap(7, 1, authoredMap(), unresolvable, AUTHORED_ROWS)).toBeNull();
   });
 
   it('is deterministic (same seed + same authored entities ⇒ same hash)', () => {
-    const a = runAuthoredSlice(7, 40, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS)?.hashState();
-    const b = runAuthoredSlice(7, 40, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS)?.hashState();
+    const a = runAuthoredMap(7, 40, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS)?.hashState();
+    const b = runAuthoredMap(7, 40, authoredMap(), AUTHORED_ENTITIES, AUTHORED_ROWS)?.hashState();
     expect(a).toBeDefined();
     expect(a).toBe(b);
   });

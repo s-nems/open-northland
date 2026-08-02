@@ -26,7 +26,7 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
 
 /**
  * Names for goods that exist only in the sandbox (no game `[goodtype]`, so no string-table entry): the demo
- * `plank` the joinery slice produces. Kept here (not in the pipeline manifest) because they have no faithful
+ * `plank` the demo world's joinery produces. Kept here (not in the pipeline manifest) because they have no faithful
  * source - a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
  */
 function localeMessages(locale: GoodLocale): Messages['goods'] {

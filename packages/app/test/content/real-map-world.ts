@@ -4,7 +4,7 @@ import type { ContentSet } from '@open-northland/data';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../src/entries/map/world.js';
-import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
+import type { AuthoredJoinRows } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
@@ -13,7 +13,7 @@ import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
  * half is skipped, and `?speed=` with it - speed multiplies the RAF loop, not the sim.
  */
 
-/** The seed the browser's map entry runs on (`SLICE_SEED` in `entries/map.ts`). */
+/** The seed the browser's map entry runs on (`WORLD_SEED` in `entries/map.ts`). */
 const MAP_SEED = 7;
 
 export interface RealMapWorldOptions {

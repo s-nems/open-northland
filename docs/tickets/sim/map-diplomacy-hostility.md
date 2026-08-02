@@ -14,7 +14,7 @@ decides (binary hostility, no diplomacy)"). The maps author a directed diplomacy
 
 1. A sim-side diplomacy table (content/config data, not code - golden rule 3): seeded at world
    setup from the map script (a `setDiplomacy` command or setup option; app loads the script via
-   `slice/map-loader.ts` `loadMapScript`), defaulting to the current everyone-hostile stance when a
+   `content/map-loader.ts` `loadMapScript`), defaulting to the current everyone-hostile stance when a
    map ships none, so scenes and roster-less maps keep today's behavior.
 2. `targeting.ts` consults it where the owner axis decides today; friend/neutral both do not
    auto-engage (semantic split between them - e.g. neutral still retaliates - needs a source-basis

@@ -29,8 +29,8 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
   // needsSystem; a needs-exercising scene opts back in via `SceneDefinition.needs` (FIFO, later write
   // wins). Live maps keep the sim default (enabled); the admin "Potrzeby" button flips it at runtime.
   if (scene.needs !== true) sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
-  // Signpost confinement is on in every playable world (rationale on the slice's
-  // `enableSignpostNavigation`); scenes enqueue it here, map worlds in the slice builders.
+  // Signpost confinement is on in every playable world (rationale on `game/world/build.ts`'s
+  // `newWorldSim`); scenes enqueue it here, map worlds in their builders.
   sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
   // Profession progression (omitted = gated, the sim default), enqueued here so the headless twin and
   // browser run share it; the browser `?progression=` flag enqueues its override after this one (FIFO).

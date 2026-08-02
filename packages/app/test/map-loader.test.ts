@@ -1,6 +1,6 @@
 import { buildScene, terrainMapToScene } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadTerrainMap } from '../src/slice/map-loader.js';
+import { loadTerrainMap } from '../src/content/map-loader.js';
 import { EMPTY_SNAPSHOT } from './support/snapshot.js';
 
 /**
@@ -35,7 +35,7 @@ describe('loadTerrainMap', () => {
     expect(map).toEqual(grid);
     if (map === null) throw new Error('expected a loaded map');
 
-    // The loaded grid must flow straight through the same render seam the slice uses, carrying its
+    // The loaded grid must flow straight through the same render seam the demo world uses, carrying its
     // varied typeIds onto one tile per cell - i.e. the real map actually drives the drawn terrain.
     const scene = buildScene(EMPTY_SNAPSHOT, terrainMapToScene(map));
     const tiles = scene.filter((d) => d.kind === 'tile');

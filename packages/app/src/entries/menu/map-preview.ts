@@ -1,9 +1,9 @@
 import { flatTileColour, terrainMapToScene } from '@open-northland/render';
 import { loadIr } from '../../content/ir/load.js';
+import { loadTerrainMap } from '../../content/map-loader.js';
 import { cellColourResolver, loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
 import { rasterizeTerrain, terrainWorldBounds } from '../../hud/minimap/model.js';
-import { loadTerrainMap } from '../../slice/map-loader.js';
 
 const PREVIEW_MAX_WIDTH = 720;
 const PREVIEW_MAX_HEIGHT = 420;

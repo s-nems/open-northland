@@ -9,7 +9,7 @@ import {
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
 import { applySessionRuleOverrides, type SessionRuleOverrides } from '../../game/session-rules.js';
-import { runAuthoredSlice, runBareMap, runSlice } from '../../slice/vertical-slice.js';
+import { runAuthoredMap, runBareMap, runDemoWorld } from '../../game/world/index.js';
 import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
 /**
@@ -32,7 +32,7 @@ export interface MapWorldOptions extends SessionRuleOverrides {
   /** Seats whose chest-window assistant grants start ON. */
   readonly assistantSeats: readonly number[];
   /** Owner of the demo strip's entities - only reached when no map decodes. Omitted leaves them
-   *  neutral, as {@link runSlice} does. */
+   *  neutral, as {@link runDemoWorld} does. */
   readonly demoOwner?: number;
   /** Default true, as the entry runs. The headless harness turns them off for scenarios that ignore
    *  food, so those worlds deliberately differ from the browser's by their bushes. */
@@ -73,10 +73,10 @@ function runWorld(
   const { map, ir, seed, content } = options;
   if (terrain === null) {
     const demo = { ...content, ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}) };
-    return { sim: runSlice(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
+    return { sim: runDemoWorld(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
   }
   if (map?.entities !== undefined && ir !== null) {
-    const authored = runAuthoredSlice(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content);
+    const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content);
     if (authored !== null) return { sim: authored, kind: 'authored' };
   }
   return { sim: runBareMap(seed, terrain, content), kind: 'bare' };

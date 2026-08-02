@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
+import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/game/world/index.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
-import { authoredMap } from './support/slice-maps.js';
+import { authoredMap } from './support/world-maps.js';
 
 /** The pure authored-entity join: a decoded map's `map.cif` StaticObjects → sim placements. */
 

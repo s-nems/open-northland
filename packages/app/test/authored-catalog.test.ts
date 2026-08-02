@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { authoredCatalogExtras } from '../src/slice/authored-catalog.js';
-import type { AuthoredJoinRows, AuthoredPlacement } from '../src/slice/authored-placements.js';
+import type { AuthoredJoinRows, AuthoredPlacement } from '../src/game/world/index.js';
+import { authoredCatalogExtras } from '../src/game/world/index.js';
 
 const building = (typeId: number, tribe = 1): AuthoredPlacement => ({
   kind: 'building',

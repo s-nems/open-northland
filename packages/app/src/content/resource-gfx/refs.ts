@@ -164,7 +164,7 @@ function representativeRecord(
 }
 
 /**
- * Resolve the per-good gathering draws from the Step-1 pipeline join for the goods a scene/slice runs -
+ * Resolve the per-good gathering draws from the Step-1 pipeline join for the goods a scene or the demo world runs -
  * the node (its `landscapeToHarvest` record, falling back to `landscapeToPickup` for a good with no
  * standing stage like the mushroom's direct pickup) and the pile (its `landscapeToStore` record), matched
  * to each scene good by `goodId === good.id` and keyed under the scene's `typeId`. The flag is resolved
@@ -208,7 +208,7 @@ export function resolveGatheringRefs(
     if (pileRef !== undefined) pilesByGood[good.typeId] = { stem: pileRef.stem, fillBobs: pileRef.bobs };
   }
 
-  // The synthetic `plank` (the joinery slice's output - no gathering pipeline, no `ls_goods` art of its own)
+  // The synthetic `plank` (the demo joinery's output - no gathering pipeline, no `ls_goods` art of its own)
   // draws as `wood`'s pickup-stage trunk (the `test_piles` "tree trunk" bob), so a dropped plank reads as
   // sawn timber rather than sharing wood's neutral heap. Applied before the goodIcons fallback so the log
   // wins over the generic heap; its atlas is already loaded because wood references the same trunk stem.

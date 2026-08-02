@@ -4,8 +4,8 @@ import { diag } from '../diag/index.js';
 /**
  * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite
  * middleware. This is app-layer I/O (a browser `fetch`, never allowed in the pure sim); everything
- * downstream (`sliceTerrain`, `runSlice`, the renderer) consumes the validated result. A checkout
- * without `content/` degrades to the synthetic strip - the maps are gitignored.
+ * downstream (the world builders in `game/world/`, the renderer) consumes the validated result. A
+ * checkout without `content/` degrades to the demo world - the maps are gitignored.
  */
 
 /**

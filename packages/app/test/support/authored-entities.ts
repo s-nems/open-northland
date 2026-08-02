@@ -1,7 +1,7 @@
 import type { TerrainMapFile } from '@open-northland/data';
-import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
+import type { AuthoredJoinRows } from '../../src/game/world/index.js';
 
-/** The authored-entity fixtures the join tests and the `runAuthoredSlice` tests share: a decoded map's
+/** The authored-entity fixtures the join tests and the `runAuthoredMap` tests share: a decoded map's
  *  `StaticObjects` rows, and the narrow IR they resolve against. */
 
 /** The narrow IR rows the joins read: two barracks levels, one job, one tribe - the same by-name keys

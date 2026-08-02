@@ -7,7 +7,7 @@ import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
  * runtime and they override these). Approximated, source basis "Building placement": the original
  * blocks placement by per-type walk/build areas; these stand-ins reproduce the rule (a body plus an
  * exclusion margin, checked body-vs-zone) at plausible per-class sizes so every mode - scenes,
- * the vertical slice, a bare checkout - gets working placement collision and a truthful build overlay.
+ * the demo world, a bare checkout - gets working placement collision and a truthful build overlay.
  *
  * Units: `FootprintCell` offsets are half-cell nodes (the real footprint tables' own resolution), so
  * these invented extents are doubled - else a bare-checkout scene would pack buildings twice as densely

@@ -6,6 +6,7 @@ import {
 } from '@open-northland/render';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
+import { loadMapScript, loadTerrainMap } from '../content/map-loader.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
@@ -21,8 +22,7 @@ import {
 } from '../game/player-session.js';
 import { sandboxGoods } from '../game/sandbox/index.js';
 import { sessionRuleOverrides } from '../game/session-rules.js';
-import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
-import { sliceTerrain } from '../slice/vertical-slice.js';
+import { terrainSceneFor } from '../game/world/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { bindHarvestableHandover } from '../view/harvestable-handover.js';
@@ -39,7 +39,7 @@ import { buildMapWorld } from './map/world.js';
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid - the
  * 1:1 per-triangle ground + placed landscape objects (trees/stones/mines + animated waves) - driven by the
- * deterministic vertical-slice sim on the fixed-timestep loop, drawn every frame so `npm run dev` is
+ * deterministic sim on the fixed-timestep loop, drawn every frame so `npm run dev` is
  * watchable. The default landing is the menu ({@link import('./menu.js')}), whose "Mapy" section links here
  * per decoded map.
  *
@@ -50,8 +50,7 @@ import { buildMapWorld } from './map/world.js';
  * of booting a flat world.
  */
 
-/** The slice sim's deterministic seed. */
-const SLICE_SEED = 7;
+const WORLD_SEED = 7;
 
 /** The boot steps this entry runs, in order - the loading card's step list. */
 export const MAP_BOOT_PHASES = [
@@ -100,11 +99,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     entry: 'map',
     mapId,
     decodedMap: loaded !== null,
-    seed: SLICE_SEED,
+    seed: WORLD_SEED,
     localPlayer,
     rosterPlayers: script?.players.length ?? 0,
   });
-  const terrainGrid = sliceTerrain(loaded ?? undefined);
+  const terrainGrid = terrainSceneFor(loaded ?? undefined);
   // The decoded map's terrain-height field (flat when the map carries no `lmhe` lane). The renderer
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
   // the map objects at load and drives elevation-aware picking (worldToTile) below.
@@ -170,7 +169,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // The render layers keep reading `loaded` (raw typeIds drive the per-triangle fallback + the ambience
   // beds); the sim runs on the collision resolution of the same map.
   const { sim, harvestablePlacements } = buildMapWorld({
-    seed: SLICE_SEED,
+    seed: WORLD_SEED,
     map: loaded,
     ir,
     content: {
@@ -188,7 +187,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,
-    seed: SLICE_SEED,
+    seed: WORLD_SEED,
     sim,
     hashTrace: hashTraceFor(params),
   });
