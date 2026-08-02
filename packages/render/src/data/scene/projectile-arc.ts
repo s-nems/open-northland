@@ -10,10 +10,10 @@ import { clamp01 } from '../math.js';
 
 /**
  * Ballistic-arc shape: the lob's peak height is this fraction of the shot's total origin→target screen
- * distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow shot (23 tiles - up to
- * ~1560 px on an east–west chord at 68 px/cell) doesn't leave the screen. Height is `4·peak·p·(1−p)` over
- * the fraction flown `p`, zero at both the bow and the impact. Exported so the tests pin the formula, not a
- * copy of today's tuning.
+ * distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow shot (23 Manhattan
+ * half-cell nodes ⇒ ~11.5 cells, up to ~780 px on an east–west chord at 68 px/cell) doesn't leave the
+ * screen. Height is `4·peak·p·(1−p)` over the fraction flown `p`, zero at both the bow and the impact.
+ * Exported so the tests pin the formula, not a copy of today's tuning.
  */
 export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
 /** Cap on the lob's peak height (screen px) - see {@link PROJECTILE_ARC_PEAK_FRACTION}. */

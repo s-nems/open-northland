@@ -34,7 +34,7 @@ const BOW_DAMAGE = 30; // damage vs an unarmored (class-0) target
 const TARGET_HP = 1000; // high enough that one 30-dmg hit leaves the target alive (Health stays present)
 
 /** Tiles a `BOW_SPEED` projectile advances per tick - the calibration mapping applied to `speed`. With
- *  the ¼-tile-per-unit constant, `speed 8` = exactly 2 tiles/tick (an integer, so the same-row shot's
+ *  the ⅛-tile-per-unit constant, `speed 8` = exactly 1 tile/tick (an integer, so the same-row shot's
  *  arithmetic is exact). */
 const BOW_STEP_TILES = fx.toInt(fx.mul(fx.fromInt(BOW_SPEED), PROJECTILE_TILES_PER_SPEED_UNIT));
 
@@ -120,12 +120,19 @@ function stepToLaunch(sim: Simulation, max = 30): void {
   for (let i = 0; i < max && projectiles(sim).length === 0; i++) sim.step();
 }
 
+/** The single shot in flight, failing with the real reason when nothing was ever loosed. */
+function shotInFlight(sim: Simulation): Entity {
+  const shot = projectiles(sim)[0];
+  if (shot === undefined) throw new Error('no projectile in flight');
+  return shot;
+}
+
 describe('projectiles - launch at the release frame, no instant hit', () => {
   it('the bow is classified ranged and carries its extracted speed (the data seed)', () => {
     const w = content().weapons[0];
     expect(w?.munitionType).toBe(ARROW);
     expect(w?.speed).toBe(BOW_SPEED);
-    expect(BOW_STEP_TILES).toBe(2); // speed 8 × ¼ = 2 tiles/tick (the exact-arithmetic mapping)
+    expect(BOW_STEP_TILES).toBe(1); // speed 8 × ⅛ = 1 tile/tick (the exact-arithmetic mapping)
   });
 
   it('launches a projectile only AT the release frame - none before, and no instant damage', () => {
@@ -146,6 +153,19 @@ describe('projectiles - launch at the release frame, no instant hit', () => {
     expect(projectiles(sim)).toHaveLength(1);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
   });
+
+  it('rests at the bow for its launch tick, then advances one step per tick after it', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(0)); // the archer's own cell
+
+    sim.step();
+    expect(sim.world.get(shot, Position).x).toBe(fx.fromInt(BOW_STEP_TILES)); // and only now it flies
+  });
 });
 
 describe('projectiles - homing flight + on-contact damage', () => {
@@ -155,13 +175,12 @@ describe('projectiles - homing flight + on-contact damage', () => {
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
 
     stepToLaunch(sim);
-    const shot = projectiles(sim)[0] as Entity;
+    const shot = shotInFlight(sim);
     const before = sim.world.get(shot, Position);
     const x0 = before.x;
     const y0 = before.y;
     // The launch point is frozen on the payload (the render's ballistic-arc chord start) - the ARCHER's
-    // cell (0,0), not the observed in-flight position (the projectileSystem already advanced the shot
-    // within the launch tick).
+    // cell (0,0), where the shot also still rests on its launch tick.
     expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0));
     expect(sim.world.get(shot, Projectile).originY).toBe(fx.fromInt(0));
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP); // in flight, not yet landed

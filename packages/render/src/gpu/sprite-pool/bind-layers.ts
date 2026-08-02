@@ -247,7 +247,7 @@ export class LayerBinder {
     // Change-guarded like the layer sprites' tint (the setter allocates even on an unchanged value).
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight);
     if (pe.placeholder.tint !== tint) pe.placeholder.tint = tint;
-    // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
+    // Rotation applies about the graphic's own origin (the arrow's midpoint), so the flight-height offset
     // above is not rotated with it - the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
     if (item.ghost === true) return;

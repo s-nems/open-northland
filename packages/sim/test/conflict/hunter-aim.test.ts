@@ -83,7 +83,7 @@ describe('hunter aim - the deterministic miss roll', () => {
 });
 
 describe('hunter aim - the missed arrow', () => {
-  it('flies to the frozen aim point, lands in the dirt, and harms nothing', () => {
+  it('rests at the bow, flies to the frozen aim point, lands in the dirt, and harms nothing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(32, 32) });
     const shooter = fighterAtNode(sim, 10, 10, VIKING, null);
     const deer = fighterAtNode(sim, 20, 10, DEER, null);
@@ -100,7 +100,12 @@ describe('hunter aim - the missed arrow', () => {
       originX: positionOfNode(10, 10).x,
       originY: positionOfNode(10, 10).y,
       missAim: { x: aim.x, y: aim.y }, // frozen at "release": exactly where the deer stands
+      launchTick: sim.tick + 1, // loosed on the tick the next step runs, which is its rest at the bow
     });
+
+    // The rest guard sits ahead of the miss branch, so a missed shot leaves the bow no earlier than a true one.
+    sim.step();
+    expect(sim.world.get(shot, Position).x).toBe(positionOfNode(10, 10).x);
 
     let sawMissed = false;
     let sawHit = false;

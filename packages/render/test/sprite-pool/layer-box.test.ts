@@ -6,6 +6,7 @@ import {
   layerDrawBox,
   placeholderBounds,
 } from '../../src/gpu/sprite-pool/index.js';
+import { ARROW } from '../../src/gpu/sprite-pool/placeholder.js';
 import type { ResolvedLayer } from '../../src/index.js';
 
 /**
@@ -123,6 +124,9 @@ describe('placeholderBounds', () => {
   });
 
   it('covers the arrow marker’s own extent', () => {
-    expect(placeholderBounds('projectile')).toMatchObject({ minX: -11, maxX: 11 });
+    // The arrow's length centred on the anchor, not its authored tip/tail: placeholderBounds halves the
+    // body width, so the box follows a retuned shape but would not follow an asymmetric one.
+    const halfLength = (ARROW.head.tipX - ARROW.shaft.tailX) / 2;
+    expect(placeholderBounds('projectile')).toMatchObject({ minX: -halfLength, maxX: halfLength });
   });
 });

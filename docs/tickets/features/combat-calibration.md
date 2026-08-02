@@ -13,7 +13,8 @@ side by side and answers probes.
 **The unreadable set (why observation is the only source):** human base HP / stamina pool / sight
 radius; the XP→level curve and per-level bonuses; the exact role of `blockingValue`
 and hit-vs-miss; heal/potion/amulet magnitudes; building hit-points; projectile and blood sprites;
-and defence-mode cadence.
+the projectile `speed` unit (eye-tuned twice now, see
+[projectile flight metric](../sim/projectile-flight-screen-metric.md)); and defence-mode cadence.
 
 ## Scope
 

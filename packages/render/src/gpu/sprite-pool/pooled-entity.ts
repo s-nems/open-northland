@@ -2,7 +2,7 @@ import { Container, type Graphics, type Sprite } from 'pixi.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PlayerColourLut } from '../sprite-sheet.js';
-import type { MotionTrack } from './motion.js';
+import { type MotionTrack, snapDistanceForKind } from './motion.js';
 
 /**
  * The retained per-entity state of the sprite pool: one {@link PooledEntity} per drawable entity,
@@ -100,7 +100,18 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     reveal: undefined,
-    motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks: 0 },
+    motion: {
+      tick: -1,
+      x: 0,
+      y: 0,
+      prevX: 0,
+      prevY: 0,
+      drawX: 0,
+      drawY: 0,
+      gaitPhase: 0,
+      stillTicks: 0,
+      snapDistance: snapDistanceForKind(kind),
+    },
   };
   return palette === undefined
     ? { ...base, paletted: false, sprites: [] }

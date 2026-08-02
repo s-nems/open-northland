@@ -6,8 +6,28 @@ import type { SpriteKind } from '../../data/sprites/index.js';
  * flat, depth-sortable geometry coloured by kind, built once per entity.
  */
 
-/** Placeholder body colour per drawable sprite kind (drawn when no atlas frame binds the entity). */
-const KIND_COLOURS: Record<SpriteKind, number> = {
+/** Every kind drawn as the generic box marker - all but the projectile, which draws {@link ARROW}. */
+type BoxKind = Exclude<SpriteKind, 'projectile'>;
+
+/**
+ * The in-flight munition marker's authored parts, in feet-local px pointing screen-east (+x) so the
+ * pool can rotate the whole graphic to the flight heading; `halfSpan` is a part's half-height off the
+ * shaft line. Which end a player reads as the point IS the direction they see the shot travel, so the
+ * head alone reaches the forward extreme and is the brightest part, and the feathers sweep back from
+ * their apex. User-tuned proportions: 32 px tip to tail, long and thin beside a 24 px settler body.
+ * Data, not literals inside {@link drawArrow}, so those rules are testable without a GPU.
+ */
+export const ARROW = {
+  /** Wood: the dullest part, running from the tail to where the head begins. */
+  shaft: { colour: 0x7a4a24, tailX: -16, width: 2 },
+  /** Steel: the brightest part and the only one at the forward extreme. */
+  head: { colour: 0xd6dee8, tipX: 16, baseX: 8, halfSpan: 2 },
+  /** Feathers: swept back from `apexX` to the tail. */
+  fletching: { colour: 0x9c3b2e, apexX: -8, endX: -16, halfSpan: 2, width: 2 },
+} as const;
+
+/** Placeholder BOX colour per kind (drawn when no atlas frame binds the entity). */
+const KIND_COLOURS: Record<BoxKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
@@ -16,14 +36,7 @@ const KIND_COLOURS: Record<SpriteKind, number> = {
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
   grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
   signpost: 0xdeb060, // a pale-wood post marker (the scout's guidepost), distinct from the darker trunk
-  projectile: 0xe8dcc0, // the pale wooden arrow shaft - read by drawArrow (not the generic box path)
 };
-
-/** The arrow's shaft length / head size / stroke width (px at world scale) - sized to read as a
- *  munition next to a ~24 px settler without dominating it. */
-const ARROW_LENGTH = 22;
-const ARROW_HEAD = 5;
-const ARROW_STROKE = 2;
 
 /** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn diamond
  *  ({@link drawPlaceholder}) and the box the pool stamps for it ({@link placeholderBounds}) read the same
@@ -36,26 +49,24 @@ const FOOTPRINT_HALF_H = 5;
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
 
 /**
- * The in-flight munition marker: a fletched arrow authored pointing screen-east (+x) so the pool
- * rotates it to the {@link import('../../data/scene/draw-item.js').DrawItem.rotation} flight heading.
+ * Paint {@link ARROW}, rotated by the pool to the
+ * {@link import('../../data/scene/draw-item.js').DrawItem.rotation} flight heading.
  * A drawn-shape approximation: no decoded arrow bob exists in the extracted `[bobseq]` lanes (only
  * character bodies), so this minimal sprite is the named fallback until the effects bmds are decoded.
  */
 function drawArrow(g: Graphics): Graphics {
-  const colour = KIND_COLOURS.projectile;
-  const tail = -ARROW_LENGTH / 2;
-  const tip = ARROW_LENGTH / 2;
-  g.moveTo(tail, 0).lineTo(tip, 0).stroke({ color: colour, width: ARROW_STROKE });
-  g.moveTo(tip, 0)
-    .lineTo(tip - ARROW_HEAD, -ARROW_HEAD / 2)
-    .lineTo(tip - ARROW_HEAD, ARROW_HEAD / 2)
+  const { shaft, head, fletching } = ARROW;
+  g.moveTo(shaft.tailX, 0).lineTo(head.baseX, 0).stroke({ color: shaft.colour, width: shaft.width });
+  g.moveTo(head.tipX, 0)
+    .lineTo(head.baseX, -head.halfSpan)
+    .lineTo(head.baseX, head.halfSpan)
     .closePath()
-    .fill({ color: 0x707070 }); // an iron head, darker than the shaft
-  g.moveTo(tail, 0)
-    .lineTo(tail + ARROW_HEAD, -ARROW_HEAD / 2)
-    .moveTo(tail, 0)
-    .lineTo(tail + ARROW_HEAD, ARROW_HEAD / 2)
-    .stroke({ color: colour, width: 1 }); // the fletching
+    .fill({ color: head.colour });
+  g.moveTo(fletching.apexX, 0)
+    .lineTo(fletching.endX, -fletching.halfSpan)
+    .moveTo(fletching.apexX, 0)
+    .lineTo(fletching.endX, fletching.halfSpan)
+    .stroke({ color: fletching.colour, width: fletching.width });
   return g;
 }
 
@@ -63,7 +74,10 @@ function drawArrow(g: Graphics): Graphics {
 function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
   if (kind === 'building') return { bodyW: 28, bodyH: 40 };
   if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
-  if (kind === 'projectile') return { bodyW: ARROW_LENGTH, bodyH: ARROW_HEAD }; // the arrow's own extent
+  // The arrow's own extent, tip to tail and across the head.
+  if (kind === 'projectile') {
+    return { bodyW: ARROW.head.tipX - ARROW.shaft.tailX, bodyH: 2 * ARROW.head.halfSpan };
+  }
   return { bodyW: 14, bodyH: 24 };
 }
 

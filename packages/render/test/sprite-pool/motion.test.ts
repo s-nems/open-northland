@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   isStalled,
   type MotionTrack,
+  SNAP_DISTANCE,
   STALL_TICKS_TO_IDLE,
+  snapDistanceForKind,
   trackMotion,
 } from '../../src/gpu/sprite-pool/motion.js';
 
@@ -17,8 +19,19 @@ import {
 const WALK_TICKS_PER_CELL = 18;
 const FULL_GAIT_PX_PER_TICK = 68 / WALK_TICKS_PER_CELL;
 
-function fresh(): MotionTrack {
-  return { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks: 0 };
+function fresh(snapDistance = SNAP_DISTANCE): MotionTrack {
+  return {
+    tick: -1,
+    x: 0,
+    y: 0,
+    prevX: 0,
+    prevY: 0,
+    drawX: 0,
+    drawY: 0,
+    gaitPhase: 0,
+    stillTicks: 0,
+    snapDistance,
+  };
 }
 
 /** Run one trackMotion update and read back the stamped drawn anchor. */
@@ -73,6 +86,35 @@ describe('trackMotion - the inter-tick interpolation decision', () => {
     trackMotion(m, 1, 0, 0, 0);
     // The frame ran 3 sim ticks at once (~26 px for a walker): still smooth, from the last DRAWN tick.
     expect(drawnAt(m, 4, 26, 0, 0.5)).toEqual({ x: 13, y: 0 });
+  });
+});
+
+/** The projectile snap policy ({@link snapDistanceForKind}), on the catch-up frame it exists for. */
+describe('projectile snap policy', () => {
+  const CATCH_UP_TICKS = 3;
+  /** Travel the walker band rejects outright - what a few ticks of any real flight add up to. */
+  const OVER_BAND_PX = SNAP_DISTANCE * 2;
+
+  it('gives a projectile a wider band than a walker (the pool wiring is pinned in pool.test.ts)', () => {
+    expect(snapDistanceForKind('projectile')).toBeGreaterThan(snapDistanceForKind('settler'));
+  });
+
+  it('glides a catch-up frame the walker policy would snap', () => {
+    const walker = fresh();
+    trackMotion(walker, 1, 0, 0, 0);
+    trackMotion(walker, 1 + CATCH_UP_TICKS, OVER_BAND_PX, 0, 0.5);
+    expect(walker.drawX).toBe(OVER_BAND_PX); // the walker band reads it as a teleport
+
+    const arrow = fresh(snapDistanceForKind('projectile'));
+    trackMotion(arrow, 1, 0, 0, 0);
+    trackMotion(arrow, 1 + CATCH_UP_TICKS, OVER_BAND_PX, 0, 0.5);
+    expect(arrow.drawX).toBe(OVER_BAND_PX / 2); // the flight stays continuous
+  });
+
+  it('still snaps on first sighting (no glide in from the origin)', () => {
+    const m = fresh(snapDistanceForKind('projectile'));
+    trackMotion(m, 7, 400, 300, 0.5);
+    expect({ x: m.drawX, y: m.drawY }).toEqual({ x: 400, y: 300 });
   });
 });
 

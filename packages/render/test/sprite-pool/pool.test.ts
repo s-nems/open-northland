@@ -168,6 +168,13 @@ function settler(
   return entity(id, col, row, { Settler: { tribe: 0 }, ...extra });
 }
 
+/** The anchor a ref was drawn at this frame, failing the test if it was not drawn at all. */
+function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
+  const anchor = pool.anchorOf(ref);
+  if (anchor === undefined) throw new Error(`entity ${ref} was not drawn this frame`);
+  return anchor;
+}
+
 /**
  * The motion track across a gap in the draw list. A pooled entity keeps its track while it is not drawn
  * (indoors, fogged, culled), so resuming the lerp from that stale anchor would glide it in from wherever it
@@ -175,13 +182,6 @@ function settler(
  * track at re-entry instead, without disturbing the interpolation of anything drawn continuously.
  */
 describe('SpritePool - motion track across a gap in the draw list', () => {
-  /** The anchor a ref was drawn at this frame, failing the test if it was not drawn at all. */
-  function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
-    const anchor = pool.anchorOf(ref);
-    if (anchor === undefined) throw new Error(`entity ${ref} was not drawn this frame`);
-    return anchor;
-  }
-
   it('snaps a settler re-entering the draw set instead of gliding from its stale anchor', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
@@ -232,6 +232,52 @@ describe('SpritePool - motion track across a gap in the draw list', () => {
     // other half of the predicate: were the `lastSeen` stamp ever hoisted above the reset, every entity
     // would read as re-entering, snap every frame, and inter-tick interpolation would silently die.
     expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
+  });
+});
+
+/**
+ * The per-kind snap policy WIRING. Every kind shares one `updatePooled` path, so only the pool proves a
+ * projectile's track is actually born under the projectile band; `motion.test.ts` owns what the bands
+ * themselves do. The travel below is a multi-tick catch-up frame - the case the policy exists for.
+ */
+describe('SpritePool - a projectile glides where a walker snaps', () => {
+  /** A drawable in-flight munition - `Projectile` + `Position` classifies as the projectile kind. */
+  function projectile(id: number, col: number, row: number): ReturnType<typeof entity> {
+    return entity(id, col, row, { Projectile: {} });
+  }
+
+  const CATCH_UP_TICKS = 3;
+  const TILES_FLOWN = 3; // a tile a tick, the pace of a bow shot
+
+  it('interpolates a catch-up frame the walker policy snaps', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+
+    // Settler 3 starts alongside the shot and makes the identical jump - the walker-policy oracle.
+    pool.reconcile({
+      ...poolFrame(snapshotOf([projectile(1, 0, 0), settler(3, 0, 0)]), FRAMES_EVERYTHING),
+      tick: 0,
+    });
+    const from = anchorAt(pool, 1);
+
+    // Several ticks land in this one frame. Projectile 2 is first sighted at the destination - it snaps,
+    // so its anchor marks where the travel ends.
+    pool.reconcile({
+      ...poolFrame(
+        snapshotOf([
+          projectile(1, TILES_FLOWN, 0),
+          projectile(2, TILES_FLOWN, 0),
+          settler(3, TILES_FLOWN, 0),
+        ]),
+        FRAMES_EVERYTHING,
+      ),
+      tick: CATCH_UP_TICKS,
+      alpha: 0.5,
+    });
+    const to = anchorAt(pool, 2);
+    expect(Math.abs(to.x - from.x)).toBeGreaterThan(SNAP_DISTANCE); // travel the walker band rejects
+    expect(anchorAt(pool, 3)).toEqual(to); // and the walker policy indeed snaps it straight there...
+    expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }); // ...mid-glide
   });
 });
 

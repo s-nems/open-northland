@@ -121,12 +121,13 @@ function enemyDefendersDead(sim: Simulation): boolean {
 // towers and cut down the defenders, but BEFORE it turns on the plain homes - so the end state itself shows
 // the auto-focus priority: high-value structures gone, homes still whole. (The browser view keeps running,
 // so a human watches the homes fall next; the sim unit test covers that razing directly.)
+// The first such window is ticks 639..781 (measured); sit mid-span, since combat pacing moves its edges.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 760,
+  runTicks: 710,
   initialZoom: 0.8,
   checks: [
     {
