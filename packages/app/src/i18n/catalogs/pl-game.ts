@@ -157,7 +157,7 @@ export const plGame = {
     // The mod's Polish gui strings mistranslate this slot ("Wyburz drogowskaz"); the natural imperative
     // of the English original "Erect Signpost" is used instead (named deviation).
     erectSignpost: 'Postaw drogowskaz',
-    attack: 'Atak',
+    attack: 'Zaatakuj pozycję', // the decoded original (misclogic 48), not a coined label
     // The family action labels are the decoded originals (`content/gui/strings/pol.json` humanwindow
     // 21/23/24/28), not invented phrasing.
     assign_house: 'Przydziel dom',

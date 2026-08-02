@@ -204,7 +204,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(42);
+  const roll = rng.int(43);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -563,6 +563,11 @@ function nextCommand(rng: Rng): Command {
         value: rng.int(140) - 20,
         infinite: rng.int(4) === 0,
       };
+    case 42:
+      // An attack-move at a random id: the moveUnit skip paths again, plus the march itself - a walk that
+      // keeps the combat drives live, so a fuzzed stream interleaves it with engagement, chases and deaths
+      // (the resume-after-the-fight state must hash and replay identically).
+      return { kind: 'attackMoveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

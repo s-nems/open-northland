@@ -1,4 +1,5 @@
 import {
+  type AttackMoveMarch,
   AttackOrder,
   Carrying,
   CurrentAtomic,
@@ -30,8 +31,8 @@ import { clearNavState, isTravelling } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic } from './guards.js';
 
 /**
- * The player-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move order
- * out as a soft override - the direct control the human exerts over its own units.
+ * The player-order handlers (`moveUnit` / `attackMoveUnit` / `setJob`) + the {@link playerOrderSystem} that
+ * plays a move order out as a soft override - the direct control the human exerts over its own units.
  *
  * The design is faithful to *Cultures*: settlers are autonomous, so a move order does not seize a unit
  * permanently - it sends the unit somewhere, then hands it back to the economy AI the tick it arrives. There
@@ -90,6 +91,24 @@ export function moveUnit(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'moveUnit' }>,
 ): void {
+  startPlayerWalk(world, ctx, command);
+}
+
+/** {@link moveUnit}'s walk stamped with an {@link AttackMoveMarch} - the "Attack Position" order. */
+export function attackMoveUnit(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'attackMoveUnit' }>,
+): void {
+  startPlayerWalk(world, ctx, command);
+}
+
+/** Issue either flavour of the player's walk order; the command's `kind` decides which. */
+function startPlayerWalk(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>,
+): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to navigate over
   const e = command.entity;
@@ -114,9 +133,10 @@ export function moveUnit(
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, Stranded); // a fresh order ends a stranded park - the next strand re-paces from zero
-  // A move order supersedes combat: drop any auto-engagement and attack focus so the unit walks off and holds
-  // instead of re-acquiring its target - otherwise the CombatSystem re-chases and the order only ever moves it
-  // one step.
+  // A fresh walk order supersedes the current fight: drop the auto-engagement and attack focus so the unit
+  // obeys now instead of chasing its old target (a plain move then stays out of combat until arrival - the
+  // CombatSystem would otherwise re-chase and the order would move it one step; an attack-move re-acquires
+  // from scratch on the next combat pass).
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
@@ -132,16 +152,21 @@ export function moveUnit(
   const stance = world.tryGet(e, Stance);
   if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
 
+  // An attack-move walk carries its destination on the order itself: a fight overwrites the MoveGoal with
+  // chase destinations, so the march would otherwise have nothing left to resume toward.
+  const march: { attackMove?: AttackMoveMarch } =
+    command.kind === 'attackMoveUnit' ? { attackMove: { goal, resume: false, blockedUntil: 0 } } : {};
+
   // Hands full: halt and set the load down first (the drop atomic stops any walk in progress - startDrop
   // clears the nav state), parking the destination. The walk starts once the drop completes
   // (playerOrderSystem). CurrentAtomic was just cleared above, so startDrop always takes.
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
-    world.add(e, PlayerOrder, { pendingGoal: goal });
+    world.add(e, PlayerOrder, { ...march, pendingGoal: goal });
     return;
   }
   world.add(e, MoveGoal, { cell: goal });
-  world.add(e, PlayerOrder, {});
+  world.add(e, PlayerOrder, march);
 }
 
 /**
@@ -154,13 +179,17 @@ export function moveUnit(
  *     load down first (`moveUnit`). While the drop atomic runs, wait; the tick it finishes (no
  *     {@link CurrentAtomic}), launch the parked walk - set the {@link MoveGoal} and clear `pendingGoal`, so
  *     from here it is an ordinary en-route order.
- *  2. **Route failed** (an unwalkable/off-map target): abandon the order and clear the dead nav state (a
+ *  2. **Fighting** (an engaged {@link AttackMoveMarch} unit): combat owns it - keep the order, and record that
+ *     the march must resume. Above the two rungs below because a swing is a {@link CurrentAtomic} and a failed
+ *     chase route is not the march's.
+ *  3. **Route failed** (an unwalkable/off-map target): abandon the order and clear the dead nav state (a
  *     failed {@link PathRequest} is never retried, so without this the unit would freeze on it forever).
- *  3. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
+ *  4. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
  *     by this order, so only a need could) - drop the order, leave the atomic running.
- *  4. **Travelling** (goal/request/path present): the order's own walk - keep it.
- *  5. **Arrived & idle**: remove the order so {@link plannerSystem} re-tasks the unit this tick; no
- *     post-arrival stand.
+ *  5. **Travelling** (goal/request/path present): the order's own walk - keep it.
+ *  6. **Fight over** (an attack-move march the fight took off course): re-issue the stored goal and walk on.
+ *  7. **Arrived & idle**: remove the order so {@link plannerSystem} re-tasks the unit this tick; no
+ *     post-arrival stand, for a march either - only a DEFEND stance anchors a unit to a spot.
  *
  * While the order stands, {@link plannerSystem}'s economy branch skips the unit but its needs drives
  * still run.
@@ -168,11 +197,20 @@ export function moveUnit(
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable
   for (const e of world.query(Settler, PlayerOrder)) {
-    const pendingGoal = world.get(e, PlayerOrder).pendingGoal;
-    if (pendingGoal !== undefined) {
+    const order = world.get(e, PlayerOrder);
+    const march = order.attackMove;
+    if (order.pendingGoal !== undefined) {
       if (world.has(e, CurrentAtomic)) continue; // still setting the load down - the walk waits
-      world.add(e, MoveGoal, { cell: pendingGoal }); // drop done - start the parked walk now
-      world.add(e, PlayerOrder, {}); // clear pendingGoal: an ordinary en-route order from here
+      world.add(e, MoveGoal, { cell: order.pendingGoal }); // drop done - start the parked walk now
+      // Clear pendingGoal (an ordinary en-route order from here), keeping any march.
+      world.add(e, PlayerOrder, march === undefined ? {} : { attackMove: march });
+      continue;
+    }
+    if (march !== undefined && world.has(e, Engagement)) {
+      // The fight has the unit; the march waits it out and resumes below when combat lets go.
+      world.write(e, PlayerOrder, (o) => {
+        if (o.attackMove !== undefined) o.attackMove.resume = true;
+      });
       continue;
     }
     if (world.tryGet(e, PathRequest)?.failed) {
@@ -185,6 +223,13 @@ export const playerOrderSystem: System = (world, ctx) => {
     }
     if (isTravelling(world, e)) {
       continue; // still walking the order out
+    }
+    if (march?.resume === true) {
+      world.write(e, PlayerOrder, (o) => {
+        if (o.attackMove !== undefined) o.attackMove.resume = false;
+      });
+      world.add(e, MoveGoal, { cell: march.goal }); // the fight is over - walk on to the ordered spot
+      continue;
     }
     world.remove(e, PlayerOrder); // arrived - economy resumes (plannerSystem re-tasks this tick)
   }

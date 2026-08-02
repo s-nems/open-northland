@@ -2,6 +2,7 @@ import type { DoorBadge } from '@open-northland/render';
 import { type Entity, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
+import { isPlainHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickDoorBadgeRow, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
@@ -32,10 +33,14 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
  *    **PPM** on the ground - order them to walk there (a group fans out into a formation cluster, a single
  *    unit goes exactly there - the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
  *    original's RTS convention.
+ *  - **A**, then **LPM** on the ground - attack-move: the selection walks there fighting whatever it meets
+ *    on the way (the `attackMoveUnit` command, the original's "Attack Position"). The action menu's button
+ *    arms the same mode; Esc or a non-left click backs out. The A binding is the RTS convention; the
+ *    original arms this order from its menu with a "Select attack position" prompt.
  *  - **Space** - toggle the original-art action menu around the selected settler
- *    ({@link import('./action-ring/index.js')}): the full default menu in original art, of which only "change
- *    profession" is wired today (it opens a profession picker). The info card (needs / building state) is
- *    always shown bottom-right the moment something is selected - no keypress needed.
+ *    ({@link import('./action-ring/index.js')}): the full default menu in original art, with the wired
+ *    buttons live (profession picker, attack, signpost, marry, home, children) and the rest inert. The info
+ *    card (needs / building state) is always shown bottom-right the moment something is selected.
  *  - **Esc** - clear the selection.
  *
  * Only the human player's own units are pickable (the targets are pre-filtered by `Owner.player`), so a
@@ -131,6 +136,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
     },
     onErectSignpost: (ids) => pickMode.armSignpost(ids),
+    onAttackMove: () => armAttackMove(),
     onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
     onAssignHouse: (id) => pickMode.armHome(id),
     onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
@@ -164,8 +170,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return badges.filter((b) => b.player === opts.humanPlayer);
   };
 
-  // The armed click-to-pick modes (workplace / home / signpost): the panel/action buttons arm one, a
-  // world click resolves it, and a selection change or Esc cancels it. See pick-mode.ts.
+  // The armed click-to-pick modes: the panel/action buttons or the A key arm one, a world click resolves
+  // it, and a selection change or Esc cancels it. See pick-mode.ts.
   const pickMode = createPickModeController({
     snapshot: opts.snapshot,
     targets: unitTargets,
@@ -174,7 +180,20 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     toWorld,
     enqueue: opts.enqueue,
+    // `orders` is built below; the arrow defers the read to click time, when everything exists.
+    issueAttackMove: (event) => orders.issueAttackMove(event),
+    setArmedCursor: (armed) => {
+      canvas.style.cursor = armed ? 'crosshair' : '';
+    },
   });
+
+  /** Arm the click-a-spot attack-move mode (the A key and the ring's "Attack Position" button). Refused
+   *  when the selection holds no settler to send, so the mode never arms into a click that does nothing. */
+  const armAttackMove = (): void => {
+    if (unitTargets.ownedSettlersIn(selected).length === 0) return;
+    actions.close();
+    pickMode.armAttackMove();
+  };
 
   const changed = (): void => {
     panel.render(opts.snapshot(), selected); // the info card is always-on - render reflects the new selection
@@ -289,6 +308,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (e.code === 'Space') {
       e.preventDefault(); // Space would otherwise scroll the page
       actions.toggle(); // the info card is always-on; Space only toggles the action ring
+    } else if (isPlainHotkey(e, 'KeyA')) {
+      armAttackMove();
     } else if (e.code === 'Escape') {
       if (pickMode.isArmed())
         pickMode.cancel(); // Esc first backs out of a pick mode, keeping the selection
@@ -321,6 +342,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       actions.update(opts.camera(), snapshot);
     },
     dispose: () => {
+      pickMode.cancel(); // an armed mode owns the canvas cursor; tearing down must not leave it set
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);

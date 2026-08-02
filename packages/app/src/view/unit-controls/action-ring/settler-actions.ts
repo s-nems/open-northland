@@ -236,6 +236,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     getTargets: () => actionTargets,
     hideTransient,
     onErectSignpost: opts.onErectSignpost,
+    onAttackMove: opts.onAttackMove,
     onMarry: opts.onMarry,
     onAssignHouse: opts.onAssignHouse,
     onMakeChild: opts.onMakeChild,

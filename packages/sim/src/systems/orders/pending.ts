@@ -7,7 +7,7 @@ import {
 import { assertNever } from '../../core/brand.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { moveUnit } from './movement.js';
+import { attackMoveUnit, moveUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';
 
@@ -35,6 +35,9 @@ function applyDeferredOrder(world: World, ctx: SystemContext, command: Deferrabl
   switch (command.kind) {
     case 'moveUnit':
       moveUnit(world, ctx, command);
+      return;
+    case 'attackMoveUnit':
+      attackMoveUnit(world, ctx, command);
       return;
     case 'setJob':
       setJob(world, ctx, command);

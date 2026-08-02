@@ -30,6 +30,7 @@ export interface ActionRingInputContext {
   /** Clear the hover highlight + tooltip. */
   readonly hideTransient: () => void;
   readonly onErectSignpost: (ids: readonly number[]) => void;
+  readonly onAttackMove: () => void;
   readonly onMarry: (id: number) => void;
   readonly onAssignHouse: (id: number) => void;
   readonly onMakeChild: (id: number, sex: 'male' | 'female') => void;
@@ -81,6 +82,9 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       const scouts = [...targets];
       ctx.closeMenu();
       ctx.onErectSignpost(scouts);
+    } else if (hit.kind === 'attack-move') {
+      ctx.closeMenu();
+      ctx.onAttackMove();
     } else if (hit.kind === 'marry' && single !== undefined) {
       ctx.onMarry(single);
       ctx.closeMenu(); // the order is issued - nothing left to do in the menu

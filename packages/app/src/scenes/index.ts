@@ -1,4 +1,5 @@
 import { armorScene } from './armor.js';
+import { attackMoveScene } from './attack-move.js';
 import { barracksScene } from './barracks.js';
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
@@ -34,6 +35,7 @@ export const SCENES: readonly SceneDefinition[] = [
   collisionScene,
   battleScene,
   siegeScene,
+  attackMoveScene,
   goodsCatalogScene,
   berriesScene,
   chainScene,
