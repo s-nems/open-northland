@@ -137,6 +137,7 @@ describe('buildMapsIndexEntries', () => {
           },
         ],
         fixedColors: true,
+        multiplayer: true,
       },
     ]);
   });

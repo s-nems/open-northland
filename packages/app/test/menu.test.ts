@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseMapsIndex } from '../src/content/maps-index.js';
 import {
   claimSeat,
   hasClaimableSeat,
@@ -16,7 +17,6 @@ import {
   MENU_SPEEDS,
   targetSearch,
 } from '../src/entries/menu/settings.js';
-import { parseMapsIndex } from '../src/entries/menu.js';
 import { progressionOverride } from '../src/game/progression.js';
 
 /**
@@ -53,6 +53,18 @@ describe('parseMapsIndex', () => {
     expect(parseMapsIndex(undefined)).toEqual([]);
     expect(parseMapsIndex({ maps: [] })).toEqual([]);
     expect(parseMapsIndex('nope')).toEqual([]);
+  });
+
+  it('passes the multiplayer capability through and drops a wrong-typed flag', () => {
+    expect(
+      parseMapsIndex([
+        { id: 'arena', minimap: false, multiplayer: true },
+        { id: 'story', minimap: false, multiplayer: 'yes' },
+      ]),
+    ).toEqual([
+      { id: 'arena', minimap: false, multiplayer: true },
+      { id: 'story', minimap: false },
+    ]);
   });
 
   it('narrows the player roster and drops wrong-typed slots', () => {

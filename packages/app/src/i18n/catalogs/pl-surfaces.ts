@@ -97,6 +97,28 @@ export const plSurfaces = {
       settings: 'Ustawienia',
       credits: 'O projekcie',
     },
+    mapSelect: {
+      searchPlaceholder: 'Szukaj mapy…',
+      filters: {
+        all: 'Wszystkie',
+        story: 'Fabularne',
+        multiplayer: 'Multiplayer',
+        scenes: 'Sceny testowe',
+      },
+      categoryNames: {
+        story: 'fabularna',
+        multiplayer: 'multiplayer',
+        scenes: 'scena testowa',
+      },
+      players: { one: '{count} gracz', few: '{count} graczy', many: '{count} graczy' },
+      maps: { one: '{count} mapa', few: '{count} mapy', many: '{count} map' },
+      scenes: { one: '{count} scena', few: '{count} sceny', many: '{count} scen' },
+      countLine: '{maps} · przewijaj lub szukaj',
+      empty: 'Brak zdekodowanych map. Wygeneruj content/ albo przejrzyj sceny testowe.',
+      noPreview: 'scena testowa · bez podglądu mapy',
+      next: 'Dalej',
+      run: 'Uruchom',
+    },
   },
   loading: {
     graphics: 'Uruchamianie grafiki…',

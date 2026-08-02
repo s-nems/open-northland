@@ -99,6 +99,28 @@ export const enSurfaces = {
       settings: 'Settings',
       credits: 'About the project',
     },
+    mapSelect: {
+      searchPlaceholder: 'Search maps…',
+      filters: {
+        all: 'All',
+        story: 'Story',
+        multiplayer: 'Multiplayer',
+        scenes: 'Test scenes',
+      },
+      categoryNames: {
+        story: 'story',
+        multiplayer: 'multiplayer',
+        scenes: 'test scene',
+      },
+      players: { one: '{count} player', few: '{count} players', many: '{count} players' },
+      maps: { one: '{count} map', few: '{count} maps', many: '{count} maps' },
+      scenes: { one: '{count} scene', few: '{count} scenes', many: '{count} scenes' },
+      countLine: '{maps} · scroll or search',
+      empty: 'No decoded maps. Generate content/ or browse the test scenes.',
+      noPreview: 'test scene · no map preview',
+      next: 'Next',
+      run: 'Run',
+    },
   },
   // One label per `view/boot-progress.ts` BootPhase - the card's only text.
   loading: {
