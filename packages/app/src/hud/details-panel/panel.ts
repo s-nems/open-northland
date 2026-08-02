@@ -1,21 +1,15 @@
-import {
-  createReusableBaker,
-  type PortraitInsetFrame,
-  type SpriteSheet,
-  type SupersampledTexture,
-} from '@open-northland/render';
+import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type Application, Container } from 'pixi.js';
-import { uiStringLookup } from '../../content/gui-gfx.js';
+import type { Application } from 'pixi.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
-import { bakePanel } from './bake.js';
 import { tooltipTextAt } from './hit-test.js';
 import { type EquipSlotRef, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
+import { createPanelStage, WORKER_OVERLAY_Z } from './stage.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
@@ -23,12 +17,10 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
  * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
  * extracted original art. `model/` decides what is shown, `layout/` where, `sections/`+`chrome.ts` how,
- * `bake.ts` draws it into the panel texture, `pointer-intent.ts` decides what a click means,
- * `rebuild-gate.ts` when it re-bakes - this module owns the Pixi state that wires them to the app.
+ * `bake.ts` draws it into the panel texture, `stage.ts` puts that texture on screen,
+ * `pointer-intent.ts` decides what a click means, `rebuild-gate.ts` when it re-bakes - this module owns
+ * the selection, hover and stock-tab state that drives them.
  */
-
-/** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
-const PANEL_Z = 1002;
 
 /**
  * The portrait box the live world "observation window" fills - the panel's preview rect, in on-screen px,
@@ -113,34 +105,12 @@ export interface UnitPanel {
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
-  // Fractional display scale (shared with the tool panel / action ring); the panel's PalettedSprite chrome
-  // (indexed atlas, nearest-sampled) can't be linearly filtered, so a fractional scale would double texel
-  // columns unevenly ("pixeloza") - instead it bakes at an integer oversample and linear-downscales to this.
-  const scale = Math.max(1, opts.uiscale ?? 1);
-  // The panel carries the finest text in the HUD (a native-11px body font at a fractional scale). Unlike
-  // the tool-panel strip (icons - a device-aware `oversampleFor` is enough), a 2× bake linear-downscaled to
-  // a fractional scale still hazes small glyph edges, so text legibility wins: at a fractional scale bake at
-  // the max oversample (crispest downscale). An integer scale needs no supersample at all - nearest is
-  // already exact, so keep it 1:1 rather than needlessly softening a pixel-perfect render. (This panel's
-  // policy differs from the shared `oversampleFor` - which always targets ≥2× for AA - so it decides here.)
-  const PANEL_MAX_SUPERSAMPLE = 4;
-  const ss = Number.isInteger(scale) && scale <= PANEL_MAX_SUPERSAMPLE ? scale : PANEL_MAX_SUPERSAMPLE;
+  const scale = Math.max(1, opts.uiscale ?? 1); // shared with the tool panel and the action ring
   const assets = await loadDetailsPanelAssets(opts.lang);
-  const uiString = uiStringLookup(assets.strings);
-
-  let root = new Container();
-  root.zIndex = PANEL_Z;
-  root.visible = false;
-  app.stage.addChild(root);
-  /** The current rebuild's baked panel texture; disposed and replaced on the next rebuild. */
-  let baked: SupersampledTexture | null = null;
-  // One shared bake target for every rebuild: a fresh render texture per rebuild would blank the
-  // portrait inset's world cutout for a frame - the preview blinking at every construction hammer
-  // hit (see createReusableBaker).
-  const baker = createReusableBaker(app.renderer);
-  // The animated worker sprites drawn live over the baked panel's Pracownicy field (one z above it), so
-  // they advance every frame while the panel itself re-bakes at most 4 Hz.
-  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1, opts.playerColourOf);
+  const stage = createPanelStage({ app, assets, scale });
+  // Drawn over the baked panel's Pracownicy field so the workers advance every frame while the panel
+  // itself re-bakes at most 4 Hz.
+  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, WORKER_OVERLAY_Z, opts.playerColourOf);
 
   const ctx: UnitPanelModelContext = {
     buildings: opts.buildings,
@@ -172,35 +142,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   const rebuild = (model: UnitPanelModel): void => {
     panelEpoch++;
-    baked?.dispose();
-    baked = null;
-    root.destroy({ children: true });
-    root = new Container();
-    root.zIndex = PANEL_Z;
-    app.stage.addChild(root);
     rebuildGate.rebuilt();
     // Hit layout: the real screen-anchored geometry at the fractional display scale (pointer claims, buttons).
     view = panelViewFor(model, app.screen, scale);
-    if (view.kind === 'empty') {
-      root.visible = false;
-      return;
-    }
-    root.visible = true;
-
-    const texture = bakePanel({
-      assets,
-      baker,
-      view,
-      hover,
-      ui: uiString,
-      activeStockTab,
-      scale,
-      ss,
-    });
-    // Displayed unflipped: the bake is already upright.
-    texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
-    root.addChild(texture.display);
-    baked = texture;
+    stage.paint(view, hover, activeStockTab);
+    if (view.kind === 'empty') return;
     // A rebuild changes what a held cursor hovers (a draining bar's value, a re-sorted stock row) - the
     // cursor itself won't move to fire a mousemove, so refresh the tooltip here. The rebuild gate already
     // rate-limits rebuilds, so this adds no per-frame work.
@@ -396,9 +342,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       workerOverlay.dispose();
       canvas.removeEventListener('mouseleave', onMouseLeave);
       opts.tooltip?.hide();
-      baked?.dispose();
-      baker.dispose();
-      root.destroy({ children: true });
+      stage.dispose();
     },
   };
 }
