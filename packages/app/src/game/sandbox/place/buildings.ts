@@ -3,6 +3,7 @@ import {
   cellAnchorNode,
   components,
   type Entity,
+  fx,
   nodeOfPosition,
   ONE,
   positionOfNode,
@@ -15,6 +16,9 @@ import { JOB_CARRIER, JOB_COLLECTOR } from '../../../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { workerRoleOf } from '../worker-roles.js';
 import { gatherMasteryExperience } from './mastery.js';
+
+/** A freshly placed site: nothing built, nothing hammered. */
+const FRESH = fx.fromInt(0);
 
 /**
  * Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command.
@@ -82,6 +86,35 @@ export function placeBuiltSandboxBuilding(
   return e;
 }
 
+/**
+ * Place a viking building as a FOUNDATION directly in the world and return its entity - the
+ * {@link placeBuiltSandboxBuilding} twin for a scene that must reference the site it just placed (to post
+ * staff to it, or to pin a builder). Stamps what a placed site carries: anchor Position, a `built = 0`
+ * {@link components.Building} under an `UnderConstruction` marker, the empty Stockpile that is its
+ * delivered-material hold, a 1-hitpoint Health pool when the type has one (the ConstructionSystem ramps
+ * it), and the owner. Scene setup only.
+ */
+export function placeSandboxSite(
+  sim: Simulation,
+  ref: number | string,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): Entity {
+  const { Building, Health, Owner, Position, Stockpile, UnderConstruction } = components;
+  const typeId = resolveVikingBuilding(ref).typeId;
+  const def = buildingDef(sim, typeId);
+  const node = cellAnchorNode(x, y);
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
+  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: FRESH, level: 0 });
+  sim.world.add(e, UnderConstruction, { labor: FRESH });
+  sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
+  if (def?.hitpoints !== undefined) sim.world.add(e, Health, { hitpoints: 1, max: def.hitpoints });
+  sim.world.add(e, Owner, { player: owner });
+  return e;
+}
+
 /** The content building def for `typeId` (the sim's own content set), or undefined. */
 export function buildingDef(
   sim: Simulation,
@@ -108,10 +141,12 @@ export function buildingDoorNode(
 }
 
 /**
- * Spawn `count` workers at `building`'s door node, employed and BOUND to it. Their job is the building's
- * first non-carrier worker slot read from the sim's loaded content ({@link primaryWorkerJob}), so the same
- * call staffs the building on sandbox (headless) and real (browser) content, whose slot job ids differ -
- * the sandbox rebases to `WORKER_SLOT_JOB_BASE + n`, real ir.json keeps the raw id.
+ * Spawn `count` workers at `building`'s door node, employed and BOUND to it - the scene-setup form of the
+ *  player's assign order, and just as valid on a foundation as on a finished building. Without an explicit
+ * `jobType` they take the building's first non-carrier worker slot read from the sim's loaded content
+ * ({@link primaryWorkerJob}), so the same call staffs the building on sandbox (headless) and real
+ * (browser) content, whose slot job ids differ - the sandbox rebases to `WORKER_SLOT_JOB_BASE + n`, real
+ * ir.json keeps the raw id.
  *
  * Assembled directly, like {@link import('./resources.js').spawnBoundGatherer}: nothing employs a settler
  * on its own, so the crew's {@link JobAssignment} has to name the building entity, and a command-spawned
@@ -121,13 +156,17 @@ export function spawnWorkersAtDoor(
   sim: Simulation,
   building: Entity,
   count: number,
-  owner: number = HUMAN_PLAYER,
-  /** Worn gear stamped on every spawned worker (e.g. a tool for the equipment-effects scene). */
-  equipment?: SettlerEquipment,
+  opts: {
+    readonly jobType?: number;
+    readonly owner?: number;
+    /** Worn gear stamped on every spawned worker (e.g. a tool for the equipment-effects scene). */
+    readonly equipment?: SettlerEquipment;
+  } = {},
 ): void {
   const buildingType = sim.world.get(building, components.Building).buildingType;
-  bindCrewAtDoor(sim, building, primaryWorkerJob(sim, buildingType), count, owner, {
-    ...(equipment !== undefined ? { equipment } : {}),
+  const jobType = opts.jobType ?? primaryWorkerJob(sim, buildingType);
+  bindCrewAtDoor(sim, building, jobType, count, opts.owner ?? HUMAN_PLAYER, {
+    ...(opts.equipment !== undefined ? { equipment: opts.equipment } : {}),
   });
 }
 

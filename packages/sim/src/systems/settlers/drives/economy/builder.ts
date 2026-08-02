@@ -1,29 +1,15 @@
-import { CARRY_CAPACITY, SiteAssignment, UnderConstruction } from '../../../../components/index.js';
+import { SiteAssignment, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import {
-  deliveredConstructionFraction,
-  neededConstructionGoods,
-  stampSupplyRun,
-} from '../../../stores/index.js';
-import {
-  atOrWalk,
-  BUILD_HOUSE_ATOMIC_ID,
-  jobCanBuild,
-  startAtomic,
-  startPickup,
-} from '../../atomics/start.js';
+import { deliveredConstructionFraction } from '../../../stores/index.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
-import {
-  interactionCell,
-  nearestConstructionSite,
-  nearestStoreHolding,
-  unreachableSiteStand,
-} from '../../targets/index.js';
+import { nearestConstructionSite, unreachableSiteStand } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { claimWorkCell } from '../spacing.js';
+import { fetchNeededMaterial } from './site-supply.js';
 
 /**
  * BUILD - a builder raises a construction site of its tribe, faithful to the original's "settlers search
@@ -134,42 +120,6 @@ export function planBuilder(plan: PlannerContext, spacing: PlannerSpacing, leads
   const stand = siteStand();
   if (stand !== null) atOrWalk(world, e, here, stand, () => {});
   return true;
-}
-
-/**
- * Fetch one still-needed construction good for `site` from a store that holds it, routing the pickup so the
- * delivery drive carries the load back to the site (which advertises the demand). Tries the least-covered
- * material first but falls through the whole bill: the goods need not arrive in bill order, so a good with no
- * source anywhere never blocks fetching the ones that are available (the site accumulates what it can and
- * waits for the scarce good). One unit per trip (the global {@link CARRY_CAPACITY}). The needs already
- * discount other settlers' live supply errands (SupplyRun), and this fetch stamps its own - so a crew spreads
- * over the still-unclaimed materials instead of racing to the same unit. Returns whether a fetch was started.
- */
-function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
-  const { world, ctx, terrain, entity: e, here, targets } = plan;
-  const settler = plan;
-  const avoid = unreachableGoalVeto(world, ctx, e);
-  for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
-    const src = nearestStoreHolding(
-      targets.stockpileCells,
-      world,
-      ctx,
-      terrain,
-      here,
-      need.goodType,
-      plan.owner,
-      plan.limit ?? undefined,
-      avoid,
-    );
-    if (src == null) continue; // no store holds this material - try the next bill line
-    const batch = Math.min(need.amount, CARRY_CAPACITY);
-    stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
-      startPickup(world, ctx, e, settler, src, need.goodType, batch),
-    );
-    return true;
-  }
-  return false;
 }
 
 /**

@@ -80,14 +80,17 @@ function build(sim: Simulation): void {
     amount: WHEAT_UNITS,
   });
   // The tooled miller, with draughts for both bars so a pressing need is a sip, not a work stoppage.
-  spawnWorkersAtDoor(sim, mill, MILLERS, HUMAN_PLAYER, {
-    tool: { goodType: goodBySlug(sim, 'tool_iron') },
-    misc: [
-      { goodType: goodBySlug(sim, 'potion_food_big') },
-      { goodType: goodBySlug(sim, 'potion_stamina_big') },
-      null,
-      null,
-    ],
+  spawnWorkersAtDoor(sim, mill, MILLERS, {
+    owner: HUMAN_PLAYER,
+    equipment: {
+      tool: { goodType: goodBySlug(sim, 'tool_iron') },
+      misc: [
+        { goodType: goodBySlug(sim, 'potion_food_big') },
+        { goodType: goodBySlug(sim, 'potion_stamina_big') },
+        null,
+        null,
+      ],
+    },
   });
 
   spawnSandboxSettler(sim, JOB_COLLECTOR, DRINKER.x, DRINKER.y, HUMAN_PLAYER, {

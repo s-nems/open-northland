@@ -3,17 +3,18 @@ import type { BuildingHighlightItem } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
-import { HUMAN_PLAYER } from '../src/game/rules.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { canonicalJobType, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
 import { isBuilding, isSettler, ownerPlayerOf, settlerJobType } from '../src/game/snapshot.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {
+  type AssignBuildingInfo,
   assignableJobForBuilding,
   computeAssignHighlight,
   currentTradeSlotAt,
 } from '../src/view/unit-controls/highlights/index.js';
 import { createPickModeController, type PickModeController } from '../src/view/unit-controls/pick-mode.js';
-import { countingSnapshot } from './support/snapshot.js';
+import { countingSnapshot, snapshotOf } from './support/snapshot.js';
 
 /**
  * The "przydziel miejsce pracy" verdict - the button places the settler's CURRENT trade only, so a
@@ -112,6 +113,36 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
       const b = byId.get(item.id);
       expect(b !== undefined && isBuilding(b) && ownerPlayerOf(b) === HUMAN_PLAYER).toBe(true);
     }
+  });
+});
+
+describe('a building still under construction', () => {
+  const MINT = 40;
+  const byType = new Map<number, AssignBuildingInfo>([[MINT, { workers: MINT_SLOTS }]]);
+  /** A coin-maker and a mint FOUNDATION, both the human player's. */
+  const world = (): WorldSnapshot =>
+    snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: PRIMARY_TRIBE, jobType: COIN_MAKER },
+          Owner: { player: HUMAN_PLAYER },
+        },
+      },
+      {
+        id: 2,
+        components: {
+          Building: { buildingType: MINT, tribe: PRIMARY_TRIBE },
+          UnderConstruction: { labor: 0 },
+          Owner: { player: HUMAN_PLAYER },
+        },
+      },
+    ]);
+
+  it('is a candidate, greened for the trade it will employ', () => {
+    const snapshot = world();
+    expect(computeAssignHighlight(snapshot, 1, byType)).toEqual([{ id: 2, ok: true }]);
+    expect(assignableJobForBuilding(snapshot, 2, 1, byType)).toBe(rebaseSlotJob(COIN_MAKER));
   });
 });
 

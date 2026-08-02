@@ -309,10 +309,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       return;
     }
     const b = view.layout.workers.body;
-    // The compact limits line sits in the first row - except on a construction site, which shows no
-    // strip (the field holds the live building crew instead - the overlay's siteCrew selector).
+    // The compact limits line sits in the first row; below it the sprite field. A construction site shows
+    // the same strip (it employs while it is raised) and adds the build crew to the field - the overlay's
+    // siteCrew selector.
     const siteCrew = view.model.construction !== null;
-    const inset = siteCrew ? 0 : Math.round(ROW_H * scale);
+    const inset = Math.round(ROW_H * scale);
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
     // A home's field draws its residents grouped per family (the Mieszkańcy window) instead of the
     // bound-worker scan.

@@ -7,6 +7,7 @@ import {
   nodeOfPosition,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { JOB_BUILDER } from '../../catalog/jobs.js';
 import { assignmentPriorityFor, trainsRatherThanEmploys } from '../../game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
@@ -88,17 +89,30 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (building !== null) {
       const snapshot = deps.snapshot();
       const entity = entityById(snapshot, building);
-      // A construction site takes the builder-assignment path (the original's "put a builder on a
-      // foundation"): every selected settler gets the order, and the sim binds only the builder trade
-      // (a non-builder is a logged no-op - a site offers no worker jobs to fall back to).
+      const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
+      const def = type !== undefined ? buildingsByType.get(type) : undefined;
+      // A construction site splits by trade: a BUILDER is put on the foundation (the original's "put a
+      // builder on a foundation"), anyone else is hired into the building it will become - its worker
+      // slots are open from the moment the foundation is placed, and the staff waits at the site.
       if (entity?.components.UnderConstruction !== undefined) {
         for (const target of commanded) {
-          deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
+          const self = entityById(snapshot, target.ref);
+          const currentJob = self !== undefined ? settlerJobType(self) : undefined;
+          if (currentJob === JOB_BUILDER) {
+            deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
+            continue;
+          }
+          const jobPriority = assignmentPriorityFor(currentJob, def?.workers);
+          if (jobPriority.length === 0) continue;
+          deps.enqueue({
+            kind: 'assignWorker',
+            entity: target.ref as Entity,
+            building: building as Entity,
+            jobPriority,
+          });
         }
         return;
       }
-      const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
-      const def = type !== undefined ? buildingsByType.get(type) : undefined;
       // A built home takes the move-in path: right-click = "live here" for every selected settler (the
       // family moves as one - the sim's assignHouse validates the free family slot and no-ops otherwise).
       if (def?.kind === 'home') {

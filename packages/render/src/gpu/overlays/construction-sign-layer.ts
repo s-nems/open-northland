@@ -2,12 +2,13 @@ import { Container, Sprite } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
-import { IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
+import { CONSTRUCTION_SIGN_DX, IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
 /**
- * The construction-sign layer - one player-coloured `ls_temp` stand planted at each building site's
- * sign post. A client-side projection of the read-only snapshot: the app's `computeConstructionSigns`
- * decides what counts as a site and where its post is.
+ * The construction-sign layer - one player-coloured `ls_temp` stand planted beside each building site's
+ * sign post ({@link CONSTRUCTION_SIGN_DX} clear of it, so it never sits over the site's door badges),
+ * drawn in world space like those badges. A client-side projection of the read-only snapshot: the app's
+ * `computeConstructionSigns` decides what counts as a site and where its post is.
  *
  * Unlike the door-badge chain that replaces it when the site completes, the stand keeps its painter
  * slot above the sprites: it marks a site the builders crowd around, so it stays readable through them.
@@ -89,7 +90,7 @@ export class ConstructionSignLayer {
         }
         entry.node.visible = true;
         entry.node.position.set(
-          p.x + (sign.dx ?? 0),
+          p.x + (sign.dx ?? 0) + CONSTRUCTION_SIGN_DX,
           p.y + (sign.dy ?? 0) - terrainLiftAt(elevation, tileX, tileY),
         );
         this.drawn.add(sign.id);

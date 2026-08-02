@@ -143,12 +143,13 @@ function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict
   return isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType) ? home : null;
 }
 
-/** A builder's own crew site. Bound, so it stays unconfined: the player's pin may point beyond the signpost
- *  area and `planBuilder` fetches for it regardless - a confined delivery would disagree with that fetch and
- *  shuttle the material back to its source forever. */
+/** The settler's OWN site: a builder's crew pin ({@link SiteAssignment}), or the unfinished workplace a
+ *  worker is posted to (a carrier hauling its own building's bill - `planSiteStaff`). Bound, so it stays
+ *  unconfined: the player's pin may point beyond the signpost area and the fetch runs regardless - a confined
+ *  delivery would disagree with that fetch and shuttle the material back to its source forever. */
 function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
   const { world, ctx, entity, tribe, owner, inbound } = plan;
-  const crew = world.tryGet(entity, SiteAssignment)?.site;
+  const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
   if (crew === undefined) return null;
   return constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound) ? crew : null;
 }

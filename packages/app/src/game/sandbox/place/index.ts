@@ -18,6 +18,7 @@ export {
   buildingDoorNode,
   placeBuiltSandboxBuilding,
   placeSandboxBuilding,
+  placeSandboxSite,
   spawnWorkersAtDoor,
   staffableCrewFor,
   staffBuildingFully,
