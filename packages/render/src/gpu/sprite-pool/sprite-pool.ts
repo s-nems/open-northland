@@ -170,11 +170,10 @@ export class SpritePool {
       }
       // An entity absent from last frame's draw list still holds the motion track from whenever it was
       // last drawn, so resuming the lerp would glide it in from that stale anchor. Reset to first-sighting
-      // and let trackMotion snap (its own SNAP_DISTANCE only catches gaps over 128 px). Worst on a fog
-      // reveal - the entity walks on unseen, then appears mid-screen anywhere under that threshold from
-      // where it vanished; a viewport-culled one re-enters 512 px off-canvas (SPRITE_CULL_MARGIN) and an
-      // indoor one is frozen on its door cell, so those snap invisibly. Reads `lastSeen` before the stamp
-      // below overwrites it.
+      // and let trackMotion snap. Worst on a fog reveal - the entity walks on unseen, then appears
+      // mid-screen anywhere under SNAP_DISTANCE from where it vanished; a viewport-culled one re-enters
+      // 512 px off-canvas (SPRITE_CULL_MARGIN) and an indoor one is frozen on its door cell, so those snap
+      // invisibly. Reads `lastSeen` before the stamp below overwrites it.
       if (pe.lastSeen !== this.frameId - 1) pe.motion.tick = -1;
       this.updatePooled(pe, item, frame);
       // Depth = the feet-anchor screen y (+ a small deterministic x tiebreak), the same key the tall map

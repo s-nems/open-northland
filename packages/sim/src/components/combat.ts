@@ -128,7 +128,9 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *    only by the render, which needs the chord's start to place the shot on its ballistic arc (the original
  *    visibly lobs arrows - observed, height approximated);
  *  - `missAim` - a MISSED shot's aim point (the target's position frozen at release): the flight steers here
- *    instead of homing, and lands in the dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot.
+ *    instead of homing, and lands in the dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot;
+ *  - `launchTick` - the tick the string was loosed on; the flight rests at the bow through it (approximated
+ *    - the sub-tick release instant is unreadable), so a shot is observable at its launch point.
  */
 export const Projectile = defineComponent<{
   source: Entity;
@@ -140,4 +142,5 @@ export const Projectile = defineComponent<{
   originX: Fixed;
   originY: Fixed;
   missAim: { x: Fixed; y: Fixed } | null;
+  launchTick: number;
 }>('Projectile');

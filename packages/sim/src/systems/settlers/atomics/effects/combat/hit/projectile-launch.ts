@@ -51,6 +51,7 @@ export function launchProjectile(
     originX: from.x,
     originY: from.y,
     missAim: missed ? { x: targetPos.x, y: targetPos.y } : null,
+    launchTick: ctx.tick,
   });
   ctx.events.emit({
     kind: 'projectileLaunched',

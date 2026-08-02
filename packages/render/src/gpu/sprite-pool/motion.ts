@@ -6,6 +6,7 @@
 import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
 import { clamp01, lerp } from '../../data/math.js';
 import { TILE_HALF_W } from '../../data/projection/index.js';
+import type { SpriteKind } from '../../data/sprites/index.js';
 
 /** Frames in one authored human walk cycle per facing (`mapmoveableanimations/animations.ini`). */
 const WALK_CYCLE_FRAMES = 12;
@@ -19,6 +20,17 @@ const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE
  * running unit (≈ 5 ticks × 17 px); real teleports jump hundreds of px, so the band between is safe.
  */
 export const SNAP_DISTANCE = 128;
+
+/**
+ * The snap band a kind's track runs under, resolved once per entity at
+ * {@link import('./pooled-entity.js').createPooled}. A projectile must never snap mid-flight: a catch-up
+ * frame runs several ticks at once (the loop's `maxStepsPerFrame`) and would trip {@link SNAP_DISTANCE},
+ * stuttering an ordinary flight at the tick rate. Safe because it has no teleport to guard against: it
+ * lives launch-to-impact, and the pool's `tick = -1` reset still snaps first sighting and fog/cull re-entry.
+ */
+export function snapDistanceForKind(kind: SpriteKind): number {
+  return kind === 'projectile' ? Number.POSITIVE_INFINITY : SNAP_DISTANCE;
+}
 
 /**
  * World px the feet cover per authored walk frame - one cell (`2·TILE_HALF_W`) over the 12-frame cycle.
@@ -69,6 +81,8 @@ export interface MotionTrack {
   /** Consecutive ticks the anchor moved at most the stall epsilon - feeds {@link isStalled}. Reset by
    *  real travel and by snaps (a teleport is not standing still). */
   stillTicks: number;
+  /** World-px jump past which this track snaps instead of lerping ({@link snapDistanceForKind}). */
+  readonly snapDistance: number;
 }
 
 /** Whether the track has sat still long enough that a `moving` sim state should present as idle. */
@@ -81,13 +95,13 @@ export function isStalled(m: MotionTrack): boolean {
  * in place (`drawX`/`drawY`): the previous tick anchor lerped toward the current one by `alpha` (the
  * fixed-timestep fraction, clamped to [0,1]). A new tick rolls current→previous and advances the
  * {@link MotionTrack.gaitPhase} walk-cycle clock by the distance actually covered; a first sighting or
- * a jump past {@link SNAP_DISTANCE} (a spawn/teleport, not a walk) snaps both anchors so nothing
- * glides across the map (and leaves the gait clock alone - a teleport is not strides). Writes into the
- * caller's track instead of returning a fresh point so the per-frame reconcile stays allocation-free
- * in the steady state (the retained-pool contract).
+ * a jump past the track's own {@link MotionTrack.snapDistance} (a spawn/teleport, not a walk) snaps
+ * both anchors so nothing glides across the map (and leaves the gait clock alone: a teleport is not
+ * strides). Writes into the caller's track instead of returning a fresh point so the per-frame
+ * reconcile stays allocation-free in the steady state (the retained-pool contract).
  */
 export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, alpha: number): void {
-  if (m.tick === -1 || Math.abs(x - m.x) > SNAP_DISTANCE || Math.abs(y - m.y) > SNAP_DISTANCE) {
+  if (m.tick === -1 || Math.abs(x - m.x) > m.snapDistance || Math.abs(y - m.y) > m.snapDistance) {
     m.tick = tick;
     m.x = x;
     m.y = y;

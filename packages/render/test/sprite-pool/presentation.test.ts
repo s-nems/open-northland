@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { DrawItem } from '../../src/data/scene/index.js';
-import { type MotionTrack, STALL_TICKS_TO_IDLE } from '../../src/gpu/sprite-pool/motion.js';
+import {
+  type MotionTrack,
+  STALL_TICKS_TO_IDLE,
+  snapDistanceForKind,
+} from '../../src/gpu/sprite-pool/motion.js';
 import {
   animationClock,
   easeReveal,
@@ -22,7 +26,18 @@ const SITE: DrawItem = { ...ANCHOR, kind: 'building', state: 'idle', builtPct: 9
 const UPGRADE_SITE: DrawItem = { ...ANCHOR, kind: 'building', state: 'idle', upgradePct: 90 };
 
 function motion(stillTicks: number): MotionTrack {
-  return { tick: 0, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks };
+  return {
+    tick: 0,
+    x: 0,
+    y: 0,
+    prevX: 0,
+    prevY: 0,
+    drawX: 0,
+    drawY: 0,
+    gaitPhase: 0,
+    stillTicks,
+    snapDistance: snapDistanceForKind('settler'),
+  };
 }
 
 const WALKING = motion(0);

@@ -13,17 +13,20 @@ import { canonicalById } from '../spatial/nodes.js';
 /**
  * How many tiles a projectile advances **per tick per unit** of the weapon's extracted `WeaponType.speed`
  * - the mapping of the unreadable `speed` unit onto the sim's tile/tick grid. A bow's `speed 8` × this =
- * **2 tiles/tick** (≈16× a settler's ⅛-tile walk, so an arrow visibly outruns and homes onto its target
- * over a few ticks rather than teleporting); a catapult's `speed 3` × this = ¾ tile/tick (a slower, heavier
- * shot). A ¼-tile-per-unit step keeps every real `speed` (3..8) landing on an integer fraction of ONE, so
- * no rounding drift enters - two runs stay byte-identical.
+ * **1 tile/tick**, 18× a settler's `MOVE_SPEED_PER_TICK` walk, so an arrow visibly outruns and homes onto
+ * its target over several ticks rather than teleporting; a catapult's `speed 3` gives ⅜ tile/tick. An
+ * ⅛-tile-per-unit step keeps every real `speed` (3..8) on an integer fraction of ONE, so no rounding drift
+ * enters and two runs stay byte-identical. Tiles here are raw grid units, which makes this the EAST-WEST
+ * pace: {@link flightStep} does not weight a row step, and one draws 38 px against a column's 68
+ * (`docs/tickets/sim/projectile-flight-screen-metric.md`).
  *
  * APPROXIMATED / calibration-pending (source basis "Combat ranged projectiles"): the source carries `speed`'s
- * VALUE (faithful - captured verbatim) but NOT its unit, so this scale is a named calibration constant a
- * step-10 observation pins, not a data param. Isolating it here keeps the {@link Projectile} component the
- * faithful data and this one line the approximation.
+ * VALUE (faithful - captured verbatim) but NOT its unit, so this scale is a named calibration constant tuned
+ * by eye against the drawn flight, not a data param (`docs/tickets/features/combat-calibration.md`).
+ * Isolating it here keeps the {@link Projectile} component the faithful data and this one line the
+ * approximation.
  */
-export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.fromInt(4)); // ¼ tile/tick per speed unit
+export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8)); // ⅛ tile/tick per speed unit
 
 /**
  * ProjectileSystem - advance every in-flight {@link Projectile} one tick: home it on its target's CURRENT
@@ -32,6 +35,7 @@ export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.f
  * runs step 1's {@link resolveCombatHit}, shared with melee).
  *
  * Per projectile (visited in canonical ascending-id order so a stagger tie-break is order-independent):
+ *  0. **loosed this tick** → it rests at the bow, so its first observable position is the shooter's cell;
  *  1. **missed at release** (`missAim` set) → it flies to the frozen aim point and lands in the dirt:
  *     `projectileMissed`, no blow;
  *  2. **target gone / dead / unpositioned** → the projectile EXPIRES at its last position: it is destroyed
@@ -67,6 +71,10 @@ function advanceProjectile(
   pendingStaggers: PendingStagger[],
 ): void {
   const proj = world.get(p, Projectile);
+  // Loosed this tick: it rests at the bow, so a shot is observable at its launch point - approximated, the
+  // sub-tick release instant is unreadable, and it costs every ranged shot one tick of impact latency. This
+  // system runs after the atomicSystem that creates it, so advancing here too would start it downrange.
+  if (proj.launchTick === ctx.tick) return;
   // A missed shot: ballistic to where the target stood at release - the target (even one that died or
   // ran meanwhile) is never consulted, and the landing deals nothing.
   if (proj.missAim !== null) {
