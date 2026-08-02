@@ -1,7 +1,7 @@
 import { ONE as SIM_ONE } from '@open-northland/sim';
 
 /**
- * Isometric projection + the camera transform — the dependency-light math the rest of `render` builds
+ * Isometric projection + the camera transform - the dependency-light math the rest of `render` builds
  * on. It lives in its own module rather than the {@link import('../../index.js')} barrel so the pure
  * scene/terrain/viewport modules and the GPU renderer can import it without the barrel↔module cycle,
  * which forces a TDZ workaround.
@@ -23,13 +23,13 @@ export const TILE_HALF_H = 38;
 
 /**
  * Tile (col,row) → screen offset (before camera): the original's raster-with-stagger projection (source
- * basis "projection" — this model fits the running game's lattice, a rotated diamond does not). A column
+ * basis "projection" - this model fits the running game's lattice, a rotated diamond does not). A column
  * step is a pure horizontal `2·TILE_HALF_W`; a row step is a pure vertical `TILE_HALF_H` with odd rows
- * shifted half a cell right — so the whole map reads as a rectangle and map N/S/E/W match the screen's.
+ * shifted half a cell right - so the whole map reads as a rectangle and map N/S/E/W match the screen's.
  * Cell diamonds are `2·TILE_HALF_W` wide and `2·TILE_HALF_H` tall, interlocking across rows.
  *
  * Continuous in both arguments (entities walk fractional positions): the parity stagger is interpolated
- * as a triangle wave over the row, so moving one row down slides `±TILE_HALF_W` sideways along the way —
+ * as a triangle wave over the row, so moving one row down slides `±TILE_HALF_W` sideways along the way -
  * the same diagonal a unit walks along the original's mesh edges.
  */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
@@ -62,7 +62,7 @@ export function rowStagger(row: number): number {
  * `(hx·TILE_HALF_W, hy·TILE_HALF_H/2)`, with the cell stagger arising from which half-cells the
  * cells occupy (cell `(c,r)` sits at half-cell `(2c + (r&1), 2r)`; {@link tileToScreen} of an
  * integer cell lands exactly here). That the original also draws odd half-cell rows at this
- * rectangular spot is a NAMED APPROXIMATION under open question — byte evidence from the `lmwb`
+ * rectangular spot is a NAMED APPROXIMATION under open question - byte evidence from the `lmwb`
  * parity shift suggests odd rows sit a quarter cell further +x
  * (docs/tickets/sim/odd-microrow-world-x-quarter-shift.md). Map objects (trees/stones/waves) are
  * authored at half-cells and must not get the fractional-row stagger interpolation a walking entity
@@ -76,10 +76,10 @@ export function halfCellToScreen(hx: number, hy: number): { x: number; y: number
 }
 
 /**
- * Screen offset (pre-camera) → the integer cell `(col, row)` whose diamond contains it — the cell-resolution
+ * Screen offset (pre-camera) → the integer cell `(col, row)` whose diamond contains it - the cell-resolution
  * inverse of {@link tileToScreen}/{@link halfCellToScreen}, floored. A cell spans `2·TILE_HALF_W` across and
  * one `TILE_HALF_H` row step down (cell `(c,r)` occupies half-cell nodes `2c..2c+1 × 2r..2r+1`), so
- * `col = ⌊x / (2·TILE_HALF_W)⌋`, `row = ⌊y / TILE_HALF_H⌋`. Ignores the odd-row parity half-shift — this is a
+ * `col = ⌊x / (2·TILE_HALF_W)⌋`, `row = ⌊y / TILE_HALF_H⌋`. Ignores the odd-row parity half-shift - this is a
  * cell-granularity bucket (e.g. a world object's fog-state lookup), not a pixel-exact pick.
  */
 export function screenToCell(x: number, y: number): { col: number; row: number } {
@@ -88,7 +88,7 @@ export function screenToCell(x: number, y: number): { col: number; row: number }
 
 /**
  * The flat `[x, y, …]` point list of a node diamond centred at `(cx, cy)` with half-extents `(hw, hh)`,
- * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
+ * wound top → right → bottom → left - the shape a single half-cell node fills on the lattice. The
  * world-space per-cell wash ({@link import('../../gpu/overlays/placement-overlay.js').PlacementOverlayLayer})
  * feeds it straight to `Graphics.poly` with its own padded + resolution-scaled `(hw, hh)`.
  */
@@ -108,7 +108,7 @@ export interface Camera {
   /**
    * Uniform zoom factor (1 = no scale). Magnifies the whole scene about the layer origin, so a small
    * pixel-art bob is large enough for a human to judge decode fidelity. Applied as the draw layer's
-   * scale, with {@link offsetX}/{@link offsetY} as the layer position — so `screen = world*scale +
+   * scale, with {@link offsetX}/{@link offsetY} as the layer position - so `screen = world*scale +
    * offset`. Defaults to 1.
    */
   readonly scale?: number;
@@ -117,7 +117,7 @@ export interface Camera {
 /**
  * Snap a camera's pan offsets to whole device pixels (`resolution` device px per screen px), leaving
  * `scale` untouched. Nearest-sampled pixel art shimmer-crawls when a smooth pan puts texel boundaries
- * on fractional device pixels — snapping the layer offset pins the sampling phase so a pan steps
+ * on fractional device pixels - snapping the layer offset pins the sampling phase so a pan steps
  * texels whole. Returns the same object when already snapped (no per-frame allocation on an idle
  * camera). Pure; the interactive renderer applies it, the deterministic `?shot` path never does.
  */
@@ -130,7 +130,7 @@ export function snapCameraToDevicePixels(camera: Camera, resolution: number): Ca
 }
 
 /**
- * Apply the camera to one world axis — `screen = world·scale + offset` — for the case that needs it
+ * Apply the camera to one world axis - `screen = world·scale + offset` - for the case that needs it
  * explicitly: the team-colour {@link import('../../gpu/paletted-sprite/index.js').PalettedSprite} meshes
  * self-place in screen space (a custom-shader mesh can't ride the camera-transformed layer), so they
  * mirror the transform plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so

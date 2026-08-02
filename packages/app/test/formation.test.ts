@@ -7,7 +7,7 @@ const NONE = (): boolean => false;
 
 /**
  * Headless tests for the pure FORMATION math (a group move order → per-unit destination nodes). The
- * agent-verifiable half of group commands — the DOM/mouse controller that calls it is human-judged in
+ * agent-verifiable half of group commands - the DOM/mouse controller that calls it is human-judged in
  * the browser. Slots are HALF-CELL nodes on the `2W×2H` lattice; the load-bearing properties are that
  * no two paths cross and the group translates rather than shuffles. The screen→node picking inverse
  * that produces the clicked {@link Tile} is tested in `picking.test.ts`.
@@ -21,7 +21,7 @@ describe('formationTiles', () => {
   it('spreads a group to distinct tiles nearest-first around the target (target cell first)', () => {
     const tiles = formationTiles({ col: 5, row: 5 }, 5, 20, 20, NONE);
     expect(tiles).toHaveLength(5);
-    expect(tiles[0]).toEqual({ col: 5, row: 5 }); // ring 0 — the clicked cell
+    expect(tiles[0]).toEqual({ col: 5, row: 5 }); // ring 0 - the clicked cell
     // all distinct, and each within one Chebyshev ring of the target
     const keys = new Set(tiles.map((t) => `${t.col},${t.row}`));
     expect(keys.size).toBe(5);
@@ -36,7 +36,7 @@ describe('formationTiles', () => {
     for (const t of tiles) expect(Math.max(Math.abs(t.col - 5), Math.abs(t.row - 5))).toBe(2);
   });
 
-  it('honours map bounds — never returns an off-map tile', () => {
+  it('honours map bounds - never returns an off-map tile', () => {
     const tiles = formationTiles({ col: 0, row: 0 }, 6, 4, 4, NONE);
     for (const t of tiles) {
       expect(t.col).toBeGreaterThanOrEqual(0);
@@ -69,7 +69,7 @@ describe('assignFormation', () => {
     expect(refs.size).toBe(8); // every unit ordered once
   });
 
-  it('keeps a row marching right in order — the rightmost unit takes the rightmost slot', () => {
+  it('keeps a row marching right in order - the rightmost unit takes the rightmost slot', () => {
     // Three units in a west→east row, ordered east: the arrangement must survive the move (no unit
     // crosses the formation), so the slots' screen-x order matches the units' screen-x order.
     const units: FormationUnit[] = [2, 3, 4].map((col, i) => ({
@@ -80,14 +80,14 @@ describe('assignFormation', () => {
     expect(orders).toHaveLength(3);
     const slotX = new Map(orders.map((o) => [o.ref, halfCellToScreen(o.tile.col, o.tile.row).x]));
     // Two of the three nearest node slots share a screen column (ring 0 plus the ring-1 node above
-    // it), so the order is non-strict — but never inverted, and the extremes stay strictly apart:
+    // it), so the order is non-strict - but never inverted, and the extremes stay strictly apart:
     // ref 1 stood leftmost, ref 3 rightmost, and their destinations keep that left-to-right order.
     expect(slotX.get(1)).toBeLessThanOrEqual(slotX.get(2) as number);
     expect(slotX.get(2)).toBeLessThanOrEqual(slotX.get(3) as number);
     expect(slotX.get(1)).toBeLessThan(slotX.get(3) as number);
   });
 
-  it('keeps a column marching right in order — the top unit takes the top slot', () => {
+  it('keeps a column marching right in order - the top unit takes the top slot', () => {
     // Three units stacked north→south, ordered east: lateral (across-the-march) order is preserved.
     const units: FormationUnit[] = [3, 4, 5].map((row, i) => ({
       ref: i + 1,
@@ -96,14 +96,14 @@ describe('assignFormation', () => {
     const orders = assignFormation(units, { col: 12, row: 4 }, 20, 20, NONE);
     expect(orders).toHaveLength(3);
     const slotY = new Map(orders.map((o) => [o.ref, halfCellToScreen(o.tile.col, o.tile.row).y]));
-    // Two of the three slots share a screen row, so the order is non-strict — but never inverted,
+    // Two of the three slots share a screen row, so the order is non-strict - but never inverted,
     // and the extremes stay strictly apart: the top unit ends strictly above the bottom one.
     expect(slotY.get(1)).toBeLessThanOrEqual(slotY.get(2) as number);
     expect(slotY.get(2)).toBeLessThanOrEqual(slotY.get(3) as number);
     expect(slotY.get(1)).toBeLessThan(slotY.get(3) as number);
   });
 
-  it('does not shuffle a parked cluster ordered back the way it came — the front unit keeps the front slot', () => {
+  it('does not shuffle a parked cluster ordered back the way it came - the front unit keeps the front slot', () => {
     // The user-visible reversal artifact: a group parked after an "up" move, ordered back DOWN. The
     // bottom (now front) unit must take the cluster's deepest slot instead of swapping into a rear
     // one, and no unit may end up in front of a unit that started ahead of it.
@@ -147,7 +147,7 @@ describe('assignFormation', () => {
     ];
     const target = { col: 6, row: 5 };
     const cost = (u: FormationUnit, s: Tile): number => {
-      // Slots are node coords — project them exactly as the assigner does.
+      // Slots are node coords - project them exactly as the assigner does.
       const p = halfCellToScreen(s.col, s.row);
       return (u.x - p.x) ** 2 + (u.y - p.y) ** 2;
     };

@@ -1,9 +1,9 @@
 /**
- * Chrome Trace Event recording (`?debug=trace`) — the offline profiling path. The live DevTools
+ * Chrome Trace Event recording (`?debug=trace`) - the offline profiling path. The live DevTools
  * marks (`?debug=perf`) need DevTools open at the moment of the problem; this instead keeps a
  * bounded in-memory ring of complete-duration events a tester exports after the fact, and a dev
- * opens in Perfetto (ui.perfetto.dev) or DevTools. Same instrumentation points as the marks — the
- * sim's per-system seam plus the frame phases — just a different consumer.
+ * opens in Perfetto (ui.perfetto.dev) or DevTools. Same instrumentation points as the marks - the
+ * sim's per-system seam plus the frame phases - just a different consumer.
  *
  * Format: Trace Event JSON `ph:"X"` (complete) events, `ts`/`dur` in microseconds, wrapped as
  * `{traceEvents: [...]}` (source basis: the Trace Event format as documented by Perfetto,
@@ -33,7 +33,7 @@ export interface TraceEvent {
 export const TRACE_CAPACITY = 16384;
 const MICROS_PER_MS = 1000;
 
-/** A fixed circular buffer — O(1) push at recording rates where an array-shift ring would churn. */
+/** A fixed circular buffer - O(1) push at recording rates where an array-shift ring would churn. */
 class TraceRing {
   private readonly slots: (TraceEvent | undefined)[] = new Array(TRACE_CAPACITY);
   private next = 0;
@@ -52,7 +52,7 @@ class TraceRing {
   }
 }
 
-/** The active recording, or `null` — recording costs nothing while off. */
+/** The active recording, or `null` - recording costs nothing while off. */
 let active: TraceRing | null = null;
 
 export function startTraceRecording(): void {
@@ -80,7 +80,7 @@ export function recordTraceEvent(name: string, startMs: number, endMs: number): 
   });
 }
 
-/** Retained events (oldest first), or `null` while recording is off — the bundle's optional field. */
+/** Retained events (oldest first), or `null` while recording is off - the bundle's optional field. */
 export function recordedTraceEvents(): TraceEvent[] | null {
   return active?.list() ?? null;
 }

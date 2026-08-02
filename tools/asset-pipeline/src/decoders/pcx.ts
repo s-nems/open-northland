@@ -1,5 +1,5 @@
 /**
- * `.pcx` picture decoder — palette-indexed RLE images, plus the embedded 256-color palette.
+ * `.pcx` picture decoder - palette-indexed RLE images, plus the embedded 256-color palette.
  *
  * Implemented from the published PCX layout and checked against files from an owned game copy.
  *
@@ -10,7 +10,7 @@
  *   [optional] u8 0x0C marker + 256×3 RGB palette as the final 769 bytes.
  *
  * width = xMax - xMin + 1, height = yMax - yMin + 1. Like the original we decode each row into a
- * scanline of `(width + 1) & ~1` bytes (the even-aligned width — the game's pictures are single-plane
+ * scanline of `(width + 1) & ~1` bytes (the even-aligned width - the game's pictures are single-plane
  * 8bpp, so this equals the header `bytesPerLine`) and keep the first `width` of them. RLE: a byte
  * < 0xC0 is a literal; a byte >= 0xC0 is a run of `(byte & 0x3F)` copies of the following byte. Runs
  * never cross a scanline boundary (a run overflowing the row is truncated there, as the original does).
@@ -41,7 +41,7 @@ export interface PcxImage {
 
 /**
  * Decodes a `.pcx` into indexed pixels and its embedded palette. Throws a `pcx:`-prefixed error on a
- * structurally invalid header (too short, or non-positive dimensions) — a batch pipeline should wrap
+ * structurally invalid header (too short, or non-positive dimensions) - a batch pipeline should wrap
  * each call per-file so one bad picture can't abort the run. Truncated pixel data is tolerated (the
  * remaining pixels keep whatever the reused scanline buffer last held), matching the original decoder.
  */
@@ -103,16 +103,16 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
 /**
  * Expands indexed pixels to straight RGBA using the image's palette. Indices are bytes and a valid
  * palette has 256 entries, so an index is never out of range. Throws (with a `pcx:` prefix, like
- * {@link encodePcx}) if the image has no palette or one that isn't exactly 256 RGB triples — a
+ * {@link encodePcx}) if the image has no palette or one that isn't exactly 256 RGB triples - a
  * decoded image always satisfies this, so a throw means a hand-built `PcxImage`.
  */
 export function expandToRgba(image: PcxImage): RgbaImage {
   const { width, height, pixels, palette } = image;
   if (palette === undefined) {
-    throw new Error('pcx: cannot expand to RGBA — image has no palette');
+    throw new Error('pcx: cannot expand to RGBA - image has no palette');
   }
   assertPaletteBytes(palette, 'pcx');
-  // A `.pcx` picture is fully opaque — every pixel written, alpha 0xff.
+  // A `.pcx` picture is fully opaque - every pixel written, alpha 0xff.
   return { width, height, rgba: paletteToRgba(pixels, palette, () => 0xff) };
 }
 

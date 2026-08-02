@@ -12,7 +12,7 @@ import { testContent } from '../fixtures/content.js';
 /**
  * Unit tests for A* on the terrain HALF-CELL ADJACENCY GRAPH. The fixture's landscape table has
  * typeId 0 = grass (walkable) and 1 = water (not walkable). Grids here are authored directly at
- * NODE resolution (the `2W×2H` lattice — edges: E/W (±1,0) @ ½, diagonals (±1,±2) @ ≈¾, N/S (0,±1)
+ * NODE resolution (the `2W×2H` lattice - edges: E/W (±1,0) @ ½, diagonals (±1,±2) @ ≈¾, N/S (0,±1)
  * @ ≈0.28). These pin route correctness AND the deterministic, history-independent tie-breaking the
  * lockstep replay invariant depends on.
  */
@@ -36,7 +36,7 @@ function coords(g: TerrainGraph, path: NodeId[] | null): Array<{ x: number; y: n
   return path === null ? null : path.map((c) => g.coordsOf(c));
 }
 
-describe('findPath — endpoints and degenerate cases', () => {
+describe('findPath - endpoints and degenerate cases', () => {
   it('start === goal yields a single-node path', () => {
     const g = open(3, 3);
     const start = g.nodeAt(1, 1);
@@ -61,7 +61,7 @@ describe('findPath — endpoints and degenerate cases', () => {
   });
 });
 
-describe('findPath — shortest route on an open grid', () => {
+describe('findPath - shortest route on an open grid', () => {
   it('finds a minimal-length path across an all-grass row', () => {
     const g = open(4, 1);
     const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(3, 0));
@@ -80,7 +80,7 @@ describe('findPath — shortest route on an open grid', () => {
     const path = findPath(g, a, b);
     expect(path).not.toBeNull();
     // ax=5, ay=3: one diagonal (absorbing two half-rows and one half-column), four E steps, one
-    // half-row step — 6 steps, 7 nodes; no cheaper composition exists (heuristic exactness).
+    // half-row step - 6 steps, 7 nodes; no cheaper composition exists (heuristic exactness).
     expect(path?.length).toBe(7);
     expect(path?.[0]).toBe(a);
     expect(path?.[path.length - 1]).toBe(b);
@@ -98,9 +98,9 @@ describe('findPath — shortest route on an open grid', () => {
     ]);
   });
 
-  it('a straight-down-the-screen target routes as straight half-row steps — no weave', () => {
+  it('a straight-down-the-screen target routes as straight half-row steps - no weave', () => {
     // (2,0) -> (2,4): four N/S half-row steps (4·HALF_ROW ≈ 1.12) strictly beat any diagonal pair
-    // (2·DIAGONAL_STEP ≈ 1.50), so the pick is tie-free — the walker holds its world column exactly.
+    // (2·DIAGONAL_STEP ≈ 1.50), so the pick is tie-free - the walker holds its world column exactly.
     const g = open(5, 5);
     const path = findPath(g, g.nodeAt(2, 0), g.nodeAt(2, 4));
     expect(coords(g, path)).toEqual([
@@ -115,7 +115,7 @@ describe('findPath — shortest route on an open grid', () => {
   it('slides half a column to pass a blocked node, west slide winning the mirror tie canonically', () => {
     // (2,0) -> (2,4) with water at (2,2): the straight half-row column is broken. The two mirror
     // slides (via (1,2) or (3,2), each two diagonal edges, cost 2·DIAGONAL_STEP ≈ 1.50) tie on cost
-    // AND on line-deviation, so the cell-id tie-break pins the WEST slide — a pinned canonical pick
+    // AND on line-deviation, so the cell-id tie-break pins the WEST slide - a pinned canonical pick
     // (a moved expectation here is a lockstep replay-compatibility event, not a style nit).
     const typeIds = new Array(25).fill(GRASS);
     typeIds[2 * 5 + 2] = WATER;
@@ -141,7 +141,7 @@ describe('findPath — shortest route on an open grid', () => {
   });
 });
 
-describe('findPath — routes around obstacles', () => {
+describe('findPath - routes around obstacles', () => {
   it('detours under a water wall through its gap and never enters water', () => {
     // 6×6 nodes; a water wall fills column hx=3 for hy 0..3, open below (hy 4..5). A route
     // (0,2) -> (5,2) must drop below the wall and climb back.
@@ -173,7 +173,7 @@ describe('findPath — routes around obstacles', () => {
         return t;
       })(),
     );
-    expect(findPath(oneFlank, oneFlank.nodeAt(1, 1), oneFlank.nodeAt(2, 3))?.length).toBe(2); // the single SE edge — one flank is enough
+    expect(findPath(oneFlank, oneFlank.nodeAt(1, 1), oneFlank.nodeAt(2, 3))?.length).toBe(2); // the single SE edge - one flank is enough
 
     const sealed = grid(
       4,
@@ -187,12 +187,12 @@ describe('findPath — routes around obstacles', () => {
         return t;
       })(),
     );
-    // With row 2 sealed, no diagonal seam stays open and no half-row step survives — unreachable.
+    // With row 2 sealed, no diagonal seam stays open and no half-row step survives - unreachable.
     expect(findPath(sealed, sealed.nodeAt(1, 1), sealed.nodeAt(2, 3))).toBeNull();
   });
 });
 
-describe('findPath — deterministic tie-breaking', () => {
+describe('findPath - deterministic tie-breaking', () => {
   it('picks the same path across repeated calls (history-independent)', () => {
     const g = open(6, 6);
     const a = g.nodeAt(0, 0);
@@ -212,7 +212,7 @@ describe('findPath — deterministic tie-breaking', () => {
 
   /** A walk-block ANNULUS sealing node (40,40) on an 80×80 grid: nodes at Chebyshev distance 3..4
    *  from it. Thickness 2 in y seals the ±2 diagonal/step reach (any escape from max ≤ 2 lands at
-   *  max ≤ 4 — inside the ring), leaving a ~25-node pocket around the centre. */
+   *  max ≤ 4 - inside the ring), leaving a ~25-node pocket around the centre. */
   function sealedAnnulus(g: TerrainGraph): Set<NodeId> {
     const blocked = new Set<NodeId>();
     for (let dx = -4; dx <= 4; dx++) {
@@ -250,8 +250,8 @@ describe('findPath — deterministic tie-breaking', () => {
 
   it('fails a sealed goal cheaply even when the START itself is walk-blocked', () => {
     // A walker standing on an overlay node (a fresh foundation, an enemy town stamp) whose goal is
-    // sealed: the probe must still run — its reverse view re-admits the start as the target exactly
-    // as the forward search exempts it — or this request would flood the whole grid.
+    // sealed: the probe must still run - its reverse view re-admits the start as the target exactly
+    // as the forward search exempts it - or this request would flood the whole grid.
     const g = open(80, 80);
     const blocked = sealedAnnulus(g);
     const start = g.nodeAt(2, 2);
@@ -273,7 +273,7 @@ describe('findPath — deterministic tie-breaking', () => {
   });
 
   it('refutes a sealed pocket LARGER than the probe cap at guard+pocket cost, not a map flood', () => {
-    // An annulus at Chebyshev 10..12 around (60,60) seals a 19×19 ≈ 361-node pocket — past the
+    // An annulus at Chebyshev 10..12 around (60,60) seals a 19×19 ≈ 361-node pocket - past the
     // 128-settle probe, so before the flood guard this request flooded the whole ~14k-node grid.
     // The guard aborts the forward search and the goal-side exhaust refutes at pocket cost; the
     // explored bound is the teeth (a flood lands over 13k).
@@ -293,7 +293,7 @@ describe('findPath — deterministic tie-breaking', () => {
   it('delivers the identical route when a reachable search outgrows the flood guard', () => {
     // A serpentine of full-width water walls (gaps alternating ends) forces a route long enough to
     // trip the guard; the tiny off-route overlay keeps the guarded pipeline engaged. The result must
-    // be byte-identical to the unguarded (no-overlay) search — the guard is a pure cost knob.
+    // be byte-identical to the unguarded (no-overlay) search - the guard is a pure cost knob.
     const width = 100;
     const height = 241;
     const typeIds = new Array(width * height).fill(GRASS);
@@ -318,9 +318,9 @@ describe('findPath — deterministic tie-breaking', () => {
   it('breaks a cost-tie between equal lattice routes canonically (a pinned pick)', () => {
     // Open 6×6, (1,1) -> (3,3): cost DIAGONAL_STEP + HALF_COLUMN, reachable by equal-cost step
     // orders (E before or after the diagonal). The canonical (f, h, dev, cell-id) tie-break picks
-    // ONE of them history-independently — the h key settles it (diagonal-first leaves the smaller
+    // ONE of them history-independently - the h key settles it (diagonal-first leaves the smaller
     // remaining heuristic), so the route runs the diagonal before the half-column. This pins that
-    // pick — a moved expectation here means the lockstep path choice changed, which is a
+    // pick - a moved expectation here means the lockstep path choice changed, which is a
     // replay-compatibility event, not a style nit.
     const g = open(6, 6);
     const path = findPath(g, g.nodeAt(1, 1), g.nodeAt(3, 3));

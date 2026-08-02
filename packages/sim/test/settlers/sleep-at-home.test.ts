@@ -22,7 +22,7 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
  * `Resting` marker), sleeps the short at-home clip, and steps back out rested. The homeless keep the
  * open-ground rule (`rest-spot.ts`).
  *
- * Source basis: each tribe authors ONE at-home clip, the civilist's — `viking_civilist_sleep_home`
+ * Source basis: each tribe authors ONE at-home clip, the civilist's - `viking_civilist_sleep_home`
  * (`length 50`) against the outdoor `viking_civilist_sleep` (`length 237`), both pulsing the rest
  * channel twice at `+4000`. The fixture mirrors that one pair at fixture scale (6 outdoors, 2 at home);
  * the real-content suite pins the rule against the served IR (`test/content/need-atomic-clips.test.ts`).
@@ -68,20 +68,20 @@ function nodeAt(sim: Simulation, cx: number, cy: number): NodeId | undefined {
   return sim.terrain?.nodeAt(anchor.hx, anchor.hy);
 }
 
-describe('sleepAtHome — a housed settler goes to bed indoors', () => {
+describe('sleepAtHome - a housed settler goes to bed indoors', () => {
   it('sleeps inside on the spot, on the short at-home clip, when standing at its own door', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
-    const home = homeAt(sim, 3, 2); // same cell — the settler is already on the door node
+    const home = homeAt(sim, 3, 2); // same cell - the settler is already on the door node
     sim.world.add(settler, Residence, { home });
 
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
-    expect(sim.world.get(settler, Resting).at).toBe(home); // went in — the render hides it
+    expect(sim.world.get(settler, Resting).at).toBe(home); // went in - the render hides it
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.effect).toEqual({ kind: 'sleep' });
-    // The at-home clip, not the outdoor one — a bed indoors is worth the same rest in less time.
+    // The at-home clip, not the outdoor one - a bed indoors is worth the same rest in less time.
     expect(atomic.duration).toBe(HOME_SLEEP_TICKS);
   });
 
@@ -115,7 +115,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const site = homeAt(sim, 3, 2);
-    sim.world.get(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised — no roof yet
+    sim.world.get(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised - no roof yet
     sim.world.add(settler, Residence, { home: site });
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -143,12 +143,12 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
 
   it('does not treat a homeless settler asleep outdoors as being indoors', () => {
     // A stale Resting marker (a FamilyDuty settler keeps one through a re-plan) plus the identical
-    // `sleep` atomic the open-ground rung starts must NOT read as sleeping at home — that would hide a
+    // `sleep` atomic the open-ground rung starts must NOT read as sleeping at home - that would hide a
     // settler asleep in a field behind a marker pointing at a workplace it waited in earlier.
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const someWorkplace = homeAt(sim, 6, 4);
-    sim.world.add(settler, Resting, { at: someWorkplace }); // stale — this is not its home
+    sim.world.add(settler, Resting, { at: someWorkplace }); // stale - this is not its home
     sim.world.add(settler, CurrentAtomic, {
       atomicId: 8,
       elapsed: 0,
@@ -162,7 +162,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     expect(isSleepingAtHome(sim.world, settler)).toBe(false);
   });
 
-  it('comes back out rested — the marker is shed once the sleep completes', () => {
+  it('comes back out rested - the marker is shed once the sleep completes', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const home = homeAt(sim, 3, 2);
@@ -176,7 +176,7 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
       inside.push(sim.world.has(settler, Resting));
     }
 
-    // One unbroken stay: false* then true* then false* — never a second entry.
+    // One unbroken stay: false* then true* then false* - never a second entry.
     const entries = inside.filter((v, i) => v && inside[i - 1] !== true).length;
     expect(entries).toBe(1);
     expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(HOME_SLEEP_TICKS);

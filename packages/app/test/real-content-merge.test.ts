@@ -19,10 +19,10 @@ import { diag } from '../src/diag/log.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**
- * `mergeRealContent` is exercised on a clean-room stand-in for raw ir.json — never the copyrighted content.
- * We take the sandbox ContentSet and reproduce the way the pipeline ships it — gathering balance zeroed
+ * `mergeRealContent` is exercised on a clean-room stand-in for raw ir.json - never the copyrighted content.
+ * We take the sandbox ContentSet and reproduce the way the pipeline ships it - gathering balance zeroed
  * (`extractGoodGathering` emits 0) and farmed goods carrying their field atomics but NO `farming` block
- * (no readable growth timing) — then add one gathered good with no clean-room balance, one field good with
+ * (no readable growth timing) - then add one gathered good with no clean-room balance, one field good with
  * none, and one building beyond the clean-room catalog, so the gap surfacing has something to report.
  */
 function goodById(content: ContentSet, id: string) {
@@ -44,27 +44,27 @@ function rawRealLike(): ContentSet {
           ...g,
           gathering: { ...g.gathering, chopsToFell: 0, yieldPerNode: 0, depositSize: 0, depositLevels: 0 },
         };
-  // Real ir.json ships a farmed good with its field atomics but no clean-room `farming` block — strip it
+  // Real ir.json ships a farmed good with its field atomics but no clean-room `farming` block - strip it
   // so the merge has to re-add it (and so a field good with none surfaces as a gap).
   const stripFarming = (g: ContentSet['goods'][number]) => {
     if (g.farming === undefined) return g;
     const { farming: _farming, ...rest } = g;
     return rest;
   };
-  // A gathered good (wood's shape) whose string id is absent from GATHERING_BALANCE_BY_ID — stays uncalibrated.
+  // A gathered good (wood's shape) whose string id is absent from GATHERING_BALANCE_BY_ID - stays uncalibrated.
   const unbalanced = zeroGathering({
     ...goodById(base, 'wood'),
     typeId: OUT_OF_CATALOG_TYPE_ID,
     id: 'testberry',
   });
-  // A field-farmed good (wheat's three field atomics) whose id is absent from FARMING_BALANCE_BY_ID — the
+  // A field-farmed good (wheat's three field atomics) whose id is absent from FARMING_BALANCE_BY_ID - the
   // overlay cannot complete it, so it surfaces as an unfarmed field good.
   const unfarmed = {
     ...stripFarming(goodById(base, 'wheat')),
     typeId: OUT_OF_CATALOG_TYPE_ID + 1,
     id: 'testherb',
   };
-  // A building absent from VIKING_BUILDINGS (headquarters' shape, a fresh id) — uncataloged.
+  // A building absent from VIKING_BUILDINGS (headquarters' shape, a fresh id) - uncataloged.
   const firstBuilding = base.buildings[0];
   if (firstBuilding === undefined) throw new Error('fixture: no buildings');
   const uncataloged = { ...firstBuilding, typeId: OUT_OF_CATALOG_TYPE_ID, id: 'wonder_test' };
@@ -138,7 +138,7 @@ describe('mergeRealContent', () => {
   });
 
   it('injects the sim nav-terrain classes so a collision-resolved grid navigates on real content', () => {
-    // Real ir.json's `landscape` is the detailed types (1..87) — none of the sim's semantic nav classes.
+    // Real ir.json's `landscape` is the detailed types (1..87) - none of the sim's semantic nav classes.
     // Strip them from the stand-in to reproduce that gap, then prove the merge closes it.
     const navIds = new Set(NAV_LANDSCAPE_TYPES.map((t) => t.typeId));
     const raw = rawRealLike();
@@ -201,7 +201,7 @@ describe('mergeRealContent', () => {
   });
 });
 
-/** A Response-shaped stub for the injected fetch — only `ok` + `json()` are read (see net.ts). */
+/** A Response-shaped stub for the injected fetch - only `ok` + `json()` are read (see net.ts). */
 function fetchStub(body: unknown, ok = true): typeof fetch {
   return (async () => ({ ok, json: async () => body })) as unknown as typeof fetch;
 }
@@ -246,7 +246,7 @@ describe('logRealContentGaps', () => {
 describe('nav-terrain flat colours', () => {
   it('re-banded class ids still render as their base index colour', () => {
     // The reband keeps TERRAIN_CLASS_BASE a multiple of the render TILE_COLOURS length, so a class id
-    // indexes back to its own flat colour — the cross-package coupling only two comments guard otherwise.
+    // indexes back to its own flat colour - the cross-package coupling only two comments guard otherwise.
     NAV_LANDSCAPE_TYPES.forEach((t, k) => {
       expect(flatTileColour(t.typeId)).toBe(flatTileColour(k));
     });

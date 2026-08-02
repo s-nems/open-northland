@@ -24,7 +24,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('CommandSystem — buildings and demolition', () => {
+describe('CommandSystem - buildings and demolition', () => {
   it('placeBuilding creates a built building with a seeded stockpile and emits buildingPlaced', () => {
     const sim = fresh();
     // Command coords are half-cell nodes; cell (3,4)'s anchor node (6,8) sits exactly on tile (3,4).
@@ -46,7 +46,7 @@ describe('CommandSystem — buildings and demolition', () => {
     const b = sim.world.get(e, Building);
     expect(b.buildingType).toBe(HEADQUARTERS);
     expect(b.tribe).toBe(VIKING);
-    // The HQ stock slots: wood init 10 (seeded), plank init 0 (omitted — only positive initials seed).
+    // The HQ stock slots: wood init 10 (seeded), plank init 0 (omitted - only positive initials seed).
     const stock = sim.world.get(e, Stockpile).amounts;
     expect(stock.get(WOOD)).toBe(10);
     expect(stock.has(2)).toBe(false);
@@ -98,7 +98,7 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(sim.world.get(nthEntity(sim, 0), Owner)).toEqual({ player: 2 });
   });
 
-  it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {
+  it('skips a command with an unknown type id (recoverable bad input - no throw, still logged)', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'placeBuilding', buildingType: 999, x: 0, y: 0, tribe: VIKING });
     sim.enqueue({ kind: 'spawnSettler', jobType: 999, x: 0, y: 0, tribe: VIKING });
@@ -132,7 +132,7 @@ describe('CommandSystem — buildings and demolition', () => {
     const settler = nthEntity(sim, 0);
 
     // A stale/hostile command targeting a live NON-building must validate the target kind at
-    // execution (in lockstep any peer can send any command) — skip, don't destroy.
+    // execution (in lockstep any peer can send any command) - skip, don't destroy.
     sim.enqueue({ kind: 'demolish', building: settler });
     sim.step();
     expect(sim.world.isAlive(settler)).toBe(true);
@@ -158,14 +158,14 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(sim.world.get(worker, Settler).jobType).toBeNull(); // back to idle for re-assignment
   });
 
-  // SKIPPED: the building tech-unlock gate is disabled feature-wide — see
+  // SKIPPED: the building tech-unlock gate is disabled feature-wide - see
   // docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
   it.skip('gates a tech-locked building: skipped (still logged) until the enabling job exists', () => {
     const sim = fresh();
-    // No carpenter yet — the SMITHY is locked behind `jobEnablesHouse 2 4`, so placement is skipped.
+    // No carpenter yet - the SMITHY is locked behind `jobEnablesHouse 2 4`, so placement is skipped.
     sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
     sim.step();
-    expect(sim.world.entityCount).toBe(0); // gated out — nothing built
+    expect(sim.world.entityCount).toBe(0); // gated out - nothing built
     expect(sim.commands.log).toHaveLength(1); // but still recorded for faithful replay
 
     // Spawn the enabling carpenter, then retry: now the smithy unlocks and is placed.
@@ -179,10 +179,10 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(sim.world.get(buildings[0] as Entity, Building).buildingType).toBe(SMITHY);
   });
 
-  // SKIPPED: building tech-unlock gate disabled — see docs/tickets/sim/rework-building-unlock-gate.md.
+  // SKIPPED: building tech-unlock gate disabled - see docs/tickets/sim/rework-building-unlock-gate.md.
   it.skip('does not gate the building for a different tribe whose carpenter is enabling', () => {
     const sim = fresh();
-    // A carpenter exists, but in a DIFFERENT tribe — the smithy stays gated for the viking tribe.
+    // A carpenter exists, but in a DIFFERENT tribe - the smithy stays gated for the viking tribe.
     sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: FRANK });
     sim.step();
     sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
@@ -200,7 +200,7 @@ describe('CommandSystem — buildings and demolition', () => {
 
   it('gates nothing for a tribe absent from the tribe table (no tech-graph data)', () => {
     const sim = fresh();
-    // The FRANK tribe has no TribeType in the fixture, so its tech-graph gates nothing — even the
+    // The FRANK tribe has no TribeType in the fixture, so its tech-graph gates nothing - even the
     // otherwise-locked smithy places (a map with no tribe data still gets its start buildings).
     sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: FRANK });
     sim.step();

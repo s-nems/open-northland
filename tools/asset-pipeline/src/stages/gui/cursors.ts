@@ -14,7 +14,7 @@ const MOUSE_DIR = join('DataX', 'Mouse');
 /** One converted cursor: the copied `.cur`, the decoded `.png`, the hotspot, and the pixel size. */
 export interface GuiCursorResult {
   readonly name: string;
-  /** URL path relative to `/gui/` (forward slashes) of the verbatim `.cur` — for CSS `cursor: url(/gui/<cur>)`. */
+  /** URL path relative to `/gui/` (forward slashes) of the verbatim `.cur` - for CSS `cursor: url(/gui/<cur>)`. */
   readonly cur: string;
   /** URL path relative to `/gui/` (forward slashes) of the decoded RGBA PNG fallback/preview. */
   readonly png: string;

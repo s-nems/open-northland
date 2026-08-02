@@ -4,7 +4,7 @@ import type { SpriteKind } from '../../data/sprites/index.js';
 import { isStalled, type MotionTrack } from './motion.js';
 
 /**
- * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
+ * Per-frame easing factor for the construction bottom-up reveal - the displayed reveal moves this fraction
  * of the remaining distance toward the sim's reported progress each frame. Tuned so the rise glides across
  * the sim's per-swing `built` steps (~15 ticks / swing) without a catch-up snap.
  */
@@ -27,7 +27,7 @@ export function animationClock(item: DrawItem, tick: number): number {
  * The pose a settler presents this frame, covering two gaps the raw sim state leaves in a walk cycle: an
  * anchor that has sat still while state still reads `moving` (an unserviced route, a stalled chase), and
  * the one-tick heading gap a re-pathing walker shows (state stays `moving` via MoveGoal/PathRequest with
- * no heading to read). Every other kind and state passes through untouched — an idle settler also has no
+ * no heading to read). Every other kind and state passes through untouched - an idle settler also has no
  * facing, but must draw the default idle facing.
  */
 export function walkPose(
@@ -58,7 +58,7 @@ export function easeReveal(
 
 /**
  * Write the eased reveal back over whichever field carried the progress, as the whole percent the stage
- * windows are keyed by — so stage selection and the per-pixel reveal ride one value and cannot disagree.
+ * windows are keyed by - so stage selection and the per-pixel reveal ride one value and cannot disagree.
  * The scaffold flicker that invariant prevents is pinned by `construction-reveal.test.ts`.
  */
 export function revealedItem(item: DrawItem, reveal: number | undefined): DrawItem {

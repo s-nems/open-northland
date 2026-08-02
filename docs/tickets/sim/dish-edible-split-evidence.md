@@ -6,7 +6,7 @@
 anyone outside the good's own harvest trade lifts it (`carriedGoodForm`), or when it banks into a store
 with no raw slot (`pileupIntoStore`). The mapping's *existence* is well evidenced (a dish has
 a `logicstock` slot only in its own producing house; `food_simple`/`food_extra` are slotted everywhere and
-produced by nothing — pinned by `packages/app/test/content/dish-goods.test.ts`).
+produced by nothing - pinned by `packages/app/test/content/dish-goods.test.ts`).
 
 The **split** is not evenly evidenced:
 

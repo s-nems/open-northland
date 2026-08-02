@@ -4,7 +4,7 @@ import { hasRealIr, rawIrUnderTest } from './helpers.js';
 
 /**
  * The animation gallery's real-data half: the catalog of animations the gallery plays is the
- * extracted ir.json `bobSequences` for the viking civilian body — pinned here so a pipeline change
+ * extracted ir.json `bobSequences` for the viking civilian body - pinned here so a pipeline change
  * that drops the body's animations is caught, not discovered by a blank gallery. The gallery's pure
  * cell-builder tests live with the fixture suite (`test/anim-gallery.test.ts`).
  */
@@ -34,12 +34,12 @@ describe.runIf(hasRealIr())('viking civilian animation set (ir.json bobSequences
       seqs.some((s) => /Fight|punch|kick/i.test(s.name)),
       'expected at least one unarmed fight sequence',
     ).toBe(true);
-    // Every sequence is a real, non-empty frame range (start >= 0, length > 0) — the gallery indexes these.
+    // Every sequence is a real, non-empty frame range (start >= 0, length > 0) - the gallery indexes these.
     for (const s of seqs) {
       expect(s.start, s.name).toBeGreaterThanOrEqual(0);
       expect(s.length, s.name).toBeGreaterThan(0);
     }
-    // The full civilian set is large (~69) — a sanity floor so a truncated extract is caught.
+    // The full civilian set is large (~69) - a sanity floor so a truncated extract is caught.
     expect(seqs.length).toBeGreaterThan(30);
   });
 });

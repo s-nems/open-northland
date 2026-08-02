@@ -15,7 +15,7 @@ import {
 } from '../grammar.js';
 
 /**
- * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` section/sub-record — the size-level →
+ * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` section/sub-record - the size-level →
  * building-typeId join every graphics-table extractor pairs its per-level lines against
  * (construction costs, footprints, construction layers, building bobs). Malformed lines are skipped.
  */
@@ -32,7 +32,7 @@ export function logicTypeByLevel(sec: RuleSection): Map<number, number> {
 
 /**
  * Splits one `[GfxHouse]` section into its constituent house records. The mod packs several houses
- * under a single `[GfxHouse]` bracket — five blocks lump 4..24 houses (the saracen + egypt families) —
+ * under a single `[GfxHouse]` bracket - five blocks lump 4..24 houses (the saracen + egypt families) -
  * each sub-house delimited only by a fresh `EditName` line, not a new bracket. `parseIniSections` opens
  * a section only on a `[...]` header, so it lumps the block into one {@link RuleSection}; without this
  * split the first sub-house's `GfxBobLibs`/`GfxPalette` would be stapled to last-wins `LogicType`/
@@ -94,7 +94,7 @@ export interface GfxHouseGraphicsRecord {
  * Reads the shared preamble off one house record for the per-level graphics extractors (construction
  * layers, animated overlays, building bobs): the tribe, the normalized body `.bmd`, the palette skins,
  * the `EditName`, and the size-level join. Returns `undefined` when the record lacks a tribe, a body
- * bob, or any palette — the common skip guard, so one malformed record never aborts the offline batch.
+ * bob, or any palette - the common skip guard, so one malformed record never aborts the offline batch.
  */
 export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRecord | undefined {
   const tribeId = getInt(rec, 'LogicTribeType');

@@ -1,12 +1,12 @@
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The left in-game tool panel — geometry, pinned to the original.
+ * The left in-game tool panel - geometry, pinned to the original.
  *
  * Every rect below maps into the original's 640×480–1024×768 design space (provisional until checked
  * against the running original before pixel-fidelity sign-off). The hex→decimal literals live in a named
  * table (the constant *is* the geometry, satisfying the no-magic-numbers rule); the strip anchors top-left
- * and scales by `uiscale` (default 1.4× — see {@link DEFAULT_UI_SCALE}, `?uiscale=` override, clamped ≥1,
+ * and scales by `uiscale` (default 1.4× - see {@link DEFAULT_UI_SCALE}, `?uiscale=` override, clamped ≥1,
  * fractional allowed) so it reads on any canvas size. Rendering that fractional scale of the nearest-sampled
  * indexed art crisply is `strip-texture.ts`'s job (it oversamples into an off-screen texture sized via
  * {@link designBounds}); this scale is the one knob a future in-game UI-size slider would drive.
@@ -38,7 +38,7 @@ export interface DesignRect {
   readonly h: number;
 }
 
-/** The left strip background element — `CBaseToolGfxElement _toolBackground`, gfx 0x33, rect (0,10,50,433). */
+/** The left strip background element - `CBaseToolGfxElement _toolBackground`, gfx 0x33, rect (0,10,50,433). */
 const TOOL_PANEL_STRIP_GFX = 0x33;
 export const TOOL_PANEL_STRIP: DesignRect = { x: 0, y: 10, w: 0x32, h: 0x1b1 };
 
@@ -87,7 +87,7 @@ export interface ToolPanelLayout {
   readonly stripGfx: number;
   readonly strip: PlacedRect;
   readonly buttons: readonly PlacedButton[];
-  /** Width of the strip in screen px — the amount the rest of the HUD is shifted right to clear the panel. */
+  /** Width of the strip in screen px - the amount the rest of the HUD is shifted right to clear the panel. */
   readonly width: number;
   readonly height: number;
   /** The strip+buttons' bounding box in design space (pre-scale). It sizes the off-screen supersample
@@ -98,7 +98,7 @@ export interface ToolPanelLayout {
 /**
  * The default UI scale. The pinned strip is 433 design px tall (nearly the original's whole 480-line
  * screen); at 1× that already fills roughly half a modern window and 2× overflowed it, so 1.4× is the
- * default — comfortably larger for readability while still fitting a typical window. The fractional scale
+ * default - comfortably larger for readability while still fitting a typical window. The fractional scale
  * stays crisp because the strip is supersampled (see the module note). `?uiscale=` overrides it (fractional
  * allowed, e.g. `?uiscale=1.2` or `?uiscale=1`).
  */
@@ -108,7 +108,7 @@ function scaleRect(r: DesignRect, s: number): PlacedRect {
   return { x: r.x * s, y: r.y * s, w: r.w * s, h: r.h * s };
 }
 
-/** The bounding box (design space) of a set of rects — the union that the supersample texture must cover. */
+/** The bounding box (design space) of a set of rects - the union that the supersample texture must cover. */
 function unionDesign(rects: readonly DesignRect[]): DesignRect {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -125,7 +125,7 @@ function unionDesign(rects: readonly DesignRect[]): DesignRect {
 
 /**
  * Resolve the pinned design-space geometry to screen pixels at `uiscale` (clamped to ≥1; may be
- * fractional), anchored top-left. Pure — the view draws from this and the input layer hit-tests it.
+ * fractional), anchored top-left. Pure - the view draws from this and the input layer hit-tests it.
  */
 export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPanelLayout {
   const scale = Math.max(1, uiscale);
@@ -153,7 +153,7 @@ export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number):
 }
 
 /**
- * Whether a screen point lies over the panel strip at all — the claim predicate the input router asks
+ * Whether a screen point lies over the panel strip at all - the claim predicate the input router asks
  * before world picking, so a click over the HUD never falls through to unit selection/orders.
  */
 export function pointOverToolPanel(layout: ToolPanelLayout, x: number, y: number): boolean {

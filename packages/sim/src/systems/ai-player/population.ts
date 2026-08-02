@@ -9,11 +9,11 @@ import type { AiPlayerModule } from './index.js';
 import { headquartersOf, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
- * The HomeExpansion module — population planning (user plan, 2026-07-17): every adult woman marries
- * as soon as a partner exists (grown girls included — the census is recomputed each decision), a
+ * The HomeExpansion module - population planning (user plan, 2026-07-17): every adult woman marries
+ * as soon as a partner exists (grown girls included - the census is recomputed each decision), a
  * married woman's family moves into the first home with a free family slot, and mothers breed to the
  * housing stock: daughters while the planned female count (women + growing girls + pending daughter
- * orders) is below the total family slots, sons continuously once it matches — women in Cultures are
+ * orders) is below the total family slots, sons continuously once it matches - women in Cultures are
  * made to the number of house places.
  */
 
@@ -51,12 +51,12 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     if (world.has(woman, Residence)) continue;
     if (!hasLivingSpouse(world, woman)) continue;
     const home = homes.find((h) => h.free > 0);
-    if (home === undefined) break; // no free slots — wait for the next house
+    if (home === undefined) break; // no free slots - wait for the next house
     home.free--;
     commands.push({ kind: 'assignHouse', entity: woman, house: home.entity });
   }
 
-  // 3. Children: every housed mother without a growing child keeps a standing order — a daughter
+  // 3. Children: every housed mother without a growing child keeps a standing order - a daughter
   // while planned females run below the family slots, a son once the count is met.
   let plannedFemales = 0;
   for (const e of settlers) {
@@ -78,7 +78,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   return commands;
 }
 
-/** Married to a living spouse — narrower than the family rule's {@link isMarried}, which also counts
+/** Married to a living spouse - narrower than the family rule's {@link isMarried}, which also counts
  *  a widow raising a minor: a widow IS orderable into a new family plan. */
 function hasLivingSpouse(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);

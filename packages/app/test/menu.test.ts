@@ -22,7 +22,7 @@ import { progressionOverride } from '../src/game/progression.js';
 /**
  * The menu's `/maps-index` narrowing (the JSON boundary between the dev-server middleware and the
  * map cards). Rendering itself is DOM work a human signs off in the browser; what is proven here is
- * the per-entry tolerance — a malformed sidecar field degrades that one card, never the list.
+ * the per-entry tolerance - a malformed sidecar field degrades that one card, never the list.
  */
 describe('parseMapsIndex', () => {
   it('keeps well-formed entries with optional name/description and the minimap flag', () => {
@@ -172,7 +172,7 @@ describe('roster state', () => {
   it('encodes the observer pseudo-seat and keeps every slot eligible for the AI toggle', () => {
     let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
     expect(rosterStartParams(state, players)).toEqual([['player', 'observer']]);
-    state = toggleVacantMode(state, 0); // no seat is the observer's own — slot 0 still encodes
+    state = toggleVacantMode(state, 0); // no seat is the observer's own - slot 0 still encodes
     state = toggleVacantMode(state, 1); // the all-AI watch rig: every seat toggled to AI
     expect(rosterStartParams(state, players)).toEqual([
       ['player', 'observer'],
@@ -212,7 +212,7 @@ describe('roster state', () => {
 
   it('defaults a claimable authored-ai slot to AI and drops it when toggled to idle', () => {
     // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human. The
-    // non-claimable slot 2 stays script-driven — the strategic AI never attaches to it.
+    // non-claimable slot 2 stays script-driven - the strategic AI never attaches to it.
     const lobby = [
       { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
       { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },
@@ -242,7 +242,7 @@ describe('roster state', () => {
 
   it('keeps authored duplicate colours pickable for their own slot and blocks new duplicates', () => {
     // Real rosters duplicate colours freely (tutorial maps are all-blue; multiplayer_104 wears
-    // black three times) — "worn" must always be relative to the asking slot.
+    // black three times) - "worn" must always be relative to the asking slot.
     const dupes = [
       { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
       { player: 1, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },

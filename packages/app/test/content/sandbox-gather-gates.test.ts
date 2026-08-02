@@ -19,18 +19,18 @@ function remaining(sim: ReturnType<typeof createSceneSim>, good: number): number
 
 /**
  * Real content gates iron/gold harvesting behind clay/stone-digging XP (`needforgood 6/7 10` over the
- * collector's mud/stone tracks) — a gate the synthetic sandbox content doesn't carry, so only this
+ * collector's mud/stone tracks) - a gate the synthetic sandbox content doesn't carry, so only this
  * real-content twin can prove the sandbox camps still work under it. The scene's collectors spawn as
  * veterans (`gatherMasteryExperience`); without that stamp a fresh collector pinned to an iron camp
  * fails `settlerMeetsNeed` forever and stands idle beside its deposit (the 2026-07-16 regression).
  */
-describe.runIf(hasRealIr())('sandbox scene on real content — gathering XP gates', () => {
+describe.runIf(hasRealIr())('sandbox scene on real content - gathering XP gates', () => {
   it('the iron and gold camps are actually mined (veteran collectors pass needforgood)', async () => {
     const { merge } = await loadContentUnderTest();
     const sim = createSceneSim(sandboxScene, { content: merge.content });
     const iron = remaining(sim, GOOD_IRON);
     const gold = remaining(sim, GOOD_GOLD);
-    sim.run(3600); // 5 min of game time at 1× — several dig cycles per camp
+    sim.run(3600); // 5 min of game time at 1× - several dig cycles per camp
     expect(remaining(sim, GOOD_IRON)).toBeLessThan(iron);
     expect(remaining(sim, GOOD_GOLD)).toBeLessThan(gold);
     // A 3600-tick real-content run is tens of seconds alone; the budget is a hang-guard sized for a

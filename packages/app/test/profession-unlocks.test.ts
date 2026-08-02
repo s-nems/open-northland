@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { goodUnlockedFor, jobUnlockedFor, jobUnlockedForSelection } from '../src/game/profession-unlocks.js';
 import { snapshotOf } from './support/sandbox.js';
 
-/** The picker's qualification filter — the app-side mirror of the sim's `settlerMeetsNeed` need-job
+/** The picker's qualification filter - the app-side mirror of the sim's `settlerMeetsNeed` need-job
  *  reading (same rows, same repeats arithmetic; the `setJob` command enforces the identical gate). */
 describe('jobUnlockedFor', () => {
   const COLLECTOR = 8;
   const CARPENTER = 9;
-  const SOLDIER = 33; // a `soldier_*` trade — the fighter carve-out's target
+  const SOLDIER = 33; // a `soldier_*` trade - the fighter carve-out's target
   const WOOD_TRACK = 3;
-  /** The TRAINING bucket every `trainfor*` row reads — the barracks drill's schooling. */
+  /** The TRAINING bucket every `trainfor*` row reads - the barracks drill's schooling. */
   const TRAINING_TRACK = 77;
   const SWORD_GOOD = 52; // a needforgood-gated ware
   const PLAIN_GOOD = 5; // no requirement row

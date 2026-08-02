@@ -4,7 +4,7 @@ import type { Command } from '../../../src/index.js';
 
 import { fresh, HEADQUARTERS, nthEntity, VIKING, WOODCUTTER } from './support.js';
 
-describe('CommandSystem — dispatch and logging', () => {
+describe('CommandSystem - dispatch and logging', () => {
   it('records applied commands in the log stamped with the tick they were applied on', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });

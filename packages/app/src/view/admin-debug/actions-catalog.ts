@@ -1,7 +1,7 @@
 import type { Command, Entity } from '@open-northland/sim';
 
 /**
- * The data the admin/debug panel's entity-action tools offer — "arm a tool, click a target entity, apply
+ * The data the admin/debug panel's entity-action tools offer - "arm a tool, click a target entity, apply
  * an effect". Kept apart from the panel wiring ({@link import('./index.js')}) so the catalog of "what a
  * debug click does" is one obvious, unit-testable table, the twin of {@link import('./spawn-catalog.js')}
  * for the spawn palette. Each action maps a picked entity to one debug command through the sim's command
@@ -25,10 +25,10 @@ export interface DebugAction {
 // "Nasyć (100%)" drives every need to its raw min and "Zagłodź (0%)" to its raw max.
 /** Raw need level for a fully sated settler (satisfaction 100%). */
 const NEED_RAW_SATED = 0;
-/** Raw need level for a fully depleted settler (satisfaction 0% — starving/exhausted). */
+/** Raw need level for a fully depleted settler (satisfaction 0% - starving/exhausted). */
 const NEED_RAW_MAXED = 100;
 
-/** Set every need the sim tracks to one raw percent level — the payload the satisfy/starve tools share. */
+/** Set every need the sim tracks to one raw percent level - the payload the satisfy/starve tools share. */
 function setAllNeeds(target: Entity, rawPct: number): Command {
   return { kind: 'debugSetNeeds', target, hunger: rawPct, fatigue: rawPct, piety: rawPct, enjoyment: rawPct };
 }

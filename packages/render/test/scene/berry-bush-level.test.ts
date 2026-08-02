@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readBerryBushLevel } from '../../src/data/scene/snapshot-readers/index.js';
 
-/** Unit tests for {@link readBerryBushLevel} — the `BerryBush.stage` → draw-level map the three-frame bush
+/** Unit tests for {@link readBerryBushLevel} - the `BerryBush.stage` → draw-level map the three-frame bush
  *  binding (bare, flowering, ripe) indexes by. */
 
-describe('readBerryBushLevel — stage → draw level (1 bare, 2 flowering, 3 ripe)', () => {
+describe('readBerryBushLevel - stage → draw level (1 bare, 2 flowering, 3 ripe)', () => {
   it('maps each growth stage to its 1-based level', () => {
     expect(readBerryBushLevel({ BerryBush: { stage: 'bare' } })).toBe(1);
     expect(readBerryBushLevel({ BerryBush: { stage: 'flowering' } })).toBe(2);

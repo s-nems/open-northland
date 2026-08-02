@@ -24,7 +24,7 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
       nodeIntegration: false,
     },
   });
-  // The window renders only the shell's own app:// pages — no popups, no navigation elsewhere.
+  // The window renders only the shell's own app:// pages - no popups, no navigation elsewhere.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, target) => {
     if (!isAppUrl(target)) event.preventDefault();

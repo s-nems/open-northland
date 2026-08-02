@@ -17,11 +17,11 @@ import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
 import { loadIrRaw } from './ir/load.js';
 import { fetchJsonOrNull } from './net.js';
 
-/** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
+/** The one in-flight/settled parse of the served IR into a `ContentSet` - memoized like {@link loadRealContent}. */
 let contentSetPromise: Promise<ContentSet | null> | null = null;
 
 /**
- * Fetch + validate the served `content/ir.json` into the sim's `ContentSet` — the real-content
+ * Fetch + validate the served `content/ir.json` into the sim's `ContentSet` - the real-content
  * counterpart to {@link import('./ir/load.js').loadIr}, which returns the graphics/atlas view instead. The
  * pure sim never does I/O, so the validated set is minted here at the app boundary
  * (`packages/app/AGENTS.md`); wiring it into the sim is a later ticket.
@@ -37,7 +37,7 @@ export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<Conten
   if (fetchImpl !== fetch) return fetchContentSet(fetchImpl);
   contentSetPromise ??= parseSharedIr().then((set) => {
     // Memoize only success: a transient boot-time fetch failure must not pin the loader to null for
-    // the page's lifetime — the next consumer retries (mirrors loadIr).
+    // the page's lifetime - the next consumer retries (mirrors loadIr).
     if (set === null) contentSetPromise = null;
     return set;
   });
@@ -61,19 +61,19 @@ export interface RealContentMerge {
    *  the clean-room settler HP set on the playable tribes, and the sim's nav-terrain classes
    *  ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
   readonly content: ContentSet;
-  /** Gathered goods (they carry a `gathering` block) with no clean-room balance — they stay uncalibrated
+  /** Gathered goods (they carry a `gathering` block) with no clean-room balance - they stay uncalibrated
    *  (leather/honey/meat are animal/production goods the sandbox never map-gathers). */
   readonly unbalancedGoods: readonly string[];
-  /** Field-farmed goods (they carry the three field atomics) with no clean-room `farming` block yet — the
+  /** Field-farmed goods (they carry the three field atomics) with no clean-room `farming` block yet - the
    *  pipeline correctly gives them no recipe (grown, not made), so until a block lands they neither
    *  field-farm nor produce. Wheat is calibrated; herb/mushroom are the known gap (see the tracker). */
   readonly unfarmedFieldGoods: readonly string[];
-  /** Real buildings absent from the clean-room catalog (`VIKING_BUILDINGS`) — the wonders/vehicles/special
+  /** Real buildings absent from the clean-room catalog (`VIKING_BUILDINGS`) - the wonders/vehicles/special
    *  the sandbox never modelled. They keep their extracted footprint/stock/recipe but no clean-room tuning. */
   readonly uncatalogedBuildings: readonly string[];
 }
 
-/** Localize a good's display name from the app-wide `?lang=` map, keyed by its string id — the real IR
+/** Localize a good's display name from the app-wide `?lang=` map, keyed by its string id - the real IR
  *  ships raw ids where the sandbox carried English `name`s. A good the map lacks keeps its own name. */
 function withLocalizedName(good: GoodType, goodNames?: ReadonlyMap<string, string>): GoodType {
   const name = goodNames?.get(good.id);
@@ -81,7 +81,7 @@ function withLocalizedName(good: GoodType, goodNames?: ReadonlyMap<string, strin
 }
 
 /** Overlay the clean-room field-farming block (growth timing, field radius/count) the pipeline cannot
- *  extract — no readable growth constants — keyed by good id from the shared {@link FARMING_BALANCE_BY_ID}
+ *  extract - no readable growth constants - keyed by good id from the shared {@link FARMING_BALANCE_BY_ID}
  *  the sandbox also reads, so wheat farms at one pace on either content base. The pipeline extracts the
  *  field atomics + `producedOnMap` flag and (correctly) gives the farm no recipe; this block is the last
  *  piece the sim's field loop needs. A good absent from the table is returned unchanged. */
@@ -124,7 +124,7 @@ function withHunterBowBalance(weapon: WeaponType): WeaponType {
 
 /** Overlay the clean-room felling/mining balance (chops-to-fell / yield / deposit size+levels) into the
  *  pipeline's zeroed gathering block, keyed by good id from the shared {@link GATHERING_BALANCE_BY_ID}
- *  (the mod data carries no chop count — `catalog/felling.ts`), preserving everything else real ships
+ *  (the mod data carries no chop count - `catalog/felling.ts`), preserving everything else real ships
  *  (harvest/pickup/store atomics, `bioLandscape`). A good with no gathering block, or none in the table,
  *  is returned unchanged. */
 function withGatheringBalance(good: GoodType): GoodType {
@@ -155,12 +155,12 @@ function withGatheringBalance(good: GoodType): GoodType {
  * re-keyed to real ids) reading the same balance table, proven by `test/map-gatherer-cycle.test.ts`;
  * completing the ContentSet keeps it self-consistent and ready for a content-driven resource-spawn system.
  * Gathered goods with no clean-room balance, field goods with no clean-room `farming` block, and buildings
- * beyond the clean-room catalog are reported — not silently dropped — so the caller can log the gap.
+ * beyond the clean-room catalog are reported - not silently dropped - so the caller can log the gap.
  *
  * It also injects the sim's semantic nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) into `landscape`:
  * real content's detailed types (1..87) don't carry the collision classes a resolved grid
  * (`content/collision.ts`) or a scene grid navigates on, and those class ids sit in a reserved band that
- * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent — a
+ * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent - a
  * class row already present is not duplicated.
  */
 export function mergeRealContent(
@@ -176,7 +176,7 @@ export function mergeRealContent(
   const unbalancedGoods = goods
     .filter((g) => g.gathering !== undefined && GATHERING_BALANCE_BY_ID[g.id] === undefined)
     .map((g) => g.id);
-  // A field-farmed good (three field atomics) the farming overlay does not yet cover — the pipeline gives
+  // A field-farmed good (three field atomics) the farming overlay does not yet cover - the pipeline gives
   // it no recipe, so without a `farming` block it neither field-farms nor produces (herb/mushroom today).
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
@@ -187,7 +187,7 @@ export function mergeRealContent(
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
   // Overlay the clean-room settler HP onto each playable tribe that ships without one (the real IR carries
-  // no human hitpoints — unreadable, source basis "Combat hit resolution"), the same value the sandbox
+  // no human hitpoints - unreadable, source basis "Combat hit resolution"), the same value the sandbox
   // tribes use, so a settler has one HP on either content base (`settlerHitpoints` reads it at every spawn).
   // Scoped to the player civs (a `jobEnables` tech-graph): an animal/monster tribe is no settler's tribe, so
   // it stays at its own (0) HP rather than carrying a stray human pool it never uses.
@@ -223,7 +223,7 @@ export function mergeRealContent(
  * Load the served real content and ready it for the sim in one call: fetch + validate via
  * {@link loadRealContent}, then {@link mergeRealContent} (gathering balance + nav-terrain classes +
  * localized `goodNames`). Returns `null` on a bare checkout (no `content/ir.json`) so the interactive
- * entries fall back to the clean-room sandbox content. The pure sim never does I/O — this is the app
+ * entries fall back to the clean-room sandbox content. The pure sim never does I/O - this is the app
  * boundary that mints the sim-ready set (`packages/app/AGENTS.md`).
  */
 export async function loadRuntimeRealContent(
@@ -235,8 +235,8 @@ export async function loadRuntimeRealContent(
 }
 
 /**
- * Log the gaps {@link mergeRealContent} surfaced — gathered goods with no clean-room balance, field goods
- * with no clean-room `farming` block, and buildings beyond the clean-room catalog — as one log line,
+ * Log the gaps {@link mergeRealContent} surfaced - gathered goods with no clean-room balance, field goods
+ * with no clean-room `farming` block, and buildings beyond the clean-room catalog - as one log line,
  * so a browser run shows what the overlay could not fill. No-op when there is nothing to report.
  */
 export function logRealContentGaps(merge: RealContentMerge): void {

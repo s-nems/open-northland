@@ -38,10 +38,10 @@ export function isMarrying(e: SnapshotEntity): boolean {
 }
 
 /**
- * Whether the settler is bound by a live marriage — the snapshot mirror of the sim's widowing rule
+ * Whether the settler is bound by a live marriage - the snapshot mirror of the sim's widowing rule
  * (`mayMarry`): bound while the spouse lives, and a widowed parent stays bound until the couple's
  * child grows up; a dead-spouse marriage with no growing child is dissolved (the component lingers
- * until the next wedding overwrites it — a destroyed spouse is simply absent from the snapshot).
+ * until the next wedding overwrites it - a destroyed spouse is simply absent from the snapshot).
  */
 export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const marriage = marriageOf(e);
@@ -52,7 +52,7 @@ export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): b
 }
 
 /**
- * Whether any eligible marriage partner for `seeker` exists — the snapshot mirror of the sim's
+ * Whether any eligible marriage partner for `seeker` exists - the snapshot mirror of the sim's
  * `mayMarry` + `findPartnerFor` filters (same tribe, opposite sex, unmarried adult, not mid-wedding,
  * not away on a mission, positioned), used to drop the ring's marry button instead of offering a
  * silent dead click. The sim command re-validates; a stale frame just mislabels the button. KNOWN
@@ -136,7 +136,7 @@ export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): num
   return undefined;
 }
 
-/** One family living in a home — the snapshot mirror of the sim's `familiesOf` grouping unit. */
+/** One family living in a home - the snapshot mirror of the sim's `familiesOf` grouping unit. */
 export interface HomeFamily {
   /** Member entity ids: adults first (couple in ascending id order), then the growing child. */
   readonly members: readonly number[];
@@ -145,7 +145,7 @@ export interface HomeFamily {
 }
 
 /**
- * Group every home's residents into families — the snapshot mirror of the sim's `familiesOf` (an adult +
+ * Group every home's residents into families - the snapshot mirror of the sim's `familiesOf` (an adult +
  * its cohabiting spouse + the couple's growing child; an orphaned minor is its own household). `homeSize`
  * caps FAMILIES, so the door badges, the assign-home highlight, and the home panel all consume this one
  * grouping. One entity pass; family order follows the lowest member id.
@@ -156,7 +156,7 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     adults: number;
     minors: number;
   }
-  // Pass 1 — collect residents with their homes (the snapshot's entity order is ascending id).
+  // Pass 1 - collect residents with their homes (the snapshot's entity order is ascending id).
   const residents: { e: SnapshotEntity; home: number }[] = [];
   const residentHomes = new Map<number, number>();
   for (const e of actorsOf(snapshot)) {
@@ -165,7 +165,7 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     residents.push({ e, home });
     residentHomes.set(e.id, home);
   }
-  // Pass 2 — adults group with their cohabiting spouse; each couple's growing child is noted by id.
+  // Pass 2 - adults group with their cohabiting spouse; each couple's growing child is noted by id.
   const groupsByHome = new Map<number, Map<number, Group>>();
   const groupByChild = new Map<number, Group>();
   const minors: { e: SnapshotEntity; home: number }[] = [];
@@ -194,7 +194,7 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     if (child !== null && child !== undefined && residentHomes.get(child) === home)
       groupByChild.set(child, group);
   }
-  // Pass 3 — minors join their parents' group; an orphan holds its own family slot.
+  // Pass 3 - minors join their parents' group; an orphan holds its own family slot.
   for (const { e, home } of minors) {
     let group = groupByChild.get(e.id);
     if (group === undefined) {

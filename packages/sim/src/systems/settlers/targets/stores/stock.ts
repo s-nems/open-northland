@@ -33,11 +33,11 @@ import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
 /**
  * The nearest store (typically a {@link Building} with a {@link Stockpile}, but a boat hull counts too)
- * that can stock `goodType` — i.e. its type declares a stock slot for that good and the slot is not
- * already full — by Manhattan distance from `here` with the shared ascending-cell-id tie-break. Returns
+ * that can stock `goodType` - i.e. its type declares a stock slot for that good and the slot is not
+ * already full - by Manhattan distance from `here` with the shared ascending-cell-id tie-break. Returns
  * the store entity or null if none can take the good.
  *
- * A workplace that PRODUCES `goodType` (a recipe output) is never a delivery target for it — goods
+ * A workplace that PRODUCES `goodType` (a recipe output) is never a delivery target for it - goods
  * are hauled *out* of a producer to a store, never back into it (otherwise a carrier would deposit
  * its load straight back where it picked it up and livelock). A workplace consuming the good as an
  * input, or a passive store, is a valid sink.
@@ -48,16 +48,16 @@ export function nearestStoreFor(
   ctx: SystemContext,
   here: NodeId,
   goodType: number,
-  /** The hauler's owning player — never delivers into another player's store ({@link sameSideAs}). */
+  /** The hauler's owning player - never delivers into another player's store ({@link sameSideAs}). */
   owner: number | undefined,
-  /** Skip EVERY store whose building type PRODUCES `goodType` — the haul-OUT mode. A carrier
+  /** Skip EVERY store whose building type PRODUCES `goodType` - the haul-OUT mode. A carrier
    *  clearing a producer's output must deliver to STORAGE, never to another producer of the same
    *  good: with two farms and no nearer warehouse, per-entity exclusion of only the carrier's own
    *  farm made the sibling farm the "nearest store" and the wheat ping-ponged farm↔farm forever.
-   *  Omit (false) for the ordinary "nearest capable store" pick — the farmer's reap gate counts its
+   *  Omit (false) for the ordinary "nearest capable store" pick - the farmer's reap gate counts its
    *  own farm's slot as a sink, and generic hauls may still top up a producer that CONSUMES the good. */
   excludeProducers = false,
-  /** The hauler's signpost confinement — an out-of-area store is not a sink it knows the way to. */
+  /** The hauler's signpost confinement - an out-of-area store is not a sink it knows the way to. */
   gate?: SpatialGate,
   /** The hauler's failed-goal veto ({@link unreachableGoalVeto}). */
   avoid?: (cell: NodeId) => boolean,
@@ -102,14 +102,14 @@ export function canStoreGood(
 /**
  * The greatest Manhattan ring radius (in half-cell NODES) {@link nearestFreeYardNode} searches out from a
  * flag before giving up. A ring at half-cell distance `r` holds O(r) nodes; radius 32 (~16 tiles across) is
- * far more room than any single gatherer's yard needs — the bound only stops a pathological unbounded
+ * far more room than any single gatherer's yard needs - the bound only stops a pathological unbounded
  * search. Named approximation (the original's goods-yard extent is not decoded).
  */
 const GOODS_YARD_MAX_RADIUS = 32;
 
 /**
  * The nearest HALF-CELL node around a gatherer's `flag` whose yard tile still has room for another unit of
- * `good` — the tile a flag-bound gatherer physically WALKS to and sets its load down on, so the goods land
+ * `good` - the tile a flag-bound gatherer physically WALKS to and sets its load down on, so the goods land
  * where its feet are (never teleporting to a distant tile) and heaps pack TILE-TO-TILE on the half-cell
  * lattice. Spirals out from the flag's node in Manhattan rings; a tile has room when it holds no heap, or a
  * heap of `good` below {@link MAX_GROUND_STACK} (a tile holding a DIFFERENT good, or a full one, is skipped),
@@ -129,11 +129,11 @@ export function nearestFreeYardNode(
   flag: Entity,
   good: number,
   here: NodeId,
-  /** The gatherer's owning player — a rival's heap counts as occupied ({@link ownersCompatible}),
+  /** The gatherer's owning player - a rival's heap counts as occupied ({@link ownersCompatible}),
    *  mirroring `stackOntoTile`'s merge refusal so the steering never picks a tile the drop rejects. */
   owner: number | undefined,
   after?: NodeId,
-  /** The gatherer's signpost confinement — a yard tile outside its allowed area is never a drop spot
+  /** The gatherer's signpost confinement - a yard tile outside its allowed area is never a drop spot
    *  (the flag itself was placed inside the area, so in practice this trims only the yard's far fringe). */
   gate?: SpatialGate,
 ): NodeId | null {
@@ -175,12 +175,12 @@ export function nearestFreeYardNode(
 }
 
 /**
- * Whether a loose pile lies on a cell standing buildings make unwalkable — an unreachable SOURCE no
+ * Whether a loose pile lies on a cell standing buildings make unwalkable - an unreachable SOURCE no
  * fetcher should commit to: its stand is inside the walls, so the walk path-fails, the settler strands,
  * re-picks the same geometrically-nearest pile, and loops. The footprint goods eviction keeps this rare
  * (a placement displaces the piles it covers), so the filter is the safety net for the leftovers (a
  * boxed-in pile the eviction could not land). Scoped to building walls only: a trunk under a
- * still-STANDING resource is legitimate — its interaction cell resolves to the resource's work cell —
+ * still-STANDING resource is legitimate - its interaction cell resolves to the resource's work cell -
  * and a {@link Building} store is never buried by its own walls (its stand is the door). `walls` is the
  * memoized {@link buildingBlockedCells} set, resolved once per scan by the callers.
  */
@@ -197,10 +197,10 @@ export function buriedUnderBuilding(
 
 /**
  * The nearest store (a {@link Stockpile} on a positioned entity) that HOLDS at least one unit of
- * `goodType` and may be stripped of it — a SOURCE to fetch from, by Manhattan distance from `here`,
+ * `goodType` and may be stripped of it - a SOURCE to fetch from, by Manhattan distance from `here`,
  * ascending-cell-id tie-break, scanned in canonical entity-id order. Excluded: a construction site (a
- * delivery sink, not a source — a builder never strips the material it just delivered), a loose pile
- * buried under a building's walls ({@link buriedUnderBuilding} — an unreachable stand would strand the
+ * delivery sink, not a source - a builder never strips the material it just delivered), a loose pile
+ * buried under a building's walls ({@link buriedUnderBuilding} - an unreachable stand would strand the
  * fetcher), and a workshop's own input reserve ({@link mayFetchGoodFrom}). A warehouse, a reachable
  * ground pile, and a producer's finished shelf are fair game. Returns the source store or null if none
  * yields the good. The counter to
@@ -214,7 +214,7 @@ export function nearestStoreHolding(
   terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
-  /** The fetcher's owning player — never fetches from another player's store ({@link sameSideAs}). */
+  /** The fetcher's owning player - never fetches from another player's store ({@link sameSideAs}). */
   owner: number | undefined,
   gate?: SpatialGate,
   /** The fetcher's failed-goal veto ({@link unreachableGoalVeto}). */

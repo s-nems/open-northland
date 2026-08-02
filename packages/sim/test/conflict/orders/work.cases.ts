@@ -70,7 +70,7 @@ describe('setJob order', () => {
       enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
-    s.enqueue({ kind: 'setJob', entity: neutral, jobType: CARPENTER }); // unowned — skipped
+    s.enqueue({ kind: 'setJob', entity: neutral, jobType: CARPENTER }); // unowned - skipped
     s.step();
     expect(s.world.get(neutral, Settler).jobType).toBe(WOODCUTTER); // unchanged
   });
@@ -94,7 +94,7 @@ describe('setJob order', () => {
 });
 
 describe('setJob disarm on leaving the fighter trades', () => {
-  const SOLDIER_JOB = 31; // jobtypes.ini soldier band 31..41 — isFighterJob's lower bound
+  const SOLDIER_JOB = 31; // jobtypes.ini soldier band 31..41 - isFighterJob's lower bound
   const SWORD_GOOD = 44;
 
   it('a soldier converted to a civilian trade sheds its arms (equipment slots + combat components)', () => {
@@ -129,7 +129,7 @@ describe('setJob work-flag lifecycle', () => {
   it('plants a bound drop-off flag when a settler becomes a gatherer', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 2, 1);
-    // A carpenter never harvests, so it carries no flag — the switch below is a real change INTO the
+    // A carpenter never harvests, so it carries no flag - the switch below is a real change INTO the
     // gatherer trade (the user's "zmiana zawodu na zbieracza → pojawia się flaga").
     s.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
     s.step();
@@ -171,7 +171,7 @@ describe('setJob work-flag lifecycle', () => {
     s.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER }); // leaving the trade drops the flag
     s.step();
     expect(s.world.has(e, WorkFlag)).toBe(false); // binding dropped
-    expect(s.world.isAlive(flag)).toBe(false); // marker destroyed — no owner-less flag left behind
+    expect(s.world.isAlive(flag)).toBe(false); // marker destroyed - no owner-less flag left behind
   });
 
   it('auto-plants on the nearest free field when the gatherer stands on a resource', () => {
@@ -214,7 +214,7 @@ describe('setJob work-flag lifecycle', () => {
 
     s.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER }); // re-assert the gatherer trade
     s.step();
-    expect(s.world.get(e, WorkFlag).flag).toBe(flag); // same flag — no re-plant, the player's spot stands
+    expect(s.world.get(e, WorkFlag).flag).toBe(flag); // same flag - no re-plant, the player's spot stands
     expect(s.world.isAlive(flag)).toBe(true);
   });
 });

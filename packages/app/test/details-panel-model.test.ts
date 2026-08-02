@@ -66,7 +66,7 @@ describe('selection details panel model', () => {
     // The title reads the SAME localized name the build menu shows (catalog/building-i18n.ts).
     expect(model.title).toBe('Kwatera Główna');
     expect(model.showDefense).toBe(true);
-    // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 — so every
+    // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 - so every
     // accepted good appears; a freshly-placed HQ holds nothing, so every row is 0.
     const hqDef = sim.content.buildings.find((b) => b.typeId === BUILDING_HEADQUARTERS);
     const accepted = new Set((hqDef?.stock ?? []).map((s) => s.goodType));
@@ -83,7 +83,7 @@ describe('selection details panel model', () => {
         buildingEntity(1, BUILDING_JOINERY, {
           components: {
             Stockpile: { amounts: [[GOOD_WOOD, 3]] },
-            // TWO in-flight plank batches at different progress — the plank row bars the front-runner.
+            // TWO in-flight plank batches at different progress - the plank row bars the front-runner.
             Production: {
               cycles: [
                 { elapsed: 5, duration: 20, goodType: GOOD_PLANK },
@@ -120,7 +120,7 @@ describe('selection details panel model', () => {
     // One row PER PRODUCT (the joinery makes plank only); its bar shows the front-runner batch (50%).
     expect(model.production.rows).toHaveLength(1);
     expect(model.production.rows[0]).toMatchObject({ goodType: GOOD_PLANK, pct: 50, label: 'plank' });
-    // The production row carries its output's string id — the icon key the panel draws beside the bar —
+    // The production row carries its output's string id - the icon key the panel draws beside the bar -
     // and its recipe-inputs tooltip line ("Wymaga: <wood> ×1").
     expect(model.production.rows[0]?.goodId).toBe('plank');
     expect(model.production.rows[0]?.inputs).toContain('×1');
@@ -129,7 +129,7 @@ describe('selection details panel model', () => {
     );
     // The joinery also lists its other accepted goods at 0 (its stock slots beyond the held wood).
     expect(model.stock.some((r) => r.amount === 0)).toBe(true);
-    // Rows keep the DECLARED slot order (wood is the joinery's first slot) — stable while amounts
+    // Rows keep the DECLARED slot order (wood is the joinery's first slot) - stable while amounts
     // change, so a compact store's rows never swap places mid-work.
     expect(model.stock[0]?.goodType).toBe(GOOD_WOOD);
     expect(model.stock[0]?.amount).toBe(3);
@@ -158,7 +158,7 @@ describe('selection details panel model', () => {
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.builtPct).toBe(25);
-    expect(model.construction?.hpPct).toBe(25); // the sim ramps Health with built — the gauge's source
+    expect(model.construction?.hpPct).toBe(25); // the sim ramps Health with built - the gauge's source
     // One row per construction cost line (the farm's wood+stone parcel), delivered read off the hold.
     expect(model.construction?.rows).toEqual([
       expect.objectContaining({ goodType: GOOD_WOOD, delivered: 2, needed: 3 }),
@@ -173,7 +173,7 @@ describe('selection details panel model', () => {
     expect(finished.kind === 'building' && finished.construction).toBeNull();
   });
 
-  it('offers Upgrade on a built chained home and Cancel on a running upgrade site — never both', () => {
+  it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {
     const built = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1),
       new Set([1]),
@@ -182,7 +182,7 @@ describe('selection details panel model', () => {
     expect(built.kind === 'building' && built.upgradable).toBe(true);
     expect(built.kind === 'building' && built.cancelable).toBe(false);
     // The Upgrade button's hover tooltip lists the next tier's own bill (home level 1: wood 4, stone 3),
-    // not the from-scratch cumulative cost — the level difference the sim actually charges.
+    // not the from-scratch cumulative cost - the level difference the sim actually charges.
     expect(built.kind === 'building' && built.upgradeCost).toEqual([
       expect.objectContaining({ goodType: GOOD_WOOD, amount: 4 }),
       expect.objectContaining({ goodType: GOOD_STONE, amount: 3 }),
@@ -213,7 +213,7 @@ describe('selection details panel model', () => {
 
   it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {
     // The mill declares wheat then flour; holding ONLY the second slot's good must not bubble it above
-    // the first — a compact store's two rows swapping mid-work read as a glitch (user feedback
+    // the first - a compact store's two rows swapping mid-work read as a glitch (user feedback
     // 2026-07-11). Held-first reordering is the big tabbed store's draw-time concern, not the model's.
     const snapshot = snapshotOf(
       [
@@ -233,7 +233,7 @@ describe('selection details panel model', () => {
 
   it('labels a good by its localized content name when one is loaded (Mąka, not "flour")', () => {
     // The browser entries feed sandboxContent a per-locale good-name map (content/good-names.ts); the
-    // model's labels must prefer that `name` over the machine id — the Produkcja row read "flour x1".
+    // model's labels must prefer that `name` over the machine id - the Produkcja row read "flour x1".
     const ctx = sandboxCtx();
     const named = {
       ...ctx,
@@ -258,7 +258,7 @@ describe('selection details panel model', () => {
     if (druidSlot === undefined) throw new Error('druid hut has no worker slots');
     const snapshot = snapshotOf([
       buildingEntity(1, DRUID_HUT),
-      // One settler bound here as the Druid trade — that slot is filled, the carrier/gatherer slots empty.
+      // One settler bound here as the Druid trade - that slot is filled, the carrier/gatherer slots empty.
       { id: 2, components: { Settler: { jobType: druidSlot.jobType }, JobAssignment: { workplace: 1 } } },
     ]);
 
@@ -272,7 +272,7 @@ describe('selection details panel model', () => {
     ]);
 
     // Selecting that bound settler must name its trade, not fall back to "Cywil": its `jobType` is the
-    // rebased building-slot id, which the profession catalog doesn't carry — so the title resolves through
+    // rebased building-slot id, which the profession catalog doesn't carry - so the title resolves through
     // the content job names, exactly like the worker-slot rows above.
     const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     expect(settlerModel.kind).toBe('settler');
@@ -290,7 +290,7 @@ describe('selection details panel model', () => {
           Health: { hitpoints: 300, max: 1000 },
         },
       },
-      // The same needs without a Health component — the Zdrowie bar must be omitted, not zeroed.
+      // The same needs without a Health component - the Zdrowie bar must be omitted, not zeroed.
       { id: 2, components: { Settler: { tribe: 1, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 } } },
     ]);
 
@@ -322,7 +322,7 @@ describe('selection details panel model', () => {
           Age: { ticks: systems.CHILD_AGE_TICKS },
         },
       },
-      // One tick short of adulthood — the oldest age the panel can ever render.
+      // One tick short of adulthood - the oldest age the panel can ever render.
       {
         id: 2,
         components: {
@@ -372,12 +372,12 @@ describe('selection details panel model', () => {
     };
 
     // A baby's needs never accumulate (the NeedsSystem skips it whole), so its bars would always read
-    // 100% — the panel hides them and shows only the real Health pool.
+    // 100% - the panel hides them and shows only the real Health pool.
     const baby = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (baby.kind !== 'settler') throw new Error('expected a settler model');
     expect(baby.bars.map((b) => b.label)).toEqual(['Zdrowie']);
 
-    // A child self-feeds/rests, so its needs are live state — the full bar set stays.
+    // A child self-feeds/rests, so its needs are live state - the full bar set stays.
     const child = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (child.kind !== 'settler') throw new Error('expected a settler model');
     expect(child.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
@@ -385,9 +385,9 @@ describe('selection details panel model', () => {
 
   it('offers remove-from-home only to a housed adult (not the homeless, not a child)', () => {
     const snapshot = snapshotOf([
-      // A housed adult: has a Residence, no Age — the remove button is live.
+      // A housed adult: has a Residence, no Age - the remove button is live.
       { id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Residence: { home: 9 } } },
-      // A homeless adult: no Residence — nothing to remove.
+      // A homeless adult: no Residence - nothing to remove.
       { id: 2, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } },
       // A housed child: it moves with its parents, never on its own.
       {
@@ -451,7 +451,7 @@ describe('selection details panel model', () => {
   });
 
   it('hides a needforgood-gated ware from the gather menu until the settler earns it', () => {
-    const DIG_TRACK = 999; // no jobExperience record — raw XP counts as repeats
+    const DIG_TRACK = 999; // no jobExperience record - raw XP counts as repeats
     const IRON_REPEATS = 10;
     const ctx = sandboxCtx();
     const tribe = ctx.tribes.find((t) => t.typeId === 1);
@@ -493,7 +493,7 @@ describe('selection details panel model', () => {
       field(2, 1, 1), // growing
       field(3, 1, 4), // growing
       field(4, 1, 5), // ripe
-      field(5, 99, 5), // another farm's field — never counted here
+      field(5, 99, 5), // another farm's field - never counted here
     ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
@@ -509,7 +509,7 @@ describe('selection details panel model', () => {
       growing: 2,
       ripe: 1,
     });
-    // The store is the original's wheat-only slot (`logicstock 4 25 0`) — exactly one row, carrying
+    // The store is the original's wheat-only slot (`logicstock 4 25 0`) - exactly one row, carrying
     // its declared capacity so the panel draws "3.0 / 25.0" (the user-requested ceiling readout).
     expect(
       model.stock.map((r) => ({ goodType: r.goodType, amount: r.amount, capacity: r.capacity })),
@@ -630,7 +630,7 @@ describe('selection details panel model', () => {
 
   it('lists every trained specialization with repeats and bonus percent, most-trained first', () => {
     // Two content tracks: a good-specific one (labels by the good) and a general one (labels by the job);
-    // the third row is a fight bucket (sword, no content track — raw points ARE its repeats).
+    // the third row is a fight bucket (sword, no content track - raw points ARE its repeats).
     const ctx = {
       ...sandboxCtx(),
       jobExperience: [
@@ -654,7 +654,7 @@ describe('selection details panel model', () => {
             experience: [
               [3, 50], // 50 raw points at rate 10 → 5 wood gathered
               [9, 100], // 100 raw points at rate 100 → 1 repeat
-              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits — under 5 hits/repeat, so +0% damage
+              [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 4], // 4 hits - under 5 hits/repeat, so +0% damage
             ],
           },
         },
@@ -767,7 +767,7 @@ describe('settler upcoming-unlock rows', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), unlockCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     expect(model.upcomingUnlocks).toEqual([]);
-    expect(model.experience.length).toBeGreaterThan(0); // trained rows still show — only promises hide
+    expect(model.experience.length).toBeGreaterThan(0); // trained rows still show - only promises hide
   });
 });
 

@@ -61,7 +61,7 @@ describe('split game/mod source roots', () => {
     const done = await convertMapDatTree({ game, mod }, out);
     expect(done.map((d) => d.id).sort()).toEqual(['mod_only', 'shared']);
     const shared = JSON.parse(await readFile(join(out, 'maps', 'shared.json'), 'utf8'));
-    // typeId 6 is the overlay grid's fill — the base copy's 2 must not surface.
+    // typeId 6 is the overlay grid's fill - the base copy's 2 must not surface.
     expect(shared.typeIds).toEqual([6]);
   });
 
@@ -79,7 +79,7 @@ describe('split game/mod source roots', () => {
 /**
  * The lowest layer: the `.lib` members the unpack stage extracts under `--out`. The loose copy wins a
  * collision (docs/SOURCES.md "Source precedence"), and a loose-only asset must still reach the stages
- * that resolve by reference — the mod's new building bobs exist in no archive.
+ * that resolve by reference - the mod's new building bobs exist in no archive.
  */
 describe('loose files over unpacked .lib members', () => {
   const TEXTURES = join('Data', 'engine2d', 'bin', 'textures');
@@ -96,7 +96,7 @@ describe('loose files over unpacked .lib members', () => {
     await writeFile(path, bytes);
   };
 
-  /** The first pixel's RGB — `samplePcx` over a `solidPalette` paints every pixel one colour. */
+  /** The first pixel's RGB - `samplePcx` over a `solidPalette` paints every pixel one colour. */
   const firstPixel = async (rel: string): Promise<number[]> => {
     const { rgba } = decodePng(await readFile(join(out, rel)));
     return [rgba[0] ?? -1, rgba[1] ?? -1, rgba[2] ?? -1];

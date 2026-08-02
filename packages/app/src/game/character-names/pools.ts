@@ -1,7 +1,7 @@
 import { VIKING } from '../../catalog/buildings.js';
 
 /**
- * The per-tribe personal-name pools {@link import('./index.js').characterName} draws from. Data only —
+ * The per-tribe personal-name pools {@link import('./index.js').characterName} draws from. Data only -
  * the grid math that turns an entity id into a name stays in `character-names/index.ts`.
  */
 
@@ -208,5 +208,5 @@ export const NAME_POOLS: Readonly<Record<number, NamePool>> = {
   [VIKING]: VIKING_NAMES,
 };
 
-/** The pool used for a tribe that has no pool of its own yet — the only content tribe today is viking. */
+/** The pool used for a tribe that has no pool of its own yet - the only content tribe today is viking. */
 export const FALLBACK_POOL = VIKING_NAMES;

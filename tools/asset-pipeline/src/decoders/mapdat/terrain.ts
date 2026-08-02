@@ -1,11 +1,11 @@
 /**
- * `map.dat` half-cell landscape reduction — collapses the `lmlt` `2W × 2H` half-cell landscape-object
+ * `map.dat` half-cell landscape reduction - collapses the `lmlt` `2W × 2H` half-cell landscape-object
  * lane into the per-cell landscape-typeId grid the sim's nav graph consumes.
  *
- * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell — but not as
+ * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell - but not as
  * per-cell corner quads: each lane is a plain row-major `2·width × 2·height` half-cell grid
  * (pinned empirically: rendering `lmlt`/`emla` as a `2W × 2H` image draws the map's island shapes
- * cleanly, while a per-cell 2×2 interleave draws two side-by-side half-resolution copies — the tell
+ * cleanly, while a per-cell 2×2 interleave draws two side-by-side half-resolution copies - the tell
  * that consecutive values run along a `2W` row, not around one cell). A map cell (x, y) owns the four
  * half-cells `(2x, 2y)`, `(2x+1, 2y)`, `(2x, 2y+1)`, `(2x+1, 2y+1)`; landscape objects sit on this
  * finer lattice (`emla`), and `lmlt` mirrors each placed object's logic type onto it.
@@ -17,26 +17,26 @@ import type { MapLayer } from './layers.js';
 export const HALF_CELLS_PER_CELL = 4;
 
 /**
- * The `lmlt` value marking a half-cell with no landscape object (the lane's dominant value —
+ * The `lmlt` value marking a half-cell with no landscape object (the lane's dominant value -
  * open ground/sea). Raw non-zero values are the IR `LandscapeType.typeId` directly (1-based, as
  * in the readable `landscapetypes.ini`): pinned by the `[GfxLandscape]` records' explicit `LogicType`
- * — e.g. every `"clay mine …"` object carries `LogicType 12` (`mud_mine`, typeId 12) and the probed
+ * - e.g. every `"clay mine …"` object carries `LogicType 12` (`mud_mine`, typeId 12) and the probed
  * maps' clay half-cells hold raw `12` with matching counts (`palm` → `LogicType 4` = `tree`,
  * `"fx wave …"` → `LogicType 1` = `void`, exact count matches across lanes). An earlier reading
- * (+1-shifted 0-based indices) mapped every object one row off (tree → tree_falling) — see
+ * (+1-shifted 0-based indices) mapped every object one row off (tree → tree_falling) - see
  * source basis.
  */
 const LMLT_EMPTY = 0;
 
 /**
- * The IR `LandscapeType.typeId` an empty half-cell reduces to: `void` (typeId 1) — the "nothing
+ * The IR `LandscapeType.typeId` an empty half-cell reduces to: `void` (typeId 1) - the "nothing
  * here" landscape type, so a grid built from the lane always resolves against the IR table.
  */
 export const VOID_TYPE_ID = 1;
 
 /**
  * Reduces a cell's four half-cell values to a single representative: the dominant (most
- * frequent) value, ties broken by the lowest (canonical + deterministic — never depends on
+ * frequent) value, ties broken by the lowest (canonical + deterministic - never depends on
  * half-cell order). Exported for direct unit testing of the reduction rule.
  */
 export function reduceHalfCellsToCell(c0: number, c1: number, c2: number, c3: number): number {
@@ -65,7 +65,7 @@ export interface MapDatTerrainMap {
 
 /**
  * Collapses an unpacked `lmlt` layer (the `2W × 2H` half-cell landscape-object lane) plus the `lsiz`
- * dimensions into a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }`
+ * dimensions into a single per-cell landscape-typeId grid - the plain `{ width, height, typeIds }`
  * shape the sim's `buildTerrainGraph` (`packages/sim/src/nav/terrain/map.ts`) consumes as a `TerrainMap`.
  * Each cell's type is the {@link reduceHalfCellsToCell} dominant of its 2×2 half-cell block
  * ({@link LMLT_EMPTY} = no object → {@link VOID_TYPE_ID}). Returns a plain value (not a sim type) so the

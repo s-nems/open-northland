@@ -15,7 +15,7 @@ import {
 
 describe('two squads exchange blows at the data cadence (extended headless scenario)', () => {
   function seedSquads(sim: Simulation): { vikings: Entity[]; saxons: Entity[] } {
-    // Two spear squads, interleaved within reach, on a small line — adjacent cells are 2 nodes apart
+    // Two spear squads, interleaved within reach, on a small line - adjacent cells are 2 nodes apart
     // (inside the spear band [1,2]), so each viking has a saxon in range and back.
     const vikings = [
       fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR, { hitpoints: 20_000 }),
@@ -28,7 +28,7 @@ describe('two squads exchange blows at the data cadence (extended headless scena
     return { vikings, saxons };
   }
 
-  it('both squads land blows, accrue fight XP, and tire — through the real step() schedule', () => {
+  it('both squads land blows, accrue fight XP, and tire - through the real step() schedule', () => {
     const sim = new Simulation({ seed: 3, content: combatCadenceContent(), map: grass(4, 1) });
     const { vikings, saxons } = seedSquads(sim);
     for (let i = 0; i < 60; i++) sim.step();
@@ -50,7 +50,7 @@ describe('two squads exchange blows at the data cadence (extended headless scena
     }
   });
 
-  it('is deterministic — two same-seed runs of the skirmish reach the same state hash', () => {
+  it('is deterministic - two same-seed runs of the skirmish reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: combatCadenceContent(), map: grass(4, 1) });
       seedSquads(sim);

@@ -20,23 +20,23 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
 /**
  * Push every loose ground pile lying inside `building`'s walk-blocked footprint out onto the nearest
- * free cell — the goods sibling of `evictSettlersFromFootprint`, run when a plot becomes impassable (a
+ * free cell - the goods sibling of `evictSettlersFromFootprint`, run when a plot becomes impassable (a
  * `placeBuilding` onto a heaped yard, a construction/upgrade finish whose larger tier encloses new
  * cells). Without it a felled-trunk or dropped-goods pile stays walled in: still indexed, still the
- * geometrically nearest source, but its stand is unreachable — every fetcher path-fails against it on
+ * geometrically nearest source, but its stand is unreachable - every fetcher path-fails against it on
  * a loop. Placement legally lands on piles (the ground-collision gate ignores them), so building on a
  * heap of felled wood is safe: the wood is displaced, never lost.
  *
  * A pile is any positioned {@link Stockpile} that is not a persistent store (a {@link Building}
- * warehouse or {@link Vehicle} hull keeps its cells) — a {@link GroundDrop} trunk and a bare yard heap
+ * warehouse or {@link Vehicle} hull keeps its cells) - a {@link GroundDrop} trunk and a bare yard heap
  * both move. Each is re-created at its landing node rather than moved in place: the stockpile node
  * index's invariant is that a positioned stockpile never moves, so displacement is destroy + create
- * (markers carried over — a gatherer still reclaims its own trunk). A boxed-in pile stays put, like a
+ * (markers carried over - a gatherer still reclaims its own trunk). A boxed-in pile stays put, like a
  * boxed-in settler.
  *
  * Determinism: buried piles are visited in canonical ascending-id order, the landing search expands
  * the graph's canonical neighbour order, and each landed pile occupies its node in the stockpile index
- * before the next search runs — no store-order pick anywhere.
+ * before the next search runs - no store-order pick anywhere.
  */
 export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
@@ -44,7 +44,7 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return; // nothing impassable
 
-  // Snapshot the buried piles before mutating — the landing loop below creates and destroys entities
+  // Snapshot the buried piles before mutating - the landing loop below creates and destroys entities
   // in the very index this scan reads.
   const buriedUnsorted: Entity[] = [];
   for (const cell of body) {
@@ -68,7 +68,7 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
       blocked,
       doors,
     );
-    if (landing === null) continue; // boxed in — nowhere free to lie; the pile stays (goods kept)
+    if (landing === null) continue; // boxed in - nowhere free to lie; the pile stays (goods kept)
     const c = terrain.coordsOf(landing);
     const at = positionOfNode(c.x, c.y);
     const moved = world.create();
@@ -85,9 +85,9 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
 
 /**
  * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked, not a
- * door cell (a designated stand), and holding no positioned stockpile yet — one pile per tile, so a
+ * door cell (a designated stand), and holding no positioned stockpile yet - one pile per tile, so a
  * different-good heap is never buried under the landing. It may traverse the evicting building's own
- * `body` (the pile is displaced across its plot, not carried) but never any other blocked cell — the
+ * `body` (the pile is displaced across its plot, not carried) but never any other blocked cell - the
  * settler eviction's `nearestFreeCellOutside` rule, minus the settler-occupancy tests (a pile and a
  * settler share a tile freely). Null when nothing free lies within the cap.
  */

@@ -49,7 +49,7 @@ function poolFrame(snapshot: ReturnType<typeof snapshotOf>): PoolFrame {
   };
 }
 
-describe('SpritePool — the sprite-class decision without a LUT', () => {
+describe('SpritePool - the sprite-class decision without a LUT', () => {
   it('binds a character settler as plain Sprites and stamps its drawn bounds', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
@@ -66,7 +66,7 @@ describe('SpritePool — the sprite-class decision without a LUT', () => {
   });
 });
 
-describe('LayerBinder — an animal settler is never paletted, even with the LUT loaded', () => {
+describe('LayerBinder - an animal settler is never paletted, even with the LUT loaded', () => {
   // The species atlases are baked recolours: reading them through the player-colour LUT would treat
   // pixel colours as palette indices. The class is decided once at creation, so the guard lives there.
   const ANIMAL_TRIBE = 8;

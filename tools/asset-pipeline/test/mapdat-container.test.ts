@@ -151,7 +151,7 @@ describe('findChunk', () => {
       encodeMapDat([
         { tag: 'lsiz', payload: encodeMapSize({ width: 1, height: 1 }) },
         { tag: 'lmlt', payload: Uint8Array.of(1) },
-        { tag: 'lmlt', payload: Uint8Array.of(2) }, // a duplicate tag — first wins
+        { tag: 'lmlt', payload: Uint8Array.of(2) }, // a duplicate tag - first wins
       ]),
     );
     expect(findChunk(map, 'lmlt')?.payload).toEqual(Uint8Array.of(1));

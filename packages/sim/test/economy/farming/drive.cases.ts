@@ -29,7 +29,7 @@ import {
   WHEAT,
 } from './support.js';
 
-describe('planFarmer — the drive ladder', () => {
+describe('planFarmer - the drive ladder', () => {
   it('sows: an idle bound farmer with no fields starts the plant atomic (or walks to the node)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
@@ -37,7 +37,7 @@ describe('planFarmer — the drive ladder', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // The nearest jittered-lattice node may or may not be underfoot — either it walks or it sows.
+    // The nearest jittered-lattice node may or may not be underfoot - either it walks or it sows.
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
     const goal = sim.world.tryGet(farmer, components.MoveGoal);
     expect(atomic?.atomicId === SOW_ATOMIC || goal !== undefined).toBe(true);
@@ -81,7 +81,7 @@ describe('planFarmer — the drive ladder', () => {
       };
       const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
       const farm = farmAt(sim, 4, 4);
-      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
+      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - reaps on the spot
       const farmer = farmerAt(sim, 4, 4, farm);
       plannerSystem(sim.world, ctxOf(sim));
       return sim.world.get(farmer, components.CurrentAtomic).duration;
@@ -89,7 +89,7 @@ describe('planFarmer — the drive ladder', () => {
     expect(reapTicks(2)).toBe(reapTicks(1) * 2);
   });
 
-  it('experience cuts the strokes per spot — a master reaps in half the strokes (scaledWorkRepeats wiring)', () => {
+  it('experience cuts the strokes per spot - a master reaps in half the strokes (scaledWorkRepeats wiring)', () => {
     // The fixture carries no farmer track, so graft one (typeId 90, rate 1) pinning wheat at 4 strokes:
     // 100 XP = 100 repeats = mastery, so the same reap must plan 2 strokes instead of 4.
     const reapTicks = (xp: number): number => {
@@ -111,7 +111,7 @@ describe('planFarmer — the drive ladder', () => {
       };
       const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
       const farm = farmAt(sim, 4, 4);
-      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
+      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - reaps on the spot
       const farmer = farmerAt(sim, 4, 4, farm);
       if (xp > 0) sim.world.get(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
       plannerSystem(sim.world, ctxOf(sim));
@@ -123,8 +123,8 @@ describe('planFarmer — the drive ladder', () => {
   it('waters a thirsty field once the roster is at its cap (the can circles between sowings)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
-    // A full one-farmer roster (cap 2 + 4 = 6), the underfoot field thirsty — the sow branch is
-    // closed, so the drive reaches for the can. (Under the cap it sows FIRST — per-stage watering
+    // A full one-farmer roster (cap 2 + 4 = 6), the underfoot field thirsty - the sow branch is
+    // closed, so the drive reaches for the can. (Under the cap it sows FIRST - per-stage watering
     // keeps some field thirsty almost always, and a water-first farmer would never expand the plot.)
     const field = fieldAt(sim, farm, 4, 4);
     fieldAt(sim, farm, 3, 3, { watered: true });
@@ -183,7 +183,7 @@ describe('planFarmer — the drive ladder', () => {
   });
 
   it("the plot cap is the FARM's, not the crew's: a second farmer does not enlarge it", () => {
-    // Measured in the original: a farm holds the same ~24 plants whether one farmer or four work it —
+    // Measured in the original: a farm holds the same ~24 plants whether one farmer or four work it -
     // extra hands turn the plot over faster, they never widen it. Track the PEAK standing-field count,
     // since per-stage watering keeps the roster churning below the cap.
     const peakFields = (crew: number): number => {
@@ -206,7 +206,7 @@ describe('planFarmer — the drive ladder', () => {
   it('a spawned farmer is farm-bound, NOT a flag gatherer (no auto work flag)', () => {
     // The spawn auto-plant (`syncWorkFlagToJob`) flags every job that can harvest a FLAG-GATHERED
     // good; the farmer's only harvestable good is FIELD-FARMED (a `farming` block), so it must stay
-    // flagless — a flag would hijack every sheaf delivery to the flag instead of the farm's store.
+    // flagless - a flag would hijack every sheaf delivery to the flag instead of the farm's store.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     sim.enqueue({ kind: 'spawnSettler', jobType: FARMER, x: 8, y: 8, tribe: VIKING });
     sim.run(1);
@@ -244,7 +244,7 @@ describe('planFarmer — the drive ladder', () => {
     ];
     const farmer = farmerAt(sim, 4, 4, farm); // standing at the farm's own cell (the door)
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(farmer, components.Resting)).toBe(true); // went inside — no loitering
+    expect(sim.world.has(farmer, components.Resting)).toBe(true); // went inside - no loitering
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
 
     // A field turns thirsty → the very next plan leaves the house for the can.

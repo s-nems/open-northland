@@ -11,7 +11,7 @@ clips). Two consumers of that data exist today:
   `byAtomicSound` map (id → group chosen in code, not from the event's value).
 - Gossip chat voices (`systems/social/gossip/`) ship the fully faithful shape: the sim emits
   `chatVoice { soundType }` at the clip's cue frame and audio resolves the group through
-  `SoundIndex.groupsByLogicSoundType` — no hand binding.
+  `SoundIndex.groupsByLogicSoundType` - no hand binding.
 
 The remaining action SFX (woodcutter chop, miner pick, …) still fire on `atomicCompleted` (swing END)
 through hand `byAtomic` bindings, and the `atomicSound` emission is still gated to the `construct`
@@ -26,10 +26,10 @@ effect and carries no sound id.
 - Audio resolves `soundType` via `groupsByLogicSoundType` first; the `byAtomic`/`byAtomicSound` hand
   bindings become the fallback for clips without a cue, and entries the data now covers are deleted
   (so nothing double-fires at completion).
-- `chatVoice` then folds into the generalized event (one shape, one emitter) — keep its fog gate.
-- Mind repeats: a multi-swing harvest fires its cue once per swing — the engine's per-key debounce
+- `chatVoice` then folds into the generalized event (one shape, one emitter) - keep its fog gate.
+- Mind repeats: a multi-swing harvest fires its cue once per swing - the engine's per-key debounce
   should keep bursts sane (verify with the woodcutter loop).
-- Sandbox parity: the sandbox chop/mining animations (`atomic-animations.ts`) carry no events — add
+- Sandbox parity: the sandbox chop/mining animations (`atomic-animations.ts`) carry no events - add
   their transcribed `event <at> 34` (scaled by each clip's render cadence, like BUILD_HOUSE_STRIKE_FRAME)
   so `?scene=sandbox` sounds on-beat, not just real-map mode.
 

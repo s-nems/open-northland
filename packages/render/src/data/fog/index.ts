@@ -1,5 +1,5 @@
 /**
- * The fog folder: the render side of fog-of-war — the per-cell mask reads and washes the sim's `FogView`
+ * The fog folder: the render side of fog-of-war - the per-cell mask reads and washes the sim's `FogView`
  * feeds ({@link import('./mask.js')}), and the remembered-statics ghost store built on top of them
  * ({@link import('./ghosts.js')}). Pure math, no Pixi.
  */

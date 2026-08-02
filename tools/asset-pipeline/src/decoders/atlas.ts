@@ -1,15 +1,15 @@
 /**
- * Bob atlas packer — turns a decoded `.bmd` (CBobManager) bob set into one RGBA atlas image plus a
+ * Bob atlas packer - turns a decoded `.bmd` (CBobManager) bob set into one RGBA atlas image plus a
  * JSON-serializable manifest of per-bob frame rects + metadata.
  *
- * A `.bmd` has no atlas/anim layout of its own — it is a flat array of bobs ({type, area, misc});
+ * A `.bmd` has no atlas/anim layout of its own - it is a flat array of bobs ({type, area, misc});
  * animation grouping lives outside it (the `.ini`/`tribetypes` `setatomic` bindings reference bob ids,
  * joined in a later stage). So the manifest is a per-bob frame table, one entry per bob id; empty /
  * zero-size bobs get a 0×0 rect so a consumer can still index every bob id without a gap.
  *
  * Packing is a deterministic top-left shelf/row packer (frames placed left→right into rows of a fixed
  * max width, wrapping when the row is full), with a 1px transparent gutter so bilinear sampling can't
- * bleed neighbours. Simple, not optimal — a stable layout keeps manifests reproducible. Index 0 is a
+ * bleed neighbours. Simple, not optimal - a stable layout keeps manifests reproducible. Index 0 is a
  * real palette colour for bobs (not a reserved colour-key), so alpha
  * comes from each frame's `mask`, never from the index.
  *
@@ -49,7 +49,7 @@ export interface AtlasManifest {
   readonly width: number;
   readonly height: number;
   readonly frames: readonly AtlasFrame[];
-  /** Present (`true`) when a `'build-time'` bake emitted the sibling `<stem>.build.png` time sheet —
+  /** Present (`true`) when a `'build-time'` bake emitted the sibling `<stem>.build.png` time sheet -
    *  the renderer's cue to fetch it for the per-pixel construction reveal. */
   readonly build?: true;
 }
@@ -58,7 +58,7 @@ export interface AtlasManifest {
 export interface BobAtlas {
   readonly image: RgbaImage;
   readonly manifest: AtlasManifest;
-  /** The `'build-time'` bake's second sheet — same placement as {@link image}, grayscale build-progress
+  /** The `'build-time'` bake's second sheet - same placement as {@link image}, grayscale build-progress
    *  thresholds (see {@link expandBobFrameTime}). Absent for a `'per-pixel'` bake. */
   readonly timeImage?: RgbaImage;
 }
@@ -77,7 +77,7 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
 
 /**
  * Expands one decoded {@link BobFrame} into an indexed RGBA image: the palette index in the red
- * channel, `mask` in alpha, green/blue left 0. No palette is applied — the colour is deferred to the
+ * channel, `mask` in alpha, green/blue left 0. No palette is applied - the colour is deferred to the
  * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). The
  * alternative to {@link expandBobFrame} for the character bodies, whose clothing band is recoloured per
  * player at draw time.
@@ -115,7 +115,7 @@ interface PreparedFrame {
   readonly width: number;
   readonly height: number;
   readonly image: RgbaImage | undefined;
-  /** The frame's build-progress plane — only on a `'build-time'` bake (same size as {@link image}). */
+  /** The frame's build-progress plane - only on a `'build-time'` bake (same size as {@link image}). */
   readonly timeImage: RgbaImage | undefined;
   readonly opaque: boolean;
 }
@@ -123,12 +123,12 @@ interface PreparedFrame {
 /**
  * How an atlas interprets a Double8Bit pair's second byte ({@link import('./bmd/index.js').SecondByteMode}):
  *
- *  - `'per-pixel'` — the byte is coverage and rides into the sheet's alpha as-is: Double8Bit decals
+ *  - `'per-pixel'` - the byte is coverage and rides into the sheet's alpha as-is: Double8Bit decals
  *    (ferns, smoke, wave foam) keep their authored feathered translucency. The engine's alpha blit
  *    is the model, based on measured alpha distributions in decoded frames.
- *  - `'build-time'` — the byte is a 0–255 construction-progress threshold, not coverage. Pinned by
+ *  - `'build-time'` - the byte is a 0–255 construction-progress threshold, not coverage. Pinned by
  *    measurement on the `[GfxHouse]` bobs: it spans ~0–255 and is strongly row-correlated bottom-up
- *    (foundation low, roof high; ≈100 mean across solid walls — read as alpha, the original's solid
+ *    (foundation low, roof high; ≈100 mean across solid walls - read as alpha, the original's solid
  *    buildings would draw as 40% ghosts). Every written pixel bakes fully opaque into the colour
  *    sheet (the engine's plain finished-building `PrintBob` blit), and the thresholds bake into a
  *    second, same-placement grayscale sheet ({@link BobAtlas.timeImage}) for the renderer's per-pixel
@@ -140,7 +140,7 @@ export type AtlasAlphaMode = 'per-pixel' | 'build-time';
 export interface PackBobAtlasOptions {
   /** Shelf-packer wrap width (default {@link DEFAULT_ATLAS_MAX_WIDTH}). */
   readonly maxWidth?: number;
-  /** Alpha bake mode (default `'per-pixel'` — see {@link AtlasAlphaMode}). */
+  /** Alpha bake mode (default `'per-pixel'` - see {@link AtlasAlphaMode}). */
   readonly alpha?: AtlasAlphaMode;
 }
 
@@ -159,7 +159,7 @@ export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtla
 
 /**
  * The build-progress plane of a `'time'`-decoded {@link BobFrame}: R=G=B = the pixel's 0–255 threshold
- * ({@link BobFrame.time}), alpha 255 where written and 0 elsewhere — grayscale, so the emitted
+ * ({@link BobFrame.time}), alpha 255 where written and 0 elsewhere - grayscale, so the emitted
  * `<stem>.build.png` is inspectable by eye (dark foundation → bright roof).
  */
 function expandBobFrameTime(frame: BobFrame): RgbaImage {
@@ -179,8 +179,8 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
 
 /**
  * The baked alpha of a shadow-atlas pixel. The exact high-colour blend of the original's shadow blit
- * is not pinned (OpenVikings simplifies it); cultures2-wasm — the reimplementation whose output was
- * matched against the running original — bakes a shadow frame's pixels as `rgba(0,0,0,0x50)`
+ * is not pinned (OpenVikings simplifies it); cultures2-wasm - the reimplementation whose output was
+ * matched against the running original - bakes a shadow frame's pixels as `rgba(0,0,0,0x50)`
  * (`src/bmd.rs`, `frame_type == 2`), so this adopts that observed parity value. Note its older
  * cultures2-gl TypeScript path disagrees, baking `0x80` (`src/cultures/bmd.ts`). A named
  * approximation; one knob to retune.
@@ -189,7 +189,7 @@ export const SHADOW_ALPHA = 0x50;
 
 /**
  * Expands one decoded {@link BobFrame} into a shadow plane: every written pixel is black at
- * {@link SHADOW_ALPHA} (a shadow bob is a solid 1-bit silhouette — see `BOB_TYPE_1BIT`'s pure-RLE
+ * {@link SHADOW_ALPHA} (a shadow bob is a solid 1-bit silhouette - see `BOB_TYPE_1BIT`'s pure-RLE
  * coverage), unwritten pixels fully transparent. No palette: the darkening is the blit's, not the art's.
  */
 function expandBobFrameShadow(frame: BobFrame): RgbaImage {
@@ -203,7 +203,7 @@ function expandBobFrameShadow(frame: BobFrame): RgbaImage {
 }
 
 /**
- * Packs every bob of a shadow `.bmd` (the `GfxBobLibs`/`shadowlib` second value — 1-bit silhouette
+ * Packs every bob of a shadow `.bmd` (the `GfxBobLibs`/`shadowlib` second value - 1-bit silhouette
  * masks paralleling the body bob ids) into one atlas of pre-baked black-at-{@link SHADOW_ALPHA}
  * silhouettes, so the renderer draws a cast shadow as a plain batched sprite instead of a
  * blend-mode blit.
@@ -213,7 +213,7 @@ export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
 }
 
 /**
- * Packs every bob into an indexed atlas (palette index in red, mask in alpha) — the
+ * Packs every bob into an indexed atlas (palette index in red, mask in alpha) - the
  * {@link expandBobFrameIndexed} twin of {@link packBobAtlas}. Placement + manifest are byte-identical to
  * the RGB atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share
  * frame geometry; only the pixel channels differ.

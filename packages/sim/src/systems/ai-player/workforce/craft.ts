@@ -8,7 +8,7 @@ import { goodTypeByContentId, ownedSettlers } from '../shared.js';
 
 /** Product restrictions per workplace, by stable content ids (user plan 2026-07-25, extended
  *  2026-07-26: the joinery crafts iron tools only, and the level-2 pottery alternates brick and roof
- *  tile — the building materials the plan consumes; its crockery is of no interest to the seat). */
+ *  tile - the building materials the plan consumes; its crockery is of no interest to the seat). */
 export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly string[]>> = {
   work_joinery_01: ['tool_iron'],
   work_pottery_01: ['brick', 'tile'],
@@ -17,10 +17,10 @@ export const CRAFT_RESTRICTIONS_BY_BUILDING_ID: Readonly<Record<string, readonly
 /**
  * Craft tuning (claims no men): keep every operator of a restricted workplace on the plan's product
  * list. `CraftSelection` is per WORKER, not per building, and any employment change clears it
- * (`reidleAsJob`), so the check must run every decision — but the command is issued only when the
+ * (`reidleAsJob`), so the check must run every decision - but the command is issued only when the
  * live selection differs (`goods` is stored ascending/deduped, so exact array equality is the
  * comparison). Restricted goods the workplace's recipes cannot make are dropped, and an empty
- * result issues nothing — `setCraftGoods []` would mean "every product", the opposite of a
+ * result issues nothing - `setCraftGoods []` would mean "every product", the opposite of a
  * restriction. A worker assigned THIS decision has no binding yet and is picked up next decision.
  */
 export function tuneCraftSelections(world: World, ctx: SystemContext, player: number): Command[] {

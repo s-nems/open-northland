@@ -1,7 +1,7 @@
 import { contains, type Rect } from '../../geometry.js';
 
 /**
- * The tabbed-list window model — a titled parchment window with a tab grid over a scrollable,
+ * The tabbed-list window model - a titled parchment window with a tab grid over a scrollable,
  * row-quantized list, resolved from a screen origin + scale (pure, no Pixi/DOM). The build menu and the
  * goods drop palette are the same window with a different tab source and row projector, so their
  * metrics, scale handling and hit precedence live here once and cannot drift apart.
@@ -21,20 +21,20 @@ export const ROW_H = 20;
 /** A small gap between the tab grid and the list, so the tabs read as a header for it. */
 const LIST_GAP = 3;
 const CLOSE = 13;
-/** The scrollbar gutter width — reserved on the right only when the list overflows the viewport. */
+/** The scrollbar gutter width - reserved on the right only when the list overflows the viewport. */
 const SCROLLBAR_W = 8;
 /** Minimum scrollbar-thumb length so a long list's thumb stays grabbable. */
 const THUMB_MIN = 12;
 /** The width seed, not a laid-out size: the column the widest tab label must clear ("Wszystko" = 55
  *  native px in font10) plus padding. Actual tabs are `contentWidth / tabColumns` wide. */
 const TAB_COLUMN_W = 62;
-/** How many seed columns the window holds — the build menu's five categories, its widest tab grid. */
+/** How many seed columns the window holds - the build menu's five categories, its widest tab grid. */
 const WIDTH_COLUMNS = 5;
 /** Every tabbed-list window is this wide whatever its own tab count (the grid divides the content
  *  width), so the pop-ups read as one window wherever they open. */
 const WINDOW_W = WIDTH_COLUMNS * TAB_COLUMN_W + 2 * PAD;
 
-/** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide — the controller sizes
+/** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide - the controller sizes
  *  the viewport from it, so the two can't disagree about how many rows fit the screen. */
 export function chromeAboveList(tabCount: number, tabColumns: number): number {
   return HEADLINE_H + Math.ceil(tabCount / tabColumns) * TAB_H + LIST_GAP;
@@ -120,7 +120,7 @@ export function layoutTabbedList<Id, Item>(
   // Fractional scale, matching every other HUD surface: `buildToolPanelLayout` clamps `?uiscale=` to ≥1
   // and keeps the fraction (the strip art is supersampled to it), so a window that snapped to an integer
   // here would draw at a visibly different size beside the strip. An internal-consistency choice, not an
-  // original-behavior finding — the original's own scaling rule is undecoded.
+  // original-behavior finding - the original's own scaling rule is undecoded.
   const s = Math.max(1, opts.scale);
   const { originX, originY, selected, items, tabColumns } = opts;
   const px = (v: number): number => Math.round(v * s);

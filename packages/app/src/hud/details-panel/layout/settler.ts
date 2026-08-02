@@ -12,11 +12,11 @@ import {
 } from './settler-equipment.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
-/** The settler selection model — the `layoutSettler` input narrowed off the panel model union. */
+/** The settler selection model - the `layoutSettler` input narrowed off the panel model union. */
 type SettlerModel = Extract<UnitPanelModel, { kind: 'settler' }>;
 
 /**
- * The settler panel's portrait box (Ogólne, left) — a square, smaller than the building's 183 px preview
+ * The settler panel's portrait box (Ogólne, left) - a square, smaller than the building's 183 px preview
  * so the name + stat bars sit beside it in the right column (measured against the original's human window).
  */
 const SETTLER_PREVIEW = 96;
@@ -28,7 +28,7 @@ const SETTLER_META_H = 14;
 const BAR_ROW_H = 13;
 /** Text rows the fixed Praca body reserves. */
 const WORK_ROWS = 2;
-/** Diameter of the small round "przydziel miejsce pracy" button — left-aligned under the gather row, with
+/** Diameter of the small round "przydziel miejsce pracy" button - left-aligned under the gather row, with
  *  its description to its right. */
 const ASSIGN_ICON = 20;
 /** Gap between the Praca text rows and the assign row when there are no gather buttons above it. */
@@ -51,7 +51,7 @@ export interface GatherChoiceHit {
   readonly rect: Rect;
 }
 
-/** A craft operator's product toggle — the multi-select twin of {@link GatherChoiceHit} (same round
+/** A craft operator's product toggle - the multi-select twin of {@link GatherChoiceHit} (same round
  *  button grid; a settler shows one block or the other, never both). */
 export interface CraftChoiceHit {
   readonly goodType: number;
@@ -62,9 +62,9 @@ export interface CraftChoiceHit {
 }
 
 /**
- * The settler view: the original's stacked human-window sections — Ogólne (portrait + name + meta + stat
+ * The settler view: the original's stacked human-window sections - Ogólne (portrait + name + meta + stat
  * bars), Praca (workplace + product), Doświadczenie (highest specialization), Ekwipunek (labeled slot
- * rows) — laid out like the building's section stack.
+ * rows) - laid out like the building's section stack.
  */
 export interface SettlerLayout {
   readonly kind: 'settler';
@@ -80,30 +80,30 @@ export interface SettlerLayout {
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
-  /** The "przydziel miejsce pracy" hit target — the round button disc only (its `enabled` tracks
+  /** The "przydziel miejsce pracy" hit target - the round button disc only (its `enabled` tracks
    *  `canAssignWorkplace`), so hover/click/tooltip stay on the control, not the label. Equals {@link assignIcon}. */
   readonly assignButton: ButtonHit;
   /** The small round assign button, left-aligned under the gather row (the drawn control). */
   readonly assignIcon: Rect;
   /** The assign row's description column, right of the round button ("Przydziel miejsce pracy"). */
   readonly assignLabel: Rect;
-  /** The "przypisz dom" hit target under the assign row — same shape as {@link assignButton}. */
+  /** The "przypisz dom" hit target under the assign row - same shape as {@link assignButton}. */
   readonly homeButton: ButtonHit;
   /** The small round assign-home button (the drawn control). Equals {@link homeButton}'s rect. */
   readonly homeIcon: Rect;
   /** The assign-home row's description column ("Przypisz dom"). */
   readonly homeLabel: Rect;
-  /** The "usuń z domu" hit target under the assign-home row — same shape as {@link homeButton}. */
+  /** The "usuń z domu" hit target under the assign-home row - same shape as {@link homeButton}. */
   readonly unassignButton: ButtonHit;
   /** The small round remove-from-home button (the drawn control). Equals {@link unassignButton}'s rect. */
   readonly unassignIcon: Rect;
   /** The remove-from-home row's description column ("Usuń z domu"). */
   readonly unassignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
-  /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
+  /** The craft product toggles (exclusive with {@link gatherChoiceHits} - same grid slot). */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
-  /** The Doświadczenie body's text rows — one per `model.experience` entry (empty when untrained). */
+  /** The Doświadczenie body's text rows - one per `model.experience` entry (empty when untrained). */
   readonly expRows: readonly Rect[];
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
@@ -197,7 +197,7 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
-  // Round choice buttons hugging the left edge, wrapping across the body width (gather or craft —
+  // Round choice buttons hugging the left edge, wrapping across the body width (gather or craft -
   // the same grid, whichever list the model filled).
   const gatherTop = work.body.y + WORK_ROWS * rowH + gatherTopGap;
   const choiceRect = (i: number): Rect => ({
@@ -217,7 +217,7 @@ export function layoutSettler(
     rect: choiceRect(i),
   }));
   // The assign row: the small round button on the left (aligned under the gather buttons), its description
-  // to the right. Only the round button is the hit target — hover/click/tooltip stay on the control, so
+  // to the right. Only the round button is the hit target - hover/click/tooltip stay on the control, so
   // pointing at the label text doesn't light the button.
   const assignTop = (hasGather ? gatherTop + gatherBlockH : work.body.y + WORK_ROWS * rowH) + preAssignGap;
   const assignIcon: Rect = {
@@ -237,12 +237,12 @@ export function layoutSettler(
     enabled: model.canAssignWorkplace,
     rect: assignIcon,
   };
-  // The assign-home row, directly below — the residential twin (same geometry, one row down).
+  // The assign-home row, directly below - the residential twin (same geometry, one row down).
   const homeTop = assignTop + assignIconSize + assignRowGap;
   const homeIcon: Rect = { x: work.body.x, y: homeTop, w: assignIconSize, h: assignIconSize };
   const homeLabel: Rect = { x: assignLabel.x, y: homeTop, w: assignLabel.w, h: assignIconSize };
   const homeButton: ButtonHit = { action: 'assign-home', enabled: model.canAssignHome, rect: homeIcon };
-  // The remove-from-home row below it — the inverse control, one more row down.
+  // The remove-from-home row below it - the inverse control, one more row down.
   const unassignTop = homeTop + assignIconSize + assignRowGap;
   const unassignIcon: Rect = { x: work.body.x, y: unassignTop, w: assignIconSize, h: assignIconSize };
   const unassignLabel: Rect = { x: assignLabel.x, y: unassignTop, w: assignLabel.w, h: assignIconSize };

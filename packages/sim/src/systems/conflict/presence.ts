@@ -19,9 +19,9 @@ interface PresenceCell {
 }
 
 /**
- * A per-tick coarse count grid over the combatants — the CombatSystem's idle early-out (golden
+ * A per-tick coarse count grid over the combatants - the CombatSystem's idle early-out (golden
  * rule 6): an owned seeker asks "could any combatant I don't own be within my search radius?" in
- * O(coarse cells) before paying the full ring search. Perf-only and conservative — the query
+ * O(coarse cells) before paying the full ring search. Perf-only and conservative - the query
  * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and "not mine
  * minus passive wildlife" ⊇ every gated accept filter, because those all route hostility through
  * the owner-first `mayTarget` relation, whose neutral axis admits an unowned animal only when
@@ -56,9 +56,9 @@ export class HostilePresence {
 
   constructor(
     world: World,
-    /** Classifies an unowned animal combatant: `'passive'` (non-hostile-now — discounted from
+    /** Classifies an unowned animal combatant: `'passive'` (non-hostile-now - discounted from
      *  `othersWithin`, so a map of grazing herds cannot defeat every gated seeker's early-out) or
-     *  `'hostile'` (aggressive/angry — additionally discounted from `civsWithin`, so a wolf pack
+     *  `'hostile'` (aggressive/angry - additionally discounted from `civsWithin`, so a wolf pack
      *  cannot defeat its own members' early-out); `null` for everything else. */
     wildClassOf?: (e: Entity) => 'passive' | 'hostile' | null,
   ) {
@@ -68,7 +68,7 @@ export class HostilePresence {
 
   /**
    * Whether any combatant not owned by `player` (another player's unit, or any unowned one) might
-   * lie within Manhattan `radius` of node (hx, hy) — checked over the coarse cells intersecting the
+   * lie within Manhattan `radius` of node (hx, hy) - checked over the coarse cells intersecting the
    * covering Chebyshev box. `false` is a proof of absence; `true` only means "run the real search".
    */
   othersWithin(player: number, hx: number, hy: number, radius: number): boolean {
@@ -88,8 +88,8 @@ export class HostilePresence {
   }
 
   /**
-   * Whether any CIVILIZATION combatant (owned or unowned — everything that is not classified wildlife)
-   * might lie within Manhattan `radius` of node (hx, hy) — the hostile-animal seeker's early-out twin of
+   * Whether any CIVILIZATION combatant (owned or unowned - everything that is not classified wildlife)
+   * might lie within Manhattan `radius` of node (hx, hy) - the hostile-animal seeker's early-out twin of
    * {@link othersWithin} (a wild animal's only valid targets are civilization settlers). Same
    * conservative Chebyshev-box over-approximation; `false` proves the ring search would find nothing.
    */

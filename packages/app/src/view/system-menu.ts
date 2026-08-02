@@ -2,7 +2,7 @@ import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '
 import { messages } from '../i18n/index.js';
 
 export interface SystemMenu {
-  /** Show the menu if hidden, hide it if shown — the tool panel's `options` button drives this. */
+  /** Show the menu if hidden, hide it if shown - the tool panel's `options` button drives this. */
   toggle(): void;
   /** Remove the overlay from the DOM (the owning game session's teardown). */
   dispose(): void;
@@ -48,7 +48,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   const backdrop = document.createElement('div');
   // Visibility is driven through `display` (not the `hidden` attribute): the centring `display:grid`
-  // below is an inline style, which outranks the UA `[hidden]{display:none}` rule — so `hidden` alone
+  // below is an inline style, which outranks the UA `[hidden]{display:none}` rule - so `hidden` alone
   // would never take. `none` ⇄ `grid` is the real toggle.
   Object.assign(backdrop.style, {
     position: 'fixed',
@@ -57,7 +57,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     placeItems: 'center',
     background: 'rgba(0,0,0,0.45)',
     // Above the Pixi canvas and the DOM perf/admin overlays (z 50/150/160); a peer of the hover
-    // tooltips (also 2000), which is moot while open — the full-viewport backdrop eats canvas pointer
+    // tooltips (also 2000), which is moot while open - the full-viewport backdrop eats canvas pointer
     // events, so no canvas-driven tooltip fires behind it.
     zIndex: '2000',
   });
@@ -104,7 +104,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     backdrop.style.display = 'none';
   };
   close.addEventListener('click', hide);
-  // A click on the dimmed backdrop (outside the panel) also closes — standard dismissable-overlay feel.
+  // A click on the dimmed backdrop (outside the panel) also closes - standard dismissable-overlay feel.
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) hide();
   });

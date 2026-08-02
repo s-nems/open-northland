@@ -96,7 +96,7 @@ export interface AtlasManifestFrame {
 }
 
 /**
- * The on-disk atlas manifest shape — the JSON a `.bmd`→atlas build writes alongside the atlas PNG.
+ * The on-disk atlas manifest shape - the JSON a `.bmd`→atlas build writes alongside the atlas PNG.
  * Re-declared structurally so `render` parses it into a {@link SpriteAtlas} without importing the
  * build tool.
  */
@@ -105,13 +105,13 @@ export interface AtlasManifest {
   readonly height: number;
   readonly frames: readonly AtlasManifestFrame[];
   /** `true` when the build emitted a sibling `<stem>.build.png` time sheet (a `'build-time'` house
-   *  bake) — the loader's cue to fetch it into a {@link BuildTimeSheet}. */
+   *  bake) - the loader's cue to fetch it into a {@link BuildTimeSheet}. */
   readonly build?: boolean;
 }
 
 /**
  * CPU-side copy of an atlas's build-progress time sheet (the `'build-time'` bake's `<stem>.build.png`):
- * row-major 0–255 per-pixel thresholds over the whole sheet, sampled at atlas coordinates — a pixel
+ * row-major 0–255 per-pixel thresholds over the whole sheet, sampled at atlas coordinates - a pixel
  * first appears when construction progress reaches its threshold (the original's time-mask byte).
  * Values at transparent atlas pixels are meaningless
  * (the colour sheet's alpha already gates them).

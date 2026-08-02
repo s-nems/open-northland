@@ -10,7 +10,7 @@ import {
 } from '../src/hud/tool-panel/tabbed-list/index.js';
 
 /**
- * The shared tabbed-list window model — the one layout + hit-test the build menu and the goods drop
+ * The shared tabbed-list window model - the one layout + hit-test the build menu and the goods drop
  * palette are both built from. The last block is the regression that motivated sharing it: the two
  * windows must resolve `?uiscale=` identically, so the strip reads as one scale.
  */
@@ -148,7 +148,7 @@ describe('tabbed-list scale', () => {
       const build = layoutOf(buildingTabbedList(BUILDINGS), scale);
       const goods = layoutOf(goodsTabbedList(GOODS), scale);
       expect(goods.scale).toBe(build.scale);
-      expect(goods.scale).toBe(scale); // the fraction survives — this is what the goods palette floored
+      expect(goods.scale).toBe(scale); // the fraction survives - this is what the goods palette floored
       expect(goods.window.w).toBe(build.window.w);
       expect(goods.titleRect.h).toBe(build.titleRect.h);
       expect(goods.closeRect.w).toBe(build.closeRect.w);

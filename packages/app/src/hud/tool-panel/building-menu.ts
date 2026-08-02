@@ -2,13 +2,13 @@ import { messages } from '../../i18n/index.js';
 import type { TabbedListSource } from './tabbed-list/index.js';
 
 /**
- * The building-menu model — categories, filtering, and the tabbed-list source the pop-up draws from
+ * The building-menu model - categories, filtering, and the tabbed-list source the pop-up draws from
  * (pure, no Pixi/DOM). The window itself is the shared `tabbed-list` window.
  *
  * The original build window ("Zbuduj Okno") groups buildings under five category tabs whose labels come
  * from the ingamegui `miscwindow` string table (ids 2–6): "Wszystko / Praca / Magazyn / Dom / Wojsko".
  * The category a building falls under is its `logichousetype` `logicmaintype` (1=stock, 2=home, 3=work,
- * 4=training, 5=tower), which the pipeline extracts losslessly as the building `kind` — so the derivation
+ * 4=training, 5=tower), which the pipeline extracts losslessly as the building `kind` - so the derivation
  * below is data-pinned, not a guess. Only the fold of maintypes 4 (training) + 5 (tower) into the one
  * "Wojsko" tab is our reconstruction (the original's tab→maintype binding isn't decoded); see source basis.
  */

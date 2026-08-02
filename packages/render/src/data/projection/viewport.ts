@@ -2,7 +2,7 @@ import { clamp } from '../math.js';
 import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
- * The pure viewport-culling math — the "what is on screen" half of drawing a large world, kept out of
+ * The pure viewport-culling math - the "what is on screen" half of drawing a large world, kept out of
  * the GPU so it is unit-testable without a screen. The retained
  * {@link import('../../gpu/world-renderer/index.js').WorldRenderer} calls these to skip entities/terrain outside
  * the camera, so a 256×256 map only pays for the tiles a player can see; when fully zoomed out
@@ -10,11 +10,11 @@ import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
  *
  * No Pixi, no canvas: a {@link Camera} (`screen = world*scale + offset`) + the canvas size in, a
  * world-space rectangle / tile band out. `import type { Camera }` is erased at build, so this stays a
- * dependency-light pure module (never pulls Pixi in). Floats are fine — this is `render`.
+ * dependency-light pure module (never pulls Pixi in). Floats are fine - this is `render`.
  */
 
 /**
- * A world-space (pre-camera) axis-aligned rectangle — the slice of the projected iso plane the camera
+ * A world-space (pre-camera) axis-aligned rectangle - the slice of the projected iso plane the camera
  * currently frames. Everything drawn lives in this space (the camera transform is the world layer's own
  * scale+position), so a draw item is visible iff its screen anchor falls inside this rect.
  */
@@ -58,7 +58,7 @@ export interface Box {
 }
 
 /**
- * Whether an axis-aligned world-space `box` overlaps the viewport — the block-cull primitive the
+ * Whether an axis-aligned world-space `box` overlaps the viewport - the block-cull primitive the
  * terrain and map-object layers share (a chunk/block is drawn iff its AABB meets the framed rect).
  * Touching edges count as visible. Any slack is baked into the box's own bounds by the caller.
  * `Viewport` is itself a {@link Box}, so this doubles as a rect-rect test.
@@ -67,7 +67,7 @@ export function aabbIntersects(vp: Viewport, box: Box): boolean {
   return box.maxX >= vp.minX && box.minX <= vp.maxX && box.maxY >= vp.minY && box.minY <= vp.maxY;
 }
 
-/** A closed tile band (inclusive `min` AND inclusive `max`) clamped to the grid — a chunk-cull rectangle. */
+/** A closed tile band (inclusive `min` AND inclusive `max`) clamped to the grid - a chunk-cull rectangle. */
 export interface TileRange {
   readonly minCol: number;
   readonly maxCol: number;
@@ -78,9 +78,9 @@ export interface TileRange {
 /**
  * The visible `(col,row)` band for the staggered raster: invert {@link tileToScreen}
  * (`x = (2·col + parity)·HALF_W`, `y = row·HALF_H`) over the world rect. The projection is
- * axis-aligned, so the band is a straight interval per axis — a cell's diamond reaches `±HALF_W`
+ * axis-aligned, so the band is a straight interval per axis - a cell's diamond reaches `±HALF_W`
  * around a centre whose x lies in `[2c·HALF_W, (2c+1)·HALF_W]` (the parity shift), and `±HALF_H`
- * (a full row step — diamonds interlock across rows) around `y = row·HALF_H`. Pad by `tileMargin`
+ * (a full row step - diamonds interlock across rows) around `y = row·HALF_H`. Pad by `tileMargin`
  * tiles and clamp to `[0,gridW-1]×[0,gridH-1]`. Feeds terrain chunk visibility (a chunk is drawn
  * iff its tile AABB intersects this band).
  */

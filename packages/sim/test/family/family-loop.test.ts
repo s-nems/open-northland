@@ -37,7 +37,7 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GAME-LEVEL (e2e) — the marriage → household → child loop under the real `Simulation.step()`
+ * GAME-LEVEL (e2e) - the marriage → household → child loop under the real `Simulation.step()`
  * schedule: a `marry` order pairs the woman with the nearest eligible man (walk together, kiss,
  * marry for life); `assignHouse` moves the family into a built home; `makeChild` has the wife stock
  * the home with {@link CHILD_FOOD_UNITS} food (reserved from eating), wait inside for her husband,
@@ -49,7 +49,7 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 const VIKING = 1;
 const PLAYER = 0;
-const FOOD = 16; // slug `food_simple` — the `food_` prefix is what makes it edible (isFood)
+const FOOD = 16; // slug `food_simple` - the `food_` prefix is what makes it edible (isFood)
 const WOMAN = 5;
 const CIVILIST = 6;
 const SOLDIER = 31;
@@ -100,7 +100,7 @@ function familySim(seed: number): {
   sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 2, y: 0, tribe: VIKING, owner: PLAYER });
   sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 16, y: 0, tribe: VIKING, owner: PLAYER });
-  // Loose food on the ground — the external source the wife hauls the child fund from.
+  // Loose food on the ground - the external source the wife hauls the child fund from.
   sim.enqueue({ kind: 'dropGood', good: FOOD, x: 4, y: 2, amount: 3 });
   sim.step(); // apply the setup commands
   const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
@@ -137,7 +137,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // ── Marry: the woman seeks; the pair walks together, kisses, and carries mirrored Marriages.
     sim.enqueue({ kind: 'marry', entity: woman() });
     // The ceremony fires only from ADJACENT lattice nodes (nodesAdjacent, Chebyshev 1): catch it
-    // mid-kiss on this straight-row approach and pin the range — a pair one full cell apart along a
+    // mid-kiss on this straight-row approach and pin the range - a pair one full cell apart along a
     // row (2 nodes) must take the extra hop before kissing, never kiss across the gap.
     const kissRunning = (e: Entity): boolean => {
       const atomicId = sim.world.tryGet(e, CurrentAtomic)?.atomicId;
@@ -161,7 +161,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
       (ev) =>
         ev.kind === 'atomicCompleted' && (ev.atomicId === KISS_ATOMIC_ID || ev.atomicId === KISSED_ATOMIC_ID),
     );
-    expect(kisses.length).toBe(2); // one kiss, one kissed — the paired ceremony
+    expect(kisses.length).toBe(2); // one kiss, one kissed - the paired ceremony
     expect(sim.world.get(woman(), Marriage).spouse).toBe(man());
     expect(sim.world.get(man(), Marriage).spouse).toBe(woman());
     expect(sim.world.has(woman(), Wedding)).toBe(false);
@@ -215,7 +215,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 
   it('marrying after one spouse is already housed moves the other in (co-housed as one household)', () => {
     // User report 2026-07-17: assigning a woman to a house while she is still single, then marrying
-    // her, left the husband unhoused — the home stayed a one-person household (door dot read single)
+    // her, left the husband unhoused - the home stayed a one-person household (door dot read single)
     // and makeChild never saw the couple together. Marriage now co-houses the pair.
     const { sim, woman, man, home } = familySim(23);
     sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
@@ -242,12 +242,12 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const woman = settlers.find((e) => sim.world.get(e, Settler).jobType === WOMAN) as Entity;
     sim.enqueue({ kind: 'marry', entity: woman });
     for (let i = 0; i < 20; i++) sim.step();
-    // The only man is a soldier (on a mission) — nobody to marry, the order dissolved into nothing.
+    // The only man is a soldier (on a mission) - nobody to marry, the order dissolved into nothing.
     expect(sim.world.has(woman, Wedding)).toBe(false);
     expect(sim.world.has(woman, Marriage)).toBe(false);
   });
 
-  it('a barracks recruit may not marry — the drill would strand the bride', () => {
+  it('a barracks recruit may not marry - the drill would strand the bride', () => {
     const { sim, woman, man, home } = familySim(41);
     expect(findPartnerFor(sim.world, sim.content, woman(), sim.terrain, null)).toBe(man());
     // Committed to a drill the man is a soldier-to-be, even though his trade is civilian mid-walk:
@@ -263,7 +263,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
     sim.enqueue({ kind: 'debugKill', target: man() });
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
-    expect(sim.world.has(woman(), Marriage)).toBe(false); // widowed — free to remarry
+    expect(sim.world.has(woman(), Marriage)).toBe(false); // widowed - free to remarry
   });
 
   it('a widowed parent keeps the Marriage (the parent-child edge) until the child grows up', () => {
@@ -277,7 +277,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const child = sim.world.get(woman(), Marriage).child as Entity;
     sim.enqueue({ kind: 'debugKill', target: man() });
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
-    // Widowed mid-raising: the Marriage survives as the carrier of the parent-child edge — the family
+    // Widowed mid-raising: the Marriage survives as the carrier of the parent-child edge - the family
     // still moves as one household, and the widow may not remarry yet.
     expect(sim.world.has(woman(), Marriage)).toBe(true);
     expect(familyOf(sim.world, woman())).toEqual([woman(), child]);
@@ -299,7 +299,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'debugKill', target: woman() });
     runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
     // Wife dead, no growing child: the lone man is widowed AND evicted, so the home slot is free for
-    // a new family (familiesOf empty — assignHouse now finds a slot).
+    // a new family (familiesOf empty - assignHouse now finds a slot).
     expect(sim.world.has(man(), Marriage)).toBe(false);
     expect(sim.world.has(man(), Residence)).toBe(false);
     expect(familiesOf(sim.world, home())).toHaveLength(0);
@@ -317,7 +317,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 
     sim.enqueue({ kind: 'debugKill', target: woman() });
     runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
-    // Widowed mid-raising: the man keeps the Marriage (parent-child edge) and his home — the family
+    // Widowed mid-raising: the man keeps the Marriage (parent-child edge) and his home - the family
     // lives on as one household until the child grows up, so the slot stays occupied.
     expect(sim.world.has(man(), Marriage)).toBe(true);
     expect(sim.world.get(man(), Residence).home).toBe(home());
@@ -415,10 +415,10 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const stranger = [...sim.world.query(Settler)][0] as Entity;
     const home = homeOf(sim);
     sim.world.get(home, Stockpile).amounts.set(FOOD, 2);
-    // Starve the stranger: hungry beside a stocked home he does NOT live in — he never eats from it.
+    // Starve the stranger: hungry beside a stocked home he does NOT live in - he never eats from it.
     sim.enqueue({ kind: 'debugSetNeeds', target: stranger, hunger: 100 });
     for (let i = 0; i < 60; i++) sim.step();
-    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2); // untouched — not his larder
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(2); // untouched - not his larder
     expect(sim.world.get(stranger, Settler).hunger).toBe(ONE); // still starving (no other food)
     // Move him in: now it IS his larder and he eats.
     sim.enqueue({ kind: 'assignHouse', entity: stranger, house: home });
@@ -428,13 +428,13 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 
   it('a hungry wife feeds herself before waiting, then bears the child (no home↔store starvation loop)', () => {
     // User report (AI player, 2026-07-18): a wife with the child fund stocked but no other reachable
-    // food starved in a loop — the child order dragged her home every tick while the eat drive dragged
+    // food starved in a loop - the child order dragged her home every tick while the eat drive dragged
     // her to the distant store, so she reached neither and never conceived. She now eats first.
     const sim = new Simulation({ seed: 4, content: familyContent(), map: grassMap(60, 4) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
     sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 10, y: 1, tribe: VIKING, owner: PLAYER });
     sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 11, y: 1, tribe: VIKING, owner: PLAYER });
-    // The only food outside the home is a warehouse across the map — a long walk from the couple.
+    // The only food outside the home is a warehouse across the map - a long walk from the couple.
     sim.enqueue({ kind: 'placeBuilding', buildingType: WAREHOUSE, x: 54, y: 2, tribe: VIKING });
     sim.step();
     const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
@@ -485,7 +485,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'assignHouse', entity: man(), house: home() });
     sim.step();
     expect(sim.world.get(woman(), Residence).home).toBe(home());
-    expect(sim.world.get(man(), Residence).home).toBe(home()); // not her family — its own slot
+    expect(sim.world.get(man(), Residence).home).toBe(home()); // not her family - its own slot
     // Two more singles: the third slot fills, the fourth family is refused.
     sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 20, y: 0, tribe: VIKING, owner: PLAYER });
     sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 22, y: 0, tribe: VIKING, owner: PLAYER });
@@ -516,14 +516,14 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(man(), Residence).home).toBe(home());
     expect(familiesOf(sim.world, home())).toHaveLength(1);
 
-    // One command on either spouse moves the whole household out — both lose Residence, the slot frees.
+    // One command on either spouse moves the whole household out - both lose Residence, the slot frees.
     sim.enqueue({ kind: 'unassignHouse', entity: man() });
     sim.step();
     expect(sim.world.has(woman(), Residence)).toBe(false);
     expect(sim.world.has(man(), Residence)).toBe(false);
     expect(familiesOf(sim.world, home())).toHaveLength(0);
 
-    // The freed home takes a family again — assignHouse refills exactly what unassignHouse emptied.
+    // The freed home takes a family again - assignHouse refills exactly what unassignHouse emptied.
     sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
     sim.step();
     expect(sim.world.get(woman(), Residence).home).toBe(home());
@@ -550,7 +550,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     expect(sim.world.get(minor, Residence).home).toBe(home()); // the adult gate held
 
-    // A never-created id: unorderable issuer, skipped — the housed woman stays put.
+    // A never-created id: unorderable issuer, skipped - the housed woman stays put.
     sim.enqueue({ kind: 'unassignHouse', entity: 9999 as Entity });
     sim.step();
     expect(sim.world.get(woman(), Residence).home).toBe(home());
@@ -559,7 +559,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
   it('two order-holding couples in one home take turns: both bear a child, neither cancels the other', () => {
     // Regression (user report 2026-07-16): MakingLove was keyed on the home with no owner, so the second
     // couple's order saw "hearts but MY spouses aren't inside" and cancelled the first couple's session
-    // every tick — both couples entered, instantly stepped back out, and no child was ever born.
+    // every tick - both couples entered, instantly stepped back out, and no child was ever born.
     const sim = new Simulation({ seed: 21, content: familyContent(), map: grassMap(28, 4) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
     for (const [job, x] of [
@@ -589,7 +589,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     // The larder holds one full child fund: the couples must conceive one AFTER the other.
     sim.world.get(home, Stockpile).amounts.set(FOOD, 3);
     runUntil(sim, () => sim.world.get(wifeA, Marriage).child !== null, 4000, 'first birth');
-    expect(sim.world.get(wifeB, Marriage).child).toBeNull(); // one fund, one session — B still waits
+    expect(sim.world.get(wifeB, Marriage).child).toBeNull(); // one fund, one session - B still waits
     // Restock: the second couple's turn.
     sim.world.get(home, Stockpile).amounts.set(FOOD, 3);
     runUntil(sim, () => sim.world.get(wifeB, Marriage).child !== null, 4000, 'second birth');
@@ -607,9 +607,9 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
   it('a housewife hoards: with a home and no child order she stocks the larder to capacity', () => {
     const { sim, woman, home } = familySim(17);
     sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
-    // The ground pile holds 3 food and the larder caps at 5 — she hauls everything reachable home.
+    // The ground pile holds 3 food and the larder caps at 5 - she hauls everything reachable home.
     runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 3, 2000, 'hoarding');
-    expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this — the hoard rung did
+    expect(sim.world.has(woman(), ChildOrder)).toBe(false); // no order drove this - the hoard rung did
   });
 
   it('a hoarding wife whose route to the nearest pile failed hauls from the second pile instead', () => {
@@ -626,13 +626,13 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     const n = nodeOfPosition(p.x, p.y);
     noteUnreachableGoal(sim.world, ctxOf(sim), woman(), sim.terrain.nodeAtClamped(n.hx, n.hy));
 
-    // Her first haul lands from the far pile while the near one stays untouched — the memo read in
+    // Her first haul lands from the far pile while the near one stays untouched - the memo read in
     // the family food search, not just the economy picks (the fetch walks the pile's own cell).
     runUntil(sim, () => (sim.world.get(home(), Stockpile).amounts.get(FOOD) ?? 0) >= 1, 2000, 'far haul');
     expect(sim.world.get(near, Stockpile).amounts.get(FOOD)).toBe(3);
   });
 
-  it('is deterministic — two same-seed full-loop runs reach the same final state hash', () => {
+  it('is deterministic - two same-seed full-loop runs reach the same final state hash', () => {
     const run = (): string => {
       const { sim, woman, home } = familySim(9);
       sim.enqueue({ kind: 'marry', entity: woman() });

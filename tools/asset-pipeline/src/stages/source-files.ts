@@ -32,7 +32,7 @@ const ATLAS_SOURCE_RE = /\.(bmd|pcx)$/;
  * `join` would miss on a case-sensitive filesystem; this map bridges the two. Read the bytes from
  * `SourceFile.path` (the winning layer) and write derived files beside `SourceFile.rel` under `--out`.
  *
- * Built once after the unpack stage and threaded into every consumer — it walks every layer in full,
+ * Built once after the unpack stage and threaded into every consumer - it walks every layer in full,
  * which no per-lookup resolution could afford.
  */
 export async function indexSourceAssets(roots: SourceRoots): Promise<SourceAssetIndex> {

@@ -4,7 +4,7 @@ import { Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassMap, storeAt, WOOD, woodAt, woodcutterAt } from './support.js';
 
-describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the real schedule', () => {
+describe('atomicPlanner - end-to-end harvest -> carry -> pileup through the real schedule', () => {
   it('a woodcutter walks to wood, harvests, walks to the store, and piles it up', () => {
     // Layout on a 1-row grass strip: cutter at 0, wood at 1, store at 2 (short hops keep it fast).
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
@@ -43,7 +43,7 @@ describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the re
     for (let i = 0; i < 600; i++) sim.step();
 
     // A drained single-unit node is now REMOVED (Step 4), not left as a `remaining:0` husk the planner
-    // would re-scan forever — the collector picked its last unit off the back and it vanished.
+    // would re-scan forever - the collector picked its last unit off the back and it vanished.
     expect(sim.world.has(node, Resource)).toBe(false);
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD)).toBe(3); // and exactly its 3 units stored
     expect(sim.world.has(cutter, Carrying)).toBe(false); // cutter is unloaded, nothing left to take

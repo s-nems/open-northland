@@ -31,7 +31,7 @@ import { spawnMapResources } from '../src/game/sandbox/map-spawn.js';
 const { Resource, MineDeposit } = components;
 
 /** Every mined good against the `LogicMaximumValency` and `[landscapetype]` its real `ls_ground` records
- *  author — the mines are all 5 units, stone's rocks come in both 4- and 5-unit variants. Gold and iron
+ *  author - the mines are all 5 units, stone's rocks come in both 4- and 5-unit variants. Gold and iron
  *  are the ones whose ladders disagreed while a deposit was sized from the catalog instead. */
 const MINES = [
   { id: 'stone', good: GOOD_STONE, logicType: 15, states: 4 },
@@ -60,7 +60,7 @@ function mineFixture(id: string, logicType: number, states: number) {
     objects: { types: [editName], placements: levels.flatMap((_, i) => [2 * i + 2, 4, 0]), levels },
     ir: {
       landscapeGfx: [{ index: 50, editName, logicType, maxValency: states, frames: mineRecord(states) }],
-      // `goodType` is the IR's own numbering, which this join ignores — it bridges on `goodId`.
+      // `goodType` is the IR's own numbering, which this join ignores - it bridges on `goodId`.
       gatheringPipeline: [
         { goodType: 0, goodId: id, harvest: { landscapeType: logicType, gfxIndices: [50] } },
       ],

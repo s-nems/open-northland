@@ -9,12 +9,12 @@ import type { BuildingBobRow } from '../ir/rows.js';
  */
 
 /**
- * The decoded tree atlas bound to the `resource` kind — `ls_trees.bmd` recoloured with the `tree_yew01`
+ * The decoded tree atlas bound to the `resource` kind - `ls_trees.bmd` recoloured with the `tree_yew01`
  * palette, the `[GfxLandscape] "yew 01"` record's binding from `landscapes.cif` (the
  * `extractLandscapeGraphics` leg). It lives in its own frame-id space (493 bobs, distinct from the human
  * body bobs), so it binds as a per-kind {@link import('@open-northland/render').SpriteSheet.kindLayers} layer,
  * not the shared body atlas. {@link TREE_BOB} 60 is that record's first full-grown frame (a 101×111 tree
- * anchored at its base) — a deliberate first pick a human eyeballs and we swap to taste (source basis "Tree bob").
+ * anchored at its base) - a deliberate first pick a human eyeballs and we swap to taste (source basis "Tree bob").
  */
 export const TREE_ATLAS = 'ls_trees.tree_yew01';
 export const TREE_BOB = 60;
@@ -28,19 +28,19 @@ const HOUSE_BMD = 'ls_houses_viking.bmd';
 const HOUSE_PALETTE = 'house01';
 
 /**
- * The decoded building atlas bound to the `building` kind — `ls_houses_viking.bmd` recoloured with the
+ * The decoded building atlas bound to the `building` kind - `ls_houses_viking.bmd` recoloured with the
  * `house01` palette (the `[GfxHouse]` viking records from the mod's `budynki12/houses/houses.ini`). Like
  * the tree it lives in its own frame-id space (135 bobs), so it binds as a per-kind
  * {@link import('@open-northland/render').SpriteSheet.kindLayers} layer, not the shared body atlas.
  * {@link HOUSE_BOB} 11 is the "viking home" record's first finished growth stage (213×198 anchored at its
- * base) — a taste constant to swap to a bigger growth stage (source basis "Building bob"), serving only as
+ * base) - a taste constant to swap to a bigger growth stage (source basis "Building bob"), serving only as
  * the render-side `BuildingTypeBinding.default` fallback for a type with no `buildingBobs` row; real viking
  * types bind their own bob through {@link BUILDING_FAMILIES}.
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
 /**
- * Render scale for the building kind — native (1), like every other bob: the tile pitch (`iso.ts`) is
+ * Render scale for the building kind - native (1), like every other bob: the tile pitch (`iso.ts`) is
  * calibrated to the art, so the authored bob size is already correct against the terrain. Decoded bob sizes
  * differ a lot (well 63×88, home 299×340), so the uniform scale preserves their real relative proportions.
  * Kept as a named knob a human may nudge (source basis).
@@ -68,7 +68,7 @@ export const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
 export const VIKING_TRIBE = 1;
 
 /**
- * The default building atlas family — the single `ls_houses_viking.house01` layer drawn as
+ * The default building atlas family - the single `ls_houses_viking.house01` layer drawn as
  * {@link import('@open-northland/render').SpriteSheet.kindLayers}'s `building`. Its `(bmd, palette)`
  * identity tells {@link buildingBobRefsByType} which canonical rows draw from that shared layer (a bare
  * bob id) versus a named {@link import('@open-northland/render').SpriteSheet.families} layer (a `{ layer, bob }`).
@@ -79,15 +79,15 @@ export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HO
  * The served atlas stems (`<bmd-stem>.<palette>`) = {@link import('@open-northland/render').SpriteSheet.families}
  * keys for the named viking building families loaded beside the default `ls_houses_viking.house01`. Two are
  * sibling `.bmd`s on the `house01` skin (`viking2`/`viking3`); two are a different palette on a shared
- * `.bmd` — `housemiller01` recolours `ls_houses_viking.bmd` (the mill) and `housedruid01` recolours
- * `ls_houses_viking4.bmd` (the herb hut + temple) — so the served stem is `<bmd>.<palette>`, not `<bmd>.house01`.
+ * `.bmd` - `housemiller01` recolours `ls_houses_viking.bmd` (the mill) and `housedruid01` recolours
+ * `ls_houses_viking4.bmd` (the herb hut + temple) - so the served stem is `<bmd>.<palette>`, not `<bmd>.house01`.
  */
 const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
 const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
 const VIKING3_HOUSE01 = 'ls_houses_viking3.house01';
 const VIKING_MILLER01 = 'ls_houses_viking.housemiller01';
 const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
-// The `house02` skin — the last viking building types otherwise on the fallback house: stock (typeIds
+// The `house02` skin - the last viking building types otherwise on the fallback house: stock (typeIds
 // 7/8/9) recolours `ls_houses_viking.bmd`, brewery (16) + coin mint (33) recolour `ls_houses_viking2.bmd`.
 const VIKING_HOUSE02 = 'ls_houses_viking.house02';
 const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
@@ -103,7 +103,7 @@ export interface BuildingFamily {
 }
 
 /**
- * The named building-family atlases loaded beside the default one — each a separate decoded
+ * The named building-family atlases loaded beside the default one - each a separate decoded
  * `ls_houses_*.bmd` × palette PNG with its own frame-id space, registered in
  * {@link import('@open-northland/render').SpriteSheet.families} under `layer` (= the served atlas stem). A
  * family must be both listed here and loaded in
@@ -123,16 +123,16 @@ export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
 
 /**
  * The SOURCES-pinned canonical `EditName` for a viking `typeId` whose `(tribe, typeId)` maps to several
- * bobs that are not a recolour/level variant — it disambiguates which bob is the building. The HQ
+ * bobs that are not a recolour/level variant - it disambiguates which bob is the building. The HQ
  * (typeId 1) is `ls_houses_viking4.bmd` bob 34 `"viking headquarters"` (bob 44 is the alt
- * `"viking headquarters house"`) — docs/SOURCES.md "Building graphics families". A typeId with no entry
+ * `"viking headquarters house"`) - docs/SOURCES.md "Building graphics families". A typeId with no entry
  * here falls through to the deterministic palette → max-level → lowest-bob tiebreak.
  */
 export const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
   1: 'viking headquarters',
 };
 
-/** The trailing path component of a (possibly slash-normalized) `bmd` path — `data/x/ls_houses_viking4.bmd` → `ls_houses_viking4.bmd`. */
+/** The trailing path component of a (possibly slash-normalized) `bmd` path - `data/x/ls_houses_viking4.bmd` → `ls_houses_viking4.bmd`. */
 function bmdBasename(bmd: string): string {
   const slash = bmd.lastIndexOf('/');
   return slash === -1 ? bmd : bmd.slice(slash + 1);
@@ -140,7 +140,7 @@ function bmdBasename(bmd: string): string {
 
 /**
  * Group a decoded gfx-join's rows by typeId, keeping only this tribe's (and, when `keep` is given, only
- * the rows it passes — the construction reduction drops the upgrade-overlay rows). Insertion order is
+ * the rows it passes - the construction reduction drops the upgrade-overlay rows). Insertion order is
  * preserved so the per-type reductions stay deterministic.
  */
 export function rowsByType<T extends { tribeId: number; typeId: number }>(
@@ -158,7 +158,7 @@ export function rowsByType<T extends { tribeId: number; typeId: number }>(
   return byType;
 }
 
-/** Restrict a type's rows to those in the preferred (loaded) palette when any exist, else keep them all —
+/** Restrict a type's rows to those in the preferred (loaded) palette when any exist, else keep them all -
  *  the "bind the skin we actually draw" rule the per-type reducers share. */
 export function preferredPalettePool<T extends { paletteName: string }>(
   rows: readonly T[],
@@ -171,12 +171,12 @@ export function preferredPalettePool<T extends { paletteName: string }>(
 /**
  * Pick the single canonical `buildingBobs` row for one `typeId` from its candidate rows (already filtered
  * to the tribe + typeId), deterministically and insertion-order-independently:
- *  1. **Palette preference** — restrict to rows in {@link preferredPalette} (the loaded `house01` skin)
+ *  1. **Palette preference** - restrict to rows in {@link preferredPalette} (the loaded `house01` skin)
  *     when any exist, so a type present in several recolour skins binds the skin we actually draw.
- *  2. **`editName` disambiguation** — when {@link CANONICAL_EDIT_NAME} names this typeId (the HQ →
+ *  2. **`editName` disambiguation** - when {@link CANONICAL_EDIT_NAME} names this typeId (the HQ →
  *     `"viking headquarters"`), restrict to rows whose `editName` matches, picking the building over a
  *     variant (`"viking headquarters house"`); a no-op for the typeIds without an entry.
- *  3. **Tiebreak** — highest `level` (the growth chain is distinct typeIds, so level is usually constant;
+ *  3. **Tiebreak** - highest `level` (the growth chain is distinct typeIds, so level is usually constant;
  *     this resolves lumped dupes + any future multi-level typeId), then lowest `bobId`.
  */
 function pickCanonicalBuildingRow(
@@ -200,7 +200,7 @@ function pickCanonicalBuildingRow(
 }
 
 /**
- * Resolve a row's `(bmd, palette)` to the atlas family it draws from — the shared no-wrong-bob-borrow
+ * Resolve a row's `(bmd, palette)` to the atlas family it draws from - the shared no-wrong-bob-borrow
  * rule of {@link buildingBobRefsByType} and {@link import('./construction.js').constructionRefsByType}:
  * `{}` = the default building layer (a bare-id ref), `{ layer }` = a loaded named family (a
  * layer-qualified ref), `null` = an unloaded family the caller must drop, because the renderer would fall
@@ -222,7 +222,7 @@ export function familyLayerFor(
 /**
  * Reduce the decoded `buildingBobs` join to the render's per-type bob binding for one tribe across the
  * loaded atlas families: for each `(tribeId, typeId)` it picks the canonical row
- * ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef} — a bare bob id from the
+ * ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef} - a bare bob id from the
  * {@link defaultFamily}'s shared `ls_houses_viking.house01` layer, or a layer-qualified `{ layer, bob }`
  * from a loaded named {@link families} atlas (e.g. the HQ in `ls_houses_viking4.house01`). A row whose
  * family is neither is dropped ({@link familyLayerFor}), degrading that typeId to

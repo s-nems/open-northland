@@ -5,7 +5,7 @@ import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
-describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
+describe('atomicSystem - end-to-end: harvest -> carry -> pileup', () => {
   it('a settler harvests wood then piles it up at a store via two atomics', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
@@ -31,7 +31,7 @@ describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
   });
 });
 
-describe('atomicSystem — determinism', () => {
+describe('atomicSystem - determinism', () => {
   it('two same-seed runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: testContent() });

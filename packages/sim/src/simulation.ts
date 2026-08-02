@@ -42,12 +42,12 @@ export interface SimOptions {
   map?: TerrainMap;
 }
 
-/** Wraps one system invocation for timing (see {@link Simulation.setInstrument}) — observational only. */
+/** Wraps one system invocation for timing (see {@link Simulation.setInstrument}) - observational only. */
 export type SystemInstrument = (name: string, run: () => void) => void;
 
 /**
  * The simulation: owns the world, the RNG, and the system schedule. Advance one deterministic
- * tick with `step()`. No rendering, no I/O — see docs/ECS.md.
+ * tick with `step()`. No rendering, no I/O - see docs/ECS.md.
  *
  * The read seams ({@link snapshot}, {@link placementProbe}, {@link constructionPlots},
  * {@link needsEnabled}, {@link fogMode}, {@link fogView}) are the sanctioned way the app and render
@@ -61,12 +61,12 @@ export class Simulation {
   /**
    * The terrain cell-adjacency graph (navigation/placement), or undefined for a mapless sim. Built
    * once at construction from `opts.map` so per-tick lookups are pure array reads. A world resource,
-   * not entities — it isn't hashed (immutable input, like content), so it never affects determinism.
+   * not entities - it isn't hashed (immutable input, like content), so it never affects determinism.
    */
   readonly terrain?: TerrainGraph;
   /**
    * The per-player fog-of-war masks (see systems/vision), or undefined for a mapless sim. A MUTABLE
-   * world resource like the RNG (the VisionSystem rebuilds it on its cadence) — unlike the immutable
+   * world resource like the RNG (the VisionSystem rebuilds it on its cadence) - unlike the immutable
    * terrain it IS simulated state (combat gates read it), so {@link hashState} mixes its bytes in after
    * the components. Inert (empty, zero cost) while the fog mode is OFF.
    */
@@ -103,7 +103,7 @@ export class Simulation {
   }
 
   /**
-   * Install (or clear) the per-system instrumentation hook — the timing seam for the app's perf
+   * Install (or clear) the per-system instrumentation hook - the timing seam for the app's perf
    * marks and the bench harness. The hook wraps each system invocation and MUST call `run` exactly
    * once and stay hands-off otherwise (it gets no world/ctx access); the timer itself lives in the
    * caller, keeping `performance.now` out of sim src (the hygiene scan). Purely observational, so
@@ -114,7 +114,7 @@ export class Simulation {
   }
 
   /**
-   * Queue a serializable command — the only way to mutate sim state from outside once the sim is
+   * Queue a serializable command - the only way to mutate sim state from outside once the sim is
    * ticking. It is applied (and appended to the command log) by CommandSystem on the next `step()`.
    * The UI, strategic AI, and replay tools go through here; only authored pre-tick-0 setup writes to
    * {@link world} directly (see {@link commands}).
@@ -164,7 +164,7 @@ export class Simulation {
    * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the fixed
    * timestep may not have stepped, and re-cloning an unchanged world each frame was a large share of a real
    * map's frame cost. The memo is reused while the tick and the World's {@link World.mutationVersion} are
-   * unchanged (any `create`/`add`/`remove`/`destroy`/`write` — e.g. a pre-tick-0 fixture spawn — bumps it).
+   * unchanged (any `create`/`add`/`remove`/`destroy`/`write` - e.g. a pre-tick-0 fixture spawn - bumps it).
    * A monotonic counter, not the touched log's emptiness, so a direct external `takeSnapshot` draining the
    * log between two same-tick snapshots cannot make this serve a stale view. A store write that bypasses
    * `World.write` between same-tick snapshots is the one blind spot; sim systems only mutate inside
@@ -183,7 +183,7 @@ export class Simulation {
   }
 
   /**
-   * A buildability test for one building type — the read seam the app's build-mode overlay probes per
+   * A buildability test for one building type - the read seam the app's build-mode overlay probes per
    * visible tile to grey out where a click would be rejected. Reads the same rule the `placeBuilding`
    * command gates on ({@link canPlaceBuilding}). The world's obstacle sets are memoized per
    * {@link placementBlockerVersion}, so the once-per-frame probe build re-scans the world only when a
@@ -196,7 +196,7 @@ export class Simulation {
   }
 
   /**
-   * The version of the placement-blocker inputs — an opaque token that changes only when a building or
+   * The version of the placement-blocker inputs - an opaque token that changes only when a building or
    * resource (or its footprint) is added or removed (see {@link placementBlockerVersion}). The
    * build-mode overlay keys its memoized band probe on this instead of the tick, so a still camera over
    * a running sim reuses last frame's blocked set instead of re-probing the whole visible node band
@@ -207,7 +207,7 @@ export class Simulation {
   }
 
   /**
-   * An erectability test for one player's signposts — the read seam the signpost placement overlay
+   * An erectability test for one player's signposts - the read seam the signpost placement overlay
    * probes per visible node, mirroring {@link placementProbe}. Reads the same rule the erect command
    * gates on ({@link canPlaceSignpost}): open work-flag ground outside the player's spacing circles.
    * Memoized on {@link signpostBlockerVersion} like its building twin, since the app asks per RAF frame
@@ -218,7 +218,7 @@ export class Simulation {
   }
 
   /**
-   * The version of the signpost-probe inputs — {@link placementBlockerVersion} plus the work-flag
+   * The version of the signpost-probe inputs - {@link placementBlockerVersion} plus the work-flag
    * generation (flags block signpost cells but not buildings). The signpost overlay's memo key.
    */
   signpostBlockerVersion(): string {
@@ -226,7 +226,7 @@ export class Simulation {
   }
 
   /**
-   * The ground plots of every under-construction building — its footprint body cells, for the render's
+   * The ground plots of every under-construction building - its footprint body cells, for the render's
    * grey "construction site" decal (see {@link constructionSitePlots}). Empty when nothing is under
    * construction.
    */
@@ -278,10 +278,10 @@ export class Simulation {
   }
 
   /**
-   * The fog-of-war read view for one viewer player — the seam the render (terrain wash, sprite cull,
+   * The fog-of-war read view for one viewer player - the seam the render (terrain wash, sprite cull,
    * minimap) consumes. `stateAt` answers the effective `FOG_STATE` of a cell (RECON's known-terrain view
    * rule applied); `generation` bumps only when the masks actually rebuilt, so a render layer re-composites
-   * on it instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless — the
+   * on it instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless - the
    * caller then draws no fog at all.
    */
   fogView(player: number): FogView | null {
@@ -301,7 +301,7 @@ export class Simulation {
   /**
    * A canonical hash of ALL simulation state for determinism golden tests: tick, RNG state, and
    * every registered component on every alive entity, in canonical (ascending) order, then the fog
-   * masks. If two runs from the same seed + inputs diverge in ANY hashed field, this changes — which
+   * masks. If two runs from the same seed + inputs diverge in ANY hashed field, this changes - which
    * is the point.
    */
   hashState(): string {
@@ -309,7 +309,7 @@ export class Simulation {
   }
 }
 
-/** The inputs a fresh run starts from — what {@link simFor} needs to build a {@link Simulation}. */
+/** The inputs a fresh run starts from - what {@link simFor} needs to build a {@link Simulation}. */
 export interface SimInputs {
   readonly content: ContentSet;
   readonly seed: number;
@@ -317,7 +317,7 @@ export interface SimInputs {
 }
 
 /**
- * Build the fresh {@link Simulation} a run starts from — the one place that knows `map` must be OMITTED
+ * Build the fresh {@link Simulation} a run starts from - the one place that knows `map` must be OMITTED
  * rather than set to `undefined` under `exactOptionalPropertyTypes` (tsconfig.base.json), since the
  * Simulation builds its terrain graph iff the key is present. Callers may pass `map: undefined`.
  */

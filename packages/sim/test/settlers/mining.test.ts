@@ -19,19 +19,19 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * MINERAL DEPOSITS — SHRINK BY LEVEL, DROP ORE TO GROUND (historical plan phase 3, gathering Step 4). A mined
+ * MINERAL DEPOSITS - SHRINK BY LEVEL, DROP ORE TO GROUND (historical plan phase 3, gathering Step 4). A mined
  * good (stone/iron/gold/clay) is a {@link MineDeposit}: the collector chips it ONE unit at a time, each
  * completed harvest atomic dropping one unit at the deposit's cell as a bare {@link GroundDrop} ore pile
- * (the same on-the-ground shape a felled trunk takes) — NOT onto the back — while the deposit stays,
+ * (the same on-the-ground shape a felled trunk takes) - NOT onto the back - while the deposit stays,
  * draining by one, until its last unit is chipped, when the node is REMOVED (and `resourceDepleted`
  * fires). A collector then carries the ore off via the unchanged pickup/porter/delivery machinery.
  * Goods are conserved: a deposit of N units yields exactly N ore, no dupes or losses.
  *
- * The trivial DIRECT pickup (a mushroom — a bare node with no `MineDeposit`) is the counter-case: one
+ * The trivial DIRECT pickup (a mushroom - a bare node with no `MineDeposit`) is the counter-case: one
  * harvest lands the unit straight on the back and the node is removed.
  *
  * The calibration (deposit size + levels) comes from CONTENT (the stone good's `gathering.depositSize`/
- * `depositLevels`, OBSERVED — source basis), read here so the tests carry no magic literals.
+ * `depositLevels`, OBSERVED - source basis), read here so the tests carry no magic literals.
  */
 
 const STONE = 4; // fixture good: a MINED deposit (gathering.depositSize > 0)
@@ -41,7 +41,7 @@ const VIKING = 1;
 const HARVEST_STONE = 25;
 const HARVEST_MUSHROOM = 32;
 
-// The deposit spec the sim stamps onto a mined node — read from the fixture, not hardcoded.
+// The deposit spec the sim stamps onto a mined node - read from the fixture, not hardcoded.
 const STONE_GATHERING = testContent().goods.find((g) => g.id === 'stone')?.gathering;
 const DEPOSIT_SIZE = STONE_GATHERING?.depositSize ?? 0;
 const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
@@ -93,7 +93,7 @@ function oreDrops(sim: Simulation): Entity[] {
 }
 
 /** Total materialised stone in the world: every stockpile's stone + every carried stone load. The
- *  conservation yardstick — a deposit of N units yields exactly N stone, no more, no less. */
+ *  conservation yardstick - a deposit of N units yields exactly N stone, no more, no less. */
 function totalStone(sim: Simulation): number {
   let total = 0;
   for (const e of sim.world.query(Stockpile)) total += sim.world.get(e, Stockpile).amounts.get(STONE) ?? 0;
@@ -104,7 +104,7 @@ function totalStone(sim: Simulation): number {
   return total;
 }
 
-describe('mining — chipping a deposit', () => {
+describe('mining - chipping a deposit', () => {
   it('the fixture pins a real deposit spec (size + levels both positive)', () => {
     expect(DEPOSIT_SIZE).toBeGreaterThan(0);
     expect(DEPOSIT_LEVELS).toBeGreaterThan(0);
@@ -158,7 +158,7 @@ describe('mining — chipping a deposit', () => {
     sim.events.clear();
     harvestOnce(sim, miner, deposit, STONE, HARVEST_STONE); // the exhausting chip
 
-    // The deposit is GONE — the planner never re-scans a spent deposit (the removal path Step 5 hooks).
+    // The deposit is GONE - the planner never re-scans a spent deposit (the removal path Step 5 hooks).
     expect(sim.world.has(deposit, Resource)).toBe(false);
     expect(sim.world.has(deposit, MineDeposit)).toBe(false);
     // Exactly the deposit's size lies as ore piles, conserved (no dupes/losses across the whole drain).
@@ -176,10 +176,10 @@ describe('mining — chipping a deposit', () => {
     });
   });
 
-  it('a chip on an already-exhausted (gone) deposit yields nothing — the swing struck air (conserved)', () => {
+  it('a chip on an already-exhausted (gone) deposit yields nothing - the swing struck air (conserved)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const miner = makeMiner(sim, 0, 0);
-    const gone = sim.world.create(); // never given a Resource — the deposit was removed already
+    const gone = sim.world.create(); // never given a Resource - the deposit was removed already
 
     harvestOnce(sim, miner, gone, STONE, HARVEST_STONE);
 
@@ -189,13 +189,13 @@ describe('mining — chipping a deposit', () => {
   });
 });
 
-describe('mining — a trained swing advances multiple strikes (the work-credit path)', () => {
+describe('mining - a trained swing advances multiple strikes (the work-credit path)', () => {
   const WOOD = 1;
-  const WOODCUTTER = 1; // fixture job with a wood track (typeId 1, factor 10) — a MASTER swings double
+  const WOODCUTTER = 1; // fixture job with a wood track (typeId 1, factor 10) - a MASTER swings double
   const WOOD_MASTERY_XP = 1000; // 100 repeats at factor 10 → work-speed bonus ONE
 
   /** A mastered woodcutter and a WOOD-typed 3-strikes-per-unit deposit (the markers, not the good,
-   *  decide the harvest shape — a wood deposit is legal and reuses the trained wood track). */
+   *  decide the harvest shape - a wood deposit is legal and reuses the trained wood track). */
   const trainedMinerScene = (units: number, strikesPerUnit?: number) => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const master = makeMiner(sim, 0, 0);
@@ -214,10 +214,10 @@ describe('mining — a trained swing advances multiple strikes (the work-credit 
 
   it('carries the counter across swings, frees the unit mid-count, and releases with the remainder banked', () => {
     const { sim, master, node } = trainedMinerScene(4, 3);
-    harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // +2 strikes: 2 of 3 — no unit yet
+    harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // +2 strikes: 2 of 3 - no unit yet
     expect(sim.world.get(node, MineDeposit).strikes).toBe(2);
     expect(oreDrops(sim)).toHaveLength(0);
-    expect(sim.world.has(master, CurrentAtomic)).toBe(true); // mid-unit — the swing chains
+    expect(sim.world.has(master, CurrentAtomic)).toBe(true); // mid-unit - the swing chains
 
     // The next swing crosses the unit boundary (2 + 2 = 4 of 3): one unit freed, remainder 1 banked on
     // the node, and the settler is RELEASED to haul the ore despite the counter being non-zero.
@@ -229,17 +229,17 @@ describe('mining — a trained swing advances multiple strikes (the work-credit 
   });
 
   it('a freed count beyond the deposit clamps to what remains (no conjured ore)', () => {
-    const { sim, master, node } = trainedMinerScene(1); // no strikesPerUnit — every swing frees a unit
+    const { sim, master, node } = trainedMinerScene(1); // no strikesPerUnit - every swing frees a unit
     harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // a double swing against a single unit
     expect(oreDrops(sim)).toHaveLength(1);
     expect(sim.world.has(node, Resource)).toBe(false); // depleted and removed, exactly one unit dropped
   });
 });
 
-describe('mining — the mushroom direct-pickup variant', () => {
+describe('mining - the mushroom direct-pickup variant', () => {
   it('a bare node (no MineDeposit) yields one unit onto the back, is removed, and emits resourceDepleted', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // A single mushroom: a bare Resource of one unit, no MineDeposit — the trivial direct pickup.
+    // A single mushroom: a bare Resource of one unit, no MineDeposit - the trivial direct pickup.
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: MUSHROOM, remaining: 1, harvestAtomic: HARVEST_MUSHROOM });
@@ -258,9 +258,9 @@ describe('mining — the mushroom direct-pickup variant', () => {
   });
 });
 
-describe('mining — end-to-end through the real schedule', () => {
+describe('mining - end-to-end through the real schedule', () => {
   it('a miner chips a deposit dry, delivers every unit to the store, and the node is gone; goods conserved', () => {
-    // Strip: miner@0, a stone deposit@3, a warehouse store@4 (a real typed store — a delivery sink must
+    // Strip: miner@0, a stone deposit@3, a warehouse store@4 (a real typed store - a delivery sink must
     // be a Building/Vehicle, never a bare loose pile).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
     makeMiner(sim, 0, 0);

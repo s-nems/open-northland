@@ -14,7 +14,7 @@ import {
   WOMAN,
 } from '../support.js';
 
-describe('atomicSystem — the attacker pays the swing need-drain on completion', () => {
+describe('atomicSystem - the attacker pays the swing need-drain on completion', () => {
   it('a soldier swing drains rest + hunger by the animation deltas (−20 each → same bar rise)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
@@ -29,7 +29,7 @@ describe('atomicSystem — the attacker pays the swing need-drain on completion'
     expect(sim.world.get(attacker, Settler).hunger).toBe(expected);
   });
 
-  it('a woman swing drains 5× as much (−100 each) — the relative magnitude is faithful', () => {
+  it('a woman swing drains 5× as much (−100 each) - the relative magnitude is faithful', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOMAN);
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
@@ -40,6 +40,6 @@ describe('atomicSystem — the attacker pays the swing need-drain on completion'
     const soldierRise = fx.div(fx.fromInt(20), fx.fromInt(10_000));
     const womanRise = fx.div(fx.fromInt(100), fx.fromInt(10_000));
     expect(sim.world.get(attacker, Settler).fatigue).toBe(womanRise);
-    expect(womanRise).toBe(soldierRise * 5); // a woman's swing costs 5× a soldier's — the data ratio
+    expect(womanRise).toBe(soldierRise * 5); // a woman's swing costs 5× a soldier's - the data ratio
   });
 });

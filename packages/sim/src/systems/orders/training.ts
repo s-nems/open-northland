@@ -20,12 +20,12 @@ import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**
- * Send one owned settler to drill at a barracks — see the command doc. The handler validates and stamps
+ * Send one owned settler to drill at a barracks - see the command doc. The handler validates and stamps
  * the {@link TrainingOrder} errand; the planner's drill rung (`settlers/drives/training.ts`) walks it out.
  * Authoritative like the employment orders: the current action, route, player walk and construction-crew
  * membership are dropped so the recruit sets off this tick and its site stops counting it.
  *
- * The house must be a standing same-tribe, same-side barracks whose door is open to the settler — the same
+ * The house must be a standing same-tribe, same-side barracks whose door is open to the settler - the same
  * confinement `assignWorker` applies, plus the failed-goal memo the drill rung itself reads, so an order
  * the rung would abandon next tick is refused instead of accepted and then dropped. Re-issuing the same
  * order is a no-op rather than a restart: a double right-click must not silently throw away the drill

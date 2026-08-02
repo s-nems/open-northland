@@ -18,7 +18,7 @@ import { TerrainLattice } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { type Step, StepBuffer } from './step-buffer.js';
 
-/** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
+/** Canonical orthogonal neighbour offsets in N, E, S, W order - the fixed traversal order for
  *  determinism. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
@@ -34,7 +34,7 @@ const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
 ] as const;
 
 /** The four diagonal lattice edges (`(±1, ±2)`, 51 px) in canonical NE, SE, SW, NW screen-heading
- *  order — the fixed order (after E/W) keeps A* expansion history-independent. */
+ *  order - the fixed order (after E/W) keeps A* expansion history-independent. */
 const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [1, -2], // NE
   [1, 2], // SE
@@ -42,7 +42,7 @@ const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = 
   [-1, -2], // NW
 ] as const;
 
-/** The two straight vertical edges (19 px half-row), canonical N then S — the `THexagonDirection`
+/** The two straight vertical edges (19 px half-row), canonical N then S - the `THexagonDirection`
  *  enum tail (NORTH = 6, SOUTH = 7). */
 const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
@@ -67,7 +67,7 @@ export abstract class TerrainEdges extends TerrainLattice {
   }
 
   /**
-   * The walkable subset of {@link neighbours} (4-connected), same canonical order — the adjacency
+   * The walkable subset of {@link neighbours} (4-connected), same canonical order - the adjacency
    * relation for placement, not the pathfinder's edge set (movement is 8-connected via {@link steps}).
    */
   walkableNeighbours(node: NodeId): NodeId[] {
@@ -109,7 +109,7 @@ export abstract class TerrainEdges extends TerrainLattice {
   }
 
   /**
-   * {@link steps}, emitted into a caller-owned buffer instead of a fresh array — the allocation-free
+   * {@link steps}, emitted into a caller-owned buffer instead of a fresh array - the allocation-free
    * form the A* inner loop and the component flood fill use, since they consume each edge set and
    * drop it. `out` is reset first and holds the edges in the same canonical order.
    */
@@ -125,7 +125,7 @@ export abstract class TerrainEdges extends TerrainLattice {
       const c = this.idAt(nx, ny);
       out.push(c, fx.mul(this.walkCost(c), HALF_COLUMN));
     }
-    // Diagonal steps, canonical NE,SE,SW,NW — gated on the flanked midpoint seam.
+    // Diagonal steps, canonical NE,SE,SW,NW - gated on the flanked midpoint seam.
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
@@ -146,7 +146,7 @@ export abstract class TerrainEdges extends TerrainLattice {
   }
 
   /** Whether `(nx, ny)` is in bounds, walkable, and not currently masked by the dynamic `blocked`
-   *  overlay — the per-step passability test {@link stepsInto} applies to each candidate edge. */
+   *  overlay - the per-step passability test {@link stepsInto} applies to each candidate edge. */
   private passable(nx: number, ny: number, blocked?: BlockOverlay): boolean {
     if (!this.inBounds(nx, ny)) return false;
     const c = this.idAt(nx, ny);

@@ -1,8 +1,8 @@
 /**
  * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`MissionData` sections → a
- * validated {@link MapScript}. Shared by both source skins — the plaintext `player.inc`/`mission.inc` pair
+ * validated {@link MapScript}. Shared by both source skins - the plaintext `player.inc`/`mission.inc` pair
  * (macro tokens like `#PLAYER_TYPE_HUMAN`) and the packed `map.cif` (the same lines with the macros
- * already resolved to numbers) — so the token→code resolution accepts both forms.
+ * already resolved to numbers) - so the token→code resolution accepts both forms.
  */
 import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
 import { makeSource, type RuleProp, type RuleSection, type SourceRef } from './grammar.js';
@@ -102,7 +102,7 @@ function diplomacyRow(p: RuleProp): MapScript['diplomacy'][number] | undefined {
  * One `[multiplayer]` section folded into the accumulator (kept mutable so a map splitting the
  * section across inc files still merges into one table). `playeroption <slot> <type…>` rows keep
  * their first occurrence per slot; `playerhideinmenu` collects slot ids; `playerfixcolors <0|1>`
- * locks the authored colours. Anything else stays lossless in `other` — including the corpus's two
+ * locks the authored colours. Anything else stays lossless in `other` - including the corpus's two
  * hand-wrapped `playeroption` continuation lines (a bare `#PLAYER_TYPE_NONE` on its own line),
  * which the original's keyed line parser would not attach either.
  */
@@ -180,8 +180,8 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
  * {@link MapMission} per repeated `MissionData` section in authored order. Section names match
  * case-insensitively (the packed skin spells `MissionData`, the corpus also carries `[AIData]`
  * vs `[aidata]`). A duplicate `player` slot keeps its first row (matching the first-prop-wins
- * grammar helpers). Returns undefined when no section yields anything — the caller then emits no
- * script sidecar. `aidata` (the AI task/condition program) is out of scope here — a separate
+ * grammar helpers). Returns undefined when no section yields anything - the caller then emits no
+ * script sidecar. `aidata` (the AI task/condition program) is out of scope here - a separate
  * vocabulary consumed by no system yet.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {

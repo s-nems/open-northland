@@ -36,7 +36,7 @@ export * from './signposts/index.js';
 export * from './social/index.js';
 export * from './spatial/nodes.js';
 // `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
-// `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
+// `createSettler` is the scene-facing entity constructor - the settler twin of `createResourceNode` - so
 // pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
 export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './spawn/index.js';
 export * from './stores/index.js';
@@ -45,6 +45,6 @@ export * from './vision/index.js';
 // implementation helpers share one import site. The canonical schedule is deliberately separate in
 // schedule.ts, and the external `@open-northland/sim` systems namespace is curated in public.ts.
 // Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
-// system entry re-exports its public names from — planner internals like targets/economy supply, the
-// drive/effect/targeting submodules — stays private to its cluster.
+// system entry re-exports its public names from - planner internals like targets/economy supply, the
+// drive/effect/targeting submodules - stays private to its cluster.
 export type { System, SystemContext };

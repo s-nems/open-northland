@@ -6,7 +6,7 @@ import { HUMAN_PLAYER } from '../../src/game/rules.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
- * The gathering cycle end-to-end over the MERGED REAL content — the same geometry the sandbox twin
+ * The gathering cycle end-to-end over the MERGED REAL content - the same geometry the sandbox twin
  * proves (`test/map-gatherer-cycle.test.ts`), but with every id resolved from whatever the pipeline
  * emitted instead of the clean-room tables. This is the net for the "sandbox green, real content
  * collapses" class (raw job-id spaces, tribe-wide base atomics, zeroed balance): a stall shows up as
@@ -19,7 +19,7 @@ const SEED = 11;
 /** Plenty of time for several full fell → pick up → bank cycles (mirrors the sandbox twin). */
 const CYCLE_TICKS = 3000;
 const MAP_CELLS = 40;
-/** Spawn node + tree cluster in half-cell coords — the exact proven layout of the sandbox twin. */
+/** Spawn node + tree cluster in half-cell coords - the exact proven layout of the sandbox twin. */
 const SPAWN = { x: 40, y: 40 } as const;
 const CLUSTER = { x0: 44, x1: 52, y0: 34, y1: 42, step: 2 } as const;
 
@@ -115,7 +115,7 @@ describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
       const violations = checkInvariants(sim.world);
       expect(violations, `invariant broke at tick ${t + 1}`).toEqual([]);
     }
-    expect(bankedGood(sim, wood.typeId), 'no wood ever banked — the cycle stalled').toBeGreaterThan(0);
+    expect(bankedGood(sim, wood.typeId), 'no wood ever banked - the cycle stalled').toBeGreaterThan(0);
     // After this long with one gatherer and a near flag, at most the one active carry lies loose.
     expect(looseGood(sim, wood.typeId)).toBeLessThanOrEqual(gathering.yieldPerNode);
     // A per-tick-invariant run over real content takes seconds even idle; the budget is a hang-guard

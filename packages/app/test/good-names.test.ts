@@ -5,7 +5,7 @@ import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**
  * Localized good names: the pure locale-resolution rule ({@link resolveGoodNameMap}) and its effect on the
- * shared sandbox content — supplying a `goodNames` map sets each good's display `name`, so the whole HUD
+ * shared sandbox content - supplying a `goodNames` map sets each good's display `name`, so the whole HUD
  * (warehouse rows, ground-pile tooltip, spawn palette) reads in-language from one source. Omitting it leaves
  * the golden-safe defaults (core goods name-less, extended goods English), which the other tests rely on.
  */
@@ -43,7 +43,7 @@ describe('sandboxContent goodNames override', () => {
     ]);
     const content = sandboxContent(undefined, { goodNames });
     const nameOf = (typeId: number) => content.goods.find((g) => g.typeId === typeId)?.name;
-    expect(nameOf(GOOD_WOOD)).toBe('Drewno'); // a core good — name-less by default, now localized
+    expect(nameOf(GOOD_WOOD)).toBe('Drewno'); // a core good - name-less by default, now localized
     expect(nameOf(GOOD_GOLD)).toBe('Złoto');
     // An extended good resolves by its string id too.
     expect(content.goods.find((g) => g.id === 'meat')?.name).toBe('Mięso');

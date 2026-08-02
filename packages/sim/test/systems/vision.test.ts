@@ -35,13 +35,13 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * The fog-of-war layer (systems/vision.ts): per-player masks over the cell grid, the three modes'
  * update rules (OFF revealed / REVEAL sticky / RECON known-terrain), the OFF default + reset, and
- * the combat/flee fog gates. All OUR design (no readable fog source; radii user-tuned 2026-07-11) —
+ * the combat/flee fog gates. All OUR design (no readable fog source; radii user-tuned 2026-07-11) -
  * these tests pin self-consistency, not original fidelity.
  */
 
 const VIKING = 1;
-const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
-const SCOUT_JOB = 27; // fixture job 27 `scout` — the widest eye
+const WOODCUTTER = 1; // fixture job 1 - carries test_axe (band [1,2]); a civilian eye
+const SCOUT_JOB = 27; // fixture job 27 `scout` - the widest eye
 const P0 = 0;
 const P1 = 1;
 
@@ -76,7 +76,7 @@ function unit(
   return e;
 }
 
-/** Teleport a unit to cell (x,y) — the between-rebuild move the regression tests need. */
+/** Teleport a unit to cell (x,y) - the between-rebuild move the regression tests need. */
 function teleport(sim: Simulation, e: Entity, x: number, y: number): void {
   sim.world.write(e, Position, (p) => {
     p.x = fx.fromInt(x);
@@ -91,7 +91,7 @@ function rawState(sim: Simulation, player: number, x: number, y: number): number
   return fog.stateAt(player, x, y);
 }
 
-describe('vision radii — the per-job classification', () => {
+describe('vision radii - the per-job classification', () => {
   it('orders the eyes: scout > soldier > building > hunter > civilian', () => {
     const content = testContent();
     expect(visionRadiusForJob(content, SCOUT_JOB)).toBe(SCOUT_VISION_NODES);
@@ -107,7 +107,7 @@ describe('vision radii — the per-job classification', () => {
   });
 });
 
-describe('scout experience — the signpost craft widens the eye', () => {
+describe('scout experience - the signpost craft widens the eye', () => {
   it('a mastered scout sees cells a fresh scout cannot (the visionRadiusOf wiring)', () => {
     const sim = simOn(FOG_MODE.RECON, 48, 8);
     const scout = unit(sim, 4, 4, P0, { jobType: SCOUT_JOB });
@@ -123,7 +123,7 @@ describe('scout experience — the signpost craft widens the eye', () => {
   });
 });
 
-describe('stampVision — the world-metric ellipse', () => {
+describe('stampVision - the world-metric ellipse', () => {
   it('reaches radius·34 px: 4 cells sideways at radius 8, 7 rows down, and no further', () => {
     const w = 16;
     const h = 20;
@@ -131,14 +131,14 @@ describe('stampVision — the world-metric ellipse', () => {
     stampVision(mask, w, h, 6, 9, 8); // a fixed 8-node radius = 272 px (pins the ellipse metric)
     const at = (c: number, r: number): number => mask[r * w + c] ?? 0;
     expect(at(6, 9)).toBe(FOG_STATE.VISIBLE);
-    expect(at(10, 9)).toBe(FOG_STATE.VISIBLE); // 4 cells east = 272 px — on the rim, inclusive
-    expect(at(11, 9)).toBe(FOG_STATE.UNEXPLORED); // 5 cells = 340 px — out
-    expect(at(6, 16)).toBe(FOG_STATE.VISIBLE); // 7 rows south = 266 px — in
-    expect(at(6, 17)).toBe(FOG_STATE.UNEXPLORED); // 8 rows = 304 px — out
+    expect(at(10, 9)).toBe(FOG_STATE.VISIBLE); // 4 cells east = 272 px - on the rim, inclusive
+    expect(at(11, 9)).toBe(FOG_STATE.UNEXPLORED); // 5 cells = 340 px - out
+    expect(at(6, 16)).toBe(FOG_STATE.VISIBLE); // 7 rows south = 266 px - in
+    expect(at(6, 17)).toBe(FOG_STATE.UNEXPLORED); // 8 rows = 304 px - out
   });
 });
 
-describe('fog modes — update rules over the per-player mask', () => {
+describe('fog modes - update rules over the per-player mask', () => {
   it('is OFF by default: no view, no masks, zero exploration', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(8, 4) });
     unit(sim, 2, 2, P0);
@@ -162,7 +162,7 @@ describe('fog modes — update rules over the per-player mask', () => {
     const e = unit(sim, 2, 2, P0);
     sim.run(1); // tick 1: mode applied + first rebuild
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
-    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.UNEXPLORED); // far east — never seen
+    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.UNEXPLORED); // far east - never seen
     teleport(sim, e, 20, 2);
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE); // new ground seen
@@ -206,14 +206,14 @@ describe('fog modes — update rules over the per-player mask', () => {
     expect(sim.fogView(P0)).toBeNull();
     sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
     sim.run(1);
-    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.UNEXPLORED); // history gone — only the new spot shows
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.UNEXPLORED); // history gone - only the new spot shows
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
   });
 });
 
-describe('fog gates — combat auto-acquire and flee react only to SEEN enemies', () => {
+describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', () => {
   // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 7 cells east at
-  // (9,2) (node (18,4)) — Manhattan node distance 14, INSIDE the 16-node combat sight radius but
+  // (9,2) (node (18,4)) - Manhattan node distance 14, INSIDE the 16-node combat sight radius but
   // 476 px east, OUTSIDE the civilian 408 px (12-node) vision ellipse. Without fog the drive fires;
   // under classic fog the enemy is unseen and it must not.
   const ATTACKER = { x: 2, y: 2 } as const;
@@ -230,7 +230,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
     expect((ENEMY.x - ATTACKER.x) * 68).toBeGreaterThan(CIVILIAN_VISION_NODES * 34);
   });
 
-  it('ATTACK auto-acquire ignores an enemy in the fog — and engages it with fog off', () => {
+  it('ATTACK auto-acquire ignores an enemy in the fog - and engages it with fog off', () => {
     for (const [mode, engages] of [
       [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],
@@ -253,7 +253,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
     expect(sim.world.has(attacker, Engagement)).toBe(true);
   });
 
-  it('FLEE reacts only to a SEEN threat — and flees it with fog off', () => {
+  it('FLEE reacts only to a SEEN threat - and flees it with fog off', () => {
     for (const [mode, flees] of [
       [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],

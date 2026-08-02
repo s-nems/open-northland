@@ -31,19 +31,19 @@ interface BonesGfx {
 }
 
 /**
- * The combat-feedback layer — the transient marks a fight leaves: a blood spurt where a blow lands, a
+ * The combat-feedback layer - the transient marks a fight leaves: a blood spurt where a blow lands, a
  * bone pile where a unit falls. A client-side projection of the sim's one-shot events (never sim state),
- * retained like the badge/selection layers: one {@link Graphics} per mark keyed by {@link effectKey} — its
+ * retained like the badge/selection layers: one {@link Graphics} per mark keyed by {@link effectKey} - its
  * static shape is drawn once on first sight, then only repositioned / re-alpha'd / culled each frame; a
  * mark that expired (or was capped out) is destroyed. All marks are world-space (children of the camera's
  * `worldLayer`) and split across two containers by role: bones go in {@link groundContainer} below the
  * sprite layer (ground litter a surviving fighter walks over), blood in {@link overlayContainer} above it
- * and lifted onto the body ({@link BLOOD_RISE}) so the spurt reads on the struck unit — a hidden splatter
+ * and lifted onto the body ({@link BLOOD_RISE}) so the spurt reads on the struck unit - a hidden splatter
  * under the standing victim's feet would be a poor "the blow landed" marker.
  *
  * Cost tracks the screen (golden rule 7): the live list is bounded by `MAX_ACTIVE_EFFECTS` and the
  * per-frame work skips any mark culled off-screen (its pooled node hidden, not repositioned). Blood is a
- * named procedural approximation — droplets that spray from the wound and fall to the feet each frame
+ * named procedural approximation - droplets that spray from the wound and fall to the feet each frame
  * ({@link bloodDroplet}, in `data/effects/blood.ts`); bones draw the real decoded cadaver sprite when supplied.
  * The decay, projection, droplet motion, and event fold are the real behaviour.
  */
@@ -61,7 +61,7 @@ const BONE_OUTLINE = 0x4a4436;
 const BLOOD_DROPS = 6;
 const BLOOD_MIN_R = 1.0;
 const BLOOD_MAX_R = 2.2;
-/** Seed-index offset for a droplet's radius — kept clear of {@link bloodDroplet}'s `i*3+{0,1,2}` motion band
+/** Seed-index offset for a droplet's radius - kept clear of {@link bloodDroplet}'s `i*3+{0,1,2}` motion band
  *  (max index `5*3+2 = 17` at {@link BLOOD_DROPS} 6) so the radius seed never collides with the motion seeds. */
 const BLOOD_RADIUS_SEED = 100;
 /** World-px length / thickness of a single bone shaft in a pile (two crossed shafts + a skull dot). */
@@ -69,13 +69,13 @@ const BONE_LEN = 9;
 const BONE_THICK = 2.4;
 
 export class CombatEffectsLayer {
-  /** Bones — ground litter, added below the sprite layer by the renderer (a fighter walks over them). */
+  /** Bones - ground litter, added below the sprite layer by the renderer (a fighter walks over them). */
   readonly groundContainer = new Container();
-  /** Blood — added above the sprite layer, so the spurt shows on the struck body. */
+  /** Blood - added above the sprite layer, so the spurt shows on the struck body. */
   readonly overlayContainer = new Container();
   /** The live marks (pure fold output); replaced each ingest, iterated each draw. */
   private effects: CombatEffect[] = [];
-  /** One retained node per mark key — shape drawn once, then only moved / faded / culled. */
+  /** One retained node per mark key - shape drawn once, then only moved / faded / culled. */
   private readonly nodes = new Map<string, Container>();
   /** Reused per-frame scratch of keys drawn this frame (avoids a per-frame allocation). */
   private readonly seen = new Set<string>();
@@ -87,7 +87,7 @@ export class CombatEffectsLayer {
     this.bones = bones;
   }
 
-  /** Fold this frame's events (across every sim sub-step) into the live mark list — see {@link foldCombatEffects}. */
+  /** Fold this frame's events (across every sim sub-step) into the live mark list - see {@link foldCombatEffects}. */
   ingest(events: readonly SimEvent[], tick: number): void {
     this.effects = foldCombatEffects(this.effects, events, tick);
   }
@@ -101,7 +101,7 @@ export class CombatEffectsLayer {
     this.seen.clear();
     for (const effect of this.effects) {
       const alpha = effectAlpha(effect, tick);
-      if (alpha <= 0) continue; // fully faded — its node is retired below (not in `seen`)
+      if (alpha <= 0) continue; // fully faded - its node is retired below (not in `seen`)
       const key = effectKey(effect);
       // Lifted feet point (the mark's own anchor). Blood rides up onto the body (over the sprite); bones
       // sit at the feet on the ground.
@@ -110,7 +110,7 @@ export class CombatEffectsLayer {
       // Cull by the feet point, so a body-lifted spurt near the top edge still shows.
       let node = this.nodes.get(key);
       if (!isVisible(viewport, p.x, p.y)) {
-        retainOffscreen(node, key, this.seen); // live, just not on screen — retain, don't retire
+        retainOffscreen(node, key, this.seen); // live, just not on screen - retain, don't retire
         continue;
       }
       if (node === undefined) {
@@ -165,7 +165,7 @@ function makeBlood(seed: number): Container {
 }
 
 /** Advance a blood node's droplets to their `tick` positions: each child (in mint order = droplet index)
- *  falls from the wound to the feet and stretches into a streak, then flattens into a pool — see
+ *  falls from the wound to the feet and stretches into a streak, then flattens into a pool - see
  *  {@link bloodDroplet}. Called every frame for a live blood mark; bones are static and skip this. */
 function animateBlood(node: Container, effect: CombatEffect, tick: number): void {
   const age = tick - effect.spawnTick;
@@ -181,7 +181,7 @@ function animateBlood(node: Container, effect: CombatEffect, tick: number): void
 
 /** A real decoded bone pile: a seed-picked `cadaver human bones` frame, anchored at the feet (the frame's
  *  own `offsetX/offsetY` place its top-left relative to the anchor, mirroring the map-object layer). Wrapped
- *  in a Container so its origin is the feet — the layer positions every node the same way. */
+ *  in a Container so its origin is the feet - the layer positions every node the same way. */
 function makeBonesSprite(bones: BonesGfx, seed: number): Container {
   const c = new Container();
   const frame = bones.frames[seed % bones.frames.length];
@@ -193,7 +193,7 @@ function makeBonesSprite(bones: BonesGfx, seed: number): Container {
   return c;
 }
 
-/** A small bone pile: two crossed shafts at a seeded angle plus a skull dot — a stand-in for the skeleton. */
+/** A small bone pile: two crossed shafts at a seeded angle plus a skull dot - a stand-in for the skeleton. */
 function drawBones(g: Graphics, seed: number): Graphics {
   const base = frac(seed, 0) * Math.PI; // seeded orientation
   for (const off of [0, Math.PI / 2.4]) {

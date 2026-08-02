@@ -62,7 +62,7 @@ describe('resolveAuthoredPlacements', () => {
     const rows: AuthoredJoinRows = {
       ...AUTHORED_ROWS,
       tribes: [
-        { typeId: 1, id: 'viking' }, // civilization — no animals row, never a species key
+        { typeId: 1, id: 'viking' }, // civilization - no animals row, never a species key
         { typeId: 10, id: 'cattle', name: 'cattle' },
         { typeId: 16, id: 'hares', name: 'hares' },
         { typeId: 18, id: 'evil_hares', name: 'evil hares' },
@@ -120,7 +120,7 @@ describe('resolveAuthoredPlacements', () => {
       undefined,
       undefined,
     ]);
-    expect(droppedPicks).toBe(1); // mystery_good — counted apart from a building's addgoods stock
+    expect(droppedPicks).toBe(1); // mystery_good - counted apart from a building's addgoods stock
     expect(droppedGoods).toBe(0);
     expect(skipped).toBe(0);
   });

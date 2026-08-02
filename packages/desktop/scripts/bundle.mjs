@@ -1,5 +1,5 @@
 /**
- * Bundles the desktop shell's runtime with esbuild into `dist/` (tsc only typechecks — see
+ * Bundles the desktop shell's runtime with esbuild into `dist/` (tsc only typechecks - see
  * tsconfig's emitDeclarationOnly). Bundling (instead of shipping node_modules) is what lets
  * electron-builder package the npm-workspace-symlinked pipeline + content-resolver dependencies:
  * everything lands in four self-contained files plus the copied setup page statics.

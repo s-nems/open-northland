@@ -8,26 +8,26 @@ import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The selection layer — a feet-anchored ring under each currently-selected entity, drawn in world
+ * The selection layer - a feet-anchored ring under each currently-selected entity, drawn in world
  * space (a child of the camera's `worldLayer`, below the sprite layer) so a ring pans/zooms with the
  * unit and reads as a marker on the ground. Selection is a client-side view concern, not sim state
  * (the app owns the selected-id set); this layer just projects those ids to rings, exactly as the
  * sprite pool projects the snapshot to bobs as a pure consumer of the read-only snapshot + camera.
  *
  * Retained, like the sprite pool: a ring's ellipse geometry is built once per entity and only its
- * container position is moved each frame — steady-state work is a handful of transform writes, no
+ * container position is moved each frame - steady-state work is a handful of transform writes, no
  * geometry churn. A ring pool keyed by entity id (ids are monotonic, a stable key); a
  * deselected/departed id's ring is destroyed. Per-frame cost follows the selection, not the map: each id
  * is resolved through `entityById` rather than by scanning the snapshot.
  *
  * A ring is sized to its target: a settler gets a small feet ellipse; a building gets a ground ellipse
  * sized to its actual sprite footprint (the pool's per-entity {@link EntityBounds}, passed in) so a big
- * headquarters gets a big marker and a small hut a small one — a fixed size can't fit both. The ring sits
+ * headquarters gets a big marker and a small hut a small one - a fixed size can't fit both. The ring sits
  * below the sprites, so a unit in front occludes it; a building's ring is wide enough that its front arc
  * still reads clearly under the house.
  */
 
-/** Settler feet ring half-extents (px) — a small ground ellipse under a settler's ~40px-wide body
+/** Settler feet ring half-extents (px) - a small ground ellipse under a settler's ~40px-wide body
  *  (deliberately much smaller than the 68×76 cell diamond, which would swallow the sprite). */
 const SETTLER_RING = { rx: 20, ry: 11 };
 /** Fallback building ring when the sprite's real bounds aren't known yet (no sheet / just appeared). */
@@ -40,7 +40,7 @@ const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 /** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
-/** The work-flag highlight colour (a bright amber) — the flag of a currently-selected gatherer, distinct
+/** The work-flag highlight colour (a bright amber) - the flag of a currently-selected gatherer, distinct
  *  from the green unit-selection ring, drawn a touch heavier so it reads under the flag's own sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
@@ -60,10 +60,10 @@ interface RingSpec {
  */
 export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
-  /** The pool's drawn sprites — glide a ring with the interpolated bob and size a building ring to its
+  /** The pool's drawn sprites - glide a ring with the interpolated bob and size a building ring to its
    *  real footprint. */
   readonly drawn?: DrawnGeometry;
-  /** The terrain height field — lifts a ring onto sloped ground. Absent → no lift (flat). */
+  /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
   readonly elevation?: ElevationField;
 }
 
@@ -71,7 +71,7 @@ export class SelectionLayer {
   readonly container = new Container();
   /** One persistent ring Graphics per selected entity id (green); geometry drawn once, repositioned after. */
   private readonly rings = new Map<number, Graphics>();
-  /** One persistent ring per selected gatherer's flag entity id (amber) — the same pooling, a second cue. */
+  /** One persistent ring per selected gatherer's flag entity id (amber) - the same pooling, a second cue. */
   private readonly flagRings = new Map<number, Graphics>();
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
@@ -133,7 +133,7 @@ export class SelectionLayer {
 
 /**
  * The ring geometry for a target: a settler's small fixed feet ellipse, or a building's ground ellipse
- * sized to its actual sprite footprint (`bounds`) — half its sprite width, floored so a small building
+ * sized to its actual sprite footprint (`bounds`) - half its sprite width, floored so a small building
  * still reads, squashed to the iso ground ratio, and offset when the sprite isn't centred on the feet.
  * Falls back to a fixed building ellipse when the real bounds aren't available yet.
  */

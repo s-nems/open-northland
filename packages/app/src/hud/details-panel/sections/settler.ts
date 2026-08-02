@@ -15,15 +15,15 @@ import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
 
 /** Key column width of a key/value row. */
 const KV_KEY_W = 82;
-/** The Ogólne stat rows' label column (fits the widest label, "Towarzystwo") — the gauge fills the
+/** The Ogólne stat rows' label column (fits the widest label, "Towarzystwo") - the gauge fills the
  *  rest of the row, so the bars run edge-to-edge with the column instead of floating as short stubs
  *  (user feedback 2026-07-11: wider bars). */
 const STAT_LABEL_W = 78;
-/** An Ogólne stat gauge's height — a touch taller than the building's 10-px progress bar so the
+/** An Ogólne stat gauge's height - a touch taller than the building's 10-px progress bar so the
  *  gradient has room to read, still inside the 13-px bar row. */
 const STAT_BAR_H = 11;
 /** How far an equip good's icon extends beyond its socket ring on every side (design px). The original's
- *  chunky equip icons spill a touch over the ring — a bigger icon reads far better than a tiny one
+ *  chunky equip icons spill a touch over the ring - a bigger icon reads far better than a tiny one
  *  rattling inside the circle. */
 const SLOT_ICON_OVERFLOW = 3;
 /** Inset (design px) of a gather-choice good icon inside its round button, so the pile clears the rim. */
@@ -33,8 +33,8 @@ const GATHER_ICON_PAD = 3;
 const WEAR_BAR_H = 3;
 
 /**
- * The settler view: the original's stacked human-window sections — Ogólne, Praca, Doświadczenie,
- * Ekwipunek — each a parchment window with a decoded `humanwindow` headline (see {@link HUMANWINDOW}).
+ * The settler view: the original's stacked human-window sections - Ogólne, Praca, Doświadczenie,
+ * Ekwipunek - each a parchment window with a decoded `humanwindow` headline (see {@link HUMANWINDOW}).
  */
 export function drawSettler(
   chrome: Chrome,
@@ -53,7 +53,7 @@ export function drawSettler(
 }
 
 /**
- * Ogólne: the portrait box (a person glyph placeholder + a live status caption — an honest stand-in for
+ * Ogólne: the portrait box (a person glyph placeholder + a live status caption - an honest stand-in for
  * the original's animated "co robi" preview, the live settler bob being a deferred follow-up) and the
  * name / meta / stat-bar column beside it.
  */
@@ -102,7 +102,7 @@ function drawGeneralSection(
 }
 
 /** Praca: the workplace and the good it makes (or what the settler carries). Key labels are pinned
- *  Polish — the original shows an icon inline, not a key column, so there is no decoded key string. */
+ *  Polish - the original shows an icon inline, not a key column, so there is no decoded key string. */
 function drawWorkSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -139,8 +139,8 @@ function drawWorkSection(
       product.w - keyW,
     );
   }
-  // Round choice buttons hugging the left edge — a gatherer's single-select goods or a craft worker's
-  // multi-select products (never both) — each showing the good's icon (the generic pile for the
+  // Round choice buttons hugging the left edge - a gatherer's single-select goods or a craft worker's
+  // multi-select products (never both) - each showing the good's icon (the generic pile for the
   // "Wszystko" choice); their names live in the cursor tooltip. Selected/hovered ones read brighter.
   const iconPad = Math.round(GATHER_ICON_PAD * s);
   const drawChoice = (rect: Rect, goodId: string | undefined, active: boolean): void => {
@@ -161,7 +161,7 @@ function drawWorkSection(
     drawChoice(choice.rect, choice.goodId, choice.selected || choice.goodType === hoveredGatherGood);
   }
   // The "przydziel miejsce pracy" control: a small round button on the left, its decoded-original
-  // description to the right (greyed for a jobless settler — nothing to place). The hint stays in the
+  // description to the right (greyed for a jobless settler - nothing to place). The hint stays in the
   // cursor tooltip.
   chrome.textLeftMiddle(
     ui('humanwindow', HUMANWINDOW.assignWork, hud.assignWorkplace),
@@ -171,7 +171,7 @@ function drawWorkSection(
   );
   chrome.roundButton(layout.assignIcon, model.canAssignWorkplace, hoverAction === 'assign-workplace');
   chrome.glyphHouse(layout.assignIcon, model.canAssignWorkplace);
-  // The "przydziel dom" control below it — same shape, arms the click-a-house pick mode.
+  // The "przydziel dom" control below it - same shape, arms the click-a-house pick mode.
   chrome.textLeftMiddle(
     ui('humanwindow', HUMANWINDOW.assignHome, hud.assignHome),
     layout.homeLabel.x,
@@ -180,7 +180,7 @@ function drawWorkSection(
   );
   chrome.roundButton(layout.homeIcon, model.canAssignHome, hoverAction === 'assign-home');
   chrome.glyphHouse(layout.homeIcon, model.canAssignHome);
-  // The "usuń z domu" control below it — the inverse of assign-home. No decoded original string exists
+  // The "usuń z domu" control below it - the inverse of assign-home. No decoded original string exists
   // for it (the original had no such button), so the label is a pinned fallback, like the sim-state
   // captions the model carries.
   chrome.textLeftMiddle(
@@ -194,7 +194,7 @@ function drawWorkSection(
 }
 
 /** Doświadczenie: one left-aligned "label count (+bonus%)" line per trained specialization; an
- *  untrained settler's body is simply empty (no placeholder — user decision 2026-07-23). */
+ *  untrained settler's body is simply empty (no placeholder - user decision 2026-07-23). */
 function drawExperienceSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -210,7 +210,7 @@ function drawExperienceSection(
   layout.expRows.forEach((r, i) => {
     const row = model.experience[i];
     if (row !== undefined) {
-      // A null percent (carrier) draws the bare count — its experience is a record, not a bonus.
+      // A null percent (carrier) draws the bare count - its experience is a record, not a bonus.
       const pct = row.bonusPct === null ? '' : ` (+${row.bonusPct}%)`;
       chrome.textAt(`${row.label} ${row.repeats}${pct}`, r.x, r.y + ROW_TEXT_PAD * s, 'white');
       return;

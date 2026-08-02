@@ -8,13 +8,13 @@ import { createResourceNode } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
 import { dropOrStackGood } from '../settlers/atomics/effects/goods/index.js';
 
-// The map-editing commands — put a standing resource / a loose good pile on the map, or take a building /
+// The map-editing commands - put a standing resource / a loose good pile on the map, or take a building /
 // signpost off it. The runtime analogue of the scene-setup `place*` helpers, behind the HUD tools and the
 // debug spawn palette. Each validates its target's KIND at execution (not just its liveness) and skips bad
 // input, which is still logged for faithful replay.
 
 /** Build a standing {@link Resource} node (a tree / mined deposit / plucked node) through the shared
- *  {@link createResourceNode} assembly. A `good` with no footprint record is bad input —
+ *  {@link createResourceNode} assembly. A `good` with no footprint record is bad input -
  *  `createResourceNode` returns null and the world is untouched. */
 export function placeResource(
   world: World,
@@ -34,7 +34,7 @@ export function placeResource(
 
 /** Drop a loose good pile, stacking onto an existing pile of the same good on the tile (capped at
  *  `MAX_GROUND_STACK`) so repeated one-unit clicks pile up rather than littering entities. An
- *  `amount <= 0` or a good absent from the catalog is bad input — an id-neutral skip. */
+ *  `amount <= 0` or a good absent from the catalog is bad input - an id-neutral skip. */
 export function dropGood(
   world: World,
   ctx: SystemContext,
@@ -46,9 +46,9 @@ export function dropGood(
   dropOrStackGood(world, pos.x, pos.y, command.good, command.amount);
 }
 
-/** Take a building off the map — the player's demolish. Kind-at-execution guard: in lockstep any peer can
+/** Take a building off the map - the player's demolish. Kind-at-execution guard: in lockstep any peer can
  *  send any command (and a queued command's target can change between issue and apply), so a demolish aimed
- *  at a non-building entity — a settler, a resource node, a boat — must be a skip, never a destroy. The
+ *  at a non-building entity - a settler, a resource node, a boat - must be a skip, never a destroy. The
  *  teardown itself (worker unbind + the `buildingDestroyed` collapse cue + destroy) is the shared
  *  {@link razeBuilding} seam combat razing uses, so the two paths can never drift. */
 export function demolish(
@@ -60,7 +60,7 @@ export function demolish(
   razeBuilding(world, ctx, command.building);
 }
 
-/** Destroy a signpost — the same kind-at-execution rule as {@link demolish}: only a live {@link Signpost}
+/** Destroy a signpost - the same kind-at-execution rule as {@link demolish}: only a live {@link Signpost}
  *  falls. Destroying it moves the Signpost generation, so the network memo, placement blockers, and vision
  *  all pick it up. */
 export function demolishSignpost(

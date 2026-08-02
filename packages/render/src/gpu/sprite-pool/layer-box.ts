@@ -22,7 +22,7 @@ export function createLayerDrawBox(): LayerDrawBox {
 
 /**
  * A reveal layer without per-pixel time data falls back to the bottom-up crop: only its bottom
- * `displayReveal` fraction draws, shifted down so its base stays put — the building rising out of the
+ * `displayReveal` fraction draws, shifted down so its base stays put - the building rising out of the
  * ground. `perPixelReveal` says the caller bound a baked TimeMask instead, which crops nothing.
  *
  * The uncropped rect is what bounds are stamped from: a construction site is picked over the final
@@ -45,7 +45,7 @@ export function layerDrawBox(
   out.height = layer.frame.height * layer.scale;
 }
 
-/** A reusable AABB accumulator — one instance per pool, {@link reset} per entity. Empty until first
+/** A reusable AABB accumulator - one instance per pool, {@link reset} per entity. Empty until first
  *  {@link add}, which the inverted initial extents encode. */
 export class BoundsUnion {
   minX = Number.POSITIVE_INFINITY;

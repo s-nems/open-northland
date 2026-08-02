@@ -5,7 +5,7 @@ import { ATTACK_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../../src/catalog/atomics.j
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
- * The base-job chain over the REAL extracted job table — the join the fallback catalog cannot prove
+ * The base-job chain over the REAL extracted job table - the join the fallback catalog cannot prove
  * (its jobs are all roots). `jobtypes.ini` `baseatomics` names a parent job, so most of the table
  * grants nothing directly: the armed soldiers, the sea trades and `adult_animal` carry an empty
  * `allowatomic` and are their base's set exactly. If an upstream rename or a re-extraction broke the
@@ -20,7 +20,7 @@ const COLLECTOR = 8;
 
 /** What `soldier_unarmed` (`jobtype 31` `forbidatomic`) denies itself out of `civilist`'s grants. */
 const SOLDIER_DENIED = [11, 12, 13, 14, 15, 17, 20, 21, 44, 45, 78, 79];
-/** Herb's harvest atomic — what the old misreading handed the whole soldier band as its only atomic. */
+/** Herb's harvest atomic - what the old misreading handed the whole soldier band as its only atomic. */
 const HERB_HARVEST_ATOMIC = 31;
 
 describe.runIf(hasRealIr())('job base-atomic chain over the real IR', () => {

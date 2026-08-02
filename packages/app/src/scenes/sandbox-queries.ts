@@ -28,10 +28,10 @@ export function goodBySlug(sim: Simulation, slug: string): number {
 }
 
 /**
- * Total `good` banked in the goods yard — summed across every loose ground heap holding it. A flag-bound
+ * Total `good` banked in the goods yard - summed across every loose ground heap holding it. A flag-bound
  * gatherer spreads its harvest onto separate ground heaps around the flag, capped per tile, so a good's
  * yield lives across several pinned heaps. Each gatherable good is unique to its lane, so summing all heaps
- * of `good` gives that lane's banked total. A heap is a bare loose pile ({@link systems.isYardHeap}) — the
+ * of `good` gives that lane's banked total. A heap is a bare loose pile ({@link systems.isYardHeap}) - the
  * shared "settled ground heap" predicate.
  */
 export function yardGood(sim: Simulation, good: number): number {
@@ -44,7 +44,7 @@ export function yardGood(sim: Simulation, good: number): number {
 }
 
 /** Loose player-dropped ground piles: a bare {@link Stockpile}+{@link Position} with no building store or
- *  felled-trunk marker — the entity `dropGood` creates, a growing heap that rests in place. */
+ *  felled-trunk marker - the entity `dropGood` creates, a growing heap that rests in place. */
 export function countGroundPiles(sim: Simulation): number {
   let n = 0;
   for (const e of sim.world.query(Stockpile, Position)) {
@@ -53,7 +53,7 @@ export function countGroundPiles(sim: Simulation): number {
   return n;
 }
 
-/** Living settlers owned by the human (blue) player — the symmetric twin of
+/** Living settlers owned by the human (blue) player - the symmetric twin of
  *  {@link enemyLivingSettlers} for both-sides casualty checks. */
 export function blueLivingSettlers(sim: Simulation): number {
   let n = 0;
@@ -73,7 +73,7 @@ export function enemyLivingSettlers(sim: Simulation): number {
   return n;
 }
 
-/** Enemy (non-human) buildings still standing — a live {@link components.Building} carrying a Health
+/** Enemy (non-human) buildings still standing - a live {@link components.Building} carrying a Health
  *  pool above 0. The siege-scene checks measure attrition and priority over this set. */
 export function enemyBuildings(sim: Simulation): Entity[] {
   const out: Entity[] = [];

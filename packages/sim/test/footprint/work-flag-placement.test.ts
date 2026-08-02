@@ -5,10 +5,10 @@ import { nearestWorkFlagPlacement, workFlagPlacementBlocks } from '../../src/sys
 import { ctxOf } from '../fixtures/context.js';
 import { GRASS, HUT, mappedSim, terrainOf, VIKING, WATER } from './building-placement/support.js';
 
-/** The HUT's anchor in every placement fixture — body (5,5)+(6,5), door (4,5). */
+/** The HUT's anchor in every placement fixture - body (5,5)+(6,5), door (4,5). */
 const ANCHOR = { x: 5, y: 5 };
 
-/** The uncapped whole-map scan `nearestWorkFlagPlacement`'s ring search replaced — the reference its
+/** The uncapped whole-map scan `nearestWorkFlagPlacement`'s ring search replaced - the reference its
  *  `(distance, then lowest node id)` winner must match byte-identically. */
 function linearReference(sim: Simulation, from: NodeId): NodeId | null {
   const terrain = terrainOf(sim);
@@ -54,7 +54,7 @@ describe('nearestWorkFlagPlacement', () => {
   });
 
   it('falls back to the reference scan when nothing lies within the ring cap', () => {
-    // A water strip pushing the nearest walkable node to Manhattan distance 55 from the west edge —
+    // A water strip pushing the nearest walkable node to Manhattan distance 55 from the west edge -
     // past the internal 48-ring cap, so only the fallback can find it.
     const FIRST_LAND_X = 55;
     const WIDTH = 60;

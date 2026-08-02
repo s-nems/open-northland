@@ -11,7 +11,7 @@ import { hashCells } from './cell-signature.js';
  *
  * The original shows no cell lattice, and per-cell translucent diamond fills leave AA seams between
  * neighbours that read as a grid. So each side of the wash is composited off-screen first: its cells'
- * diamonds — each grown by an overlap pad so neighbours fuse — are rendered opaque into a
+ * diamonds - each grown by an overlap pad so neighbours fuse - are rendered opaque into a
  * RenderTexture (overlap saturates instead of double-blending), and only the finished texture is
  * drawn translucently into the scene: the blocked side tinted dark, the buildable side additive.
  * Both textures render at half resolution and upscale with linear filtering, which rounds the diamond
@@ -45,10 +45,10 @@ export interface PlacementOverlayFrame {
   readonly blocked: readonly PlacementOverlayCell[];
 }
 
-/** The dim wash: near-black at a moderate alpha — enough to read "blocked" without hiding the ground. */
+/** The dim wash: near-black at a moderate alpha - enough to read "blocked" without hiding the ground. */
 const DIM_COLOR = 0x000000;
 const DIM_ALPHA = 0.42;
-/** The buildable-side lift: additive white, faint — the original's slight contrast boost. */
+/** The buildable-side lift: additive white, faint - the original's slight contrast boost. */
 const BRIGHT_ALPHA = 0.08;
 /** Half-resolution compositing: halves the fill cost and linear-upscales into a soft, grid-free edge. */
 const COMPOSITE_RESOLUTION = 0.5;
@@ -56,7 +56,7 @@ const COMPOSITE_RESOLUTION = 0.5;
  *  Must exceed 2 composite pixels (= 2 / COMPOSITE_RESOLUTION world px): at half resolution a smaller
  *  pad is sub-pixel, and the AA edges of neighbouring diamonds leave a visible bright seam lattice. */
 const CELL_OVERLAP = 5;
-/** Composite-texture allocation step (texture px) — see {@link PlacementOverlayLayer.ensureTextures}. */
+/** Composite-texture allocation step (texture px) - see {@link PlacementOverlayLayer.ensureTextures}. */
 const TEXTURE_QUANT = 128;
 
 /** The world-space box of a band's composite, padded for the border diamonds + the terrain lift. */
@@ -69,9 +69,9 @@ interface OverlayBounds {
 
 /**
  * The world-space bounds of a band's composite: the node centres' extent grown on every side by a
- * border node diamond's half-extents (`TILE_HALF_W` × `TILE_HALF_H/2` — the rectangular node
+ * border node diamond's half-extents (`TILE_HALF_W` × `TILE_HALF_H/2` - the rectangular node
  * lattice has no stagger overhang) plus the {@link CELL_OVERLAP} fusing pad each diamond grows by,
- * and by the map's max terrain lift upward. Pure — unit-testable without a GL context.
+ * and by the map's max terrain lift upward. Pure - unit-testable without a GL context.
  */
 export function overlayBounds(
   frame: Pick<PlacementOverlayFrame, 'minCol' | 'maxCol' | 'minRow' | 'maxRow'>,
@@ -177,13 +177,13 @@ export class PlacementOverlayLayer {
     }
     this.dim.texture = dimTexture;
     this.bright.texture = brightTexture;
-    // Mark the frame composited only now — an exception above (lost GL context, a failed alloc)
+    // Mark the frame composited only now - an exception above (lost GL context, a failed alloc)
     // leaves the key unset, so the next frame retries instead of skipping on a stale signature.
     this.key = key;
   }
 
   /**
-   * (Re)allocate the two composite textures — grow-only, in {@link TEXTURE_QUANT} steps. The visible
+   * (Re)allocate the two composite textures - grow-only, in {@link TEXTURE_QUANT} steps. The visible
    * col/row count flaps N↔N+1 as a smooth pan crosses tile phase (`visibleTileRange` floors/ceils),
    * so exact-size allocation would destroy + recreate GPU textures every half tile of travel;
    * quantized grow-only allocation makes a steady pan allocation-free after the first composite.
@@ -214,7 +214,7 @@ export class PlacementOverlayLayer {
 /** A cheap order-sensitive signature of a frame (band + a rolling mix of the blocked cells) so an
  *  unchanged frame skips the recomposite. The caller emits blocked cells in a fixed tile-scan order,
  *  so equal frames hash equal; a collision between two different same-length sets is tolerated (a
- *  stale cosmetic wash for one frame, self-correcting on the next change) — this only gates a redraw,
+ *  stale cosmetic wash for one frame, self-correcting on the next change) - this only gates a redraw,
  *  never correctness. */
 function signatureOf(frame: PlacementOverlayFrame): string {
   const h = hashCells(frame.blocked, frame.blocked.length);

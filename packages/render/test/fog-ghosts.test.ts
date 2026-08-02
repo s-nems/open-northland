@@ -6,7 +6,7 @@ import { ONE, type ResourceTypeBinding, resolveResourceDraw, tileToScreen } from
 import { entity, snapshotOf, fogViewOf as viewOf } from './support/fixtures.js';
 
 /**
- * Unit tests for the fog-ghost memory (`data/fog-ghosts.ts`) and its scene emission — the remembered
+ * Unit tests for the fog-ghost memory (`data/fog-ghosts.ts`) and its scene emission - the remembered
  * statics a viewer keeps seeing (dimmed) on explored ground. Pure data layer: hand-built snapshots +
  * a hand-built FogView, no Pixi, like the rest of the scene tests.
  */
@@ -20,10 +20,10 @@ const TREE_CELL = '9,4';
 describe('FogGhostStore', () => {
   it('captures a static seen on VISIBLE ground and draws it once the cell regresses to EXPLORED', () => {
     const store = new FogGhostStore();
-    // Generation 1: the house is watched — remembered, but the live entity draws (no ghost emitted).
+    // Generation 1: the house is watched - remembered, but the live entity draws (no ghost emitted).
     const seen = store.update(snapshotOf([HOUSE]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1));
     expect(seen).toEqual([]);
-    // Generation 2: the ground regressed — the memory draws, frozen at the captured reads.
+    // Generation 2: the ground regressed - the memory draws, frozen at the captured reads.
     const fogged = store.update(snapshotOf([HOUSE]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 2));
     expect(fogged).toHaveLength(1);
     expect(fogged[0]).toMatchObject({ ref: 1, kind: 'building', typeId: 7, tileX: 5, tileY: 4 });
@@ -32,7 +32,7 @@ describe('FogGhostStore', () => {
   it('keeps a DEAD static ghosted until re-sight, then forgets it', () => {
     const store = new FogGhostStore();
     store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.VISIBLE]]), 1));
-    // The tree dies behind the fog — the memory must keep showing the last-seen node.
+    // The tree dies behind the fog - the memory must keep showing the last-seen node.
     const fogged = store.update(snapshotOf([]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2));
     expect(fogged.map((g) => g.ref)).toEqual([2]);
     // Re-sight the (now empty) ground: the record dies with the look.
@@ -61,7 +61,7 @@ describe('FogGhostStore', () => {
     ]);
     store.update(snapshotOf([HOUSE, TREE]), viewOf(bothVisible, 1), new Set([TREE.id]));
     // The house's ground fell all the way out of the raw mask (a mode-switch history); the tree's is
-    // explored but the tree was static-layer drawn — neither may emit.
+    // explored but the tree was static-layer drawn - neither may emit.
     const later = store.update(
       snapshotOf([HOUSE, TREE]),
       viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2),
@@ -73,7 +73,7 @@ describe('FogGhostStore', () => {
   it('RECON seeds natural resources (never buildings) sight-unseen, once per recon stretch', () => {
     const stump = entity(3, 11, 4, { Stump: { goodType: 3 } });
     const store = new FogGhostStore();
-    // Nothing is visible; recon's known-terrain view still knows where nature is — but not buildings.
+    // Nothing is visible; recon's known-terrain view still knows where nature is - but not buildings.
     const seeded = store.update(snapshotOf([HOUSE, TREE, stump]), viewOf(new Map(), 1, FOG_MODE.RECON));
     expect(seeded.map((g) => g.ref).sort()).toEqual([2, 3]);
     expect(seeded.every((g) => g.kind !== 'building')).toBe(true);
@@ -91,7 +91,7 @@ describe('FogGhostStore', () => {
     store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 1));
     expect(store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2))).toEqual(
       [],
-    ); // never seen by the pool path — no memory
+    ); // never seen by the pool path - no memory
     store.adopt(TREE.id);
     const adopted = store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.EXPLORED]]), 2));
     expect(adopted.map((g) => g.ref)).toEqual([2]);
@@ -111,7 +111,7 @@ describe('FogGhostStore', () => {
   });
 });
 
-describe('collectSpriteScene — ghost emission', () => {
+describe('collectSpriteScene - ghost emission', () => {
   const GHOST = { ref: 9, kind: 'building', tileX: 5, tileY: 4, typeId: 7 } as const;
 
   it('emits a tagged ghost item for a ref absent from the snapshot, and keeps the ref live', () => {
@@ -144,7 +144,7 @@ describe('collectSpriteScene — ghost emission', () => {
   });
 
   it('remembers a deposit ladder shorter than its record, so the ghost draws the last-seen frame', () => {
-    // A 4-unit deposit down to its last unit, bound to a 5-frame record — the ladders differ, so the
+    // A 4-unit deposit down to its last unit, bound to a 5-frame record - the ladders differ, so the
     // resolver rescales. A ghost that forgot `levels` would skip the rescale and draw a frame lower.
     const GOOD = 3;
     const binding: ResourceTypeBinding = { byGood: { [GOOD]: [10, 20, 30, 40, 50] }, default: 0 };
@@ -161,7 +161,7 @@ describe('collectSpriteScene — ghost emission', () => {
     const remembered = collectSpriteScene(snapshotOf([]), { ghosts }).items[0];
 
     if (live === undefined || remembered === undefined) throw new Error('missing draw item');
-    // Level 1 of 4 rescales onto 5 frames as ceil(1·5/4) = 2 — bob 20, not the first frame a forgotten
+    // Level 1 of 4 rescales onto 5 frames as ceil(1·5/4) = 2 - bob 20, not the first frame a forgotten
     // denominator would pick. Pinned, so the pair cannot agree by both falling through to `default`.
     expect(resolveResourceDraw(binding, live)?.bob).toBe(20);
     expect(resolveResourceDraw(binding, remembered)).toEqual(resolveResourceDraw(binding, live));

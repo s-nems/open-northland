@@ -16,12 +16,12 @@ describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
   it('an ENGAGED combatant skips economy planning (does not harvest a resource it stands on)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const cutter = fighterAt(sim, 3, 0, VIKING, WOODCUTTER, { owner: P0 });
-    woodAt(sim, 3, 0); // a wood node on the cutter's tile — it would normally start chopping
+    woodAt(sim, 3, 0); // a wood node on the cutter's tile - it would normally start chopping
     sim.world.add(cutter, Engagement, { repathAt: sim.tick });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(cutter, CurrentAtomic)).toBe(false); // engaged — the economy did NOT start a harvest
+    expect(sim.world.has(cutter, CurrentAtomic)).toBe(false); // engaged - the economy did NOT start a harvest
   });
 
   it('the SAME woodcutter harvests when NOT engaged (proving the gate is what stopped it)', () => {
@@ -31,6 +31,6 @@ describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(cutter, CurrentAtomic).atomicId).toBe(HARVEST_ATOMIC); // economy ran — it harvested
+    expect(sim.world.get(cutter, CurrentAtomic).atomicId).toBe(HARVEST_ATOMIC); // economy ran - it harvested
   });
 });

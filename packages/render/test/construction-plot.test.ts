@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plotOutlines } from '../src/gpu/overlays/construction-plot.js';
 
 /**
- * plotOutlines — the construction-plot union outline in the rotated `(u,v)` frame (`u = col+row`,
+ * plotOutlines - the construction-plot union outline in the rotated `(u,v)` frame (`u = col+row`,
  * `v = col−row`), where each cell diamond is the axis-aligned 2×2 square centred on its `(u,v)`.
  * The load-bearing data decision behind the rounded plot wash: shared edges cancel, overlapping
  * diamonds union into one loop, and collinear runs merge so the rounding only sees real corners.
@@ -27,7 +27,7 @@ function signedArea2(loop: readonly { u: number; v: number }[]): number {
 }
 
 describe('plotOutlines', () => {
-  it('a single cell outlines as its diamond — one 4-corner square in (u,v)', () => {
+  it('a single cell outlines as its diamond - one 4-corner square in (u,v)', () => {
     const loops = plotOutlines([{ cells: [{ col: 5, row: 5 }] }]);
     expect(loops).toHaveLength(1);
     // Cell (5,5) → (u,v)=(10,0); its diamond is the square [9,11]×[−1,1].
@@ -35,7 +35,7 @@ describe('plotOutlines', () => {
   });
 
   it('two overlapping neighbour cells union into ONE loop with no interior edges', () => {
-    // Cells (5,5) and (6,5) — horizontal node neighbours whose diamonds overlap by half.
+    // Cells (5,5) and (6,5) - horizontal node neighbours whose diamonds overlap by half.
     const loops = plotOutlines([
       {
         cells: [
@@ -58,7 +58,7 @@ describe('plotOutlines', () => {
   });
 
   it('a filled cell rectangle outlines without interior vertices (collinear runs merged)', () => {
-    // Every node in cols 4..6 × rows 4..6 — a dense 3×3 block whose union is one big region.
+    // Every node in cols 4..6 × rows 4..6 - a dense 3×3 block whose union is one big region.
     const cells = [];
     for (let col = 4; col <= 6; col++) for (let row = 4; row <= 6; row++) cells.push({ col, row });
     const loops = plotOutlines([{ cells }]);
@@ -94,7 +94,7 @@ describe('plotOutlines', () => {
   });
 
   it('a ring footprint yields an outer loop plus an oppositely-wound hole (fill cuts it out)', () => {
-    // Eight diamonds tiling a 6×6 (u,v) block around an empty 2×2 centre (node (2,0) omitted) — a hole.
+    // Eight diamonds tiling a 6×6 (u,v) block around an empty 2×2 centre (node (2,0) omitted) - a hole.
     const loops = plotOutlines([
       {
         cells: [

@@ -1,8 +1,8 @@
 /**
  * The settler render binding: turn one body's decoded `[bobseq]` ranges into the directional, tick-animated
  * state bindings the renderer plays (walk / idle / chop / carry), and hold the per-job character roster
- * (the `[jobbasegraphics]` join). A settler is composed of two layered bob sets — a **body**
- * (`CR_Hum_Body_*`) and a **head** (`CR_Hum_Head_*`), the head drawn on top at the same bob id — exactly
+ * (the `[jobbasegraphics]` join). A settler is composed of two layered bob sets - a **body**
+ * (`CR_Hum_Body_*`) and a **head** (`CR_Hum_Head_*`), the head drawn on top at the same bob id - exactly
  * as the original's `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`) compose a human. Every
  * reducer here is pure + unit-tested without a browser; the byte loading + sheet assembly live in
  * {@link import('../sprite-sheet/index.js')}.

@@ -34,7 +34,7 @@ import type { SceneDefinition } from './types.js';
  *
  * Wood is over-supplied (1.5× its cap, read from content) nearest the door, so the store fills to 100/100 and
  * the cap bites: the carriers stop hauling wood (the ~50 surplus rests on the ground) and switch to the goods
- * farther out — no pick-up/put-down loop, no carrier stuck holding a unit it can't deposit. A porter never
+ * farther out - no pick-up/put-down loop, no carrier stuck holding a unit it can't deposit. A porter never
  * lifts a good the store is full of and sheds any surplus it is already carrying.
  *
  * Headless proves the mechanic; the browser is where a human watches the wood counter stop at 100 and the
@@ -45,15 +45,15 @@ const MAP_W = 40;
 const MAP_H = 34;
 const INITIAL_ZOOM = 0.7;
 /** Long enough for the wood to top out (~tick 4000, one foot-carried unit at a time) and for the carriers to
- *  then land a chunk of the other goods — headless gate only; the browser view runs continuously. */
+ *  then land a chunk of the other goods - headless gate only; the browser view runs continuously. */
 const RUN_TICKS = 6000;
 
 const WAREHOUSE_X = 20;
 const WAREHOUSE_Y = 6;
-/** The tech enabler's corner — far from the store, goods and carriers so it just idles (no gathering: the loose
+/** The tech enabler's corner - far from the store, goods and carriers so it just idles (no gathering: the loose
  *  piles are ground drops, not resource nodes a collector harvests). */
 const ENABLER = { x: 2, y: MAP_H - 2 } as const;
-/** Three carriers — the warehouse's carrier-slot count; spawned unemployed just below it so the assign pass
+/** Three carriers - the warehouse's carrier-slot count; spawned unemployed just below it so the assign pass
  *  staffs all three into its carrier slots on the first tick. */
 const CARRIERS = 3;
 const CARRIER_ROW_Y = 9;
@@ -61,7 +61,7 @@ const CARRIER_ROW_Y = 9;
 /** The loose-good field: wood hugging the store (short trips, worked first, fills the store to its cap with a
  *  surplus left over), a scatter of other goods farther out (well under the cap, worked once wood tops out). */
 const WOOD_OVERSUPPLY = 1.5; // 1.5× the cap, so the store fills to 100 and ~50 wood is left resting on the ground
-const WOOD_ROW_Y = 9; // the wood field starts right below the store — a short carry so the fill reads quickly
+const WOOD_ROW_Y = 9; // the wood field starts right below the store - a short carry so the fill reads quickly
 const WOOD_ROW_W = 12; // wood tiles per row (a compact block tight around the door)
 const SCATTER_ROW_Y = 20; // the varied goods farther out, worked once the wood is in
 const SCATTER_PILES_PER_GOOD = 3;
@@ -75,7 +75,7 @@ const SCATTER_GOODS = [
   GOOD_COIN,
 ] as const;
 
-const STACK = systems.MAX_GROUND_STACK; // the most one tile's pile holds — every drop fills a tile to this
+const STACK = systems.MAX_GROUND_STACK; // the most one tile's pile holds - every drop fills a tile to this
 
 /** The warehouse type's per-good stock capacity for `goodType`, read from content so the scene stays tied to
  *  the real cap (no hardcoded limit). */
@@ -88,11 +88,11 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
 
   // The warehouse (house 7) is `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone collector
-  // must be present or the carriers below never get employed — the gatherer a real game's HQ seeds, placed
+  // must be present or the carriers below never get employed - the gatherer a real game's HQ seeds, placed
   // off in a corner where it idles.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y, HUMAN_PLAYER);
 
-  // Three unemployed settlers by the warehouse — the assign pass employs them into its carrier slots.
+  // Three unemployed settlers by the warehouse - the assign pass employs them into its carrier slots.
   for (let i = 0; i < CARRIERS; i++) {
     spawnIdleSettler(sim, WAREHOUSE_X - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER);
   }
@@ -106,7 +106,7 @@ function build(sim: Simulation): void {
     dropSandboxGood(sim, GOOD_WOOD, x, y, STACK);
   }
 
-  // A scatter of other goods farther out — full-stack tiles, kept well under the cap so they all land.
+  // A scatter of other goods farther out - full-stack tiles, kept well under the cap so they all land.
   SCATTER_GOODS.forEach((good, g) => {
     for (let p = 0; p < SCATTER_PILES_PER_GOOD; p++) {
       const x = WAREHOUSE_X - SCATTER_GOODS.length + g * 2;
@@ -151,7 +151,7 @@ function groundHolds(sim: Simulation, goodType: number): boolean {
   return false;
 }
 
-/** How many carriers are still holding wood — should be 0 after the cap: a porter sheds any surplus it was
+/** How many carriers are still holding wood - should be 0 after the cap: a porter sheds any surplus it was
  *  already carrying. */
 function carriersHoldingWood(sim: Simulation): number {
   let holding = 0;
@@ -161,7 +161,7 @@ function carriersHoldingWood(sim: Simulation): number {
   return holding;
 }
 
-/** Total units of goods other than wood the warehouse holds — proof the carriers moved on from the capped
+/** Total units of goods other than wood the warehouse holds - proof the carriers moved on from the capped
  *  wood to the rest of the field. */
 function warehouseOtherGoodsTotal(sim: Simulation): number {
   const store = warehouse(sim);
@@ -201,7 +201,7 @@ export const warehouseScene: SceneDefinition = {
       },
     },
     {
-      label: 'the wood cap is enforced — the surplus wood is left resting on the ground, not forced in',
+      label: 'the wood cap is enforced - the surplus wood is left resting on the ground, not forced in',
       predicate: (sim) => groundHolds(sim, GOOD_WOOD),
     },
     {
@@ -209,7 +209,7 @@ export const warehouseScene: SceneDefinition = {
       predicate: (sim) => warehouseOtherGoodsTotal(sim) > 0,
     },
     {
-      label: 'no carrier is left stuck holding wood — the surplus was shed, not carried forever',
+      label: 'no carrier is left stuck holding wood - the surplus was shed, not carried forever',
       predicate: (sim) => carriersHoldingWood(sim) === 0,
     },
   ],

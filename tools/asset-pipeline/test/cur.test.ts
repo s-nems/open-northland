@@ -8,7 +8,7 @@ import { type CursorImageInput, decodeCursor, encodeCursor } from '../src/decode
  * 32×32 image; the synthetic single-depth fixtures exercise the same directory + DIB path.
  */
 
-/** A 256-entry RGB palette where index i → (i, (2i)&0xff, (3i)&0xff) — distinct per index, easy to assert.
+/** A 256-entry RGB palette where index i → (i, (2i)&0xff, (3i)&0xff) - distinct per index, easy to assert.
  *  Deliberately not the shared `rampPalette` fixture: this formula makes the expected triples readable. */
 const multiplesPalette = (): Uint8Array => {
   const p = new Uint8Array(768);
@@ -67,7 +67,7 @@ describe('decodeCursor', () => {
 
   it('reads the hotspot from the SELECTED (chosen) image, not directory entry 0', () => {
     // Entry 0 is a small fallback carrying a stray hotspot (5,6); the larger entry 1 is selected for
-    // pixels and carries (7,8). Both the pixels AND the hotspot must come from the selected entry —
+    // pixels and carries (7,8). Both the pixels AND the hotspot must come from the selected entry -
     // matching the original's Win32 best-fit (it uses the chosen image's own hotspot). This is why the
     // real MouseRight resolves (1,1) from its 8-bpp entry, not the (10,10) on its 1-bpp fallback.
     const cur = decodeCursor(

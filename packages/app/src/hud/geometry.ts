@@ -1,6 +1,6 @@
 /**
  * The screen-space rect, point-in-rect test, and client→canvas point mapping every HUD layout/hit-test
- * module shares (tool panel, building menu, action ring, pop-up windows). Pure — no Pixi, no DOM — so
+ * module shares (tool panel, building menu, action ring, pop-up windows). Pure - no Pixi, no DOM - so
  * the layouts stay headlessly unit-testable. Rects are half-open on both axes (`[x, x+w) × [y, y+h)`),
  * so adjacent rects never double-claim a boundary pixel.
  */

@@ -8,7 +8,7 @@ import { createUnitTargets, type UnitTargets } from '../src/view/unit-controls/u
 
 /**
  * A click may only reach what the renderer's frame actually drew, while an ORDER must reach the whole
- * selection — including units the camera panned away from and one standing inside a building. The siege
+ * selection - including units the camera panned away from and one standing inside a building. The siege
  * scene supplies both sides: a human warband facing a red base of enemy buildings and defenders.
  */
 describe('unit-controls targets over the renderer frame', () => {
@@ -57,7 +57,7 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(owned.filter((ref) => enemies.includes(ref))).toEqual([]);
   });
 
-  it('reaches only what the frame drew — a culled unit is not clickable', () => {
+  it('reaches only what the frame drew - a culled unit is not clickable', () => {
     const dropped = firstDrawn('settler', HUMAN_PLAYER);
     const owned = targetsOver(fullScene.filter((it) => it !== dropped))
       .owned()
@@ -85,7 +85,7 @@ describe('unit-controls targets over the renderer frame', () => {
   });
 
   it('still issues orders to a selection the camera panned away from, front to back', () => {
-    // Expected from the SNAPSHOT, not the projection — an order set derived from the draw list would
+    // Expected from the SNAPSHOT, not the projection - an order set derived from the draw list would
     // agree with itself about a settler both of them omit.
     const ourSettlers = snapshot.entities
       .filter((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER)
@@ -126,7 +126,7 @@ describe('unit-controls targets over the renderer frame', () => {
 
   it('orders a settler the frame never draws, such as one standing inside a building', () => {
     // Indoor settlers (the `Resting` marker, or mid-exchange in a store) are deliberately not drawn, so
-    // the frame cannot supply them — the order set reads the snapshot instead and still reaches them.
+    // the frame cannot supply them - the order set reads the snapshot instead and still reaches them.
     const indoor = {
       id: 90_001,
       components: {

@@ -4,7 +4,7 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
 
 /**
  * The headless half of the acceptance-scene system: every registered scene is run with NO screen and
- * its mechanic checks are asserted. This is the part an AGENT can self-validate — the browser
+ * its mechanic checks are asserted. This is the part an AGENT can self-validate - the browser
  * (`?scene=<id>`) view is for the HUMAN to judge the pixels (see docs/SCENES.md). Each `createSceneSim`
  * builds an independent sim (its own component stores), so the cases are isolated regardless of order.
  */

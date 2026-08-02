@@ -23,15 +23,15 @@ rest-spot walk-aside and the sleep-at-home rung are all invisible to it.
 - Make the integration golden reach the drives. Cheapest honest options, in preference order:
   either lengthen `TICKS` past the threshold crossing, or seed one settler in the slice with an
   authored high starting deficit. Prefer whichever keeps the trace readable.
-- The atomic-action trace should then contain eat (10) and sleep (8) entries — that is the point, so
+- The atomic-action trace should then contain eat (10) and sleep (8) entries - that is the point, so
   assert it rather than leaving it implicit.
 - Landing this **moves the golden hash and trace on purpose**; name the mechanic in the commit, as
   `packages/sim/AGENTS.md` requires.
-- Fix the stale header claim in `golden-trace.test.ts` either way — right now it overstates what the
+- Fix the stale header claim in `golden-trace.test.ts` either way - right now it overstates what the
   hash covers, which is what made the gap easy to miss.
 
 ## Verify
 
-- `npm test` — the golden moves once, deliberately, and holds after.
+- `npm test` - the golden moves once, deliberately, and holds after.
 - Sanity check the new trace actually contains the needs atomics; a golden that still never fires them
   has not fixed anything.

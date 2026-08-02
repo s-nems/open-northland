@@ -4,17 +4,17 @@ import { buildSpriteScene, makeElevationField, TILE_HALF_H, tileToScreen } from 
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
- * Headless tests for the terrain-elevation seam (`data/elevation.ts`) — the one bilinear sampler every
+ * Headless tests for the terrain-elevation seam (`data/elevation.ts`) - the one bilinear sampler every
  * projection consumer lifts through. Pixels are still human-gated, but the load-bearing DATA decisions
- * are agent-checkable: the engine's lift-per-unit (elevation/16 half-row-steps — source basis,
+ * are agent-checkable: the engine's lift-per-unit (elevation/16 half-row-steps - source basis,
  * docs/SOURCES.md "terrain tessellation"), the sampler's bilinear+clamp, the cull pad, and the DEPTH
- * rule (a lifted-up sprite on a nearer row still occludes one behind it — the painter key stays the
+ * rule (a lifted-up sprite on a nearer row still occludes one behind it - the painter key stays the
  * PRE-LIFT feet row, not the lifted screen y).
  */
 
 const LIFT = elevationLiftPerUnit();
 
-describe('elevationLiftPerUnit — the engine tessellation divisor', () => {
+describe('elevationLiftPerUnit - the engine tessellation divisor', () => {
   it('is one 16th of a half row step (1.1875 px at the measured 38 px row step)', () => {
     expect(LIFT).toBeCloseTo(TILE_HALF_H / 2 / 16, 9);
     expect(LIFT).toBeCloseTo(1.1875, 9);
@@ -47,11 +47,11 @@ describe('makeElevationField.liftAt', () => {
     expect(field.liftAt(-3, -3)).toBe(0); // past the NW corner → cell (0,0)
   });
 
-  it('exposes maxLift = max(elevation) × lift-per-unit — the map-wide-max cull pad, computed once', () => {
+  it('exposes maxLift = max(elevation) × lift-per-unit - the map-wide-max cull pad, computed once', () => {
     expect(field.maxLift).toBeCloseTo(50 * LIFT, 6);
   });
 
-  it('is FLAT (zero lift everywhere) when there is no elevation lane — the byte-identical path', () => {
+  it('is FLAT (zero lift everywhere) when there is no elevation lane - the byte-identical path', () => {
     const flat = makeElevationField(undefined, 3, 2);
     expect(flat.maxLift).toBe(0);
     expect(flat.liftAt(1.5, 0.5)).toBe(0);
@@ -61,8 +61,8 @@ describe('makeElevationField.liftAt', () => {
   });
 });
 
-describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
-  // 4×4 grid, elevation(col,row) = col·10 + row — every cell distinct so a parity slip is visible.
+describe('makeElevationField.liftAtNode - parity-aware on cell rows', () => {
+  // 4×4 grid, elevation(col,row) = col·10 + row - every cell distinct so a parity slip is visible.
   const W = 4;
   const H = 4;
   const elev: number[] = [];
@@ -72,7 +72,7 @@ describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
   it("a cell-centre node lifts by its OWN cell's value on BOTH row parities (the mesh-vertex match)", () => {
     for (const [col, row] of [
       [2, 2],
-      [1, 3], // odd row — the staggered hx = 2·col+1 must not blend into the east neighbour
+      [1, 3], // odd row - the staggered hx = 2·col+1 must not blend into the east neighbour
       [2, 1],
     ] as const) {
       const [hx, hy] = cellNode(col, row);
@@ -86,12 +86,12 @@ describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
   });
 
   it('a between-row node keeps the plain bilinear stand-in (the named approximation)', () => {
-    // hy = 5 lies between rows 2 and 3 — inside the mesh triangles, sampled at (hx/2, 2.5).
+    // hy = 5 lies between rows 2 and 3 - inside the mesh triangles, sampled at (hx/2, 2.5).
     expect(field.liftAtNode(4, 5)).toBeCloseTo((20 + 2.5) * LIFT, 6);
   });
 });
 
-describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () => {
+describe('elevation lift on sprites - draw up, but sort by PRE-LIFT row', () => {
   // A tall hill on the near cell (col 1, row 8); everything else at sea level. Only that cell is 200, so
   // its bilinear lift is exactly 200×LIFT.
   const W = 3;

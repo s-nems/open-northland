@@ -24,7 +24,7 @@ export type GatherMode = 'fell' | 'mine' | 'pick';
 export interface GathererSpec {
   readonly good: number;
   readonly id: string;
-  /** The gatherer trade — always {@link JOB_COLLECTOR}: the original's one collector does every harvest. */
+  /** The gatherer trade - always {@link JOB_COLLECTOR}: the original's one collector does every harvest. */
   readonly job: number;
   readonly atomic: number;
   readonly animation: string;

@@ -9,7 +9,7 @@ import { pairedStateFrames, stateIndexForLevel } from '../src/content/objects.js
  * frame pairing (pairedStateFrames).
  */
 
-describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index', () => {
+describe('stateIndexForLevel - the lmlv level → GfxFrames state-list index', () => {
   it('counts levels up from the lowest state onto the highest-first lists', () => {
     // A 3-state tree (full-grown, mid, sapling in file order): level 3 = full-grown, level 1 = sapling.
     expect(stateIndexForLevel(3, 3)).toBe(0);
@@ -62,7 +62,7 @@ describe('paint order: flat decor vs the row an occluder sorts at', () => {
   });
 });
 
-describe('pairedStateFrames — body/shadow frames stay index-aligned across 0×0 drops', () => {
+describe('pairedStateFrames - body/shadow frames stay index-aligned across 0×0 drops', () => {
   const frame = (n: number, w = 10, h = 10): [number, AtlasFrame] => [
     n,
     { x: n, y: 0, width: w, height: h, offsetX: 0, offsetY: 0 },

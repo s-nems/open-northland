@@ -4,12 +4,12 @@ import { components, type TerrainMap } from '@open-northland/sim';
 /**
  * The pure middle of the authored-entity placement import: resolve a decoded map's `entities` layer
  * (names + half-cells, verbatim from `map.cif` `StaticObjects`) into sim placements over narrow
- * structural views of the served IR. No fetch, no sim construction — headlessly unit-testable
+ * structural views of the served IR. No fetch, no sim construction - headlessly unit-testable
  * (`test/vertical-slice.test.ts`); `runAuthoredSlice` consumes the result.
  */
 
 /**
- * The narrow `ir.json` row views the authored-entity joins read — structural picks over the raw
+ * The narrow `ir.json` row views the authored-entity joins read - structural picks over the raw
  * fetched IR (the full zod `parseContentSet` over the multi-MB file is a load-time cost the entry
  * doesn't need; these are the same by-name join keys the engine itself uses).
  */
@@ -24,7 +24,7 @@ export interface AuthoredJoinRows {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
-  /** The `animaltypes` rows — a species places only when its tribe has a LIVING record
+  /** The `animaltypes` rows - a species places only when its tribe has a LIVING record
    *  (`hitpointsAdult` > 0): with no record the sim drops the spawn silently (no herd params), and a
    *  decorative hitpoints-0 swarm (butterflies/bees) spawns nothing, so skipping it here keeps the
    *  placed count and the replay command log honest. */
@@ -33,9 +33,9 @@ export interface AuthoredJoinRows {
 
 /**
  * Canonicalize a `sethuman` role name for the job join: lowercase, punctuation/space runs to `_`,
- * edge underscores trimmed. Decoded maps author the same jobtype in freehand variants —
+ * edge underscores trimmed. Decoded maps author the same jobtype in freehand variants -
  * `Child_Male`, `SOLDIER_UNARMED`, `hero_sword_BJARNI`, `coin maker`, `herb & mush guy`,
- * `hero_axe_???` — that all mean the `jobtypes.ini` slug (`child_male`, `coin_maker`, `hero_axe`, …);
+ * `hero_axe_???` - that all mean the `jobtypes.ini` slug (`child_male`, `coin_maker`, `hero_axe`, …);
  * an exact-string join drops them (observed across the decoded `content/maps/*.json`).
  */
 function normalizeRoleKey(name: string): string {
@@ -70,7 +70,7 @@ export type AuthoredPlacement =
     }
   | {
       /** One `setanimal` record = one creature at its authored half-cell (spawned `count: 1`, never
-       *  a whole `maximumgroupsize` herd — that would multiply the map's population and trample the
+       *  a whole `maximumgroupsize` herd - that would multiply the map's population and trample the
        *  authored positions). Always unowned. */
       kind: 'animal';
       tribe: number;
@@ -83,12 +83,12 @@ export type AuthoredPlacement =
  * sim placements. Joins are by name against the IR rows (a building's `EditName`+`level` → `buildingBobs`
  * typeId+tribe and its `addgoods` names → `goods` typeIds; a human's `role` → `jobs` typeId, its `tribe`
  * string → `tribes` typeId, its `producedGood` name → a `goods` typeId), and the two player
- * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
- * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
+ * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based - schema notes).
+ * Half-cells pass through verbatim - the sim's grid is the `2W×2H` lattice the records address, so an
  * authored building keeps its exact anchor. A `setanimal`'s species string joins the `tribes` rows by
  * normalized `id` OR `name` (maps author variants like `'cattle '` / `'evil hares'`) and requires a
  * living `animals` row for that tribe. Unresolvable, decorative, or out-of-bounds records are dropped and counted
- * (animals on their own counter — a whole species missing its art/params reads differently from a
+ * (animals on their own counter - a whole species missing its art/params reads differently from a
  * one-off bad record).
  */
 export function resolveAuthoredPlacements(
@@ -123,7 +123,7 @@ export function resolveAuthoredPlacements(
       tribeByName.set(t.id, t.typeId);
   }
   // The species join: normalized tribe id AND name both key the tribe (`setanimal` authors the
-  // display name — `evil hares` is tribe `evil_hares`), gated on a living `animals` row (see the
+  // display name - `evil hares` is tribe `evil_hares`), gated on a living `animals` row (see the
   // AuthoredJoinRows note - a hitpoints-0 swarm is skipped, not placed).
   const animalTribes = new Set<number>();
   for (const a of rows.animals ?? []) {
@@ -146,14 +146,14 @@ export function resolveAuthoredPlacements(
     if (g.typeId !== undefined) goodTypeIds.add(g.typeId);
   }
   // A good is authored as a quoted name, or rarely as a bare goodtype typeId (`addgoods 49 1000`,
-  // Walhalla) — an all-digits "name" resolves by id when the IR carries that good.
+  // Walhalla) - an all-digits "name" resolves by id when the IR carries that good.
   const resolveGood = (name: string): number | undefined => {
     const byName = goodByName.get(name);
     if (byName !== undefined) return byName;
     const asId = /^\d+$/.test(name) ? Number.parseInt(name, 10) : Number.NaN;
     return goodTypeIds.has(asId) ? asId : undefined;
   };
-  // `map` is the sim's half-cell grid (2W×2H) — authored half-cells bound-check directly against it.
+  // `map` is the sim's half-cell grid (2W×2H) - authored half-cells bound-check directly against it.
   const inBounds = (hx: number, hy: number): boolean =>
     hx >= 0 && hy >= 0 && hx < map.width && hy < map.height;
 
@@ -168,7 +168,7 @@ export function resolveAuthoredPlacements(
       continue;
     }
     // Authored `addgoods` stock, good names → good typeIds; an unresolvable name is dropped and
-    // counted (the building still places — a missing good must not cost the map its house).
+    // counted (the building still places - a missing good must not cost the map its house).
     const goods = (b.goods ?? []).flatMap((g) => {
       const good = resolveGood(g.name);
       if (good === undefined) {
@@ -195,7 +195,7 @@ export function resolveAuthoredPlacements(
       continue;
     }
     // The human's authored produced good. An unresolvable name is dropped and counted separately from a
-    // building's `addgoods` stock (they fail for unrelated reasons) — the settler still spawns, on the
+    // building's `addgoods` stock (they fail for unrelated reasons) - the settler still spawns, on the
     // gather-everything default, exactly as a map with no pick at all.
     const gatherGood = h.producedGood !== undefined ? resolveGood(h.producedGood) : undefined;
     if (h.producedGood !== undefined && gatherGood === undefined) droppedPicks++;
@@ -210,7 +210,7 @@ export function resolveAuthoredPlacements(
     });
   }
   let skippedAnimals = 0;
-  // Approximation (named): a `setanimal` also authors an age column (adult/baby — the bridge map has
+  // Approximation (named): a `setanimal` also authors an age column (adult/baby - the bridge map has
   // 33 baby records) that the maps decoder drops, so every authored animal spawns adult with
   // `hitpoints_adult`. Threading age through to `hitpoints_baby` is a later slice.
   for (const a of entities.animals) {

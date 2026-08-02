@@ -4,13 +4,13 @@ import { CULL_MARGIN_PX, computeSpatial, EDGE_GAIN, MAX_PAN, ZOOM_GAIN_FLOOR } f
 
 /**
  * The pure spatial-audio math: an emitter is silent (null) off screen, full-gain + centre-pan at the
- * screen centre, and attenuated + panned toward the edge near a border. No AudioContext — the "only
+ * screen centre, and attenuated + panned toward the edge near a border. No AudioContext - the "only
  * what's on screen makes sound" contract is checked headless.
  */
 describe('computeSpatial', () => {
   const CANVAS_W = 800;
   const CANVAS_H = 600;
-  // A camera that projects tile (0,0) — which tileToScreen maps to (0,0) — to the screen centre.
+  // A camera that projects tile (0,0) - which tileToScreen maps to (0,0) - to the screen centre.
   const centred: Camera = { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 2, scale: 1 };
 
   it('is loudest and centre-panned at the screen centre', () => {
@@ -55,7 +55,7 @@ describe('computeSpatial', () => {
 
   it('attenuates as the camera zooms out and never boosts past full when zoomed in', () => {
     // Keep the same tile dead-centre at every zoom (offset compensates for scale), so only the zoom
-    // factor varies — gain then equals the zoom attenuation alone (centre screen-gain is 1).
+    // factor varies - gain then equals the zoom attenuation alone (centre screen-gain is 1).
     const col = 3;
     const row = 4;
     const s = tileToScreen(col, row);

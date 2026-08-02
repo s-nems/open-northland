@@ -11,11 +11,11 @@ import {
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The atomic-animation read views — `atomicAnimationByName` (the canonical name→record resolver the
+ * The atomic-animation read views - `atomicAnimationByName` (the canonical name→record resolver the
  * `atomicDuration`/combat-cadence lookups spell out inline), `isInterruptibleAtomic`,
  * `atomicStartDirection` (the two `atomicanimations.ini` scalars no sim system reads yet), and
  * `atomicEventChannelDelta` (the net per-channel delta over the `events` array), and
- * `atomicHasExtendedEvents` (whether the animation carries any `eventx` line — the last unread
+ * `atomicHasExtendedEvents` (whether the animation carries any `eventx` line - the last unread
  * per-event `AtomicEvent.extended` field). These are genuinely extracted (245/896 animations carry
  * `interruptible=true`, 89/896 a `startDirection`, 695/896 ≥1 `event`, and 43 of the ~2900 event lines
  * are `eventx` clustering on `*_produce_*` in the real IR), so the fixture sets non-default values on a
@@ -38,7 +38,7 @@ function animationContent(): ContentSet {
       { id: 'viking_chop', name: 'viking_chop', length: 3, interruptible: false, startDirection: 2 },
       // An idle: a settler may abandon it the instant a higher-priority drive fires; no pinned facing.
       { id: 'viking_idle', name: 'viking_idle', length: 100, interruptible: true },
-      // A plain entry pinning neither — exercises the schema defaults (interruptible=false, no facing).
+      // A plain entry pinning neither - exercises the schema defaults (interruptible=false, no facing).
       { id: 'viking_walk', name: 'viking_walk', length: 8 },
       // An eat: one hunger-channel (2) restore, plus a value-less cue event that must sum as 0.
       {
@@ -47,7 +47,7 @@ function animationContent(): ContentSet {
         length: 40,
         events: [
           { at: 30, type: ATOMIC_EVENT_CHANNEL.HUNGER, value: 4000 },
-          { at: 35, type: 34 }, // a cue (no value) — contributes 0, doesn't throw or skew the sum
+          { at: 35, type: 34 }, // a cue (no value) - contributes 0, doesn't throw or skew the sum
         ],
       },
       // A sleep: multiple rest-channel (1) ticks that must sum (mirrors the real per-tick +100 stream).
@@ -61,7 +61,7 @@ function animationContent(): ContentSet {
           { at: 60, type: ATOMIC_EVENT_CHANNEL.REST, value: 100 },
         ],
       },
-      // A produce: the real `*_produce_*` two-stream shape — plain `event` good yields alongside
+      // A produce: the real `*_produce_*` two-stream shape - plain `event` good yields alongside
       // `eventx` lines (the worker's own need-drains while labouring + the production start/end
       // brackets). Exercises `atomicHasExtendedEvents` and confirms the channel-delta sum spans both
       // streams (it sums by `type`, not by `extended`).

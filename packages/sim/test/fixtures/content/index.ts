@@ -4,7 +4,7 @@ import { economyContent } from './economy.js';
 import { societyContent } from './societies.js';
 
 /**
- * The manifest every synthetic fixture carries — boilerplate a `parseContentSet` call must satisfy but
+ * The manifest every synthetic fixture carries - boilerplate a `parseContentSet` call must satisfy but
  * that no test varies. Spread it rather than restating it, so a manifest schema change is one edit.
  */
 export const TEST_MANIFEST = {

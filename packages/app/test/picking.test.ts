@@ -18,7 +18,7 @@ import {
 
 /**
  * Headless tests for the pure PICKING math (screen→world→node + the point/box hit-tests). This is the
- * agent-verifiable half of selection — the DOM/mouse controller that calls it is human-judged in the
+ * agent-verifiable half of selection - the DOM/mouse controller that calls it is human-judged in the
  * browser. A picked Tile is a HALF-CELL node on the `2W×2H` lattice; the load-bearing property is the
  * round-trip: `worldToTile(halfCellToScreen(t)) === t`, so a click lands on the node a human aimed at.
  * The formation-assignment half is tested in `formation.test.ts`.
@@ -63,9 +63,9 @@ describe('worldToTile', () => {
   });
 });
 
-describe('worldToTile — elevation-aware inverse', () => {
+describe('worldToTile - elevation-aware inverse', () => {
   // Elevation lives on the CELL grid (W×H); node coordinates run 0..2W-1 / 0..2H-1 and sample the
-  // field at (col/2, row/2) — the same cell-space point the renderer lifts a node by.
+  // field at (col/2, row/2) - the same cell-space point the renderer lifts a node by.
   const W = 20;
   const H = 20;
 
@@ -135,7 +135,7 @@ describe('pickTopAt', () => {
     // Two units sharing a screen column; the one lower on screen (larger y) is drawn in front.
     const back = { ref: 1, x: 100, y: 100 };
     const front = { ref: 2, x: 100, y: 140 };
-    // Click on the front unit's feet — inside both boxes (front body reaches up past the back feet).
+    // Click on the front unit's feet - inside both boxes (front body reaches up past the back feet).
     expect(pickTopAt([back, front], 100, 138)).toBe(2);
   });
 
@@ -144,21 +144,21 @@ describe('pickTopAt', () => {
   });
 
   it('selects a unit when the click lands on its body above the feet', () => {
-    // 30px above the feet anchor is within PICK_REACH_UP (42) — a body click still selects.
+    // 30px above the feet anchor is within PICK_REACH_UP (42) - a body click still selects.
     expect(pickTopAt([{ ref: 5, x: 200, y: 200 }], 200, 170)).toBe(5);
   });
 
-  it('gives a BUILDING a far larger hit box — a click anywhere on the house body selects it', () => {
+  it('gives a BUILDING a far larger hit box - a click anywhere on the house body selects it', () => {
     const building = { ref: 9, x: 200, y: 200, kind: 'building' as const };
     // A point 40px up + 40px to the side would MISS a settler-sized box but lands on the house body.
     expect(pickTopAt([building], 240, 160)).toBe(9);
     // ...and high up the tall sprite (90px above the feet) still selects.
     expect(pickTopAt([building], 200, 110)).toBe(9);
-    // The same offsets miss a settler-kind target (its box is small) — proving the box is kind-aware.
+    // The same offsets miss a settler-kind target (its box is small) - proving the box is kind-aware.
     expect(pickTopAt([{ ref: 9, x: 200, y: 200, kind: 'settler' as const }], 240, 160)).toBeNull();
   });
 
-  it('uses the EXACT sprite box when provided — a click anywhere inside the graphic selects', () => {
+  it('uses the EXACT sprite box when provided - a click anywhere inside the graphic selects', () => {
     // A big building's real rendered bounds: click any part of the graphic hits; just outside misses.
     const t = {
       ref: 3,

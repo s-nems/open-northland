@@ -23,9 +23,9 @@ import { deliveryTargetFor } from './delivery-targets.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
 /**
- * HARVEST / COLLECT — the gatherer drive, in two shapes:
+ * HARVEST / COLLECT - the gatherer drive, in two shapes:
  *
- *  - **Flag-bound** (carries a {@link WorkFlag}): the user-specified collector — it works only the nodes within
+ *  - **Flag-bound** (carries a {@link WorkFlag}): the user-specified collector - it works only the nodes within
  *    its flag's radius, carries off only the trunks/ore it dug itself, delivers to its own flag, and stands
  *    idle beside the flag when nothing is in reach ({@link planFlagGatherer}). It always owns the tick (returns
  *    true), so it never ferries other settlers' goods or de-stacks off its post.
@@ -49,7 +49,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
   }
 
   // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
-  // stores, narrowed to its GatherSelection pick when one is set (the flag-less collector rule — a
+  // stores, narrowed to its GatherSelection pick when one is set (the flag-less collector rule - a
   // smithy's collector fetches iron/wood, never the quarry's stone). A good is "for the workplace"
   // also when the store takes its BANKED form (`exportedGoodForm`): an HQ-employed hunter's meat
   // banks as food into the food slot (`pileupIntoStore`), so a food-slot store must not filter the
@@ -75,7 +75,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
   });
   const trunk = nearestCollectablePileFor(plan, goodFilter !== undefined ? { goodFilter } : undefined);
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
-  // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
+  // Prefer the trunk on a tie (it is the wood already at hand - grab it before a fresh tree).
   if (trunk !== null && trunk.dist <= nodeDist) {
     walkPickupBatch(plan, trunk.pile, trunk.goodType);
     return true;
@@ -90,13 +90,13 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
 /**
  * The flag-bound gatherer's decision, in priority order (the user-specified behaviour):
  *
- *  1. **Finish your own drop** — if this gatherer has a trunk/ore pile it dug ({@link nearestOwnDropFor}, keyed
+ *  1. **Finish your own drop** - if this gatherer has a trunk/ore pile it dug ({@link nearestOwnDropFor}, keyed
  *     by {@link HarvestedBy}), carry it off before starting anything new. Clearing its own drop first keeps it
  *     from scattering half-emptied trunks, and it leaves every other loose pile untouched.
- *  2. **Harvest within the flag radius** — else chop/mine the nearest node inside the flag's work area
+ *  2. **Harvest within the flag radius** - else chop/mine the nearest node inside the flag's work area
  *     ({@link nearestHarvestableFor} with the flag as centre); a felled trunk / mined pile becomes an owned
  *     drop that branch 1 then carries home.
- *  3. **Idle by the flag** — nothing in reach: walk to and hold beside the flag, rather than roaming or
+ *  3. **Idle by the flag** - nothing in reach: walk to and hold beside the flag, rather than roaming or
  *     ferrying.
  *
  * Always returns true: a flag-bound gatherer is spoken for every tick (the flag guarantees a fallback target),
@@ -111,7 +111,7 @@ function planFlagGatherer(
   const { world, ctx, terrain, entity: e, here } = plan;
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
 
-  // 1. Carry off a trunk/ore this gatherer dug (only its own — foreign piles are left in peace).
+  // 1. Carry off a trunk/ore this gatherer dug (only its own - foreign piles are left in peace).
   const own = nearestOwnDropFor(plan);
   if (own !== null) {
     walkPickupBatch(plan, own.pile, own.goodType);
@@ -138,12 +138,12 @@ function planFlagGatherer(
     return true;
   }
 
-  // 3. Nothing to dig and nothing of its own to carry — stand idle beside the flag.
+  // 3. Nothing to dig and nothing of its own to carry - stand idle beside the flag.
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
 }
 
-/** Walk to a harvestable node's work cell and start its content-defined harvest atomic — the shared body of
+/** Walk to a harvestable node's work cell and start its content-defined harvest atomic - the shared body of
  *  the roaming and flag-bound gatherer's "chop/mine the nearest node" step. Claims the node for this tick,
  *  so colleagues planned later this pass pick other nodes (one digger per node). */
 function startHarvestFromNode(

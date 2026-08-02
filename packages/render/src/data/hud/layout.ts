@@ -2,11 +2,11 @@ import { type HudModel, IDLE_JOB } from './model.js';
 
 /**
  * The HUD panel's text layout: a {@link HudModel} stacked into panel-relative pixel rows. No Pixi and
- * no measured glyph metrics — a pure function of the model, so it is unit-tested headlessly. Anchoring
+ * no measured glyph metrics - a pure function of the model, so it is unit-tested headlessly. Anchoring
  * the laid-out panel to a screen corner is {@link import('./place.js')}'s.
  */
 
-/** One positioned text row of the laid-out HUD panel — a string anchored at a panel-relative `(x, y)`. */
+/** One positioned text row of the laid-out HUD panel - a string anchored at a panel-relative `(x, y)`. */
 export interface HudTextRow {
   /** Panel-relative x of the row's left edge, in pixels. */
   readonly x: number;
@@ -21,7 +21,7 @@ export interface HudTextRow {
  * top-to-bottom ordered list of {@link HudTextRow}s the GPU/DOM layer paints.
  */
 export interface HudLayout {
-  /** Panel width in pixels (a fixed column — the rows are short tally lines). */
+  /** Panel width in pixels (a fixed column - the rows are short tally lines). */
   readonly width: number;
   /** Panel height in pixels: the padding + every row's line height (grows with the row count). */
   readonly height: number;
@@ -40,7 +40,7 @@ export interface HudLabels {
   readonly good: (goodType: number) => string;
 }
 
-/** Layout constants for {@link layoutHud} — a single fixed column of stacked text rows. */
+/** Layout constants for {@link layoutHud} - a single fixed column of stacked text rows. */
 const HUD_PAD = 8; // px inset from the panel edge to the first row / the left margin
 const HUD_LINE_H = 16; // px vertical advance between successive rows
 const HUD_WIDTH = 200; // px panel width (a narrow side column)
@@ -49,8 +49,8 @@ const HUD_INDENT = 12; // px extra left-indent for a tally row under its heading
 /**
  * Lay out a {@link HudModel} into a {@link HudLayout} of panel-relative pixel positions.
  *
- * It stacks the model into labelled sections — a header (tribe + tick, population), then a jobs
- * section, then a stocks section — with rows advancing by {@link HUD_LINE_H} top to bottom and
+ * It stacks the model into labelled sections - a header (tribe + tick, population), then a jobs
+ * section, then a stocks section - with rows advancing by {@link HUD_LINE_H} top to bottom and
  * tallies indented under their heading. The panel `height` is sized to exactly fit the rows.
  *
  * A function of the model alone: no Pixi and no measured glyph metrics (the width is a fixed column

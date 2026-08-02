@@ -59,23 +59,23 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     file: patternFile,
     layer: 'base',
   });
-  // The `[transition]` ground-overlay table (`.cif`-only) — a decoded map's `transitions.types`
+  // The `[transition]` ground-overlay table (`.cif`-only) - a decoded map's `transitions.types`
   // names join onto it (`editName`) for the overlay texture + the six per-pair UV triangles.
   const transitionFile = join('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
   const gfxPatternTransitions = await loadCifTable(roots, transitionFile, extractPatternTransitions, []);
-  // The full `[GfxLandscape]` object table (`.cif`-only) — the table a decoded map's `objects`
+  // The full `[GfxLandscape]` object table (`.cif`-only) - the table a decoded map's `objects`
   // placements join onto by `EditName` (trees/stones/bushes/mine decals/waves; visual frames +
   // logic footprints). Distinct from the `(bmd, palette)` atlas work list the bmd stage derives.
   const landscapeFile = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
   const landscapeGfx = await loadCifTable(roots, landscapeFile, extractLandscapeGfx, []);
   // The resolved gathering-pipeline join: per map-gathered good, its three landscape stages +
-  // the `[GfxLandscape]` records (by `logicType`) that place each — materialized once so a later
+  // the `[GfxLandscape]` records (by `logicType`) that place each - materialized once so a later
   // gathering system doesn't re-scan the goods × landscapeGfx tables. See `buildGatheringPipeline`.
   const gatheringPipeline = buildGatheringPipeline(goods, landscapeGfx);
-  // The decoded `soundfx.cif` sound bank (`.cif`-only) — the named wav groups + terrain ambient beds +
+  // The decoded `soundfx.cif` sound bank (`.cif`-only) - the named wav groups + terrain ambient beds +
   // life-event jingles the browser audio layer joins onto sim events / on-screen terrain. Base-game
   // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
-  // render/audio-binding data — the pure sim never reads it.
+  // render/audio-binding data - the pure sim never reads it.
   const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
   const sounds = await loadCifTable(roots, soundFile, extractSounds, {
     staticGroups: [],
@@ -83,7 +83,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     jingles: [],
   });
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, buildingGraphicsOverlays);
-  // Vehicles are not goods (they are built on a yard, not crafted into a stockpile) — strip them from
+  // Vehicles are not goods (they are built on a yard, not crafted into a stockpile) - strip them from
   // every stock/produces list before the recipe join (temporary; see stripVehicleGoods).
   const buildingsSansVehicles = stripVehicleGoods(buildingsWithCosts, goods, vehicles);
   // Output-side recipe join: a workplace's `produces` output goods -> each good's `productionInputs`
@@ -106,14 +106,14 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     landscape,
     landscapeGfx,
     gatheringPipeline,
-    // The full positional pattern table — a decoded map's `ground.patterns` names join onto it
+    // The full positional pattern table - a decoded map's `ground.patterns` names join onto it
     // (`GfxPattern.editName`) for the texture page + per-triangle UVs.
     gfxPatterns,
-    // The transition-overlay table — a decoded map's `transitions.types` names join onto it.
+    // The transition-overlay table - a decoded map's `transitions.types` names join onto it.
     gfxPatternTransitions,
     terrainPatterns,
     // The per-logicType ground classes (`humancanwalkon`/`housecanbebuildon`/`iswater`) the
-    // map-collision join reads — emitted verbatim so ground blocking is data, not a hardcoded split.
+    // map-collision join reads - emitted verbatim so ground blocking is data, not a hardcoded split.
     trianglePatternTypes: triangleTypes,
     bobSequences,
     gfxAtomics,
@@ -132,7 +132,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
 /**
  * Builds the validated IR and writes it to `<out>/ir.json` (pretty-printed for diff-legibility).
  * Returns the assembled set so the caller can report record counts. The write target lives under the
- * gitignored `content/` — no copyrighted bytes enter the repo source.
+ * gitignored `content/` - no copyrighted bytes enter the repo source.
  */
 export async function writeIr(roots: SourceRoots, out: string): Promise<ContentSet> {
   const set = await buildIr(roots);

@@ -23,17 +23,17 @@ import {
 } from './ids/index.js';
 
 /**
- * Global construction data — every building is raised the original way: the player places a foundation
+ * Global construction data - every building is raised the original way: the player places a foundation
  * (the tool panel enqueues `placeBuilding` `underConstruction`), carriers/builders deliver its materials,
  * and a builder hammers it up (the ConstructionSystem). This is not a per-scene demo: the same cost + life
  * pool apply in every scene and on every map. A building with no cost would instead pop up instantly and a
  * `GOOD_NONE` cost would stall (good 0 is undeliverable), so each carries a real, deliverable bill.
  *
- * Named approximation (source basis: our design — the engine's build loop has no oracle, AGENTS.md). The
+ * Named approximation (source basis: our design - the engine's build loop has no oracle, AGENTS.md). The
  * real per-type material bill (`[GfxHouse] LogicConstructionGoods`) and `logichitpoints` are extracted, but
  * the bill is keyed by the original game's good ids, not yet unified into the sandbox good space (the
- * deferred global-content id unification). So the cost is approximated in sandbox goods — a wood+stone
- * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
+ * deferred global-content id unification). So the cost is approximated in sandbox goods - a wood+stone
+ * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) -
  * and hitpoints is a per-class default. Leveled types keep their chains ({@link buildingUpgradeTarget}),
  * each tier a parcel up (the tier's own cost doubles as its upgrade-difference bill).
  */
@@ -53,9 +53,9 @@ const HOME_BUILD_COST_BY_LEVEL: readonly (readonly { goodType: number; amount: n
 ];
 /** Non-home build cost by building `kind`; unmapped kinds fall back to {@link DEFAULT_BUILD_COST}. */
 const BUILD_COST_BY_KIND: Readonly<Record<string, readonly { goodType: number; amount: number }[]>> = {
-  storage: buildParcel(6, 4), // warehouses + the HQ — the largest common bodies
+  storage: buildParcel(6, 4), // warehouses + the HQ - the largest common bodies
   training: buildParcel(5, 4), // barracks / school halls
-  tower: buildParcel(3, 5), // walls / watchtowers — stone-heavy
+  tower: buildParcel(3, 5), // walls / watchtowers - stone-heavy
   workplace: buildParcel(3, 2), // a workshop
 };
 const DEFAULT_BUILD_COST = buildParcel(3, 2);
@@ -84,7 +84,7 @@ export function buildingHitpoints(kind: string): number {
 }
 
 /**
- * The catalog's upgrade chains: which typeIds carry an `upgradeTarget` (always the next typeId — every
+ * The catalog's upgrade chains: which typeIds carry an `upgradeTarget` (always the next typeId - every
  * chained record's `LogicType` table is consecutive). Source basis: the extracted `[GfxHouse]`
  * `upgrade === 1` construction-layer rows in real `ir.json` name exactly these viking typeIds as
  * upgradable. A hand table, NOT a name-suffix derivation: `work_pottery_02` (typeId 22) is really the

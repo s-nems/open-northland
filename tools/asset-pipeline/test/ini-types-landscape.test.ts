@@ -34,7 +34,7 @@ describe('extractLandscape', () => {
     );
     // The raw display name is kept alongside the slug id.
     expect(byId.get('bramble')).toMatchObject({ typeId: 13, name: 'bramble' });
-    // Both `transition` lines survive in file order as raw int tuples — no field is interpreted.
+    // Both `transition` lines survive in file order as raw int tuples - no field is interpreted.
     expect(byId.get('bramble')?.transitions).toEqual([
       [16, 13, 3, 1, 0],
       [21, 14, 3, 0, 0],

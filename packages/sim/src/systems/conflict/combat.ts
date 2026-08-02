@@ -16,25 +16,25 @@ export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
 
 /**
- * CombatSystem — the combat loop's decision stage: for each combatant, pick who to fight and either swing at
+ * CombatSystem - the combat loop's decision stage: for each combatant, pick who to fight and either swing at
  * an enemy in reach or advance on one spotted but out of reach. The AtomicSystem's `attack` effect lands the
  * hit and the CleanupSystem reaps the felled. A combatant is a {@link Settler} carrying a {@link Health}
  * pool, so the system is inert on non-combat settlers. Each tick:
  *
- *  1. Dormancy gate ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
+ *  1. Dormancy gate ({@link combatPossible}) - one cheap pass decides whether any hostile pair (or any
  *     lingering combat state to clean up) exists; if not, a map of peaceful settlers, or an all-one-player
  *     field, costs nothing (the RTS-scale budget).
- *  2. Spatial index — all combatants are bucketed by tile once ({@link NodeBuckets}), so a seeker's
+ *  2. Spatial index - all combatants are bucketed by tile once ({@link NodeBuckets}), so a seeker's
  *     "nearest enemy" query is a bounded grid ring search ({@link NodeBuckets.nearest}) instead of an
  *     O(entities) full scan per seeker. The search finishes the whole minimum-distance band and picks
- *     (distance, then id) — the same winner a full scan would, so the pick stays order-independent.
+ *     (distance, then id) - the same winner a full scan would, so the pick stays order-independent.
  *  3. Per combatant ({@link engageCombatant}): the stance ladder. An owned unit acts on its military mode;
  *     an unowned one carries no stance and acts on the content hostility relations alone.
  *
  * Two hostility axes compose into the `mayTarget` relation (targeting.ts):
- *  - Owner (player) hostility — two owned combatants of different players are enemies, same player friendly,
+ *  - Owner (player) hostility - two owned combatants of different players are enemies, same player friendly,
  *    so a player's mixed-tribe army never fights itself. Binary: no diplomacy/alliances.
- *  - Tribe hostility + predation + provoked anger (`mayAttack`/`mayHunt`/{@link Anger}) — the
+ *  - Tribe hostility + predation + provoked anger (`mayAttack`/`mayHunt`/{@link Anger}) - the
  *    content relations for any pair where at least one side is unowned: civ-vs-civ by tribe,
  *    civ⇄aggressive-animal, hunter→huntable-prey, and a struck `getAngry` animal fighting back.
  *
@@ -56,7 +56,7 @@ export const combatSystem: System = (world, ctx) => {
   const combatants = canonicalById(world.query(Settler, Health, Position));
   // Attackable buildings JOIN the target index (never the seeker loop): a warrior can strike an enemy
   // building, but a building never engages. Both index and presence bucket a building at its wall cells
-  // (buildingBodyNodes) — the faces a warrior reaches it from — so the reach math and the coarse early-out
+  // (buildingBodyNodes) - the faces a warrior reaches it from - so the reach math and the coarse early-out
   // agree with the chase target. The merged list stays canonical so ring-search ties are stable.
   const targets = canonicalById([...combatants, ...attackableBuildings(world)]);
   // A building never moves within a tick, so its wall nodes are memoized once and shared by the index/
@@ -64,7 +64,7 @@ export const combatSystem: System = (world, ctx) => {
   // the footprint per lookup.
   const bodyNodes: BuildingBodyNodeCache = new Map();
   // A unit buckets at its own node; a building at EVERY wall cell (buildingBodyNodes), so a ring search
-  // finds it at the distance to its nearest face and a seeker near any side wakes to it — the siege spreads
+  // finds it at the distance to its nearest face and a seeker near any side wakes to it - the siege spreads
   // around the whole footprint instead of queueing at one door.
   const nodesOf = (e: Entity): { x: number; y: number }[] => {
     if (!world.has(e, Building)) return [terrain.coordsOf(entityNode(world, terrain, e))];

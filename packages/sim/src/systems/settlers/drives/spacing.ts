@@ -5,22 +5,22 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { nearestCell } from '../../footprint/geometry.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 
-// The spacing drives — the two consumers of the planner-tick occupancy state:
-//  - idle spacing ({@link deStackIdle}): the last resort for a unit with nothing to do — step off a tile
+// The spacing drives - the two consumers of the planner-tick occupancy state:
+//  - idle spacing ({@link deStackIdle}): the last resort for a unit with nothing to do - step off a tile
 //    shared with another resting unit so an idle crowd spreads out instead of stacking;
 //  - work slots ({@link claimWorkCell}): builders converging on one construction site claim distinct
 //    perimeter cells. Body collision can't do this: civilians are deliberate pass-through, and
-//    the SeparationSystem displaces only walking movers — two units standing on one node are never pushed apart.
+//    the SeparationSystem displaces only walking movers - two units standing on one node are never pushed apart.
 
 /**
- * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on half-cell node (tileX,tileY)
- * — shares that node with a lower-id resting owned settler, send it (a {@link MoveGoal}) to the nearest free
+ * The idle-spacing drive: if `e` - a resting, owned, otherwise-idle settler on half-cell node (tileX,tileY)
+ * - shares that node with a lower-id resting owned settler, send it (a {@link MoveGoal}) to the nearest free
  * node so the two don't stand stacked. The lowest-id occupant is the keeper (it stays); every other occupant
  * steps aside. A unit boxed in (no free node within the search cap) just stays.
  *
  * The sim half of the "no hard collision, but units won't come to rest on an occupied node" behaviour:
  * transit is never blocked (a walker passes through freely), only a unit that has arrived with nothing to do
- * relocates off a shared node. Returns true when it sent the unit stepping aside — the caller's lower rung
+ * relocates off a shared node. Returns true when it sent the unit stepping aside - the caller's lower rung
  * (the idle chat) yields to it, so a stacked crowd spreads out before striking up conversations.
  */
 export function deStackIdle(
@@ -32,17 +32,17 @@ export function deStackIdle(
   spacing: PlannerSpacing,
 ): boolean {
   // Only player-owned units space out. An unowned settler isn't in the owned-only `occupancy`, so the keeper
-  // test below (`bucket[0] === e`) could never recognise it as the keeper — without this guard an unowned unit
+  // test below (`bucket[0] === e`) could never recognise it as the keeper - without this guard an unowned unit
   // sharing a tile with ≥2 owned resting units would wrongly de-stack. Gating here keeps the unowned fixtures
   // byte-identical.
   if (!world.has(e, Owner)) return false;
   const bucket = spacing.occupancy.at(tileX, tileY);
-  if (bucket.length < 2 || bucket[0] === e) return false; // alone on the tile, or the keeper — hold ground
+  if (bucket.length < 2 || bucket[0] === e) return false; // alone on the tile, or the keeper - hold ground
   // Never aim at a cell under a standing building: routing A* would refuse a blocked goal, and a MoveGoal
   // whose route can't resolve would freeze the unit (nothing clears a failed non-player request).
   const from = terrain.nodeAtClamped(tileX, tileY);
   const free = nearestFreeCell(terrain, from, spacing);
-  if (free === null) return false; // boxed in — nothing better than staying
+  if (free === null) return false; // boxed in - nothing better than staying
   spacing.claim(free);
   world.add(e, MoveGoal, { cell: free });
   return true;
@@ -82,13 +82,13 @@ export function claimWorkCell(
 }
 
 /**
- * Claim a stand cell BESIDE the shared `anchor` for a worker with nothing to do — the "bored by the door"
+ * Claim a stand cell BESIDE the shared `anchor` for a worker with nothing to do - the "bored by the door"
  * stand (user-directed behaviour: an off-duty worker loiters visibly next to its workplace door, not on
  * it). It shares the planner-tick occupancy and cell claims used by construction spacing, but keeps its
  * own door-centred yard: the anchor itself is never returned, so a loitering operator never lands on the
  * node {@link presentOperatorCount} reads (standing ON the door would silently run the workshop). A worker
  * already alone on a non-anchor yard cell stays put (stable across re-plans); with no free yard cell it
- * simply stays where it is (`here`) — loitering is a stance, never a refusal that must relocate someone.
+ * simply stays where it is (`here`) - loitering is a stance, never a refusal that must relocate someone.
  */
 export function loiterCell(
   world: World,
@@ -106,14 +106,14 @@ export function loiterCell(
     if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
   }
   for (const cell of yard) {
-    if (cell === anchor) continue; // the door node stays free — loiterers stand beside it
+    if (cell === anchor) continue; // the door node stays free - loiterers stand beside it
     if (spacing.isClaimed(cell)) continue;
     const { x, y } = terrain.coordsOf(cell);
     if (spacing.occupancy.at(x, y).length > 0) continue;
     spacing.claim(cell);
     return cell;
   }
-  return here; // no free yard cell — stay put rather than stack on the door
+  return here; // no free yard cell - stay put rather than stack on the door
 }
 
 /**

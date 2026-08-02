@@ -4,7 +4,7 @@
  * spawn + decay is {@link import('./marks.js')}'s; this module owns only where a droplet is at an age.
  */
 
-/** A deterministic float in [0, 1) from a mark's seed and a droplet/shaft index — no `Math.random`, so a
+/** A deterministic float in [0, 1) from a mark's seed and a droplet/shaft index - no `Math.random`, so a
  *  `?shot` capture reproduces the exact splatter. */
 export function frac(seed: number, i: number): number {
   let x = (seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0;
@@ -13,26 +13,26 @@ export function frac(seed: number, i: number): number {
   return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
 }
 
-/** How far up a blood spurt sits from the victim's feet node — the wound height it sprays from and falls back
+/** How far up a blood spurt sits from the victim's feet node - the wound height it sprays from and falls back
  *  down to (a viking body is ~32 world px tall; ~40% up puts the wound on the chest). The GPU layer lifts the
  *  blood node here; the droplets then fall exactly this far to pool at the feet. */
 export const BLOOD_RISE = 13;
-/** Render-ticks a droplet takes to fall from the wound to the feet — the gravity below is tuned to it. */
+/** Render-ticks a droplet takes to fall from the wound to the feet - the gravity below is tuned to it. */
 const BLOOD_FALL_TICKS = 8;
 /** Downward acceleration (world px / render-tick²), set so a droplet released at rest falls {@link BLOOD_RISE}
- *  in exactly {@link BLOOD_FALL_TICKS} ticks (`y = ½·g·t²` ⇒ `g = 2·rise / fallTicks²`) — a closed-form landing
+ *  in exactly {@link BLOOD_FALL_TICKS} ticks (`y = ½·g·t²` ⇒ `g = 2·rise / fallTicks²`) - a closed-form landing
  *  time with no per-droplet `sqrt`. */
 const BLOOD_GRAVITY = (2 * BLOOD_RISE) / (BLOOD_FALL_TICKS * BLOOD_FALL_TICKS);
-/** Initial spread of the droplets around the wound point (world px) — a small fan, not one blob. */
+/** Initial spread of the droplets around the wound point (world px) - a small fan, not one blob. */
 const BLOOD_SPRAY = 3;
-/** Max horizontal drift speed as a droplet falls (world px / render-tick) — a slight sideways run. */
+/** Max horizontal drift speed as a droplet falls (world px / render-tick) - a slight sideways run. */
 const BLOOD_DRIFT = 0.9;
-/** Max per-droplet start delay (render-ticks) — staggers the drips so it reads as running, not a single drop. */
+/** Max per-droplet start delay (render-ticks) - staggers the drips so it reads as running, not a single drop. */
 const BLOOD_DRIP_STAGGER = 5;
-/** Vertical elongation per unit fall-speed, and its cap — a fast drop stretches into a streak. */
+/** Vertical elongation per unit fall-speed, and its cap - a fast drop stretches into a streak. */
 const BLOOD_STREAK = 0.35;
 const BLOOD_MAX_STREAK = 2.3;
-/** A landed droplet's stretch — flattened vertically and spread horizontally into a small pool. */
+/** A landed droplet's stretch - flattened vertically and spread horizontally into a small pool. */
 const BLOOD_POOL_STRETCH_Y = 0.5;
 const BLOOD_POOL_STRETCH_X = 1.6;
 

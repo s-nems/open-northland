@@ -12,7 +12,7 @@ import {
 } from './delivery-rules.js';
 
 /**
- * The store a settler carrying `goodType` should deliver it to — the first rule of {@link DELIVERY_RULES}
+ * The store a settler carrying `goodType` should deliver it to - the first rule of {@link DELIVERY_RULES}
  * that answers, or null when none can take the load.
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
@@ -33,11 +33,11 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
 }
 
 /**
- * A memoized "could this settler's `good` actually be delivered anywhere right now" probe —
+ * A memoized "could this settler's `good` actually be delivered anywhere right now" probe -
  * {@link deliveryTargetFor} under the settler's own signpost gate, the exact decision the delivery rung
  * makes once the good is on its back. The pickup rungs consult it before lifting, so fetch and delivery
  * can never disagree: a disagreement is a livelock (a porter lifting a pile whose only sink is out of its
- * area sheds it at its feet and re-lifts it next tick). Memoized per planner call — a scan probes few
+ * area sheds it at its feet and re-lifts it next tick). Memoized per planner call - a scan probes few
  * distinct goods, and the answer is position-stable for the one decision the caller makes this tick.
  *
  * The probe routes the CARRIED form ({@link carriedGoodForm} - a dish converts in this settler's hands
@@ -49,7 +49,7 @@ export function deliverableGoodProbe(plan: PlannerContext): (goodType: number) =
   return (rawGoodType: number): boolean => {
     const goodType = carriedGoodForm(plan.world, plan.ctx, plan.entity, rawGoodType);
     // Tick-global cheap precondition first ({@link SinkAvailability}): when no store ANYWHERE could take
-    // the good, the full routing walk below is skipped — this keeps a saturated settlement (every store
+    // the good, the full routing walk below is skipped - this keeps a saturated settlement (every store
     // full, every idle hauler re-probing each tick) at ~zero probe cost. It deliberately ignores
     // construction-site sinks, exactly like the pre-confinement gate: builders supply sites through
     // their own fetch rung, so a hauler passing on such a pile matches the long-standing behavior.

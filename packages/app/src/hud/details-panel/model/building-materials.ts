@@ -9,20 +9,20 @@ import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from
 
 export interface StockRow {
   readonly goodType: number;
-  /** The good's string id (stable across content sets) — the key the HUD resolves its icon by. */
+  /** The good's string id (stable across content sets) - the key the HUD resolves its icon by. */
   readonly goodId?: string;
   readonly label: string;
   readonly amount: number;
-  /** The good's declared store ceiling (its `stock` slot capacity) — the row reads "7.0 / 25.0". */
+  /** The good's declared store ceiling (its `stock` slot capacity) - the row reads "7.0 / 25.0". */
   readonly capacity?: number;
-  /** The stock-window category tab (0–7) this good belongs to — see `hud/good-categories.ts`. */
+  /** The stock-window category tab (0–7) this good belongs to - see `hud/good-categories.ts`. */
   readonly category: number;
 }
 
-/** One material line of a construction site's cost — the Construction row "delivered / needed". */
+/** One material line of a construction site's cost - the Construction row "delivered / needed". */
 export interface ConstructionRow {
   readonly goodType: number;
-  /** The good's string id — the HUD's icon key (like {@link StockRow.goodId}). */
+  /** The good's string id - the HUD's icon key (like {@link StockRow.goodId}). */
   readonly goodId?: string;
   readonly label: string;
   /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
@@ -30,7 +30,7 @@ export interface ConstructionRow {
   readonly needed: number;
 }
 
-/** One material line of the Upgrade button's cost preview — a required good and its quantity. Unlike
+/** One material line of the Upgrade button's cost preview - a required good and its quantity. Unlike
  *  {@link ConstructionRow} there is no "delivered" half: this is the bill shown before the upgrade
  *  starts (the hover tooltip), not a running site's progress. */
 export interface UpgradeCostRow {
@@ -39,10 +39,10 @@ export interface UpgradeCostRow {
   readonly amount: number;
 }
 
-/** The Construction section's content — present only while the building carries `UnderConstruction`. */
+/** The Construction section's content - present only while the building carries `UnderConstruction`. */
 export interface ConstructionModel {
   /** The health ramp 0..100 (the sim raises `Health` in step with `built`), or null when the type
-   *  declares no hitpoints pool — the gauge then falls back to `builtPct`. */
+   *  declares no hitpoints pool - the gauge then falls back to `builtPct`. */
   readonly hpPct: number | null;
   readonly rows: readonly ConstructionRow[];
 }
@@ -62,7 +62,7 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
 }
 
 /** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float),
- *  for display only — withdrawal never sees these. Empty for a building without the component. */
+ *  for display only - withdrawal never sees these. Empty for a building without the component. */
 function bonusFractions(productionBonus: unknown): Map<number, number> {
   const out = new Map<number, number>();
   const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
@@ -78,20 +78,20 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
 
 /**
  * The Magazyn rows: every good the building can store (its `def.stock` slots), shown with its current
- * amount — 0 when empty — so each storable good appears with its own icon, matching the original stock
+ * amount - 0 when empty - so each storable good appears with its own icon, matching the original stock
  * window (which lists a store's accepted goods, not whatever it happens to hold). Held goods outside
  * the declared slots never show (and a slot-less building gets no Magazyn at all): a farm's leftover
  * construction wood, or a home's accumulating upgrade materials, are not store stock and reading them
  * as "drewno: 0 / kamień: 2" was noise (user feedback 2026-07-14).
  *
- * Ordering: the declared slot order, stable while amounts change — a compact store's rows (the mill's
+ * Ordering: the declared slot order, stable while amounts change - a compact store's rows (the mill's
  * Pszenica/Mąka) must never swap places mid-work (user feedback 2026-07-11). Only the big tabbed store
  * bubbles its held goods up, and it does so at draw time (`sections.ts`), where the fixed row cap
  * (`MAX_STOCK_ROWS × 2` with a `+N`) makes visibility worth the reshuffle.
  *
  * Each row carries its `category` (the stock tab it belongs to, via {@link goodCategoryTab}); the render
  * filters the list to the active tab. The good→category mapping is a named approximation (not in the
- * extracted data — see `hud/good-categories.ts`), so the tab assignment is provisional, not source-pinned.
+ * extracted data - see `hud/good-categories.ts`), so the tab assignment is provisional, not source-pinned.
  */
 export function stockRows(
   ctx: UnitPanelModelContext,
@@ -108,10 +108,10 @@ export function stockRows(
     const goodId = goodDef(ctx, slot.goodType)?.id;
     return {
       goodType: slot.goodType,
-      // The stock row's display name (localized content name, else the id) — shown by the hover tooltip;
+      // The stock row's display name (localized content name, else the id) - shown by the hover tooltip;
       // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
       label: goodLabel(ctx, slot.goodType),
-      // Whole units plus the pending experience-bonus fraction (see ProductionBonus) — display only.
+      // Whole units plus the pending experience-bonus fraction (see ProductionBonus) - display only.
       // Floored to one decimal (a 0.97 pending fraction must not read as an extractable whole unit)
       // and clamped at the slot capacity (a capacity-blocked banked unit must not read as overfull).
       amount: Math.min(
@@ -126,7 +126,7 @@ export function stockRows(
 }
 
 /**
- * The upgrade target tier's own construction bill — the level-difference cost the sim charges to raise
+ * The upgrade target tier's own construction bill - the level-difference cost the sim charges to raise
  * `def` one tier (`constructionBillOf`'s upgrading branch). Empty when the type has no upgrade target or
  * the target declares no cost. Shared by the running-upgrade site's rows ({@link constructionModel}) and
  * the pre-commit cost preview ({@link upgradeCostRows}) so the two can never disagree.
@@ -140,10 +140,10 @@ function upgradeTargetBill(
 }
 
 /**
- * The Construction-window model of a site: one row per line of the site's bill — the type's
+ * The Construction-window model of a site: one row per line of the site's bill - the type's
  * FROM-SCRATCH cumulative bill ({@link constructionBillForType}), or for an UPGRADING building
- * (`Upgrading` beside the marker) the target tier's own cost (the level difference — exactly what the
- * sim demands, mirroring `constructionBillOf`) — with how much of it the site's hold already has, plus
+ * (`Upgrading` beside the marker) the target tier's own cost (the level difference - exactly what the
+ * sim demands, mirroring `constructionBillOf`) - with how much of it the site's hold already has, plus
  * the health ramp. Null for a finished building (no `UnderConstruction` marker).
  */
 export function constructionModel(
@@ -178,7 +178,7 @@ export function constructionModel(
 }
 
 /**
- * The Upgrade button's pre-commit cost rows — the {@link upgradeTargetBill} (the same level-difference
+ * The Upgrade button's pre-commit cost rows - the {@link upgradeTargetBill} (the same level-difference
  * bill {@link constructionModel} shows once the upgrade is running), as {goodType, label, amount} rows.
  * Empty when the type has no upgrade target or the target declares no build cost.
  */

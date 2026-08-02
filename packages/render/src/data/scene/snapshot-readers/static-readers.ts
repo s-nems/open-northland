@@ -4,12 +4,12 @@ import { readNumField } from '../../snapshot/index.js';
 import type { StaticDrawFields } from '../draw-item.js';
 
 /**
- * Per-static-object component reads — how a building, resource node, stump or berry bush fills the
+ * Per-static-object component reads - how a building, resource node, stump or berry bush fills the
  * {@link StaticDrawFields} it draws by, plus {@link assignStaticFields}.
  */
 
 /**
- * A building entity's type id — `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
+ * A building entity's type id - `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
  * command stamped), stamped onto the draw item as {@link import('../draw-item.js').DrawItem.typeId} so a
  * per-type {@link import('../../sprites/index.js').BuildingTypeBinding} draws each building its own house
  * bob. `undefined` for a missing/malformed component (the binding falls back to its default house).
@@ -20,14 +20,14 @@ function readBuildingType(components: Readonly<Record<string, unknown>>): number
 
 /**
  * An under-construction building's progress as a whole percent (0..99), or `undefined` for a finished
- * building (`built >= ONE`), an UPGRADING one (its progress reads as {@link readUpgradePct} instead —
+ * building (`built >= ONE`), an UPGRADING one (its progress reads as {@link readUpgradePct} instead -
  * the old-tier body must keep drawing under the upgrade overlay, not the from-scratch stages), or a
  * missing/malformed component. The sim's `Building.built` is a fixed-point fraction of ONE; the floor
  * keeps a nearly-done site below 100 so the construction stages stay up until the finish tick flips
  * the draw to the completed body.
  */
 export function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
-  if ('Upgrading' in components) return undefined; // an upgrade site — see readUpgradePct
+  if ('Upgrading' in components) return undefined; // an upgrade site - see readUpgradePct
   return risingPct(components);
 }
 
@@ -47,16 +47,16 @@ export function readUpgradePct(components: Readonly<Record<string, unknown>>): n
 function risingPct(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.Building as { built?: unknown } | undefined;
   if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
-    return undefined; // finished (or malformed — NaN would poison every range test downstream)
+    return undefined; // finished (or malformed - NaN would poison every range test downstream)
   }
   return clamp(Math.floor((b.built * 100) / ONE), 0, 99);
 }
 
 /**
  * A FINISHED building's remaining Health fraction (0..1), or `undefined` when it is undamaged, still
- * under construction / upgrading (its pool ramps with the build — a site would read damaged forever), or
+ * under construction / upgrading (its pool ramps with the build - a site would read damaged forever), or
  * carries no readable Health. Stamped onto the draw item as
- * {@link import('../draw-item.js').DrawItem.hpFrac}, the damage-smoke overlay's drive — a pure function
+ * {@link import('../draw-item.js').DrawItem.hpFrac}, the damage-smoke overlay's drive - a pure function
  * of the current pool, so an HP rise (repair, an upgrade refill) sheds the smoke by itself. Live-only,
  * like `working` (a fog ghost is a memory, not a live health readout).
  */
@@ -71,7 +71,7 @@ export function readHpFraction(components: Readonly<Record<string, unknown>>): n
 }
 
 /**
- * Whether a building is mid production cycle — the sim `Production` component's presence (it exists
+ * Whether a building is mid production cycle - the sim `Production` component's presence (it exists
  * exactly while a cycle runs, `productionSystem`). Stamped onto the draw item as
  * {@link import('../draw-item.js').DrawItem.working}, the switch an animated state overlay flips on (the
  * mill's rotor spins while it produces). Presence is the whole signal; the component's `elapsed`/`duration`
@@ -82,7 +82,7 @@ export function readProducing(components: Readonly<Record<string, unknown>>): bo
 }
 
 /**
- * A resource node's `Resource.goodType` — the per-good join key
+ * A resource node's `Resource.goodType` - the per-good join key
  * ({@link import('../draw-item.js').DrawItem.goodType}) a {@link import('../../sprites/index.js').ResourceTypeBinding}
  * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed
  * component (the binding falls back to its default node).
@@ -92,11 +92,11 @@ function readResourceGood(components: Readonly<Record<string, unknown>>): number
 }
 
 /**
- * A resource node's render-variant tag — `Resource.gfxIndex`, the exact `[GfxLandscape]` record a decoded
+ * A resource node's render-variant tag - `Resource.gfxIndex`, the exact `[GfxLandscape]` record a decoded
  * map spawned it from ("pine 02", not the good's representative "yew 01"; an opaque app-numbered index the
  * sim never interprets). The per-variant join key ({@link import('../draw-item.js').DrawItem.gfxIndex}) a
  * {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} draws by. `undefined` for an
- * admin/scene-spawned node — the per-good binding then draws the representative node.
+ * admin/scene-spawned node - the per-good binding then draws the representative node.
  */
 function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Resource', 'gfxIndex');
@@ -115,14 +115,14 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 }
 
 /**
- * A mined node's / crop's visual ladder — its current fill `level` (in `[1, levels]`) and the `levels`
- * denominator it is out of — or `undefined` for a plain node (no `Crop`, no readable `MineDeposit`). The
+ * A mined node's / crop's visual ladder - its current fill `level` (in `[1, levels]`) and the `levels`
+ * denominator it is out of - or `undefined` for a plain node (no `Crop`, no readable `MineDeposit`). The
  * single narrowing {@link assignStaticFields} reads, so the two are defined/undefined together by
  * construction.
  *
  * A sown field (a `Crop` resource) uses its growth stage as the level directly: stage k ⇒ gfx state k (the
  * wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the stage numbering).
- * Checked before the deposit shape — a field is never a mined deposit. A `MineDeposit` instead buckets
+ * Checked before the deposit shape - a field is never a mined deposit. A `MineDeposit` instead buckets
  * `Resource.remaining` against its `initial`/`levels` capacity via {@link depositVisualLevel}.
  */
 function readResourceLadder(
@@ -145,7 +145,7 @@ function readResourceLadder(
 }
 
 /**
- * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
+ * A stump's `Stump.goodType` - the resource it is the remains of (a chopped tree → wood), the per-good
  * join key ({@link import('../draw-item.js').DrawItem.goodType}) a {@link import('../../sprites/index.js').ResourceTypeBinding}
  * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to
  * its default).
@@ -155,7 +155,7 @@ function readStumpGood(components: Readonly<Record<string, unknown>>): number | 
 }
 
 /** The `BerryBush.stage` draw levels: 1 bare (foraged, regrowing), 2 flowering (blooming at the regrow
- *  midpoint), 3 ripe (holds fruit) — the 1-based index into the per-bush three-frame
+ *  midpoint), 3 ripe (holds fruit) - the 1-based index into the per-bush three-frame
  *  {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} list (bare, flowering, ripe). */
 const BERRY_STAGE_LEVEL: Readonly<Record<string, number>> = { bare: 1, flowering: 2, ripe: 3 };
 
@@ -171,7 +171,7 @@ export function readBerryBushLevel(components: Readonly<Record<string, unknown>>
 }
 
 /**
- * A berry bush's render-variant `gfxIndex` ({@link import('../draw-item.js').DrawItem.gfxIndex}) — the
+ * A berry bush's render-variant `gfxIndex` ({@link import('../draw-item.js').DrawItem.gfxIndex}) - the
  * decoded map's fruited-bush `[GfxLandscape]` record index the bush was spawned from (`BerryBush.gfxIndex`),
  * so a per-variant binding draws the exact bush species. `undefined` for a scene/synthetic bush with no
  * variant tag (the binding then draws its default bush).

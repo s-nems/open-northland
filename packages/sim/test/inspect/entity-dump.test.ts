@@ -4,7 +4,7 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `dumpEntity()` / `traceEntity()` — the "dump an entity" third of the time-travel / replay
+ * Tests for `dumpEntity()` / `traceEntity()` - the "dump an entity" third of the time-travel / replay
  * inspector (plan "Cross-cutting DX"). Both are pure functions of plain `WorldSnapshot` values, so
  * most cases are hand-built snapshots (no sim needed); the last case proves they compose over a real
  * `step()`-driven run so the overlay's actual path is exercised end to end.
@@ -128,7 +128,7 @@ describe('traceEntity', () => {
     const snaps = [
       snap(1, [{ id: 1, components: { P: 'a' } }]),
       snap(2, []), // despawn
-      snap(3, [{ id: 1, components: { P: 'b' } }]), // a NEW entity reusing nothing — id reappears
+      snap(3, [{ id: 1, components: { P: 'b' } }]), // a NEW entity reusing nothing - id reappears
     ];
     const trace = traceEntity(snaps, 1);
     expect(trace[1]?.despawned).toBe(true);

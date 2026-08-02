@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Provenance } from '../record.js';
 
 /**
- * The decoded logic header of one `map.cif` — the readable, declarative scalars at the top of a map's
+ * The decoded logic header of one `map.cif` - the readable, declarative scalars at the top of a map's
  * `CStringArray` (`logiccontrol` + the `misc_*` sections). This is not the playable terrain: the
  * binary tile/landscape grid (if stored outside this header) is a cell-graph concern. What is
  * captured here is the map's identity and metadata, which every map carries consistently:
@@ -14,7 +14,7 @@ import { Provenance } from '../record.js';
  * docs/SOURCES.md.
  */
 export const MapInfo = z.strictObject({
-  /** Stable slug id (from the map folder name, lower-cased) — the cross-reference key. */
+  /** Stable slug id (from the map folder name, lower-cased) - the cross-reference key. */
   id: z.string(),
   /** Map width in cells (`logiccontrol` `mapsize <w> <h>`, first value). */
   width: z.number().int().positive(),
@@ -26,7 +26,7 @@ export const MapInfo = z.strictObject({
   mapType: z.number().int().nonnegative().optional(),
   /** Campaign + mission slot (`misc_maptype` `mapcampaignid <campaign> <mission>`), present only on campaign maps. */
   campaign: z.strictObject({ campaignId: z.number().int(), missionId: z.number().int() }).optional(),
-  /** String-table id of the map's display name (`misc_mapname` `mapnamestringid`) — resolved against the locale strings, a later step. */
+  /** String-table id of the map's display name (`misc_mapname` `mapnamestringid`) - resolved against the locale strings, a later step. */
   nameStringId: z.number().int().optional(),
   /** String-table id of the map's description (`misc_mapname` `mapdescriptionstringid`). */
   descriptionStringId: z.number().int().optional(),

@@ -65,7 +65,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const extras = createExtrasWindow({ ctx, container, grants: deps.grants });
   const stats = createStatsWindow({ ctx, container });
 
-  /** The pop-ups that own a scrollable, hoverable list — the wheel and hover routes. */
+  /** The pop-ups that own a scrollable, hoverable list - the wheel and hover routes. */
   const lists: readonly TabbedListWindow[] = [menu, goods];
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {

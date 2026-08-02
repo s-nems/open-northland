@@ -5,7 +5,7 @@ import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDE
 /**
  * The gathering-economy render bindings: reduce the resolved {@link GatheringRefs} to the renderer's
  * per-good {@link ResourceTypeBinding} (standing nodes + felled trunks) and {@link StockpileBinding}
- * (delivered ground piles + a delivery flag). Each applies the same loaded-then-drop-unloaded rule — a
+ * (delivered ground piles + a delivery flag). Each applies the same loaded-then-drop-unloaded rule - a
  * good whose atlas family failed to load is dropped so it falls back to the default rather than borrowing
  * a wrong frame. Pure + unit-tested.
  */
@@ -18,9 +18,9 @@ import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDE
  *
  * `familyFrames` (stem → the frame ids its loaded atlas actually holds) marks data-pinned invisible
  * levels: when a record's level names a bob its own atlas doesn't have while its other levels do, that
- * level binds `null` — the renderer then draws nothing for it. This is the original's freshly-sown wheat
+ * level binds `null` - the renderer then draws nothing for it. This is the original's freshly-sown wheat
  * (`wheat mine 01` state 1 → bob 4000, an out-of-atlas sentinel; states 2–5 are real frames). A good
- * whose levels are all missing keeps its refs instead — that is a genuinely broken binding and should
+ * whose levels are all missing keeps its refs instead - that is a genuinely broken binding and should
  * surface as the placeholder, not vanish.
  */
 export function buildResourceBinding(
@@ -31,7 +31,7 @@ export function buildResourceBinding(
   const byGood: Record<number, readonly (LayeredBobRef | null)[]> = {};
   for (const [good, node] of Object.entries(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue; // unloaded family → drop
-    // Per-level frames (empty→full) — the renderer indexes them by a mined deposit's shrink-by-level fill;
+    // Per-level frames (empty→full) - the renderer indexes them by a mined deposit's shrink-by-level fill;
     // a non-mined node has a single-frame list, drawn at any level.
     const atlasFrames = familyFrames?.get(node.stem);
     const anyPresent = atlasFrames !== undefined && node.bobs.some((bob) => atlasFrames.has(bob));
@@ -39,7 +39,7 @@ export function buildResourceBinding(
       anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
     );
   }
-  // The per-variant table (a decoded-map node's own species/decal) — same load-then-drop rule; an
+  // The per-variant table (a decoded-map node's own species/decal) - same load-then-drop rule; an
   // unloaded variant family falls back to the per-good representative.
   const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
   for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
@@ -51,10 +51,10 @@ export function buildResourceBinding(
 
 /**
  * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
- * {@link ResourceTypeBinding} — the graphic a loose {@link import('@open-northland/sim').GroundDrop} draws
+ * {@link ResourceTypeBinding} - the graphic a loose {@link import('@open-northland/sim').GroundDrop} draws
  * while its felled wood / chipped ore lies on the ground. Binds the record's whole fewest→most state
  * ladder, indexed by the drop's unit count (`DrawItem.fill`), so one dug ore draws the single-piece frame
- * and a stacked drop grows — the original's state ≡ remaining-units read. Same load-then-drop-unloaded
+ * and a stacked drop grows - the original's state ≡ remaining-units read. Same load-then-drop-unloaded
  * rule as {@link buildResourceBinding}; the `TREE_BOB` default is the fallback for a good with no bound
  * trunk. Pure + unit-tested.
  */

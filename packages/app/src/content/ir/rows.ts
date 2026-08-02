@@ -15,7 +15,7 @@ export interface BobSeqRow {
   readonly length: number;
 }
 
-/** One `[gfxanimatomic]` row as it ships in `content/ir.json`'s `gfxAtomics` — an atomic action's
+/** One `[gfxanimatomic]` row as it ships in `content/ir.json`'s `gfxAtomics` - an atomic action's
  *  directional body-animation layout: `(tribe, job, action)` → the `bodySeq` bobseq + the per-facing
  *  {@link dirFrames} frame-index lists (the layout a bare bobseq range can't encode). See
  *  {@link import('./joins.js').gfxAtomicFrameLists}. */
@@ -29,7 +29,7 @@ export interface GfxAnimAtomicRow {
   readonly dirFrames: readonly (readonly number[])[];
 }
 
-/** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` — the original's
+/** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` - the original's
  *  loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a hauler plays carrying that good.
  *  See {@link import('./joins.js').carryWalkSeqs}. */
 export interface GfxWalkAtomicRow {
@@ -40,7 +40,7 @@ export interface GfxWalkAtomicRow {
   readonly headSeq?: string;
 }
 
-/** One good as it ships in `content/ir.json`'s `goods` — only the id join the graphics lanes need. */
+/** One good as it ships in `content/ir.json`'s `goods` - only the id join the graphics lanes need. */
 export interface IrGoodRow {
   readonly typeId: number;
   readonly id: string;
@@ -52,7 +52,7 @@ export interface BuildingBobRow {
   readonly typeId: number;
   readonly level: number;
   readonly bmd: string;
-  /** The shadow bob set (`GfxBobLibs` second value) — its silhouettes parallel the body's bob ids. */
+  /** The shadow bob set (`GfxBobLibs` second value) - its silhouettes parallel the body's bob ids. */
   readonly shadowBmd?: string;
   readonly paletteName: string;
   readonly bobId: number;
@@ -74,7 +74,7 @@ export interface ConstructionLayerRow {
   readonly editName?: string;
 }
 
-/** One `[GfxHouse]` type-4 `GfxOverlay` row as it ships in `content/ir.json`'s `buildingOverlays` —
+/** One `[GfxHouse]` type-4 `GfxOverlay` row as it ships in `content/ir.json`'s `buildingOverlays` -
  *  a finished building's animated state overlay (the mill rotor): `state` 0 = the idle still frame,
  *  `state` 1 = the working spin-cycle frames. */
 export interface BuildingOverlayRow {
@@ -109,9 +109,9 @@ export interface LandscapeGfxFramesRow {
   readonly bobIds: readonly number[];
 }
 
-/** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` — the placed decor/resource
+/** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` - the placed decor/resource
  *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join)
- *  and to a map placement by `editName` (the map-object join). The one app-side view of this lane — the
+ *  and to a map placement by `editName` (the map-object join). The one app-side view of this lane - the
  *  gathering bindings read the id/frames half, the map-object loader additionally reads the draw flags. */
 export interface LandscapeGfxRow {
   readonly index: number;
@@ -119,21 +119,21 @@ export interface LandscapeGfxRow {
   /** `EditGroups`, the editor palette folders the record sits in (`ir/joins.ts` `BRIDGE_EDIT_GROUP`). */
   readonly editGroups?: readonly string[];
   readonly logicType: number;
-  /** `LogicMaximumValency` — the record's harvest capacity in units, which sizes a spawned mineral
+  /** `LogicMaximumValency` - the record's harvest capacity in units, which sizes a spawned mineral
    *  deposit. Not the authored {@link frames} count (see `map-resources.ts` `HarvestObjectRef.states`). */
   readonly maxValency?: number;
   readonly bmd?: string;
-  /** The shadow bob set (`GfxBobLibs` second value) — its silhouettes parallel the body's bob ids. */
+  /** The shadow bob set (`GfxBobLibs` second value) - its silhouettes parallel the body's bob ids. */
   readonly shadowBmd?: string;
   readonly paletteName?: string;
   readonly frames?: readonly LandscapeGfxFramesRow[];
-  /** `GfxStatic` — a still object (no per-frame playback). */
+  /** `GfxStatic` - a still object (no per-frame playback). */
   readonly isStatic?: boolean;
-  /** `GfxLoopAnimation` — the state's frame list loops continuously (waves, fire, smoke). */
+  /** `GfxLoopAnimation` - the state's frame list loops continuously (waves, fire, smoke). */
   readonly loopAnimation?: boolean;
-  /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
+  /** Repeated `LogicWalkBlockArea` lines - a non-empty footprint marks a depth-sorted (non-decor) object. */
   readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
-  /** Repeated `LogicBuildBlockArea` lines — the object's build-exclusion ring (the collision mask reads it). */
+  /** Repeated `LogicBuildBlockArea` lines - the object's build-exclusion ring (the collision mask reads it). */
   readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
 }
 
@@ -143,7 +143,7 @@ export interface GatheringStageRow {
   readonly gfxIndices: readonly number[];
 }
 
-/** One good's resolved gathering pipeline as it ships in `content/ir.json`'s `gatheringPipeline` — the
+/** One good's resolved gathering pipeline as it ships in `content/ir.json`'s `gatheringPipeline` - the
  *  good→landscape→gfx join (`buildGatheringPipeline`) the render binds per good, keyed by {@link goodId}. */
 export interface GatheringPipelineRow {
   readonly goodType: number;
@@ -155,14 +155,14 @@ export interface GatheringPipelineRow {
   readonly store?: GatheringStageRow;
 }
 
-/** One `[landscapetype]` row as it ships in `content/ir.json`'s `landscape` — typeId + logic name. */
+/** One `[landscapetype]` row as it ships in `content/ir.json`'s `landscape` - typeId + logic name. */
 export interface LandscapeTypeRow {
   readonly typeId?: number;
   readonly name?: string;
 }
 
 /**
- * The app's view of the served `content/ir.json` — every lane any domain (sprites, terrain, map
+ * The app's view of the served `content/ir.json` - every lane any domain (sprites, terrain, map
  * objects, authored-entity joins, audio) reads, all optional: an `ir.json` generated before a lane
  * existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
  * `@open-northland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
@@ -180,15 +180,15 @@ export interface ContentIr {
   readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
-  /** The `[landscapetype]` logic table — the {@link LandscapeGfxRow.logicType} join key. */
+  /** The `[landscapetype]` logic table - the {@link LandscapeGfxRow.logicType} join key. */
   readonly landscape?: readonly LandscapeTypeRow[];
   /** The approximated per-typeId ground binding (`buildTerrainPatterns`) the terrain renderer reads. */
   readonly terrainPatterns?: readonly TerrainPattern[];
-  /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
+  /** The full 927-record `[GfxPattern]` table - the 1:1 per-triangle ground join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
-  /** The `[transition]` ground-overlay table — a decoded map's `transitions.types` names join onto it. */
+  /** The `[transition]` ground-overlay table - a decoded map's `transitions.types` names join onto it. */
   readonly gfxPatternTransitions?: readonly GfxPatternTransition[];
-  /** The per-logicType ground classes (`trianglepatterntypes.cif`) — the walk/build flags the
+  /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the
    *  map-collision join (`content/collision.ts`) classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];
   /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`) + the extracted
@@ -216,5 +216,5 @@ export interface ContentIr {
   readonly sounds?: SoundBank;
 }
 
-/** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
+/** The `[bobseq]` imagelib whose sequences drive the settler - the body bob set the head atlas shares ids with. */
 export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';

@@ -7,9 +7,9 @@ import { ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
 
 /**
  * The route-aware harvest pick: a clear-but-enclosed node must never win, however many enclosed
- * nodes there are. The failed-goal memo alone could not hold this line — with more enclosed cells
+ * nodes there are. The failed-goal memo alone could not hold this line - with more enclosed cells
  * than memo entries the pick cycled through them forever (the soaked iron-collector stall this
- * guards against) — so the assertions demand the pick avoids the pocket WITHOUT a single route
+ * guards against) - so the assertions demand the pick avoids the pocket WITHOUT a single route
  * failure, not that it recovers after some.
  */
 
@@ -26,7 +26,7 @@ function harvestedResource(s: Simulation, e: Entity): Entity | null {
   return atomic?.effect.kind === 'harvest' ? atomic.effect.resource : null;
 }
 
-/** Drive the sim until `done`, failing loudly on timeout and on any route failure along the way —
+/** Drive the sim until `done`, failing loudly on timeout and on any route failure along the way -
  *  the fix's whole point is that the pick never chooses a doomed goal in the first place. */
 function stepUntilWithoutRouteFailure(s: Simulation, e: Entity, limit: number, done: () => boolean): void {
   for (let i = 0; i < limit && !done(); i++) {
@@ -87,7 +87,7 @@ describe('the harvest pick against enclosed resource nodes', () => {
 
   it('walks past a pocket holding more enclosed trees than the failed-goal memo could remember', () => {
     // 12×4 cells = 24×8 nodes. The rectangle wall spans nodes x 3..15, y 1..5, sealing an 11×3-node
-    // interior that holds 11 tree anchors — more than UNREACHABLE_GOAL_MEMO_SIZE, the count that made
+    // interior that holds 11 tree anchors - more than UNREACHABLE_GOAL_MEMO_SIZE, the count that made
     // the memo-only pick cycle forever. Anchored on an EVEN row so the offsets stamp literally
     // (an odd-row anchor's odd-dy rows would parity-shift one node +x and crack the seal).
     const s = sim();

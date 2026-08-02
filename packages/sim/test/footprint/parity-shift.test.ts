@@ -14,14 +14,14 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 
 // The odd-row parity shift at the sim's translation seams: footprint offsets are authored in the
 // even-row frame, so an ODD-row anchor stamps odd-dy cells one node further +x (footprintCellDx,
-// verified byte-level against original lmwb sections — docs/formats/MAPDAT.md). Anchors here pick
+// verified byte-level against original lmwb sections - docs/formats/MAPDAT.md). Anchors here pick
 // rows 4/5 with the same offsets, so each pair differs exactly by the shift.
 
 const EVEN_ANCHOR = { x: 6, y: 4 };
 const ODD_ANCHOR = { x: 6, y: 5 };
 const VIKING = 1;
 
-/** One cell straight north (odd dy — shifts) and one due east (even dy — never shifts). */
+/** One cell straight north (odd dy - shifts) and one due east (even dy - never shifts). */
 const FOOTPRINT_CELLS = [
   { dx: 0, dy: -1 },
   { dx: 1, dy: 0 },
@@ -49,7 +49,7 @@ describe('footprint odd-row parity shift', () => {
       terrain.nodeAt(7, 4), // (1,0) verbatim
     ]);
     expect(translatedCells(terrain, FOOTPRINT_CELLS, ODD_ANCHOR.x, ODD_ANCHOR.y)).toEqual([
-      terrain.nodeAt(7, 4), // (0,-1) lands one node +x — the odd-anchor, odd-dy shift
+      terrain.nodeAt(7, 4), // (0,-1) lands one node +x - the odd-anchor, odd-dy shift
       terrain.nodeAt(7, 5), // (1,0) even dy: never shifts
     ]);
   });
@@ -87,7 +87,7 @@ describe('footprint odd-row parity shift', () => {
           id: 'test_gate',
           kind: 'workplace',
           // A wall-style record: the door sits INSIDE the walk-block (its passable gate), on an
-          // odd-dy cell — body and carve-out must land on the same shifted node.
+          // odd-dy cell - body and carve-out must land on the same shifted node.
           footprint: { blocked: [{ dx: 0, dy: 1 }], door: { dx: 0, dy: 1 } },
         },
       ],

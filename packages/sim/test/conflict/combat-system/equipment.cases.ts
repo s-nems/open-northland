@@ -25,7 +25,7 @@ function wearArmor(sim: Simulation, e: Entity, goodType: number | null): void {
   });
 }
 
-describe('combatSystem — armor material column (the target armor material join)', () => {
+describe('combatSystem - armor material column (the target armor material join)', () => {
   // The fixture's test_axe lists `damage { "0": 50, "1": 60 }`; leather (armor class 1, material 1).
   // Armor selects the damage COLUMN (no blockingValue subtracted): a viking woodcutter hits an
   // UNARMORED target for 50 (material 0) and a leather-clad one for 60 (material 1); a column the
@@ -70,7 +70,7 @@ describe('combatSystem — armor material column (the target armor material join
 
     combatSystem(sim.world, ctxOf(sim));
 
-    // test_axe lists no `damage["2"]`, so the column is 0 — the swing connects but does this material no
+    // test_axe lists no `damage["2"]`, so the column is 0 - the swing connects but does this material no
     // harm (a class with no `[armortype]` record selects its own column rather than crashing).
     expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
       kind: 'attack',
@@ -173,10 +173,10 @@ describe('combatSystem - worn-armor override (the Equipment.armor slot)', () => 
   });
 });
 
-describe('combatSystem — worn-weapon override (the equip seed)', () => {
+describe('combatSystem - worn-weapon override (the equip seed)', () => {
   // A viking woodcutter's DEFAULT weapon is test_axe (tribe 1, job 1; damage["0"] 50, maxRange 2). A worn
   // `Weapon{weaponTypeId}` overrides that with a specific weapon resolved vs the viking tribe: test_spear
-  // (typeId 11, tribe 1; damage["0"] 70, minRange 3, maxRange 17 — a ranged reach).
+  // (typeId 11, tribe 1; damage["0"] 70, minRange 3, maxRange 17 - a ranged reach).
 
   it('a combatant with NO Weapon fights with its class default (unchanged behavior)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
@@ -210,11 +210,11 @@ describe('combatSystem — worn-weapon override (the equip seed)', () => {
     });
   });
 
-  it('a worn weapon respects its near reach — a spear-wielder can’t strike an adjacent target', () => {
+  it('a worn weapon respects its near reach - a spear-wielder can’t strike an adjacent target', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     sim.world.add(attacker, Weapon, { weaponTypeId: 11 }); // test_spear: minRange 3
-    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent — below the spear's near reach (3)
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent - below the spear's near reach (3)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -226,7 +226,7 @@ describe('combatSystem — worn-weapon override (the equip seed)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     sim.world.add(attacker, Weapon, { weaponTypeId: 999 }); // no (tribe 1, typeId 999) record
-    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent — the default axe WOULD have hit
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent - the default axe WOULD have hit
 
     combatSystem(sim.world, ctxOf(sim));
 

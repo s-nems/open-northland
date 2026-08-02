@@ -84,7 +84,7 @@ function stealVeteranFor(
 /**
  * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2–3 tiles
  * from a live resource, over the upkeep of every current holder ({@link upkeepHolders}). No-op on a
- * mapless sim — no cells to place flags over. Source basis: user rules 2026-07-17 / -18 / -25.
+ * mapless sim - no cells to place flags over. Source basis: user rules 2026-07-17 / -18 / -25.
  */
 export function allocateCollectors(
   world: World,
@@ -124,7 +124,7 @@ export function allocateCollectors(
 }
 
 /**
- * Best-effort top-ups to each good's target — the ladder runs them after minimum staffing and the
+ * Best-effort top-ups to each good's target - the ladder runs them after minimum staffing and the
  * builder reserve (user plan 2026-07-25: minimums everywhere beat second workers anywhere). Only
  * goods that already hold their first post (phase 1's concern) are topped up, and only from the
  * spare pool: moving a man off another good's post would leave that one short instead.
@@ -157,11 +157,11 @@ export function topUpCollectors(
 }
 
 /**
- * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts — a flag with NO good
+ * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts - a flag with NO good
  * filter (`setGatherGood null`), so the holder picks up whatever its trade may harvest inside the
  * circle (XP gates permitting). Hired at the lowest priority beside the collected-goods resource
  * nearest the HQ; retired to builder when nothing its trade harvests remains in the circle. No
- * relocation cadence — a generic flag either lives or retires (user plan 2026-07-25).
+ * relocation cadence - a generic flag either lives or retires (user plan 2026-07-25).
  */
 export function allocateGenericCollectors(
   world: World,
@@ -189,7 +189,7 @@ export function allocateGenericCollectors(
   if (job === null || hqNode === null) return commands;
   for (let hired = genericCollectors.length; hired < GENERIC_COLLECTOR_TARGET; hired++) {
     const resource = nearestCollectedResource(world, ctx, hqNode);
-    if (resource === null) break; // no collected good stands anywhere — no generic post
+    if (resource === null) break; // no collected good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, resource, taken);
     if (spot === null) break;
     const spare = force.take();
@@ -202,7 +202,7 @@ export function allocateGenericCollectors(
   return commands;
 }
 
-/** The anchor of the live {@link COLLECTED_GOOD_IDS} resource nearest the HQ — canonical
+/** The anchor of the live {@link COLLECTED_GOOD_IDS} resource nearest the HQ - canonical
  *  `(distance, goodType)` pick, so two equidistant goods always resolve the same way. */
 function nearestCollectedResource(
   world: World,

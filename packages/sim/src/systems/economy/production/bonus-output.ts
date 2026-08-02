@@ -62,7 +62,7 @@ function creditBonus(world: World, building: Entity, goodType: number, extra: Fi
 }
 
 /**
- * Flush a workplace's banked whole bonus units after stock LEFT it — a withdrawal frees the space a
+ * Flush a workplace's banked whole bonus units after stock LEFT it - a withdrawal frees the space a
  * capacity-blocked unit was waiting for, and the completion-path flush may never come again (inputs
  * starved, operator reassigned), so the withdrawal seam must release it too. Cheap no-op for the
  * common building holding no {@link ProductionBonus}.
@@ -74,7 +74,7 @@ export function flushBankedBonus(world: World, ctx: SystemContext, building: Ent
 
 /**
  * Move each whole remainder unit into real stock (emitting `goodProduced` like a deposited batch),
- * honoring the room the in-flight same-product batches have RESERVED — their own deposits are
+ * honoring the room the in-flight same-product batches have RESERVED - their own deposits are
  * unconditional (`depositCycleOutput`: "room reserved at start"), so a bonus unit must never consume a
  * reserved slot. A blocked unit holds until space frees (the next completion here, or a withdrawal via
  * {@link flushBankedBonus}); the component is dropped once every remainder is zero.
@@ -107,7 +107,7 @@ function flushWholeUnits(
   if (bonus.remainders.size === 0) world.remove(building, ProductionBonus);
 }
 
-/** Units of `goodType` the in-flight cycles will deposit on completion — the reserved slots a bonus
+/** Units of `goodType` the in-flight cycles will deposit on completion - the reserved slots a bonus
  *  unit must leave free. Mirrors the per-batch reservation `outputRoomForCycles` admits cycles under. */
 function reservedFor(
   world: World,

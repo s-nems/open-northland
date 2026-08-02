@@ -12,14 +12,14 @@ import {
 
 /**
  * The sandbox scene's authored placement tables: where the village, the gathering camps and the berry
- * patch sit. Data only — the builders that place it and the checks that read it live beside this file.
+ * patch sit. Data only - the builders that place it and the checks that read it live beside this file.
  */
 
 /**
- * The village: the FULL viking catalog — all 41 building types, every level of every chain — packed as
+ * The village: the FULL viking catalog - all 41 building types, every level of every chain - packed as
  * tight as the placement rule allows. The coordinates are the output of a layout pass over the real
  * extracted footprints (each building's blocked cells stay outside every neighbour's reserved zone,
- * mutually, with one node of slack — the `canPlaceBuilding` walls-outside-zones rule on bounding boxes),
+ * mutually, with one node of slack - the `canPlaceBuilding` walls-outside-zones rule on bounding boxes),
  * so the authored placements would also be legal interactively. Streets group by trade: homes/civic on
  * top, storage + towers, two craft streets, the food street, and the space-hungry farms/barracks at the
  * bottom edge with open grass to sow and graze.
@@ -79,7 +79,7 @@ export const VILLAGE_TYPE_IDS: ReadonlySet<number> = new Set(
   VILLAGE.map((b) => resolveVikingBuilding(b.id).typeId),
 );
 
-/** The pre-stocked stores — every warehouse tier the scene seeds full (`fillStock`) so production has
+/** The pre-stocked stores - every warehouse tier the scene seeds full (`fillStock`) so production has
  *  inputs from tick 1. */
 export const WAREHOUSE_IDS: ReadonlySet<string> = new Set(['stock_00', 'stock_01', 'stock_02']);
 
@@ -159,7 +159,7 @@ export const CAMPS: readonly GatherCamp[] = [
   },
 ];
 
-/** A wild berry patch beside the mushroom grove — forage decor (needs are off by default), drawn with the
+/** A wild berry patch beside the mushroom grove - forage decor (needs are off by default), drawn with the
  *  real fruited-bush art (the same `[GfxLandscape]` variant the berries scene pins). */
 export const BERRY_PATCH = { x: 60, y: 52 } as const;
 export const BERRY_BUSHES = 6;
@@ -170,7 +170,7 @@ export const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHE
 /**
  * How many times over the catalog size each mined deposit is filled here. At the catalog sizes a
  * triple-staffed camp drains its outcrop in ~10 minutes of 1× play and the miners then stand idle
- * (user-observed as "the iron/gold miners stopped") — the inspection world wants camps that outlast
+ * (user-observed as "the iron/gold miners stopped") - the inspection world wants camps that outlast
  * any session, while normal play keeps the catalog's finite deposits.
  */
 export const MINE_DEPOSIT_SCALE = 100;

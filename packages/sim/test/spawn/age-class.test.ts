@@ -8,7 +8,7 @@ import { ADULT_AGE_TICKS, CHILD_AGE_TICKS, CHILD_FEMALE, WOMAN_JOB } from '../..
 import { createSettler } from '../../src/systems/spawn/index.js';
 
 /**
- * A settler spawned directly into a baby/child job — an authored map's `sethuman` children — carries an
+ * A settler spawned directly into a baby/child job - an authored map's `sethuman` children - carries an
  * `Age` at its stage's starting tick, exactly like a born baby: `Age` is what makes the renderer draw the
  * young body and the GrowthSystem mature it (source basis: the original's maps author children via the
  * age-class jobtypes, `jobtypes.ini` ids 1–4). Slug-matched, so a fixture's adult trade on a low numeric
@@ -60,7 +60,7 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     expect(world.has(child, Female)).toBe(true);
   });
 
-  it('matches by slug, not numeric id — a fixture adult trade on id 1 spawns Age-less', () => {
+  it('matches by slug, not numeric id - a fixture adult trade on id 1 spawns Age-less', () => {
     const world = new World();
     const adult = createSettler(world, collidingContent(), new Rng(1), spec(1)); // woodcutter
     if (adult === null) throw new Error('spawn failed');

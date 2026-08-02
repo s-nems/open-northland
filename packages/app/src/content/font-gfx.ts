@@ -3,8 +3,8 @@ import { loadLayer } from './ir/load.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * Font (UI bitmap-font) content bindings — the loadable seam for the pipeline's `fonts` stage outputs: the
- * decoded glyph atlases, colour LUT and metrics. A checkout without `content/` degrades gracefully — a
+ * Font (UI bitmap-font) content bindings - the loadable seam for the pipeline's `fonts` stage outputs: the
+ * decoded glyph atlases, colour LUT and metrics. A checkout without `content/` degrades gracefully - a
  * missing manifest/metrics return `null`; a missing atlas throws `MissingAtlasError` via {@link loadLayer},
  * the same precondition the settler/GUI loaders degrade on.
  *
@@ -12,13 +12,13 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
  *  - **Glyph atlases + colour LUT** ride the existing `/bobs/` route (they are bob atlases): the recolourable
  *    indexed atlas at stem `<key>.indexed`, the RGBA preview at `<key>.white`, and the `256 × 4`
  *    colour LUT at `/bobs/font-palettes-lut.png`. The renderer reads an indexed glyph pixel through the LUT
- *    row for the colour it draws text in — same mechanism as the player-colour LUT + `PalettedSprite`.
+ *    row for the colour it draws text in - same mechanism as the player-colour LUT + `PalettedSprite`.
  *  - **Per-font metrics + the top-level manifest** are served at `/gui/fonts/…` (they are not bob atlases).
  */
 
 /**
  * The font colour LUT row order (row index = colour). Mirrors `FONT_COLORS` in
- * `tools/asset-pipeline/src/stages/fonts.ts` — keep the two in lock-step (append, never reorder), since the
+ * `tools/asset-pipeline/src/stages/fonts.ts` - keep the two in lock-step (append, never reorder), since the
  * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
  * carries the names, so a consumer can cross-check `fontColorRow` against `manifest.colorLut.names`.
  */
@@ -26,16 +26,16 @@ const FONT_COLORS = ['white', 'dark', 'dimmed', 'red'] as const;
 
 export type FontColorName = (typeof FONT_COLORS)[number];
 
-/** The LUT row (y) a font colour occupies — the row a `PalettedSprite` reads an indexed glyph atlas through. */
+/** The LUT row (y) a font colour occupies - the row a `PalettedSprite` reads an indexed glyph atlas through. */
 export function fontColorRow(name: FontColorName): number {
   return FONT_COLORS.indexOf(name);
 }
 
 /**
- * CSS fill strings approximating the four font-colour LUT rows, for text drawn without the indexed LUT —
+ * CSS fill strings approximating the four font-colour LUT rows, for text drawn without the indexed LUT -
  * the vector UI font ({@link import('./ui-font.js')}) and the bitmap font's Pixi-`Text` fallback both use
  * these since a CSS `fill` can't sample the indexed palette. Sampled to sit on the wood/parchment chrome
- * the same way the original's `font_*` palettes do — a named colour choice, not decoded palette bytes, so
+ * the same way the original's `font_*` palettes do - a named colour choice, not decoded palette bytes, so
  * they can drift from the decoded LUT if the font palette changes.
  */
 export const FONT_FILL: Readonly<Record<FontColorName, string>> = {
@@ -76,7 +76,7 @@ export interface FontMetrics {
   /** The bob a space/tab is measured through (0x49). */
   readonly spaceBobId: number;
   readonly lineHeight: number;
-  /** Derived baseline (advisory — the original lays out top-anchored via `offsetY` + `advance`). */
+  /** Derived baseline (advisory - the original lays out top-anchored via `offsetY` + `advance`). */
   readonly baseline: number;
   /** The font's nominal pixel size (an observation, not load-bearing). */
   readonly nominalSize: number;
@@ -89,7 +89,7 @@ const FONTS_ROOT = '/gui/fonts';
 /**
  * The recolourable indexed glyph atlas of a font, loaded by its `<key>.indexed` stem through the shared
  * {@link loadLayer}. Throws `MissingAtlasError` when the decoded files are absent (the pipeline hasn't
- * run). The RGBA preview atlases load the same way — `loadLayer('<key>.white')` — so no separate preview
+ * run). The RGBA preview atlases load the same way - `loadLayer('<key>.white')` - so no separate preview
  * loader is needed.
  */
 export function loadFontIndexed(key: string): Promise<SpriteLayer> {
@@ -106,7 +106,7 @@ export function loadFontColorLut(): Promise<TextureSource | undefined> {
 }
 
 /**
- * Load one font's layout metrics (`/gui/fonts/<key>.metrics.json`) — the per-glyph advance/offset/size + line
+ * Load one font's layout metrics (`/gui/fonts/<key>.metrics.json`) - the per-glyph advance/offset/size + line
  * height/baseline the renderer lays text out with. Returns `null` when the pipeline hasn't produced them (a
  * checkout without `content/`), so a caller can fall back gracefully instead of crashing.
  */

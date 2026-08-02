@@ -24,18 +24,18 @@ import {
   WHEAT,
 } from './support.js';
 
-describe('work division — two farmers never share a target', () => {
+describe('work division - two farmers never share a target', () => {
   it('the second farmer skips the field the first is already reaping', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
-    const near = fieldAt(sim, farm, 4, 4, { stage: STAGES }); // underfoot — the first farmer's pick
+    const near = fieldAt(sim, farm, 4, 4, { stage: STAGES }); // underfoot - the first farmer's pick
     fieldAt(sim, farm, 2, 2, { stage: STAGES }); // the second-nearest ripe field
     const f1 = farmerAt(sim, 4, 4, farm);
     const f2 = farmerAt(sim, 4, 4, farm);
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // f1 (planned first) reaps the field underfoot; f2 must NOT shadow it — it claims the OTHER field.
+    // f1 (planned first) reaps the field underfoot; f2 must NOT shadow it - it claims the OTHER field.
     expect(sim.world.get(f1, components.CurrentAtomic).effect).toEqual({
       kind: 'harvest',
       resource: near,
@@ -57,7 +57,7 @@ describe('work division — two farmers never share a target', () => {
     const nearNode = cellAnchorNode(4, 4);
     expect(sim.world.get(f1, components.FarmTask).node).toBe(sim.terrain?.nodeAt(nearNode.hx, nearNode.hy));
 
-    // A SECOND farmer appears a tick later, while f1 is still walking — it must claim the far field.
+    // A SECOND farmer appears a tick later, while f1 is still walking - it must claim the far field.
     const f2 = farmerAt(sim, 5, 5, farm);
     plannerSystem(sim.world, ctxOf(sim));
     const farNode = cellAnchorNode(8, 8);
@@ -93,7 +93,7 @@ describe('work division — two farmers never share a target', () => {
     // Deterministic fixture ratio: with divided work the pair must clearly out-produce the solo run
     // (the old shadowing bug pinned this at ~1×). 1.5× is the safety margin under walk-path noise.
     expect(pair).toBeGreaterThanOrEqual(Math.ceil(solo * 1.5));
-    // The farm's 25-cap must not be what limits the pair — otherwise the ratio measures the store.
+    // The farm's 25-cap must not be what limits the pair - otherwise the ratio measures the store.
     expect(pair).toBeLessThan(FARM_WHEAT_CAP);
   });
 });
@@ -114,7 +114,7 @@ describe('grass-only sowing (the plantable-ground gate)', () => {
   });
 
   it('the drive sows the grass pocket and never the barren ring', () => {
-    // Grass only in the 3×3 block around the farm — every field, over the WHOLE run, must land there.
+    // Grass only in the 3×3 block around the farm - every field, over the WHOLE run, must land there.
     // (Checked per tick: the tiny pocket makes the crop cycles synchronize, so a single end-of-run
     // snapshot can land in the everything-just-reaped window and see zero standing fields.)
     const sim = new Simulation({
@@ -142,7 +142,7 @@ describe('grass-only sowing (the plantable-ground gate)', () => {
 });
 
 describe('store-full pause and overflow', () => {
-  /** A farm whose wheat slot is FULL, its field roster maxed and every field ripe — the reap/carry
+  /** A farm whose wheat slot is FULL, its field roster maxed and every field ripe - the reap/carry
    *  gate is the only thing left to decide. */
   function fullFarmWorld(sim: Simulation): { farm: Entity; farmer: Entity } {
     const farm = farmAt(sim, 4, 4);
@@ -157,13 +157,13 @@ describe('store-full pause and overflow', () => {
     return { farm, farmer };
   }
 
-  it('with every wheat sink full the farmer waits INSIDE — ripe fields stand, nothing is reaped', () => {
+  it('with every wheat sink full the farmer waits INSIDE - ripe fields stand, nothing is reaped', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const { farmer } = fullFarmWorld(sim);
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // No reap swing, no walk — the farmer steps inside the farm until store room frees.
+    // No reap swing, no walk - the farmer steps inside the farm until store room frees.
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
     expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeUndefined();
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
@@ -176,7 +176,7 @@ describe('store-full pause and overflow', () => {
     sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
 
     plannerSystem(sim.world, ctxOf(sim));
-    // Nowhere to put the sheaf — the farmer steps inside with it instead of freezing at the door.
+    // Nowhere to put the sheaf - the farmer steps inside with it instead of freezing at the door.
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
     expect(sim.world.get(farmer, Carrying).amount).toBe(1); // the load stays in hand
@@ -204,7 +204,7 @@ describe('store-full pause and overflow', () => {
   });
 });
 
-describe('end-to-end — the loop closes', () => {
+describe('end-to-end - the loop closes', () => {
   it('a bound farmer sows, waters, reaps and banks wheat in the farm store, deterministically', () => {
     const run = (): { wheat: number; hash: string } => {
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });

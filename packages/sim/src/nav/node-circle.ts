@@ -5,20 +5,20 @@ import type { NodeId } from './terrain/index.js';
  * the node-lattice twin of the vision ellipse in `vision/system.ts` `stampVision`): a half-cell node step
  * is 34 px E/W and 19 px N/S of the measured 68×38 projection pitch, and a radius of R nodes means
  * R·34 px, so circles read circular on screen. The per-row stagger's ±half-node wobble is deliberately
- * ignored, exactly as vision ignores it (a half-cell fringe on a work-area edge — named approximation).
- * Exact integer arithmetic, no floats — the circle rules feed game state, so a float here would be a
+ * ignored, exactly as vision ignores it (a half-cell fringe on a work-area edge - named approximation).
+ * Exact integer arithmetic, no floats - the circle rules feed game state, so a float here would be a
  * determinism hazard.
  */
 
-/** One node's E/W pitch in native px (half the 68 px column step) — the radius unit. The same measured
+/** One node's E/W pitch in native px (half the 68 px column step) - the radius unit. The same measured
  *  pitch {@link import('./world-metric.js').HALF_COLUMN} mints, in integer px instead of column units;
  *  re-calibrating the projection moves both. */
 const NODE_STEP_PX = 34;
-/** One node's N/S pitch in native px (half the 38 px row step) — the integer-px form of
+/** One node's N/S pitch in native px (half the 38 px row step) - the integer-px form of
  *  {@link import('./world-metric.js').HALF_ROW} (19/68 column units). */
 const HALF_ROW_PX = 19;
 
-/** An axis-aligned box on the node lattice (inclusive bounds) — the coarse extent of a node-circle union. */
+/** An axis-aligned box on the node lattice (inclusive bounds) - the coarse extent of a node-circle union. */
 export interface NodeBox {
   readonly minX: number;
   readonly maxX: number;
@@ -28,14 +28,14 @@ export interface NodeBox {
 
 /**
  * A spatial confinement over half-cell nodes: membership (`allowsNode`) plus a {@link NodeBox} every
- * allowed node provably lies in (`bounds`). The target searches take the PAIR as one value — membership
- * decides, the box only bounds ring expansion / region scans — so a bound can never be applied without
+ * allowed node provably lies in (`bounds`). The target searches take the PAIR as one value - membership
+ * decides, the box only bounds ring expansion / region scans - so a bound can never be applied without
  * its matching gate (applying `bounds` alone would silently drop valid candidates).
  */
 export interface SpatialGate {
   /** Whether `node` lies inside the allowed area. */
   allowsNode(node: NodeId): boolean;
-  /** A box provably containing every allowed node — a scan bound, never a membership test. */
+  /** A box provably containing every allowed node - a scan bound, never a membership test. */
   readonly bounds: NodeBox;
 }
 

@@ -15,19 +15,19 @@ import {
   WIDE_RADIUS,
 } from '../support.js';
 
-describe('flag-bound gatherer — banks its harvest at its own flag (req 1)', () => {
+describe('flag-bound gatherer - banks its harvest at its own flag (req 1)', () => {
   it('delivers its felled wood to a heap by its bound flag, not the nearer warehouse', () => {
     // gatherer@0, tree@1 (in radius), a warehouse@2 (nearer), the bound flag@4 (farther).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(8, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
     const flag = bindToFlag(sim, gatherer, 4, 0, WIDE_RADIUS);
     placeFellableTree(sim, 1, 0);
-    const warehouse = makeStore(sim, 2, 0); // a closer capable store — the tempting wrong sink
+    const warehouse = makeStore(sim, 2, 0); // a closer capable store - the tempting wrong sink
 
     const violations = runTicks(sim, 600);
 
     // The whole yield landed as a ground heap by the flag; the nearer warehouse never received a unit; the
-    // flag itself stores NOTHING (a pure marker — the goods sit on the ground beside it).
+    // flag itself stores NOTHING (a pure marker - the goods sit on the ground beside it).
     expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD);
     expect(storeWood(sim, warehouse)).toBe(0);
     expect(sim.world.has(flag, Stockpile)).toBe(false);

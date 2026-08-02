@@ -25,7 +25,7 @@ import { createTextKit, type TextKit } from './text.js';
 
 /** The selected-name underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
 const SELECTED_LIME = 0xd8fb55;
-/** Inner content-box bevel lines — eyeballed against the original's preview framing, not sampled. */
+/** Inner content-box bevel lines - eyeballed against the original's preview framing, not sampled. */
 const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
 /** Flat fallback for the section card body without `content/`: the grey-blue the `bg_selected` marble
@@ -34,7 +34,7 @@ const INNER_BOX_LIGHT = 0x7a6244;
 const CARD_FILL = 0x3c4043;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
-/** Round-button wood fills — the same warm-wood/brighter-wood pairing the rectangular button and tab
+/** Round-button wood fills - the same warm-wood/brighter-wood pairing the rectangular button and tab
  *  plates use as their no-bitmap fallback, so the round gather/assign controls read as the same material. */
 const ROUND_BUTTON_FILL = 0x4a2b1d;
 const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
@@ -59,7 +59,7 @@ export interface Chrome extends TextKit, GlyphKit {
   goodIcon(goodId: string, r: Rect): void;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
-  /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
+  /** An inner content box (the preview): thin dark bevel frame, no rope - the original's inner framing. */
   innerBox(r: Rect): void;
   /** A round equipment-slot socket (the original's equip wells): a recessed rimmed circle, warm-tinted
    *  when `filled` (so an occupied slot reads even for a good with no bound icon), dark when empty. */
@@ -68,7 +68,7 @@ export interface Chrome extends TextKit, GlyphKit {
   headline(r: Rect, title: string): void;
   /** The yellow-green selected-strip under the building name line. */
   selectedUnderline(r: Rect): void;
-  /** A translucent dark overlay over `r` — used to recede an inactive/greyed element (e.g. an unselected tab). */
+  /** A translucent dark overlay over `r` - used to recede an inactive/greyed element (e.g. an unselected tab). */
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
   button(hit: { readonly rect: Rect; readonly enabled: boolean }, label: string, hovered: boolean): void;
@@ -77,7 +77,7 @@ export interface Chrome extends TextKit, GlyphKit {
    *  overlays the face (a good icon / the assign glyph) centered in `r`. */
   roundButton(r: Rect, enabled: boolean, active: boolean): void;
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
-   *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
+   *  otherwise - the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
   /** A progress/need bar. `'progress'` (the default) is the neutral production look: the original
    *  `bar_disabled` frame filled with `bar_standart` art. `'gauge'` is a stat gauge: a recessed dark
@@ -147,7 +147,7 @@ export function createChrome(
     layers.front.addChild(made.sprite);
     const { w, h } = resolution;
     // The state-1 pile frames vary in native size (~12–26 px); fit each into the icon box (shrink only,
-    // never upscale past the panel scale) so a big pile doesn't overrun the amount plate — the original's
+    // never upscale past the panel scale) so a big pile doesn't overrun the amount plate - the original's
     // row icons are compact, each its own natural size.
     const fit = Math.min(1, r.w / (made.frame.width * scale), r.h / (made.frame.height * scale));
     const drawScale = scale * fit;
@@ -157,12 +157,12 @@ export function createChrome(
   };
 
   // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
-  // Magazyn never shows a blank slot — the same fallback the in-world dropped pile uses (goods-gfx).
+  // Magazyn never shows a blank slot - the same fallback the in-world dropped pile uses (goods-gfx).
   const goodIcon = (goodId: string, r: Rect): void =>
     placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
 
   // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
-  // `card` fill (the original's selected-item card), not the warm brown `bg` — that stays the button
+  // `card` fill (the original's selected-item card), not the warm brown `bg` - that stays the button
   // plates' disabled fallback; only the headline strips above the cards keep the warm brown.
   const windowBox = (r: Rect): void => {
     if (!tile(bitmaps.card, r)) {
@@ -215,7 +215,7 @@ export function createChrome(
     }
     // Dark edging under the strip separates it from the wood body (the original's outlined title bar).
     g.rect(strip.x, strip.y, strip.w, strip.h).stroke({ color: INNER_BOX_DARK, width: inset });
-    // Light (gold-cream) centered title-size text on the rust headline strip — the original's title look.
+    // Light (gold-cream) centered title-size text on the rust headline strip - the original's title look.
     // Fit to the strip so a long personalized name (first + patronymic) shrinks rather than overflowing.
     textCentered(title, strip, 'white', 'title', strip.w - 2 * inset);
   };
@@ -244,10 +244,10 @@ export function createChrome(
     // Thin light edging around each button plate (the original's pale button outline, eyeballed).
     g.rect(r.x, r.y, r.w, r.h).stroke({ color: INNER_BOX_LIGHT, width: Math.max(1, scale) });
     if (!hit.enabled) {
-      // Inert-button darkening strength is our own choice — the original has no disabled house buttons.
+      // Inert-button darkening strength is our own choice - the original has no disabled house buttons.
       g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.22 });
     }
-    // Gold-cream title-size label on the dark button tile — the original's button labels use the same
+    // Gold-cream title-size label on the dark button tile - the original's button labels use the same
     // letterspaced caps face as the section titles (1024×768 screenshots); greyed when inert.
     textCentered(label, r, hit.enabled ? 'white' : 'dimmed', 'title');
     if (hovered && hit.enabled && !onBitmap) {
@@ -256,7 +256,7 @@ export function createChrome(
   };
 
   const tabButton = (r: Rect, active: boolean): void => {
-    // The same wooden tile the section buttons use — brighter (hilite) when active — so a tab reads as a
+    // The same wooden tile the section buttons use - brighter (hilite) when active - so a tab reads as a
     // raised button, not a flat grey plate. A thin top-left highlight + bottom-right shadow give it a small
     // bevel; the active tab also gets the drawer's green underline, so no heavy dark scrim is needed.
     const fill = active ? bitmaps.buttonHilite : bitmaps.button;
@@ -272,7 +272,7 @@ export function createChrome(
   const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     const line = Math.max(1, Math.round(scale));
-    // Both styles share the recessed-groove draw; only the fill colour differs — the stat gauge sweeps
+    // Both styles share the recessed-groove draw; only the fill colour differs - the stat gauge sweeps
     // the decoded level ramp (red→green), the neutral production bar keeps a fixed warm amber.
     const base = style === 'gauge' ? rampColor(assets.barRamp, clamped) : PRODUCTION_BAR_FILL;
     drawGauge(g, r, clamped, line, base, { dark: INNER_BOX_DARK, light: INNER_BOX_LIGHT });

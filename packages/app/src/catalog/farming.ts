@@ -1,7 +1,7 @@
 import type { GoodFarming } from '@open-northland/data';
 
 /**
- * The farm's field-cultivation calibration — the one global source for the wheat sow→water→grow→reap
+ * The farm's field-cultivation calibration - the one global source for the wheat sow→water→grow→reap
  * loop's numbers: every scene/content set that farms wheat builds its `farming` block from these
  * constants so the pace can't drift per scene.
  *
@@ -15,7 +15,7 @@ import type { GoodFarming } from '@open-northland/data';
  * ~30, four ~40, on a plot that stands at ~24 plants for every one of those crews. Two constants aim at it
  * between them - the stroke count sets what a grain costs in farmer labor (hence the ladder),
  * {@link FARM_MAX_FIELDS} sets the plot (hence its independence from the crew). The plot size and the
- * crews of 2-4 land; the FIRST rung does not — a lone farmer measures ~9 (per-farmer 9.0 / 12.5 / 12.3 /
+ * crews of 2-4 land; the FIRST rung does not - a lone farmer measures ~9 (per-farmer 9.0 / 12.5 / 12.3 /
  * 11.5), because it cannot re-water 24 fields inside a stage, so the ladder bends at the bottom instead of
  * running straight.
  */
@@ -24,13 +24,13 @@ import type { GoodFarming } from '@open-northland/data';
  *  lane's `maximumValency 5`, matching the field gfx's 5 growth frames). */
 export const WHEAT_GROWTH_STAGES = 5;
 
-/** Nominal ticks a watered field takes per growth stage (an unwatered field does not grow at all —
+/** Nominal ticks a watered field takes per growth stage (an unwatered field does not grow at all -
  *  watering is the sim's growth gate). 500 ticks × 4 stage steps = 2000 ticks ≈ 167 s at 12 ticks/s from
  *  watering to ripe (observed pacing, against the original's slow field turnaround). */
 export const WHEAT_TICKS_PER_STAGE = 500;
 
 /** How far a single field's stage length may sit either side of {@link WHEAT_TICKS_PER_STAGE}. At ±40%
- *  a plot the farmers plough in one pass still ripens a few plants at a time instead of all at once —
+ *  a plot the farmers plough in one pass still ripens a few plants at a time instead of all at once -
  *  the original's staggered field, approximated (its per-plant timing is not decoded). */
 export const WHEAT_GROWTH_SPREAD_PERCENT = 40;
 
@@ -46,14 +46,14 @@ export const WHEAT_WORK_REPEATS = 2;
 /** How far from the farm's anchor its farmers sow, in half-cell nodes (16 nodes ≈ 8 tiles). */
 export const FARM_FIELD_RADIUS = 16;
 
-/** Fields one farm keeps standing at once, whatever its crew size — measured in the running original,
+/** Fields one farm keeps standing at once, whatever its crew size - measured in the running original,
  *  where a farm's plot held 24–25 growing plants and did not grow when more farmers were assigned. A
  *  plot this size is also what staggers the harvest: one farmer cannot re-water 24 fields inside a
  *  {@link WHEAT_TICKS_PER_STAGE} window, so the fields drift apart in stage instead of ripening as one
  *  batch. */
 export const FARM_MAX_FIELDS = 24;
 
-/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id — read by both
+/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id - read by both
  *  the sandbox goods builder (`game/sandbox/content/catalog/goods.ts`) and the real-content overlay
  *  (`content/real-content.ts` `mergeRealContent`), so wheat farms at the same pace on either content base.
  *  Real ir.json extracts wheat's plant/cultivate/harvest atomics and its `producedOnMap` flag, but not this

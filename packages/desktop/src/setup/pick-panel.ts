@@ -8,11 +8,11 @@ import { type Probe, pickView } from './pick-view.js';
 /**
  * The wizard's first phase: choose the original game folder (typed, browsed, or auto-detected), get
  * a usable culturesnation mod alongside it, and hand a validated game path to the conversion. Owns
- * the `#pick` section — including the mod step nested inside it — and every piece of state that
+ * the `#pick` section - including the mod step nested inside it - and every piece of state that
  * section's wording depends on; {@link pickView} turns that state into the section's view.
  */
 
-/** Pause after the last keystroke before probing the typed path — one probe per pause, not per key. */
+/** Pause after the last keystroke before probing the typed path - one probe per pause, not per key. */
 const PROBE_DEBOUNCE_MS = 300;
 
 export interface PickPanelView {
@@ -66,7 +66,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     playNowButton.classList.toggle('hidden', view.playNowLabel === undefined);
   }
 
-  /** `fillInput` is off when the probe echoes what the user is typing — never fight the caret. */
+  /** `fillInput` is off when the probe echoes what the user is typing - never fight the caret. */
   function applyCandidate(candidate: GameFolderCandidate, fillInput = true): void {
     if (fillInput) pathInput.value = candidate.path;
     probe = candidate.probe.hasArchives

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
- * Cross-file invariants between the decoded maps (`<content>/maps/*.json`) and the IR — the seam
+ * Cross-file invariants between the decoded maps (`<content>/maps/*.json`) and the IR - the seam
  * `parseTerrainMap`'s per-file schema cannot see: a map is only playable when every ground typeId
  * and placed-object name it carries resolves in the SAME pipeline run's ir.json. Every map is also
  * run through the real loader's zod parse, so a truncated or lane-skewed emit fails here instead of
@@ -22,7 +22,7 @@ function mapsDir(): string {
 }
 
 /** Decoded map files (`.meta.json`/`.script.json` sidecars carry menu text and the player/mission
- *  script, not terrain — excluded). */
+ *  script, not terrain - excluded). */
 function mapFiles(): string[] {
   return readdirSync(mapsDir())
     .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json') && !f.endsWith('.script.json'))

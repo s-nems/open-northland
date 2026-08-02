@@ -8,31 +8,31 @@ import { createPalettedGeometry, createPalettedShader, type PalettedUniforms } f
  * band (panel/window backdrops); `'round'` keys magenta and hard-clips everything outside the inscribed disc
  * regardless of colour, so a round order button drops its square frame + corners and reads as a clean disc
  * with its engraved glyph intact. A `'round'` sprite must be supersampled (baked at an integer oversample,
- * then downscaled) — the hard clip aliases the disc edge if drawn straight to screen.
+ * then downscaled) - the hard clip aliases the disc edge if drawn straight to screen.
  */
 export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
 
 /**
- * A feet-anchored sprite whose colour is a per-player palette lookup rather than a baked texture — the
+ * A feet-anchored sprite whose colour is a per-player palette lookup rather than a baked texture - the
  * render half of the player (team) colour feature. The character atlas is decoded as indices (palette index
  * in red, mask in alpha; see the pipeline's `expandBobFrameIndexed`), and this sprite reads each index
  * through one row of a `256 × N` palette LUT texture, chosen by {@link PalettedSprite.player}. So a single
- * indexed atlas + one LUT texture draw all N player colours (only the clothing band differs per row) — no
+ * indexed atlas + one LUT texture draw all N player colours (only the clothing band differs per row) - no
  * per-player texture, and no per-sprite tint, which would recolour the whole figure (face + tools) rather
  * than the team band alone: team colour is a band-limited palette remap, not a flat tint.
  *
  * It is a custom-shader {@link Mesh} (a unit quad), because Pixi's batched `Sprite` can't run a custom
- * fragment shader. A custom-shader mesh bypasses batching (one draw call each) — acceptable at battle scale
+ * fragment shader. A custom-shader mesh bypasses batching (one draw call each) - acceptable at battle scale
  * where the sim, not the renderer, is the wall (see docs + render/AGENTS.md); keep it to characters.
  *
  * Positioning is manual (screen space). Pixi does not wire its transform uniform blocks into a custom
  * `Shader.from` program (the global-uniform UBO is left unbound), so a custom-shader mesh can't ride the
- * scene-graph transform — the caller supplies a feet-anchor screen position + scale via {@link place}, and
+ * scene-graph transform - the caller supplies a feet-anchor screen position + scale via {@link place}, and
  * the vertex shader maps screen pixels straight to clip space with `uScreen`.
  *
  * All per-mesh varying values live in one `vec4` (`uPlacement`) mutated in place. These meshes share a
  * single compiled GL program, and on a shared program Pixi re-uploads a loose uniform only when its backing
- * `Float32Array` contents change — reassigning a scalar `f32` (a new number) is not picked up, so every mesh
+ * `Float32Array` contents change - reassigning a scalar `f32` (a new number) is not picked up, so every mesh
  * would draw the last-written value.
  *
  * The GL program itself (vertex/fragment source, quad geometry, uniform wiring) lives in `./shader.ts`.
@@ -42,13 +42,13 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   private readonly texUvs = new Float32Array(8);
   private readonly paletteShader: Shader;
   private readonly vars: PalettedUniforms;
-  /** The (source, frame, atlas size) the quad buffers were last built for — {@link setFrame} skips the
+  /** The (source, frame, atlas size) the quad buffers were last built for - {@link setFrame} skips the
    *  rebuild + GPU re-upload when they are unchanged (an idle settler / a held animation bob). */
   private lastSource?: TextureSource;
   private lastFrame?: AtlasFrame;
   private lastAtlasW = -1;
   private lastAtlasH = -1;
-  /** The layer's art scale (native px → design px) last placed with — stored so the mesh can be re-placed
+  /** The layer's art scale (native px → design px) last placed with - stored so the mesh can be re-placed
    *  for an alternate camera (the details-panel portrait inset) without re-resolving its layer, by combining
    *  it with the inset camera's zoom. Set by the pool right after {@link place}. */
   artScale = 1;
@@ -56,7 +56,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   /**
    * @param lut the `256 × colours` palette LUT {@link TextureSource} (nearest-sampled). Shared across every
    *   PalettedSprite; only {@link player} selects the row.
-   * @param colours the LUT's row count (player-colour palettes) — its pixel height.
+   * @param colours the LUT's row count (player-colour palettes) - its pixel height.
    */
   constructor(lut: TextureSource, colours: number) {
     const shader = createPalettedShader(lut, colours);
@@ -66,7 +66,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
 
   /** The player-colour row (0-based) this sprite reads from the LUT. Clamped to the LUT's row count so an
-   *  out-of-range player id reads the last real colour rather than sampling past the texture — the shader
+   *  out-of-range player id reads the last real colour rather than sampling past the texture - the shader
    *  has no bounds check of its own. */
   set player(row: number) {
     const rows = this.vars.uniforms.uLutSize[1] ?? 1;
@@ -172,7 +172,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     t[5] = (y + height) / atlasHeight;
     t[6] = x / atlasWidth;
     t[7] = (y + height) / atlasHeight;
-    // The frame's UV box (min, max) — the 'round' corner key normalizes a fragment's UV against it.
+    // The frame's UV box (min, max) - the 'round' corner key normalizes a fragment's UV against it.
     const uv = this.vars.uniforms.uFrameUV;
     uv[0] = t[0];
     uv[1] = t[1];
@@ -215,7 +215,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     resWidth: number,
     resHeight: number,
   ): void {
-    // The quad no longer matches the frame's native geometry — bust the setFrame memo so a later
+    // The quad no longer matches the frame's native geometry - bust the setFrame memo so a later
     // setFrame with the same frame rebuilds the positions instead of keeping the stretched quad.
     this.lastAtlasW = -1;
     this.lastAtlasH = -1;
@@ -245,7 +245,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
    * Pixi's `Mesh.destroy` only nulls `_geometry`/`_shader`; the uploaded GPU buffers then wait for the
    * renderer's GC sweep (60 s unused-time). HUD panels churn PalettedSprites per rebuild (chrome pieces,
    * glyph runs), so release the per-sprite geometry buffers and the Shader (its uniform groups) with the
-   * sprite. The GL *program* is Shader.from-cached and shared — `Shader.destroy()` leaves it alive.
+   * sprite. The GL *program* is Shader.from-cached and shared - `Shader.destroy()` leaves it alive.
    */
   override destroy(options?: Parameters<Mesh['destroy']>[0]): void {
     const geometry = this.geometry;

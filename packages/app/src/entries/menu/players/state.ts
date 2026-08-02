@@ -2,7 +2,7 @@ import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire'
 
 /**
  * Pure roster state for the map-select player panel: seats, colours and vacant modes over the
- * slots `/maps-index` serves. No DOM — the panel half lives in `panel.ts`; everything here is
+ * slots `/maps-index` serves. No DOM - the panel half lives in `panel.ts`; everything here is
  * headlessly unit-tested.
  */
 
@@ -17,7 +17,7 @@ export type VacantMode = 'idle' | 'ai';
 export const OBSERVER_SEAT = 'observer';
 
 /** The overseer (god-mode) pseudo-seat: watch every seat and command all of them (`?player=overseer`)
- *  — the same whole-map view as the observer, but with live control, kept as a sandbox/debug session. */
+ *  - the same whole-map view as the observer, but with live control, kept as a sandbox/debug session. */
 export const OVERSEER_SEAT = 'overseer';
 
 /** A claimed session: a roster slot id, or one of the spectator pseudo-seats
@@ -30,7 +30,7 @@ export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
   return slot.type === 'ai' && slot.aiAllowed ? 'ai' : 'idle';
 }
 
-/** Whether the roster offers any seat a person could take — when it does not (an all-AI mod map),
+/** Whether the roster offers any seat a person could take - when it does not (an all-AI mod map),
  *  the menu must not gate Start on a seat that cannot exist. */
 export function hasClaimableSeat(players: readonly MapPlayerSlot[]): boolean {
   return players.some((p) => p.claimable && !p.hidden);
@@ -77,7 +77,7 @@ export function wornByAnother(state: RosterState, slot: number, colorId: number)
 /**
  * Recolours one slot. The person's picks are unique: a colour another slot wears is rejected
  * (null); re-picking the slot's own colour is a no-op accepted for idempotent UI (authored
- * duplicates stay as the map shipped them — they just can't be newly created).
+ * duplicates stay as the map shipped them - they just can't be newly created).
  */
 export function setSlotColor(state: RosterState, slot: number, colorId: number): RosterState | null {
   if (state.colors.get(slot) !== colorId && wornByAnother(state, slot, colorId)) return null;
@@ -107,9 +107,9 @@ export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): 
  * The start-URL params encoding the person's roster choices: `player=<seat>` (a slot id, or
  * `observer`/`overseer` for a spectator session),
  * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
- * `ai=<slot>,…` — the full {@link aiSeats} list (not just deviations: the `?map=` entry consumes it
+ * `ai=<slot>,…` - the full {@link aiSeats} list (not just deviations: the `?map=` entry consumes it
  * directly via `aiSeatsParam`, with no roster knowledge of its own). Empty until a seat is
- * claimed — the menu gates Start on it.
+ * claimed - the menu gates Start on it.
  */
 export function rosterStartParams(
   state: RosterState,

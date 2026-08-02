@@ -5,10 +5,10 @@
  *
  * UV convention (verified across all 927 pattern records + 38 transition records): `coordsA` lists
  * the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists (TL, TR, BR)
- * and maps onto B's [left, E, SE] — both in point order, divided by the page size verbatim.
+ * and maps onto B's [left, E, SE] - both in point order, divided by the page size verbatim.
  */
 
-/** A source sub-rectangle in texture pixels — the pattern's tile region within its `text_NNN` page. */
+/** A source sub-rectangle in texture pixels - the pattern's tile region within its `text_NNN` page. */
 export interface SrcRect {
   readonly x: number;
   readonly y: number;
@@ -22,18 +22,18 @@ export interface SrcRect {
  * The app derives this from a `TerrainPattern` IR row, so the type is declared structurally here.
  */
 export interface CellTexture {
-  /** The texture page key (e.g. `text_003`) — the key into the loaded page sources. */
+  /** The texture page key (e.g. `text_003`) - the key into the loaded page sources. */
   readonly pageKey: string;
   /** The tile's sub-rect within the page, in texture pixels. */
   readonly rect: SrcRect;
-  /** The logic-type `debugColor` as `0xRRGGBB` — the flat-tint fallback when the page is unavailable. */
+  /** The logic-type `debugColor` as `0xRRGGBB` - the flat-tint fallback when the page is unavailable. */
   readonly fallbackColour?: number;
 }
 
 /**
  * One pattern triangle's 3 normalised UVs from its 6-int pixel-coord tuple (`coordsA`/`coordsB`),
  * as a flat `[u0,v0, u1,v1, u2,v2]` buffer in the tuple's point order. The original's coords are
- * inclusive pixel corners (`0..63` for a 64px tile) — the sub-texel difference is immaterial at
+ * inclusive pixel corners (`0..63` for a 64px tile) - the sub-texel difference is immaterial at
  * tile scale, so the division is straight.
  */
 export function triangleUVs(coords: readonly number[], pageW: number, pageH: number): number[] {
@@ -48,7 +48,7 @@ export function triangleUVs(coords: readonly number[], pageW: number, pageH: num
 
 /**
  * The per-typeId path's UV fold: a page sub-rect's corners onto one cell triangle, following the
- * pattern-record convention — triangle `a` gets the rect's (TL, BR, BL), `b` its (TL, TR, BR) —
+ * pattern-record convention - triangle `a` gets the rect's (TL, BR, BL), `b` its (TL, TR, BR) -
  * as a flat normalised buffer in vertex order. This lets the approximated representative-tile path
  * share the 1:1 path's tessellation, differing only in which sub-rect it samples.
  */

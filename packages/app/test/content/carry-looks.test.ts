@@ -39,7 +39,7 @@ describe.runIf(hasRealIr())('the [gfxwalkatomic] carry table binds against decod
     expect(carrySeqs.get('wool')).toBe('human_man_generic_walk_flour');
   });
 
-  it('gives the soldier its empty walk for every good — a warrior never shows a load', async () => {
+  it('gives the soldier its empty walk for every good - a warrior never shows a load', async () => {
     const ir = rawIrUnderTest() as ContentIr;
     const carrySeqs = carryWalkSeqs(ir, VIKING_ANIM_TRIBE, CHARACTER_SPECS.warrior.logicJob);
     expect(carrySeqs.size).toBeGreaterThan(0);

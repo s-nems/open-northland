@@ -20,14 +20,14 @@ import {
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
-// PLACEMENT SPOT SEARCH — where a build-order `place` entry lands: always inside the near-HQ
+// PLACEMENT SPOT SEARCH - where a build-order `place` entry lands: always inside the near-HQ
 // Manhattan disc, ring-searched outward from the entry's affinity centre (the plan's "mason toward
 // the stone, chains cluster" rules) instead of the HQ itself, with the farm's plantable-ground
 // rule as an extra accept filter. No affinity and no ground rule reproduces the original
 // closest-to-HQ pick exactly.
 
 /** How far past the frontier building an `outskirts` anchor is pushed away from the settlement
- *  centroid — roughly a footprint plus clearance beyond the built edge (named approximation, user
+ *  centroid - roughly a footprint plus clearance beyond the built edge (named approximation, user
  *  plan 2026-07-25). */
 const OUTSKIRTS_PUSH_NODES = 8;
 
@@ -67,7 +67,7 @@ function affinityNode(
   }
 }
 
-/** Lattice Manhattan node distance — NOT the anisotropic world metric {@link KIND_SPACING_NODES}'s
+/** Lattice Manhattan node distance - NOT the anisotropic world metric {@link KIND_SPACING_NODES}'s
  *  veto measures in. */
 function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
   return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
@@ -157,7 +157,7 @@ function searchCentre(
 /** The plantable-ground accept filter for a `ground: 'plantable'` entry: every reserved footprint
  *  cell (the anchor node itself for footprint-less synthetic content) must be sowable ground.
  *  Named approximation: "the farm stands on grass" is encoded as its reserved zone on `plantable`
- *  terrain (the original's `biocanplanton` class) — the surrounding field ring is not pre-checked;
+ *  terrain (the original's `biocanplanton` class) - the surrounding field ring is not pre-checked;
  *  sowing already skips barren nodes (`settlers/drives/farming/targets.ts`). */
 function groundAccepted(
   ctx: SystemContext,
@@ -181,7 +181,7 @@ function groundAccepted(
 /**
  * The building-agnostic legality core every spot search shares: in-bounds buildable ground, off
  * every existing building's anchor (explicit, so a footprint-less synthetic type never stacks), and
- * accepted by the placement probe. One occupied-set scan per call — build it once per search, not
+ * accepted by the placement probe. One occupied-set scan per call - build it once per search, not
  * per candidate.
  */
 export function buildingSpotAccept(
@@ -204,7 +204,7 @@ export function buildingSpotAccept(
 }
 
 /** How far an `apart` placement keeps from the seat's other buildings of the same kind, in
- *  world-metric nodes — far enough that two warehouses serve different corners of a settlement
+ *  world-metric nodes - far enough that two warehouses serve different corners of a settlement
  *  bounded by the {@link BUILD_SEARCH_MAX_RADIUS_NODES} disc (named approximation, user decision
  *  2026-07-26). */
 const KIND_SPACING_NODES = 20;
@@ -236,7 +236,7 @@ function kindSpacingAnchors(
  *
  * An `apart` entry's same-kind anchors do double duty: they steer the `outskirts` affinity to the
  * settlement's least-served side, and they veto spots within {@link KIND_SPACING_NODES} of one. The
- * veto runs as a first pass only — a second pass without it keeps the preference from ever stalling.
+ * veto runs as a first pass only - a second pass without it keeps the preference from ever stalling.
  */
 export function placementSpot(
   world: World,
@@ -256,7 +256,7 @@ export function placementSpot(
       // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
       if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
-      if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes — bounds come first
+      if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
       if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;
       return accept(x, y);
     });

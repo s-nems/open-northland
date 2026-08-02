@@ -20,11 +20,11 @@ import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as const;
 
 /**
- * Resolves one map folder's {@link MapScript} — the player roster, diplomacy and mission triggers
+ * Resolves one map folder's {@link MapScript} - the player roster, diplomacy and mission triggers
  * the menu and the game load. Source preference mirrors the entities layer: the already-decoded
  * sibling `map.cif` sections when they carry script data (the packed tutorial/multiplayer maps),
  * else the folder's plaintext {@link SCRIPT_INC_FILES} (the unpacked mod majority). An unreadable
- * `.inc` warns and is skipped — one bad file must not drop the whole map's script. Returns
+ * `.inc` warns and is skipped - one bad file must not drop the whole map's script. Returns
  * undefined when neither source yields anything (the caller then emits no script sidecar).
  *
  * `strings` is the map's already-loaded string table (or undefined): each roster slot's authored
@@ -62,7 +62,7 @@ export async function resolveMapScript(
 /**
  * Decorates the roster with authored display names: `nametribe <player> <stringId>` (kept lossless
  * in `misc`) resolved through the map's string table. A slot without a resolvable name stays
- * nameless — the menu then labels it generically.
+ * nameless - the menu then labels it generically.
  */
 function attachPlayerNames(script: MapScript, strings: Record<number, string> | undefined): MapScript {
   if (strings === undefined || script.players.length === 0) return script;

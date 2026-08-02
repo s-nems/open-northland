@@ -18,14 +18,14 @@ export const EDGE_GAIN = 0.35;
 export const MAX_PAN = 0.85;
 
 /**
- * Loudness floor as the camera zooms out — a zoomed-out camera is "further away", so its sounds fade
+ * Loudness floor as the camera zooms out - a zoomed-out camera is "further away", so its sounds fade
  * toward this floor (never to silence); zooming in past 1:1 never boosts past full gain.
  */
 export const ZOOM_GAIN_FLOOR = 0.45;
 
 /** A spatialised emitter: playback gain and stereo pan already resolved from its screen position. */
 export interface Spatial {
-  /** 0..1 — screen-position gain (1 at centre, {@link EDGE_GAIN} at the edge) times the zoom attenuation. */
+  /** 0..1 - screen-position gain (1 at centre, {@link EDGE_GAIN} at the edge) times the zoom attenuation. */
   readonly gain: number;
   /** -1 (hard left) .. +1 (hard right), scaled by {@link MAX_PAN}. */
   readonly pan: number;
@@ -46,7 +46,7 @@ export function computeSpatial(
 }
 
 /**
- * {@link computeSpatial} for a half-cell node address `(hx, hy)` — the space every `SimEvent.at` carries
+ * {@link computeSpatial} for a half-cell node address `(hx, hy)` - the space every `SimEvent.at` carries
  * (the same grid as command payloads). Projects through the renderer's own {@link halfCellToScreen}, so
  * the node→screen stagger math has one owner.
  */

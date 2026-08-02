@@ -3,7 +3,7 @@ import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 
-/** Stamp a standing signpost directly (bypassing the scout's hammer swing) — the shared network fixture
+/** Stamp a standing signpost directly (bypassing the scout's hammer swing) - the shared network fixture
  *  for the signpost test suites. `x`/`y` are integer TILE coords (Position is tile-space). */
 export function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = 0): Entity {
   const e = sim.world.create();

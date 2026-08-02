@@ -10,7 +10,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * The calm-zone memo is keyed on the Building + Owner generations, not the tick: a stretch of ticks
  * with no building/ownership change must reuse one derivation (instance identity proves it), and any
- * building add or remove must rebuild. Zones are read-path derived state — never hashed.
+ * building add or remove must rebuild. Zones are read-path derived state - never hashed.
  */
 
 const P0 = 0;
@@ -38,7 +38,7 @@ describe('calmZonesByPlayer memo', () => {
     const zones = calmZonesByPlayer(sim.world, terrain);
     expect(zones.get(P0)?.has(terrain.nodeAt(10, 10))).toBe(true); // the building's own node (tile 5,5)
     for (let t = 0; t < 5; t++) sim.step();
-    expect(calmZonesByPlayer(sim.world, terrain)).toBe(zones); // same instance — no per-tick rebuild
+    expect(calmZonesByPlayer(sim.world, terrain)).toBe(zones); // same instance - no per-tick rebuild
   });
 
   it('rebuilds on a building add and again on its removal', () => {
@@ -46,7 +46,7 @@ describe('calmZonesByPlayer memo', () => {
     ownedBuildingAt(sim, 5, 5);
     const terrain = terrainOf(sim);
     const before = calmZonesByPlayer(sim.world, terrain);
-    const FAR = { x: 30, y: 30 }; // node coords of tile (15,15) — outside the first zone's r=8 diamond
+    const FAR = { x: 30, y: 30 }; // node coords of tile (15,15) - outside the first zone's r=8 diamond
     expect(before.get(P0)?.has(terrain.nodeAt(FAR.x, FAR.y))).toBe(false);
 
     const added = ownedBuildingAt(sim, 15, 15);

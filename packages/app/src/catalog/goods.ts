@@ -1,10 +1,10 @@
 /**
- * The committed catalog of the extended goods — every tradeable ware in the original economy beyond the
+ * The committed catalog of the extended goods - every tradeable ware in the original economy beyond the
  * six gathered goods + coin the sandbox already wires end-to-end (wood/stone/mud/iron/gold/mushroom have
  * harvest atomics and a gathering pipeline; those live in `game/sandbox/ids/` + `content/`, since they
- * carry behaviour). This table adds the rest of the `goodtypes.ini` catalog — food, drink, building
+ * carry behaviour). This table adds the rest of the `goodtypes.ini` catalog - food, drink, building
  * materials, tools, crafted wares, weapons, armor, potions, amulets, and the animal/vehicle/special tokens
- * — so every good the original defines exists in the one global content set: it has an id, a name, and (for
+ * - so every good the original defines exists in the one global content set: it has an id, a name, and (for
  * the wares) a warehouse stock slot + its recoloured `ls_goods` HUD icon, drawable in the Magazyn panel.
  *
  * Source basis: `id` and catalog order are transcribed verbatim from the extracted `content/ir.json` goods
@@ -26,21 +26,21 @@ export const EXTENDED_GOOD_TYPE_OFFSET = 100;
 export interface CatalogGood {
   /** Sandbox-scoped `goodType` (= {@link EXTENDED_GOOD_TYPE_OFFSET} + the ir.json typeId). */
   readonly typeId: number;
-  /** Stable machine id, verbatim from `ir.json` — also the `ls_goods` icon-manifest key. */
+  /** Stable machine id, verbatim from `ir.json` - also the `ls_goods` icon-manifest key. */
   readonly id: string;
-  /** Human English label for the HUD (e.g. `"Leather"`) — our hand-authored naming. */
+  /** Human English label for the HUD (e.g. `"Leather"`) - our hand-authored naming. */
   readonly name: string;
   /**
    * Whether a general-goods store (HQ / warehouse) advertises a stock slot for it. True for the carried
    * wares; false for the animal/vehicle/special tokens (`prey`, `sheep`, `cattle`, the carts/ships,
-   * `catapult`, `chest`, `anything`) — those are herded/driven/sentinel, not warehoused.
+   * `catapult`, `chest`, `anything`) - those are herded/driven/sentinel, not warehoused.
    */
   readonly storable: boolean;
 }
 
 /**
  * The extended goods, in ir.json typeId order. The raw typeIds live here (their definition) and nowhere
- * else — code refers to a good by id through {@link EXTENDED_GOODS} / {@link STORABLE_EXTENDED_GOODS}.
+ * else - code refers to a good by id through {@link EXTENDED_GOODS} / {@link STORABLE_EXTENDED_GOODS}.
  */
 export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 101, id: 'water', name: 'Water', storable: true },
@@ -55,14 +55,14 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 117, id: 'food_extra', name: 'Fine Food', storable: true },
   // fruit (118) dropped from the catalog with fish/sausage: its `goods all` record reuses bread's frames in
   // the source (no distinct fruit art), so it only ever reads as bread. Still a genuine `goodtypes.ini` good
-  // in the extracted IR — an app-catalog curation, not a data change.
+  // in the extracted IR - an app-catalog curation, not a data change.
   { typeId: 119, id: 'bread', name: 'Bread', storable: true },
   { typeId: 120, id: 'candy', name: 'Candy', storable: true },
   { typeId: 121, id: 'meat', name: 'Meat', storable: true },
   // fish (122) + sausage (123) are dropped from the catalog on purpose: they are house-made food goods with
   // no distinct `ls_goods` art (the original's `landscapes.cif` binds both to gold's bar frames), so they only
   // ever read as gold bars. `meat` already covers "produced food"; keeping the catalog to goods with a
-  // meaningful, distinguishable icon. They still exist in the extracted IR — this is an app-catalog curation.
+  // meaningful, distinguishable icon. They still exist in the extracted IR - this is an app-catalog curation.
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },
@@ -97,7 +97,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 153, id: 'amulet_defense', name: 'Amulet of Defense', storable: true },
   { typeId: 154, id: 'amulet_crithit', name: 'Amulet of the Critical Blow', storable: true },
   { typeId: 155, id: 'amulet_speed', name: 'Amulet of Speed', storable: true },
-  // Animal / vehicle / special tokens — real goodtypes, but herded, driven, or sentinel rather than
+  // Animal / vehicle / special tokens - real goodtypes, but herded, driven, or sentinel rather than
   // warehoused, so they carry no stock slot (and no `ls_goods` icon).
   { typeId: 156, id: 'prey', name: 'Game', storable: false },
   { typeId: 157, id: 'sheep', name: 'Sheep', storable: false },

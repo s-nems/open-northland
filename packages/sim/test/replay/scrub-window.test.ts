@@ -14,10 +14,10 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `scrubWindow()` — the single-run "free scrubbing" composition: reconstruct a contiguous
+ * Tests for `scrubWindow()` - the single-run "free scrubbing" composition: reconstruct a contiguous
  * window of plain snapshots `[fromTick, toTick]` from one command log, ready to feed `traceEntity`
  * (the whole window) and `diffSnapshots` (adjacent pairs). Its oracle is byte-equality with a
- * per-tick `replay()` — the same determinism guarantee `localizeDivergence` leans on.
+ * per-tick `replay()` - the same determinism guarantee `localizeDivergence` leans on.
  */
 
 const HEADQUARTERS = 1;
@@ -38,12 +38,12 @@ function recordRun(
     for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
     sim.step();
   }
-  // The log is a plain value (LoggedCommand[]) — the replay inputs the tests reconstruct from.
+  // The log is a plain value (LoggedCommand[]) - the replay inputs the tests reconstruct from.
   const log: LoggedCommand[] = [...sim.commands.log];
   return { content: testContent(), seed, map, log };
 }
 
-/** A run that spawns a woodcutter at tick 2 and a sawmill at tick 5 — gives the window things to show. */
+/** A run that spawns a woodcutter at tick 2 and a sawmill at tick 5 - gives the window things to show. */
 function sampleRun(): { run: RunReplay; map: TerrainMap } {
   const map = grassMap(6, 1);
   const schedule = new Map<number, Command[]>([
@@ -74,7 +74,7 @@ describe('scrubWindow', () => {
 
     const window = scrubWindow(run, 4, 7);
 
-    // Hand-reconstruct each tick independently via replay() and compare — the single forward pass must
+    // Hand-reconstruct each tick independently via replay() and compare - the single forward pass must
     // produce exactly what N separate replays would, byte-for-byte.
     for (const snap of window) {
       const expected = replay({ ...run, untilTick: snap.tick }).snapshot();
@@ -86,7 +86,7 @@ describe('scrubWindow', () => {
     const { run } = sampleRun();
     const window = scrubWindow(run, 4, 8);
 
-    // The carpenter is spawned at tick 6 — find the settler entity present at 6 but absent at 5
+    // The carpenter is spawned at tick 6 - find the settler entity present at 6 but absent at 5
     // (the sawmill placed at tick 5 is also "new since 4", so key on the 5→6 edge + a Settler).
     const at5Ids = new Set(window.find((s) => s.tick === 5)?.entities.map((e) => e.id));
     const at6 = window.find((s) => s.tick === 6);
@@ -120,7 +120,7 @@ describe('scrubWindow', () => {
   it('clamps fromTick to 1 (tick 0 is the un-snapshotted initial state)', () => {
     const { run } = sampleRun();
     const window = scrubWindow(run, 0, 3);
-    // from 0 means "from the start" — the first reconstructable tick is 1, not 0.
+    // from 0 means "from the start" - the first reconstructable tick is 1, not 0.
     expect(window.map((s) => s.tick)).toEqual([1, 2, 3]);
   });
 

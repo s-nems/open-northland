@@ -4,14 +4,14 @@ import type { SpriteState } from '../../src/data/scene/index.js';
 import type { DrawItem, SceneTerrain } from '../../src/index.js';
 
 /**
- * Shared snapshot fixtures for the render tests — a `WorldSnapshot` is plain data (no class
+ * Shared snapshot fixtures for the render tests - a `WorldSnapshot` is plain data (no class
  * instances / live Maps), so the tests hand-build one instead of spinning up a Simulation; these
  * helpers are the one home for that shape (they were copy-pasted into five test files before).
  */
 
 /** A minimal {@link DrawItem} of the given kind at the origin (`ref 1`, depth 0), plus any extra
  *  fields a resolver test reads. The one home for the base draw-item shape the sprite-resolver specs
- *  build on — before, a `{ kind, ref: 1, x: 0, y: 0, depth: 0 }` literal was re-hand-rolled per file. */
+ *  build on - before, a `{ kind, ref: 1, x: 0, y: 0, depth: 0 }` literal was re-hand-rolled per file. */
 export function drawItem(kind: DrawItem['kind'], fields: Partial<DrawItem> = {}): DrawItem {
   return { kind, ref: 1, x: 0, y: 0, depth: 0, ...fields };
 }
@@ -43,11 +43,11 @@ export function settlerItem(state?: SpriteState, fields: SettlerItemFields = {})
   });
 }
 
-/** A flat 3×2 landscape — the smallest grid with both row parities, so a spec can place an entity on an
+/** A flat 3×2 landscape - the smallest grid with both row parities, so a spec can place an entity on an
  *  odd (half-shifted) row without hand-rolling a terrain per file. */
 export const FLAT_3x2: SceneTerrain = { width: 3, height: 2, typeIds: [1, 1, 2, 2, 1, 1] };
 
-/** A snapshot entity at a fractional tile position (Fixed is a scaled integer — fractions are exact),
+/** A snapshot entity at a fractional tile position (Fixed is a scaled integer - fractions are exact),
  *  carrying the given marker components on top of its Position. */
 export function entity(
   id: number,

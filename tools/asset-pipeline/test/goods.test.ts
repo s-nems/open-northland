@@ -39,7 +39,7 @@ describe('resolveGoodIcons', () => {
 
   it('omits goods with no landscapeType, no matching pile, or a non-ls_goods record', () => {
     const goods = [
-      { id: 'plank' }, // produced good — no landscapeType
+      { id: 'plank' }, // produced good - no landscapeType
       { id: 'orphan', landscapeType: 99 }, // no pile record for logicType 99
       { id: 'tree', landscapeType: 7 }, // pile record exists but cites a different bmd
     ];
@@ -48,7 +48,7 @@ describe('resolveGoodIcons', () => {
   });
 
   it('falls back to a `goods all` item record for a good with no `good piles all` pile (potions/amulets)', () => {
-    // A potion has only a `goods all` bottle record (no dedicated pile) — the fallback must recover it.
+    // A potion has only a `goods all` bottle record (no dedicated pile) - the fallback must recover it.
     const goods = [{ id: 'potion_heal_small', landscapeType: 71 }];
     const gfx = [
       pile(
@@ -71,7 +71,7 @@ describe('resolveGoodIcons', () => {
     const goods = [{ id: 'wood', landscapeType: 7 }];
     const gfx = [
       pile(7, 'goods_item', [[1, 200]], { editGroups: ['goods all'] }), // the broader item record
-      pile(7, 'goods_wood', [[1, 40]], { editGroups: ['goods all', 'good piles all'] }), // the pile — wins
+      pile(7, 'goods_wood', [[1, 40]], { editGroups: ['goods all', 'good piles all'] }), // the pile - wins
     ];
     expect(resolveGoodIcons(goods, gfx)).toEqual({
       wood: { frame: 40, palette: 'goods_wood', fillFrames: [40] },
@@ -81,9 +81,9 @@ describe('resolveGoodIcons', () => {
   it('ignores non-good-pile GfxLandscape records (editGroups gate) and keeps first-wins per logicType', () => {
     const goods = [{ id: 'stone', landscapeType: 17 }];
     const gfx = [
-      pile(17, 'terrain_rock', [[1, 200]], { editGroups: ['landscape decor'] }), // not a good pile — skipped
-      pile(17, 'goods_stone', [[1, 15]]), // the real good pile — wins
-      pile(17, 'goods_stone_alt', [[1, 99]]), // same logicType, later — must NOT override
+      pile(17, 'terrain_rock', [[1, 200]], { editGroups: ['landscape decor'] }), // not a good pile - skipped
+      pile(17, 'goods_stone', [[1, 15]]), // the real good pile - wins
+      pile(17, 'goods_stone_alt', [[1, 99]]), // same logicType, later - must NOT override
     ];
     expect(resolveGoodIcons(goods, gfx)).toEqual({
       stone: { frame: 15, palette: 'goods_stone', fillFrames: [15] },
@@ -94,7 +94,7 @@ describe('resolveGoodIcons', () => {
 /**
  * The localized good-name join ({@link resolveGoodNames}): per locale, a good's display name is its
  * `type`-keyed string-table entry, re-keyed onto the good's STRING id. A good absent from a locale's table
- * (or a locale with no table) simply gets no entry there — the app's fallback chain covers it.
+ * (or a locale with no table) simply gets no entry there - the app's fallback chain covers it.
  */
 describe('resolveGoodNames', () => {
   const goods = [

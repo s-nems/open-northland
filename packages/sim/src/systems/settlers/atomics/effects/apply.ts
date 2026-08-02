@@ -37,7 +37,7 @@ type CompletedAtomic = Pick<
 /**
  * Apply a completed atomic's effect. Exhaustive over the `AtomicEffect` union (`assertNever` makes a new
  * variant a compile error here), so behavior is the typed effect, never an opaque atomicId. Returns the
- * units a `harvest` swing extracted — the executor's release signal — and undefined otherwise.
+ * units a `harvest` swing extracted - the executor's release signal - and undefined otherwise.
  */
 export function applyEffect(
   world: World,
@@ -121,7 +121,7 @@ export function applyEffect(
       unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
       return;
     // Nothing lands on completion: walking is the navigation layer's (`move`/`idle`), an `attack`'s blow
-    // already landed mid-animation at its hit frame, and no planner emits `produce` — the ProductionSystem
+    // already landed mid-animation at its hit frame, and no planner emits `produce` - the ProductionSystem
     // advances crafting cycles from the workplace itself, never from a worker's atomic.
     case 'move':
     case 'idle':
@@ -133,7 +133,7 @@ export function applyEffect(
   }
 }
 
-/** Credit one meal to the eater's hunger bar — `eat` and `forage` feed identically in the original.
+/** Credit one meal to the eater's hunger bar - `eat` and `forage` feed identically in the original.
  *  No-op on an entity that is no longer a {@link Settler}. */
 function relieveHunger(world: World, settler: Entity): void {
   const s = world.tryGet(settler, Settler);

@@ -3,19 +3,19 @@ import { collectSpriteScene, type SpriteScene } from '../../src/data/scene/index
 import { buildSpriteScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
-/** Unit tests for {@link collectSpriteScene} — the single-pass draw list + pre-cull liveness view the
+/** Unit tests for {@link collectSpriteScene} - the single-pass draw list + pre-cull liveness view the
  *  retained pool reconciles against (viewport / fog / static-ref culling, ghost adoption). */
 
-/** The subset of `ids` the scene reports live — `liveRefs` is a membership view, so exact-set
+/** The subset of `ids` the scene reports live - `liveRefs` is a membership view, so exact-set
  *  assertions probe it over the fixture's full id universe. */
 const liveOf = (scene: SpriteScene, ids: readonly number[]): number[] =>
   ids.filter((id) => scene.liveRefs.has(id));
 
-describe('collectSpriteScene — the single-pass draw list + liveness set', () => {
+describe('collectSpriteScene - the single-pass draw list + liveness set', () => {
   // The retained pool's destroy-vs-cull rule hangs on this invariant: a viewport-CULLED entity must
   // still be in `liveRefs` (alive, kept pooled for when it scrolls back) while absent from `items`
   // (not drawn). If `liveRefs` were ever collected after the cull, every off-screen sprite would be
-  // destroyed and re-minted on each scroll — the churn the retained pool exists to prevent.
+  // destroyed and re-minted on each scroll - the churn the retained pool exists to prevent.
   it('keeps a culled entity in liveRefs while dropping it from items', () => {
     const near = tileToScreen(1, 1);
     // A viewport framing only the near settler's anchor; the far one (way off to the right) is culled.
@@ -23,7 +23,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     const scene = collectSpriteScene(
       snapshotOf([
         entity(1, 1, 1, { Settler: { tribe: 0 } }), // framed
-        entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen — culled, still alive
+        entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen - culled, still alive
       ]),
       { viewport },
     );
@@ -58,9 +58,9 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
   });
 
   // A settler exchanging goods with a completed BUILDING store (a pileup deposit / a pickup lift) has
-  // walked INSIDE for the exchange (the original's carrier vanishes into the house — observed), so it
+  // walked INSIDE for the exchange (the original's carrier vanishes into the house - observed), so it
   // is kept alive/pooled but NOT drawn for the atomic's duration. A ground pile / flag / construction
-  // site is not enterable — those exchanges keep the settler visible.
+  // site is not enterable - those exchanges keep the settler visible.
   it('hides a settler mid-exchange inside a completed building, but not at a ground pile or a site', () => {
     const building = entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } });
     const site = entity(11, 4, 4, {
@@ -73,16 +73,16 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
         building,
         site,
         pile,
-        // Depositing INTO the completed building — inside, not drawn.
+        // Depositing INTO the completed building - inside, not drawn.
         entity(1, 2, 2, { Settler: { tribe: 0 }, CurrentAtomic: { effect: { kind: 'pileup', store: 10 } } }),
-        // Lifting FROM the completed building — inside too (the fetch enters the same way).
+        // Lifting FROM the completed building - inside too (the fetch enters the same way).
         entity(2, 2, 2, {
           Settler: { tribe: 0 },
           CurrentAtomic: { effect: { kind: 'pickup', from: 10, goodType: 1, amount: 1 } },
         }),
-        // Delivering to a CONSTRUCTION SITE — no house to enter yet; stays visible.
+        // Delivering to a CONSTRUCTION SITE - no house to enter yet; stays visible.
         entity(3, 4, 4, { Settler: { tribe: 0 }, CurrentAtomic: { effect: { kind: 'pileup', store: 11 } } }),
-        // Lifting from a loose GROUND PILE — stays visible.
+        // Lifting from a loose GROUND PILE - stays visible.
         entity(4, 6, 6, {
           Settler: { tribe: 0 },
           CurrentAtomic: { effect: { kind: 'pickup', from: 12, goodType: 1, amount: 1 } },
@@ -98,7 +98,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     const scene = collectSpriteScene(
       snapshotOf([
         entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
-        entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }), // waiting inside — not drawn
+        entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }), // waiting inside - not drawn
         entity(2, 3, 3, { Settler: { tribe: 0 } }), // an ordinary settler stays visible
       ]),
     );
@@ -110,15 +110,15 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
   // turns the suppressed resting / mid-exchange settlers back into draw items, FORCED to the `idle`
   // standing pose (no stale gait, no orphan action swing) so they stand in the panel instead of vanishing.
   it('keepIndoorSettlers keeps the indoor settlers, forcing away a lingering gait/swing', () => {
-    // Each indoor settler carries state the forcing must OVERRIDE — not a bare settler that would read
+    // Each indoor settler carries state the forcing must OVERRIDE - not a bare settler that would read
     // idle anyway: a stale PathFollow (would read `moving`) and a live pickup atomic (would read `acting`
     // and drag its atomicId/elapsed along). So the assertions below fail if the `!indoorSettler` guards
     // that force idle are dropped.
     const entities = [
       entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
-      // Resting inside its workplace, still holding the path from the tick it stepped in — kept, forced idle.
+      // Resting inside its workplace, still holding the path from the tick it stepped in - kept, forced idle.
       entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 }, PathFollow: {} }),
-      // Mid-exchange inside the completed store, mid-atomic — kept, forced idle; its atomicId/elapsed must
+      // Mid-exchange inside the completed store, mid-atomic - kept, forced idle; its atomicId/elapsed must
       // NOT ride along (the pose is a plain stand, not a truncated pickup stoop).
       entity(2, 2, 2, {
         Settler: { tribe: 0 },
@@ -155,13 +155,13 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
       entity(2, 3, 3, { Settler: { tribe: 0 } }),
     ]);
 
-    it('resolves the store worker as indoor — the store is not among the emitted refs', () => {
+    it('resolves the store worker as indoor - the store is not among the emitted refs', () => {
       const items = buildSpriteScene(storeScene, { keepIndoorSettlers: true, onlyRefs: new Set([1]) });
       expect(items.map((d) => d.ref)).toEqual([1]); // neither the store nor the outsider
       expect(items[0]?.frozen).toBe(true);
     });
 
-    it('faces a harvester at the node it works — the node is not among the emitted refs', () => {
+    it('faces a harvester at the node it works - the node is not among the emitted refs', () => {
       // The woodcutter at odd row (1,1) chops the tree one column EAST (2,1) → block 4; its lingering
       // path points west (block 1), so a stale-facing regression reads 1 here.
       const items = buildSpriteScene(
@@ -188,7 +188,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     const viewport = { minX: near.x - 10, maxX: near.x + 10, minY: near.y - 10, maxY: near.y + 10 };
     const snapshot = snapshotOf([
       entity(1, 1, 1, { Settler: { tribe: 0 } }), // framed
-      entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen — culled unless it is the portrait subject
+      entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen - culled unless it is the portrait subject
     ]);
     // Without the force the far settler is culled (control); with portraitRef it is drawn for the cutout.
     expect(collectSpriteScene(snapshot, { viewport }).items.map((d) => d.ref)).toEqual([1]);

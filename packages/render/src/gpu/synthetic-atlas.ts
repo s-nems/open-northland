@@ -5,8 +5,8 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
  * A synthetic sprite atlas that exercises the textured sub-rect branch of
  * {@link import('./sprite-pool/index.js').SpritePool} without copyrighted game data: real bob atlases are
  * decoded from an owned game copy and gitignored (AGENTS.md "Legal guardrails"), so a committed,
- * reproducible harness cannot bind them. It stands in a few flat coloured marker frames — one per
- * drawable {@link import('../data/sprites/index.js').SpriteKind} — drawn procedurally into a canvas, so a
+ * reproducible harness cannot bind them. It stands in a few flat coloured marker frames - one per
+ * drawable {@link import('../data/sprites/index.js').SpriteKind} - drawn procedurally into a canvas, so a
  * human can eyeball that the textured branch projects and depth-sorts correctly (frames land at their
  * feet anchor, occlude back-to-front). Real atlases bind through the same
  * {@link import('./sprite-sheet.js').SpriteSheet} shape.
@@ -25,7 +25,7 @@ export const SYNTHETIC_ATLAS_WIDTH = 64;
 export const SYNTHETIC_ATLAS_HEIGHT = 96;
 
 /**
- * The bob ids the synthetic bindings reference. Arbitrary small integers — a synthetic atlas has no
+ * The bob ids the synthetic bindings reference. Arbitrary small integers - a synthetic atlas has no
  * `.bmd` `firstBobId`, so these only have to agree between {@link syntheticAtlasFrames} and
  * {@link SYNTHETIC_BINDINGS}. The settler gets three bobs (one per
  * {@link import('../data/scene/index.js').SpriteState}) so the
@@ -105,7 +105,7 @@ export const SYNTHETIC_BINDINGS: SpriteBindings = {
 };
 
 /**
- * The synthetic atlas frame geometry as a {@link SpriteAtlas} — the screen-free half, unit-testable
+ * The synthetic atlas frame geometry as a {@link SpriteAtlas} - the screen-free half, unit-testable
  * without a canvas. The matching texture is built by {@link createSyntheticAtlasSource}.
  */
 export function syntheticAtlasFrames(): SpriteAtlas {

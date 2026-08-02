@@ -15,14 +15,14 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
 
 /**
  * The diagnostics bundle's core promise: a tester's downloaded JSON is a FULL session repro. World
- * setup is pre-tick-0 builder work (scene `build`/map spawns — not commands), so the dev-side
+ * setup is pre-tick-0 builder work (scene `build`/map spawns - not commands), so the dev-side
  * procedure the round-trip test pins is: rebuild the world with the same builder (the bundle's
- * `entry` + `worldId` name it), then `stepReplaying` the bundle's command log to the bundle's tick —
+ * `entry` + `worldId` name it), then `stepReplaying` the bundle's command log to the bundle's tick -
  * the state hash must equal the recorded `finalHash`.
  */
 
 const scene = SCENES[0];
-if (scene === undefined) throw new Error('no registered scenes — the bundle round-trip needs one');
+if (scene === undefined) throw new Error('no registered scenes - the bundle round-trip needs one');
 const RUN_TICKS = 60;
 
 describe('diagnostics bundle', () => {
@@ -60,7 +60,7 @@ describe('diagnostics bundle', () => {
 
     const replayed = createSceneSim(scene);
     // The builder enqueued its setup commands again, but the log already carries them (every applied
-    // command is logged) — drop the pending duplicates and let the log supply ALL commands in their
+    // command is logged) - drop the pending duplicates and let the log supply ALL commands in their
     // original apply order.
     replayed.commands.drain();
     stepReplaying(replayed, game.commandLog, game.tick);
@@ -70,7 +70,7 @@ describe('diagnostics bundle', () => {
 
   it('never cuts shared references inside the replay payload', () => {
     const sim = createSceneSim(scene);
-    // The same command OBJECT enqueued twice — commands are held by reference in the log, so a
+    // The same command OBJECT enqueued twice - commands are held by reference in the log, so a
     // naive whole-bundle cycle guard would stringify the second occurrence as "[circular]".
     const shared = { kind: 'setNeedsEnabled', enabled: true } as const;
     sim.enqueue(shared);

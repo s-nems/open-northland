@@ -12,7 +12,7 @@ import { testContent } from '../fixtures/content.js';
  * the `cleanupSystem` death reaper). This test wires them together as ONE integrated run through the
  * real `step()` schedule, the thing no unit test proves: the populator's commands fed through the
  * mutation seam place real seeded wildlife, an aggressive seeded herd engages a civilization combatant,
- * the fight is mutual, and a felled fighter is reaped — all in-order within ticks, deterministically.
+ * the fight is mutual, and a felled fighter is reaped - all in-order within ticks, deterministically.
  *
  * Fixture geometry: the BEAR (tribe 10) is an AGGRESSIVE animal (a herd of 3, searchForLeader, HP
  * 15000) wielding `test_bearfist` (40 net damage vs an unarmored target, range 2). The VIKING (tribe 1)
@@ -22,13 +22,13 @@ import { testContent } from '../fixtures/content.js';
  * The wildlife comes through the REAL populator+command path (`seedAnimalHerds` -> enqueued
  * `spawnAnimalHerd` -> `commandSystem`); the civilization combatant is placed directly (like the
  * combat-system unit test's `fighterAt`) because `spawnSettler` mints a settler WITHOUT a `Health`
- * pool — a civ becomes a *combatant* only once it carries `Health`, and settler-side Health stamping
+ * pool - a civ becomes a *combatant* only once it carries `Health`, and settler-side Health stamping
  * is a separate future slice (soldiers/armor). What this scenario verifies is the integration of the
  * already-landed pieces, not a new mechanic.
  */
 
 const VIKING = 1;
-const WOODCUTTER = 1; // job 1 — test_axe binds here (tribe 1, job 1)
+const WOODCUTTER = 1; // job 1 - test_axe binds here (tribe 1, job 1)
 const BEAR = 10;
 const GRASS = 0; // walkable landscape typeId
 
@@ -54,7 +54,7 @@ function vikingFighterAt(sim: Simulation, x: number, y: number, hitpoints: numbe
   return e;
 }
 
-/** Total `settlerDied` events fired across `ticks` steps (events are cleared each tick — accumulate). */
+/** Total `settlerDied` events fired across `ticks` steps (events are cleared each tick - accumulate). */
 function runAccumulatingDeaths(sim: Simulation, ticks: number, stopWhen: () => boolean): number {
   let deaths = 0;
   for (let i = 0; i < ticks && !stopWhen(); i++) {
@@ -96,13 +96,13 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
     // nodeAtClamped read).
     for (const c of seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 })) sim.enqueue(c);
     // A viking combatant on tile (1,0) = node (2,0), node-Manhattan 2 from the bear leader's birth
-    // node (and 1 from the hx=+1 member) — within both weapons' range 2 (ranges are node distances).
+    // node (and 1 from the hx=+1 member) - within both weapons' range 2 (ranges are node distances).
     const viking = vikingFighterAt(sim, 1, 0, 1_000_000);
 
     sim.step(); // commandSystem places the herd this tick; combatSystem then picks targets
 
     // The viking is engaging a BEAR (it fights an aggressive animal BACK), and at least one bear is
-    // engaging the viking (the unprovoked aggression drive) — the fight is mutual.
+    // engaging the viking (the unprovoked aggression drive) - the fight is mutual.
     const bears = new Set(
       [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).tribe === BEAR),
     );
@@ -126,14 +126,14 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
     const map = grass(9, 1);
     const sim = new Simulation({ seed: 1, content, map });
     for (const c of seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 })) sim.enqueue(c);
-    // A frail viking (200 HP) beside the herd — the pack's 40-per-hit swings outpace its 50-vs-15000.
+    // A frail viking (200 HP) beside the herd - the pack's 40-per-hit swings outpace its 50-vs-15000.
     const viking = vikingFighterAt(sim, 1, 0, 200);
 
     const deaths = runAccumulatingDeaths(sim, 200, () => !sim.world.isAlive(viking));
 
     expect(sim.world.isAlive(viking)).toBe(false); // the bear pack felled the lone viking
     expect(deaths).toBe(1); // exactly one death announced for render/audio (the felled viking)
-    // The bears survive (15000 HP each vs the viking's 50/hit — it can't grind a whole bear down in time).
+    // The bears survive (15000 HP each vs the viking's 50/hit - it can't grind a whole bear down in time).
     const bears = [...sim.world.query(Settler, Health)].filter(
       (e) => sim.world.get(e, Settler).tribe === BEAR,
     );

@@ -2,12 +2,12 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
- * The playable-tribes read view — `playableTribes`/`isPlayableTribe` distinguish the controllable
+ * The playable-tribes read view - `playableTribes`/`isPlayableTribe` distinguish the controllable
  * civilizations from the animal/monster tribes *by the data alone* (a non-empty `jobEnables` tech
  * graph), never by a hardcoded name or count. These tests pin that data-defined split: a civilization
  * (carries `jobEnables`) is playable, an animal (only atomic bindings) is not, the list is sorted by
  * `typeId` regardless of declaration order, and the membership predicate matches the list (incl. the
- * unknown-tribe boundary). A pure read over content — no world, no mechanic added.
+ * unknown-tribe boundary). A pure read over content - no world, no mechanic added.
  */
 
 // Two civilizations and two animal tribes, deliberately declared OUT of typeId order so the sort is
@@ -30,13 +30,13 @@ export function tribeContent(): ContentSet {
       { typeId: 4, id: 'home', kind: 'home' }, // the building a viking's tech edge unlocks
     ],
     tribes: [
-      // frank (typeId 2) declared first — a civilization (has a tech-graph edge).
+      // frank (typeId 2) declared first - a civilization (has a tech-graph edge).
       { typeId: 2, id: 'frank', jobEnables: [{ jobType: 5, kind: 'good', targetId: 3 }] },
-      // wolves (typeId 9) — an animal: atomic bindings only, no jobEnables.
+      // wolves (typeId 9) - an animal: atomic bindings only, no jobEnables.
       { typeId: 9, id: 'wolves', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'wolf_walk' }] },
-      // viking (typeId 1) declared after frank — proves the sort, not declaration order.
+      // viking (typeId 1) declared after frank - proves the sort, not declaration order.
       { typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'house', targetId: 4 }] },
-      // bears (typeId 8) — another animal, even though it has many bindings it has no tech graph.
+      // bears (typeId 8) - another animal, even though it has many bindings it has no tech graph.
       { typeId: 8, id: 'bears', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'bear_walk' }] },
       // cows (typeId 10) - a huntable prey animal (the `mayHunt` fixture).
       { typeId: 10, id: 'cows', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'cow_walk' }] },
@@ -52,7 +52,7 @@ export function tribeContent(): ContentSet {
         aggressive: true,
         getAngry: true,
         hitpointsAdult: 15000,
-        // hitpoints_baby — the juvenile pool animalBabyHitpoints surfaces; deliberately < adult and
+        // hitpoints_baby - the juvenile pool animalBabyHitpoints surfaces; deliberately < adult and
         // not derivable from it, proving it is a distinct extracted field, not adult-with-a-discount.
         hitpointsBaby: 8000,
         // herd/spawn params the herdParams read view surfaces
@@ -64,7 +64,7 @@ export function tribeContent(): ContentSet {
         // locomotion params the locomotionOf read view surfaces
         moveSpeed: 8,
         runSpeed: 5,
-        // ignorehouses — a bear barges through buildings (ignoresHousesAnimal); NOT warrantable (wild).
+        // ignorehouses - a bear barges through buildings (ignoresHousesAnimal); NOT warrantable (wild).
         ignoreHouses: true,
       },
       // The cow (tribe 10) is CATCHABLE livestock: passive (not aggressive/getAngry), and WARRANTABLE

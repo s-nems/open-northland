@@ -7,7 +7,7 @@ import type { GameFolderCandidate } from './ipc.js';
 /**
  * Best-effort scan for an existing game install: look one level under the conventional Windows
  * install roots for a folder whose name mentions "cultures", then probe it (OpenRA's
- * detect-known-installs first-run pattern; no registry crawl — the picker is always the fallback).
+ * detect-known-installs first-run pattern; no registry crawl - the picker is always the fallback).
  */
 
 const CANDIDATE_LIMIT = 5;

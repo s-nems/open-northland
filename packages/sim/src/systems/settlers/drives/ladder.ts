@@ -50,7 +50,7 @@ import { planTraining } from './training.js';
 // The order is part of the design (and of the goldens): needs sit above the ownership gate so a
 // starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
 // a gatherer works its own trade before ferrying others' goods. The atomic id and its duration come
-// from content, not code (the drives resolve them through the tribe's `setatomic` binding — see
+// from content, not code (the drives resolve them through the tribe's `setatomic` binding - see
 // ../atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
 // scanned in canonical (ascending entity-id) order with a deterministic distance+cell tie-break, so
 // the choice never depends on store insertion history.
@@ -59,8 +59,8 @@ type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
 /**
  * Plan a growing settler. A baby/child is a non-working life stage: it never runs economy/combat
- * work — it grows up (GrowthSystem) and potters around its home ({@link planChildWander}). A CHILD
- * runs the needs ladder first — the original binds child_female/child_male eat (10) and sleep (8)
+ * work - it grows up (GrowthSystem) and potters around its home ({@link planChildWander}). A CHILD
+ * runs the needs ladder first - the original binds child_female/child_male eat (10) and sleep (8)
  * animations (`setatomic 3/4` → `..._child_*_eat_slot_food`/`..._sleep`), so a hungry child seeks
  * food like an adult instead of growing up starved. A BABY is cared for and doesn't self-feed (the
  * original binds it no eat animation), so only the stroll runs.
@@ -91,7 +91,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
   const load = world.tryGet(e, Carrying);
-  // The settler's signpost confinement (or null when unlimited) — computed once, shared by the needs
+  // The settler's signpost confinement (or null when unlimited) - computed once, shared by the needs
   // drives here and the economy PlannerContext below.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
@@ -107,7 +107,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // settler still eats, faithful to the autonomous-settler model).
   if (anotherSystemOwns(world, e)) return;
   // BARRACKS DRILL: the player sent this settler to be trained, so the errand outranks its trade for as
-  // long as it lasts — the same soft-override tier as the equip errand below, and above it because the
+  // long as it lasts - the same soft-override tier as the equip errand below, and above it because the
   // drill ends in a profession change. See ./training.ts.
   if (planTraining(world, ctx, terrain, e, settler, here, limit)) return;
   // EQUIP ERRAND: a live player equip order outranks the DEFEND hold below, socialising and every
@@ -121,12 +121,12 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // errand on purpose: the one player order a guard still runs without dropping its stance.
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler (deficit at the seek threshold) leaves its work to find a
-  // partner — above the economy rungs on purpose, the "worker downs tools to socialize" beat
+  // partner - above the economy rungs on purpose, the "worker downs tools to socialize" beat
   // (see ../../social/gossip/).
   if (planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates)) {
     return;
   }
-  // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
+  // The housewife rung: a woman takes no trade - her work is stocking the family larder (hoarding,
   // see planWomanHoard). Above the carry-delivery rung so food she lifted for the pantry goes HOME,
   // not to the nearest store.
   if (world.has(e, Female) && planWomanHoard(world, ctx, terrain, e, pass.externalFood, limit)) return;
@@ -176,7 +176,7 @@ function planEconomy(
   if (planFarmer(plan, pass.farmClaims)) return;
 
   // A worker bound to a recipe workshop: a carrier ferries, a craftsman produces. A gatherer bound
-  // there (a collector employed to feed a smith its ore) is not its operator — it runs the gather
+  // there (a collector employed to feed a smith its ore) is not its operator - it runs the gather
   // drive below and banks its harvest into the building, so it is excluded here rather than routed
   // into the craft loop.
   const workplace = jobCanHarvest(ctx, plan.jobType)
@@ -193,9 +193,9 @@ function planEconomy(
 
   if (planBuilder(plan, pass.spacing, pass.siteLeads)) return;
 
-  // A settler whose bound workplace is a construction site — a running upgrade — stands down instead
+  // A settler whose bound workplace is a construction site - a running upgrade - stands down instead
   // of running the remaining trade rungs: its trade needs the finished workhouse. Readable source:
-  // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data collapsed to a blanket here — every
+  // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data collapsed to a blanket here - every
   // bound trade we model sets 1, the 0 rows (hunter/scout/jester) have no bound-workplace rung, and
   // the farm/producer rungs above already apply the gate per-rung. Sits below planBuilder (a builder
   // bound to an upgrading building must still build); the binding survives, so work resumes the tick

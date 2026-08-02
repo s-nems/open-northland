@@ -12,9 +12,9 @@ export interface PlacementDeps {
   readonly labelByType: ReadonlyMap<number, string>;
   /** Submit the `placeBuilding` command (the one-way seam). */
   readonly enqueue: (command: Command) => void;
-  /** Convert a client (CSS) point to a map tile, or `null` off the map — the placement target. */
+  /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`) — a click
+  /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`) - a click
    *  on a rejecting tile does nothing (the original: the cursor house is hidden there and the click is
    *  inert), so build mode only ends on a placement that actually lands. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
@@ -27,7 +27,7 @@ export interface PlacementDeps {
  *  exits the mode (the original's flow; Esc/right-click abandons). */
 export interface PlacementController {
   isActive(): boolean;
-  /** The building typeId currently being placed, or null when not in placement — drives the map's
+  /** The building typeId currently being placed, or null when not in placement - drives the map's
    *  buildable/blocked overlay (the type decides which tiles its footprint fits). */
   activeType(): number | null;
   enter(typeId: number): void;
@@ -36,7 +36,7 @@ export interface PlacementController {
    * Route a left-click while placing: on a tile the placement rule accepts, enqueue `placeBuilding` as a
    * construction site (`underConstruction`) and exit build mode (one click = one foundation); on a rejecting
    * or off-map tile the click is consumed but inert (placement claims the canvas until placed or cancelled).
-   * The foundation is then raised the original way — builders deliver materials and hammer it up
+   * The foundation is then raised the original way - builders deliver materials and hammer it up
    * (the ConstructionSystem). Returns true when consumed.
    */
   handleClick(clientX: number, clientY: number): boolean;

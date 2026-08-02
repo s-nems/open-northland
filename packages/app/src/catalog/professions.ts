@@ -28,7 +28,7 @@ import {
 } from './jobs.js';
 
 /**
- * The committed hand-authored profession roster — the complete set of jobs a player can assign a settler to,
+ * The committed hand-authored profession roster - the complete set of jobs a player can assign a settler to,
  * transcribed from the original `Data/logic/jobtypes.ini` (`[jobtype]` records). This is the source of
  * truth for both the profession picker (what it offers + which job each row assigns) and the settler
  * details-panel label (a settler's profession name), so the two can never drift.
@@ -36,7 +36,7 @@ import {
  * Faithfulness to the original's job model:
  *  - **One soldier.** `jobtypes.ini` splits soldiers into an unarmed base (type 31) plus ten weapon
  *    classes (32..41: spear/sword/saber/axe/bow). A settler's soldier class is its weapon, not a separate
- *    profession — so the picker offers a single "Żołnierz" that assigns the unarmed base ({@link JOB_SOLDIER}
+ *    profession - so the picker offers a single "Żołnierz" that assigns the unarmed base ({@link JOB_SOLDIER}
  *    = 31); the weapon (a later step) specializes it. Only a soldier ever carries a weapon (weapons resolve
  *    by `(tribe, jobType)`, and no civilian trade has a binding), so a civilian is always unarmed.
  *  - **Life stages, animals, vehicles, and named heroes are not professions** (jobtypes 1..6, 42..55) and
@@ -51,7 +51,7 @@ import {
  *
  * The added trades render as the generic civilian body (only jobtypes 5 and 31..41 have their own body in
  * `content/settler-gfx.ts`); in the current sandbox they have no workhouse, so an assigned smith/baker/…
- * stands idle until the economy content lands — exactly as the original gates a trade on its workshop.
+ * stands idle until the economy content lands - exactly as the original gates a trade on its workshop.
  */
 
 /** The picker's five ordered groups (the list is sorted by this order, with a header per group). */
@@ -66,7 +66,7 @@ export interface ProfessionDef {
   readonly source: string;
 }
 
-/** True for any job in the `jobtypes.ini` soldier band (31..41) — all collapse to the one soldier label.
+/** True for any job in the `jobtypes.ini` soldier band (31..41) - all collapse to the one soldier label.
  *  The band stays catalog policy rather than following the sim's content-derived role: this helper takes
  *  a bare `jobType`, so it must also label the classes the running content may not declare (the sandbox
  *  set omits 32 and 36..39). */
@@ -145,7 +145,7 @@ function professionByKey(key: ProfessionDef['key']): ProfessionDef {
 }
 
 /**
- * The profession a job belongs to — for the details-panel label. Any soldier-band job (31..41) resolves to
+ * The profession a job belongs to - for the details-panel label. Any soldier-band job (31..41) resolves to
  * the one soldier profession; every other job matches by exact `jobType`. `undefined` for jobs off the
  * roster (e.g. idle), which the caller labels itself.
  */
@@ -166,9 +166,9 @@ export type PickerEntry =
  * in one place; the widget just renders entries top to bottom.
  */
 export function pickerEntries(locale?: Locale): PickerEntry[] {
-  // The leading "Cywil" row, above the groups: the original's civilist job ({@link JOB_CIVILIST} —
+  // The leading "Cywil" row, above the groups: the original's civilist job ({@link JOB_CIVILIST} -
   // `jobtypes.ini` 6, the trade a grown boy matures into). No workplace employs it, so assigning it
-  // means "this settler does nothing until re-traded". Not a PROFESSIONS row — the details-panel
+  // means "this settler does nothing until re-traded". Not a PROFESSIONS row - the details-panel
   // labels job 6 through the content job's `lifeStage` slug, like the other life stages.
   const entries: PickerEntry[] = [
     { kind: 'profession', jobType: JOB_CIVILIST, label: professionLabel('idle', locale) },

@@ -5,7 +5,7 @@ import { drawItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the signpost resolver: the post vs the angular board pick, and the per-owner recolour
- * variant (`byPlayer` — each player's baked `ls_guidepost.player_NN` atlas) with its fallbacks.
+ * variant (`byPlayer` - each player's baked `ls_guidepost.player_NN` atlas) with its fallbacks.
  */
 
 const base = (layer: string): SignpostBinding => ({
@@ -16,7 +16,7 @@ const base = (layer: string): SignpostBinding => ({
   ],
 });
 
-describe('resolveSignpostDraw — per-owner guidepost binding', () => {
+describe('resolveSignpostDraw - per-owner guidepost binding', () => {
   const binding: SignpostBinding = {
     ...base('ls_guidepost.player_00'),
     byPlayer: [base('ls_guidepost.player_00'), base('ls_guidepost.player_01'), undefined],
@@ -39,7 +39,7 @@ describe('resolveSignpostDraw — per-owner guidepost binding', () => {
   });
 
   it('falls back to the base frames for a missing variant slot or an unowned item', () => {
-    // Player 2's slot is undefined — the base (player_00) frames stand in.
+    // Player 2's slot is undefined - the base (player_00) frames stand in.
     expect(resolveSignpostDraw(binding, drawItem('signpost', { player: 2 }))).toEqual({
       bob: 0,
       layer: 'ls_guidepost.player_00',

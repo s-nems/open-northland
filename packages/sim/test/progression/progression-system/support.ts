@@ -6,7 +6,7 @@ import { settlerAt } from '../../fixtures/settler.js';
 export { ctxOf };
 
 /**
- * ProgressionSystem (XP-accrual half) — completing a work atomic trains a settler's `(job, good)`
+ * ProgressionSystem (XP-accrual half) - completing a work atomic trains a settler's `(job, good)`
  * specialization. The fixture's woodcutter (job 1) has a wood-specific track (typeId 1, good 1,
  * `experienceFactor` 10) and a general track (typeId 2, no good, factor 1); XP is keyed by the
  * track's typeId on `Settler.experience`. Goods: 1 = wood; the wood harvest atomic is 24.

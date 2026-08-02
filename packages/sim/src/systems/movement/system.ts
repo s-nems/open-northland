@@ -16,7 +16,7 @@ export const WALK_TICKS_PER_CELL = 18;
 
 /**
  * How far an entity following a {@link PathFollow} advances per tick at full walking gait, in world-metric
- * units (`nav/world-metric.ts`: one unit = one full 68 px cell width) — the cruise pace the inertia ramp
+ * units (`nav/world-metric.ts`: one unit = one full 68 px cell width) - the cruise pace the inertia ramp
  * accelerates toward ({@link ACCEL_TICKS}).
  *
  * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the
@@ -29,7 +29,7 @@ export const WALK_TICKS_PER_CELL = 18;
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
 
 /*
- * Movement inertia — the three feel-tuning constants below shape it. A named approximation: the original
+ * Movement inertia - the three feel-tuning constants below shape it. A named approximation: the original
  * engine moves a unit at a constant ticks-per-step pace, with no observed acceleration and no acceleration
  * parameter in readable data; OpenNorthland adds a light ease-in/out for feel. The gait lives in sim state
  * ({@link PathFollow}.`speed`), so it stays deterministic and replay-exact.
@@ -56,13 +56,13 @@ const BRAKE_HORIZON_TICKS = 2;
 export const ARRIVAL_SPEED_DIV = 2;
 
 /**
- * MovementSystem — advances entity positions one tick, in two modes with this precedence:
+ * MovementSystem - advances entity positions one tick, in two modes with this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
  *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; worn boots raise it by
  *     the content-rated bonus and wear one step per waypoint reached - `systems/equipment/`) -
  *     accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final approach
- *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step straight toward the current
- *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at —
+ *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) - then step straight toward the current
+ *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at -
  *     `routing.ts`) by that speed, the step length measured in the staggered lattice's world metric so every
  *     heading covers the same on-screen distance per tick ({@link stepTowardPoint}). No run gait is modeled
  *     (our design: no human run speed is readable and the animal `runspeed` is deliberately unconsumed), so
@@ -77,8 +77,8 @@ export const ARRIVAL_SPEED_DIV = 2;
  */
 export const movementSystem: System = (world, ctx) => {
   // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the pass, so
-  // pass 2 can't re-derive membership by checking has(PathFollow). Used only as a skip filter — never
-  // iterated for a decision — so it stays determinism-safe.
+  // pass 2 can't re-derive membership by checking has(PathFollow). Used only as a skip filter - never
+  // iterated for a decision - so it stays determinism-safe.
   const pathHandled = new Set<Entity>();
 
   for (const e of world.query(Position, PathFollow)) {
@@ -86,14 +86,14 @@ export const movementSystem: System = (world, ctx) => {
     const pf = world.get(e, PathFollow);
     const target = pf.waypoints[pf.index];
     if (target === undefined) {
-      // Empty/exhausted path — nothing to follow; drop it so the entity reads as arrived.
+      // Empty/exhausted path - nothing to follow; drop it so the entity reads as arrived.
       world.remove(e, PathFollow);
       continue;
     }
 
     // The entity's own MoveSpeed when it carries one (a data-paced animal), else the universal settler
     // default. Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick of 0 ulps, which makes
-    // no progress ever — the walker stalls and the path never completes (the planner reads it as busy
+    // no progress ever - the walker stalls and the path never completes (the planner reads it as busy
     // forever). Flooring at one ULP keeps an absurdly slow data-pinned pace slow but terminating.
     const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const floored = rawGait > ULP ? rawGait : ULP;
@@ -105,7 +105,7 @@ export const movementSystem: System = (world, ctx) => {
     const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
     const p = world.get(e, Position);
 
-    // The tick's target speed: the cruise gait, capped on the last leg's final approach — the cap shrinks
+    // The tick's target speed: the cruise gait, capped on the last leg's final approach - the cap shrinks
     // with the remaining distance (~⅔ decay per tick), floored so the arrival snap always closes.
     let targetSpeed = gait;
     if (pf.index + 1 >= pf.waypoints.length) {
@@ -117,7 +117,7 @@ export const movementSystem: System = (world, ctx) => {
     }
 
     // Ramp the gait: accelerate toward the target by gait/ACCEL_TICKS per tick; when above the target (the
-    // shrinking brake cap) clamp down at once — the ease-out's smoothness comes from the target curve
+    // shrinking brake cap) clamp down at once - the ease-out's smoothness comes from the target curve
     // itself, and the clamp also absorbs the ulp of inflation a truncated corner projection can carry.
     if (pf.speed < targetSpeed) {
       // Ceil: the step stays ≥ 1 ulp for any gait and a from-rest ramp is exactly ACCEL_TICKS long.
@@ -151,7 +151,7 @@ export const movementSystem: System = (world, ctx) => {
   }
 
   // Free constant-velocity movers. Checking the recorded set (not has(PathFollow)) means an entity whose
-  // path just completed isn't also velocity-integrated in the same tick — the "path overrides Velocity"
+  // path just completed isn't also velocity-integrated in the same tick - the "path overrides Velocity"
   // contract holds on the arrival tick too.
   for (const e of world.query(Position, Velocity)) {
     if (pathHandled.has(e)) continue;

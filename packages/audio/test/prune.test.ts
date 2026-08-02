@@ -4,7 +4,7 @@ import { pruneExpired } from '../src/web/prune.js';
 /**
  * The shared cooldown-map eviction both impure audio units use: a no-op until the map outgrows its
  * bound, then a single sweep dropping only entries at/past the age window. The two boundaries it
- * concentrates — the `< maxSize` guard and the `>= maxAge` cutoff — are exactly what a caller relies
+ * concentrates - the `< maxSize` guard and the `>= maxAge` cutoff - are exactly what a caller relies
  * on, so they are pinned here directly rather than only transitively through chatter/engine.
  */
 describe('pruneExpired', () => {
@@ -13,7 +13,7 @@ describe('pruneExpired', () => {
 
   it('is a no-op while the map is below maxSize, even with stale entries', () => {
     const map = new Map<string, number>([
-      ['a', 0], // age 1000 — far past maxAge, but the map is under the size bound
+      ['a', 0], // age 1000 - far past maxAge, but the map is under the size bound
       ['b', 900],
     ]);
     pruneExpired(map, MAX_SIZE, 1000, MAX_AGE);

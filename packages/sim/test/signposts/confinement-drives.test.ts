@@ -19,8 +19,8 @@ import { justAbove, NEED_THRESHOLD } from '../settlers/needs/support.js';
 
 /**
  * Signpost confinement over the AUTONOMOUS drives: with `setSignpostNavigation` on, every searched
- * target — a needs satisfier (food store / temple), a hauler pickup (ground pile / workplace output),
- * a carried-load sink, and a job opening — is gated to the settler's allowed area, while an in-area
+ * target - a needs satisfier (food store / temple), a hauler pickup (ground pile / workplace output),
+ * a carried-load sink, and a job opening - is gated to the settler's allowed area, while an in-area
  * twin of the same target is still taken. Source basis: observed original guidepost behaviour
  * (settlers do not act outside the network); each drive's confinement is the same shared
  * `navigationLimitFor` rule the move-order/gatherer tests pin (see navigation.test.ts).
@@ -40,7 +40,7 @@ const PLANK = 2;
 const FOOD = 3;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
-// Just over the shared ¾·ONE needs threshold — enough to trigger the eat/pray drive on the next tick.
+// Just over the shared ¾·ONE needs threshold - enough to trigger the eat/pray drive on the next tick.
 const URGENT: Fixed = justAbove(NEED_THRESHOLD);
 
 function confinedSim(): Simulation {
@@ -92,7 +92,7 @@ function sawmillAt(sim: Simulation, x: number, y: number, planks = 0): Entity {
   return e;
 }
 
-/** A loose ground pile (Stockpile + Position, no Building) — a porter's pickup target. */
+/** A loose ground pile (Stockpile + Position, no Building) - a porter's pickup target. */
 function pileAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -100,7 +100,7 @@ function pileAt(sim: Simulation, x: number, y: number, goodType: number, amount:
   return e;
 }
 
-/** Whether the settler committed to anything this tick — a walk or an atomic. */
+/** Whether the settler committed to anything this tick - a walk or an atomic. */
 function acted(sim: Simulation, e: Entity): boolean {
   return sim.world.has(e, MoveGoal) || sim.world.has(e, CurrentAtomic);
 }
@@ -111,7 +111,7 @@ describe('confinement gates the needs satisfiers', () => {
     const u = ownedSettler(sim, 2, 2, WOODCUTTER, { hunger: URGENT });
     storeAt(sim, OUT_OF_AREA, 2, [[FOOD, 5]]);
     sim.step();
-    expect(acted(sim, u)).toBe(false); // no known food — the need falls through to (absent) work
+    expect(acted(sim, u)).toBe(false); // no known food - the need falls through to (absent) work
 
     storeAt(sim, IN_AREA, 2, [[FOOD, 5]]);
     sim.step();
@@ -146,10 +146,10 @@ describe('confinement gates the hauler pickups', () => {
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
-  it('a porter leaves an IN-area pile alone when every capable sink is out of area — no pickup→shed livelock', () => {
+  it('a porter leaves an IN-area pile alone when every capable sink is out of area - no pickup→shed livelock', () => {
     const sim = confinedSim();
     // The porter's bound store takes only wheat (the granary), so the plank pile's only capable sink
-    // is the out-of-area store — the exact fetch/delivery disagreement that livelocked: the old pickup
+    // is the out-of-area store - the exact fetch/delivery disagreement that livelocked: the old pickup
     // consulted the global sink table (plank IS storable somewhere), lifted the pile, found no in-area
     // delivery target, shed it, and lifted it again. The deliverableGoodProbe must refuse the lift.
     const GRANARY = 6;
@@ -158,13 +158,13 @@ describe('confinement gates the hauler pickups', () => {
     const porter = ownedSettler(sim, 2, 2, CARRIER);
     sim.world.add(porter, JobAssignment, { workplace: granary });
     pileAt(sim, IN_AREA, 2, PLANK, 3);
-    storeAt(sim, OUT_OF_AREA, 2, []); // the only plank-capable store — beyond the porter's area
+    storeAt(sim, OUT_OF_AREA, 2, []); // the only plank-capable store - beyond the porter's area
     for (let t = 0; t < 30; t++) {
       sim.step();
       expect(sim.world.has(porter, Carrying), `tick ${sim.tick}`).toBe(false);
     }
 
-    // A pile its own store DOES take (wheat) is deliverable — the same porter goes and lifts that one.
+    // A pile its own store DOES take (wheat) is deliverable - the same porter goes and lifts that one.
     const WHEAT = 6;
     pileAt(sim, IN_AREA, 2, WHEAT, 3);
     let lifted = false;
@@ -198,7 +198,7 @@ describe('confinement gates the carried-load delivery sink', () => {
     sim.world.add(u, Carrying, { goodType: PLANK, amount: 1 });
     storeAt(sim, OUT_OF_AREA, 2, []);
     sim.step();
-    // No in-area sink: the no-sink branch sheds the load at the settler's feet (the drop atomic) —
+    // No in-area sink: the no-sink branch sheds the load at the settler's feet (the drop atomic) -
     // it never sets out toward the out-of-area store.
     expect(sim.world.has(u, MoveGoal)).toBe(false);
     expect(sim.world.tryGet(u, CurrentAtomic)?.effect.kind).toBe('drop');

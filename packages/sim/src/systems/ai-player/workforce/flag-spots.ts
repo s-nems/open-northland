@@ -8,7 +8,7 @@ import { workFlagPlacementBlocks } from '../../footprint/index.js';
 import { anyResourceNear } from '../../spatial/resources.js';
 import { anchorNodeOf, firstRingNode, nearestLiveResource } from '../shared.js';
 
-/** A collector's flag stands 2–3 tiles from its resource (user rule) — 4..6 half-cell nodes. */
+/** A collector's flag stands 2–3 tiles from its resource (user rule) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
 export const FLAG_MAX_DISTANCE_NODES = 6;
 /** When the whole 2–3-tile band is blocked, any legal node this close still serves. */
@@ -16,7 +16,7 @@ const FLAG_FALLBACK_MAX_DISTANCE_NODES = 12;
 
 /** The spots a decision has already handed out, which its later posts must keep off: two flags on one
  *  node would share a single delivery yard and its per-tile pile cap. Only THIS decision's posts need
- *  tracking — a flag that already stands is in the placement blocker set, but one whose `setWorkFlag`
+ *  tracking - a flag that already stands is in the placement blocker set, but one whose `setWorkFlag`
  *  is still in flight is invisible to it. Membership only, never iterated. */
 export type TakenFlagNodes = Set<string>;
 
@@ -30,7 +30,7 @@ export function claimFlagNode(taken: TakenFlagNodes, spot: HalfCellNode): void {
 }
 
 /** Whether any live resource accepted by `alive` remains inside the flag's work circle (the
- *  world-metric circle the gatherer harvests in) — the "patch ran dry, move the flag" probe. An
+ *  world-metric circle the gatherer harvests in) - the "patch ran dry, move the flag" probe. An
  *  existence test, so it takes the region index's no-collection, no-sort path. */
 export function patchAlive(
   world: World,

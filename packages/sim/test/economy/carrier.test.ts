@@ -17,10 +17,10 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for the STORE CARRIER: an **employed** carrier (bound to a store's transport slot — the
+ * Tests for the STORE CARRIER: an **employed** carrier (bound to a store's transport slot - the
  * planner's haul rung requires both the trade and the binding; a loose carrier or any other idle
  * settler does no hauling at all) ferries a workplace's finished output goods out to a store that
- * can stock them (goods never teleport — the source stockpile loses exactly what the carrier gains,
+ * can stock them (goods never teleport - the source stockpile loses exactly what the carrier gains,
  * then the existing carry→pileup chain deposits it).
  *
  * Fixture wiring (see fixtures/content.ts): the SAWMILL (buildingType 2) has recipe wood→plank and a
@@ -30,14 +30,14 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  */
 
 const PLANK = 2;
-const CARRIER = 36; // fixture job with NO allowedAtomics — it can't harvest, only haul
+const CARRIER = 36; // fixture job with NO allowedAtomics - it can't harvest, only haul
 const SAWMILL = 2; // workplace: recipe wood->plank
 const HEADQUARTERS = 1; // passive store with a plank slot
-const GRANARY = 6; // passive store with ONLY a wheat slot — it can never take a plank
+const GRANARY = 6; // passive store with ONLY a wheat slot - it can never take a plank
 const FARMER = 18; // a non-carrier trade with nothing to do on a bare strip
 const VIKING = 1;
 
-// The WHOLE component namespace, not a hand-picked subset — the JobSystem's report-in pass now
+// The WHOLE component namespace, not a hand-picked subset - the JobSystem's report-in pass now
 // stamps JobAssignment in the end-to-end runs, and a missed store leaks across the in-test reruns
 // (the sim AGENTS.md's most-rediscovered trap).
 
@@ -99,10 +99,10 @@ function settlerWithJob(sim: Simulation, x: number, y: number, jobType: number):
   return e;
 }
 
-describe('carrier — choosing what to haul', () => {
+describe('carrier - choosing what to haul', () => {
   it('sets a MoveGoal to a workplace holding haulable output when empty-handed and not on it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const hq = hqAt(sim, 4, 0); // a place to deliver them — and the carrier's post
+    const hq = hqAt(sim, 4, 0); // a place to deliver them - and the carrier's post
     const carrier = carrierAt(sim, 0, 0, hq);
     const mill = sawmillAt(sim, 3, 0, 2); // 2 planks waiting
 
@@ -128,7 +128,7 @@ describe('carrier — choosing what to haul', () => {
 
   it('does not haul when no store can take the good (a wheat-only granary is no plank sink)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const granary = granaryAt(sim, 4, 0); // the carrier's post — but it has no plank slot
+    const granary = granaryAt(sim, 4, 0); // the carrier's post - but it has no plank slot
     const carrier = carrierAt(sim, 0, 0, granary);
     sawmillAt(sim, 3, 0, 2); // planks present, but nowhere that can stock them
     plannerSystem(sim.world, ctxOf(sim));
@@ -138,7 +138,7 @@ describe('carrier — choosing what to haul', () => {
 
   it('never delivers a workplace output back into the producing workplace (no livelock)', () => {
     // The sawmill could nominally stock a plank (it has a plank slot and room), but it is the
-    // PRODUCER, so it is never picked as the deposit target — and with the carrier's own post unable
+    // PRODUCER, so it is never picked as the deposit target - and with the carrier's own post unable
     // to take planks, there is nowhere valid to deliver → nothing is hauled.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const granary = granaryAt(sim, 4, 0);
@@ -154,12 +154,12 @@ describe('carrier — choosing what to haul', () => {
     // load there when every real store is full (or absent), a porter would immediately re-collect it and
     // the good would shuttle pile→back→pile forever. So the distant pile is never a sink and never grows.
     // The orphaned (unbound) carrier still can't stand frozen holding the plank, so it sets it down on its
-    // OWN tile and goes idle — an unbound carrier never re-collects (transport is a worked assignment), so
+    // OWN tile and goes idle - an unbound carrier never re-collects (transport is a worked assignment), so
     // that own-tile heap is stable, not a shuttle.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const carrier = carrierAt(sim, 0, 0);
     sim.world.add(carrier, Carrying, { goodType: PLANK, amount: 1 });
-    const pile = sim.world.create(); // a bare hand-dropped heap of the same good — no Building marker
+    const pile = sim.world.create(); // a bare hand-dropped heap of the same good - no Building marker
     sim.world.add(pile, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(pile, Stockpile, { amounts: new Map([[PLANK, 3]]) });
 
@@ -167,7 +167,7 @@ describe('carrier — choosing what to haul', () => {
 
     expect(sim.world.get(pile, Stockpile).amounts.get(PLANK)).toBe(3); // the distant pile was never a sink
     expect(sim.world.has(carrier, Carrying)).toBe(false); // set its load down rather than stand holding it
-    // The plank landed once on the carrier's own tile and stayed there — no re-collect, no shuttle.
+    // The plank landed once on the carrier's own tile and stayed there - no re-collect, no shuttle.
     const ownHeap = sim.world.get(carrier, Position);
     const dropped = [...sim.world.query(Stockpile, Position)].find(
       (e) => e !== pile && sim.world.get(e, Position).x === ownHeap.x,
@@ -176,9 +176,9 @@ describe('carrier — choosing what to haul', () => {
   });
 
   it('a porter skips a good its store is full of and hauls the deliverable one (limit reached → next good)', () => {
-    // A warehouse FULL of wood (150/150) but with room for planks; a porter bound to it; two loose piles —
+    // A warehouse FULL of wood (150/150) but with room for planks; a porter bound to it; two loose piles -
     // wood (nearer, but the store is full of it) and plank (farther, deliverable). "Limit is limit": the
-    // porter must STOP collecting wood entirely and fetch the plank instead — not loop, not stall.
+    // porter must STOP collecting wood entirely and fetch the plank instead - not loop, not stall.
     const WOOD = 1;
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const wh = sim.world.create();
@@ -202,7 +202,7 @@ describe('carrier — choosing what to haul', () => {
   });
 
   it('an UNEMPLOYED settler and a LOOSE carrier never haul (transport is a worked assignment)', () => {
-    // Planks wait at the sawmill and the HQ could take them — but hauling belongs to the carrier
+    // Planks wait at the sawmill and the HQ could take them - but hauling belongs to the carrier
     // trade AND to a post: a settler of another idle trade (the fixture farmer, nothing to farm
     // here) and a carrier with no binding both stand idle. Planner-level (plannerSystem only), so the
     // JobSystem's report-in pass doesn't bind the loose carrier first.
@@ -219,7 +219,7 @@ describe('carrier — choosing what to haul', () => {
   });
 });
 
-describe('carrier — end-to-end haul through the real schedule', () => {
+describe('carrier - end-to-end haul through the real schedule', () => {
   it('a carrier moves planks from the sawmill to the HQ (goods conserved)', () => {
     // Strip: carrier@0, sawmill@1 (2 planks), HQ@2. Short hops keep it fast.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
@@ -234,13 +234,13 @@ describe('carrier — end-to-end haul through the real schedule', () => {
     }
 
     expect(delivered).toBe(1); // one unit hauled out and deposited
-    // Goods are conserved: 2 planks total — one now in the HQ, one still at the sawmill.
+    // Goods are conserved: 2 planks total - one now in the HQ, one still at the sawmill.
     const atMill = sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0;
     expect(atMill + delivered).toBe(2);
     expect(sim.world.has(carrier, Carrying)).toBe(false); // unloaded at the HQ
   });
 
-  it('empties the sawmill over a longer run — all planks reach the HQ, none created or lost', () => {
+  it('empties the sawmill over a longer run - all planks reach the HQ, none created or lost', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const carrier = carrierAt(sim, 0, 0);
     const mill = sawmillAt(sim, 1, 0, 3);
@@ -254,7 +254,7 @@ describe('carrier — end-to-end haul through the real schedule', () => {
   });
 });
 
-describe('carrier — determinism', () => {
+describe('carrier - determinism', () => {
   it('two same-seed runs of the haul reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 13, content: testContent(), map: grassMap(4, 1) });

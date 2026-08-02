@@ -2,7 +2,7 @@ import { halfCellToScreen } from '@open-northland/render';
 import type { Tile } from '../picking.js';
 
 /**
- * Pure formation assignment — turning one group move order (a clicked target node + the units' on-screen
+ * Pure formation assignment - turning one group move order (a clicked target node + the units' on-screen
  * feet anchors) into per-unit destination nodes that spread into the target's vicinity without the paths
  * crossing. No DOM, no Pixi, no sim: plain geometry over the half-cell node lattice, unit-tested headless
  * (see `packages/app/test/formation.test.ts`). The controller (`view/unit-controls/`) reads the mouse
@@ -11,7 +11,7 @@ import type { Tile } from '../picking.js';
  */
 
 /**
- * A move target for one unit in a group order — the unit's entity id + the tile it should walk to.
+ * A move target for one unit in a group order - the unit's entity id + the tile it should walk to.
  * A single-unit order yields one entry aimed at the clicked tile exactly (the array-of-one case of
  * {@link assignFormation}).
  */
@@ -21,7 +21,7 @@ export interface FormationOrder {
 }
 
 /**
- * A group of units at these world-px feet anchors — the input {@link assignFormation} pairs to
+ * A group of units at these world-px feet anchors - the input {@link assignFormation} pairs to
  * formation slots. Just the fields it needs.
  */
 export interface FormationUnit {
@@ -33,7 +33,7 @@ export interface FormationUnit {
 /**
  * `count` distinct nodes clustered around `target`, spiralling outward by square (Chebyshev) ring so a
  * group sent to one point spreads into the vicinity of it instead of all stacking on the single clicked
- * node. On the half-cell lattice a ring-1 slot is 34/19 px away — matching the observed packing
+ * node. On the half-cell lattice a ring-1 slot is 34/19 px away - matching the observed packing
  * density of the original (no readable formation code; the lattice pitch is the data-pinned part).
  * Slots are collected nearest-first (ring 0 = the target itself, then the 8 nodes of ring 1, then
  * ring 2's 16, …), each kept only if it is in `[0,width)×[0,height)` (node dims) and `blocked(col,row)`
@@ -60,7 +60,7 @@ export function formationTiles(
       take(target.col, target.row);
       continue;
     }
-    // The ring's border cells, walked clockwise from the top edge — a fixed, history-independent order.
+    // The ring's border cells, walked clockwise from the top edge - a fixed, history-independent order.
     for (let dc = -radius; dc <= radius; dc++) take(target.col + dc, target.row - radius); // top edge
     for (let dr = -radius + 1; dr <= radius; dr++) take(target.col + radius, target.row + dr); // right edge
     for (let dc = radius - 1; dc >= -radius; dc--) take(target.col + dc, target.row + radius); // bottom edge
@@ -71,12 +71,12 @@ export function formationTiles(
 
 /**
  * The pairing of `n` units to `n` slots that minimises the total of `cost[unit][slot]` over the
- * group — the Hungarian assignment algorithm (Kuhn–Munkres with dual potentials), O(n³) on the
+ * group - the Hungarian assignment algorithm (Kuhn–Munkres with dual potentials), O(n³) on the
  * precomputed n×n matrix. Returns `slotOf[unit] = slot`. Deterministic: fixed iteration order, an
- * equal-cost tie always resolving to the lower index. Throws on a malformed or non-finite matrix —
+ * equal-cost tie always resolving to the lower index. Throws on a malformed or non-finite matrix -
  * an ∞/NaN cost would silently corrupt the dual potentials (and can even unbound the search), so a
  * loud failure is strictly better. (The `?? 0` fallbacks on the internal arrays only satisfy the
- * unchecked-index rule — every index is in bounds by construction.)
+ * unchecked-index rule - every index is in bounds by construction.)
  */
 function minTotalCostPairing(cost: ReadonlyArray<ReadonlyArray<number>>): number[] {
   const n = cost.length;
@@ -142,7 +142,7 @@ function minTotalCostPairing(cost: ReadonlyArray<ReadonlyArray<number>>): number
 
 /**
  * Above this group size the O(n³) optimal pairing would visibly stall the click handler (500 units
- * ≈ 1.25×10⁸ inner steps); at the cap it is ~2.7×10⁷ matrix reads — a few ms, imperceptible on a
+ * ≈ 1.25×10⁸ inner steps); at the cap it is ~2.7×10⁷ matrix reads - a few ms, imperceptible on a
  * click. Bigger groups fall back to radial rank pairing (k-th nearest unit → k-th spiral slot),
  * which is O(n log n) and close enough at a scale where individual slot choice can't be seen anyway.
  */
@@ -156,7 +156,7 @@ const OPTIMAL_PAIRING_MAX_UNITS = 300;
  * ordering a parked cluster back the way it came doesn't swap the front units into the rear slots
  * (a rank-based pairing mixes its axes exactly there). A single unit is aimed at the target tile
  * exactly (the nearest free tile when the clicked one is blocked). Returns one {@link FormationOrder}
- * per seatable unit — fewer than `units.length` only when the ground around the target is too
+ * per seatable unit - fewer than `units.length` only when the ground around the target is too
  * boxed-in to seat everyone; then the units nearest the target march and the surplus keeps standing.
  * Pure and deterministic. Groups beyond {@link OPTIMAL_PAIRING_MAX_UNITS} use the radial fallback so
  * a click never stalls the UI.
@@ -183,7 +183,7 @@ export function assignFormation(
 
   if (movers.length > OPTIMAL_PAIRING_MAX_UNITS) {
     // Army-scale fallback: the k-th unit by distance-to-target takes the k-th spiral slot
-    // (nearest-first by construction) — radially order-preserving, no O(n³) stall.
+    // (nearest-first by construction) - radially order-preserving, no O(n³) stall.
     const byDist = [...movers].sort((a, b) => d2(a) - d2(b) || a.ref - b.ref);
     const orders: FormationOrder[] = [];
     for (let i = 0; i < byDist.length; i++) {
@@ -195,7 +195,7 @@ export function assignFormation(
     return orders;
   }
 
-  // The n×n cost matrix once (n² cells) — the pairing search reads it O(n³) times.
+  // The n×n cost matrix once (n² cells) - the pairing search reads it O(n³) times.
   const slotPts = slots.map((slot) => halfCellToScreen(slot.col, slot.row));
   const cost = movers.map((u) => slotPts.map((s) => (u.x - s.x) ** 2 + (u.y - s.y) ** 2));
   const slotOf = minTotalCostPairing(cost);

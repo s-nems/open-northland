@@ -1,7 +1,7 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
- * The strategic AI player's module ids — one per concern the AI runs for a seat. The list mirrors the
+ * The strategic AI player's module ids - one per concern the AI runs for a seat. The list mirrors the
  * original's per-module HAI map-data toggles (`Game.exe` strings: `HAI_DisableCollectResources`,
  * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`,
  * `HAI_DisableHouseUpgrade`, `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map
@@ -20,7 +20,7 @@ export const AI_MODULE_IDS = [
 
 export type AiModuleId = (typeof AI_MODULE_IDS)[number];
 
-/** Which modules run for one AI seat — a full record (every id present), so it hashes canonically. */
+/** Which modules run for one AI seat - a full record (every id present), so it hashes canonically. */
 export type AiModuleEnables = Record<AiModuleId, boolean>;
 
 /** A full {@link AiModuleEnables} from a partial override: an omitted module defaults to enabled
@@ -32,11 +32,11 @@ export function aiModuleEnables(overrides?: Partial<AiModuleEnables>): AiModuleE
 }
 
 /**
- * The per-seat strategic-AI marker — "this player is AI-driven", the sim-side flag the `setPlayerAi`
+ * The per-seat strategic-AI marker - "this player is AI-driven", the sim-side flag the `setPlayerAi`
  * command sets (original: `PLAYER_TYPE_AI`, `Data/GameSourceIncludes/logicdefines.inc:358`). At most
  * one carrier entity exists per player (the command handler updates in place); a player with no
  * carrier is not AI-driven, so a command stream that never flags a seat leaves every existing golden
- * hash untouched. Part of hashed, replayed state like any component — the AiPlayerSystem's decisions
+ * hash untouched. Part of hashed, replayed state like any component - the AiPlayerSystem's decisions
  * depend on it.
  */
 export const AiPlayer = defineComponent<{
@@ -61,7 +61,7 @@ export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
 }
 
-/** Whether `player`'s seat runs `module` — for a decision taken INSIDE another module's run. A non-AI
+/** Whether `player`'s seat runs `module` - for a decision taken INSIDE another module's run. A non-AI
  *  seat runs none. */
 export function aiModuleRuns(world: World, player: number, module: AiModuleId): boolean {
   const carrier = aiPlayerEntity(world, player);

@@ -1,4 +1,4 @@
-Tinos (Regular) — the HUD's vector text face.
+Tinos (Regular) - the HUD's vector text face.
 
 Tinos is a metric-compatible substitute for a classic transitional serif ("Times"-class),
 used here as a near-identical, sharp vector stand-in for the original game's UI bitmap font

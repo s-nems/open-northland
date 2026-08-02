@@ -4,9 +4,9 @@ import { signpostsOf } from './snapshot-index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
 /**
- * The signpost DIRECTION-BOARD prepass: which angular board frames each signpost shows — one board per
+ * The signpost DIRECTION-BOARD prepass: which angular board frames each signpost shows - one board per
  * connected in-range same-player neighbour, pointing at it (observed original: the boards indicate that
- * — and where — the network continues; several neighbours nail several boards). Connectivity is the
+ * - and where - the network continues; several neighbours nail several boards). Connectivity is the
  * sim's own circle-overlap rule (`systems.withinNodeRadius` over nodes taken through the same
  * `nodeOfPosition` seam the sim's network build uses), so the drawn boards can never disagree with it;
  * angles are measured in projected screen space so a board visually points along the on-screen line to
@@ -18,17 +18,17 @@ export const SIGNPOST_BOARD_FRAMES = 18;
 
 interface Post {
   readonly id: number;
-  /** Tile-space position (floats — render-side only). */
+  /** Tile-space position (floats - render-side only). */
   readonly x: number;
   readonly y: number;
-  /** Half-cell node coords — the sim's connectivity lattice. */
+  /** Half-cell node coords - the sim's connectivity lattice. */
   readonly hx: number;
   readonly hy: number;
   readonly player: number;
   readonly navRadius: number;
 }
 
-/** Per-snapshot memo — the signpost entities come from the shared scene walk, but decoding and pairing
+/** Per-snapshot memo - the signpost entities come from the shared scene walk, but decoding and pairing
  *  them runs only for the snapshots that actually draw a signpost. */
 const boardsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, readonly number[]>>();
 const EMPTY_BOARDS: ReadonlyMap<number, readonly number[]> = new Map();
@@ -53,7 +53,7 @@ export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, r
       for (let j = i + 1; j < posts.length; j++) {
         const b = posts[j] as Post;
         if (a.player !== b.player) continue;
-        // The sim's exact link test — circles apart means no link, no board.
+        // The sim's exact link test - circles apart means no link, no board.
         if (!systems.withinNodeRadius(a.hx, a.hy, b.hx, b.hy, a.navRadius + b.navRadius)) continue;
         addBoard(byId, a, b);
         addBoard(byId, b, a);

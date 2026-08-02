@@ -13,17 +13,17 @@ import { entity, snapshotOf } from '../support/fixtures.js';
  * eases a displayed reveal toward the sim's `built` between the sparse per-swing steps; if it selects which
  * stages draw from the raw sim `built` while revealing their pixels from the lagging eased value, a fast
  * build (x3 speed, a big crew hammering many swings a tick) clears a scaffold stage's `toPct` and drops it
- * a frame before the covering body stage's eased reveal has risen over it — the upper part of the building
+ * a frame before the covering body stage's eased reveal has risen over it - the upper part of the building
  * blinks out and grows back. This drives the real pool across a large one-frame `built` jump and asserts the
  * scaffold stage stays drawn (it is the fixture's fake TextureSource, so no GPU is needed).
  */
 
-const SIM_ONE = 65536; // the sim's fixed-point ONE — `built` is a 0..ONE fraction (fx.ts)
+const SIM_ONE = 65536; // the sim's fixed-point ONE - `built` is a 0..ONE fraction (fx.ts)
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const CAMERA: Camera = { offsetX: 0, offsetY: 0 };
 const source = {} as TextureSource;
 
-/** An atlas frame at bob `n` (the fake source is never sampled — binding a frame is the pool's decision). */
+/** An atlas frame at bob `n` (the fake source is never sampled - binding a frame is the pool's decision). */
 const frame = (
   n: number,
 ): [number, { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number }] => [
@@ -32,7 +32,7 @@ const frame = (
 ];
 
 // A house-family sheet with a time sheet (per-pixel reveal path): a scaffold stage (bob 85) covering the
-// lower window and the finished body (bob 70) revealing across [20,100] — the overlapping-window shape the
+// lower window and the finished body (bob 70) revealing across [20,100] - the overlapping-window shape the
 // real viking houses use, where the scaffold hands off to the body partway up.
 const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(85), frame(90)]) };
 const times = { width: 100, height: 10, values: new Uint8Array(100 * 10) };
@@ -53,7 +53,7 @@ const sheet: SpriteSheet = {
         ],
       },
       // The next tier's finished body (bob 90) revealing over the kept old-tier body across the whole
-      // upgrade — the one-or-two full-window rows the real data binds per chained tier.
+      // upgrade - the one-or-two full-window rows the real data binds per chained tier.
       upgradeByType: { 13: [{ layer: 'houses', bob: 90, fromPct: 0, toPct: 100 }] },
     },
   },
@@ -80,7 +80,7 @@ function site(pct: number): ReturnType<typeof entity> {
     UnderConstruction: {},
   });
 }
-/** A type-13 UPGRADE site at `pct` percent rebuilt — the old-tier body plus the revealing next-tier overlay. */
+/** A type-13 UPGRADE site at `pct` percent rebuilt - the old-tier body plus the revealing next-tier overlay. */
 function upgradeSite(pct: number): ReturnType<typeof entity> {
   return entity(1, 0, 0, {
     Building: { buildingType: 13, built: Math.round((pct * SIM_ONE) / 100) },
@@ -95,7 +95,7 @@ function visibleStages(layer: Container): number {
   return (container.children as { visible: boolean }[]).filter((s) => s.visible).length;
 }
 
-describe('SpritePool — construction stages track the eased reveal, not the raw sim built', () => {
+describe('SpritePool - construction stages track the eased reveal, not the raw sim built', () => {
   it('keeps the scaffold stage drawn when built jumps past its window in one frame', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
@@ -104,7 +104,7 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
     pool.reconcile(poolFrame(snapshotOf([site(55)])));
     expect(visibleStages(layer)).toBe(2);
 
-    // A big one-frame jump to 75% — past the scaffold's 60% toPct. The eased displayed reveal still lags
+    // A big one-frame jump to 75% - past the scaffold's 60% toPct. The eased displayed reveal still lags
     // near 56%, so the scaffold must stay drawn (selecting stages off the raw 75% would drop it here, the
     // one-frame gap the fix removes). It only retires once the eased reveal actually passes its window.
     pool.reconcile(poolFrame(snapshotOf([site(75)])));
@@ -117,12 +117,12 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
     pool.reconcile(poolFrame(snapshotOf([site(55)])));
 
     // Hold the sim past the scaffold's 60% window and let the eased reveal climb. The scaffold (bob 85)
-    // stays drawn under the body (bob 70) that covers it as it reveals — the body is stacked above it and
-    // its window runs to 100 — so the roof grows on the scaffold instead of the scaffold blinking out.
+    // stays drawn under the body (bob 70) that covers it as it reveals - the body is stacked above it and
+    // its window runs to 100 - so the roof grows on the scaffold instead of the scaffold blinking out.
     for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([site(75)])));
     expect(visibleStages(layer)).toBe(2);
 
-    // Completion (no UnderConstruction, built >= ONE) snaps to the finished body — the scaffold comes down,
+    // Completion (no UnderConstruction, built >= ONE) snaps to the finished body - the scaffold comes down,
     // leaving one sprite drawn.
     const done = entity(1, 0, 0, { Building: { buildingType: 13, built: SIM_ONE } });
     pool.reconcile(poolFrame(snapshotOf([done])));
@@ -130,7 +130,7 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
   });
 });
 
-describe('SpritePool — a rising site is picked over the finished building’s whole box', () => {
+describe('SpritePool - a rising site is picked over the finished building’s whole box', () => {
   it('stamps the same bounds at 0% as when nearly complete', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
@@ -144,25 +144,25 @@ describe('SpritePool — a rising site is picked over the finished building’s 
     expect(atStart.maxY - atStart.minY).toBeGreaterThan(0);
 
     // Let the eased reveal climb to nearly done. Bounds come from each layer's *uncropped* frame rect, so
-    // the hit box must not have grown with the rise — stamping the cropped rect instead would collapse the
+    // the hit box must not have grown with the rise - stamping the cropped rect instead would collapse the
     // box at 0% and swell it as the building rose, making a fresh foundation unclickable.
     for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([site(90)])));
     expect({ ...pool.boundsOf(1) }).toEqual(atStart);
   });
 });
 
-describe('SpritePool — an upgrade site reveals the next tier from its upgradePct, not full-frame', () => {
+describe('SpritePool - an upgrade site reveals the next tier from its upgradePct, not full-frame', () => {
   it('hides the next-tier overlay at 0% (the fake source is not bakeable, so the crop fallback decides)', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
 
     // Upgrade just started: progress rides `upgradePct` (builtPct is deliberately undefined for an
-    // Upgrading building). The eased reveal must pick it up — without that the overlay draws its full
+    // Upgrading building). The eased reveal must pick it up - without that the overlay draws its full
     // frame and the next tier pops in instantly (the regression this test pins).
     pool.reconcile(poolFrame(snapshotOf([upgradeSite(0)])));
     expect(visibleStages(layer)).toBe(1); // the kept old-tier body alone
 
-    // Let the eased reveal climb toward a nearly-done upgrade — the overlay's cropped rise appears.
+    // Let the eased reveal climb toward a nearly-done upgrade - the overlay's cropped rise appears.
     for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([upgradeSite(90)])));
     expect(visibleStages(layer)).toBe(2); // old body + the risen next-tier overlay
   });

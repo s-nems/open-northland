@@ -11,7 +11,7 @@ import { DATA_DIR } from './content-tree.js';
  * safe path relative to the extraction root, or `undefined` if it would escape it. Archive names
  * use Windows backslashes regardless of host OS, so they are rewritten to the native separator before
  * normalizing. A normalized path that is absolute or still starts with `..` (i.e. climbs out of the
- * root) is rejected — defence against a malformed/hostile archive even though the real `data0001.lib`
+ * root) is rejected - defence against a malformed/hostile archive even though the real `data0001.lib`
  * has no such entries. An empty or all-separator name yields `undefined` (nothing to write).
  *
  * The leading segment folds to {@link DATA_DIR}: the real archive stores members lowercase under
@@ -38,13 +38,13 @@ export interface LibExtraction {
 
 /**
  * Unpacks every `.lib` archive under the source `roots` (overlay-first union), writing each member to
- * `outDir` under its sanitized, `Data/`-canonicalized internal path — the documented stage-1 unpack that feeds the
+ * `outDir` under its sanitized, `Data/`-canonicalized internal path - the documented stage-1 unpack that feeds the
  * loose-file decoders (`.pcx`/`.bmd`/`.cif` embedded in `data0001.lib`). Member names use backslash
  * paths; {@link libMemberRelPath} rewrites them to native separators and drops any that would escape
  * `outDir`.
  *
- * A `.lib` that fails to decode is logged and skipped — a batch pipeline must not abort on one corrupt
- * archive — as is an individual member with an unsafe name (warned, not written). Two same-archive
+ * A `.lib` that fails to decode is logged and skipped - a batch pipeline must not abort on one corrupt
+ * archive - as is an individual member with an unsafe name (warned, not written). Two same-archive
  * members extracting to one case-folded path throw: a silent winner would differ by host filesystem,
  * and the real archive has no such pair. An output-write failure (and a missing/unreadable game root)
  * propagates: that's an environmental error, not a per-file boundary failure. The whole archive is

@@ -52,7 +52,7 @@ export function assignSettlerFields(
 ): void {
   if (actingAtomic !== null) {
     item.atomicId = actingAtomic;
-    // The action clock rides alongside the atomic — omitted when idle (see DrawItem.elapsed), so a
+    // The action clock rides alongside the atomic - omitted when idle (see DrawItem.elapsed), so a
     // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
     const elapsed = readAtomicElapsed(components);
     if (elapsed !== null) item.elapsed = elapsed;
@@ -83,7 +83,7 @@ export function assignSettlerFields(
   if (armorGood !== undefined) item.armorGood = armorGood;
   const player = readOwnerPlayer(components);
   if (player !== undefined) item.player = player;
-  // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
+  // Only a born-young settler carries `Age` - the component-presence disambiguation of the age-class
   // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
   if ('Age' in components) item.young = true;
 }
@@ -119,7 +119,7 @@ export function assignBerryBushFields(
   if (level !== undefined) item.level = level;
 }
 
-/** Tag a ground pile / delivery flag / trunk drop with its held good and fill — the trunk keys its
+/** Tag a ground pile / delivery flag / trunk drop with its held good and fill - the trunk keys its
  *  per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`. A
  *  designated delivery flag is tagged for the resolver (its paint-above-the-heap bump already rides
  *  the depth key the caller computed). */
@@ -139,7 +139,7 @@ export function assignStockpileFields(
  * neighbour at the same feet anchor (the board frames' offsets carry the post-top pivot), painted the
  * flag half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
  * (signpost, angle-bucket) without colliding with real entity ids. The post's ribbon and runic
- * lettering are the team colour — the owner picks the baked per-player guidepost atlas; each board
+ * lettering are the team colour - the owner picks the baked per-player guidepost atlas; each board
  * reads the same owner, colour-mapped here because boards bypass the caller's shared push site (the
  * post itself is mapped there).
  */
@@ -208,7 +208,7 @@ export function assignProjectileArc(
  * Append the viewer's remembered statics (`data/fog/ghosts.ts`, pre-filtered to explored ground) to the
  * draw list: each projects with the same anchor/lift/depth formula as a live static (so a ghost occludes
  * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
- * grey tint. Every ghost ref joins `liveRefs` — a ghost of a dead entity keeps its pooled sprite alive as
+ * grey tint. Every ghost ref joins `liveRefs` - a ghost of a dead entity keeps its pooled sprite alive as
  * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
  */
 export function pushGhostItems(

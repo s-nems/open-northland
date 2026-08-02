@@ -4,7 +4,7 @@ import { buildTerrainGraph, Simulation, seedAnimalHerds, type TerrainMap } from 
 import { testContent } from '../fixtures/content.js';
 
 /**
- * Tests for the **map populator** `seedAnimalHerds` — the pure command-producer that seeds a map's
+ * Tests for the **map populator** `seedAnimalHerds` - the pure command-producer that seeds a map's
  * wildlife by issuing `spawnAnimalHerd` commands at walkable birth points. The fixture's recorded
  * animal tribes are the BEAR (tribe 10, herd of 3, searchForLeader), the BEE (tribe 11, solitary), the
  * BOAR (tribe 12, passive-but-provokable), the COW (tribe 13, catchable prey), and the DEER (tribe 14,
@@ -12,7 +12,7 @@ import { testContent } from '../fixtures/content.js';
  * seeded.
  *
  * The populator is pure (no world mutation): it returns `spawnAnimalHerd` commands, which a caller
- * enqueues through the one mutation seam — so the end-to-end test enqueues them and runs `step()`.
+ * enqueues through the one mutation seam - so the end-to-end test enqueues them and runs `step()`.
  */
 
 const BEAR = 10;
@@ -38,7 +38,7 @@ function grass(width: number, height: number): TerrainMap {
 describe('seedAnimalHerds (map populator)', () => {
   it('emits one spawnAnimalHerd per walkable cell at stride 1, only at walkable cells', () => {
     const content = testContent();
-    // A 3×1 strip: grass | water | grass — only two cells are walkable.
+    // A 3×1 strip: grass | water | grass - only two cells are walkable.
     const map = mapOf([[GRASS, WATER, GRASS]]);
     const cmds = seedAnimalHerds(content, map);
 
@@ -90,7 +90,7 @@ describe('seedAnimalHerds (map populator)', () => {
   it('falls back to defaults on a non-finite option (no silent empty result)', () => {
     const content = testContent();
     // A NaN cellStride/maxHerds must not poison the `% stride`/`>= maxHerds` comparisons into an empty
-    // result — it falls back to stride 1 / uncapped, the same as the no-option call.
+    // result - it falls back to stride 1 / uncapped, the same as the no-option call.
     const bad = seedAnimalHerds(content, grass(4, 1), {
       cellStride: Number.NaN,
       maxHerds: Number.NaN,
@@ -115,7 +115,7 @@ describe('seedAnimalHerds (map populator)', () => {
     const map = grass(5, 2);
     const a = seedAnimalHerds(content, map);
     const b = seedAnimalHerds(content, map);
-    // Accepts a built TerrainGraph too — same result as the raw map.
+    // Accepts a built TerrainGraph too - same result as the raw map.
     const c = seedAnimalHerds(content, buildTerrainGraph(content, map));
     expect(a).toEqual(b);
     expect(a).toEqual(c);

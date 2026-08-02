@@ -10,7 +10,7 @@ const EVENT_INTERVAL_MS = 100;
 export interface EventThrottle {
   /** Whether to forward this event now; `final` events always pass and restart the interval. */
   shouldEmit(final: boolean): boolean;
-  /** Drop the interval so the next event passes — a new stage starts its own stream. */
+  /** Drop the interval so the next event passes - a new stage starts its own stream. */
   reset(): void;
 }
 

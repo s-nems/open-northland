@@ -28,7 +28,7 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
   };
 
   it('round-trips a grid mixing long runs and noisy literals', () => {
-    // 250 zeros (one run), a noisy literal stretch, then a long run of 200 — exercises both control
+    // 250 zeros (one run), a noisy literal stretch, then a long run of 200 - exercises both control
     // forms and the 0x7F per-run cap (runs/literals longer than 127 split across controls).
     const cells = new Uint8Array(250 + 64 + 200);
     let p = 250;
@@ -162,7 +162,7 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
   };
 
   it('round-trips a grid mixing long u16 runs and noisy literals', () => {
-    // 200 zeros (one run), a noisy literal stretch of distinct u16s, then a long run of 0x0341 —
+    // 200 zeros (one run), a noisy literal stretch of distinct u16s, then a long run of 0x0341 -
     // exercises both control forms and the 0x7F per-run element cap (split across controls).
     const cells = new Uint16Array(200 + 50 + 150);
     let p = 200;
@@ -189,7 +189,7 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
 
   it('decodes a hand-built little-endian stream (pins LE independent of host endianness)', () => {
     // A run of two 0x1234 elements then a literal 0x00ff: the stream bytes are LE (34 12 / ff 00).
-    // Decoding this raw stream — not a round-trip — proves the reader is LE-explicit, not host-endian.
+    // Decoding this raw stream - not a round-trip - proves the reader is LE-explicit, not host-endian.
     const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE + 6);
     payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
     payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"

@@ -25,7 +25,7 @@ import { testContent } from '../fixtures/content.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
- * Unit + integration tests for the FORAGE DRIVE — a hungry settler eating a wild {@link BerryBush} as the
+ * Unit + integration tests for the FORAGE DRIVE - a hungry settler eating a wild {@link BerryBush} as the
  * eat drive's nearest-food fallback (the `forage` effect on the eat animation, id 10). A bush is wild
  * food anyone grazes: no job/tool, no stored good consumed. It regrows its one serving over
  * {@link BERRY_REGROW_TICKS} ticks (the BerryGrowthSystem). The eat drive picks the NEAREST food overall,
@@ -38,7 +38,7 @@ const FOOD = 3;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
-// Just over the ¾·ONE eat threshold — a settler this hungry seeks food before any work.
+// Just over the ¾·ONE eat threshold - a settler this hungry seeks food before any work.
 const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
@@ -68,7 +68,7 @@ function storeAt(sim: Simulation, x: number, y: number, food: number): Entity {
   return e;
 }
 
-describe('forageDrive — the planner choosing to forage a wild bush', () => {
+describe('forageDrive - the planner choosing to forage a wild bush', () => {
   it('forages a ripe bush it is standing on when hungry and no store is nearer', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 2, 0, HUNGRY);
@@ -86,7 +86,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     bushAt(sim, 4, 0); // distance 4
-    bushAt(sim, 2, 0); // distance 2 — should win
+    bushAt(sim, 2, 0); // distance 2 - should win
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -94,7 +94,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
   });
 
-  it('ignores a BARE (regrowing) bush — only ripe bushes are food', () => {
+  it('ignores a BARE (regrowing) bush - only ripe bushes are food', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     bushAt(sim, 2, 0, 'bare', BERRY_STAGE_TICKS); // bare, still regrowing
@@ -105,7 +105,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Headed for the wood, not the bare bush — foraging did not fire.
+    // Headed for the wood, not the bare bush - foraging did not fire.
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
@@ -126,11 +126,11 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
   });
 });
 
-describe('eat drive — picking the NEAREST food across stores and bushes', () => {
+describe('eat drive - picking the NEAREST food across stores and bushes', () => {
   it('forages a bush that is nearer than any food store', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
-    const bush = bushAt(sim, 0, 0); // on the bush — distance 0
+    const bush = bushAt(sim, 0, 0); // on the bush - distance 0
     storeAt(sim, 3, 0, 5); // a larder exists, but the bush is right here
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -142,7 +142,7 @@ describe('eat drive — picking the NEAREST food across stores and bushes', () =
   it('eats from a store that is nearer than any bush', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
-    const store = storeAt(sim, 0, 0, 5); // on the larder — distance 0
+    const store = storeAt(sim, 0, 0, 5); // on the larder - distance 0
     bushAt(sim, 3, 0); // a ripe bush exists, but the larder is right here
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -182,7 +182,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const bush = bushAt(sim, 0, 0, 'bare', 3); // blooms at tick 3
 
-    for (let i = 0; i < 3; i++) berryGrowthSystem(sim.world, ctxOf(sim)); // ticks 0,1,2 — still bare
+    for (let i = 0; i < 3; i++) berryGrowthSystem(sim.world, ctxOf(sim)); // ticks 0,1,2 - still bare
     expect(sim.world.get(bush, BerryBush).stage).toBe('bare');
 
     // Advance the sim clock past the bloom tick: bare → flowering, ripe still one step out.
@@ -198,7 +198,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
   });
 });
 
-describe('forage drive — closing the rise→forage→relief loop through the real schedule', () => {
+describe('forage drive - closing the rise→forage→relief loop through the real schedule', () => {
   it('a settler beside a bush gets hungry, forages, a meal comes off its bar, and the bush regrows', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);

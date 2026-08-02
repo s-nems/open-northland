@@ -14,7 +14,7 @@ import type { CellTexture } from '../data/terrain/index.js';
  * the `TerrainPattern` IR. Optional input to the renderer: when present, each cell's two mesh triangles
  * sample their page; a triangle whose typeId has no {@link CellTexture}, or whose page failed to load,
  * falls back to a flat-colour triangle (the {@link CellTexture.fallbackColour} debug colour, else the
- * default). When absent, every cell draws the legacy flat tint — the reproducible default the committed
+ * default). When absent, every cell draws the legacy flat tint - the reproducible default the committed
  * shot depends on.
  */
 export interface TerrainTextureSet {
@@ -23,14 +23,14 @@ export interface TerrainTextureSet {
   /** The approximated per-landscape-typeId ground binding, or `undefined` when a typeId has no representative. */
   cellFor(typeId: number): CellTexture | undefined;
   /**
-   * The 1:1 per-triangle pattern by `EditName` — the join a decoded map's `ground.patterns` names
+   * The 1:1 per-triangle pattern by `EditName` - the join a decoded map's `ground.patterns` names
    * resolve through (the `GfxPattern` IR row's page + the two triangles' pixel-coord UV tuples).
    * Optional: a set built without the full pattern table (or a map without ground lanes) falls back
    * to the approximated {@link cellFor} path.
    */
   groundFor?(name: string): GroundPattern | undefined;
   /**
-   * The transition overlay by name — the join a decoded map's `transitions.types` names resolve
+   * The transition overlay by name - the join a decoded map's `transitions.types` names resolve
    * through (the `GfxPatternTransition` IR row's masked RGBA page + its six per-pair UV tuples).
    * Optional: a set built without the transition table (or a map without transition lanes) simply
    * draws no overlays.
@@ -46,7 +46,7 @@ export interface GroundPattern {
 }
 
 /**
- * One resolved ground-transition overlay: its composed RGBA page (RGB texture + alpha mask — the
+ * One resolved ground-transition overlay: its composed RGBA page (RGB texture + alpha mask - the
  * pipeline's `<stem>.masked.png`) + the six pair variants' 6-int UV pixel tuples per triangle
  * (a map lane's `value % 6` picks the pair, `data/terrain/transitions.ts` `transitionRef`).
  */

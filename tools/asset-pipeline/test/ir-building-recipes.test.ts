@@ -18,7 +18,7 @@ describe('fillBuildingRecipes', () => {
     const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS);
     expect(mint?.recipes).toEqual([
       {
-        // guildmark consumes thornreed (22) + palegrain (24), one each — ascending goodType order.
+        // guildmark consumes thornreed (22) + palegrain (24), one each - ascending goodType order.
         inputs: [
           { goodType: 22, amount: 1 },
           { goodType: 24, amount: 1 },
@@ -90,7 +90,7 @@ describe('fillBuildingRecipes', () => {
 
   it('drops only the field-farmed output when a workplace also makes a manufactured good', () => {
     // produces [24, 27]: palegrain (24) is field-grown and excluded; guildmark (27) stays, so the
-    // recipe list is guildmark alone — with its own inputs thornreed (22) + palegrain (24), a field
+    // recipe list is guildmark alone - with its own inputs thornreed (22) + palegrain (24), a field
     // good being a valid recipe *input* even though it is never a synthesized *output*.
     const [mixed] = fillBuildingRecipes([building(17, 'mixed', [24, 27])], GOODS);
     expect(mixed?.recipes).toHaveLength(1);
@@ -117,7 +117,7 @@ describe('fillBuildingRecipes', () => {
 describe('stripVehicleGoods', () => {
   const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
   const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
-  // 'guildmark' (27) doubles as a vehicle here — the strip keys on the goodtype↔vehicletype slug
+  // 'guildmark' (27) doubles as a vehicle here - the strip keys on the goodtype↔vehicletype slug
   // identity, exactly how the real data links handcart/oxcart/ships/catapult.
   const cartVehicle = VehicleType.parse({ typeId: 1, id: 'guildmark' });
 
@@ -149,6 +149,6 @@ describe('stripVehicleGoods', () => {
       source: src,
     });
     const [same] = stripVehicleGoods([workshop], GOODS, [VehicleType.parse({ typeId: 2, id: 'sled' })]);
-    expect(same).toBe(workshop); // identity preserved — nothing to strip
+    expect(same).toBe(workshop); // identity preserved - nothing to strip
   });
 });

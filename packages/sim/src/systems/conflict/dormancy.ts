@@ -13,9 +13,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isHunterJob } from '../readviews/index.js';
 
-/** The live enemy-attackable buildings this tick — a built or half-built structure carrying a Health pool
+/** The live enemy-attackable buildings this tick - a built or half-built structure carrying a Health pool
  *  still above 0. They join the combat TARGET index (a warrior may strike them) but never the seeker loop:
- *  a building never fights back. Query order — the caller folds the list into its canonical merged sort. */
+ *  a building never fights back. Query order - the caller folds the list into its canonical merged sort. */
 export function attackableBuildings(world: World): Entity[] {
   const out: Entity[] = [];
   for (const e of world.query(Building, Health, Position)) {
@@ -25,8 +25,8 @@ export function attackableBuildings(world: World): Entity[] {
 }
 
 /**
- * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the combatants.
- * Conservative — it may pass on a tick where the two hostile sides are out of range (combat then simply finds
+ * The dormancy gate: whether any combat work is possible this tick - a cheap single pass over the combatants.
+ * Conservative - it may pass on a tick where the two hostile sides are out of range (combat then simply finds
  * no target), but it never skips a tick where a fight or a cleanup is due.
  */
 export function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<Entity>): boolean {
@@ -59,7 +59,7 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   if (hasHunter && hasPrey) return true; // a hunter and huntable prey
   // A warrior sieging an enemy building is a fight even with no enemy UNIT present: an owned unit plus an
   // attackable building of a different player wakes the system. Reached only when no unit-vs-unit / animal
-  // trigger fired above, and skipped entirely when no owned unit exists (buildings ≪ units — a cheap tail).
+  // trigger fired above, and skipped entirely when no owned unit exists (buildings ≪ units - a cheap tail).
   if (owners.size >= 1) {
     for (const b of world.query(Building, Health, Position)) {
       const owner = world.tryGet(b, Owner);

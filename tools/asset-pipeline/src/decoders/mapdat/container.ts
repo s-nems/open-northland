@@ -1,5 +1,5 @@
 /**
- * `map.dat` chunk container — the `hoix`-chunk table walk + the raw `lsiz` grid dims, plus the
+ * `map.dat` chunk container - the `hoix`-chunk table walk + the raw `lsiz` grid dims, plus the
  * faithful encoders used to round-trip test without committing copyrighted fixtures.
  *
  * On-disk layout: a flat sequence of chunks, each a 0x20-byte little-endian header then
@@ -23,13 +23,13 @@
 
 import { decodeLatin1, viewOf } from '../byte-cursor.js';
 
-/** "hoix" little-endian — the chunk marker every header opens with. */
+/** "hoix" little-endian - the chunk marker every header opens with. */
 export const HOIX_MARKER = 0x78696f68;
 /** Chunk header length: marker, id, version, length, depth, checksum, 2 reserved (8 × u32). */
 export const CHUNK_HEADER_SIZE = 0x20;
-/** "xend" little-endian (disk bytes "dnex") — a group terminator chunk. */
+/** "xend" little-endian (disk bytes "dnex") - a group terminator chunk. */
 export const XEND_ID = 0x78656e64;
-/** "tend" little-endian (disk bytes "dnet") — the top-level terminator chunk. */
+/** "tend" little-endian (disk bytes "dnet") - the top-level terminator chunk. */
 export const TEND_ID = 0x74656e64;
 
 /** One `hoix` chunk: its parsed header and a zero-copy view of its payload. */
@@ -50,7 +50,7 @@ export interface MapDatChunk {
   readonly checksum: number;
   /** Absolute byte offset of the payload from the start of the file. */
   readonly payloadOffset: number;
-  /** View into the source buffer over `[payloadOffset, payloadOffset + length)` — not a copy. */
+  /** View into the source buffer over `[payloadOffset, payloadOffset + length)` - not a copy. */
   readonly payload: Uint8Array;
 }
 
@@ -88,7 +88,7 @@ export function tagToId(tag: string): number {
  * Decodes a `map.dat` container into its flat chunk table. Walks every chunk to EOF (including the
  * `xend`/`tend` terminators) by `offset += CHUNK_HEADER_SIZE + length`.
  *
- * Throws on a structurally invalid container — a header whose marker is not `hoix`, or a payload
+ * Throws on a structurally invalid container - a header whose marker is not `hoix`, or a payload
  * that overruns the buffer. A batch pipeline over many owned files should wrap this per-file so one
  * corrupt `map.dat` can't abort the run (mirrors `decodeLib`).
  */
@@ -143,7 +143,7 @@ export function findChunk(map: MapDat, tag: string): MapDatChunk | undefined {
 /**
  * Decodes the `lsiz` chunk's raw `[u32 width][u32 height]` grid dimensions. These cross-check the
  * `map.cif` logic-header `mapsize` exactly (confirmed on real maps). Throws if `lsiz` is missing or
- * its payload isn't the expected 8 bytes — a `map.dat` with no grid is malformed.
+ * its payload isn't the expected 8 bytes - a `map.dat` with no grid is malformed.
  */
 export function decodeMapSize(map: MapDat): MapDatSize {
   const chunk = findChunk(map, 'lsiz');
@@ -170,7 +170,7 @@ export interface MapDatChunkInput {
  * Inverse of {@link decodeMapDat}: serializes a `map.dat` from a chunk list, laying each header +
  * payload sequentially. Kept faithful so decode can be round-trip tested without committing
  * copyrighted fixtures (the same rationale as the `.cif`/`.lib` encoders). The `checksum` field is
- * written as given (default 0) — this encoder does not recompute the engine's payload checksum, and
+ * written as given (default 0) - this encoder does not recompute the engine's payload checksum, and
  * the decoder does not validate it, so round-trips are exact.
  */
 export function encodeMapDat(chunks: readonly MapDatChunkInput[]): Uint8Array {
@@ -188,7 +188,7 @@ export function encodeMapDat(chunks: readonly MapDatChunkInput[]): Uint8Array {
     view.setUint32(p + 0x0c, payload.length, true);
     view.setUint32(p + 0x10, (c.depth ?? 0) >>> 0, true);
     view.setUint32(p + 0x14, (c.checksum ?? 0) >>> 0, true);
-    // +0x18 / +0x1C reserved — left zero.
+    // +0x18 / +0x1C reserved - left zero.
     out.set(payload, p + CHUNK_HEADER_SIZE);
     p += CHUNK_HEADER_SIZE + payload.length;
   }

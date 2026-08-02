@@ -5,7 +5,7 @@ import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, startAtomic } from './support.js';
 
-describe('atomicSystem — progress + completion', () => {
+describe('atomicSystem - progress + completion', () => {
   it('advances progress and completes on the duration-th tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();

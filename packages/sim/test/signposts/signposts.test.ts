@@ -33,7 +33,7 @@ import { stampPost } from './support.js';
  */
 
 const VIKING = 1;
-const SCOUT = 27; // fixture job 27 — allowatomic 43 only, like the original scout
+const SCOUT = 27; // fixture job 27 - allowatomic 43 only, like the original scout
 const WOODCUTTER = 1;
 const P0 = 0;
 
@@ -70,7 +70,7 @@ function freshSim(w = 32, h = 8): Simulation {
   return new Simulation({ seed: 3, content: testContent(), map: grassMap(w, h) });
 }
 
-describe('placeSignpost — the scout erects a guidepost', () => {
+describe('placeSignpost - the scout erects a guidepost', () => {
   it('a scout standing at the goal swings the build-guide hammer once and the signpost appears', () => {
     const sim = freshSim();
     const scout = makeUnit(sim, 4, 2, SCOUT);
@@ -117,13 +117,13 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     stepUntilSignpost(sim, 60);
     expect(signposts(sim).length).toBe(1);
 
-    // Inside the spacing radius (a few nodes away) — the command is skipped outright.
+    // Inside the spacing radius (a few nodes away) - the command is skipped outright.
     const near = makeUnit(sim, 6, 2, SCOUT);
     sim.enqueue({ kind: 'placeSignpost', entity: near, x: 12, y: 4 });
     for (let t = 0; t < 60; t++) sim.step();
     expect(signposts(sim).length).toBe(1);
 
-    // Beyond the spacing radius — a second post rises.
+    // Beyond the spacing radius - a second post rises.
     const far = makeUnit(sim, 4 + SIGNPOST_SPACING_RADIUS_NODES, 2, SCOUT);
     sim.enqueue({ kind: 'placeSignpost', entity: far, x: 8 + 2 * SIGNPOST_SPACING_RADIUS_NODES, y: 4 });
     for (let t = 0; t < 400 && signposts(sim).length < 2; t++) sim.step();
@@ -151,7 +151,7 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     stepUntilSignpost(sim, 60);
     const probe = sim.signpostProbe(P0);
     if (probe === null) throw new Error('mapped sim has a probe');
-    // A band around the standing post: inside the spacing circle, on its cell, and beyond — the probe
+    // A band around the standing post: inside the spacing circle, on its cell, and beyond - the probe
     // must answer exactly what the command gate would.
     for (let y = 0; y < 8; y += 2) {
       for (let x = 0; x < 48; x += 2) {
@@ -174,7 +174,7 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     const nearby = terrain.nodeAt(10, 4);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
 
-    // Aiming at the scout is a skip, never a destroy — the kind gate.
+    // Aiming at the scout is a skip, never a destroy - the kind gate.
     sim.enqueue({ kind: 'demolishSignpost', signpost: scout });
     sim.step();
     expect(sim.world.has(scout, Settler)).toBe(true);
@@ -183,19 +183,19 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     sim.enqueue({ kind: 'demolishSignpost', signpost: post });
     sim.step();
     expect(signposts(sim).length).toBe(0);
-    // The spacing circle fell with the post — the spot is placeable again.
+    // The spacing circle fell with the post - the spot is placeable again.
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(true);
   });
 });
 
-describe('signpostNetwork — connected groups', () => {
+describe('signpostNetwork - connected groups', () => {
   /** Stamp a signpost directly (the fixture idiom) at tile (x,y) with the given nav radius. */
   it('overlapping circles join one group; a distant post forms its own', () => {
     const sim = freshSim(96, 8);
-    // Tiles are 2 nodes wide: posts at tiles 2 and 10 are 16 nodes apart — overlapping at radius 10.
+    // Tiles are 2 nodes wide: posts at tiles 2 and 10 are 16 nodes apart - overlapping at radius 10.
     const a = stampPost(sim, 2, 2, 10);
     const b = stampPost(sim, 10, 2, 10);
-    const far = stampPost(sim, 40, 2, 10); // 60+ nodes away — disconnected
+    const far = stampPost(sim, 40, 2, 10); // 60+ nodes away - disconnected
     const posts = signpostNetwork(sim.world).get(P0) ?? [];
     const groupOf = new Map(posts.map((s) => [s.entity, s.group]));
     expect(groupOf.get(a)).toBe(groupOf.get(b));
@@ -211,7 +211,7 @@ describe('signpostNetwork — connected groups', () => {
   });
 });
 
-describe('signpost fog vision — the permanent recon reveal', () => {
+describe('signpost fog vision - the permanent recon reveal', () => {
   it('a standing signpost keeps its circle VISIBLE in RECON with no unit nearby', () => {
     const sim = freshSim(64, 16);
     sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE.RECON });

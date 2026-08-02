@@ -3,14 +3,14 @@ import { join } from 'node:path';
 import type { BobsIndexEntry } from './wire.js';
 
 /**
- * Node-side builder for the `/bobs-index` payload — the list the in-app icon gallery (`?icons`)
+ * Node-side builder for the `/bobs-index` payload - the list the in-app icon gallery (`?icons`)
  * browses: every viewable atlas, meaning a palette-applied `<stem>.png` + `<stem>.atlas.json` pair.
  * The `.indexed.*` sheets carry a palette index in the red channel for the runtime recolour rather
  * than a viewable image, so they are skipped.
  */
 
 /** Build one entry per viewable atlas under `bobsRoot`, sorted by (base, variant). `bobsRoot` must
- *  exist — the caller guards. */
+ *  exist - the caller guards. */
 export function buildBobsIndexEntries(bobsRoot: string): BobsIndexEntry[] {
   const stems = readdirSync(bobsRoot)
     .filter((f) => f.endsWith('.atlas.json'))

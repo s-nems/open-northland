@@ -33,7 +33,7 @@ gfxcolorrange "human_colors" 15
 
 const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
 
-/** A 768-byte palette where entry `i` is `(i, i, i)` — band contents assert by index. */
+/** A 768-byte palette where entry `i` is `(i, i, i)` - band contents assert by index. */
 function greyscalePalette(): Uint8Array {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) p.set([i, i, i], i * 3);

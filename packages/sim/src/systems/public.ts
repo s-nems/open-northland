@@ -2,7 +2,7 @@
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
 export { withinNodeRadius } from '../nav/node-circle.js';
-// The AI opening plan's content bindings — exported so the real-content suite can pin every id in
+// The AI opening plan's content bindings - exported so the real-content suite can pin every id in
 // the plan against the served IR (an unknown id silently skips its entry in the sim).
 export {
   type BuildOrderEntry,
@@ -52,7 +52,7 @@ export {
 } from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';
 export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
-// The content-derived job roles — the profession picker and the action ring offer exactly what the
+// The content-derived job roles - the profession picker and the action ring offer exactly what the
 // matching commands accept, off the same roles.
 export {
   isCarrierJobRow,

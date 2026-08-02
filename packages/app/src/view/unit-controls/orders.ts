@@ -49,7 +49,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return (col, row) => occupied.has(`${col},${row}`);
   };
 
-  // A carrying settler is ordered like any other — the sim makes it set its load down first, then walk
+  // A carrying settler is ordered like any other - the sim makes it set its load down first, then walk
   // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
   const issueMoveOrder = (event: MouseEvent, movers: readonly FormationUnit[]): void => {
     if (movers.length === 0) return;
@@ -90,7 +90,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const entity = entityById(snapshot, building);
       // A construction site takes the builder-assignment path (the original's "put a builder on a
       // foundation"): every selected settler gets the order, and the sim binds only the builder trade
-      // (a non-builder is a logged no-op — a site offers no worker jobs to fall back to).
+      // (a non-builder is a logged no-op - a site offers no worker jobs to fall back to).
       if (entity?.components.UnderConstruction !== undefined) {
         for (const target of commanded) {
           deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
@@ -100,7 +100,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
       const def = type !== undefined ? buildingsByType.get(type) : undefined;
       // A built home takes the move-in path: right-click = "live here" for every selected settler (the
-      // family moves as one — the sim's assignHouse validates the free family slot and no-ops otherwise).
+      // family moves as one - the sim's assignHouse validates the free family slot and no-ops otherwise).
       if (def?.kind === 'home') {
         for (const target of commanded) {
           deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
@@ -111,7 +111,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       // One command per selected settler, its priority computed from ITS current trade: keep it where the
       // building offers that slot (a miller stays a miller at the mill; a hunter stays a gatherer at a
       // warehouse's gatherer slot), else the building's default order (craftsman → carrier, gatherers
-      // excluded for a non-gatherer — so a plain settler on a warehouse becomes a carrier). The sim gates
+      // excluded for a non-gatherer - so a plain settler on a warehouse becomes a carrier). The sim gates
       // every candidate, so an unoffered/full trade just falls through.
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);

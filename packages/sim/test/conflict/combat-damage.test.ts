@@ -12,18 +12,18 @@ import {
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * The combat damage read model — `combatDamage` selects the weapon's `damagevalue[material]` **column**
+ * The combat damage read model - `combatDamage` selects the weapon's `damagevalue[material]` **column**
  * for each armor **material** a living target can wear (unarmored 0 + each `[armortype]` record's
  * `materialType`). The per-material value IS the resolved damage: armor works by COLUMN SELECTION, not
- * by subtracting a `blockingValue` (that uniform 5 has an unknown engine role — source basis — and
- * is NOT applied). The structure columns `WOOD` (6) / `HOUSE` (7) are NOT armor rows — they are the
+ * by subtracting a `blockingValue` (that uniform 5 has an unknown engine role - source basis - and
+ * is NOT applied). The structure columns `WOOD` (6) / `HOUSE` (7) are NOT armor rows - they are the
  * vs-tree / vs-building views (`damageVsWood`/`damageVsBuilding`). These tests pin the column model, the
  * material union, the shared `weaponDamageVsMaterial` join, the composite `(tribeType, typeId)` key, and
  * that NO weapon record is dropped even when the key collides (the animal-weapon key reuse).
  */
 
 const SWORD = 7; // a weapon with damage across materials 0..4 + the structure columns 6/7
-const DAGGER = 8; // a weapon that lists only some materials — an absent column is 0 damage
+const DAGGER = 8; // a weapon that lists only some materials - an absent column is 0 damage
 
 function combatContent(): ContentSet {
   return parseContentSet({
@@ -43,7 +43,7 @@ function combatContent(): ContentSet {
         id: 'sword',
         tribeType: 1,
         mainType: 3,
-        // materials 0..4 (a living target) + 6 (vs wood) + 7 (vs building) — the full column set.
+        // materials 0..4 (a living target) + 6 (vs wood) + 7 (vs building) - the full column set.
         damage: { '0': 100, '1': 80, '2': 60, '3': 40, '4': 20, '6': 30, '7': 55 },
       },
       {
@@ -51,23 +51,23 @@ function combatContent(): ContentSet {
         id: 'dagger',
         tribeType: 1,
         mainType: 3,
-        // lists only materials 0/1/4 — the unlisted materials (2/3) resolve to 0 damage (no harm).
+        // lists only materials 0/1/4 - the unlisted materials (2/3) resolve to 0 damage (no harm).
         damage: { '0': 10, '1': 7, '4': 3 },
       },
-      // The SAME typeId as the sword, but a DIFFERENT tribe — must NOT collide.
+      // The SAME typeId as the sword, but a DIFFERENT tribe - must NOT collide.
       {
         typeId: SWORD,
         id: 'frank_sword',
         tribeType: 2,
         damage: { '0': 200 },
       },
-      // Two weapons sharing the SAME (tribeType, typeId) — the real animal-weapon quirk (tribe 5 has
+      // Two weapons sharing the SAME (tribeType, typeId) - the real animal-weapon quirk (tribe 5 has
       // chicken+claw at typeId 1). A Map key would drop one; the array must keep BOTH.
       { typeId: 1, id: 'chicken', tribeType: 5, damage: { '0': 30 } },
       { typeId: 1, id: 'claw', tribeType: 5, damage: { '0': 60 } },
     ],
     armor: [
-      // materialType == typeId for the four base armors — the column each selects.
+      // materialType == typeId for the four base armors - the column each selects.
       { typeId: 1, id: 'woolen_armor', goodType: 33, materialType: 1, blockingValue: 5 },
       { typeId: 2, id: 'leather_armor', goodType: 34, materialType: 2, blockingValue: 5 },
       { typeId: 3, id: 'chain_armor', goodType: 35, materialType: 3, blockingValue: 5 },
@@ -98,7 +98,7 @@ describe('combatDamage', () => {
     expect(sword?.typeId).toBe(SWORD);
   });
 
-  it('keeps BOTH weapons that share a (tribeType, typeId) — no record dropped', () => {
+  it('keeps BOTH weapons that share a (tribeType, typeId) - no record dropped', () => {
     const profiles = combatDamage(combatContent());
     const sameKey = profiles.filter((p) => p.key === weaponKey({ tribeType: 5, typeId: 1 }));
     expect(sameKey.map((p) => p.id)).toEqual(['chicken', 'claw']); // both present, not collapsed
@@ -115,11 +115,11 @@ describe('combatDamage', () => {
   it('covers the unarmored material 0 and every armor material, sorted ascending', () => {
     const sword = byId(combatDamage(combatContent()), 'sword');
     // materials: 0 (unarmored) + 1..4 (the armor records' materialTypes). The structure columns 6/7
-    // are NOT rows — they are damageVsWood/damageVsBuilding.
+    // are NOT rows - they are damageVsWood/damageVsBuilding.
     expect(sword?.rows.map((r) => r.material)).toEqual([0, 1, 2, 3, 4]);
   });
 
-  it('selects the per-material column verbatim — no blockingValue subtracted', () => {
+  it('selects the per-material column verbatim - no blockingValue subtracted', () => {
     const sword = byId(combatDamage(combatContent()), 'sword');
     // Each row is the raw damagevalue for that material (100/80/60/40/20), NOT minus a blockingValue.
     expect(sword?.rows.map((r) => r.damage)).toEqual([100, 80, 60, 40, 20]);
@@ -133,7 +133,7 @@ describe('combatDamage', () => {
     // dagger lists materials 0/1/4; materials 2/3 are absent → 0 (the weapon does that armor no harm).
     expect(damageAt(dagger, ARMOR_MATERIAL.LEATHER)).toBe(0);
     expect(damageAt(dagger, ARMOR_MATERIAL.CHAIN)).toBe(0);
-    // the listed materials land in full — no subtraction, so even the weak plate value (3) survives.
+    // the listed materials land in full - no subtraction, so even the weak plate value (3) survives.
     expect(damageAt(dagger, ARMOR_MATERIAL.NONE)).toBe(10);
     expect(damageAt(dagger, ARMOR_MATERIAL.PLATE)).toBe(3);
   });
@@ -155,7 +155,7 @@ describe('combatDamage', () => {
     expect(damageVsBuilding(frankSword)).toBe(0);
   });
 
-  it('weaponDamageVsMaterial reads a single column — the shared join both the table and CombatSystem use', () => {
+  it('weaponDamageVsMaterial reads a single column - the shared join both the table and CombatSystem use', () => {
     const sword = combatContent().weapons.find((w) => w.id === 'sword');
     if (sword === undefined) throw new Error('sword missing');
     expect(weaponDamageVsMaterial(sword, ARMOR_MATERIAL.NONE)).toBe(100);
@@ -170,7 +170,7 @@ describe('combatDamage', () => {
     expect(rows.find((r) => r.material === ARMOR_MATERIAL.LEATHER)).toEqual({ material: 2, damage: 0 });
   });
 
-  it('is deterministic — identical content yields an identical table', () => {
+  it('is deterministic - identical content yields an identical table', () => {
     const a = combatDamage(combatContent());
     const b = combatDamage(combatContent());
     expect(a).toEqual(b);
@@ -185,7 +185,7 @@ describe('combatDamage', () => {
       weapons: [{ typeId: 1, id: 'fist', tribeType: 1, damage: { '0': 50, '2': 30 } }],
     });
     // no armor records → the only living-target material is the unarmored 0 (material 2 the weapon lists
-    // is NOT invented as a row — with no leather armor record there is no leather column to fight).
+    // is NOT invented as a row - with no leather armor record there is no leather column to fight).
     const rows = byId(combatDamage(noArmor), 'fist')?.rows ?? [];
     expect(rows.map((r) => r.material)).toEqual([ARMOR_MATERIAL.NONE]);
     expect(rows[0]).toEqual({ material: 0, damage: 50 });

@@ -25,7 +25,7 @@ export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Re
 /**
  * FIELD FARMING (`systems/economy/fields.ts` + `settlers/drives/farming`): the farm's
  * sow→grow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29
- * — the original's own ids; farming: 5 stages × 10 nominal ticks, yield 1, radius 8, 6 fields),
+ * - the original's own ids; farming: 5 stages × 10 nominal ticks, yield 1, radius 8, 6 fields),
  * job 18 = farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).
  * Unit tests pin the growth/effect mechanics; planner passes pin each drive decision; the end-to-end
  * run proves wheat lands in the farm's own store, deterministically.
@@ -33,7 +33,7 @@ export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Re
 
 export const GRASS = 0;
 export const WHEAT = 6;
-/** A good the farm neither grows nor stores — what the standing-body fixtures hold so no drive wants them. */
+/** A good the farm neither grows nor stores - what the standing-body fixtures hold so no drive wants them. */
 const PLANK = 2;
 /** A harvest atomic the farmer is not permitted (fixture job 18 allows 29/34/35 only), so a standing-body
  *  fixture cannot be mistaken for one of the farm's own targets. */
@@ -48,15 +48,15 @@ export const PICKUP_ATOMIC = 22;
 // The fixture's farming block (keep in sync with fixtures/content.ts).
 export const STAGES = 5;
 export const TICKS_PER_STAGE = 10;
-/** The fixture farm's plot size — flat, whatever the crew (keep in sync with fixtures/content.ts). */
+/** The fixture farm's plot size - flat, whatever the crew (keep in sync with fixtures/content.ts). */
 export const FIELD_CAP = 6;
 const BARREN = 2;
 const WATER = 1;
-/** This suite's own walled type — see {@link wallsContent}; high enough to stay clear of the ids other
+/** This suite's own walled type - see {@link wallsContent}; high enough to stay clear of the ids other
  *  suites append to the shared fixture. */
 export const BLOCKHOUSE = 40;
 const GRANARY = 6;
-/** The fixture farm's wheat-slot ceiling (`stock` capacity 25 — keep in sync with fixtures/content.ts). */
+/** The fixture farm's wheat-slot ceiling (`stock` capacity 25 - keep in sync with fixtures/content.ts). */
 export const FARM_WHEAT_CAP = 25;
 
 /** A `width`×`height` CELL square of grass, upsampled to the half-cell navigation lattice. */
@@ -85,7 +85,7 @@ export function farmAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** Plant a field directly at tile (x, y) — the sow effect's output shape, for mid-lifecycle fixtures. */
+/** Plant a field directly at tile (x, y) - the sow effect's output shape, for mid-lifecycle fixtures. */
 export function fieldAt(
   sim: Simulation,
   farm: Entity,
@@ -112,7 +112,7 @@ export function fieldAt(
   return e;
 }
 
-/** {@link fieldAt} addressed by half-cell NODE instead of tile — for the nodes a building's walls cover
+/** {@link fieldAt} addressed by half-cell NODE instead of tile - for the nodes a building's walls cover
  *  that are not themselves cell anchors, which no tile-addressed helper can reach. */
 export function fieldAtNode(
   sim: Simulation,
@@ -144,7 +144,7 @@ export function fieldAtNode(
 }
 
 /** A loose ground pile on half-cell node (hx, hy), holding a good no farmer fetches (a {@link GroundDrop}
- *  is never a delivery sink, and a non-wheat one is never a sheaf). Blocks nothing — it only STANDS there,
+ *  is never a delivery sink, and a non-wheat one is never a sheaf). Blocks nothing - it only STANDS there,
  *  which is the occupancy the sow lattice filters on separately from the walk-block overlay. */
 export function heapAtNode(sim: Simulation, hx: number, hy: number): Entity {
   const e = sim.world.create();
@@ -154,7 +154,7 @@ export function heapAtNode(sim: Simulation, hx: number, hy: number): Entity {
   return e;
 }
 
-/** A footprint-less resource node on half-cell node (hx, hy) — scenery that stands without blocking, the
+/** A footprint-less resource node on half-cell node (hx, hy) - scenery that stands without blocking, the
  *  {@link heapAtNode} twin on the resource side of the same occupancy rule. */
 export function sceneryAtNode(sim: Simulation, hx: number, hy: number): Entity {
   const e = sim.world.create();
@@ -176,7 +176,7 @@ export function mapWithBarren(
   return halfCellMapFromCells({ width, height, typeIds });
 }
 
-/** A cell map built from a per-cell terrain choice — `'grass'` (walkable, plantable), `'barren'`
+/** A cell map built from a per-cell terrain choice - `'grass'` (walkable, plantable), `'barren'`
  *  (walkable, never plantable) or `'water'` (unwalkable, so it splits static terrain components). */
 export function cellMap(
   width: number,
@@ -191,7 +191,7 @@ export function cellMap(
   return halfCellMapFromCells({ width, height, typeIds });
 }
 
-/** The base fixture plus ONE walled type — a 2×2 walk-blocking body on its anchor, no door. Every other
+/** The base fixture plus ONE walled type - a 2×2 walk-blocking body on its anchor, no door. Every other
  *  fixture building blocks nothing, so without this no farming test could express a building standing over
  *  ground. Kept local to this suite (like the placement suite's own `hut`) rather than added to the shared
  *  fixture, whose building ids other suites extend with their own. */
@@ -217,7 +217,7 @@ export function wallsContent(): ContentSet {
   });
 }
 
-/** Raise a {@link wallsContent} blockhouse at tile (x, y), skipping the ground-collision gate — these
+/** Raise a {@link wallsContent} blockhouse at tile (x, y), skipping the ground-collision gate - these
  *  cases are about what standing walls do to a plot, not about which sites the gate accepts. */
 export function blockhouseAt(sim: Simulation, x: number, y: number): void {
   const node = cellAnchorNode(x, y);

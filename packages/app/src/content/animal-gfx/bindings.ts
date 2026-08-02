@@ -67,7 +67,7 @@ export function animalWalkSeqName(
  *
  * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list
  * row (bear, dog, wolf, lion) plays facing-locked, a per-direction row (deer, boar, cattle, ...)
- * per facing. Playing the program — not the raw wait strip — matters: a strip packs several poses
+ * per facing. Playing the program - not the raw wait strip - matters: a strip packs several poses
  * back-to-back (the bear's sniff, lie, sit) and the program picks one with its authored holds;
  * the raw strip teleports between poses. Approximations: every animal of a species breathes in
  * lockstep (the free tick clock has no per-entity phase), and the ladder keeps only its first hit,
@@ -87,7 +87,7 @@ export function animalBinding(
     if (row === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || seq.length <= 0) continue;
-    if (row.dirFrames.every((list) => list.length === 0)) continue; // no program — nothing to play
+    if (row.dirFrames.every((list) => list.length === 0)) continue; // no program - nothing to play
     idle = { start: seq.start, frameLists: frameListsByFacing(row.dirFrames), loop: true };
     break;
   }

@@ -54,7 +54,7 @@ function billOf(
     .map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** One typeId view + reverse-chain-link map per building list, keyed on the list's identity — a WeakMap
+/** One typeId view + reverse-chain-link map per building list, keyed on the list's identity - a WeakMap
  *  so a dropped list frees its views with it. {@link constructionBillForType} is a per-frame path (the
  *  HUD's construction window asks every frame while a site is selected), and rebuilding the O(buildings)
  *  maps per call was that frame cost. */
@@ -64,7 +64,7 @@ const billViewCache = new WeakMap<
 >();
 
 /**
- * The from-scratch construction bill of one `buildingType` over a plain building list — the pure
+ * The from-scratch construction bill of one `buildingType` over a plain building list - the pure
  * content-level accessor for a consumer holding building defs but no `ContentSet` (the HUD's
  * construction window shows the same delivered/needed rows the sim demands). Empty for an unknown
  * type. The same math as {@link import('../content-index.js').ContentIndex.constructionBillByBuilding};

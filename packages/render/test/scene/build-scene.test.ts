@@ -3,12 +3,12 @@ import { buildScene, terrainMapToScene, tileToScreen } from '../../src/index.js'
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
 /**
- * Unit tests for {@link buildScene} — projection, depth order & classification. Pins the two correctness
+ * Unit tests for {@link buildScene} - projection, depth order & classification. Pins the two correctness
  * properties a human eyeball would otherwise catch: terrain always behind sprites, sprites depth-sorted
  * by feet anchor; plus tile projection, draw-kind classification, and the purity of the draw list.
  */
 
-describe('buildScene — projection, depth order & classification', () => {
+describe('buildScene - projection, depth order & classification', () => {
   it('emits one tile per cell, in row-major order, carrying its landscape typeId', () => {
     const scene = buildScene(snapshotOf([]), FLAT_3x2);
     const tiles = scene.filter((d) => d.kind === 'tile');
@@ -39,7 +39,7 @@ describe('buildScene — projection, depth order & classification', () => {
   });
 
   it('depth-sorts sprites by feet anchor: lower (greater y) draws later/in front', () => {
-    // back settler at y=0, front settler at y=2 — front must come AFTER back in draw order.
+    // back settler at y=0, front settler at y=2 - front must come AFTER back in draw order.
     const scene = buildScene(
       snapshotOf([
         entity(1, 1, 0, { Settler: { tribe: 0 } }), // back
@@ -53,7 +53,7 @@ describe('buildScene — projection, depth order & classification', () => {
 
   it('paints a settler IN FRONT of the resource node it stands on (same cell), overriding id order', () => {
     // Settler id 1 shares the node's cell (a harvester stands ON the deposit/tree). The settler has the
-    // LOWER id, so the plain id tiebreak would draw it FIRST (behind) — the "worker vanishes into the
+    // LOWER id, so the plain id tiebreak would draw it FIRST (behind) - the "worker vanishes into the
     // node" bug. The per-kind paint bias must reorder it AFTER the node (in front).
     const scene = buildScene(
       snapshotOf([
@@ -85,7 +85,7 @@ describe('buildScene — projection, depth order & classification', () => {
     // A flag (DeliveryFlag marker, id 3) shares a tile with a goods heap (bare Stockpile, id 5) piling up on
     // it. Both classify as `stockpile`, so the kind bias ties and the id tiebreak would bury the earlier
     // flag under the later heap; the half-step flag bump lifts the flag in front. (Both drawn as `stockpile`
-    // kind — the flag is `isFlag`, the heap carries a good.)
+    // kind - the flag is `isFlag`, the heap carries a good.)
     const scene = buildScene(
       snapshotOf([
         entity(3, 1, 1, { DeliveryFlag: {} }),
@@ -143,7 +143,7 @@ describe('buildScene — projection, depth order & classification', () => {
   });
 
   it('consumes a loaded terrain map (the parseTerrainMap shape) via terrainMapToScene', () => {
-    // A "real" decoded map carries varied landscape typeIds (not just grass/water) — the multi-type
+    // A "real" decoded map carries varied landscape typeIds (not just grass/water) - the multi-type
     // grid an emitted content/maps/<id>.json holds. terrainMapToScene must carry them through so the
     // GPU layer tints each tile by typeId, and buildScene must draw one tile per cell over the result.
     const loadedMap = { width: 2, height: 3, typeIds: [5, 1, 2, 5, 16, 1] };

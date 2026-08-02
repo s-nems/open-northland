@@ -35,9 +35,9 @@ function placeFootprintedTree(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-describe('flag-bound gatherer — a drop on a blocked cell is left for later, not stranded on', () => {
+describe('flag-bound gatherer - a drop on a blocked cell is left for later, not stranded on', () => {
   // The dense-field stall (magiczny_las, seat-2 stone collector, ~tick 4100): the last dig leaves the
-  // drop on the dug-out anchor, still covered by neighbouring walk bodies — a walk goal `findPath`
+  // drop on the dug-out anchor, still covered by neighbouring walk bodies - a walk goal `findPath`
   // always rejects. The pile scans must skip such a drop so the gatherer keeps digging instead of
   // looping park→re-pick→fail forever.
   function flagBoundCutter(sim: Simulation): Entity {
@@ -59,7 +59,7 @@ describe('flag-bound gatherer — a drop on a blocked cell is left for later, no
     const hut = sim.world.create();
     sim.world.add(hut, Position, positionOfNode(5, 1));
     sim.world.add(hut, Building, { buildingType: TEST_HUT, tribe: VIKING, built: ONE, level: 0 });
-    placeFootprintedTree(sim, 3, 1); // work cells (2,1)/(4,1) — reachable digging instead
+    placeFootprintedTree(sim, 3, 1); // work cells (2,1)/(4,1) - reachable digging instead
 
     plannerSystem(sim.world, ctxOf(sim));
 

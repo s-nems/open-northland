@@ -1,7 +1,7 @@
 import { type ArmorType, type ContentSet, parseContentSet } from '@open-northland/data';
 import { TEST_MANIFEST } from '../../fixtures/content.js';
 
-/** Resolve an armor record by its `id` (throws if absent — a test-fixture programmer error). */
+/** Resolve an armor record by its `id` (throws if absent - a test-fixture programmer error). */
 export function armor(content: ContentSet, id: string): ArmorType {
   const found = content.armor.find((a) => a.id === id);
   if (found === undefined) throw new Error(`fixture has no armor "${id}"`);
@@ -17,17 +17,17 @@ export const SCAFFOLD = {
 };
 
 /**
- * The armor-classification read views — `armorClassOf` (a record's coarse `mainType` class) and
- * `armorByClass` (the table grouped by that class) — the armor-side twins of `weaponClassOf`/
+ * The armor-classification read views - `armorClassOf` (a record's coarse `mainType` class) and
+ * `armorByClass` (the table grouped by that class) - the armor-side twins of `weaponClassOf`/
  * `weaponsByClass`. `mainType` is a multi-valued class enum every armor record carries (`1` =
  * light/cloth+leather, `2` = heavy/chain+plate in the base data; the real `armortypes.ini` ships four
- * records with `mainType` `{1,1,2,2}`), so the natural view is a *grouping*, not a filter — and several
+ * records with `mainType` `{1,1,2,2}`), so the natural view is a *grouping*, not a filter - and several
  * records share a class. Classified *by the data alone*; a pure read over content, no mechanic added.
  *
  * The fixture mirrors the real four-record shape: two light (cloth, leather → class 1) and two heavy
  * (chain, plate → class 2), declared out of class order to prove the grouping keeps `content.armor`
  * source order within each bucket rather than re-sorting. Each record also carries its `materialType`
- * (the FINER tier axis — cloth=1/leather=2/chain=3/plate=4, all distinct), so the same fixture exercises
+ * (the FINER tier axis - cloth=1/leather=2/chain=3/plate=4, all distinct), so the same fixture exercises
  * both partitions: `mainType` collapses the four records into two buckets, `materialType` into four.
  */
 export function armorContent(): ContentSet {

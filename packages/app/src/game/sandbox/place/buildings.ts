@@ -46,11 +46,11 @@ export function placeSandboxBuilding(
 
 /**
  * Place a viking building fully built DIRECTLY in the world (the sanctioned scene-setup exception, like
- * the `place*` node helpers above) and return its entity — for a scene that must reference the building
+ * the `place*` node helpers above) and return its entity - for a scene that must reference the building
  * in a later command at build time (e.g. `upgradeBuilding`), where the command-seam placement's entity
  * id is not yet known. Stamps the same shape `placeBuilding` does: anchor Position, a built
  * {@link components.Building}, a Stockpile seeded from the type's `initial`s, a full Health pool when
- * the type has one, and the owner. Scene setup only — never a mid-run path.
+ * the type has one, and the owner. Scene setup only - never a mid-run path.
  */
 export function placeBuiltSandboxBuilding(
   sim: Simulation,
@@ -87,7 +87,7 @@ export function buildingDef(
 }
 
 /**
- * A building's door node — its cell anchor plus the content footprint's door offset (the sim's
+ * A building's door node - its cell anchor plus the content footprint's door offset (the sim's
  * `interactionNode`). Resolved from loaded content so the approximate (headless) and real extracted
  * (browser) footprints both land the door, and so a worker spawned here is bound to the building by the
  * JobSystem's adopt pass (a pre-employed settler standing at a workplace it staffs).
@@ -106,11 +106,11 @@ export function buildingDoorNode(
 
 /**
  * Spawn `count` pre-employed workers at a building's door node ({@link buildingDoorNode}) to staff its
- * primary production slot, via the raw `spawnSettler` command — node-exact, unlike
+ * primary production slot, via the raw `spawnSettler` command - node-exact, unlike
  * {@link import('./settlers.js').spawnSandboxSettler}, which rounds through the cell anchor and would drop
  * the door offset. The worker's job is the building's first non-carrier worker slot read from the sim's
  * loaded content ({@link primaryWorkerJob}), so the same call staffs the building on sandbox (headless) and
- * real (browser) content, whose slot job ids differ — the sandbox rebases to `WORKER_SLOT_JOB_BASE + n`,
+ * real (browser) content, whose slot job ids differ - the sandbox rebases to `WORKER_SLOT_JOB_BASE + n`,
  * real ir.json keeps the raw id. The adopt pass then binds them to the building on tick 1.
  */
 export function spawnWorkersAtDoor(
@@ -140,7 +140,7 @@ export function spawnWorkersAtDoor(
 
 /**
  * The worker slots a scene can actually staff at `buildingType`, from the sim's loaded content: the
- * craft slots of a producing building (a recipe workshop or a farm — the adopt pass binds a worker
+ * craft slots of a producing building (a recipe workshop or a farm - the adopt pass binds a worker
  * standing at its door), plus every carrier slot (a loose carrier reports in via the JobSystem's pass
  * 1b). GATHERER slots are never staffed this way, at a workshop any more than at a store: a spawned
  * gatherer carries its own auto-planted work flag, and the adopt pass leaves a settler that already
@@ -192,9 +192,9 @@ export function staffBuildingFully(
   }
 }
 
-/** A building's primary worker-slot jobType from the sim's loaded content — its first non-{@link JOB_CARRIER}
+/** A building's primary worker-slot jobType from the sim's loaded content - its first non-{@link JOB_CARRIER}
  *  production slot, or, for a workplace staffed only by carriers (the well draws water with its carrier), the
- *  carrier slot itself. Throws only if the building employs no worker at all (a store — a scene-setup bug). */
+ *  carrier slot itself. Throws only if the building employs no worker at all (a store - a scene-setup bug). */
 function primaryWorkerJob(sim: Simulation, buildingType: number): number {
   const slots = buildingDef(sim, buildingType)?.workers ?? [];
   const slot = slots.find((w) => w.jobType !== JOB_CARRIER) ?? slots[0];

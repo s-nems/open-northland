@@ -21,7 +21,7 @@ import {
   WIDE_RADIUS,
 } from '../support.js';
 
-describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
+describe('flag-bound gatherer - carries only what it dug (req 2)', () => {
   it('a flag-bound feller stamps its trunk with its own ownership', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
@@ -54,7 +54,7 @@ describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
     bindToFlag(sim, gatherer, 6, 0, WIDE_RADIUS);
-    const loose = makeLooseTrunk(sim, 0, 0, TREE_WOOD_YIELD); // not this gatherer's — leave it alone
+    const loose = makeLooseTrunk(sim, 0, 0, TREE_WOOD_YIELD); // not this gatherer's - leave it alone
     const tree = placeFellableTree(sim, 0, 0);
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -65,12 +65,12 @@ describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
     expect(storeWood(sim, loose)).toBe(TREE_WOOD_YIELD); // the loose pile is untouched
   });
 
-  it('never touches a foreign loose pile over a full run — only its own tree reaches the flag', () => {
+  it('never touches a foreign loose pile over a full run - only its own tree reaches the flag', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(12, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
     bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
     placeFellableTree(sim, 1, 0); // its own work, in radius
-    const loose = makeLooseTrunk(sim, 8, 0, TREE_WOOD_YIELD); // in radius, but not its own — must be ignored
+    const loose = makeLooseTrunk(sim, 8, 0, TREE_WOOD_YIELD); // in radius, but not its own - must be ignored
 
     const violations = runTicks(sim, 900);
 

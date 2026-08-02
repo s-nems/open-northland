@@ -7,18 +7,18 @@
 // Split by concern into sibling modules:
 //  - ./equip-pick.ts: the one member that is not a content table. It reads world + terrain and is the
 //                    façade's pick-menu seam (`Simulation.equipPickList`), consulted by no system.
-//  - ./buildings.ts — the data-defined temple (pray-need satisfier) and barracks (drill house)
+//  - ./buildings.ts - the data-defined temple (pray-need satisfier) and barracks (drill house)
 //                    classifications.
-//  - ./food.ts     — the data-defined edible-good (eat-slot) classification and the dish→edible
+//  - ./food.ts     - the data-defined edible-good (eat-slot) classification and the dish→edible
 //                    conversion a good undergoes when it leaves the kitchen that made it.
-//  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
-//  - ./classes/    — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
-//  - ./tribes/     — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
-//  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
-//  - ./jobs.ts     — the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
-//  - ./stances.ts  — the military-mode ids + the job→default-stance table.
-//  - ./landscape.ts — the data-defined placement-layer (`allowedon{land,water,everything}`) classification.
-//  - ./animations.ts — the atomic-animation name/duration resolvers + event accessors.
+//  - ./combat.ts   - the static weapon-vs-armor damage lookup table.
+//  - ./classes/    - the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
+//  - ./tribes/     - the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
+//  - ./vehicles.ts - the data-defined ship/boat classification (the Sea/Northland slice's seed).
+//  - ./jobs.ts     - the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
+//  - ./stances.ts  - the military-mode ids + the job→default-stance table.
+//  - ./landscape.ts - the data-defined placement-layer (`allowedon{land,water,everything}`) classification.
+//  - ./animations.ts - the atomic-animation name/duration resolvers + event accessors.
 // This barrel re-exports all of them so the `systems/` barrel (and tests) keep a single import site.
 
 export {

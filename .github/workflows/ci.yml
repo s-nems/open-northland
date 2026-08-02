@@ -40,7 +40,7 @@ jobs:
     # to support. Checkouts stay byte-identical via .gitattributes (eol=lf), so golden hashes see the
     # same bytes on Windows.
     strategy:
-      # fail-fast would cancel the sibling OSes on first failure — destroying exactly the signal the
+      # fail-fast would cancel the sibling OSes on first failure - destroying exactly the signal the
       # matrix exists for (is a golden mismatch platform-specific or universal?).
       fail-fast: false
       matrix:

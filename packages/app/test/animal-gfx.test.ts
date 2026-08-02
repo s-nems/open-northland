@@ -64,7 +64,7 @@ describe('animalBinding', () => {
       ],
     };
     const binding = animalBinding(ir, 8, seqs);
-    // The wait's authored program loops facing-locked on the free tick (the breathing idle) — NOT the
+    // The wait's authored program loops facing-locked on the free tick (the breathing idle) - NOT the
     // raw strip: the real bear strip packs sniff/lie/sit poses back-to-back and only the program's
     // slice is the wait.
     expect(binding?.idle).toEqual({ start: 88, frameLists: [[0, 1, 2]], loop: true });

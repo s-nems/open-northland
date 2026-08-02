@@ -16,13 +16,13 @@ import type { GoodRef } from '../src/content/settler-gfx/index.js';
 import { B } from './support/landscape.js';
 
 /**
- * The gathering-economy render binding — the self-verifiable half of "draw each resource/pile/flag from
+ * The gathering-economy render binding - the self-verifiable half of "draw each resource/pile/flag from
  * the Step-1 pipeline join". Proves the good→landscape→gfx reduction (representative pick, fill states,
  * the id-slug match, the default-vs-family layer decision, the load-then-drop-unloaded rule)
  * deterministically without a browser; the pixels are the `?scene=sandbox` acceptance scene's job.
  */
 
-// The default resource family stem is `ls_trees.tree_yew01` — a wood node record in it binds a BARE bob.
+// The default resource family stem is `ls_trees.tree_yew01` - a wood node record in it binds a BARE bob.
 const WOOD_NODE: LandscapeGfxRow = {
   index: 100,
   editName: 'yew 01',
@@ -42,7 +42,7 @@ const STONE_NODE: LandscapeGfxRow = {
   paletteName: 'rock03',
   frames: [{ state: 4, bobIds: [10] }],
 };
-// The pickup-stage TRUNK (a felled log on the ground) — its own record/atlas, distinct from the pile.
+// The pickup-stage TRUNK (a felled log on the ground) - its own record/atlas, distinct from the pile.
 const WOOD_TRUNK: LandscapeGfxRow = {
   index: 150,
   editName: 'wood trunk 01',
@@ -57,7 +57,7 @@ const WOOD_PILE: LandscapeGfxRow = {
   logicType: 7,
   bmd: `${B}/ls_goods.bmd`,
   paletteName: 'goods_wood',
-  // Deliberately file-order DESCENDING by state — firstBobsByStateAscending must sort fewest→most.
+  // Deliberately file-order DESCENDING by state - firstBobsByStateAscending must sort fewest→most.
   frames: [
     { state: 5, bobIds: [4] },
     { state: 4, bobIds: [3] },
@@ -90,7 +90,7 @@ const IR: ContentIr = {
   landscapeGfx: [WOOD_NODE, STONE_NODE, WOOD_TRUNK, WOOD_PILE, STONE_PILE, FLAG],
   gatheringPipeline: [
     {
-      goodType: 55, // the REAL goodType — deliberately not the scene's (proves the id-slug match)
+      goodType: 55, // the REAL goodType - deliberately not the scene's (proves the id-slug match)
       goodId: 'wood',
       harvest: { landscapeType: 4, gfxIndices: [100] },
       pickup: { landscapeType: 6, gfxIndices: [150] },
@@ -105,7 +105,7 @@ const IR: ContentIr = {
   ],
 };
 
-// Scene goods: typeIds deliberately DIFFER from the pipeline's — the join is by id-slug.
+// Scene goods: typeIds deliberately DIFFER from the pipeline's - the join is by id-slug.
 const GOODS: readonly GoodRef[] = [
   { typeId: 1, id: 'wood' },
   { typeId: 2, id: 'stone' },
@@ -141,7 +141,7 @@ describe('servedAtlasStem / nodeBob / firstBobsByStateAscending', () => {
   });
 });
 
-describe('resolveGatheringRefs — the good→landscape→gfx join, matched by id-slug', () => {
+describe('resolveGatheringRefs - the good→landscape→gfx join, matched by id-slug', () => {
   it('binds each scene good (by slug) to its node + pile under the SCENE typeId', () => {
     const refs = resolveGatheringRefs(GOODS, IR);
     // Node refs carry per-level bobs, empty→full (a mined deposit shrinks through them); a non-mined node
@@ -168,13 +168,13 @@ describe('resolveGatheringRefs — the good→landscape→gfx join, matched by i
   });
 });
 
-describe('resolveGatheringRefs — the goods-manifest pile/trunk binding (every good draws its own heap)', () => {
+describe('resolveGatheringRefs - the goods-manifest pile/trunk binding (every good draws its own heap)', () => {
   // A manifest good carries its full growth-state fillFrames (fewest→most) + the state-1 icon frame.
   const ICONS = new Map([['bread', { frame: 85, palette: 'goods_bread', fillFrames: [85, 86, 87] }]]);
 
   it('binds a non-gathered good to its ls_goods GROWING pile AND the same fill ladder as its trunk', () => {
     const refs = resolveGatheringRefs([{ typeId: 20, id: 'bread' }], IR, ICONS);
-    // Both grow through every manifest fill state — a GroundDrop of one unit draws the single-item frame.
+    // Both grow through every manifest fill state - a GroundDrop of one unit draws the single-item frame.
     expect(refs.pilesByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', fillBobs: [85, 86, 87] });
     expect(refs.trunksByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', bobs: [85, 86, 87] });
   });
@@ -198,7 +198,7 @@ describe('resolveGatheringRefs — the goods-manifest pile/trunk binding (every 
   });
 });
 
-describe('gatheringAtlasStems — the families to load', () => {
+describe('gatheringAtlasStems - the families to load', () => {
   it('lists every non-default node stem, pile stem, and the flag stem (default excluded)', () => {
     const stems = gatheringAtlasStems(resolveGatheringRefs(GOODS, IR));
     expect(stems.has(DEFAULT_RESOURCE_STEM)).toBe(false); // the yew is kindLayers.resource, not a family
@@ -214,12 +214,12 @@ describe('gatheringAtlasStems — the families to load', () => {
   });
 });
 
-describe('buildTrunkBinding — the freshly-felled trunk (pickup stage), drop-unloaded', () => {
+describe('buildTrunkBinding - the freshly-felled trunk (pickup stage), drop-unloaded', () => {
   const refs = resolveGatheringRefs(GOODS, IR);
 
   it('binds a good with a loaded pickup family to its trunk state ladder, layer-qualified', () => {
     const binding = buildTrunkBinding(refs, new Set(['ls_goods.goods_trunk']));
-    // The record's whole fewest→most ladder — the resolver indexes it by the drop's unit count.
+    // The record's whole fewest→most ladder - the resolver indexes it by the drop's unit count.
     expect(binding.byGood[1]).toEqual([{ layer: 'ls_goods.goods_trunk', bob: 70 }]); // wood → its trunk
     expect(binding.byGood[2]).toBeUndefined(); // stone has no pickup stage
   });
@@ -231,7 +231,7 @@ describe('buildTrunkBinding — the freshly-felled trunk (pickup stage), drop-un
   });
 });
 
-describe('buildResourceBinding — the default-vs-family layer decision + drop-unloaded', () => {
+describe('buildResourceBinding - the default-vs-family layer decision + drop-unloaded', () => {
   const refs = resolveGatheringRefs(GOODS, IR);
 
   it('draws a bare bob for the default family, layer-qualified for a loaded named family', () => {
@@ -250,7 +250,7 @@ describe('buildResourceBinding — the default-vs-family layer decision + drop-u
   });
 });
 
-describe('buildStockpileBinding — per-good heap frames + the flag, drop-unloaded', () => {
+describe('buildStockpileBinding - per-good heap frames + the flag, drop-unloaded', () => {
   const refs = resolveGatheringRefs(GOODS, IR);
 
   it('binds loaded pile families as layer-qualified fill frames + the loaded flag', () => {

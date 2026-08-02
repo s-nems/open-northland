@@ -4,9 +4,9 @@ import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
 
 /**
- * A read-only snapshot of the world at a tick boundary — the seam `render`/audio read instead of the live
+ * A read-only snapshot of the world at a tick boundary - the seam `render`/audio read instead of the live
  * component stores. Taken after a `step()` completes (never mid-mutation), it is a plain, structurally-cloned
- * value: no class instances, no live `Map`s, no `Entity` brands — every component value is JSON-ish data. That
+ * value: no class instances, no live `Map`s, no `Entity` brands - every component value is JSON-ish data. That
  * has two payoffs:
  *
  *  1. **Render never reads mid-mutation.** `render` consumes a detached snapshot + the tick's events, so a system
@@ -33,11 +33,11 @@ export interface EntitySnapshot {
 }
 
 /**
- * Per-world cache of scenery entities' cloned {@link EntitySnapshot}s — a decoded map plants tens of thousands
+ * Per-world cache of scenery entities' cloned {@link EntitySnapshot}s - a decoded map plants tens of thousands
  * of {@link Resource} nodes that then sit unchanged for thousands of ticks, and deep-cloning them every snapshot
  * was the 28 ms/frame that pinned a real map at ~20 fps (golden rule 6: per-frame cost scales with active work).
  * An entry is reused verbatim until the World's touched-entity log names its entity (any `add`/`remove`/`destroy`,
- * or a {@link World.write} — the harvest decrements). Only entities carrying {@link Resource} or {@link Stump}
+ * or a {@link World.write} - the harvest decrements). Only entities carrying {@link Resource} or {@link Stump}
  * are cached: their mutation sites are few and named, unlike a settler whose Position mutates in place every
  * tick. Coherence is enforced by a {@link World.registerCacheVerifier} verifier (a fresh re-clone must equal
  * every cached entry), so a future mutation that bypasses the seam fails invariant-checked runs at the tick it
@@ -67,10 +67,10 @@ function cloneEntity(world: World, id: Entity): EntitySnapshot {
 function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnapshot>): string[] {
   const out: string[] = [];
   for (const [id, cached] of cache) {
-    if (!world.isAlive(id)) continue; // evicted lazily on the next drain — absence is not incoherence
+    if (!world.isAlive(id)) continue; // evicted lazily on the next drain - absence is not incoherence
     const fresh = cloneEntity(world, id);
     if (JSON.stringify(fresh.components) !== JSON.stringify(cached.components)) {
-      out.push(`snapshot scenery clone of entity ${id} is stale — an in-place mutation bypassed World.write`);
+      out.push(`snapshot scenery clone of entity ${id} is stale - an in-place mutation bypassed World.write`);
     }
   }
   return out;
@@ -80,17 +80,17 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
  * Capture a detached snapshot of the world (+ the tick's events) at a tick boundary. Entities are
  * emitted in canonical ascending-id order; component values are deep-cloned to plain data so the
  * snapshot can't alias (and so a consumer mutating it can't reach the live store). A `Map` value is
- * converted to a sorted `[key, value]` array — the same canonical ordering `hashState` uses — so the
+ * converted to a sorted `[key, value]` array - the same canonical ordering `hashState` uses - so the
  * snapshot stays plain (transferable) and deterministic.
  *
  * Unchanged SCENERY entities (see {@link sceneryClones}) reuse their previously-cloned snapshot object
- * — same plain data, shared identity across snapshots — so a map's standing forests cost O(changed)
+ * - same plain data, shared identity across snapshots - so a map's standing forests cost O(changed)
  * per snapshot, not O(map). Draining the World's touched log here also evicts entries of destroyed
  * entities, so the cache never outgrows the alive scenery set by more than one drain interval.
  */
 export function takeSnapshot(world: World, tick: number, events: readonly SimEvent[]): WorldSnapshot {
   const cache = sceneryCloneCache(world);
-  // An overflowed log (a long snapshot-less run) lost its individual evictions — drop everything.
+  // An overflowed log (a long snapshot-less run) lost its individual evictions - drop everything.
   if (world.drainTouched((e) => cache.delete(e))) cache.clear();
   const entities: EntitySnapshot[] = [];
   for (const id of world.canonicalEntities()) {
@@ -102,7 +102,7 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
     const snap = cloneEntity(world, id);
     entities.push(snap);
     // BerryBush joins Resource/Stump as cached scenery: a bush sits unchanged between growth stages, so it is
-    // re-cloned only at the logged moments it changes stage (foraged, bloomed, ripened) — not every frame
+    // re-cloned only at the logged moments it changes stage (foraged, bloomed, ripened) - not every frame
     // like a moving settler. `nextStageAtTick` is an absolute schedule, so a regrowing bush doesn't churn.
     if (world.has(id, Resource) || world.has(id, Stump) || world.has(id, BerryBush)) {
       cache.set(id, snap);
@@ -110,7 +110,7 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
   }
   // SimEvents are plain (Map-free) data, so PlainOf<SimEvent> stays structurally a SimEvent and this
   // single assertion holds. Adding a Map field to an event would lower it to a [k,v] array here and break
-  // this cast — the intended signal that a snapshot consumer can no longer read that field as a Map.
+  // this cast - the intended signal that a snapshot consumer can no longer read that field as a Map.
   return { tick, entities, events: events.map(clonePlain) as readonly SimEvent[] };
 }
 
@@ -145,7 +145,7 @@ export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot 
  * `bigint`, `symbol`, a function) still satisfy this type; `clonePlain` throws on them at runtime.
  */
 type PlainOf<T> = T extends null | undefined | string | number | boolean | bigint | symbol
-  ? T // scalars pass through — including branded primitives (`Entity` is a `number`), which stay numbers at runtime
+  ? T // scalars pass through - including branded primitives (`Entity` is a `number`), which stay numbers at runtime
   : T extends Map<infer K, infer V>
     ? [PlainOf<K>, PlainOf<V>][]
     : T extends readonly (infer E)[]

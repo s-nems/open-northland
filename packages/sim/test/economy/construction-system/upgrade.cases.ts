@@ -20,14 +20,14 @@ import {
 
 /**
  * The MANUAL upgrade lifecycle (the `upgradeBuilding` command): a built chained building re-opens as a
- * construction site — inventory stashed into `Upgrading.savedStock` except bill goods, which seed the
- * build hold (see the `Upgrading` component doc for the why) — is delivered + hammered at the TARGET
+ * construction site - inventory stashed into `Upgrading.savedStock` except bill goods, which seed the
+ * build hold (see the `Upgrading` component doc for the why) - is delivered + hammered at the TARGET
  * tier's own cost (the level difference), and finishes by adopting the target tier, restoring the
  * stash, and emitting `buildingUpgraded`. Source basis: observed original behavior (upgrade re-opens
  * the building as a site with its own build store; occupants keep their bindings); own goods counting
  * toward the upgrade is a named approximation.
  */
-describe('constructionSystem — manual upgrade lifecycle', () => {
+describe('constructionSystem - manual upgrade lifecycle', () => {
   it('re-opens a built home as a site, seeding held bill goods into the hold and stashing the rest', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     // 3 stone + 1 wood of household inventory; the L0->L1 bill is 2 stone.
@@ -37,7 +37,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
 
     const b = sim.world.get(e, Building);
     expect(b.buildingType).toBe(HOME_L0); // still the old tier while the site rises
-    expect(b.built).toBe(0); // a site again — production/housing suspended
+    expect(b.built).toBe(0); // a site again - production/housing suspended
     expect(sim.world.has(e, UnderConstruction)).toBe(true);
     // Bill goods seed the hold up to the bill amount; the surplus and non-bill goods are stashed.
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(2);
@@ -47,7 +47,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(sim.world.get(e, Upgrading).seeded.get(STONE)).toBe(2); // recorded for cancel refund
   });
 
-  it('an upgrade site bills only the DIFFERENCE — the target tier own cost, not the cumulative bill', () => {
+  it('an upgrade site bills only the DIFFERENCE - the target tier own cost, not the cumulative bill', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0);
     sim.enqueue({ kind: 'upgradeBuilding', building: e });
@@ -98,7 +98,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(upgradedEvents(sim)).toEqual([{ kind: 'buildingUpgraded', entity: e, level: 1 }]);
   });
 
-  it('residents keep their Residence through the whole upgrade — occupants are not evicted from the books', () => {
+  it('residents keep their Residence through the whole upgrade - occupants are not evicted from the books', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0);
     const resident = sim.world.create();
@@ -112,9 +112,9 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(sim.world.get(resident, Residence).home).toBe(e); // and after completion
   });
 
-  it('skips a top-tier home, an unbuilt site, and a double-upgrade — recoverable no-ops', () => {
+  it('skips a top-tier home, an unbuilt site, and a double-upgrade - recoverable no-ops', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
-    // Top tier: no upgradeTarget — nothing to rise into.
+    // Top tier: no upgradeTarget - nothing to rise into.
     const top = placeBuiltHome(sim, HOME_L2, 2, { [STONE]: 9 });
     sim.enqueue({ kind: 'upgradeBuilding', building: top });
     // An unbuilt from-scratch site: not a built building yet.
@@ -137,7 +137,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(sim.world.get(home, Stockpile).amounts.get(STONE)).toBe(1);
   });
 
-  it('advances one tier per completed upgrade — reaching L2 takes a second command', () => {
+  it('advances one tier per completed upgrade - reaching L2 takes a second command', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     const e = placeBuiltHome(sim, HOME_L0, 0);
     sim.enqueue({ kind: 'upgradeBuilding', building: e });
@@ -146,7 +146,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     sim.world.get(e, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1);
-    expect(sim.world.has(e, UnderConstruction)).toBe(false); // finished — not rolling into L2 by itself
+    expect(sim.world.has(e, UnderConstruction)).toBe(false); // finished - not rolling into L2 by itself
     expect(sim.world.get(e, Building).built).toBe(ONE);
   });
 
@@ -175,7 +175,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(upgradedEvents(sim)).toEqual([]); // an abort upgrades nothing
   });
 
-  it('cancelUpgrade skips a from-scratch site and a built building — recoverable no-ops', () => {
+  it('cancelUpgrade skips a from-scratch site and a built building - recoverable no-ops', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     // A from-scratch construction site: no previous level to fall back to.
     const site = sim.world.create();
@@ -193,7 +193,7 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(sim.world.get(home, Stockpile).amounts.get(STONE)).toBe(2); // inventory untouched
   });
 
-  it('is deterministic — two same-seed upgrade runs reach the same state hash', () => {
+  it('is deterministic - two same-seed upgrade runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: levelChainContent() });
       const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1 });

@@ -8,22 +8,22 @@ import { join } from 'node:path';
  * marks the culturesnation mod whose readable `.ini` sources the pipeline prefers (golden rule #4).
  */
 
-/** How deep {@link probeGameFolder} scans for a `.lib` — the known archive sits at depth 3. */
+/** How deep {@link probeGameFolder} scans for a `.lib` - the known archive sits at depth 3. */
 const PROBE_MAX_DEPTH = 4;
 
 export interface GameFolderProbe {
-  /** At least one `.lib` archive within {@link PROBE_MAX_DEPTH} — the minimum the unpack stage needs. */
+  /** At least one `.lib` archive within {@link PROBE_MAX_DEPTH} - the minimum the unpack stage needs. */
   readonly hasArchives: boolean;
-  /** Whether `DataCnmd/` (the culturesnation mod, installed in place) is present — if not, the
+  /** Whether `DataCnmd/` (the culturesnation mod, installed in place) is present - if not, the
    * conversion needs an external mod root (`--mod-root`; see `resolveModRoot`). */
   readonly hasMod: boolean;
 }
 
-/** The directory that marks a culturesnation mod root — inside the game folder or an unpacked copy. */
+/** The directory that marks a culturesnation mod root - inside the game folder or an unpacked copy. */
 export const CULTURESNATION_MOD = 'DataCnmd';
 
 /**
- * Probe `dir` as a game-folder candidate. Bounded breadth-first scan (never a full-tree walk — a
+ * Probe `dir` as a game-folder candidate. Bounded breadth-first scan (never a full-tree walk - a
  * wrong pick like the user's home directory must stay cheap); unreadable directories count as empty.
  */
 export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {

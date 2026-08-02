@@ -4,7 +4,7 @@ import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
 
 /**
- * A live-rule toggle widget for the admin panel — a DOM row plus a {@link refresh} that re-reads the sim's
+ * A live-rule toggle widget for the admin panel - a DOM row plus a {@link refresh} that re-reads the sim's
  * current rule state. The needs toggle + fog switcher share this shape: they build a control, enqueue a
  * command on click (never touching sim state), and re-sync their highlight from the sanctioned read when the
  * panel opens (the mount value may predate a scene's own boot toggle, and another surface could flip it).
@@ -15,7 +15,7 @@ export interface LiveToggle {
   refresh(): void;
 }
 
-/** The admin fog switcher's mode buttons — every `FOG_MODE` with a human label. */
+/** The admin fog switcher's mode buttons - every `FOG_MODE` with a human label. */
 const FOG_MODES = [
   { mode: FOG_MODE.OFF, key: 'off' },
   { mode: FOG_MODE.REVEAL, key: 'reveal' },
@@ -23,7 +23,7 @@ const FOG_MODES = [
 ] as const;
 
 /**
- * The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's setNeedsEnabled
+ * The global needs toggle ("wyłącz potrzeby" - user decision 2026-07-11): flips the sim's setNeedsEnabled
  * rule so test units don't starve mid-session. Scenes boot with needs off, maps on; the label tracks the
  * value just requested (the command applies next tick, well before another click can land).
  */

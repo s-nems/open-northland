@@ -41,13 +41,13 @@ import { WorldFog } from './world-fog.js';
 import { WorldMarks } from './world-marks.js';
 
 /**
- * The retained-mode world renderer — a thin orchestrator over the sub-layers it composes. It owns a
+ * The retained-mode world renderer - a thin orchestrator over the sub-layers it composes. It owns a
  * persistent scene graph (never immediate mode; see the package `AGENTS.md`), split across four
  * sub-layers each owning its slice of state:
- *  - {@link TerrainLayer} — the ground, meshed once and drawn per visible block;
- *  - {@link MapObjectLayer} — the decoded map's decor (batched meshes) + tall objects (pooled sprites);
- *  - {@link SpritePool} — a display object per entity, keyed by id and reused across frames;
- *  - {@link HudLayer} — the pinned overlay.
+ *  - {@link TerrainLayer} - the ground, meshed once and drawn per visible block;
+ *  - {@link MapObjectLayer} - the decoded map's decor (batched meshes) + tall objects (pooled sprites);
+ *  - {@link SpritePool} - a display object per entity, keyed by id and reused across frames;
+ *  - {@link HudLayer} - the pinned overlay.
  * A shared {@link TextureCache} memoizes frame→texture across them, and the tall objects + pooled
  * entities share one depth-sorted `spriteLayer` so they interleave in a single painter order. Per frame
  * the *drawn* work is O(visible) with near-zero allocation; the cull itself is still an O(entities)
@@ -59,7 +59,7 @@ export class WorldRenderer {
   private readonly app: Application;
   /** Camera transform lives here; terrain + decor + sprites are its children so one transform pans/zooms all. */
   private readonly worldLayer = new Container();
-  /** The shared, depth-ordered entity layer — holds both pooled entities and tall map objects. */
+  /** The shared, depth-ordered entity layer - holds both pooled entities and tall map objects. */
   private readonly spriteLayer = new Container();
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
@@ -84,10 +84,10 @@ export class WorldRenderer {
   /** The screen-space quads between the world and the HUD (pause wash, post-fx vignette) + the zoom
    *  sampling toggle. See {@link WorldChrome}. */
   private readonly chrome: WorldChrome;
-  /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
+  /** The current map's terrain-height field - lifts the ground mesh + every projected item, and its
    *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
-  /** The details-panel portrait "observation window" — a live cutout of the world re-aimed at the selected
+  /** The details-panel portrait "observation window" - a live cutout of the world re-aimed at the selected
    *  entity, rendered into the panel's box each frame (its own second {@link worldLayer} render). See
    *  {@link PortraitInsetLayer}. */
   private readonly portrait: PortraitInsetLayer;
@@ -128,16 +128,16 @@ export class WorldRenderer {
     // The HUD is pinned (not under the camera), so it's a direct child of the stage.
     app.stage.addChild(this.hud.container);
     // The portrait observation window sits over everything (it fills the details panel's box hole): a
-    // post-main-render screen pass, not a stage child — see {@link PortraitInsetLayer}.
+    // post-main-render screen pass, not a stage child - see {@link PortraitInsetLayer}.
   }
 
-  /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
+  /** Show/hide the paused-game wash - the app's loop control drives this alongside the sim pause. */
   setPaused(paused: boolean): void {
     this.chrome.setPaused(paused);
   }
 
   /**
-   * Set (or clear) this frame's fog-of-war view — the viewer player's per-cell visibility mask
+   * Set (or clear) this frame's fog-of-war view - the viewer player's per-cell visibility mask
    * (`Simulation.fogView`). Drives three things inside the next {@link update}: the fog wash over the
    * ground, the sprite pool's fog cull, and the tall map-object gate. `null` = fog off, every layer
    * reverts to its pre-fog behaviour. Call each frame; the wash itself re-composites only when
@@ -148,14 +148,14 @@ export class WorldRenderer {
   }
 
   /**
-   * (Re)build the cached terrain from a grid — call once per map (a terrain edit re-invalidates). With
+   * (Re)build the cached terrain from a grid - call once per map (a terrain edit re-invalidates). With
    * `textures` it draws the textured ground mesh; without them the flat placeholder ground. See {@link TerrainLayer}.
    */
   setTerrain(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
     // Build the height field once per map (from the `lmhe` lane, or flat when absent). The terrain mesh
     // bakes the lift now; the sprite pool + the cull pad read it each frame in {@link update}. The
     // composed shading lane (`embr` + hillshade) shades the ground inside {@link TerrainLayer.set};
-    // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt —
+    // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt -
     // the measured split, `data/terrain/brightness.ts`). Entity sprites (buildings/settlers) draw
     // unshaded, as the original does.
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
@@ -163,7 +163,7 @@ export class WorldRenderer {
   }
 
   /**
-   * The composed terrain-shading field the ground drew with ({@link TerrainLayer.brightnessField}) —
+   * The composed terrain-shading field the ground drew with ({@link TerrainLayer.brightnessField}) -
    * the one source for anchor-shading landscape objects at load, so an object can't disagree with the
    * ground under it. Neutral (`shaded: false`) until {@link setTerrain} builds a shaded map.
    */
@@ -172,7 +172,7 @@ export class WorldRenderer {
   }
 
   /**
-   * (Re)build the retained landscape-object layers from a decoded map's placements — call once per map,
+   * (Re)build the retained landscape-object layers from a decoded map's placements - call once per map,
    * like {@link setTerrain}. See {@link MapObjectLayer}.
    */
   setMapObjects(objects: readonly MapObjectSprite[]): void {
@@ -187,7 +187,7 @@ export class WorldRenderer {
 
   /**
    * Provide (or clear) the decoded bone-pile art so a death draws the `cadaver human bones` sprite
-   * instead of the procedural pile — the app resolves the atlas ({@link CombatBonesGfx}), the renderer
+   * instead of the procedural pile - the app resolves the atlas ({@link CombatBonesGfx}), the renderer
    * supplies its shared frame→texture cache.
    */
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -195,7 +195,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Provide (or clear) the decoded settler-bubble art ({@link SettlerBubbleGfx} — the `ls_gui_bubbles` page
+   * Provide (or clear) the decoded settler-bubble art ({@link SettlerBubbleGfx} - the `ls_gui_bubbles` page
    * + the frame each kind draws), which the layer reads through the shared frame→texture cache.
    */
   setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
@@ -212,7 +212,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Remove one placed landscape object from the retained static layer — the handover seam: the moment a
+   * Remove one placed landscape object from the retained static layer - the handover seam: the moment a
    * virgin resource node is first worked (felled/mined/picked), its built-once static quad/sprite comes
    * out and the live sprite pool draws the entity from then on (shrinking levels, vanishing on destroy).
    * A no-op for an object the layer doesn't hold.
@@ -274,7 +274,7 @@ export class WorldRenderer {
       SPRITE_CULL_MARGIN + this.elevation.maxLift,
     );
     this.terrain.cull(vp);
-    // Water-surface animation on the interpolated sim clock (deterministic — `?shot` at a fixed tick
+    // Water-surface animation on the interpolated sim clock (deterministic - `?shot` at a fixed tick
     // reproduces byte-identically); one shared uniform write, a no-op on waterless maps.
     this.terrain.animate(tick + alpha);
     const fogFrame = this.fog.update(snapshot, vp);
@@ -297,7 +297,7 @@ export class WorldRenderer {
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),
     });
-    // The marks read what the reconcile above just stamped — see `DrawnGeometry` in `sprite-pool/pick.ts`
+    // The marks read what the reconcile above just stamped - see `DrawnGeometry` in `sprite-pool/pick.ts`
     // for the ordering they depend on.
     this.marks.draw({
       snapshot,
@@ -317,7 +317,7 @@ export class WorldRenderer {
     this.hud.draw(hud);
     this.app.render();
     // The portrait inset is a second, viewport-framed screen render of the world (re-aimed at the
-    // selected unit) painted into the details panel's preview box — after the main render, so it
+    // selected unit) painted into the details panel's preview box - after the main render, so it
     // overpaints the panel as the frame's last pass (portrait-inset.ts explains why it must not be a
     // render-to-texture). It borrows the terrain cull to fill the cutout with the ground around the
     // subject (restored after), flooring the off-map margin with the map's most-common ground tint
@@ -339,7 +339,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Set (or clear) the build-placement dim wash — the visible tile band with the cells a held building
+   * Set (or clear) the build-placement dim wash - the visible tile band with the cells a held building
    * can't anchor on, decided by the sim's placement probe and passed in as plain data. Called each
    * frame while build mode is active and once with `null` when it ends; the layer skips the composite
    * when the frame is unchanged. Takes effect on the next {@link update}'s single `render`.
@@ -349,7 +349,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Set the grey ground plots under placed construction sites (the "plac budowy" decal) — the app passes
+   * Set the grey ground plots under placed construction sites (the "plac budowy" decal) - the app passes
    * every under-construction building's footprint cells (`Simulation.constructionPlots`) each frame; an
    * empty list clears them. The layer skips the redraw when the plot set is unchanged. Takes effect on the
    * next {@link update}'s single `render`.
@@ -359,7 +359,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Set (or clear) the build-placement cursor ghost — the held building's translucent sprite at the
+   * Set (or clear) the build-placement cursor ghost - the held building's translucent sprite at the
    * hovered tile. The app passes `null` when not in build mode, when the cursor is off the map/HUD, or
    * when the hovered anchor is rejected by the placement probe (the original hides the house cursor
    * over blocked ground). A signpost ghost's `player` is the OWNER slot; the session colour mapping
@@ -373,13 +373,13 @@ export class WorldRenderer {
     this.placementGhost.set(mapped, this.elevation);
   }
 
-  /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
+  /** Entities drawn last frame + sprites currently pooled - for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
     return this.pool.stats();
   }
 
   /**
-   * The last {@link update}'s culled, depth-sorted entity draw list (valid until the next update) —
+   * The last {@link update}'s culled, depth-sorted entity draw list (valid until the next update) -
    * the read seam for per-frame consumers like the ground-pile hover targets, which would otherwise
    * rebuild the identical scene from the snapshot a second time each frame.
    */
@@ -389,7 +389,7 @@ export class WorldRenderer {
 
   /**
    * The world-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
-   * on screen. The app's picking uses it for a "click the graphic" hit test — see {@link EntityBounds}.
+   * on screen. The app's picking uses it for a "click the graphic" hit test - see {@link EntityBounds}.
    */
   entityBounds(ref: number): EntityBounds | undefined {
     return this.pool.boundsOf(ref);
@@ -398,14 +398,14 @@ export class WorldRenderer {
   /**
    * Pixel-accurate refinement of {@link entityBounds}: whether the world-px point lands on a solid
    * texel of the entity's drawn sprite, `undefined` when no exact answer exists (not drawn, paletted
-   * mesh, unreadable atlas) — the caller then keeps the box verdict. See `SpritePool.pixelHit`.
+   * mesh, unreadable atlas) - the caller then keeps the box verdict. See `SpritePool.pixelHit`.
    */
   entityPixelHit(ref: number, wx: number, wy: number): boolean | undefined {
     return this.pool.pixelHit(ref, wx, wy);
   }
 
   /**
-   * Set (or clear) the `?debug=geometry` overlay — every placed building's logic geometry (collision
+   * Set (or clear) the `?debug=geometry` overlay - every placed building's logic geometry (collision
    * cells, build-exclusion zone, door node, worker-icon anchor) drawn over the world as plain data the
    * app computed from sim content. Rebuilt only when the building set changes, never per frame.
    */
@@ -414,7 +414,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Set (or clear) the workplace-assignment highlight — the candidate buildings tinted green (a slot the
+   * Set (or clear) the workplace-assignment highlight - the candidate buildings tinted green (a slot the
    * selected settler can take is open) or red (it cannot) while the player is picking a workplace. The app
    * computes the verdict from the snapshot; the tint rides the building sprite in the next
    * {@link update} (see the sprite pool), so the whole building reads faintly green/red.

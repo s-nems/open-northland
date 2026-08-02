@@ -8,7 +8,7 @@ This lets crews approach any side without treating the finished building's door 
 position, but the original pins per-building stand cells.
 
 **Source basis:** verified `[GfxHouse]` records carry
-`LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` — 3745 rows across 165 records in
+`LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` - 3745 rows across 165 records in
 `Cultures 8th Wonder/EdytorByRemik/ejkfhsnkjehbhouses.ini`, co-located with the
 `LogicWalkBlockArea`/`LogicDoorPoint` keys the pipeline already parses, same run encoding. The
 pipeline's `extractBuildingFootprints` (`tools/asset-pipeline/src/decoders/ini/buildings-gfx/structure.ts`,
@@ -29,6 +29,6 @@ original before trusting it.
 ## Verify
 
 - Pipeline extraction test on a synthetic `[GfxHouse]` fixture + real pipeline run.
-- `packages/sim/test/settlers/spacing.test.ts` builder-slot cases; **golden moves — builder stand cells change;
+- `packages/sim/test/settlers/spacing.test.ts` builder-slot cases; **golden moves - builder stand cells change;
   name the mechanic in the commit**.
-- A construction-site scene: stand cells hug the site's footprint — **user's eyes**.
+- A construction-site scene: stand cells hug the site's footprint - **user's eyes**.

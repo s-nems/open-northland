@@ -10,7 +10,7 @@ import { BUILDING_WATCHTOWER, WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/san
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
- * Property invariants over the REAL generated IR + its sim-ready merge — the class of break the
+ * Property invariants over the REAL generated IR + its sim-ready merge - the class of break the
  * synthetic fixture cannot catch (schema-valid output that is economically dead: a zeroed balance
  * nobody overlays, a field good that neither farms nor produces, a good no trade may harvest).
  * Schema shape and raw cross-references are already `parseContentSet`'s job; everything here is a
@@ -22,7 +22,7 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 // absence means the extraction dropped a core table, not that the mod changed.
 const CORE_GOOD_IDS = ['wood', 'stone', 'wheat'] as const;
 
-// Goods with a deliberately numbers-free balance entry — known open calibration work, pinned here so
+// Goods with a deliberately numbers-free balance entry - known open calibration work, pinned here so
 // the dead-balance invariant names exactly the accepted gaps and any NEW dead good still fails
 // (mushroom: docs/tickets/app/herb-mushroom-field-farming.md).
 const KNOWN_UNCALIBRATED_GOOD_IDS: readonly string[] = ['mushroom'];
@@ -40,7 +40,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   it('every weapon-good slug the spawn/render tables key on exists in the real goods', async () => {
     // `weaponEquipmentFor` makes an unresolvable slug a silent unarmed spawn and the render's
     // equipped-weapon body join skips unknown slugs, so a pipeline slug rename (say, fixing the
-    // `sword_shord` typo) would quietly bring back the empty-Broń-socket bug — this fails it loudly.
+    // `sword_shord` typo) would quietly bring back the empty-Broń-socket bug - this fails it loudly.
     const { real } = await loadContentUnderTest();
     const ids = new Set(real.goods.map((g) => g.id));
     const slugs = new Set([
@@ -53,7 +53,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {
     // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicle-yard-construction.md);
     // the strip keys on the goodtype↔vehicletype slug identity, so a slug drift would silently bring
-    // handcarts back as loaves of bread — this pins the regenerated IR.
+    // handcarts back as loaves of bread - this pins the regenerated IR.
     const { real } = await loadContentUnderTest();
     const vehicleIds = new Set(real.vehicles.map((v) => v.id));
     expect(vehicleIds.size).toBeGreaterThan(0); // the real data ships carts/ships/catapult
@@ -65,7 +65,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('every merged gathered good is calibrated or reported as a gap — never silently dead', async () => {
+  it('every merged gathered good is calibrated or reported as a gap - never silently dead', async () => {
     const { merge } = await loadContentUnderTest();
     const reported = new Set(merge.unbalancedGoods);
     for (const good of merge.content.goods) {
@@ -75,13 +75,13 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
         // so the entry is removed in the same change that calibrates it.
         expect(
           good.gathering.yieldPerNode === 0 && good.gathering.depositSize === 0,
-          `'${good.id}' is calibrated now — drop it from KNOWN_UNCALIBRATED_GOOD_IDS`,
+          `'${good.id}' is calibrated now - drop it from KNOWN_UNCALIBRATED_GOOD_IDS`,
         ).toBe(true);
         continue;
       }
       // The pipeline emits zeroed gathering balance (no readable constants); the merge overlays the
       // clean-room pins. Calibration means a per-node yield (felled/plucked goods) or a deposit size
-      // (mined goods, e.g. mud) — a good with neither could never bank a single unit.
+      // (mined goods, e.g. mud) - a good with neither could never bank a single unit.
       expect(
         good.gathering.yieldPerNode > 0 || good.gathering.depositSize > 0,
         `good '${good.id}' merged to a dead gathering balance (no yield, no deposit)`,
@@ -89,13 +89,13 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     }
   });
 
-  it('every field-farmed good has a farming block or is reported as a gap — never silently barren', async () => {
+  it('every field-farmed good has a farming block or is reported as a gap - never silently barren', async () => {
     const { merge } = await loadContentUnderTest();
     const reported = new Set(merge.unfarmedFieldGoods);
     for (const good of merge.content.goods) {
       if (!hasFieldFarmAtomics(good)) continue;
       // A field good ships no recipe (grown, not made); without a farming block it neither
-      // field-farms nor produces — the class of the field-farmed-recipe regression.
+      // field-farms nor produces - the class of the field-farmed-recipe regression.
       expect(
         good.farming !== undefined || reported.has(good.id),
         `field good '${good.id}' has no farming block and is not surfaced as a gap`,
@@ -156,7 +156,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     // The whole upgrade mechanic hangs on this optional lane (`upgradeTierOf`, the HUD Upgrade button);
     // a pipeline regression dropping it would fail no schema check and silently delete the feature.
     // One pinned link per leveled kind (stable string ids), plus the wonders staying unchained (each
-    // record maps every size level to its own typeId — a self-link the extractor skips).
+    // record maps every size level to its own typeId - a self-link the extractor skips).
     const { real } = await loadContentUnderTest();
     const byId = new Map(real.buildings.map((b) => [b.id, b]));
     const links = [
@@ -177,7 +177,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   it('every upgradeTarget link shares its familyBody and reserved footprint', async () => {
     // The sim's placement-blocker memos key on Building MEMBERSHIP generations only, resting on the
     // invariant that `familyBody`/`reserved` are identical across a type's whole level chain (an upgrade
-    // swaps `buildingType` in place — a value write the memo keys don't see). A chain link resolved from
+    // swaps `buildingType` in place - a value write the memo keys don't see). A chain link resolved from
     // records with different family footprints would serve stale placement answers after an upgrade.
     const { real } = await loadContentUnderTest();
     const byTypeId = new Map(real.buildings.map((b) => [b.typeId, b]));
@@ -205,7 +205,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     // The deposit ladder rests on this: a map placement's deposit is sized by `LogicMaximumValency`
     // (`map-spawn.ts` `withRecordDeposit`) while the static object layer indexes the record's own frame
     // lists, so a record where the two disagree puts the sprite pool and the static layer on different
-    // frames for the same placement — a deposit that jumps state the moment a settler first works it.
+    // frames for the same placement - a deposit that jumps state the moment a settler first works it.
     const ir = rawIrUnderTest() as {
       landscapeGfx?: readonly {
         index: number;
@@ -229,7 +229,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
         ).toBe(record.frames?.length);
       }
     }
-    expect(checked, 'no mined harvest records found — the pipeline lane went missing').toBeGreaterThan(0);
+    expect(checked, 'no mined harvest records found - the pipeline lane went missing').toBeGreaterThan(0);
   });
 
   it('every player slot resolves its ls_temp building-sign records', () => {

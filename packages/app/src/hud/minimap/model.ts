@@ -9,19 +9,19 @@ import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The pure half of the minimap (no Pixi, no DOM — headlessly unit-tested): the bottom-left window
+ * The pure half of the minimap (no Pixi, no DOM - headlessly unit-tested): the bottom-left window
  * layout inside the original braided frame, the world↔minimap linear projection, the terrain colour
  * raster and the camera-viewport rectangle. "World" here is the renderer's projected px space before
- * the camera transform (`tileToScreen` / `screen = world*scale + offset` — see render's `iso.ts`), so
+ * the camera transform (`tileToScreen` / `screen = world*scale + offset` - see render's `iso.ts`), so
  * the minimap is a uniform downscale of the on-screen world: clicks, dots and the view rectangle all
  * share one linear mapping.
  */
 
 /**
  * The original overview-window frame's native geometry (source basis: measured from the decoded
- * `ls_gui_window` bob 55 — the braided frame carries ornament along its top+right only and its hole
+ * `ls_gui_window` bob 55 - the braided frame carries ornament along its top+right only and its hole
  * runs flush to the left/bottom edges, so the original pinned this window to the screen's bottom-left
- * corner exactly where ours sits). `inner` is the near-black map hole the picture draws in — a
+ * corner exactly where ours sits). `inner` is the near-black map hole the picture draws in - a
  * ~square window, letterboxed when the map's aspect differs.
  */
 export const FRAME_NATIVE = {
@@ -31,10 +31,10 @@ export const FRAME_NATIVE = {
 } as const;
 
 /**
- * Extra drawn px per native frame px at UI scale 1 — the knob that sizes the whole window. At the
+ * Extra drawn px per native frame px at UI scale 1 - the knob that sizes the whole window. At the
  * default 1.4 UI scale the map hole comes out ≈244 px. NAMED DIVERGENCE: the original drew its GUI art
  * 1:1, so this frame renders 1.5× larger relative to the rest of the HUD than the original's
- * proportions — a deliberate readability choice for modern screen sizes (user-approved size).
+ * proportions - a deliberate readability choice for modern screen sizes (user-approved size).
  */
 export const MINIMAP_ART_SCALE = 1.5;
 
@@ -42,13 +42,13 @@ export const MINIMAP_ART_SCALE = 1.5;
 export interface MinimapLayout {
   /** The whole framed window (the braided frame's outer box), pinned to the bottom-left corner. */
   readonly panel: Rect;
-  /** The frame's map hole — the black window the ground/bars fill. */
+  /** The frame's map hole - the black window the ground/bars fill. */
   readonly inner: Rect;
   /** The map picture itself, aspect-fitted and centred inside `inner` (letterboxed bars around it). */
   readonly map: Rect;
-  /** Minimap px per world px (uniform — the map never distorts). */
+  /** Minimap px per world px (uniform - the map never distorts). */
   readonly scale: number;
-  /** Drawn px per native frame px — the frame art's placement scale. */
+  /** Drawn px per native frame px - the frame art's placement scale. */
   readonly artScale: number;
 }
 
@@ -77,8 +77,8 @@ export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
 /**
  * Lay the framed window out against the live screen: the frame is a fixed size (native × `uiscale`,
  * clamped ≥1, × {@link MINIMAP_ART_SCALE}) pinned flush to the bottom-left corner (the original frame's
- * flush hole edges — see {@link FRAME_NATIVE}); the map is aspect-fitted into the hole with letterbox
- * bars. Only the screen height matters; recomputed per frame (the tool-panel convention — no resize
+ * flush hole edges - see {@link FRAME_NATIVE}); the map is aspect-fitted into the hole with letterbox
+ * bars. Only the screen height matters; recomputed per frame (the tool-panel convention - no resize
  * listener).
  */
 export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
@@ -136,7 +136,7 @@ export function pointOverMinimap(layout: MinimapLayout, x: number, y: number): b
   return contains(layout.panel, x, y);
 }
 
-/** True when the point lies in the map hole — where a click means "jump there" (braid clicks don't). */
+/** True when the point lies in the map hole - where a click means "jump there" (braid clicks don't). */
 export function pointOverMinimapHole(layout: MinimapLayout, x: number, y: number): boolean {
   return contains(layout.inner, x, y);
 }
@@ -155,7 +155,7 @@ export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-/** The cell grid the raster samples — the render `SceneTerrain` sub-shape it actually reads. */
+/** The cell grid the raster samples - the render `SceneTerrain` sub-shape it actually reads. */
 export interface TerrainCells {
   readonly width: number;
   readonly height: number;
@@ -164,7 +164,7 @@ export interface TerrainCells {
 
 /**
  * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
- * the buffer edges — the per-tick unit/building dot write. Writing pixels into one retained buffer
+ * the buffer edges - the per-tick unit/building dot write. Writing pixels into one retained buffer
  * (re-uploaded in place) replaces a per-tick Graphics rebuild: hundreds of dot rects re-tessellated at
  * 12 Hz were a measured steady allocation churn site, a raster write allocates nothing.
  */
@@ -222,11 +222,11 @@ export function fillFogAlpha(fog: FogCells, rgba: Uint8Array): void {
 }
 
 /**
- * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) — built once
+ * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) - built once
  * per map (terrain is static) and uploaded as the minimap's ground texture. Each pixel samples the cell
  * diamond containing its world point: candidate centres on the two nearest rows (odd rows staggered half
  * a cell right, matching `tileToScreen`), picked by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H`
- * (≤ 1 ⇔ inside the diamond — the diamonds tile the plane, so the minimum is the containing cell).
+ * (≤ 1 ⇔ inside the diamond - the diamonds tile the plane, so the minimum is the containing cell).
  * `colourOfCell` maps the winning cell (row-major index + its typeId) to `0xRRGGBB`.
  */
 export function rasterizeTerrain(
@@ -246,7 +246,7 @@ export function rasterizeTerrain(
       let bestCol = 0;
       let bestRow = 0;
       let bestDist = Number.POSITIVE_INFINITY;
-      // The two candidate rows, unrolled (no per-pixel array) — this loop runs once per raster px.
+      // The two candidate rows, unrolled (no per-pixel array) - this loop runs once per raster px.
       for (let candidate = 0; candidate < 2; candidate++) {
         const clampedRow = Math.min(terrain.height - 1, Math.max(0, rowLo + candidate));
         const stagger = clampedRow % 2 === 0 ? 0 : 1; // odd rows sit half a cell right (tileToScreen)

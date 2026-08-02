@@ -12,7 +12,7 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
- * The REST SPOT rule — where a tired settler beds down. The original's settlers step off the workplace
+ * The REST SPOT rule - where a tired settler beds down. The original's settlers step off the workplace
  * doorstep into open ground before lying down (observed original), so a rest spot must be clear of
  * buildings/resources AND of their immediate ring, and free of other resting settlers.
  *
@@ -35,7 +35,7 @@ function nodeAt(sim: Simulation, cx: number, cy: number): NodeId {
   return terrainOf(sim).nodeAt(anchor.hx, anchor.hy);
 }
 
-/** One walkable neighbour of `node` — the stand-in for a building body abutting a settler. */
+/** One walkable neighbour of `node` - the stand-in for a building body abutting a settler. */
 function aNeighbourOf(sim: Simulation, node: NodeId): NodeId {
   const [first] = terrainOf(sim).walkableNeighbours(node);
   if (first === undefined) throw new Error('rest-spot test: node has no walkable neighbour');
@@ -68,14 +68,14 @@ function simWithMap(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(MAP_W, MAP_H) });
 }
 
-/** Every walkable neighbour of `node` that the overlay blocks — zero means the node is out in the open. */
+/** Every walkable neighbour of `node` that the overlay blocks - zero means the node is out in the open. */
 function blockedNeighbourCount(sim: Simulation, node: NodeId, blocked: ReadonlySet<NodeId>): number {
   return terrainOf(sim)
     .walkableNeighbours(node)
     .filter((n) => blocked.has(n)).length;
 }
 
-describe('restingCell — choosing where to lie down', () => {
+describe('restingCell - choosing where to lie down', () => {
   it('keeps a settler already in the open on the spot (so an arriving sleeper actually beds down)', () => {
     const sim = simWithMap();
     const e = tiredAt(sim, 3, 2);
@@ -86,7 +86,7 @@ describe('restingCell — choosing where to lie down', () => {
     expect(bed).toBe(here);
   });
 
-  it('steps off a doorstep — a node with a blocked neighbour is no bed', () => {
+  it('steps off a doorstep - a node with a blocked neighbour is no bed', () => {
     const sim = simWithMap();
     const e = tiredAt(sim, 3, 2);
     const here = nodeAt(sim, 3, 2);
@@ -127,7 +127,7 @@ describe('restingCell — choosing where to lie down', () => {
     expect(bedA).not.toBe(bedB);
   });
 
-  it('honours a signpost confinement — a bed outside the allowed area is skipped', () => {
+  it('honours a signpost confinement - a bed outside the allowed area is skipped', () => {
     const sim = simWithMap();
     const e = tiredAt(sim, 3, 2);
     const here = nodeAt(sim, 3, 2);
@@ -162,7 +162,7 @@ describe('restingCell — choosing where to lie down', () => {
   });
 });
 
-describe('sleep drive — walking aside before bedding down', () => {
+describe('sleep drive - walking aside before bedding down', () => {
   /** Run the needs ladder for the settler standing on `here`, with a pre-seeded spacing state (the
    *  planner builds its own per tick; this test pins the walk-block instead of growing footprints). */
   function runNeeds(sim: Simulation, e: Entity, here: NodeId, spacing: PlannerSpacing): boolean {

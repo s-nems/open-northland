@@ -14,11 +14,11 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 
 /**
- * The per-player SIGNPOST NETWORK — which signposts exist, where, and which belong to one connected
+ * The per-player SIGNPOST NETWORK - which signposts exist, where, and which belong to one connected
  * group. Two same-player signposts are connected iff their navigation circles OVERLAP (world-metric
  * distance ≤ the sum of their `navRadius`), and connectivity is transitive: the original's rule that
  * signposts must stay linked for settlers to travel between them ("Make sure the signposts are always
- * connected!" — tutorial_001 briefing, source basis). Two groups on opposite map sides never merge, so
+ * connected!" - tutorial_001 briefing, source basis). Two groups on opposite map sides never merge, so
  * a settler cannot cross between them.
  */
 export interface SignpostSite {
@@ -37,7 +37,7 @@ interface NetworkMemo {
   byPlayer: ReadonlyMap<number, readonly SignpostSite[]>;
 }
 
-/** Per-world memo of the network, keyed by the Signpost store's add/remove generation — signposts never
+/** Per-world memo of the network, keyed by the Signpost store's add/remove generation - signposts never
  *  move or mutate once erected, so the memo can only be invalidated by an erect/tear-down. A coherence
  *  verifier re-derives it on invariant-checked runs (the `cachesCoherent` contract for derived state
  *  that feeds sim decisions). */
@@ -45,7 +45,7 @@ const networkMemo = new WeakMap<World, NetworkMemo>();
 const verifierRegistered = new WeakSet<World>();
 
 function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]> {
-  // Collect per player in canonical (ascending entity id) order — group labels derive from ids, so the
+  // Collect per player in canonical (ascending entity id) order - group labels derive from ids, so the
   // result is independent of store insertion history.
   const perPlayer = new Map<
     number,
@@ -67,7 +67,7 @@ function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]
   }
   const byPlayer = new Map<number, readonly SignpostSite[]>();
   for (const [player, posts] of perPlayer) {
-    // Union-find over this player's posts: connected iff the nav circles overlap. O(n²) pairs — a
+    // Union-find over this player's posts: connected iff the nav circles overlap. O(n²) pairs - a
     // player's signposts number in the dozens, and this runs only when one is erected/torn down.
     const parent = posts.map((_, i) => i);
     const find = (i: number): number => {
@@ -127,21 +127,21 @@ function verifyNetwork(world: World): string[] {
   if (cached === undefined || cached.version !== world.componentGeneration(Signpost)) return [];
   const fresh = buildNetwork(world);
   if (JSON.stringify([...fresh]) !== JSON.stringify([...cached.byPlayer])) {
-    return ['signpostNetwork memo is stale — a Signpost mutation missed the component generation'];
+    return ['signpostNetwork memo is stale - a Signpost mutation missed the component generation'];
   }
   return [];
 }
 
 /**
- * One settler's navigation confinement — a {@link SpatialGate}: the union of its LOCAL circle (radius
+ * One settler's navigation confinement - a {@link SpatialGate}: the union of its LOCAL circle (radius
  * {@link LOCAL_NAV_RADIUS_NODES} around where it stands) and the nav circles of every signpost group it
- * can reach — a group is reachable iff some member's circle intersects the settler's local circle. The
+ * can reach - a group is reachable iff some member's circle intersects the settler's local circle. The
  * whole of the user-facing rule keys on `allowsNode`: a gatherer only harvests, a worker only fetches, a
  * builder only builds, and a move order only walks to an allowed node; `bounds` lets the searches shrink
  * their scans to the confined area.
  *
  * Named approximation: the local circle travels WITH the settler (re-centred on every query), so
- * repeated in-circle hops can walk a unit — and drift an autonomous worker — arbitrarily far outside the
+ * repeated in-circle hops can walk a unit - and drift an autonomous worker - arbitrarily far outside the
  * network, one local radius at a time. The original's anchor for "near where I am allowed to be" is not
  * decoded; anchoring the circle to something stationary is the open follow-up
  * (docs/tickets/sim/signpost-local-circle-anchor.md).
@@ -175,8 +175,8 @@ const limitMemo = new WeakMap<World, LimitMemo>();
 
 /**
  * The navigation limit confining settler `e`, or `null` when it is UNLIMITED: signpost navigation off
- * (the default — every pre-signpost world), a mapless sim, a non-settler/unowned target, or an exempt
- * job — the scout and every fighter roam globally (source basis: observed original behaviour; the
+ * (the default - every pre-signpost world), a mapless sim, a non-settler/unowned target, or an exempt
+ * job - the scout and every fighter roam globally (source basis: observed original behaviour; the
  * user-specified rule set).
  *
  * Memoized per settler ({@link LimitMemoEntry} holds the key semantics). The

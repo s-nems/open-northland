@@ -32,7 +32,7 @@ describe('resolveJobAtomics', () => {
     const map = resolveJobAtomics([
       job(6, { allowedAtomics: [10, 12, 20] }),
       job(31, { allowedAtomics: [81], forbiddenAtomics: [12, 20], baseJob: 6 }),
-      job(32, { baseJob: 31 }), // grants nothing of its own — its set is its base's
+      job(32, { baseJob: 31 }), // grants nothing of its own - its set is its base's
     ]);
     expect(setOf(map, 31)).toEqual([10, 81]);
     expect(setOf(map, 32)).toEqual([10, 81]);

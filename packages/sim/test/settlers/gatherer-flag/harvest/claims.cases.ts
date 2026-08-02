@@ -14,10 +14,10 @@ import {
 
 /**
  * One digger per resource node at a time (user-specified rule, 2026-07-16): a crew converging on one
- * camp spreads over its free nodes — a node under a colleague's live harvest atomic is claimed and the
+ * camp spreads over its free nodes - a node under a colleague's live harvest atomic is claimed and the
  * next gatherer picks another; when no free node remains the surplus waits instead of crowding a swing.
  */
-describe('flag gatherers — one digger per node (harvest claims)', () => {
+describe('flag gatherers - one digger per node (harvest claims)', () => {
   /** The resource entity each settler's live harvest atomic targets, or null. */
   function harvestTargetOf(sim: Simulation, e: Entity): Entity | null {
     const atomic = sim.world.tryGet(e, CurrentAtomic);
@@ -26,7 +26,7 @@ describe('flag gatherers — one digger per node (harvest claims)', () => {
 
   it('a crew on one camp never runs two simultaneous harvests of the same node', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(40, 8) });
-    // Three trees in a row, four woodcutters bound to one flag beside them — one more digger than nodes.
+    // Three trees in a row, four woodcutters bound to one flag beside them - one more digger than nodes.
     const trees = [
       placeFellableTree(sim, 8, 2),
       placeFellableTree(sim, 10, 2),
@@ -55,7 +55,7 @@ describe('flag gatherers — one digger per node (harvest claims)', () => {
     expect(remaining < trees.length || groundHeapWood(sim) > 0).toBe(true);
   });
 
-  it('with one free node, exactly one gatherer ever digs it — the surplus never joins the swing', () => {
+  it('with one free node, exactly one gatherer ever digs it - the surplus never joins the swing', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(30, 6) });
     const tree = placeFellableTree(sim, 10, 2);
     const crew: Entity[] = [];
@@ -64,7 +64,7 @@ describe('flag gatherers — one digger per node (harvest claims)', () => {
       bindToFlag(sim, g, 7, 2, WIDE_RADIUS);
       crew.push(g);
     }
-    // Assert the one-digger rule every tick AND witness digging actually starting — a fixture change
+    // Assert the one-digger rule every tick AND witness digging actually starting - a fixture change
     // that stalls the walk past the budget must fail here, not silently void the ≤1 assertion. The
     // surplus is not pinned to a spot: while one digs, the others legitimately collect its chips (the
     // pile-collection rung), so the claim rule is exactly "never two swings on one node".

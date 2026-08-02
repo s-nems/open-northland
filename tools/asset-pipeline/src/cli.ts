@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Asset pipeline CLI — offline conversion of an owned original game copy into the IR (content/).
+ * Asset pipeline CLI - offline conversion of an owned original game copy into the IR (content/).
  *
  *   npm run pipeline -- --game "../Cultures 8th Wonder" --out content
  *
@@ -21,10 +21,10 @@ import { runPipeline } from './run.js';
 // imports this module for parseArgs/pcxToPng/convertPcxTree.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   // Resolve relative --game/--out against where `npm run` was invoked (repo root), not the workspace
-  // package dir npm sets as cwd — see resolveArgs. Fall back to cwd for a bare `node dist/cli.js`.
+  // package dir npm sets as cwd - see resolveArgs. Fall back to cwd for a bare `node dist/cli.js`.
   const baseDir = process.env.INIT_CWD ?? process.cwd();
   const args = resolveArgs(parseArgs(process.argv.slice(2)), baseDir);
-  // A symlinked out (a worktree sharing the primary's content/) would be clobbered in place — refuse.
+  // A symlinked out (a worktree sharing the primary's content/) would be clobbered in place - refuse.
   assertOutStaysInCheckout(args.out, baseDir);
   runPipeline(args).catch((err: unknown) => {
     console.error('[pipeline] failed:', err);

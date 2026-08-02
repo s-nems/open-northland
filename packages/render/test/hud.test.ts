@@ -5,12 +5,12 @@ import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
 /**
- * Unit tests for the pure HUD-model layer — the part of the HUD an agent can self-verify (the pixels
+ * Unit tests for the pure HUD-model layer - the part of the HUD an agent can self-verify (the pixels
  * are deferred to a human). They pin the aggregation a human eyeball would otherwise have to total by
  * hand: population, the per-job head-count breakdown (incl. the idle sentinel), and per-good stock sums.
  *
  * A `WorldSnapshot` is plain data (no class instances; a `Stockpile` Map is already a sorted [k,v]
- * array), so we hand-build one here rather than spinning up a Simulation — this stays a render-package
+ * array), so we hand-build one here rather than spinning up a Simulation - this stays a render-package
  * unit, mirroring scene/build-scene.test.ts.
  */
 
@@ -35,7 +35,7 @@ describe('buildHud', () => {
         settler(1, 0, 5),
         settler(2, 0, null),
         settler(3, 0, 1), // a baby (age-class id)
-        settler(4, 1, 5), // other tribe — excluded
+        settler(4, 1, 5), // other tribe - excluded
       ]),
       0,
     );
@@ -78,9 +78,9 @@ describe('buildHud', () => {
         ]),
         store(2, 0, [
           [2, 4],
-          [9, 0], // a real-but-empty slot — nets to zero, omitted
+          [9, 0], // a real-but-empty slot - nets to zero, omitted
         ]),
-        store(3, 1, [[2, 99]]), // other tribe — excluded
+        store(3, 1, [[2, 99]]), // other tribe - excluded
       ]),
       0,
     );
@@ -106,7 +106,7 @@ describe('buildHud', () => {
 });
 
 /**
- * Unit tests for the pure HUD *layout* layer — the bridge from the HUD data ({@link buildHud}) to its
+ * Unit tests for the pure HUD *layout* layer - the bridge from the HUD data ({@link buildHud}) to its
  * pixels, exactly as {@link buildScene}'s positioned draw list is for the world scene. They pin the
  * load-bearing layout a human would otherwise eyeball: which line is emitted, in what order, and at
  * what panel-relative `(x, y)`. The typography (font/colour) is the human-judged half and not tested.
@@ -170,14 +170,14 @@ describe('layoutHud', () => {
     expect(busy.width).toBe(empty.width); // width is a fixed column, height grows with content
   });
 
-  it('is byte-identical for the same model (deterministic — never reshuffles between equal frames)', () => {
+  it('is byte-identical for the same model (deterministic - never reshuffles between equal frames)', () => {
     const m = model({ tick: 3, jobs: [{ jobType: 1, count: 2 }], stocks: [{ goodType: 9, amount: 5 }] });
     expect(layoutHud(m, LABELS)).toEqual(layoutHud(m, LABELS));
   });
 });
 
 /**
- * Unit tests for the pure HUD *placement* layer — the last self-verifiable decision before the GPU:
+ * Unit tests for the pure HUD *placement* layer - the last self-verifiable decision before the GPU:
  * where on the canvas each panel row lands (the screen-space analogue of `terrainMapToScene`). The
  * Pixi draw (`renderHud`) is the un-self-verifiable glyph half a human judges and is not tested here.
  */

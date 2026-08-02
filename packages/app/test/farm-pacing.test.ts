@@ -14,23 +14,23 @@ import {
 import { createSceneSim } from '../src/scenes/runtime.js';
 
 /**
- * Farm PACING over the shipped clean-room balance (`catalog/farming.ts`) — the shape measured in the
+ * Farm PACING over the shipped clean-room balance (`catalog/farming.ts`) - the shape measured in the
  * running original, which the field loop is calibrated to:
  *
  *  - throughput is LINEAR in the crew (~10 grain per farmer per 10 minutes), because every growth stage
  *    costs a watering, so a grain costs farmer labor rather than wall-clock time,
- *  - the plot holds ~20–25 standing plants for ANY crew size — its size is the FARM's, not the crew's,
+ *  - the plot holds ~20–25 standing plants for ANY crew size - its size is the FARM's, not the crew's,
  *  - and it ripens continuously, never emptying into one mass harvest (the per-field growth spread).
  *
  * This measures an IDEALIZED farm: flat grass, an always-hungry sink, no hunger or sleep. It runs ~20%
- * above the original's rate for that reason, so the bands below pin the SHAPE — linearity, plot size,
- * continuity — not an exact grain count. A change that breaks the shape (a growth gate, a priority swap,
+ * above the original's rate for that reason, so the bands below pin the SHAPE - linearity, plot size,
+ * continuity - not an exact grain count. A change that breaks the shape (a growth gate, a priority swap,
  * a crew-scaled plot) fails here; a 20% tuning drift deliberately does not.
  */
 
 const { Building, Crop, Stockpile } = components;
 
-/** 10 minutes of game time at the sim's 12 ticks/s — the window the original was measured over. */
+/** 10 minutes of game time at the sim's 12 ticks/s - the window the original was measured over. */
 const TEN_MINUTES = 10 * 60 * 12;
 /** Ticks the farm spends ploughing and first-watering its plot; measurement starts after it. */
 const WARMUP_TICKS = TEN_MINUTES;
@@ -68,7 +68,7 @@ function measure(farmers: number): Measured {
     },
   });
 
-  // Empty every building store each tick — a stand-in for the mill and granary a real settlement feeds.
+  // Empty every building store each tick - a stand-in for the mill and granary a real settlement feeds.
   // Without it the farm's own wheat slot fills and the store-full pause throttles what we are measuring.
   // Ground piles are left alone: those are loads in transit, not delivered output.
   let grain = 0;
@@ -134,19 +134,19 @@ describe('farm pacing against the original', { timeout: PACING_RUN_TIMEOUT_MS },
   };
   const rateOf = (crew: number): number => runOf(crew).grain / crew;
 
-  it('every farmer adds its own ~10 grain per 10 minutes — throughput is the crew, not a timer', () => {
+  it('every farmer adds its own ~10 grain per 10 minutes - throughput is the crew, not a timer', () => {
     for (const crew of CREWS) {
       expect(rateOf(crew), `${crew} farmer(s)`).toBeGreaterThanOrEqual(8);
       expect(rateOf(crew), `${crew} farmer(s)`).toBeLessThanOrEqual(15);
     }
-    // A full crew never collapses to a lone farmer's rate — the plot is not a growth-capped timer that
+    // A full crew never collapses to a lone farmer's rate - the plot is not a growth-capped timer that
     // extra hands queue behind. The band is one-sided on purpose: a LONE farmer currently runs ~25% below
     // the per-farmer rate of crews 2-4 (it cannot re-water 24 fields inside a stage), so the ladder is
     // not the straight line the original measures.
     expect(rateOf(4) / rateOf(1)).toBeGreaterThan(0.8);
   });
 
-  it("the plot holds ~20-25 plants for ANY crew size — its size is the farm's, not the crew's", () => {
+  it("the plot holds ~20-25 plants for ANY crew size - its size is the farm's, not the crew's", () => {
     for (const crew of CREWS) {
       const run = runOf(crew);
       expect(run.peakFields, `${crew} farmer(s)`).toBe(FARM_MAX_FIELDS);

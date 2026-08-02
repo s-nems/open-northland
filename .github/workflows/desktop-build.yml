@@ -2,7 +2,7 @@ name: Desktop build
 
 # Manually-dispatched installer build: run it from the Actions tab against main (optionally an
 # older commit via the `commit` input). Each OS builds its own installers natively, then `publish`
-# collects them into a `build-<short-sha>` prerelease — release assets are plain public download
+# collects them into a `build-<short-sha>` prerelease - release assets are plain public download
 # links, unlike workflow artifacts which require a GitHub login. There is no semver release train
 # yet; the version IS the commit (0.0.0-<short-sha>), stamped via electron-builder extraMetadata.
 on:
@@ -79,10 +79,10 @@ jobs:
             # Quoted heredoc + sed keeps the markdown literal (backticks, fences) with only the
             # sha substituted.
             sed "s/@SHA@/$sha/" > notes.md <<'EOF'
-          Unsigned development build of commit @SHA@ — code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
+          Unsigned development build of commit @SHA@ - code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
 
           - **Windows:** SmartScreen warns about an unknown publisher; choose "More info" → "Run anyway".
-          - **macOS:** Gatekeeper refuses to open the unsigned app — on Apple Silicon as a misleading "damaged, move to Trash" dialog. The app is fine; after copying OpenNorthland.app to Applications, clear the download quarantine flag and launch again:
+          - **macOS:** Gatekeeper refuses to open the unsigned app - on Apple Silicon as a misleading "damaged, move to Trash" dialog. The app is fine; after copying OpenNorthland.app to Applications, clear the download quarantine flag and launch again:
 
             ```sh
             xattr -cr /Applications/OpenNorthland.app

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 /**
- * Where the desktop shell keeps its writable state — the pipeline's `content/` output (~1.2 GB on
+ * Where the desktop shell keeps its writable state - the pipeline's `content/` output (~1.2 GB on
  * the real game) and `desktop-config.json`. Following the OpenRA/OpenTTD convention the app dir
  * stays read-only and data lives per-user, with a `portable-data/` marker dir beside the executable
  * overriding that for a self-contained install.
@@ -10,7 +10,7 @@ import { join } from 'node:path';
 /** The marker directory next to the executable that switches the shell to portable mode. */
 export const PORTABLE_DIR_NAME = 'portable-data';
 
-/** Env override for the data root — the wizard/e2e test seam (a dev checkout otherwise boots into the repo's own content). */
+/** Env override for the data root - the wizard/e2e test seam (a dev checkout otherwise boots into the repo's own content). */
 export const DATA_DIR_ENV = 'OPEN_NORTHLAND_DATA_DIR';
 
 export interface DataRootInputs {
@@ -44,7 +44,7 @@ export function resolveDataRoot(inputs: DataRootInputs): DataRoot {
   return { path: inputs.userDataDir, portable: false };
 }
 
-/** The pipeline output dir under a data root — the `content/` tree the app's routes serve. */
+/** The pipeline output dir under a data root - the `content/` tree the app's routes serve. */
 export function contentDirOf(dataRoot: string): string {
   return join(dataRoot, 'content');
 }
@@ -54,7 +54,7 @@ export function configFileOf(dataRoot: string): string {
   return join(dataRoot, 'desktop-config.json');
 }
 
-/** Where downloaded mods live under a data root (`mods/<name>/DataCnmd/…`) — never the game folder. */
+/** Where downloaded mods live under a data root (`mods/<name>/DataCnmd/…`) - never the game folder. */
 export function modsDirOf(dataRoot: string): string {
   return join(dataRoot, 'mods');
 }

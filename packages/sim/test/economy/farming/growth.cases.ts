@@ -18,7 +18,7 @@ import {
 } from './support.js';
 
 describe('crop growth', () => {
-  it('every stage CONSUMES its watering — a field ripens only under repeated tending', () => {
+  it('every stage CONSUMES its watering - a field ripens only under repeated tending', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
     const field = fieldAt(sim, farm, 2, 2, { watered: true });
@@ -26,22 +26,22 @@ describe('crop growth', () => {
     for (let i = 0; i < TICKS_PER_STAGE; i++) cropGrowthSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(field, Crop).stage).toBe(2);
     expect(sim.world.get(field, Crop).watered).toBe(false); // the stage drank its watering
-    expect(sim.world.get(field, Resource).remaining).toBe(0); // still unripe — yields nothing
+    expect(sim.world.get(field, Resource).remaining).toBe(0); // still unripe - yields nothing
 
-    // Thirsty — it stands still however long, until the can comes back.
+    // Thirsty - it stands still however long, until the can comes back.
     for (let i = 0; i < TICKS_PER_STAGE * STAGES; i++) cropGrowthSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(field, Crop).stage).toBe(2);
 
-    // One watering per remaining stage step carries it to ripeness — growth is farmer-fueled.
+    // One watering per remaining stage step carries it to ripeness - growth is farmer-fueled.
     for (let stage = 2; stage < STAGES; stage++) {
       applyWater(sim.world, field);
       for (let i = 0; i < TICKS_PER_STAGE; i++) cropGrowthSystem(sim.world, ctxOf(sim));
       expect(sim.world.get(field, Crop).stage).toBe(stage + 1);
     }
-    expect(sim.world.get(field, Resource).remaining).toBe(1); // ripe — worth its yield to the scythe
+    expect(sim.world.get(field, Resource).remaining).toBe(1); // ripe - worth its yield to the scythe
   });
 
-  it('an UNWATERED field stands still — watering is the growth fuel', () => {
+  it('an UNWATERED field stands still - watering is the growth fuel', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
     const field = fieldAt(sim, farm, 2, 2); // sown, never watered
@@ -51,10 +51,10 @@ describe('crop growth', () => {
     expect(sim.world.get(field, Resource).remaining).toBe(0);
   });
 
-  it('growth is RENDER-visible through a primed snapshot cache — in-place writes are logged', () => {
+  it('growth is RENDER-visible through a primed snapshot cache - in-place writes are logged', () => {
     // A Crop carries Resource, so the snapshot's scenery-clone cache holds its clone until the entity
     // is written through `World.write`. The browser snapshots every frame, so the cache primes on the
-    // crop's very first (freshly-sown, invisible) state — an unlogged water/growth write then renders the
+    // crop's very first (freshly-sown, invisible) state - an unlogged water/growth write then renders the
     // field frozen at that stage forever (the user-observed "wheat never grows" while the sim ripens it fine).
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
@@ -106,7 +106,7 @@ describe('sow / water effects', () => {
     }
     for (const field of sim.world.query(Crop)) rates.add(sim.world.get(field, Crop).ticksPerStage);
 
-    // Several distinct paces among fields planted on the same tick — the de-synchroniser. Every pace
+    // Several distinct paces among fields planted on the same tick - the de-synchroniser. Every pace
     // stays a positive whole number of ticks near the content's nominal rate (never 0, never runaway).
     expect(rates.size).toBeGreaterThan(2);
     for (const rate of rates) {
@@ -118,7 +118,7 @@ describe('sow / water effects', () => {
 
   it('the growth rate of a node is stable: the same node re-sown draws the same pace', () => {
     // Different SEEDS, and a differing number of prior RNG draws, so an implementation that drew the
-    // pace from `world.rng` would diverge here — the same-arguments-twice form would not catch it.
+    // pace from `world.rng` would diverge here - the same-arguments-twice form would not catch it.
     const paceAt = (cx: number, cy: number, seed: number, priorDraws: number): number => {
       const sim = new Simulation({ seed, content: testContent(), map: grassMap(12, 12) });
       const farm = farmAt(sim, 0, 0);
@@ -129,10 +129,10 @@ describe('sow / water effects', () => {
       const fields = [...sim.world.query(Crop)];
       expect(fields).toHaveLength(1);
       const [field] = fields;
-      if (field === undefined) throw new Error('unreachable — length asserted above');
+      if (field === undefined) throw new Error('unreachable - length asserted above');
       return sim.world.get(field, Crop).ticksPerStage;
     };
-    // A pure coordinate hash, not `world.rng` — so a replay re-sowing the same node re-draws the same
+    // A pure coordinate hash, not `world.rng` - so a replay re-sowing the same node re-draws the same
     // pace and the run stays byte-identical.
     expect(paceAt(3, 4, 1, 0)).toBe(paceAt(3, 4, 99, 7));
   });

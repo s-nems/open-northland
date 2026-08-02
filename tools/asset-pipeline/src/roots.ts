@@ -4,9 +4,9 @@ import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
 /**
- * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay —
+ * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay -
  * a directory shaped like the game root (e.g. the unpacked CnMod zip, which ships `DataCnmd/`,
- * `CnModMaps/`, and patched `Data/`/`DataX/` files) — then the owned base install, then the
+ * `CnModMaps/`, and patched `Data/`/`DataX/` files) - then the owned base install, then the
  * unpacked-archive layer ({@link withArchiveLayer}). A file present in an earlier layer wins the same
  * relative path, matching what an install with the mod extracted over it would contain. `mod === game`
  * is that installed-in-place layout: the overlay is the identity and every path resolves against the
@@ -25,7 +25,7 @@ export interface SourceFile {
   readonly path: string;
 }
 
-/** The roots in resolution order, deduplicated — an absent or identity layer collapses away. */
+/** The roots in resolution order, deduplicated - an absent or identity layer collapses away. */
 export function rootsInOrder(roots: SourceRoots): readonly string[] {
   const layers = [roots.mod, roots.game, roots.archive].filter((r) => r !== undefined);
   return [...new Set(layers)];
@@ -147,7 +147,7 @@ export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[
  * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
  * as a layer-ordered case-folded union ({@link unionCaseFoldedRoots}). A missing root propagates (an
  * environmental error): the mod root's existence is the caller's contract ({@link SourceRoots}), and
- * the archive layer's is the unpack stage's — `runPipeline` creates `--out` before any stage runs.
+ * the archive layer's is the unpack stage's - `runPipeline` creates `--out` before any stage runs.
  */
 export async function collectSourceFiles(
   roots: SourceRoots,
@@ -166,7 +166,7 @@ export async function collectSourceFiles(
 }
 
 /**
- * Collects every file whose last path segment is `name` (case-insensitive) — the shared file
+ * Collects every file whose last path segment is `name` (case-insensitive) - the shared file
  * selection of the map tree-walk stages (`map.cif`, `map.dat`), overlay-aware.
  */
 export async function collectSourceFilesNamed(roots: SourceRoots, name: string): Promise<SourceFile[]> {
@@ -174,13 +174,13 @@ export async function collectSourceFilesNamed(roots: SourceRoots, name: string):
   return collectSourceFiles(roots, (rel) => `${sep}${rel}`.endsWith(suffix));
 }
 
-/** Where players get the culturesnation mod — named in the fail-fast error and the installer UI. */
+/** Where players get the culturesnation mod - named in the fail-fast error and the installer UI. */
 export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
 
 /**
  * Resolves the mod overlay root the conversion reads from: an explicit `modRoot` must contain a
  * `DataCnmd/` directory; with none given, a game folder that contains one (the mod installed in
- * place) is its own overlay. No mod anywhere fails fast here — a mod-less conversion would
+ * place) is its own overlay. No mod anywhere fails fast here - a mod-less conversion would
  * otherwise die deep in IR cross-reference validation (the tribe/weapon/house tables are readable
  * only under `DataCnmd/`) with an error nobody can act on.
  */
@@ -195,7 +195,7 @@ export async function resolveModRoot(game: string, modRoot: string | undefined):
   if (modRoot !== undefined) {
     if (await hasMod(modRoot)) return modRoot;
     throw new Error(
-      `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ — point it at the unpacked culturesnation ` +
+      `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ - point it at the unpacked culturesnation ` +
         'mod folder (the directory that contains DataCnmd/ and CnModMaps/).',
     );
   }

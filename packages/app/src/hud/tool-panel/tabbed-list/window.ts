@@ -32,7 +32,7 @@ const MIN_LIST_ROWS = 3;
 export interface TabbedListSource<Id, Item extends TabbedListItem> {
   /** The headline text, resolved at rebuild time so a language change is picked up. */
   title(): string;
-  /** The strip button the window anchors to — every pop-up drops from the button that toggles it. */
+  /** The strip button the window anchors to - every pop-up drops from the button that toggles it. */
   readonly anchor: ToolButtonId;
   tabs(): readonly TabbedListTab<Id>[];
   /** Tabs per grid row. */
@@ -48,7 +48,7 @@ export interface TabbedListWindowDeps<Id, Item extends TabbedListItem> {
   /** The panel's window container the pop-up mounts its own container under. */
   readonly container: Container;
   readonly source: TabbedListSource<Id, Item>;
-  /** A row was clicked (the window closes itself first) — the panel enters the matching held mode. */
+  /** A row was clicked (the window closes itself first) - the panel enters the matching held mode. */
   readonly onPick: (item: Item) => void;
 }
 
@@ -83,7 +83,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   };
 
   // The tab set is fixed per source (only its labels are localized), so the chrome above the list is a
-  // constant — resolved here, not in the per-frame `listRows`.
+  // constant - resolved here, not in the per-frame `listRows`.
   const chromeH = chromeAboveList(source.tabs().length, source.tabColumns);
 
   let selected: Id = source.initialTab;
@@ -91,9 +91,9 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   let layout: TabbedListLayout<Id, Item> | null = null;
   let hovered: Item | null = null;
   // The last canvas cursor point, so a scroll/tab/resize can re-resolve which card the (stationary) cursor
-  // is over — otherwise the highlight would stick to an item that scrolled away from under the pointer.
+  // is over - otherwise the highlight would stick to an item that scrolled away from under the pointer.
   let lastPointer: { x: number; y: number } | null = null;
-  // The viewport row count the current layout was built for — a resize that changes it triggers a reflow.
+  // The viewport row count the current layout was built for - a resize that changes it triggers a reflow.
   let builtRows = 0;
 
   const shell = createWindowShell(deps.container);

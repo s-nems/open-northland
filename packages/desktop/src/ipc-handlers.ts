@@ -24,7 +24,7 @@ import { buildAppMenu } from './window.js';
 /**
  * The main-process end of every {@link IPC_CHANNELS} call: the setup renderer's only way to reach
  * the game folder, the conversion, and the mod installer. Each handler re-validates its own
- * arguments — the renderer is sandboxed but not trusted.
+ * arguments - the renderer is sandboxed but not trusted.
  */
 
 export interface IpcDeps {
@@ -84,7 +84,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     const probe = await probeGameFolder(gamePath);
     if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
     // A mod inside the game folder is auto-detected by the pipeline; otherwise pass the external
-    // mod root — the conversion is materially incomplete without the mod, so none anywhere is an error.
+    // mod root - the conversion is materially incomplete without the mod, so none anywhere is an error.
     const modRoot = probe.hasMod ? undefined : await state.availableModRoot();
     if (!probe.hasMod && modRoot === undefined) {
       throw new Error(messages().errors.modRequired);
@@ -92,7 +92,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     pipeline.start(gamePath, paths.contentDir, modRoot, (event: PipelineEvent) => {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
     });
-    // Remembered only after start() accepted the run — a double-start throw must not clobber it.
+    // Remembered only after start() accepted the run - a double-start throw must not clobber it.
     patchConfig(paths.configFile, { gamePath });
   });
   handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());

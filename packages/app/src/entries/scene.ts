@@ -27,7 +27,7 @@ import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
  * acceptance test runs.
  */
 
-/** The boot steps this entry runs, in order — the loading card's step list. */
+/** The boot steps this entry runs, in order - the loading card's step list. */
 export const SCENE_BOOT_PHASES = [
   'graphics',
   'content',
@@ -82,7 +82,7 @@ export async function renderSceneMode(
     sim,
     hashTrace: hashTraceFor(params),
   });
-  // `?fog=off|reveal|recon` overrides the scene's own fog mode — a named divergence from the headless
+  // `?fog=off|reveal|recon` overrides the scene's own fog mode - a named divergence from the headless
   // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different fog rule.
   applyFogOverride(sim, params);
   // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
@@ -108,7 +108,7 @@ export async function renderSceneMode(
   // zooms. Frame on the first tick's snapshot, not the initial one: a scene's settler spawns run as
   // tick-1 commands (direct-placed resources/flags exist at tick 0), so the tick-0 settler centroid is
   // empty and `cameraFor` falls back to the tile origin (an off-centre first frame). The extra step is
-  // deterministic: the browser view runs `runTicks + 1` ticks vs the headless twin — harmless, the checks
+  // deterministic: the browser view runs `runTicks + 1` ticks vs the headless twin - harmless, the checks
   // run headless.
   sim.step();
   const cameraCtl = createCameraController(
@@ -117,8 +117,8 @@ export async function renderSceneMode(
     app.renderer.resolution,
   );
 
-  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
-  // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
+  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts - tool panel, unit
+  // controls, perf overlay, positional sound - and the one fixed-timestep RAF loop, identical to the
   // `?map=` entry's.
   await boot.begin('hud');
   await startGameView({

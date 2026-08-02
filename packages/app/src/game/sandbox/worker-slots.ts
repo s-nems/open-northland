@@ -76,18 +76,18 @@ export function workerSlotName(originalJobType: number): string {
 }
 
 /**
- * Per-building worker + carrier capacity, by typeId — how many settlers of each job a building employs,
+ * Per-building worker + carrier capacity, by typeId - how many settlers of each job a building employs,
  * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
  * Source basis: extracted from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
- * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim — the counts and the worker/carrier
+ * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim - the counts and the worker/carrier
  * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are rebased
  * clear of the sandbox's own functional job band on the way in ({@link rebaseSlotJob}): the original ids
  * overlap the collector (8), builder (7), and soldier band (31..41), so e.g. original job 8 would otherwise
  * be read as the sandbox's collector and original 40/41 as archers. The carrier (jobtype 24, the hauler
  * the badge + assignment UI single out) and the hunter (15, whose combat role keys on the `hunter` id
  * slug) are exceptions - kept, not rebased. Everything else becomes a distinct generic craftsman
- * id (its trade identity is dropped — the deferred global-content id unification); the count and the
- * carrier split — what the player assigns — stay exact. Residences (homes) employ nobody; they carry no
+ * id (its trade identity is dropped - the deferred global-content id unification); the count and the
+ * carrier split - what the player assigns - stay exact. Residences (homes) employ nobody; they carry no
  * row. Kept as sandbox data (not the hand-authored catalog) because the rebase lives in the sandbox job space.
  */
 export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> =

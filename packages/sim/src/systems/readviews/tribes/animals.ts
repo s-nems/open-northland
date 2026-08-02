@@ -12,7 +12,7 @@ export function animalRecord(content: ContentSet, tribeType: number): AnimalType
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `aggressive` — it attacks civilizations
+ * Whether `tribeType`'s `animaltypes.ini` record sets `aggressive` - it attacks civilizations
  * unprovoked. The provoked companion is {@link isProvokableAnimal}/{@link angryGameTimeOf} via the
  * {@link Anger} timer (source basis "Civ-vs-animal aggression").
  */
@@ -21,7 +21,7 @@ export function isAggressiveAnimal(content: ContentSet, tribeType: number): bool
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `getAngry` — passive until struck, then hostile
+ * Whether `tribeType`'s `animaltypes.ini` record sets `getAngry` - passive until struck, then hostile
  * for {@link angryGameTimeOf} ticks (a hit stamps the {@link Anger} timer; source basis "Civ-vs-animal
  * aggression").
  */
@@ -30,7 +30,7 @@ export function isProvokableAnimal(content: ContentSet, tribeType: number): bool
 }
 
 /**
- * How long (game ticks) an animal of `tribeType` stays hostile once provoked — its `animaltypes.ini`
+ * How long (game ticks) an animal of `tribeType` stays hostile once provoked - its `animaltypes.ini`
  * `angryGameTime`, or 0 when the tribe has no animal record.
  */
 export function angryGameTimeOf(content: ContentSet, tribeType: number): number {
@@ -48,7 +48,7 @@ export function stayPointRangeOf(content: ContentSet, tribeType: number): number
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `cannotbeattacked` — decorative fauna (bees,
+ * Whether `tribeType`'s `animaltypes.ini` record sets `cannotbeattacked` - decorative fauna (bees,
  * butterflies) a civilization can never target, even if flagged aggressive.
  */
 export function animalCannotBeAttacked(content: ContentSet, tribeType: number): boolean {
@@ -56,7 +56,7 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` — a scout may claim it by contact and
+ * Whether `tribeType`'s `animaltypes.ini` record sets `catchable` - a scout may claim it by contact and
  * a farm may pen it (the husbandry species set). Not the huntability signal: that is the authored
  * {@link isHuntablePrey} table.
  */
@@ -65,7 +65,7 @@ export function isCatchableAnimal(content: ContentSet, tribeType: number): boole
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `warrantable` — it can become a tribe's property
+ * Whether `tribeType`'s `animaltypes.ini` record sets `warrantable` - it can become a tribe's property
  * (penned livestock), the ownership half of the `catchable` pair. Read by the deferred
  * livestock-ownership drive.
  */
@@ -74,7 +74,7 @@ export function isWarrantableAnimal(content: ContentSet, tribeType: number): boo
 }
 
 /**
- * Whether `tribeType`'s `animaltypes.ini` record sets `ignorehouses` — it paths through buildings rather
+ * Whether `tribeType`'s `animaltypes.ini` record sets `ignorehouses` - it paths through buildings rather
  * than routing around them (a bird over a wall). Read by the deferred animal-pathing drive.
  */
 export function ignoresHousesAnimal(content: ContentSet, tribeType: number): boolean {
@@ -82,7 +82,7 @@ export function ignoresHousesAnimal(content: ContentSet, tribeType: number): boo
 }
 
 /**
- * The adult hitpoint pool an animal of `tribeType` is born with — its `animaltypes.ini` `hitpoints_adult`
+ * The adult hitpoint pool an animal of `tribeType` is born with - its `animaltypes.ini` `hitpoints_adult`
  * (200..50000), or null when the tribe has no animal record (a civilization; human HP is stamped
  * elsewhere). Source of an animal combatant's {@link Health} stamp (source basis "Combat hit resolution").
  */
@@ -92,7 +92,7 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
 }
 
 /**
- * The juvenile hitpoint pool an animal of `tribeType` is born with — its `animaltypes.ini`
+ * The juvenile hitpoint pool an animal of `tribeType` is born with - its `animaltypes.ini`
  * `hitpoints_baby`, or null when the tribe has no animal record. Read straight, not derived from
  * {@link animalHitpoints}: the source carries the two pools independently and they diverge (a wolf's baby
  * 500 is half its adult 1000; some set them equal, some leave baby at the extractor default 0).
@@ -107,17 +107,17 @@ export function animalBabyHitpoints(content: ContentSet, tribeType: number): num
  * slice needs to place a group of animals of `tribeType`, or null when the tribe has no animal record.
  */
 interface HerdParams {
-  /** `maximumgroupsize` — herd/pack size (0 = solitary / source-omitted). */
+  /** `maximumgroupsize` - herd/pack size (0 = solitary / source-omitted). */
   readonly maxGroupSize: number;
-  /** `searchforleader` — a member follows a herd leader vs roams solo. */
+  /** `searchforleader` - a member follows a herd leader vs roams solo. */
   readonly searchForLeader: boolean;
-  /** `maximumleaderdistance` — how far a follower may roam from its leader. All three distances below are
-   *  half-cell node Manhattan distances — the half-cell reading of the original's logic-grid params (same
+  /** `maximumleaderdistance` - how far a follower may roam from its leader. All three distances below are
+   *  half-cell node Manhattan distances - the half-cell reading of the original's logic-grid params (same
    *  basis as weapon reach). */
   readonly leaderDistance: number;
-  /** `maximumdistancetobirthpoint` — how far the herd ranges from its spawn point. */
+  /** `maximumdistancetobirthpoint` - how far the herd ranges from its spawn point. */
   readonly birthPointRange: number;
-  /** `maximumdistancetostaypoint` — territory radius around the animal's stay point. */
+  /** `maximumdistancetostaypoint` - territory radius around the animal's stay point. */
   readonly stayPointRange: number;
 }
 
@@ -135,10 +135,10 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
 
 /**
  * The locomotion pace an animal of `tribeType` moves at, or null when the tribe has no animal record.
- * The IR's `runspeed` is not surfaced — no run/sprint gait is modeled; every unit moves at one pace.
+ * The IR's `runspeed` is not surfaced - no run/sprint gait is modeled; every unit moves at one pace.
  */
 interface Locomotion {
-  /** `movespeed` — the animal's one pace (0 = source-omitted, engine default). */
+  /** `movespeed` - the animal's one pace (0 = source-omitted, engine default). */
   readonly walkSpeed: number;
 }
 

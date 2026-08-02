@@ -34,13 +34,13 @@ import {
  *  period after creation, destroyed one reclaim span after that check). */
 const DEAD_BY = STRANDED_FIELD_RECLAIM_TICKS + 2 * STRANDED_FIELD_CHECK_PERIOD_TICKS;
 
-/** Drive ONLY the reclaim sweep for ticks `[from, to)` — no movement, growth or planner runs, so the
+/** Drive ONLY the reclaim sweep for ticks `[from, to)` - no movement, growth or planner runs, so the
  *  world around the sweep holds perfectly still. */
 function driveSweep(sim: Simulation, from: number, to: number): void {
   for (let t = from; t < to; t++) fieldReclaimSystem(sim.world, { ...ctxOf(sim), tick: t });
 }
 
-/** A field whose ONLY work stance is the cell two nodes east of its anchor — the real-content shape
+/** A field whose ONLY work stance is the cell two nodes east of its anchor - the real-content shape
  *  (a work area beside the plant, not on it), so a building over that cell strands it. */
 function ringFieldAt(sim: Simulation, farm: Entity, x: number, y: number): Entity {
   const e = fieldAt(sim, farm, x, y);
@@ -50,7 +50,7 @@ function ringFieldAt(sim: Simulation, farm: Entity, x: number, y: number): Entit
 
 describe('the stranded-field reclaim sweep', () => {
   it('destroys a field its farm can never route to, but only after the sustained span', () => {
-    // A river between farm and field — the "terrain cut it off" class: the static components differ,
+    // A river between farm and field - the "terrain cut it off" class: the static components differ,
     // so every route probe refuses immediately, whoever asks.
     const sim = new Simulation({
       seed: 1,
@@ -83,7 +83,7 @@ describe('the stranded-field reclaim sweep', () => {
     const sim = new Simulation({ seed: 1, content: wallsContent(), map: grassMap(12, 12) });
     const farm = farmAt(sim, 8, 8);
     const field = ringFieldAt(sim, farm, 3, 3); // work cell at node (9, 6)
-    blockhouseAt(sim, 4, 3); // walls over that work cell — every stance blocked
+    blockhouseAt(sim, 4, 3); // walls over that work cell - every stance blocked
 
     driveSweep(sim, 0, 2 * STRANDED_FIELD_CHECK_PERIOD_TICKS);
     expect(sim.world.has(field, StrandedField)).toBe(true); // observed cut off, clock running
@@ -101,7 +101,7 @@ describe('the stranded-field reclaim sweep', () => {
 
   it('a farm walled off from one of its fields gets the slot back and refills the plot', () => {
     // The ticket's headline case, end to end: a full-height wall column seals the map's west side
-    // (every crossing step must land on node column x = 9 — all walled), leaving the field's own
+    // (every crossing step must land on node column x = 9 - all walled), leaving the field's own
     // ground open, so the planner's component check passes and only a route probe can see the pocket.
     const sim = new Simulation({ seed: 7, content: wallsContent(), map: grassMap(12, 12) });
     const farm = farmAt(sim, 10, 6);

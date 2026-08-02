@@ -15,8 +15,8 @@ import {
   VIKING,
 } from '../support.js';
 
-describe('combat damage — armor material column (the AP asymmetry)', () => {
-  // A plate-armored (material 4) target takes 2090 from an iron spear and 950 from a long sword — the
+describe('combat damage - armor material column (the AP asymmetry)', () => {
+  // A plate-armored (material 4) target takes 2090 from an iron spear and 950 from a long sword - the
   // anti-armor asymmetry from the real weapontypes: the spear is anti-plate, the sword anti-chain.
   const cases = [
     { job: SOLDIER_SPEAR, armor: PLATE_CLASS, expected: 2090, desc: 'iron spear vs plate' },

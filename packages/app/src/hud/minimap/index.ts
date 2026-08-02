@@ -19,7 +19,7 @@ import {
 
 /**
  * The bottom-left minimap in the original's braided overview frame: the whole map's ground (built
- * once — terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick),
+ * once - terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick),
  * the fog-of-war mask over both (a per-cell alpha raster refreshed only when the fog generation
  * moves; dots draw only on currently-visible ground) and the camera's view rectangle (redrawn only
  * when it moves). Left-click (or drag) in the map hole jumps the camera to the pointed world spot; the whole
@@ -41,11 +41,11 @@ const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
 /** The letterbox bars + hole backdrop (matches the frame art's near-black window). */
 const HOLE_COLOUR = 0x000000;
-/** The flat fallback frame (bare checkout — no GUI art): parchment-dark border strokes. */
+/** The flat fallback frame (bare checkout - no GUI art): parchment-dark border strokes. */
 const FALLBACK_FRAME_COLOUR = 0x2c241a;
 /** The HUD overlay plane (the tool-panel root and the settler action ring use the same). Equal
  *  zIndex keeps mount order, so the framed window draws over the earlier-mounted strip (whose lower
- *  buttons it covers on a short screen — the tool panel defers those clicks to us) and under the
+ *  buttons it covers on a short screen - the tool panel defers those clicks to us) and under the
  *  later-mounted action ring. */
 const MINIMAP_Z = 1000;
 
@@ -63,18 +63,18 @@ export interface MinimapOptions {
   /** Owner slot → team-colour slot for the unit/building dots (a map roster's colour choices);
    *  absent = identity (the app-wide default: player id is the swatch slot). */
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** The HUD scale (`?uiscale=`, clamped ≥1) — sizes the framed window with the rest of the HUD. */
+  /** The HUD scale (`?uiscale=`, clamped ≥1) - sizes the framed window with the rest of the HUD. */
   readonly uiscale: number;
   /** The live camera (for the view rectangle). */
   readonly camera: () => Camera;
-  /** Centre the camera on a world point (projected px, pre-camera) — the click-to-jump action. */
+  /** Centre the camera on a world point (projected px, pre-camera) - the click-to-jump action. */
   readonly onJump: (worldX: number, worldY: number) => void;
   /** Client (CSS px) → screen px, injected view glue (see `view/camera/screen-scale.ts` `screenScale`). */
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
 }
 
 export interface MinimapHandle {
-  /** True when the client point is over the framed window — for the HUD pointer-claim chain. */
+  /** True when the client point is over the framed window - for the HUD pointer-claim chain. */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** Per-frame refresh: re-place from the live screen size, redraw the view rect + (per tick) dots +
    *  (per fog generation) the fog mask. `fog` is the viewer's fog view, or null when fog is off. */
@@ -127,7 +127,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.addChild(holeBg);
 
   // The original braided frame, drawn over the backdrop (its near-black hole + outer margins are keyed
-  // transparent — see frame.ts — so the braid alone shows, covering the backdrop's underlap). Baked
+  // transparent - see frame.ts - so the braid alone shows, covering the backdrop's underlap). Baked
   // supersampled to an ordinary top-anchored Sprite, so it rides the container like everything else.
   // Bare checkout: a flat Graphics frame at the same geometry.
   if (frame !== null) {
@@ -141,7 +141,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     container.addChild(fallbackFrame);
   }
 
-  // The static ground image: one whole-map RGBA raster (built once — terrain is static), aspect-fitted
+  // The static ground image: one whole-map RGBA raster (built once - terrain is static), aspect-fitted
   // into the hole. Colour precedence per cell: baked ground-lane colour → typeId debug colour → flat tint.
   const colourOfType = (typeId: number): number => opts.colourOf?.(typeId) ?? flatTileColour(typeId);
   const colourOfCell = cellColourResolver(opts.cellColours, colourOfType);
@@ -161,7 +161,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const fogMask = createFogMaskLayer(container, mapL);
 
   // Dots above ground, the view rectangle on top. The dots are a retained raster like the fog mask
-  // (one buffer + texture for the session, rewritten and re-uploaded in place per tick — see
+  // (one buffer + texture for the session, rewritten and re-uploaded in place per tick - see
   // `stampDot` for why a raster, not Graphics rects). 1:1 with minimap logical px, nearest-scaled,
   // so a dot stays a blocky square.
   const dotsPxW = Math.max(1, Math.round(mapL.w));
@@ -208,7 +208,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button === 0) dragging = false;
   };
-  // Losing focus mid-drag drops the mouseup — reset, like the camera controller.
+  // Losing focus mid-drag drops the mouseup - reset, like the camera controller.
   const onBlur = (): void => {
     dragging = false;
   };
@@ -242,7 +242,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const h = app.screen.height;
       layout = minimapLayout(bounds, h, opts.uiscale);
       if (!container.visible) {
-        // Settle gate: show only once the screen height repeats — never a first-frame corner jump.
+        // Settle gate: show only once the screen height repeats - never a first-frame corner jump.
         const settled = h > 0 && h === lastHeight;
         lastHeight = h;
         if (!settled) return;

@@ -68,7 +68,7 @@ describe('extractGraphicsBindings', () => {
   it('binds each [jobgraphics] body .bmd to its palette editname, normalizing paths + lower-casing the name', () => {
     const bindings = extractGraphicsBindings(parseIniSections(JOBGRAPHICS_INI));
     // Records 3 (no body) and 4 (no palette) are dropped; the first two bind. The first record's
-    // `BEAR01` is lower-cased to `bear01` — the join key is case-insensitive (real data mixes case).
+    // `BEAR01` is lower-cased to `bear01` - the join key is case-insensitive (real data mixes case).
     expect(bindings).toEqual([
       {
         bmd: 'data/engine2d/bin/bobs/cr_ani_body_00.bmd',
@@ -88,7 +88,7 @@ describe('extractGraphicsBindings', () => {
   });
 
   it('resolves a bound .bmd to a .pcx palette across a case mismatch (BEAR01 -> bear01)', () => {
-    // The binding references `BEAR01`; palettes.ini declares `bear01` — the lower-cased join must still
+    // The binding references `BEAR01`; palettes.ini declares `bear01` - the lower-cased join must still
     // hit. This mirrors the real chicken01/Chicken01 + LION01/Lion01 case splits between the two legs.
     const palettes = new Map(
       extractPaletteIndex(parseIniSections(PALETTES_INI)).map((a) => [a.name, a.gfxFile]),
@@ -101,7 +101,7 @@ describe('extractGraphicsBindings', () => {
 describe('extractLandscapeGraphics', () => {
   // Mirrors the real Data/engine2d/inis/landscapes/landscapes.cif [GfxLandscape] grammar as
   // cifLinesToSections yields it: a level-1 CamelCase section header, level-2 CamelCase props. Two tree
-  // species share the ls_trees body bob but bind different palettes (Tree_Yew01 vs tree01 — case mixed
+  // species share the ls_trees body bob but bind different palettes (Tree_Yew01 vs tree01 - case mixed
   // like the real data); a third decor record is texture-only (no GfxBobLibs) and must be skipped.
   const lines: CifLine[] = [
     { level: 1, text: 'GfxLandscape' },
@@ -154,7 +154,7 @@ describe('extractLandscapeGraphics', () => {
 
 describe('extractBobSequences', () => {
   // Mirrors the real animations.ini [bobseq] grammar: an imagelib + shadowlib then `seq "<name>" <start>
-  // <length>` lines (the exact walk/chop ranges the renderer hard-codes today — walk 1988/96, chop
+  // <length>` lines (the exact walk/chop ranges the renderer hard-codes today - walk 1988/96, chop
   // 5106/120). A second record reuses one sequence name in a different bob set (a shared layout), and a
   // record with no imagelib (nothing to index) must be dropped. A malformed seq line (missing length) is
   // skipped without dropping the rest of the record.
@@ -209,7 +209,7 @@ describe('extractGfxAnimAtomics', () => {
       'logicjob 33',
       'logicatomicaction 81',
       'gfxbobseqbody "human_man_Warrior_spear_attack"',
-      // Out of dir order + a hold (79 repeated) — placed at the correct dir slot regardless of file order.
+      // Out of dir order + a hold (79 repeated) - placed at the correct dir slot regardless of file order.
       'gfxanimframelistdir 1 97 97 98',
       'gfxanimframelistdir 0 79 79 80',
       '[gfxanimatomic]',
@@ -341,7 +341,7 @@ describe('extractJobBaseGraphics', () => {
   });
 
   it('resolves a body palette across a case mismatch via the shared palettes index', () => {
-    // The flat [jobgraphics] extractor stays untouched by the [jobbasegraphics] sections — the two
+    // The flat [jobgraphics] extractor stays untouched by the [jobbasegraphics] sections - the two
     // skins coexist in one file in the real mod, each guarding on its own section name.
     expect(extractGraphicsBindings(parseIniSections(JOBBASEGRAPHICS_INI))).toEqual([]);
     expect(extractJobBaseGraphics(parseIniSections(JOBGRAPHICS_INI))).toEqual([]);

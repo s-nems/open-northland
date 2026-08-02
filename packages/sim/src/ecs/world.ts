@@ -98,7 +98,7 @@ export class World {
    * Apply an in-place mutation to `entity`'s stored `component` value and log it on every change channel at
    * once (the identity-keyed snapshot clone cache and the component's value generation). Required for any
    * write a derived cache can observe; `add`/`remove`/`destroy` log for themselves, and a raw
-   * `get(...).field = x` reaches no channel — the staleness {@link verifyCaches} exists to catch.
+   * `get(...).field = x` reaches no channel - the staleness {@link verifyCaches} exists to catch.
    * Throws when `entity` does not carry `component`; a caller that tolerates a raced-away entity tests
    * with {@link has}/{@link tryGet} first.
    */
@@ -200,13 +200,13 @@ export class World {
     const fresh = [...this.alive].sort((a, b) => a - b);
     if (cached.length !== fresh.length) {
       out.push(
-        `canonicalEntities cache holds ${cached.length} ids but ${fresh.length} are alive — a create/destroy missed invalidation`,
+        `canonicalEntities cache holds ${cached.length} ids but ${fresh.length} are alive - a create/destroy missed invalidation`,
       );
     } else {
       for (let i = 0; i < fresh.length; i++) {
         if (cached[i] !== fresh[i]) {
           out.push(
-            `canonicalEntities cache diverges at index ${i}: cached ${cached[i]}, alive ${fresh[i]} — stale memo`,
+            `canonicalEntities cache diverges at index ${i}: cached ${cached[i]}, alive ${fresh[i]} - stale memo`,
           );
           break;
         }

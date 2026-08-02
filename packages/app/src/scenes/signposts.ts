@@ -13,18 +13,18 @@ import type { SceneDefinition } from './types.js';
  * circle but inside a reachable signpost chain (harvested), the far tree is outside every circle (never
  * touched). The browser half is where a human judges: the hatted scout skin, the hammer swing, the
  * wooden guidepost sprite, and the direction boards pointing between the two chained posts (none toward
- * the lone far post — a disconnected group).
+ * the lone far post - a disconnected group).
  */
 
 const MAP_W = 64;
 const MAP_H = 16;
 /** The scout and its commanded signpost spot (tiles). */
 const SCOUT = { x: 5, y: 8 } as const;
-/** One tile east of the scout — and just past CHAIN_A's 18-node spacing circle (a spot at tile 7 would
+/** One tile east of the scout - and just past CHAIN_A's 18-node spacing circle (a spot at tile 7 would
  *  sit exactly ON the circle and be rejected). */
 const ERECT_AT = { x: 6, y: 8 } as const;
 /** The pre-stamped chain (small circles so the scene fits disconnection on one screen) + a lone far
- *  post whose circle overlaps neither — the "two groups act separately" case. Radii are scene data.
+ *  post whose circle overlaps neither - the "two groups act separately" case. Radii are scene data.
  *  CHAIN_B sits on an ODD row so the pair straddles the half-cell stagger: its node is `2x + 1`, and a
  *  board drawn from an unstaggered node would be visibly off. */
 const CHAIN_RADIUS_NODES = 12;
@@ -32,7 +32,7 @@ const CHAIN_A = { x: 16, y: 8 } as const;
 const CHAIN_B = { x: 26, y: 7 } as const;
 const LONE_POST = { x: 44, y: 8 } as const;
 /** A rival's post beside ours: signposts are per player (networks, spacing, selection, and the board
- *  lettering colour — red for the enemy slot vs the human's blue). */
+ *  lettering colour - red for the enemy slot vs the human's blue). */
 const ENEMY_POST = { x: 52, y: 4 } as const;
 /** The collector and its two trees: NEAR is beyond the 12-tile local circle but inside CHAIN_B's
  *  circle (reachable through the chain); FAR is outside every circle and must stay untouched. */
@@ -45,7 +45,7 @@ const INITIAL_ZOOM = 1.1;
 
 const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled } = components;
 
-/** Stamp a standing signpost directly (pre-tick-0) — the scene's pre-existing network fixture. */
+/** Stamp a standing signpost directly (pre-tick-0) - the scene's pre-existing network fixture. */
 function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = HUMAN_PLAYER): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -133,7 +133,7 @@ export const signpostsScene: SceneDefinition = {
       },
     },
     {
-      label: 'the scout still wears its trade (job 27 — the hatted skin the browser shows)',
+      label: 'the scout still wears its trade (job 27 - the hatted skin the browser shows)',
       predicate: (sim) => {
         for (const e of sim.world.query(Settler)) {
           if (sim.world.get(e, Settler).jobType === JOB_SCOUT) return true;

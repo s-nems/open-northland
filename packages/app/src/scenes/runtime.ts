@@ -7,7 +7,7 @@ import type { SceneWorld } from './types.js';
  * Build a fresh, deterministic {@link Simulation} for a {@link SceneWorld} at tick 0 over the scene
  * content + scene terrain, then run `scene.build`. Each sim owns its component stores, so the headless
  * test that builds many scene sims in one process needs no reset ritual. The headless test advances it and
- * asserts; the app renders it live — same inputs, byte-identical run, so the test's proof and the human's
+ * asserts; the app renders it live - same inputs, byte-identical run, so the test's proof and the human's
  * view are the same world, with two named exceptions.
  *
  * `options.content` (the browser real-content path) overrides the default clean-room sandbox content;
@@ -48,7 +48,7 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
  * step up to `ticks`. The end-of-run world can legitimately miss a transient truth (a harvest trough
  * between crop generations, an arrived civilian wandering off its goal node to gossip), so a check whose
  * claim is "this state was reached" re-runs the same seed and watches for the moment instead of the
- * final frame. Deterministic — the fresh run repeats the scene's own — but a full re-simulation: only
+ * final frame. Deterministic - the fresh run repeats the scene's own - but a full re-simulation: only
  * the fallback path of a check should pay it, after the cheap end-tick sample fails.
  */
 export function holdsSometimeDuring(

@@ -13,7 +13,7 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Unit + integration tests for the PathfindingSystem glue — the seam that drains {@link PathRequest}
+ * Unit + integration tests for the PathfindingSystem glue - the seam that drains {@link PathRequest}
  * components, runs A* on `ctx.terrain`, and writes the route into {@link PathFollow}. The fixture's
  * landscape table has typeId 0 = grass (walkable) and 1 = water (not walkable); grids are authored
  * directly at NODE (half-cell) resolution. These pin the request→path handoff, the node-position
@@ -24,7 +24,7 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const GRASS = 0;
 const WATER = 1;
 
-/** Exact quarter-tile fixed-point values — node positions land on quarters (ONE % 4 === 0). */
+/** Exact quarter-tile fixed-point values - node positions land on quarters (ONE % 4 === 0). */
 const Q = (n: number): number => (n * ONE) / 4;
 
 /** A flat all-grass NODE grid of the given dimensions. */
@@ -40,7 +40,7 @@ function mappedSim(map: TerrainMap): { sim: Simulation; request: (start: number,
   return { sim, request };
 }
 
-describe('pathfindingSystem — request to PathFollow handoff', () => {
+describe('pathfindingSystem - request to PathFollow handoff', () => {
   it('resolves a request into node-position waypoints and clears the request', () => {
     const { sim, request } = mappedSim(grassMap(4, 1));
     const start = sim.terrain?.nodeAt(0, 0) as number;
@@ -51,7 +51,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
 
     expect(sim.world.has(e, PathRequest)).toBe(false); // cleared on success
     expect(sim.world.has(e, PathFollow)).toBe(true);
-    // Row 0 (even): node hx sits at grid x = hx/2 — half-tile pitch, no stagger.
+    // Row 0 (even): node hx sits at grid x = hx/2 - half-tile pitch, no stagger.
     expect(sim.world.get(e, PathFollow).waypoints).toEqual([
       { x: Q(0), y: Q(0) },
       { x: Q(2), y: Q(0) },
@@ -85,7 +85,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
   });
 
   it('splices NO seam into a diagonal leg between even rows (no kink inside the leg)', () => {
-    // (2,0) -> (3,2): rows 0 → 1, the stagger is linear across the whole interval — two waypoints.
+    // (2,0) -> (3,2): rows 0 → 1, the stagger is linear across the whole interval - two waypoints.
     const { sim, request } = mappedSim(grassMap(5, 5));
     const e = request(sim.terrain?.nodeAt(2, 0) as number, sim.terrain?.nodeAt(3, 2) as number);
     sim.step();
@@ -96,7 +96,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
   });
 });
 
-describe('pathfindingSystem — failure handling', () => {
+describe('pathfindingSystem - failure handling', () => {
   it('flags an unreachable request failed, keeps the request, and writes no path', () => {
     // 3x1 strip walled by a centre water node isolates the two grass ends.
     const map: TerrainMap = { resolution: 'half-cell', width: 3, height: 1, typeIds: [GRASS, WATER, GRASS] };
@@ -115,12 +115,12 @@ describe('pathfindingSystem — failure handling', () => {
     const { sim, request } = mappedSim(map);
     const e = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
     sim.step();
-    // The request is already flagged failed — the system must not re-run it.
+    // The request is already flagged failed - the system must not re-run it.
     const e2 = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
     sim.step();
     expect(sim.world.get(e, PathRequest).failed).toBe(true);
     expect(sim.world.has(e, PathFollow)).toBe(false);
-    // A fresh request still routes (the strip is still walled, so e2 also fails — proves the
+    // A fresh request still routes (the strip is still walled, so e2 also fails - proves the
     // system is live, just not retrying the stale one).
     expect(sim.world.get(e2, PathRequest).failed).toBe(true);
   });
@@ -130,7 +130,7 @@ describe('pathfindingSystem — failure handling', () => {
     const { sim } = mappedSim(map);
     const e = sim.world.create();
     // A walker mid-route whose redirected goal turns out unreachable: the request is flagged, but
-    // the OLD route must keep playing out — dropping it froze the walker wherever it stood
+    // the OLD route must keep playing out - dropping it froze the walker wherever it stood
     // (possibly on a seam waypoint, off any centre) with a goal nothing would ever service again.
     sim.world.add(e, PathFollow, {
       waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9) }],
@@ -158,7 +158,7 @@ describe('pathfindingSystem — failure handling', () => {
   });
 });
 
-describe('pathfindingSystem — per-tick search budget', () => {
+describe('pathfindingSystem - per-tick search budget', () => {
   it('a formation of cheap local requests drains in ONE tick (the budget is search cost, not a request count)', () => {
     // The crowd case the node budget exists for: forty short routes settle a handful of nodes each,
     // far under the tick budget, so the whole formation starts together instead of in an id-order
@@ -190,7 +190,7 @@ describe('pathfindingSystem — per-tick search budget', () => {
       terrain,
     };
 
-    // A 1-node budget is overshot by the very FIRST search — it must still complete (every tick
+    // A 1-node budget is overshot by the very FIRST search - it must still complete (every tick
     // makes progress), and everything after it waits for the next pass.
     drainPathRequests(sim.world, ctx, terrain, 1);
     const served = entities.filter((e) => !sim.world.has(e, PathRequest));
@@ -206,8 +206,8 @@ describe('pathfindingSystem — per-tick search budget', () => {
   });
 });
 
-describe('pathfindingSystem — reroute splice momentum (movement inertia)', () => {
-  /** Route a fresh walker at (0,0) toward node (goalHx,0) and run `ticks` — mid-leg at gait after. */
+describe('pathfindingSystem - reroute splice momentum (movement inertia)', () => {
+  /** Route a fresh walker at (0,0) toward node (goalHx,0) and run `ticks` - mid-leg at gait after. */
   function cruisingWalker(sim: Simulation, goalHx: number, ticks: number): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -220,7 +220,7 @@ describe('pathfindingSystem — reroute splice momentum (movement inertia)', () 
     return e;
   }
 
-  /** Re-request from the walker's CURRENT node — a player redirect mid-walk. */
+  /** Re-request from the walker's CURRENT node - a player redirect mid-walk. */
   function reorder(sim: Simulation, e: Entity, goalHx: number): void {
     const p = sim.world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
@@ -239,15 +239,15 @@ describe('pathfindingSystem — reroute splice momentum (movement inertia)', () 
     reorder(sim, e, 16); // further along the SAME heading
     sim.step();
     // The splice projected momentum onto a same-direction heading: nothing shed, no re-ramp. (The
-    // mid-leg heading can sit a few ulps over ONE — the isqrt under-read — so the dot lands at or
+    // mid-leg heading can sit a few ulps over ONE - the isqrt under-read - so the dot lands at or
     // just above ONE and the ramp clamp absorbs the inflation; the gait stays bit-exact.)
     expect(sim.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
     expect(fx.toFloat(sim.world.get(e, PathFollow).hx)).toBeCloseTo(1, 3); // still due east
   });
 
-  it('a reversal re-order stops the gait dead and re-accelerates — never a full-speed flip', () => {
+  it('a reversal re-order stops the gait dead and re-accelerates - never a full-speed flip', () => {
     const { sim } = mappedSim(grassMap(20, 1));
-    // 22 ticks: past the ramp and two ticks beyond the exact node-3 snap at tick 20 — genuinely
+    // 22 ticks: past the ramp and two ticks beyond the exact node-3 snap at tick 20 - genuinely
     // mid-leg (a half-cell leg is 6 cruise ticks, so round tick counts often land ON a node now).
     const e = cruisingWalker(sim, 16, 22); // cruising east at full gait, mid-leg
     const before = sim.world.get(e, Position).x;
@@ -258,14 +258,14 @@ describe('pathfindingSystem — reroute splice momentum (movement inertia)', () 
     const pf = sim.world.get(e, PathFollow);
     // The splice projected the eastward momentum onto the westward leg (dot = −1 → dead stop);
     // the tick's movement then ramped one accel step from rest. Before the fix the walker kept
-    // the FULL cruise gait through the flip — the floor-slide under rapid direction changes.
+    // the FULL cruise gait through the flip - the floor-slide under rapid direction changes.
     expect(pf.speed).toBe(fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS)));
     expect(fx.toFloat(pf.hx)).toBeCloseTo(-1, 3); // now due west
     expect(sim.world.get(e, Position).x).toBeLessThan(before); // and it did move back
   });
 });
 
-describe('pathfindingSystem — mapless no-op', () => {
+describe('pathfindingSystem - mapless no-op', () => {
   it('does nothing when the sim has no terrain graph', () => {
     const sim = new Simulation({ seed: 1, content: testContent() }); // mapless
     expect(sim.terrain).toBeUndefined();
@@ -293,7 +293,7 @@ describe('pathfindingSystem — mapless no-op', () => {
   });
 });
 
-describe('pathfindingSystem — runs inside the real schedule before movement', () => {
+describe('pathfindingSystem - runs inside the real schedule before movement', () => {
   it('a pos-bearing entity gets its PathFollow populated by a normal step()', () => {
     const { sim, request } = mappedSim(grassMap(3, 1));
     const e = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);

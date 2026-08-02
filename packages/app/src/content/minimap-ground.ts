@@ -10,20 +10,20 @@ import { fetchImageData } from './net.js';
  * The minimap's ground-colour binding for a decoded map: one `0xRRGGBB` per cell, averaged from the
  * real terrain texture pages the map's baked `ground` lanes point at. A real map's water/land look
  * lives in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares
- * one typeId), so the typeId palette can never depict it — this join can.
+ * one typeId), so the typeId palette can never depict it - this join can.
  *
  * Source basis: the original's in-game minimap is dynamically generated. The shipped per-map
  * `minimap.pcx` is a map-selection card, sometimes a painted scene, so it cannot
  * serve in-game). NAMED APPROXIMATION: we colour each cell with the mean texel of its two triangles'
- * pattern rects — transition overlays, elevation shading and the `embr` brightness lane are ignored.
+ * pattern rects - transition overlays, elevation shading and the `embr` brightness lane are ignored.
  */
 
-/** Sentinel above any `0xRRGGBB` marking "no lane colour — fall back to the typeId palette". */
+/** Sentinel above any `0xRRGGBB` marking "no lane colour - fall back to the typeId palette". */
 export const MINIMAP_CELL_UNRESOLVED = 0x1000000;
 
 /**
  * Mean RGB (`0xRRGGBB`) of a page rect, or undefined for a degenerate/out-of-bounds rect. Fully
- * transparent texels are skipped (page corners outside the pattern's triangles). Pure — unit-tested.
+ * transparent texels are skipped (page corners outside the pattern's triangles). Pure - unit-tested.
  */
 export function averagePatternColour(
   rgba: Uint8ClampedArray,
@@ -54,7 +54,7 @@ export function averagePatternColour(
 /**
  * Join the ground lanes onto per-pattern colours: each cell mixes its triangle-A and triangle-B
  * pattern colours (mean when both resolve), {@link MINIMAP_CELL_UNRESOLVED} when neither does.
- * Pure — unit-tested with a synthetic lane grid.
+ * Pure - unit-tested with a synthetic lane grid.
  */
 export function cellColoursFromGround(
   ground: SceneGround,
@@ -96,7 +96,7 @@ export function cellColourResolver(
   };
 }
 
-/** Fetch a served ground page PNG and read its pixels back (browser-only — canvas 2D readback).
+/** Fetch a served ground page PNG and read its pixels back (browser-only - canvas 2D readback).
  *  A missing page returns null so those patterns degrade to the typeId palette. */
 async function fetchPagePixels(
   pageKey: string,
@@ -107,8 +107,8 @@ async function fetchPagePixels(
 
 /**
  * Build the per-cell minimap colours for a decoded map, or null when the map carries no ground lanes
- * or texture set (synthetic scenes or a bare checkout) — the minimap then falls
- * back to its typeId raster. One fetch per referenced page (browser-cached — the renderer already
+ * or texture set (synthetic scenes or a bare checkout) - the minimap then falls
+ * back to its typeId raster. One fetch per referenced page (browser-cached - the renderer already
  * loaded the same PNGs), one mean per distinct pattern, one pass over the cells.
  */
 export async function loadMinimapCellColours(

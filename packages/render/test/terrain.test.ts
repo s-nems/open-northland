@@ -17,12 +17,12 @@ import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src
 
 /**
  * The PURE, self-verifiable half of textured terrain: the node-lattice tessellation + UV folds the
- * GPU mesh build consumes (source basis: the original engine's ground mesh — docs/SOURCES.md
+ * GPU mesh build consumes (source basis: the original engine's ground mesh - docs/SOURCES.md
  * "terrain tessellation"). Pixels stay human-gated, but the vertex/UV math is unit-tested here so a
  * regression in the triangle node picks / UV folds / lift rule is caught headless.
  */
 
-describe('cellNode / nodeCell — the cell-centre lattice', () => {
+describe('cellNode / nodeCell - the cell-centre lattice', () => {
   it('places even-row centres at (2c, 2r) and odd-row centres staggered half a cell right', () => {
     expect(cellNode(0, 0)).toEqual([0, 0]);
     expect(cellNode(3, 2)).toEqual([6, 4]);
@@ -53,7 +53,7 @@ describe('cellNode / nodeCell — the cell-centre lattice', () => {
   });
 });
 
-describe('triangle node picks — two triangles per cell, BETWEEN cell centres', () => {
+describe('triangle node picks - two triangles per cell, BETWEEN cell centres', () => {
   it('△ A spans [own centre, SE-below centre, SW-below centre]', () => {
     // Even row: cell (2,2) centres at node (4,4).
     expect(triangleANodes(2, 2)).toEqual([
@@ -61,7 +61,7 @@ describe('triangle node picks — two triangles per cell, BETWEEN cell centres',
       [5, 6],
       [3, 6],
     ]);
-    // Odd row: cell (2,3) centres at node (5,6) — the stagger shifts the below-row picks too.
+    // Odd row: cell (2,3) centres at node (5,6) - the stagger shifts the below-row picks too.
     expect(triangleANodes(2, 3)).toEqual([
       [5, 6],
       [6, 8],
@@ -113,7 +113,7 @@ describe('triangle node picks — two triangles per cell, BETWEEN cell centres',
     expect(triangleANodes(3, 2)[2]).toEqual(triangleANodes(2, 2)[1]);
   });
 
-  it('spans one full row step down and half a cell out — the screen extents the cull box covers', () => {
+  it('spans one full row step down and half a cell out - the screen extents the cull box covers', () => {
     const [apex, se, sw] = triangleANodes(2, 2);
     const top = halfCellToScreen(...apex);
     const right = halfCellToScreen(...se);
@@ -124,7 +124,7 @@ describe('triangle node picks — two triangles per cell, BETWEEN cell centres',
   });
 });
 
-describe('nodeLift — per-node elevation, border clamped to 0', () => {
+describe('nodeLift - per-node elevation, border clamped to 0', () => {
   // 5×5 grid, elevation(col,row) = col·10 + row, sampled at exact cell coords.
   const W = 5;
   const H = 5;
@@ -155,7 +155,7 @@ describe('nodeLift — per-node elevation, border clamped to 0', () => {
   });
 });
 
-describe("nodeLaneUV — brightness-lane texel centres at each node's own cell", () => {
+describe("nodeLaneUV - brightness-lane texel centres at each node's own cell", () => {
   it("maps an interior node to its cell's texel centre over the PADDED width", () => {
     const [hx, hy] = cellNode(2, 3);
     expect(nodeLaneUV(hx, hy, 5, 5, 8)).toEqual([(2 + 0.5) / 8, (3 + 0.5) / 5]);
@@ -167,7 +167,7 @@ describe("nodeLaneUV — brightness-lane texel centres at each node's own cell",
   });
 });
 
-describe('transitionRef — the emt lane value decode', () => {
+describe('transitionRef - the emt lane value decode', () => {
   it('treats 255 as "no overlay"', () => {
     expect(transitionRef(TRANSITION_NONE)).toBeUndefined();
   });
@@ -199,10 +199,10 @@ describe('triangleUVs', () => {
   });
 });
 
-describe('rectTriangleUVs — the per-typeId fold onto the two triangles', () => {
+describe('rectTriangleUVs - the per-typeId fold onto the two triangles', () => {
   const rect = { x: 64, y: 128, w: 64, h: 64 };
 
-  it("triangle a gets the rect's (TL, BR, BL) — the pattern-record point convention", () => {
+  it("triangle a gets the rect's (TL, BR, BL) - the pattern-record point convention", () => {
     expect(rectTriangleUVs(rect, 'a', 256, 256)).toEqual([
       64 / 256,
       128 / 256,
@@ -239,7 +239,7 @@ describe('patternSrcRect', () => {
   });
 });
 
-describe('dominantGroundColour — the portrait inset off-map backdrop', () => {
+describe('dominantGroundColour - the portrait inset off-map backdrop', () => {
   it('picks the most-common typeId and maps it through the flat-colour table', () => {
     // Mostly sand (typeId 4), a little grass (0) → the sand tint, not the grass default.
     expect(dominantGroundColour([4, 4, 4, 0, 4])).toBe(flatTileColour(4));

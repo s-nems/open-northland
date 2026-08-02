@@ -11,7 +11,7 @@ export const DATA_DIR = 'Data';
 export const BOBS_DIR = join(DATA_DIR, 'engine2d', 'bin', 'bobs');
 
 /** The `content/` subtree served at the app's `/textures/` route (ground pages + transition overlays),
- *  in the game tree's real casing — writes must land here or the vite route never serves them. */
+ *  in the game tree's real casing - writes must land here or the vite route never serves them. */
 export const TEXTURES_DIR = join(DATA_DIR, 'engine2d', 'bin', 'textures');
 
 /**
@@ -36,9 +36,9 @@ async function writeBobAtlas(outDir: string, stem: string, atlas: BobAtlas): Pro
 
 /** The two `loadLayer` stems {@link emitIndexedAndPreviewAtlas} wrote, plus the atlas frame count. */
 export interface IndexedAtlasStems {
-  /** `<keyStem>.indexed` — the recolourable indexed atlas (palette index in red, mask in alpha). */
+  /** `<keyStem>.indexed` - the recolourable indexed atlas (palette index in red, mask in alpha). */
   readonly indexedStem: string;
-  /** `<keyStem>.<previewSuffix>` — the default-coloured RGBA preview atlas. */
+  /** `<keyStem>.<previewSuffix>` - the default-coloured RGBA preview atlas. */
   readonly previewStem: string;
   readonly frames: number;
 }
@@ -47,7 +47,7 @@ export interface IndexedAtlasStems {
  * Packs a decoded bob container into (a) an indexed atlas the app recolours at draw time and (b) an RGBA
  * preview coloured through `previewPalette`, writes both under {@link BOBS_DIR} as `<keyStem>.indexed` and
  * `<keyStem>.<previewSuffix>`, and returns the two stems + frame count. The shared emit path for the
- * goods/GUI/font indexed-atlas stages, which differ only in their key stem, preview suffix, and palette —
+ * goods/GUI/font indexed-atlas stages, which differ only in their key stem, preview suffix, and palette -
  * centralizing the `<stem>.indexed` / `<stem>.<colour>` naming the app-side loaders mirror.
  */
 export async function emitIndexedAndPreviewAtlas(
@@ -73,9 +73,9 @@ export interface AtlasBesideResult {
 }
 
 /**
- * Writes a packed atlas at its source `.bmd`'s relative path under `outDir` — `<bmd-stem>.<suffix>.png` +
+ * Writes a packed atlas at its source `.bmd`'s relative path under `outDir` - `<bmd-stem>.<suffix>.png` +
  * `<bmd-stem>.<suffix>.atlas.json` (+ `<bmd-stem>.<suffix>.build.png` for a `'build-time'` bake's time
- * sheet, announced by the manifest's `build` flag) — and returns the relative paths. `bmdRel` must end
+ * sheet, announced by the manifest's `build` flag) - and returns the relative paths. `bmdRel` must end
  * in `.bmd` (the caller resolved the real cased path). The directory is created first: a source that
  * won its path in a loose layer has no extracted sibling to land beside. The `<suffix>` distinguishes
  * recolours of one shared body bob (a palette slug, or `indexed` for the recolourable atlas) so variants

@@ -3,7 +3,7 @@ import { ZERO } from '../../../src/core/fixed.js';
 import { World } from '../../../src/ecs/world.js';
 import { separationScratch } from '../../../src/systems/movement/collision/separation/scratch.js';
 
-describe('unit body collision — scratch lifetime', () => {
+describe('unit body collision - scratch lifetime', () => {
   it('recycles active snapshots without retaining historical entity ids', () => {
     const world = new World();
     const entity = world.create();

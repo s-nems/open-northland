@@ -44,13 +44,13 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
  *     `jobType` is cross-checked against the job table by `validateCrossReferences`).
  *   - `logicstock <goodType> <capacity> <initial>` -> {@link StockSlot}[] (per-good storage slots;
  *     `goodType` cross-checked against the good table).
- *   - `logicproduction <goodType>` -> `produces` (output good ids only — the input side is the
+ *   - `logicproduction <goodType>` -> `produces` (output good ids only - the input side is the
  *     output-side join {@link fillBuildingRecipes} does after this, see {@link BuildingType.produces}).
  *   - `logichomesize` -> `homeSize` (population-capacity tier, on `home` buildings).
  * `kind` is mapped from `logicmaintype` ({@link houseKind}). Throws on a section missing the required
  * numeric `logictype` (matches {@link extractGoods}'s throw-on-malformed stance). The combat/graphics
  * extras (`debugcolor`, `logicCanEnableDefenceMode`, `logicSchoolSize`, `logicvehicletype`, the
- * `logicbuildon*`/`logicignore*` placement flags) are intentionally skipped — they belong with the
+ * `logicbuildon*`/`logicignore*` placement flags) are intentionally skipped - they belong with the
  * later construction/combat/placement systems, not this type-table slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {

@@ -1,5 +1,5 @@
 /**
- * Windows cursor (`.cur`) decoder — the ICO/CUR container: a directory of DIB (BMP) images plus a
+ * Windows cursor (`.cur`) decoder - the ICO/CUR container: a directory of DIB (BMP) images plus a
  * per-image hotspot. A `.cur` is byte-identical to a `.ico` except the two `ICONDIRENTRY` fields that
  * an icon uses for colour-planes / bit-count instead carry the cursor hotspot (X, Y).
  *
@@ -15,15 +15,15 @@
  *     stacked over a 1-bpp AND transparency mask). Real height = biHeight / 2.
  *
  * The game's three cursors each pack 1/4/8-bpp variants of one 32×32 image; we decode the highest
- * colour depth available (only 8/24/32-bpp are implemented — the shipped cursors always carry an 8-bpp
+ * colour depth available (only 8/24/32-bpp are implemented - the shipped cursors always carry an 8-bpp
  * entry, which is the one selected, so a ≤4-bpp-only cursor is not a real case) and take transparency
  * from the AND mask (a set AND bit = transparent). The hotspot is read from that same selected entry, so
- * image + hotspot stay self-consistent — matching what the original's Win32 `LoadCursorFromFileW`
+ * image + hotspot stay self-consistent - matching what the original's Win32 `LoadCursorFromFileW`
  * best-fits on the game's 32-bpp display (it picks the 8-bpp image and uses its hotspot, not a
  * lower-depth entry's; e.g. `MouseRight`'s 8-bpp hotspot is (1,1), while its 1-bpp fallback carries (10,10)).
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. `encodeCursor` is a faithful (8-bpp) inverse used
- * to round-trip test without committing copyrighted fixtures — same rationale as the other encoder pairs.
+ * to round-trip test without committing copyrighted fixtures - same rationale as the other encoder pairs.
  */
 
 import { viewOf } from './byte-cursor.js';
@@ -50,7 +50,7 @@ const align4 = (n: number): number => (n + 3) & ~3;
 export interface DecodedCursor {
   readonly width: number;
   readonly height: number;
-  /** Hotspot in pixels from the top-left — where the click actually lands (CSS `cursor: url() x y`). */
+  /** Hotspot in pixels from the top-left - where the click actually lands (CSS `cursor: url() x y`). */
   readonly hotspotX: number;
   readonly hotspotY: number;
   readonly image: RgbaImage;
@@ -175,7 +175,7 @@ function decodeDib(bytes: Uint8Array, view: DataView, off: number): RgbaImage {
         g = bytes[p + 1] ?? 0;
         r = bytes[p + 2] ?? 0;
       } else {
-        // 24/32-bpp true-colour: BGR(A) inline. A 32-bpp DIB's per-pixel alpha is ignored — the AND
+        // 24/32-bpp true-colour: BGR(A) inline. A 32-bpp DIB's per-pixel alpha is ignored - the AND
         // mask governs transparency here (the shipped cursors are 8-bpp, so this branch never runs on
         // real data; it's a defensive path for a foreign true-colour cursor).
         const step = bitCount / 8;
@@ -201,14 +201,14 @@ export interface CursorImageInput {
   readonly hotspotY: number;
   /** `width * height` palette indices, row-major top→bottom (the encoder flips to bottom-up on write). */
   readonly pixels: Uint8Array;
-  /** 256 RGB triples (768 bytes) — written as the DIB's BGRA colour table. */
+  /** 256 RGB triples (768 bytes) - written as the DIB's BGRA colour table. */
   readonly palette: Uint8Array;
   /** Optional `width * height` mask, 1 = transparent (sets the AND-mask bit); default all opaque. */
   readonly transparent?: Uint8Array;
 }
 
 /**
- * Serializes one or more 8-bpp images into a `.cur` byte stream — the faithful inverse of the 8-bpp
+ * Serializes one or more 8-bpp images into a `.cur` byte stream - the faithful inverse of the 8-bpp
  * decode path, used to round-trip {@link decodeCursor} in tests without committing real cursor bytes.
  * The images share one directory; {@link decodeCursor} then selects among them exactly as it does a
  * real multi-depth cursor. Throws (`cursor:` prefix) on inputs that can't describe a valid image.

@@ -1,7 +1,7 @@
 import { type Camera, type DrawItem, tileToScreen } from '@open-northland/render';
 
 /**
- * Static starting-frame builders — the pure geometry half of the camera. No Pixi, no sim, no DOM: each
+ * Static starting-frame builders - the pure geometry half of the camera. No Pixi, no sim, no DOM: each
  * maps world/tile points to a {@link Camera} frame (`screen = world*scale + offset`). The interactive
  * entries wrap the DOM controller (`controller.ts`) around the frame one of these produces; the
  * deterministic `?shot` entry uses {@link cameraFor} alone. The `?zoom=` knob exists so a human can
@@ -12,7 +12,7 @@ import { type Camera, type DrawItem, tileToScreen } from '@open-northland/render
 /**
  * Build the camera for a frame. At zoom 1 it keeps the historical pan (the iso strip projects to
  * negative screen-x, so the offset nudges it into view). At a higher zoom it centres on the centroid of
- * the settlers (the camera follows the people — they're the animated subjects a pixel check inspects),
+ * the settlers (the camera follows the people - they're the animated subjects a pixel check inspects),
  * falling back to all non-tile sprites, then the origin. This frames a small decoded bob reliably rather
  * than letting the big placeholder boxes drag the focus off it. `screen = world*scale + offset` (see
  * {@link Camera}).
@@ -26,9 +26,9 @@ export function cameraFor(scene: readonly DrawItem[], zoom: number, width: numbe
 }
 
 /**
- * The camera that puts tile `(tileX, tileY)` at the viewport centre at `zoom` — the inverse of the iso
+ * The camera that puts tile `(tileX, tileY)` at the viewport centre at `zoom` - the inverse of the iso
  * projection the renderer applies (`screen = world*scale + offset`, like {@link cameraFor}). Backs the
- * `?center=x,y` inspection knob (`entries/map.ts`): a decoded map's feature — a bridge, a coastline —
+ * `?center=x,y` inspection knob (`entries/map.ts`): a decoded map's feature - a bridge, a coastline -
  * that the settler-centroid framing would never land on. Pure.
  */
 export function cameraCenteredOnTile(
@@ -44,7 +44,7 @@ export function cameraCenteredOnTile(
 
 /**
  * The camera that puts world point `(worldX, worldY)` (projected px, pre-camera) at the viewport centre
- * at `zoom` — {@link cameraCenteredOnTile} without the tile→world projection, for callers that already
+ * at `zoom` - {@link cameraCenteredOnTile} without the tile→world projection, for callers that already
  * hold a world point (the minimap's click-to-jump). Pure.
  */
 export function cameraCenteredOnWorld(

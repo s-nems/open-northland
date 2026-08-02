@@ -1,7 +1,7 @@
 import type { Fixed, WorldSnapshot } from '@open-northland/sim';
 
 /**
- * Typed read helpers over the frozen {@link WorldSnapshot} — the shared owner/position/kind reads the
+ * Typed read helpers over the frozen {@link WorldSnapshot} - the shared owner/position/kind reads the
  * controls and panels all need, so they stop re-inventing the same `as {...}` casts per file (display
  * panels still cast their own presentation-only fields, e.g. the details panel's needs/carry/stance).
  * These read the snapshot (the allowed one-way flow), never live component stores; every read is
@@ -43,7 +43,7 @@ export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } 
 }
 
 /**
- * Whether the experience tech tree gates this settler's trades and wares — the app mirror of the sim's
+ * Whether the experience tech tree gates this settler's trades and wares - the app mirror of the sim's
  * `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated
  * (the toggle is a human-player setting). The two world-wide facts behind it are resolved once per
  * snapshot ({@link progressionGateFacts}), so a per-settler loop (the picker over a marquee selection)
@@ -89,7 +89,7 @@ function progressionGateFacts(snapshot: WorldSnapshot): ProgressionGateFacts {
 }
 
 /** A settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]` pairs)
- *  parsed into a Map — shared by the panel's experience rows, its unlock forecast, and the profession
+ *  parsed into a Map - shared by the panel's experience rows, its unlock forecast, and the profession
  *  picker's qualification filter. Empty for a non-settler or a malformed field. */
 export function settlerExperienceOf(components: Readonly<Record<string, unknown>>): Map<number, number> {
   const points = new Map<number, number>();
@@ -144,7 +144,7 @@ export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   return num(b?.tribe);
 }
 
-/** The building's construction progress (`Building.built`, fixed-point — `ONE` is finished), or
+/** The building's construction progress (`Building.built`, fixed-point - `ONE` is finished), or
  *  undefined if it isn't a building / carries none. */
 export function builtFractionOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { built?: unknown } | undefined;
@@ -177,7 +177,7 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
 }
 
 /** The settler's hunger/fatigue deficits (fixed-point 0..ONE, higher = worse), or undefined for a
- *  non-settler — the need-bubble projection's read. The brand restore mirrors {@link positionOf}. */
+ *  non-settler - the need-bubble projection's read. The brand restore mirrors {@link positionOf}. */
 export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fixed } | undefined {
   const settler = e.components.Settler as { hunger?: unknown; fatigue?: unknown } | undefined;
   const hunger = num(settler?.hunger);
@@ -189,7 +189,7 @@ export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fix
 
 /**
  * Map each gatherer's drop-off flag entity → its owning gatherer, for the human `player` only
- * (`'any'` — the observer session — keeps every player's gatherers) — the inverse of the
+ * (`'any'` - the observer session - keeps every player's gatherers) - the inverse of the
  * gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
  * "which gatherer owns this flag" needs this scan). Lets a click on a flag resolve to the gatherer to
  * select. A gatherer binds to exactly one flag, so the map is 1:1.

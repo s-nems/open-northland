@@ -8,14 +8,14 @@ import { atomicDuration } from '../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
 
 /**
- * The wedding half of the FamilySystem: drive each {@link Wedding} pair — the seeker walks to its
+ * The wedding half of the FamilySystem: drive each {@link Wedding} pair - the seeker walks to its
  * standing partner, both kiss (the paired atomics below), and on the kiss's completion both become
  * spouses ({@link Marriage}) for life; a `settlersMarried` event announces it (the original's marriage
  * jingle moment, `DM_MUSIC_TYPE_JINGLE_MARRIAGE`). A wedding whose partner died or whose walk failed is
  * cancelled on both sides.
  */
 
-/** The paired kiss atomic ids — `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
+/** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
 export const KISS_ATOMIC_ID = 20;
 export const KISSED_ATOMIC_ID = 21;
@@ -27,11 +27,11 @@ export function startWedding(world: World, seeker: Entity, partner: Entity): voi
 }
 
 /**
- * Move a freshly-wed pair into one home. A married couple is a single household — one `homeSize`
- * family slot (the `familiesOf` grouping unit) — so when just one spouse was housed the other joins
+ * Move a freshly-wed pair into one home. A married couple is a single household - one `homeSize`
+ * family slot (the `familiesOf` grouping unit) - so when just one spouse was housed the other joins
  * that home free of charge, and two separately-housed singles consolidate into `a`'s home (the pair's
  * lower id, canonical), freeing the other slot; neither can overflow a home the housed partner already
- * occupied. Without this a settler married AFTER being assigned a house stays a one-person household —
+ * occupied. Without this a settler married AFTER being assigned a house stays a one-person household -
  * the door dot reads single and `makeChild` never finds the couple `together` (observed original
  * behavior: a married couple cohabits).
  */

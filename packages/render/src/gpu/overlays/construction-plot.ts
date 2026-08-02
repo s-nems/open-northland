@@ -4,17 +4,17 @@ import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js'
 import { hashCells } from './cell-signature.js';
 
 /**
- * The construction-site plot — a translucent grey "plac budowy" washed over the ground cells a placed
+ * The construction-site plot - a translucent grey "plac budowy" washed over the ground cells a placed
  * foundation occupies, so a fresh site reads as a marked-out building plot the instant it is placed (before
  * the scaffold has risen at all). Shaped to the building's footprint (the `blocked` body cells the sim
- * hands over as half-cell `(col,row)` nodes), never a generic circle — a big house marks a big plot — and
+ * hands over as half-cell `(col,row)` nodes), never a generic circle - a big house marks a big plot - and
  * drawn as ONE rounded outline per contiguous region ({@link plotOutlines}), so the plot reads as a soft
  * cleared patch of earth instead of a hard-edged pile of cell diamonds.
  *
  * Drawn in world space (a child of the camera's world layer, below the sprites like the placement wash), so
  * the plot pans/zooms with the ground and the rising scaffold + builders draw over it. All regions fill in
  * one {@link Graphics} pass at a single translucent alpha. Retained: the outlines are rebuilt only when the
- * plot set changes (a site placed or finished), not per frame — a still build re-draws nothing.
+ * plot set changes (a site placed or finished), not per frame - a still build re-draws nothing.
  *
  * The colour/alpha/corner radius are tuned by eye (source basis "observed original behavior"; a human signs
  * off the feel).
@@ -45,7 +45,7 @@ export class ConstructionPlotLayer {
   /**
    * Redraw the grey plots for the current set of construction sites; an empty list clears them. Each
    * union region becomes one rounded polygon; vertices ride the terrain lift like every projected item
-   * (bilinear at the outline's fractional node coords — the documented fractional-position approximation).
+   * (bilinear at the outline's fractional node coords - the documented fractional-position approximation).
    */
   set(plots: readonly ConstructionPlotFrame[], elevation: ElevationField): void {
     const key = signatureOf(plots);
@@ -70,14 +70,14 @@ export class ConstructionPlotLayer {
 /**
  * The union outlines of the plots' cell diamonds, as loops of integer vertices in the rotated `(u,v)`
  * frame (`u = col + row`, `v = col − row`). In that frame a node diamond centred `(col,row)` is the
- * axis-aligned 2×2 square centred `(u, v)` — so the union of (overlapping) diamonds becomes a union of
+ * axis-aligned 2×2 square centred `(u, v)` - so the union of (overlapping) diamonds becomes a union of
  * unit grid squares, whose rectilinear boundary is walked exactly: shared edges cancel, collinear runs
  * merge, and each closed region yields one loop. Loops wind with the region on the LEFT (holes wind
  * opposite); at a corner-pinch vertex the walk prefers the left turn, so loops never self-cross.
  * Deterministic: squares and edges are visited in sorted-key order.
  */
 export function plotOutlines(plots: readonly ConstructionPlotFrame[]): { u: number; v: number }[][] {
-  // 1. The covered unit squares, keyed by their min corner "a,b" — 4 per cell (the 2×2 block).
+  // 1. The covered unit squares, keyed by their min corner "a,b" - 4 per cell (the 2×2 block).
   const squares = new Set<string>();
   for (const plot of plots) {
     for (const cell of plot.cells) {
@@ -127,7 +127,7 @@ export function plotOutlines(plots: readonly ConstructionPlotFrame[]): { u: numb
         const dirs = edges.get(`${u},${v}`);
         // Turn priority relative to the incoming direction: left, straight, right.
         const next = [(dir + 1) % 4, dir, (dir + 3) % 4].find((d) => dirs?.[d]);
-        if (dirs === undefined || next === undefined) break; // exhausted — loop closed below
+        if (dirs === undefined || next === undefined) break; // exhausted - loop closed below
         dirs[next] = false;
         if (next !== dir || loop.length === 0) loop.push({ u, v }); // a turn starts a new segment
         dir = next;
@@ -160,7 +160,7 @@ function projectUV(elevation: ElevationField, u: number, v: number): { x: number
   return { x: p.x, y: p.y - terrainLiftAt(elevation, col / 2, row / 2) };
 }
 
-/** Per-vertex corner radii: half the shorter adjacent edge, capped at {@link MAX_CORNER_RADIUS} — so a
+/** Per-vertex corner radii: half the shorter adjacent edge, capped at {@link MAX_CORNER_RADIUS} - so a
  *  short sawtooth edge rounds fully into a soft bump while a long straight run keeps a gentle corner. */
 function withCornerRadii(
   points: readonly { x: number; y: number }[],
@@ -176,7 +176,7 @@ function withCornerRadii(
 }
 
 /** A cheap order-sensitive signature of the plot set (cell count + a rolling mix of every cell) so an
- *  unchanged set skips the redraw. Only gates a cosmetic redraw — a collision self-corrects next change. */
+ *  unchanged set skips the redraw. Only gates a cosmetic redraw - a collision self-corrects next change. */
 function signatureOf(plots: readonly ConstructionPlotFrame[]): string {
   let h = 0;
   let n = 0;

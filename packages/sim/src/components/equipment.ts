@@ -14,13 +14,13 @@ export const MISC_EQUIP_SLOTS = 4;
 /**
  * One occupied equipment slot: the worn good + how used-up it is.
  *
- * `goodType` is the equip good's `typeId` (the original's equippable ids 30–55 — shoes/tools/armour/
+ * `goodType` is the equip good's `typeId` (the original's equippable ids 30–55 - shoes/tools/armour/
  * weapons/mead/potions/amulets), resolved against the content `goods` table for its icon, name and
  * {@link import('@open-northland/data').EquipClass}.
  *
- * `degreeOfUse` is a {@link Fixed} fraction in `[0, ONE]` — how used-up a WEARING item is (`0` = fresh,
+ * `degreeOfUse` is a {@link Fixed} fraction in `[0, ONE]` - how used-up a WEARING item is (`0` = fresh,
  * `ONE` = spent), the original's "degree of use" the equip window shows as a percentage. It is always
- * `0` for a non-wearing good (weapons/armour/amulets never wear — the good's `equip.wears` is false;
+ * `0` for a non-wearing good (weapons/armour/amulets never wear - the good's `equip.wears` is false;
  * source basis: manual "Unused items ... can be used again"). Use accrues in wear steps of
  * `ONE/equip.uses` (walking for boots, production cycles for tools, sips for consumables - see
  * `systems/equipment/`); at `ONE` the item breaks and its slot clears.
@@ -31,7 +31,7 @@ export interface EquipmentSlot {
 }
 
 /**
- * A character's worn **equipment** — the player-facing inventory the original's equip window shows. The
+ * A character's worn **equipment** - the player-facing inventory the original's equip window shows. The
  * slot kinds are source-pinned to the manual's Equipment section: everyone can wear `boots` (shoes), a
  * `tool` (wooden/iron), and {@link MISC_EQUIP_SLOTS} `misc` consumables (mead/potions/amulets); a
  * soldier additionally carries a `weapon` and `armor`. Each slot holds one {@link EquipmentSlot} or is
@@ -45,10 +45,10 @@ export interface EquipmentSlot {
  * both displays and fights with one.
  *
  * It is a **separate optional component** (like {@link Weapon}/{@link Armor}/{@link JobAssignment}):
- * only an explicitly-equipped unit carries one, so a bare settler — every animal, every golden/slice
- * settler — has none and the state hash stays byte-identical (adding this component changes no existing
+ * only an explicitly-equipped unit carries one, so a bare settler - every animal, every golden/slice
+ * settler - has none and the state hash stays byte-identical (adding this component changes no existing
  * scenario). Determinism: every field is a whole integer id or a {@link Fixed} scaled integer, stamped
- * from command data and read by pure UI/queries — no RNG, no wall-clock.
+ * from command data and read by pure UI/queries - no RNG, no wall-clock.
  */
 export interface EquipmentData {
   boots: EquipmentSlot | null;

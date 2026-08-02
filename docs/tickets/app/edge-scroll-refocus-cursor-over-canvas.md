@@ -6,7 +6,7 @@
 `pointerInside` is true, and `pointerInside` flips true **only** on a `mouseenter` boundary crossing
 (`onPointerEnter`); `onBlur` clears it. So if the player alt-tabs away and back with the cursor still
 resting over the canvas, no `mouseenter` fires on return, and a plain `mousemove` does not set
-`pointerInside` — edge-scroll stays dead until the cursor physically leaves the canvas and re-enters.
+`pointerInside` - edge-scroll stays dead until the cursor physically leaves the canvas and re-enters.
 
 The player can recover by moving the cursor out of the canvas and back, but the camera appears
 unresponsive after every affected refocus.
@@ -17,7 +17,7 @@ unresponsive after every affected refocus.
   inside `onMouseMove` when the sampled client point falls within the canvas `rect` (reuse
   `screenScale`'s `rect`), so a move after refocus re-enables the probe. Keep `mouseleave`/`onBlur`
   clearing it.
-- Confirm this does not re-introduce panning from a stale position — `pointerMoved` already gates that,
+- Confirm this does not re-introduce panning from a stale position - `pointerMoved` already gates that,
   and a `mousemove` supplies a real coordinate by definition.
 
 ## Verify

@@ -60,11 +60,11 @@ export function servedShadowStem(shadowBmd: string | undefined): string | undefi
 }
 
 /**
- * The extracted building ground footprints from the served IR, by typeId — the collision/build-exclusion
+ * The extracted building ground footprints from the served IR, by typeId - the collision/build-exclusion
  * data live content attaches so the real-content view (`?map=`) enforces and shows placement collision
  * (scenes and bare checkouts stay footprint-less, keeping free placement). Empty when the IR is absent or
- * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here — the
- * one seam extracted footprints pass through — so the sim's walk-to-door target and the `?debug=geometry`
+ * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here - the
+ * one seam extracted footprints pass through - so the sim's walk-to-door target and the `?debug=geometry`
  * overlay read the same corrected door.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
@@ -74,7 +74,7 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
     const door = b.footprint.door;
     if (shift !== undefined && door === undefined) {
-      // A committed correction with nothing to correct — a re-extraction dropped the door. Warn so the
+      // A committed correction with nothing to correct - a re-extraction dropped the door. Warn so the
       // review-signed shift isn't silently lost (the type still gets its verbatim footprint).
       diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
@@ -98,8 +98,8 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 
 /**
  * The `[gfxanimatomic]` per-direction frame lists for one `(tribe, action)`, indexed by body bobseq name
- * — the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
- * First record wins per seq (a job/action may list several variant seqs — the unarmed soldier's four
+ * - the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
+ * First record wins per seq (a job/action may list several variant seqs - the unarmed soldier's four
  * punches; the caller names the one it wants). Filtering by `tribe` matters: the same body bobseq name
  * recurs across the human tribes with different frame lists (each tribe's own swing layout), so passing
  * the wrong tribe yields a plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe`
@@ -118,18 +118,18 @@ export function gfxAtomicFrameLists(
   return byName;
 }
 
-/** `logicgoodtype 0` in the `[gfxwalkatomic]` table — the job's unloaded walk, not a carry look. */
+/** `logicgoodtype 0` in the `[gfxwalkatomic]` table - the job's unloaded walk, not a carry look. */
 const UNLOADED_GOOD_TYPE = 0;
 
 /**
  * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as **good id-slug → body bobseq name**
- * — the original's own answer to "which cycle does a settler play hauling this good" (honey →
+ * - the original's own answer to "which cycle does a settler play hauling this good" (honey →
  * `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
  * content set's `typeId`s are content-relative (the sandbox's honey is not the decoded IR's honey) while
  * slugs are stable; {@link import('../settler-gfx/index.js').carryAnimsByGood} does the slug → running
  * `typeId` half.
  *
- * The unloaded walk (`logicgoodtype 0`) is dropped — that is the job's plain gait, not a carry look. A
+ * The unloaded walk (`logicgoodtype 0`) is dropped - that is the job's plain gait, not a carry look. A
  * good with no record for this job is absent from the map, which is itself the source's answer: that job
  * shows no load for it (a soldier binds its empty walk for every good, and a woman only hauls the nine
  * goods her body authors).

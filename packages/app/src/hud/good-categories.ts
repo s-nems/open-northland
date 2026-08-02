@@ -1,11 +1,11 @@
 import { messages } from '../i18n/index.js';
 
 /**
- * The good→stock-category grouping and the category names — shared by every HUD window that groups goods
+ * The good→stock-category grouping and the category names - shared by every HUD window that groups goods
  * into the original's eight tabs (the details panel's Magazyn, the tool panel's goods window).
  *
  * The mapping is a NAMED APPROXIMATION. The original filters its goods across these eight tabs, but that
- * mapping is not in the extracted data — no 8-way stock-tab category field exists on goods
+ * mapping is not in the extracted data - no 8-way stock-tab category field exists on goods
  * (`goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types); it is a hardcoded
  * engine/GUI feature. The tab-plate glyphs are also still unread (montage guesses), so which glyph-tab a
  * category maps to is provisional too; both the categories below and their tab order are meant to be
@@ -24,9 +24,9 @@ export function stockTabLabels(): readonly string[] {
   return messages().hud.stockTabs;
 }
 
-/** Good string id → tab index (0–7). Provisional grouping — see the file header. */
+/** Good string id → tab index (0–7). Provisional grouping - see the file header. */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
-  // 0 — Żywność (food)
+  // 0 - Żywność (food)
   food_simple: 0,
   food_extra: 0,
   bread: 0,
@@ -36,11 +36,11 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   wheat: 0,
   honey: 0,
   flour: 0,
-  // 1 — Napoje (drink / consumable liquids)
+  // 1 - Napoje (drink / consumable liquids)
   water: 1,
   mead: 1,
   holy_oil: 1,
-  // 2 — Surowce (raw materials)
+  // 2 - Surowce (raw materials)
   wood: 2,
   stone: 2,
   mud: 2,
@@ -49,20 +49,20 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   wool: 2,
   leather: 2,
   herb: 2,
-  // 3 — Budulec (building materials)
+  // 3 - Budulec (building materials)
   plank: 3,
   brick: 3,
   tile: 3,
   pillar: 3,
   ornament: 3,
-  // 4 — Narzędzia (tools)
+  // 4 - Narzędzia (tools)
   tool_wooden: 4,
   tool_iron: 4,
-  // 5 — Wyroby (crafted household goods)
+  // 5 - Wyroby (crafted household goods)
   crockery: 5,
   furniture: 5,
   shoes: 5,
-  // 6 — Wojsko (weapons + armor)
+  // 6 - Wojsko (weapons + armor)
   bow_short: 6,
   bow_long: 6,
   spear_wooden: 6,
@@ -73,7 +73,7 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   armor_leather: 6,
   armor_chain: 6,
   armor_plate: 6,
-  // 7 — Inne (currency, potions, amulets, animals, vehicles, special) falls through DEFAULT_TAB
+  // 7 - Inne (currency, potions, amulets, animals, vehicles, special) falls through DEFAULT_TAB
 };
 
 /** The stock tab a good belongs to, by its string id (misc/"Inne" tab when unknown). */

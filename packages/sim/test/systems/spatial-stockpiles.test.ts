@@ -9,12 +9,12 @@ import { stockpilesAtNode } from '../../src/systems/spatial/stockpiles.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The stockpile NODE index (`systems/spatial/stockpiles.ts`) — the golden-rule-6 fix that turns the
+ * The stockpile NODE index (`systems/spatial/stockpiles.ts`) - the golden-rule-6 fix that turns the
  * per-drop tile lookup in `atomics/effects/goods/piles.ts` from a scan over every alive entity (~17k on a
  * decoded map) into an O(1) bucket read. Pinned here: buckets hold every stockpile on the node
  * ascending-id (the canonical first-wins order `dropOrStackGood`/`stackOntoTile` pick through,
  * including the candidates they reject and skip), the index refreshes on the Stockpile store
- * generation, and its verifier fires if a positioned stockpile ever moves in place — the invariant the
+ * generation, and its verifier fires if a positioned stockpile ever moves in place - the invariant the
  * whole memo rests on. Winner parity itself rides the goods/gatherer suites and the golden slice, which
  * all run through the indexed path.
  */
@@ -27,7 +27,7 @@ function newSim(): Simulation {
   return new Simulation({ seed: 1, content: testContent() });
 }
 
-/** A bare loose heap of `good` at half-cell node (hx, hy) — the shape `dropOrStackGood` stacks onto. */
+/** A bare loose heap of `good` at half-cell node (hx, hy) - the shape `dropOrStackGood` stacks onto. */
 function heapAt(sim: Simulation, hx: number, hy: number, good: number, amount: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
@@ -39,7 +39,7 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
   it('buckets every stockpile on the node ascending-id, and nothing from a neighbouring node', () => {
     const sim = newSim();
     const b = heapAt(sim, 10, 10, WOOD, 1);
-    const a = heapAt(sim, 10, 10, STONE, 1); // same node, higher id — must follow `b`
+    const a = heapAt(sim, 10, 10, STONE, 1); // same node, higher id - must follow `b`
     const neighbour = heapAt(sim, 11, 10, WOOD, 1);
     expect(stockpilesAtNode(sim.world, 10, 10)).toEqual([b, a]);
     expect(stockpilesAtNode(sim.world, 10, 10)).not.toContain(neighbour);
@@ -67,7 +67,7 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
       const e = heapAt(sim, hx, 3, WOOD, 1);
       alive.push({ e, hx });
       expected.set(hx, [...(expected.get(hx) ?? []), e]);
-      // Read between every mutation — the mid-dispatch interleave the wholesale rebuild degraded on.
+      // Read between every mutation - the mid-dispatch interleave the wholesale rebuild degraded on.
       expect(stockpilesAtNode(sim.world, hx, 3)).toEqual(expected.get(hx));
       if (i % 3 === 2) {
         const gone = alive.shift();
@@ -95,7 +95,7 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     for (let i = 0; i < MEMBERSHIP_JOURNAL_LIMIT + 100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
     for (const e of bulk) sim.world.destroy(e);
     const last = heapAt(sim, 1, 1, WOOD, 1);
-    // The journal really overflowed — the index (caught up at `caughtUp`) must take the rebuild path.
+    // The journal really overflowed - the index (caught up at `caughtUp`) must take the rebuild path.
     expect(sim.world.membershipDeltasSince(Stockpile, caughtUp)).toBeNull();
     expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first, last]);
     expect(stockpilesAtNode(sim.world, 2, 2)).toEqual([]);
@@ -107,19 +107,19 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     const heap = heapAt(sim, 6, 6, WOOD, 1);
     expect(stockpilesAtNode(sim.world, 6, 6)).toEqual([heap]); // build the index at the old node
     const moved = positionOfNode(20, 20);
-    const p = sim.world.get(heap, Position); // an in-place write bumps no generation — exactly the silent case
+    const p = sim.world.get(heap, Position); // an in-place write bumps no generation - exactly the silent case
     p.x = moved.x;
     p.y = moved.y;
     expect(sim.world.verifyCaches()).toEqual([
-      'stockpileNodeIndex bucket (20,20) diverges from a fresh rebuild — a positioned stockpile moved in place',
+      'stockpileNodeIndex bucket (20,20) diverges from a fresh rebuild - a positioned stockpile moved in place',
     ]);
   });
 
   it('dropOrStackGood still stacks onto the lowest-id matching heap, skipping a different good on the tile', () => {
     const sim = newSim();
-    const stone = heapAt(sim, 8, 8, STONE, 1); // lowest id, but holds another good — rejected and skipped
+    const stone = heapAt(sim, 8, 8, STONE, 1); // lowest id, but holds another good - rejected and skipped
     const wood = heapAt(sim, 8, 8, WOOD, 1); // the canonical winner
-    const later = heapAt(sim, 8, 8, WOOD, 1); // a second match — must lose to `wood`
+    const later = heapAt(sim, 8, 8, WOOD, 1); // a second match - must lose to `wood`
     const at = positionOfNode(8, 8);
 
     expect(dropOrStackGood(sim.world, at.x, at.y, WOOD, 2)).toBe(wood);

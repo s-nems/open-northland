@@ -1,8 +1,8 @@
 /**
  * The shared per-cell map-lane sampler core: one bilinear, edge-clamped lookup over a row-major
  * `width×height` grid. The elevation lift (`elevation.ts`) and the baked brightness shading
- * (`brightness.ts`) are thin wrappers over this — they must sample at identical coordinates or a
- * lifted sprite and its shading would disagree. No Pixi, no canvas — plain math, unit-tested
+ * (`brightness.ts`) are thin wrappers over this - they must sample at identical coordinates or a
+ * lifted sprite and its shading would disagree. No Pixi, no canvas - plain math, unit-tested
  * headlessly like the rest of `render`'s data layer.
  */
 
@@ -12,7 +12,7 @@ import { lerp } from '../math.js';
 type CellSampler = (col: number, row: number) => number;
 
 /**
- * The edge-clamped integer-cell lookup over a row-major lane — the shared nearest-cell core under
+ * The edge-clamped integer-cell lookup over a row-major lane - the shared nearest-cell core under
  * {@link makeCellSampler}'s bilinear taps and the whole-cell scans in `hillshade.ts`/`water.ts`
  * (out-of-range coordinates repeat the boundary cell, matching the GPU lane texture's clamp).
  */

@@ -10,13 +10,13 @@ import { classify, readPosition } from './snapshot-readers/index.js';
  *
  * The index must survive across snapshots: once the tick outruns the frame, per-snapshot work IS
  * per-frame work, so a full rebuild would just move the walk. A refresh therefore rides
- * {@link EntitySnapshot} identity — an unchanged entity (the sim's scenery clone cache, a map's
+ * {@link EntitySnapshot} identity - an unchanged entity (the sim's scenery clone cache, a map's
  * standing forests) costs one pointer compare, and only changed ones re-classify and re-bucket.
  * Departures (deaths, lost markers) stop matching via the generation stamp immediately and are
  * reclaimed by a bounded sweep, like the pool's reap.
  *
  * Bucket membership uses the same anchor formula the scene build culls with, so a bucket-range query
- * over the (margin-inflated) viewport is a strict superset of the visible set — the per-item
+ * over the (margin-inflated) viewport is a strict superset of the visible set - the per-item
  * `isVisible` test stays exact. Query order is arbitrary (bucket + insertion history); the scene's
  * total `(depth, ref)` sort restores determinism.
  */
@@ -25,18 +25,18 @@ import { classify, readPosition } from './snapshot-readers/index.js';
  *  1080p-with-margin viewport touches ~100 buckets; any similar power of two works. */
 const BUCKET_PX = 256;
 
-/** Bucket key packing `bx * stride + by` — collision-free while `|by| < stride / 2`, i.e. screen y
+/** Bucket key packing `bx * stride + by` - collision-free while `|by| < stride / 2`, i.e. screen y
  *  within ±2^22 px (a 4096-row map reaches ~156k px). */
 const KEY_STRIDE = 1 << 15;
 
-/** Stale-record slots reclaimed per {@link SpriteSpatialIndex.update} — bounds the death sweep like
+/** Stale-record slots reclaimed per {@link SpriteSpatialIndex.update} - bounds the death sweep like
  *  the pool's reap budget; a stale record is already unqueryable (generation mismatch), so the sweep
  *  is memory reclamation only. */
 const SWEEP_BUDGET = 4096;
 
 interface IndexRecord {
   readonly id: number;
-  /** The entity's snapshot object as of the last refresh — the identity short-circuit's handle. */
+  /** The entity's snapshot object as of the last refresh - the identity short-circuit's handle. */
   entity: EntitySnapshot;
   /** Stamp of the last {@link SpriteSpatialIndex.update} that saw the entity alive; a mismatch means
    *  it left the snapshot (or the bucket walk hasn't reclaimed it yet). */
@@ -49,17 +49,17 @@ interface IndexRecord {
 export class SpriteSpatialIndex {
   private snapshot: WorldSnapshot | null = null;
   private gen = 0;
-  /** Record per entity id — a dense array (ids are small monotonic ints) kept packed by pushing
+  /** Record per entity id - a dense array (ids are small monotonic ints) kept packed by pushing
    *  `undefined` up to a new id, so lookups stay array-fast instead of dictionary-mode. Accepted
    *  growth: sized by the largest id ever seen (one slot per id, never shrunk). */
   private readonly byId: (IndexRecord | undefined)[] = [];
   private readonly buckets = new Map<number, IndexRecord[]>();
   private sweepAt = 0;
-  /** Reused query output — valid until the next {@link query} or {@link update}. */
+  /** Reused query output - valid until the next {@link query} or {@link update}. */
   private readonly scratch: EntitySnapshot[] = [];
 
   /** Bring the index up to `snapshot` (idempotent per snapshot object, so callers need no coherence
-   *  protocol — the scene build calls it before every query). */
+   *  protocol - the scene build calls it before every query). */
   update(snapshot: WorldSnapshot): void {
     if (this.snapshot === snapshot) return;
     this.snapshot = snapshot;
@@ -67,7 +67,7 @@ export class SpriteSpatialIndex {
     for (const entity of snapshot.entities) {
       const rec = this.byId[entity.id];
       if (rec !== undefined && rec.entity === entity) {
-        rec.gen = this.gen; // identity-stable (scenery clone cache) — unchanged, same bucket
+        rec.gen = this.gen; // identity-stable (scenery clone cache) - unchanged, same bucket
         continue;
       }
       this.refresh(entity, rec);
@@ -75,7 +75,7 @@ export class SpriteSpatialIndex {
     this.sweepStale();
   }
 
-  /** Every current-snapshot drawable whose anchor could pass `isVisible(viewport, …)` — a superset:
+  /** Every current-snapshot drawable whose anchor could pass `isVisible(viewport, …)` - a superset:
    *  the caller still culls per item. The returned array is reused across calls. */
   query(viewport: Viewport): readonly EntitySnapshot[] {
     const out = this.scratch;
@@ -111,7 +111,7 @@ export class SpriteSpatialIndex {
     }
   }
 
-  /** Whether `ref` is a drawable entity of the snapshot last passed to {@link update} — the
+  /** Whether `ref` is a drawable entity of the snapshot last passed to {@link update} - the
    *  map-wide liveness answer the scene's membership view serves without a map-wide walk. */
   has(ref: number): boolean {
     const rec = this.byId[ref];

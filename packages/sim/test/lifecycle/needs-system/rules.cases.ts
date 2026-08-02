@@ -6,7 +6,7 @@ import { HUNGER_RISE_PER_TICK } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
 
-describe('needsSystem — the setNeedsEnabled world rule (the dev/admin toggle)', () => {
+describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', () => {
   it('freezes every need while disabled and resumes on re-enable', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));

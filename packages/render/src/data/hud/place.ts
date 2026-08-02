@@ -2,7 +2,7 @@ import type { HudLayout, HudTextRow } from './layout.js';
 
 /**
  * The HUD panel's screen placement: a panel-relative {@link HudLayout} anchored to a canvas corner and
- * clamped on-screen. Pure — no Pixi, no glyph metrics.
+ * clamped on-screen. Pure - no Pixi, no glyph metrics.
  */
 
 /** Which screen corner {@link placeHud} anchors the panel to (then insets by {@link HUD_MARGIN}). */
@@ -11,14 +11,14 @@ export type HudCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right
 /** px gap kept between the panel and the canvas edge it anchors to. */
 const HUD_MARGIN = 8;
 
-/** The canvas the panel is placed on — only its pixel size matters for corner anchoring + clamping. */
+/** The canvas the panel is placed on - only its pixel size matters for corner anchoring + clamping. */
 export interface HudScreen {
   readonly width: number;
   readonly height: number;
 }
 
 /**
- * A {@link HudLayout} placed at an absolute screen position — the panel's top-left corner in canvas
+ * A {@link HudLayout} placed at an absolute screen position - the panel's top-left corner in canvas
  * pixels plus every row's text re-anchored to absolute screen coordinates. The Pixi draw
  * (`renderHud`) consumes this and creates one display object per element.
  */
@@ -27,9 +27,9 @@ export interface HudPlacement {
   readonly panelX: number;
   /** Panel top-left y in canvas pixels. */
   readonly panelY: number;
-  /** Panel width in pixels (carried through from the layout — a fixed column). */
+  /** Panel width in pixels (carried through from the layout - a fixed column). */
   readonly width: number;
-  /** Panel height in pixels (carried through from the layout — grows with the row count). */
+  /** Panel height in pixels (carried through from the layout - grows with the row count). */
   readonly height: number;
   /** The text rows with absolute screen `(x, y)` (panel origin + the layout's panel-relative offset). */
   readonly rows: readonly HudTextRow[];
@@ -50,7 +50,7 @@ export function placeHud(layout: HudLayout, corner: HudCorner, screen: HudScreen
 
   // Anchor to the chosen corner, inset by the margin; then clamp into [0, screen − panel] so the whole
   // panel stays visible. `Math.max(0, …)` wins the clamp when the panel is taller/wider than the canvas
-  // (the top/left edge is kept on-screen rather than the bottom/right) — a deterministic tie-break.
+  // (the top/left edge is kept on-screen rather than the bottom/right) - a deterministic tie-break.
   const rawX = right ? screen.width - layout.width - HUD_MARGIN : HUD_MARGIN;
   const rawY = bottom ? screen.height - layout.height - HUD_MARGIN : HUD_MARGIN;
   const panelX = Math.max(0, Math.min(rawX, screen.width - layout.width));

@@ -19,7 +19,7 @@ import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js'
  * The PRODUCER SELF-SERVICE + PORTER drives (`systems/settlers/drives/economy`): a worker
  * bound to a recipe workshop fetches the inputs it lacks from a store that holds them and hauls its own
  * finished output out, and a porter bound to a store collects loose ground piles into it. Fixture: good
- * 1 = wood, good 2 = plank, job 1 = woodcutter (harvest 24), job 2 = carpenter (no atomics — the mill's
+ * 1 = wood, good 2 = plank, job 1 = woodcutter (harvest 24), job 2 = carpenter (no atomics - the mill's
  * operator), job 36 = carrier, building 1 = HQ (storage, wood+plank slots), building 2 = sawmill (recipe
  * 1 wood → 1 plank, employs the carpenter). Planner-level checks (one `plannerSystem` pass) pin each decision
  * in isolation; an end-to-end run proves the loop closes.
@@ -30,7 +30,7 @@ export const WOOD = 1;
 export const PLANK = 2;
 /** Fixture 3: the edible a dish becomes on its way out of the kitchen (`readviews/food.ts`). */
 export const FOOD_SIMPLE = 3;
-/** Fixture 7: a DISH — stocked only in the kitchen that bakes it, and held by no store as itself. */
+/** Fixture 7: a DISH - stocked only in the kitchen that bakes it, and held by no store as itself. */
 export const BREAD = 7;
 export const WHEAT = 6;
 export const WOODCUTTER = 1;
@@ -40,15 +40,15 @@ export const HEADQUARTERS = 1;
 export const SAWMILL = 2;
 /** Fixture 7: 2 carpenter operator slots + a carrier slot, wood(cap 10) → plank(cap 20). */
 export const TWIN_MILL = 8;
-/** Fixture 20: TWO products off different inputs — wood→plank and wheat→food (the upgraded bakery shape). */
+/** Fixture 20: TWO products off different inputs - wood→plank and wheat→food (the upgraded bakery shape). */
 export const BAKEHOUSE = 20;
 /** Fixture 9: two products off the SAME input (wood→plank and wood→food), so the merged wood target is 2
  *  where either product alone needs 1. The real smithy-2 shape. */
 export const FORGE = 9;
 /** Fixture 21: wood → bread, and the only store in the fixture with a bread slot. */
 export const KITCHEN = 21;
-export const FARMER = 18; // the farm's field-worker job (plant atomic 34) — never hauls the farm's output out
-/** Fixture 5: the grain farm — produces wheat via its field `farming` block: a FIELD producer whose
+export const FARMER = 18; // the farm's field-worker job (plant atomic 34) - never hauls the farm's output out
+/** Fixture 5: the grain farm - produces wheat via its field `farming` block: a FIELD producer whose
  *  store other producers may also draw inputs from, but never a storage SINK for its own good. */
 export const FARM = 5;
 export const GRANARY = 6; // a passive wheat store (the warehouse a farm's wheat is hauled OUT to)
@@ -93,7 +93,7 @@ export function buildingAt(
 }
 
 /** A construction site: a placed foundation (`built` = 0, still `UnderConstruction`) whose stockpile
- *  holds delivered build material — a delivery SINK, never a source a producer may fetch from. */
+ *  holds delivered build material - a delivery SINK, never a source a producer may fetch from. */
 export function siteAt(
   sim: Simulation,
   buildingType: number,
@@ -117,7 +117,7 @@ export function pileAt(sim: Simulation, x: number, y: number, goods: Array<[numb
   return e;
 }
 
-/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
+/** The node id of visual tile (x, y) - walk goals address the doubled half-cell lattice. */
 export function cell(sim: Simulation, x: number, y: number): number {
   const n = cellAnchorNode(x, y);
   return sim.terrain?.nodeAt(n.hx, n.hy) as number;

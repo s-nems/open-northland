@@ -8,7 +8,7 @@ import type { SceneDefinition } from './types.js';
 /**
  * The family scene: prove the marriage → household → child loop end to end, in two vignettes.
  *
- *  - **The wedding** (left): an unmarried woman is ordered to `marry` — she and the free man walk
+ *  - **The wedding** (left): an unmarried woman is ordered to `marry` - she and the free man walk
  *    together, kiss (atomics 20/21), and stay spouses for life.
  *  - **The child** (right): an already-married couple assigned to the level-2 home is ordered to
  *    `makeChild`: the wife hauls the ground food into the home larder (3 units, reserved from
@@ -23,13 +23,13 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 26;
 const MAP_H = 12;
 
-/** The child couple's home — level 2 (`home_level_02`, `logichomesize` 3): the smallest tier with
+/** The child couple's home - level 2 (`home_level_02`, `logichomesize` 3): the smallest tier with
  *  room for the couple plus their newborn. */
 const HOME_REF = 'home_level_02';
 const HOME = { x: 18, y: 5 } as const;
 /**
  * The home's entity id, PREDICTED: the four settlers are created directly in `build` (ids 1..4) and
- * the enqueued `placeBuilding` creates exactly one entity on tick 0 — id 5. The `assignHouse` order
+ * the enqueued `placeBuilding` creates exactly one entity on tick 0 - id 5. The `assignHouse` order
  * must name the home at build time, before tick 0 runs; the first check below asserts the prediction
  * so a placement-path change fails loudly instead of silently mis-assigning.
  */
@@ -41,7 +41,7 @@ const HUSBAND = { x: 15, y: 7 } as const;
 /** The single pair (the wedding vignette), far enough apart that the walk-together reads on screen. */
 const BRIDE = { x: 3, y: 3 } as const;
 const GROOM = { x: 9, y: 3 } as const;
-/** The loose food the wife hauls into the larder — exactly the sim's 3-unit child fund. */
+/** The loose food the wife hauls into the larder - exactly the sim's 3-unit child fund. */
 const FOOD_PILE = { x: 11, y: 8, amount: 3 } as const;
 
 /** Walks + 3 food round-trips + the 200-tick hearts phase all finish well inside this. */
@@ -83,14 +83,14 @@ function homeFoodUnits(sim: Simulation): number {
 }
 
 function build(sim: Simulation): void {
-  // The child vignette's couple — pre-married (the wedding vignette shows the ceremony itself), so
+  // The child vignette's couple - pre-married (the wedding vignette shows the ceremony itself), so
   // the `makeChild` order below validates on tick 0.
   const wife = spawnSettlerDirect(sim, JOB_WOMAN, WIFE.x, WIFE.y);
   const husband = spawnSettlerDirect(sim, JOB_CIVILIST, HUSBAND.x, HUSBAND.y);
   sim.world.add(wife, Marriage, { spouse: husband, child: null });
   sim.world.add(husband, Marriage, { spouse: wife, child: null });
 
-  // The wedding vignette's singles — the `marry` order pairs them and they walk together and kiss.
+  // The wedding vignette's singles - the `marry` order pairs them and they walk together and kiss.
   const bride = spawnSettlerDirect(sim, JOB_WOMAN, BRIDE.x, BRIDE.y);
   spawnSettlerDirect(sim, JOB_CIVILIST, GROOM.x, GROOM.y);
 
@@ -124,7 +124,7 @@ export const familyScene: SceneDefinition = {
         sim.world.has(HOME_ENTITY, Stockpile),
     },
     {
-      label: 'the marry order wed the single pair — mirrored lifelong Marriages, no lingering wedding',
+      label: 'the marry order wed the single pair - mirrored lifelong Marriages, no lingering wedding',
       predicate: (sim) => {
         const married: Entity[] = [];
         for (const e of sim.world.query(Marriage, Settler)) married.push(e);
@@ -141,7 +141,7 @@ export const familyScene: SceneDefinition = {
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
           // She is born around tick 1205 and the run ends at 2500, so she is deterministically past
-          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880) — asserting the child stage keeps
+          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880) - asserting the child stage keeps
           // this an integration check that growth actually fired.
           if (!systems.isChild(sim.world.get(e, Settler).jobType)) return false;
           if (!sim.world.has(e, Female)) return false;

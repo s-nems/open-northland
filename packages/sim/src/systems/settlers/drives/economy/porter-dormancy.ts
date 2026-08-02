@@ -30,24 +30,24 @@ import { porterPickupTarget } from './haul-targets.js';
 
 /**
  * Dormancy for the porter rung: a porter whose pickup scan came up empty skips the re-scan until
- * something the scan reads could have changed. The elided scan is provably null — the gate compares
+ * something the scan reads could have changed. The elided scan is provably null - the gate compares
  * every input the scan depends on (via the version below plus the per-settler fields), so behavior is
  * byte-identical to always re-scanning; only the provably-empty work is skipped (the AGENTS.md
  * scaling contract). Without it, every confined idle porter re-walks the pile list and the store
- * sinks per tick — measured 84% of the sandbox settlement's late-run tick cost.
+ * sinks per tick - measured 84% of the sandbox settlement's late-run tick cost.
  */
 
-/** What a dormant porter's failed scan saw — re-scan only when some field differs. */
+/** What a dormant porter's failed scan saw - re-scan only when some field differs. */
 interface DormantEntry {
   /** {@link porterScanVersion} at the failed scan. */
   readonly version: number;
-  /** The porter's node — the scan's confinement circle recentres on it, so a displaced porter re-scans. */
+  /** The porter's node - the scan's confinement circle recentres on it, so a displaced porter re-scans. */
   readonly node: NodeId;
   readonly jobType: number;
   readonly tribe: number;
   readonly owner: number | undefined;
   readonly workplace: Entity;
-  /** {@link signpostNavigationEnabled} at the failed scan — the rules singleton is written in place
+  /** {@link signpostNavigationEnabled} at the failed scan - the rules singleton is written in place
    *  (no generation bump), so the toggle is compared directly. */
   readonly confined: boolean;
 }
@@ -55,7 +55,7 @@ interface DormantEntry {
 interface PorterDormancy {
   readonly entries: Map<Entity, DormantEntry>;
   /** The latest planner deps, refreshed on every mark, read only by the coherence verifier. `ctx` is
-   *  rebuilt each tick, so the stored one may be stale by the time the verifier runs — safe only
+   *  rebuilt each tick, so the stored one may be stale by the time the verifier runs - safe only
    *  because the verifier skips memo-holding porters (their scans read `ctx.tick` for the memo's
    *  expiry) and the remaining pickup-scan path consults `ctx`'s stable content/terrain reads, never
    *  `ctx.tick` or the RNG (a future such read would silently verify a different question). */
@@ -68,7 +68,7 @@ const dormancyByWorld = new WeakMap<World, PorterDormancy>();
 /**
  * Combined generation of every store the porter pickup scan reads: stock contents (the Stockpile value
  * channel) and the membership of piles/stores/sites/flags/bindings/errands/signposts the scan or its
- * delivery-routing probe walks. Generations only grow, so the sum is strictly monotonic — any tracked
+ * delivery-routing probe walks. Generations only grow, so the sum is strictly monotonic - any tracked
  * change moves it. The settler-local inputs (its node, job, tribe, owner, binding, the confinement
  * toggle) are compared per entry instead.
  */
@@ -116,7 +116,7 @@ function sameEntry(a: DormantEntry, b: DormantEntry): boolean {
   );
 }
 
-/** Whether `plan`'s porter scan is provably still null — true elides the scan for this tick. */
+/** Whether `plan`'s porter scan is provably still null - true elides the scan for this tick. */
 export function porterDormant(plan: PlannerContext): boolean {
   const memo = dormancyByWorld.get(plan.world)?.entries.get(plan.entity);
   return memo !== undefined && sameEntry(memo, entryFor(plan));
@@ -125,7 +125,7 @@ export function porterDormant(plan: PlannerContext): boolean {
 /** Record a failed porter scan so the identical re-scan is skipped until an input changes. */
 export function markPorterDormant(plan: PlannerContext): void {
   // No entry while the porter remembers failed goals: the memo expires by tick with no tracked write,
-  // so a null scan under a live memo is not provably null after expiry — the porter re-scans (bounded
+  // so a null scan under a live memo is not provably null after expiry - the porter re-scans (bounded
   // by active failures) until the memo empties, then dorms as usual. A stored no-memo entry stays
   // sound through later memo episodes, since the veto only removes candidates (null stays null).
   if (unreachableGoals(plan.world, plan.ctx, plan.entity) !== null) return;
@@ -146,7 +146,7 @@ export function wakePorter(world: World, entity: Entity): void {
 }
 
 /** The `cachesCoherent` re-derivation: every entry the gate would still honour must describe a scan
- *  that really does still return null — a live porter with a non-null pick behind a matching entry
+ *  that really does still return null - a live porter with a non-null pick behind a matching entry
  *  means a scan input changed without moving {@link porterScanVersion}. */
 function verifyDormancy(world: World): string[] {
   const record = dormancyByWorld.get(world);
@@ -159,14 +159,14 @@ function verifyDormancy(world: World): string[] {
     const p = world.tryGet(entity, Position);
     const binding = world.tryGet(entity, JobAssignment);
     if (settler === undefined || settler.jobType === null || p === undefined || binding === undefined) {
-      // A dead/unbound porter's entry is never consulted again (ids are never reused) — prune it here
+      // A dead/unbound porter's entry is never consulted again (ids are never reused) - prune it here
       // so the memo doesn't grow with every porter that died dormant. Cache-internal; no sim decision
       // can observe the deletion, so invariant-checked and unchecked runs stay byte-identical.
       record.entries.delete(entity);
       continue;
     }
     // A porter that currently remembers failed goals is skipped, not verified: its scan reads the
-    // memo's tick expiry, which the stored stale ctx cannot evaluate. Sound to skip — entries are
+    // memo's tick expiry, which the stored stale ctx cannot evaluate. Sound to skip - entries are
     // banked only memo-free (the markPorterDormant guard), and a memo acquired since only removes
     // candidates, so the banked null claim still holds.
     if (world.has(entity, UnreachableGoals)) continue;
@@ -189,10 +189,10 @@ function verifyDormancy(world: World): string[] {
       limit: navigationLimitFor(world, ctx.content, terrain, entity),
       gossipCandidates: new GossipCandidates(world, ctx.content),
     };
-    if (!sameEntry(entry, entryFor(plan))) continue; // the gate would re-scan — nothing elided
+    if (!sameEntry(entry, entryFor(plan))) continue; // the gate would re-scan - nothing elided
     if (porterPickupTarget(plan) !== null) {
       errors.push(
-        `porter ${entity} is dormant but its pickup scan finds work — a scan input missed the version`,
+        `porter ${entity} is dormant but its pickup scan finds work - a scan input missed the version`,
       );
     }
   }

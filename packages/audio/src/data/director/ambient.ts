@@ -7,13 +7,13 @@ import type { AmbientLoop, DirectorInput } from '../types.js';
  * view stays bounded), weight each bed by its screen coverage, and keep the loudest few.
  */
 
-/** How many ambient beds may play at once — the loudest few by on-screen coverage. */
+/** How many ambient beds may play at once - the loudest few by on-screen coverage. */
 export const MAX_AMBIENT_BEDS = 3;
 /** Loudest an ambient bed reaches. */
 export const AMBIENT_MAX_GAIN = 0.5;
 /** On-screen coverage fraction at which a bed hits {@link AMBIENT_MAX_GAIN} (below it, quieter). */
 export const AMBIENT_FULL_COVERAGE = 0.4;
-/** Cap on tiles sampled per frame for ambient — a stride keeps a zoomed-out whole-map view bounded. */
+/** Cap on tiles sampled per frame for ambient - a stride keeps a zoomed-out whole-map view bounded. */
 export const AMBIENT_MAX_SAMPLES = 4096;
 
 /** The ambient beds active this frame, by sampling the on-screen terrain tiles (coverage-weighted gain). */
@@ -23,7 +23,7 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   const vp = cameraViewport(camera, canvasW, canvasH);
   // The map's projected world-space bounds: its four corner tiles. When the camera frames only empty
   // space beyond the grid, the viewport doesn't overlap this box, so no terrain is on screen and no
-  // ambient should play — `visibleTileRange`'s clamp would otherwise collapse to a phantom edge tile.
+  // ambient should play - `visibleTileRange`'s clamp would otherwise collapse to a phantom edge tile.
   const c0 = tileToScreen(0, 0);
   const c1 = tileToScreen(terrain.width - 1, 0);
   const c2 = tileToScreen(0, terrain.height - 1);

@@ -1,5 +1,5 @@
 /**
- * `.lib` archive decoder — Cultures "SimpleFileLibrary" packed container.
+ * `.lib` archive decoder - Cultures "SimpleFileLibrary" packed container.
  *
  * The layout was established through byte-level inspection of archives from an owned game copy and
  * is pinned by synthetic boundary and round-trip tests.
@@ -13,7 +13,7 @@
  *   ... file payloads: each is `size` bytes at absolute `position` from the start of the archive.
  *
  * Names are backslash paths (e.g. `data\logic\goodtypes.cif`). The on-disk record does not store
- * a checksum — the original recomputes it from the (lowercased) name and uses it as the lookup key
+ * a checksum - the original recomputes it from the (lowercased) name and uses it as the lookup key
  * (`GetEntryId`: filter by checksum, then case-insensitive name compare).
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
@@ -35,7 +35,7 @@ export interface LibFile {
   /** Absolute byte offset of the payload from the start of the archive. */
   readonly position: number;
   readonly size: number;
-  /** View into the source buffer over `[position, position + size)` — not a copy. */
+  /** View into the source buffer over `[position, position + size)` - not a copy. */
   readonly data: Uint8Array;
 }
 
@@ -65,7 +65,7 @@ export function filenameChecksum(name: string): number {
 
 /**
  * Decodes a `.lib` archive directory and returns per-file payload views. Throws on a structurally
- * invalid container (truncated directory, or a payload range outside the buffer) — a batch pipeline
+ * invalid container (truncated directory, or a payload range outside the buffer) - a batch pipeline
  * over many owned files should wrap each call per-file so one corrupt `.lib` can't abort the run.
  *
  * Each payload's `[position, position + size)` is checked to fit the buffer, but positions are
@@ -135,7 +135,7 @@ export interface LibArchiveInput {
  * Inverse of {@link decodeLib}: serializes a `.lib` with payloads laid out sequentially right after
  * the directory. Kept faithful so decode can be round-trip tested without committing copyrighted
  * fixtures (the same rationale as the `.cif` cipher pair). Positions are absolute, matching the
- * format — a real archive may order payloads differently, but decode reads them by position either way.
+ * format - a real archive may order payloads differently, but decode reads them by position either way.
  */
 export function encodeLib(input: LibArchiveInput): Uint8Array {
   const version = input.version ?? 1;

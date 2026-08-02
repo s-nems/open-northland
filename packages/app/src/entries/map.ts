@@ -45,14 +45,14 @@ import {
 } from '../view/runtime/world-bootstrap.js';
 
 /**
- * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
- * 1:1 per-triangle ground + placed landscape objects (trees/stones/mines + animated waves) — driven by the
+ * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid - the
+ * 1:1 per-triangle ground + placed landscape objects (trees/stones/mines + animated waves) - driven by the
  * deterministic vertical-slice sim on the fixed-timestep loop, drawn every frame so `npm run dev` is
  * watchable. The default landing is the menu ({@link import('./menu.js')}), whose "Mapy" section links here
  * per decoded map.
  *
  * The backing store tracks the window at device resolution (`createWindowPixiApp`; `app.screen` stays in
- * CSS px), so resizing the browser changes the visible field, never the scale — read live dimensions
+ * CSS px), so resizing the browser changes the visible field, never the scale - read live dimensions
  * from `app.screen`. An unknown or undecodable map id falls back to the synthetic grass strip; a
  * checkout without served `content/` halts at the terrain step with the missing-content notice instead
  * of booting a flat world.
@@ -61,7 +61,7 @@ import {
 /** The slice sim's deterministic seed. */
 const SLICE_SEED = 7;
 
-/** The boot steps this entry runs, in order — the loading card's step list. */
+/** The boot steps this entry runs, in order - the loading card's step list. */
 export const MAP_BOOT_PHASES = [
   'graphics',
   'map',
@@ -99,7 +99,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   // The player session the menu's roster panel carried over: the controlled seat (`?player=`) and
-  // each slot's team colour — the map script's authored colours under the menu's `?colors=`
+  // each slot's team colour - the map script's authored colours under the menu's `?colors=`
   // overrides. A roster-less map keeps the defaults (seat 0, colour = slot id).
   const script = mapId !== null ? await loadMapScript(mapId) : null;
   const localPlayer = localPlayerParam(params);
@@ -138,14 +138,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const renderer = createWorldRenderer(app, params, sheet, playerColourOf);
   renderer.setTerrain(terrainGrid, terrain);
   // The composed shading field the ground mesh just drew with (`embr` accented by elevation hillshade)
-  // — the ONE instance that also shades the placed landscape objects below (mines/stones/grass track
-  // the lane in the original; trees stay full-bright — see objects.ts), so an object can't disagree
+  // - the ONE instance that also shades the placed landscape objects below (mines/stones/grass track
+  // the lane in the original; trees stay full-bright - see objects.ts), so an object can't disagree
   // with the ground under it.
   const brightness = renderer.brightnessField();
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
-  // are the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
+  // are the original's water surface) - resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
-  // Harvestables draw here too: a virgin node is a built-once static quad (zero per-frame cost — a far
+  // Harvestables draw here too: a virgin node is a built-once static quad (zero per-frame cost - a far
   // zoom-out shows thousands at once), handed to the live sim pool the first time it is worked (below).
   await boot.begin('objects');
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
@@ -166,13 +166,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // is blocked where a house doesn't fit and the build overlay greys those tiles.
   await boot.begin('world');
   const footprints = buildingFootprints(ir);
-  // The sim navigates + validates placement against the collision grid — the map's raw landscape lane
+  // The sim navigates + validates placement against the collision grid - the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
   // stones, ore deposits block; see content/collision.ts). The render layers keep reading `loaded`
   // (raw typeIds drive the per-triangle fallback + the ambience beds). The `ir !== null` guards here
   // and below are type narrowing only: the terrain halt above proves the IR at runtime.
   // Harvestable placements are excluded from the static grid: they spawn as `Resource` entities below,
-  // whose dynamic footprints block while standing and unblock when felled/depleted — statically baked,
+  // whose dynamic footprints block while standing and unblock when felled/depleted - statically baked,
   // a felled tree's cell stayed walled off forever and its dropped trunk was unreachable.
   const simMap =
     loaded !== null && ir !== null
@@ -186,10 +186,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(realContent !== null ? { content: realContent.content } : {}),
   };
   // A map that carries authored entities places those; a real decoded map without them gets a bare sim
-  // (no demo cluster — {@link runBareMap}); only the synthetic-strip fallback (no map loaded) keeps the
+  // (no demo cluster - {@link runBareMap}); only the synthetic-strip fallback (no map loaded) keeps the
   // HQ/joinery/gatherer/carrier demo world (via {@link runSlice}, shared with the deterministic shot PNG).
   // The placing slices run one tick, not zero: `placeBuilding`/`spawnSettler` are queued commands that
-  // apply on the sim's first step, so a 0-tick sim's snapshot is still empty — the start-camera focus
+  // apply on the sim's first step, so a 0-tick sim's snapshot is still empty - the start-camera focus
   // below would then read no entities and fall back to the map centre. One tick applies every placement
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
   const authoredSim =
@@ -201,7 +201,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, contentOptions)
       : // Roster-less fallback (no decodable map): the synthetic slice is OWNED by the session seat,
-        // so ?player= changes initial sim state here — deterministic per URL, and the menu never
+        // so ?player= changes initial sim state here - deterministic per URL, and the menu never
         // emits ?player without a rostered map. Real maps take ownership from map data instead.
         runSlice(SLICE_SEED, 1, undefined, { ...contentOptions, owner: localPlayer }));
   setDiagGameSession({
@@ -217,7 +217,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
   applyProgressionOverride(sim, params);
 
-  // `?ai=<seat>[,…]` flags seats for the strategic AI player — emitted by the menu roster's AI
+  // `?ai=<seat>[,…]` flags seats for the strategic AI player - emitted by the menu roster's AI
   // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat
   // without a built headquarters stays inert by the AI's own rule).
   const aiSeats = aiSeatsParam(params);
@@ -227,7 +227,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   // The controlled seat and every AI seat start with their chest-window grants ON (user decisions
   // 2026-07-24 / 2026-07-27; scenes stay neutral fixtures, like the needs toggle). A seat nobody
-  // drives stays bare — a rostered idle/hidden slot, a scripted soldier camp, or the seat a READ-ONLY
+  // drives stays bare - a rostered idle/hidden slot, a scripted soldier camp, or the seat a READ-ONLY
   // spectator merely watches (`localPlayerParam` answers HUMAN_PLAYER for both pseudo-seats, so the
   // commanding overseer keeps it). Asymmetry to live with: the chest window edits only `localPlayer`,
   // so an overseer cannot switch an AI seat's grants back off.
@@ -237,7 +237,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (and its fruited bushes
   // as forageable BerryBush entities), so a gatherer can actually work them, not just see render-only
   // decor. Direct spawn into the sim (after its one placement tick above), in the map's placement order
-  // (deterministic ids) — the authored buildings/settlers already exist, so these nodes take later ids.
+  // (deterministic ids) - the authored buildings/settlers already exist, so these nodes take later ids.
   let harvestableHandover: ((events: readonly SimEvent[]) => void) | null = null;
   if (loaded?.objects !== undefined && ir !== null) {
     const { placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
@@ -253,9 +253,9 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   // Interactive camera: the start frame centres on the player's start ({@link mapStartFocus}: the human
   // player's headquarters/settler cluster, else the map centre) so entering a map lands on the action, not
-  // the top-left corner — from there a human pans (middle-mouse drag / arrow keys) and zooms (scroll
+  // the top-left corner - from there a human pans (middle-mouse drag / arrow keys) and zooms (scroll
   // wheel). The HUD is drawn outside the camera layer below, so it stays pinned while the world moves.
-  // `?center=x,y` overrides the start frame to centre a given tile (a decoded map's feature — a bridge or
+  // `?center=x,y` overrides the start frame to centre a given tile (a decoded map's feature - a bridge or
   // coastline the start framing would never land on), degrading to the start framing when malformed.
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialCamera =
@@ -264,14 +264,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
   // The minimap's per-cell ground colours, averaged from the real texture pages the map's baked
-  // ground lanes point at (the shipped `minimap.pcx` is the map-selection card — sometimes a painted
-  // scene, e.g. magiczny las — so the in-game minimap is rendered from map data, like the original's
+  // ground lanes point at (the shipped `minimap.pcx` is the map-selection card - sometimes a painted
+  // scene, e.g. magiczny las - so the in-game minimap is rendered from map data, like the original's
   // dynamic overview window). Null without lanes/textures → the typeId raster fallback.
   await boot.begin('minimap');
   const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
 
-  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
-  // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
+  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts - tool panel, unit
+  // controls, perf overlay, positional sound - and the one fixed-timestep RAF loop, identical to the
   // `?scene=` entry's.
   await boot.begin('hud');
   await startGameView({

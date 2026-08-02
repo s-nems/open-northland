@@ -43,7 +43,7 @@ export class CommandQueue {
   }
 
   /**
-   * Throw away the pending commands without applying them — replay reconstruction's seam (see
+   * Throw away the pending commands without applying them - replay reconstruction's seam (see
    * `stepReplaying`): a replaying sim's own systems (the AI player) re-emit their commands live, but
    * the log already carries the applied copies verbatim, so the re-emissions must be discarded or
    * every sim-emitted command would double-apply.

@@ -46,7 +46,7 @@ function fixtureIr(): ContentIr {
     gatheringPipeline: [
       { goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [100, 101] } },
       { goodType: 3, goodId: 'stone', harvest: { landscapeType: 15, gfxIndices: [200] } },
-      // Maps a placed object to a good the app has NO gatherer trade for — must stay decor, never spawn.
+      // Maps a placed object to a good the app has NO gatherer trade for - must stay decor, never spawn.
       { goodType: 4, goodId: 'wheat', harvest: { landscapeType: 27, gfxIndices: [400] } },
     ],
   };
@@ -54,13 +54,13 @@ function fixtureIr(): ContentIr {
 
 const GATHERABLE = new Set(['wood', 'stone', 'mud', 'iron', 'gold', 'mushroom']);
 
-describe('harvestGoodByObjectName — the IR reverse lookup (object name → good)', () => {
+describe('harvestGoodByObjectName - the IR reverse lookup (object name → good)', () => {
   it('maps every harvest-stage object variant to its good + OWN gfx record, and leaves decor unmapped', () => {
     const m = harvestGoodByObjectName(fixtureIr());
     expect(m.get('test tree')).toEqual({ goodId: 'wood', gfxIndex: 100, states: 0 });
-    // A second variant of the same good keeps its OWN record index — the species-variety channel.
+    // A second variant of the same good keeps its OWN record index - the species-variety channel.
     expect(m.get('test tree tall')).toEqual({ goodId: 'wood', gfxIndex: 101, states: 0 });
-    // The record's authored state count rides along — the denominator an `lmlv` level counts up to.
+    // The record's authored state count rides along - the denominator an `lmlv` level counts up to.
     expect(m.get('test rock')).toEqual({ goodId: 'stone', gfxIndex: 200, states: 4 });
     // Mapped even though the app has no wheat gatherer.
     expect(m.get('test wheat')).toEqual({ goodId: 'wheat', gfxIndex: 400, states: 0 });
@@ -72,7 +72,7 @@ describe('harvestGoodByObjectName — the IR reverse lookup (object name → goo
   });
 });
 
-describe('mapResourceSpawns — the harvestable placements to spawn', () => {
+describe('mapResourceSpawns - the harvestable placements to spawn', () => {
   const objects = {
     types: ['test tree', 'test rock', 'test grass', 'test wheat'],
     // tree@(2,2), rock@(4,4), grass@(6,6) decor, wheat@(8,8) no-trade, tree@(10,10)
@@ -81,7 +81,7 @@ describe('mapResourceSpawns — the harvestable placements to spawn', () => {
 
   it('keeps only objects whose good has a real gatherer trade, at their half-cell anchors, in order', () => {
     const spawns = mapResourceSpawns(objects, fixtureIr(), GATHERABLE);
-    // `placement` is the triplet ordinal in `placements` — the static→dynamic handover join key.
+    // `placement` is the triplet ordinal in `placements` - the static→dynamic handover join key.
     expect(spawns).toEqual([
       { goodId: 'wood', gfxIndex: 100, hx: 2, hy: 2, placement: 0 },
       { goodId: 'stone', gfxIndex: 200, hx: 4, hy: 4, placement: 1 },
@@ -105,7 +105,7 @@ describe('mapResourceSpawns — the harvestable placements to spawn', () => {
   });
 });
 
-describe('spawnMapResources — end-to-end over real sandbox content', () => {
+describe('spawnMapResources - end-to-end over real sandbox content', () => {
   it('spawns the map objects as the exact Resource component set a gatherer works', () => {
     const sim = new Simulation({ seed: 1, content: sandboxContent() });
     const objects = {
@@ -138,9 +138,9 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
     if (minedEntity === undefined) throw new Error('missing mined resource');
     expect(sim.world.get(minedEntity, MineDeposit).strikesPerUnit).toBe(HARD_MINE_STRIKES_PER_UNIT);
     // Every map-spawned node carries its placement's OWN gfx record as the render-variant tag (the
-    // IR/app numbering — deliberately unrelated to the sim content's footprint records).
+    // IR/app numbering - deliberately unrelated to the sim content's footprint records).
     expect(resources.map((e) => sim.world.get(e, Resource).gfxIndex).sort()).toEqual([10, 10, 20]);
-    // The handover join: each spawned ENTITY maps to its placement ordinal (tree@0, rock@1, tree@3 —
+    // The handover join: each spawned ENTITY maps to its placement ordinal (tree@0, rock@1, tree@3 -
     // the decor placement @2 spawned nothing), so the map entry can pair it with the static sprite.
     expect([...placementByEntity.values()].sort()).toEqual([0, 1, 3]);
     expect(new Set(placementByEntity.keys())).toEqual(new Set(resources));
@@ -174,7 +174,7 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
   });
 });
 
-describe('authoredDepositUnits — an authored growth level to the yield it spawns with', () => {
+describe('authoredDepositUnits - an authored growth level to the yield it spawns with', () => {
   /** The fallback path only: each mined good's catalog deposit size against the state counts the real
    *  `ls_ground` records author, and the unit ladder level 1..N scales onto. A map placement is instead
    *  sized from its own record, where `units === states` makes this the identity

@@ -4,7 +4,7 @@ export const economyContent = {
     // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads. Its
     // `gathering` carries the tree→trunk felling lifecycle: a node is FELLED over `chopsToFell` chops
     // (yielding nothing onto the back) and drops its whole `yieldPerNode` as a ground trunk. Both are
-    // OBSERVED calibration constants (the readable `.ini` has neither — source basis); a spawn
+    // OBSERVED calibration constants (the readable `.ini` has neither - source basis); a spawn
     // site stamps them onto a node as a `Felling` component + the node's `remaining`. `yieldPerNode`
     // 4 keeps the golden slice's per-node wood at 4 (2 trees → 8 harvested), so goods still total 18.
     {
@@ -17,11 +17,11 @@ export const economyContent = {
       gathering: { bioLandscape: true, chopsToFell: 3, yieldPerNode: 4 },
     },
     { typeId: 2, id: 'plank', weight: 1 },
-    // An edible good — the eat-drive recognises it by the `food` id prefix (isFood), like the
+    // An edible good - the eat-drive recognises it by the `food` id prefix (isFood), like the
     // original's food_simple/food_extra; a hungry settler eats it from its carry or a store.
     { typeId: 3, id: 'food_simple', weight: 1 },
     // Stone is a MINED good (atomic 25): its `gathering.depositSize > 0` marks it a deposit chipped one
-    // unit at a time — a spawn site stamps a `MineDeposit` from `depositSize`/`depositLevels` and the
+    // unit at a time - a spawn site stamps a `MineDeposit` from `depositSize`/`depositLevels` and the
     // node's `remaining`, so each harvest drops one ore pile and the deposit shrinks by level until it
     // is removed. `bioLandscape: false` (mined, not living). OBSERVED calibration (source basis).
     {
@@ -49,11 +49,11 @@ export const economyContent = {
         growthSpreadPercent: 40,
         yieldPerField: 1,
         fieldRadius: 8,
-        // A flat per-farm plot — the cap does not move with crew size.
+        // A flat per-farm plot - the cap does not move with crew size.
         maxFields: 6,
       },
     },
-    // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it — it becomes
+    // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it - it becomes
     // `food_simple` the moment a carrier lifts it out, exactly like the original's bread, and counts
     // as food only on that kitchen's own shelf. Nothing in the golden slice produces it.
     { typeId: 7, id: 'bread', weight: 1 },
@@ -122,15 +122,15 @@ export const economyContent = {
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
-    // The woodcutter is permitted the wood harvest atomic (24) — the planner's data-driven gate.
+    // The woodcutter is permitted the wood harvest atomic (24) - the planner's data-driven gate.
     { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
     { typeId: 2, id: 'carpenter' },
-    // The civilist (the original's job 6 — the no-trade adult): assignable via setJob, employed by no
+    // The civilist (the original's job 6 - the no-trade adult): assignable via setJob, employed by no
     // workplace, so a settler ordered into it stays jobless (the "Cywil" picker row).
     { typeId: 6, id: 'civilist' },
-    // The miner is permitted the stone harvest atomic (25) — it chips a `MineDeposit` deposit.
+    // The miner is permitted the stone harvest atomic (25) - it chips a `MineDeposit` deposit.
     { typeId: 5, id: 'miner', allowedAtomics: [25] },
-    // A two-trade collector (wood 24 + stone 25) — what the employed-gatherer store-filter tests use
+    // A two-trade collector (wood 24 + stone 25) - what the employed-gatherer store-filter tests use
     // (the filter only shows on a job that could harvest MORE than its workplace stores). Nothing in
     // the golden slice spawns it.
     { typeId: 7, id: 'collector', allowedAtomics: [24, 25] },
@@ -138,13 +138,13 @@ export const economyContent = {
     // and works the carcass nodes its kills leave (the harvest_cadaver atomic 33), the real
     // `jobtypes.ini 15` grant pair.
     { typeId: 15, id: 'hunter', allowedAtomics: [33, 81] },
-    // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the
+    // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics - the
     // data-driven gate the field-farmer drive (planFarmer) keys on.
     { typeId: 18, id: 'farmer', allowedAtomics: [29, 34, 35] },
-    // The scout (job 27 — `JOB_TYPE_HUMAN_SCOUT`) is permitted only the build-guide atomic (43), the
-    // signpost-erecting swing — mirrors the original's `allowatomic 43`.
+    // The scout (job 27 - `JOB_TYPE_HUMAN_SCOUT`) is permitted only the build-guide atomic (43), the
+    // signpost-erecting swing - mirrors the original's `allowatomic 43`.
     { typeId: 27, id: 'scout', allowedAtomics: [43] },
-    // The fighter trades, at their real `jobtypes.ini` ids and slugs — the role is read off the slug
+    // The fighter trades, at their real `jobtypes.ini` ids and slugs - the role is read off the slug
     // (`core/content-index/jobs.ts`), so a fixture soldier/hero must carry the real vocabulary.
     { typeId: 31, id: 'soldier_unarmed' },
     { typeId: 45, id: 'hero_saber_hatschi' },
@@ -158,7 +158,7 @@ export const economyContent = {
       id: 'headquarters',
       kind: 'storage',
       // A transport slot beside the gatherer slots (the original HQ declares `logicworker 24 3`,
-      // houses.ini; count 1 here is a fixture simplification — one carrier keeps the golden legible):
+      // houses.ini; count 1 here is a fixture simplification - one carrier keeps the golden legible):
       // the JobSystem's report-in pass posts a loose carrier here, and only a POSTED carrier hauls
       // (the planner's store-carrier rung requires the binding).
       workers: [
@@ -185,7 +185,7 @@ export const economyContent = {
     },
     {
       // The "work temple" (original logictype 37, logicmaintype 3): a `workplace` kind with NO
-      // workers, NO stock, NO recipe — the structural signature isTemple() recognises as the pray
+      // workers, NO stock, NO recipe - the structural signature isTemple() recognises as the pray
       // satisfier site. A devout settler walks here and runs the pray atomic to reset its piety.
       typeId: 3,
       id: 'temple',
@@ -201,8 +201,8 @@ export const economyContent = {
     },
     {
       // The grain FARM (the original's logictype 12 shape): 4 farmer slots + a wheat-only store
-      // (`logicstock 4 25 0` — the single-good, capacity-25 slot) and `produces` wheat with NO recipe
-      // — the field loop, not the abstract in-house cycle, makes the wheat. What the farmer drive's
+      // (`logicstock 4 25 0` - the single-good, capacity-25 slot) and `produces` wheat with NO recipe
+      // - the field loop, not the abstract in-house cycle, makes the wheat. What the farmer drive's
       // `farmWorkGood` keys on: a workplace producing a `farming` good.
       typeId: 5,
       id: 'farm',
@@ -212,7 +212,7 @@ export const economyContent = {
       produces: [6],
     },
     {
-      // A passive wheat store (a granary) — the OVERFLOW sink the farm-full tests place: with the
+      // A passive wheat store (a granary) - the OVERFLOW sink the farm-full tests place: with the
       // farm's own 25-slot full, the farmer's reap/carry gate finds this and the delivery rung
       // routes the load here. No test outside farming places it, so every golden is untouched.
       typeId: 6,
@@ -221,7 +221,7 @@ export const economyContent = {
       stock: [{ goodType: 6, capacity: 150, initial: 0 }],
     },
     {
-      // A general WAREHOUSE (kind storage) that stocks every fixture good — the delivery SINK the
+      // A general WAREHOUSE (kind storage) that stocks every fixture good - the delivery SINK the
       // end-to-end felling/mining tests place. A delivery sink must be a TYPED store (Building/Vehicle),
       // never a bare loose pile, so those tests give their store this type. Unplaced by any golden (like
       // the granary above), so adding it leaves every golden untouched.
@@ -256,7 +256,7 @@ export const economyContent = {
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
     {
-      // A TWO-PRODUCT workshop off DIFFERENT inputs — the upgraded bakery's shape (`work_bakery_01`
+      // A TWO-PRODUCT workshop off DIFFERENT inputs - the upgraded bakery's shape (`work_bakery_01`
       // makes bread from flour and candy from honey). What the shelf-blocked promotion tests staff: with
       // the plank slot full and no wheat, one product is blocked on its shelf while the other is merely
       // starved, and only the blocked one's good is worth carrying out. Nothing in the golden places it.
@@ -283,7 +283,7 @@ export const economyContent = {
     },
     {
       // The KITCHEN (the real bakery's shape): it turns wood into `bread`, and its bread slot is the
-      // ONLY one in the whole fixture — no warehouse, HQ or workshop can hold a loaf, matching
+      // ONLY one in the whole fixture - no warehouse, HQ or workshop can hold a loaf, matching
       // `houses.ini`, where a dish has a `logicstock` line solely in its own producing house. What the
       // dish-export tests staff; nothing in the golden slice places it.
       typeId: 21,
@@ -304,7 +304,7 @@ export const economyContent = {
     },
     {
       // A MULTI-PRODUCT workshop (the real smithy-2 shape, shrunk to fixture goods): ONE carpenter
-      // operator and two per-product recipes off the same wood input — what the craft-selection /
+      // operator and two per-product recipes off the same wood input - what the craft-selection /
       // product-rotation tests staff. Nothing in the golden slice places it.
       typeId: 9,
       id: 'forge',
@@ -335,7 +335,7 @@ export const economyContent = {
     },
   ],
   landscape: [
-    // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag — `land` alone
+    // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag - `land` alone
     // carries it); barren is its walk+build twin that rejects the plough (sand/beach/desert stone).
     { typeId: 0, id: 'grass', walkable: true, buildable: true, plantable: true },
     { typeId: 1, id: 'water', walkable: false, buildable: false },

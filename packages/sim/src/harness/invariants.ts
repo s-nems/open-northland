@@ -4,7 +4,7 @@ import type { World } from '../ecs/world.js';
 
 /**
  * Invariants: properties that must hold after EVERY tick. They are the cheapest, most powerful
- * feedback signal for an agent — a system that breaks the world fails an invariant immediately,
+ * feedback signal for an agent - a system that breaks the world fails an invariant immediately,
  * with a human-readable message, instead of producing subtly wrong state a golden hash can't
  * explain. Run them in dev/tests via Simulation.checkInvariants(); see docs/TESTING.md.
  *
@@ -17,7 +17,7 @@ export type Invariant = (world: World) => string[];
 const IMPLAUSIBLE_STOCK = 0x7fffffff;
 
 /**
- * Home-level ceiling (`home level 00..04` — {@link Building}). Content owns the real bound: a building
+ * Home-level ceiling (`home level 00..04` - {@link Building}). Content owns the real bound: a building
  * upgrades only while its type's `upgradeTarget` chain continues, so this tracks the home chain's length
  * rather than enforcing it. Content adding a sixth tier must move this with it.
  */
@@ -52,7 +52,7 @@ const needsInRange: Invariant = (world) => {
 };
 
 /**
- * Every incrementally-maintained World cache re-derives to the same value as its live copy —
+ * Every incrementally-maintained World cache re-derives to the same value as its live copy -
  * incremental caches are the classic lockstep-desync source, so the derived value is recomputed
  * from scratch and asserted equal on every checked tick. The actual recomputation lives with the
  * caches ({@link World.verifyCaches}); this invariant just runs it, so a missed invalidation is

@@ -28,7 +28,7 @@ describe('World.query', () => {
     expect([...w.query(A)]).toEqual(ids);
   });
 
-  it('spread materializes DISTINCT ids — a reused result object must not leak a stale value', () => {
+  it('spread materializes DISTINCT ids - a reused result object must not leak a stale value', () => {
     const w = new World();
     const expected: Entity[] = [];
     for (let i = 0; i < 4; i++) {
@@ -43,7 +43,7 @@ describe('World.query', () => {
     expect(new Set(collected).size).toBe(collected.length);
   });
 
-  it('supports a nested (reentrant) query — each call is an independent iterator', () => {
+  it('supports a nested (reentrant) query - each call is an independent iterator', () => {
     const w = new World();
     const as: Entity[] = [];
     const bs: Entity[] = [];

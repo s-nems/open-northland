@@ -8,7 +8,7 @@ const EMPTY: ReadonlySet<number> = new Set<number>();
 const CACHE = new WeakMap<readonly JobType[], ReadonlyMap<number, ReadonlySet<number>>>();
 
 /**
- * Per job typeId: every atomic id the job may run — its `baseJob` chain resolved, plus its own
+ * Per job typeId: every atomic id the job may run - its `baseJob` chain resolved, plus its own
  * `allowedAtomics`, minus its own `forbiddenAtomics`.
  *
  * A base job absent from `jobs` contributes nothing, and a cycle stops at the repeated job;

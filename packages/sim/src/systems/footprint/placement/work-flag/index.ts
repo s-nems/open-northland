@@ -1,4 +1,4 @@
-// WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the
+// WORK-FLAG PLACEMENT - where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the
 // same ../blockers.ts scan the building rule reads, minus the margin channels (BLOCKS_WORK_FLAG).
 // ./incremental-blocks.ts owns the refcounted per-world blocked set; ./queries.ts the placement picks.
 

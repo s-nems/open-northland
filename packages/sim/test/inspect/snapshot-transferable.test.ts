@@ -12,7 +12,7 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  * algorithm, so the load-bearing test is: a REAL `step()`-driven snapshot survives `structuredClone`
  * (it would throw on a function / class instance / live `Map`), comes back deep-equal (no data lost
  * crossing the thread), and the copy is a genuine deep copy (a worker owns its own, can't alias the
- * sim's live state). This is the self-verifiable headless half — the Worker wiring itself is app-side.
+ * sim's live state). This is the self-verifiable headless half - the Worker wiring itself is app-side.
  */
 
 const HEADQUARTERS = 1;
@@ -38,7 +38,7 @@ function realRunSnapshot(): WorldSnapshot {
 }
 
 describe('snapshot is transferable (Web-Worker boundary)', () => {
-  it('survives structuredClone — no functions / class instances / live Maps', () => {
+  it('survives structuredClone - no functions / class instances / live Maps', () => {
     const snap = realRunSnapshot();
     // It must have real content, or the clone proves nothing.
     expect(snap.entities.length).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ describe('snapshot is transferable (Web-Worker boundary)', () => {
     expect(() => structuredClone(snap)).not.toThrow();
   });
 
-  it('round-trips deep-equal — no data lost crossing the thread', () => {
+  it('round-trips deep-equal - no data lost crossing the thread', () => {
     const snap = realRunSnapshot();
     const cloned = structuredClone(snap);
     // The transfer is lossless: the worker's view equals the sim's, field for field.
@@ -55,7 +55,7 @@ describe('snapshot is transferable (Web-Worker boundary)', () => {
     expect(JSON.stringify(cloned)).toBe(JSON.stringify(snap));
   });
 
-  it('clones to a genuine deep copy — a worker can own it without aliasing live state', () => {
+  it('clones to a genuine deep copy - a worker can own it without aliasing live state', () => {
     const snap = realRunSnapshot();
     const cloned = structuredClone(snap);
     expect(cloned).not.toBe(snap);

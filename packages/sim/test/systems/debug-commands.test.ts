@@ -13,7 +13,7 @@ import { fx, ONE, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The DEBUG / cheat commands the admin panel issues — `debugKill`, `debugSetNeeds`, `debugFillStockpile`
+ * The DEBUG / cheat commands the admin panel issues - `debugKill`, `debugSetNeeds`, `debugFillStockpile`
  * and `debugCompleteConstruction`. Each is a real serializable command applied through the ONE command
  * path (so it replays/hashes like any order), issued only by the debug panel. These prove the EFFECT of
  * each (the panel's own click→command wiring is browser-verified); the determinism/replay half is locked
@@ -27,7 +27,7 @@ const WORKPLACE_STOCK: readonly [number, number][] = [
   [1, 20],
   [2, 20],
 ];
-const GRANARY = 6; // fixture building kind 'storage' — used as a construction-site body (no home upgrade)
+const GRANARY = 6; // fixture building kind 'storage' - used as a construction-site body (no home upgrade)
 const GRANARY_MAX_HP = 100;
 
 function fresh(seed = 1): Simulation {
@@ -51,7 +51,7 @@ function unitWithHealth(sim: Simulation, hitpoints: number): Entity {
   return e;
 }
 
-/** A bare Health entity with NO Settler — a stand-in non-settler (the wrong-kind target for the tools). */
+/** A bare Health entity with NO Settler - a stand-in non-settler (the wrong-kind target for the tools). */
 function healthOnlyEntity(sim: Simulation, hitpoints: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
@@ -98,7 +98,7 @@ describe('debugKill', () => {
     expect(sim.world.has(store, Building)).toBe(true); // still standing
   });
 
-  it('a construction site (a Building that DOES carry Health) survives — killable is settler-only', () => {
+  it('a construction site (a Building that DOES carry Health) survives - killable is settler-only', () => {
     const sim = fresh();
     const site = sim.world.create();
     sim.world.add(site, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
@@ -111,7 +111,7 @@ describe('debugKill', () => {
     sim.step();
 
     // Gated on Settler: the site is NOT reaped by the kill (that would bypass demolish's worker-unbind
-    // seam). It survives as a live building — its Health pool is never drained to 0. (This GRANARY has an
+    // seam). It survives as a live building - its Health pool is never drained to 0. (This GRANARY has an
     // empty construction cost, so constructionSystem also finishes it this tick; the point here is only
     // that debugKill left it standing, not what its final HP is.)
     expect(sim.world.has(site, Building)).toBe(true);
@@ -134,8 +134,8 @@ describe('debugSetNeeds', () => {
     const s = sim.world.get(settler, Settler);
     expect(s.hunger).toBe(ONE); // 100% → maxed
     expect(s.fatigue).toBe(fx.mulDiv(ONE, fx.fromInt(50), fx.fromInt(100))); // 50% → ONE/2
-    expect(s.piety).toBe(start); // omitted — untouched
-    expect(s.enjoyment).toBe(start); // omitted — untouched
+    expect(s.piety).toBe(start); // omitted - untouched
+    expect(s.enjoyment).toBe(start); // omitted - untouched
   });
 
   it('a non-settler target is a no-op', () => {

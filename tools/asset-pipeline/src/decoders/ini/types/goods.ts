@@ -22,7 +22,7 @@ import {
 
 /**
  * Extracts `[goodtype]` sections into validated {@link GoodType} IR. Throws on a section missing the
- * required numeric `type` id — that is malformed source data, surfaced to the human running the
+ * required numeric `type` id - that is malformed source data, surfaced to the human running the
  * offline pipeline rather than silently dropped.
  */
 export function extractGoods(sections: readonly RuleSection[], src: SourceRef): GoodType[] {
@@ -97,7 +97,7 @@ function extractGoodAtomics(sec: RuleSection): GoodAtomics {
  * Reads a `[goodtype]`'s three-stage gathering pipeline (`landscapeToHarvest`/`landscapeToPickup`/
  * `landscapeToStore` → {@link LandscapeType} ids) + the `isBioLandscapeFlag` classification. Returns
  * `undefined` for a good with no gathering lane (a produced/in-house good like flour or bread) so the
- * caller omits the field. A partial chain is kept as-is (honey ships only pickup/store, no harvest) —
+ * caller omits the field. A partial chain is kept as-is (honey ships only pickup/store, no harvest) -
  * an absent lane is a faithful `undefined`, not a guessed default.
  */
 function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
@@ -106,7 +106,7 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
   const store = getInt(sec, 'landscapeToStore');
   if (harvest === undefined && pickup === undefined && store === undefined) return undefined;
   // `chopsToFell`/`yieldPerNode` are observed felling calibration constants, not in the source `.ini`
-  // (verified absent — no `baserepeatcounter` for the collector job), so the extractor emits them at 0
+  // (verified absent - no `baserepeatcounter` for the collector job), so the extractor emits them at 0
   // (= "not calibrated / single-hit"); a scene/fixture sets the real values, tracked in source basis.
   const gathering: {
     harvest?: number;
@@ -119,9 +119,9 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
     depositLevels: number;
   } = {
     bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
-    // Observed calibration with no readable source (chop count / yield / deposit size — `maximumValency`
+    // Observed calibration with no readable source (chop count / yield / deposit size - `maximumValency`
     // is a per-cell valency, not the unit count): emitted 0, pinned by a scene until measured. `depositLevels`
-    // is different — it is the harvest `[GfxLandscape]` record's fill-state count (gfx data), still emitted 0
+    // is different - it is the harvest `[GfxLandscape]` record's fill-state count (gfx data), still emitted 0
     // here (a future join would copy that frame count); until then the spawn site sets it. See source basis.
     chopsToFell: 0,
     yieldPerNode: 0,

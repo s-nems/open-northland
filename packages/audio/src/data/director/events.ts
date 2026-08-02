@@ -19,7 +19,7 @@ export const CHAT_VOICE_GAIN = 0.7;
 
 /**
  * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
- * event with no node of its own — deciding that is the caller's job ({@link eventNode}). `goodProduced`
+ * event with no node of its own - deciding that is the caller's job ({@link eventNode}). `goodProduced`
  * names its emitter `building`; the rest use `entity`.
  */
 function eventEntity(ev: SimEvent): number | undefined {
@@ -31,7 +31,7 @@ function eventEntity(ev: SimEvent): number | undefined {
  * A stable per-emitter key so the engine can debounce a burst of identical events. A positioned event keys
  * on its node, so two emitters at one spot collapse and two spots stay distinct; everything else keys on its
  * emitter entity. This keys `settlerDied` (a jingle carrying an optional `at`) by death node rather than by
- * the reaped entity — deliberate: the debounce should dedup "deaths here", and the reaped id is never
+ * the reaped entity - deliberate: the debounce should dedup "deaths here", and the reaped id is never
  * repeated anyway, so an entity key could never collapse a simultaneous pile-up.
  */
 function eventKey(ev: SimEvent): string {
@@ -53,9 +53,9 @@ function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | und
 }
 
 /**
- * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` — true only when the event's
+ * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` - true only when the event's
  * owner `player` equals `localPlayer`. An event carrying no `player`, or no configured `localPlayer`, is
- * treated as not-ours (silent) — the safe default for a notification sound.
+ * treated as not-ours (silent) - the safe default for a notification sound.
  */
 function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boolean {
   if (localPlayer === undefined) return false;
@@ -69,19 +69,19 @@ interface PendingSpatial {
   readonly files: readonly string[];
   /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
    *  snapshot Position (a fractional tile). The two spaces project through different renderer
-   *  mappings — see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
+   *  mappings - see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
   readonly node: HalfCellNode | null;
   readonly entity: number | undefined;
   /** Pre-attenuation gain: {@link SFX_GAIN} for action SFX, {@link CHAT_VOICE_GAIN} for a voice line. */
   readonly baseGain: number;
-  /** Whether the viewer's fog gates this sound (a voice from fogged ground stays silent — action SFX
+  /** Whether the viewer's fog gates this sound (a voice from fogged ground stays silent - action SFX
    *  keep their existing fog-agnostic behaviour). */
   readonly fogGated: boolean;
 }
 
 /**
  * The positions of exactly the `needed` entities, in one snapshot pass that allocates only for them
- * (never an all-entities table — battle-scale frames carry a handful of emitters among thousands of
+ * (never an all-entities table - battle-scale frames carry a handful of emitters among thousands of
  * entities) and stops as soon as every needed id is found.
  */
 function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map<number, TilePoint> {
@@ -99,13 +99,13 @@ function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map
 export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer, visibleTile } = input;
   const shots: OneShot[] = [];
-  if (events.length === 0) return shots; // the common frame — no events, no snapshot work at all
+  if (events.length === 0) return shots; // the common frame - no events, no snapshot work at all
   // Pass 1: resolve bindings, emit jingles, and collect the entity ids the spatial events need.
   const pending: PendingSpatial[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
     // A chat voice names its sound by the animation event's own `logicSoundType` id (data, not a
-    // binding — the clip already picked the sex-correct group), so it resolves before the binding map.
+    // binding - the clip already picked the sex-correct group), so it resolves before the binding map.
     if (ev.kind === 'chatVoice') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       const id = eventEntity(ev);

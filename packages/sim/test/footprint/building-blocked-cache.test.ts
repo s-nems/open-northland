@@ -8,14 +8,14 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import { HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.js';
 
-/** The HUT's anchor in every placement fixture — body (5,5)+(6,5), door (4,5). */
+/** The HUT's anchor in every placement fixture - body (5,5)+(6,5), door (4,5). */
 const ANCHOR = { x: 5, y: 5 };
 
 /**
  * The building walk-block memo (building-blocked-cache.ts): a call burst between two building mutations
- * shares ONE build, and every mutation seam that can change the cell set — membership (add/remove/destroy)
+ * shares ONE build, and every mutation seam that can change the cell set - membership (add/remove/destroy)
  * and the home tier upgrade's IN-PLACE `buildingType` swap (which `World.write` logs on the VALUE
- * generation) — invalidates it. The in-place seam is the regression the naive
+ * generation) - invalidates it. The in-place seam is the regression the naive
  * `componentGeneration(Building)`-only key would miss.
  */
 describe('buildingBlockedCells memo', () => {
@@ -46,13 +46,13 @@ describe('buildingBlockedCells memo', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('a home tier upgrade — the in-place buildingType swap — invalidates the memo', () => {
+  it('a home tier upgrade - the in-place buildingType swap - invalidates the memo', () => {
     const { sim, home, growth } = twoTierHome();
     const terrain = terrainOf(sim);
     const before = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
     expect(before.has(growth)).toBe(false); // level 0: the growth cell is still open ground
 
-    constructionSystem(sim.world, ctxOf(sim)); // materials present — upgrades in place
+    constructionSystem(sim.world, ctxOf(sim)); // materials present - upgrades in place
     expect(sim.world.get(home, Building).level).toBe(1);
     const after = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
     expect(after).not.toBe(before);
@@ -63,10 +63,10 @@ describe('buildingBlockedCells memo', () => {
   it('the verifier flags an in-place Building write that bypassed the write seam', () => {
     const { sim, home } = twoTierHome();
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
-    sim.world.get(home, Building).buildingType = HOME_L; // raw store write — no value-generation bump
+    sim.world.get(home, Building).buildingType = HOME_L; // raw store write - no value-generation bump
     expect(sim.world.verifyCaches().join('\n')).toContain('buildingBlockedCells');
 
-    // The same write through the seam — logged, so the next read rebuilds.
+    // The same write through the seam - logged, so the next read rebuilds.
     sim.world.write(home, Building, (b) => {
       b.buildingType = HOME_L;
     });
@@ -80,7 +80,7 @@ const HOME_L = 21; // grows one node east
 const STONE = 1;
 
 /** A level-0 home re-opened as an UPGRADE SITE (the command-driven model: `UnderConstruction` +
- *  `Upgrading` beside the Building) with the hammering done and the next tier's material delivered —
+ *  `Upgrading` beside the Building) with the hammering done and the next tier's material delivered -
  *  one `constructionSystem` run finishes the upgrade in place. `growth` is the node only the larger
  *  tier walls off. */
 function twoTierHome() {
@@ -123,7 +123,7 @@ function twoTierHome() {
   sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: fx.fromInt(0), level: 0 });
   // The live stockpile is the site's build hold, holding the target tier's delivered bill.
   sim.world.add(home, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
-  sim.world.add(home, UnderConstruction, { labor: ONE }); // hammering complete — only materials gate
+  sim.world.add(home, UnderConstruction, { labor: ONE }); // hammering complete - only materials gate
   sim.world.add(home, Upgrading, {
     savedStock: new Map<number, number>(),
     seeded: new Map<number, number>(),

@@ -1,4 +1,4 @@
-/* First-run installer chrome. Deliberately plain system styling — the original game's parchment
+/* First-run installer chrome. Deliberately plain system styling - the original game's parchment
  * look needs decoded assets, which do not exist yet at this point. */
 :root {
   color-scheme: dark;

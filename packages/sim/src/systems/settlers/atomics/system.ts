@@ -12,12 +12,12 @@ import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/in
 import { atomicSoundFrame } from './sound-cue.js';
 
 /**
- * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a settler is
+ * AtomicSystem - the executor half of the settler planner: advance the {@link CurrentAtomic} a settler is
  * running and, on completion, apply its typed effect ({@link applyEffect}), emit `atomicCompleted` for
- * render/audio, and remove the component — the planner reads an entity with no CurrentAtomic as ready for
+ * render/audio, and remove the component - the planner reads an entity with no CurrentAtomic as ready for
  * its next.
  *
- * A `duration` of D ticks completes on the D-th tick (a 0/1-tick animation completes the first tick —
+ * A `duration` of D ticks completes on the D-th tick (a 0/1-tick animation completes the first tick -
  * `duration` is clamped to at least 1). Timing is the exact integer compare `elapsed >= duration`, not an
  * accumulated fixed-point step: `ONE / duration` truncates, so summing it `duration` times would fall short
  * of ONE and the atomic would hang. `progress` (0..ONE) is a derived display value for render interpolation
@@ -26,7 +26,7 @@ import { atomicSoundFrame } from './sound-cue.js';
 export const atomicSystem: System = (world, ctx) => {
   // Staggers from landed hits are collected, not added, while this loop iterates the CurrentAtomic store
   // (see `applyPendingStaggers` for the ordering hazard the deferral removes). Self-removal on completion
-  // is then the loop's only change to that store's MEMBERSHIP — the per-tick writes are all in place —
+  // is then the loop's only change to that store's MEMBERSHIP - the per-tick writes are all in place -
   // which Map iteration allows.
   const pendingStaggers: PendingStagger[] = [];
   for (const e of world.query(CurrentAtomic)) {
@@ -35,7 +35,7 @@ export const atomicSystem: System = (world, ctx) => {
     atomic.elapsed += 1;
     atomic.progress = fx.div(fx.fromInt(Math.min(atomic.elapsed, duration)), fx.fromInt(duration));
 
-    // An attack lands its blow MID-animation at the ATTACK-event frame (`hitAt`) — a spear thrust connects
+    // An attack lands its blow MID-animation at the ATTACK-event frame (`hitAt`) - a spear thrust connects
     // partway through its swing, the follow-through then playing out to `duration`. `elapsed` steps through
     // every integer, so it equals the clamped frame exactly once: the swing lands a single blow. Who swings
     // at whom is the CombatSystem's; this is only the landing.
@@ -45,7 +45,7 @@ export const atomicSystem: System = (world, ctx) => {
     }
 
     // Only `construct` carries a mid-animation sound cue today (the builder's hammer knock on the visual
-    // strike); every other atomic sounds at completion. Sound-only — no state mutation, so no golden moves.
+    // strike); every other atomic sounds at completion. Sound-only - no state mutation, so no golden moves.
     if (atomic.effect.kind === 'construct') {
       const soundFrame = atomicSoundFrame(world, ctx, e, atomic.atomicId);
       if (soundFrame !== undefined && atomic.elapsed === eventFrameWithin(soundFrame, duration)) {
@@ -56,7 +56,7 @@ export const atomicSystem: System = (world, ctx) => {
     if (atomic.elapsed < duration) continue; // still running
 
     // A finished REST TAIL: its harvest applied and announced itself when the swing finished (below, last
-    // time around), so it chains straight into the next swing — re-checked, since a competitor may have
+    // time around), so it chains straight into the next swing - re-checked, since a competitor may have
     // finished the node mid-rest.
     if (atomic.restTail === true) {
       if (

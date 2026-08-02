@@ -6,7 +6,7 @@ import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
  *  `mods/` for the newest install. */
 
 /**
- * Locates a mod root (a directory that contains `DataCnmd/`) at `dir` itself or one level below —
+ * Locates a mod root (a directory that contains `DataCnmd/`) at `dir` itself or one level below -
  * the CnMod zip wraps everything in one `CnMod <version>/` top folder, but a rezipped archive
  * might not.
  */
@@ -36,7 +36,7 @@ export async function findModRootUnder(dir: string): Promise<string | undefined>
 
 /**
  * The already-installed mod root under the data root's `mods/` dir, or undefined. Among several
- * installed versions the lexicographically last wins — the CnMod folder names embed the version
+ * installed versions the lexicographically last wins - the CnMod folder names embed the version
  * (`CnMod 1.3.1`), so that is the newest (an approximation that holds for dotted versions of equal
  * segment width).
  */
@@ -44,7 +44,7 @@ export async function discoverInstalledMod(modsDir: string): Promise<string | un
   let children: string[];
   try {
     children = (await readdir(modsDir, { withFileTypes: true }))
-      // Dot-dirs are never installed mods — `install.ts`'s STAGING_DIR_NAME in particular, whose
+      // Dot-dirs are never installed mods - `install.ts`'s STAGING_DIR_NAME in particular, whose
       // half-written DataCnmd/ must not be discovered after an interrupted install.
       .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .map((e) => e.name);

@@ -3,16 +3,16 @@ import { heapMb } from '../diag/heap.js';
 import { messages } from '../i18n/index.js';
 
 /**
- * The on-canvas debug readout — the human-facing instrument for render-scale + sim work. Pinned top-left
+ * The on-canvas debug readout - the human-facing instrument for render-scale + sim work. Pinned top-left
  * (beside the tool-panel strip; the build menu drops below it so the two never collide), lightly
- * translucent. Two lines: sim state (tick / speed / steps / dropped ticks / entity·drawn·pooled counts —
+ * translucent. Two lines: sim state (tick / speed / steps / dropped ticks / entity·drawn·pooled counts -
  * a spiking `steps` means the sim is falling behind wall-clock, `drawn ≪ entities` means culling is
  * biting) and perf (smoothed FPS, the CPU `sim`/`snap`/`draw` split, GPU/compositor remainder, worst
  * recent frame, Chrome-only JS heap).
  *
  * Formatting only: the fold lives in `diag/frame-stats.ts`, which is where it can be tested. The
  * `sim`/`snap`/`draw` split is the breakdown `packages/render/AGENTS.md` says to measure before blaming
- * the GPU — a slow scene is usually the sim, not the draw.
+ * the GPU - a slow scene is usually the sim, not the draw.
  */
 
 export interface PerfOverlayHandle {
@@ -36,7 +36,7 @@ const PANEL_STYLE = [
   'pointer-events:none',
 ].join(';');
 
-/** `×2`, `×0.50`, … — integer speeds stay terse; a fractional `?speed=` shows two decimals. */
+/** `×2`, `×0.50`, … - integer speeds stay terse; a fractional `?speed=` shows two decimals. */
 function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
@@ -68,7 +68,7 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
   panel.style.left = `${leftPx}px`;
-  panel.textContent = `${messages().performance.fps} —`;
+  panel.textContent = `${messages().performance.fps} -`;
   document.body.append(panel);
 
   return {

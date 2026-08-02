@@ -4,13 +4,13 @@
 import { cifBytesToSections, decodeIni, type RuleSection } from './grammar.js';
 
 /**
- * Walks a decoded string table — a `[control]` section with `stringidmultiplier <N>`, then a `[text]`
+ * Walks a decoded string table - a `[control]` section with `stringidmultiplier <N>`, then a `[text]`
  * section of `stringn <id> "<text>"` (sets the running id explicitly) and bare `string "<text>"`
- * (auto-increments it) — into `{ <stringId>: <text> }`. The grammar is shared by the `ingamegui*` UI
+ * (auto-increments it) - into `{ <stringId>: <text> }`. The grammar is shared by the `ingamegui*` UI
  * tables (verified against the shipped `backup (errors)/*.ini`) and each map folder's
  * `text/<lang>/strings.ini`/`.cif` (same `stringn` lines, usually without a `[control]` section).
  * The multiplier (1 in every shipped table) scales the id, matching the engine's per-table id
- * namespacing. Values are returned as they appear in `sections` — the byte→text codepage is the
+ * namespacing. Values are returned as they appear in `sections` - the byte→text codepage is the
  * caller's seam ({@link decodeIni} already yields CP1250 for readable `.ini`; `.cif` text is decoded
  * latin1 to preserve its source bytes and needs {@link latin1ToCp1250} for display).
  */
@@ -52,7 +52,7 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
  * there each `stringn <goodType> "<singular>"` is the display name and the following bare `string` is the
  * plural. That table declares `stringidmultiplier 2` AND leaves gaps in the `stringn` sequence (mead's
  * `stringn 43` sits amid the 24..42 block), so {@link extractStringTable}'s running-id + multiplier scaling
- * lands a neighbour's plural on mead's slot and drops it — this singular-only read keys straight off the
+ * lands a neighbour's plural on mead's slot and drops it - this singular-only read keys straight off the
  * good `type` and can't collide. Codepage is the caller's seam (same as {@link extractStringTable}).
  */
 export function extractStringnById(sections: readonly RuleSection[]): Record<number, string> {
@@ -77,7 +77,7 @@ export function latin1ToCp1250(latin1: string): string {
  * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight
  * to display text: {@link cifBytesToSections} → {@link extractStringTable},
  * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam preserves bytes as latin1,
- * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode — this
+ * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode - this
  * helper keeps the codepage invariant in one place for both `.cif` string-table consumers (the
  * `ingamegui*` UI tables and the map folders' `strings.cif`).
  */

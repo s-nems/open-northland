@@ -58,7 +58,7 @@ describe('sandbox building worker slots', () => {
           w.jobType === JOB_CARRIER || w.jobType === JOB_HUNTER || w.jobType >= WORKER_SLOT_JOB_BASE,
         ).toBe(true);
     }
-    // The HQ dispatches gatherers (collector/fisher/hunter) and carriers — 9 gatherers + 3 carriers, no
+    // The HQ dispatches gatherers (collector/fisher/hunter) and carriers - 9 gatherers + 3 carriers, no
     // in-workshop craftsman. The player can only hand-assign its carriers (a gatherer is never a PPM target).
     const hq = byType.get(1)?.workers ?? [];
     const headcount = (role: string): number =>
@@ -89,7 +89,7 @@ describe('sandbox building worker slots', () => {
     expect(firstCraftName(31)).toBe('Kowal'); // smithy → smith (original job 13)
     expect(firstCraftName(35)).toBe('Druid'); // druid hut → druid (original job 30)
     // Drift guard: the slot label must be the SAME word the profession picker shows (they were once
-    // transcribed twice and diverged — a joiner read "Cieśla" as a slot but "Stolarz" in the picker).
+    // transcribed twice and diverged - a joiner read "Cieśla" as a slot but "Stolarz" in the picker).
     expect(firstCraftName(31)).toBe(professionLabel('smith'));
     expect(firstCraftName(24)).toBe(professionLabel('joiner')); // work_joinery_01 → joiner (original job 9)
   });
@@ -106,14 +106,14 @@ describe('sandbox building worker slots', () => {
 /**
  * The mill's sandbox shape must stay pinned to the extracted original data: the wheat-in/flour-out
  * two-slot store (`DataCnmd/types/houses.ini` "work mill 00": `logicstock 4 10 1` / `logicstock 11
- * 20 0` — the trailing int is the consumed-here flag, so both slots start EMPTY), `logicproduction
+ * 20 0` - the trailing int is the consumed-here flag, so both slots start EMPTY), `logicproduction
  * 11`, 2 millers + 1 carrier; the grind paces at the uniform DEFAULT_RECIPE_TICKS design pacing.
  */
 describe('sandbox mill content (extracted "work mill 00" pins)', () => {
   const content = sandboxContent();
   const mill = content.buildings.find((b) => b.typeId === BUILDING_MILL);
 
-  it('stores ONLY wheat (10, empty) and flour (20, empty) — every other good is refused at capacity 0', () => {
+  it('stores ONLY wheat (10, empty) and flour (20, empty) - every other good is refused at capacity 0', () => {
     expect(mill?.stock).toEqual([
       { goodType: GOOD_WHEAT, capacity: 10, initial: 0 },
       { goodType: GOOD_FLOUR, capacity: 20, initial: 0 },

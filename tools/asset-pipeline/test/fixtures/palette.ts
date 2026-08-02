@@ -3,7 +3,7 @@
  * carriers the decoders round-trip against, so specs across the pipeline share one definition.
  */
 
-/** A 768-byte palette where entry i is (i, 255-i, (i*7) & 0xff) — every channel varies with the index. */
+/** A 768-byte palette where entry i is (i, 255-i, (i*7) & 0xff) - every channel varies with the index. */
 export const rampPalette = (): Uint8Array => {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) {

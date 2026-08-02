@@ -7,7 +7,7 @@ describe('decodeIni (CP1250 byte->text seam)', () => {
     // "Północ" (mod campaign theme) from its exact CP1250 bytes: 'ó' is 0xF3, 'ł' is 0xB3.
     const polnoc = Uint8Array.from([0x50, 0xf3, 0xb3, 0x6e, 0x6f, 0x63]); // P ó ł n o c
     expect(decodeIni(polnoc)).toBe('Północ');
-    // The same bytes read as UTF-8 mangle the high bytes into replacement chars — the bug we avoid.
+    // The same bytes read as UTF-8 mangle the high bytes into replacement chars - the bug we avoid.
     expect(new TextDecoder('utf-8').decode(polnoc)).not.toBe('Północ');
   });
 
@@ -18,7 +18,7 @@ describe('decodeIni (CP1250 byte->text seam)', () => {
   });
 
   it('feeds the parser so a CP1250 display name reaches the section unmangled', () => {
-    // 'ś' is 0x9C, 'ą' is 0xB9 in Windows-1250 — exactly the bytes a UTF-8 read would corrupt.
+    // 'ś' is 0x9C, 'ą' is 0xB9 in Windows-1250 - exactly the bytes a UTF-8 read would corrupt.
     const bytes = Uint8Array.from([
       0x5b,
       0x74,

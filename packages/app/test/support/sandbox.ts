@@ -4,7 +4,7 @@ import type { UnitPanelModelContext } from '../../src/hud/details-panel/index.js
 import { createSceneSim } from '../../src/scenes/index.js';
 import { sandboxScene } from '../../src/scenes/sandbox/index.js';
 
-/** The details-panel model context a sim's content provides — the content half every
+/** The details-panel model context a sim's content provides - the content half every
  *  `buildUnitPanelModel` assertion runs against, livestock seams wired like `unit-controls`. */
 export function ctxOf(sim: Simulation): UnitPanelModelContext {
   return {

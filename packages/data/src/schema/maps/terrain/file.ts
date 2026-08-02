@@ -5,7 +5,7 @@ import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
 import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 
 /**
- * A decoded terrain grid file (`content/maps/<id>.json`) — the per-map nav-graph input the pipeline
+ * A decoded terrain grid file (`content/maps/<id>.json`) - the per-map nav-graph input the pipeline
  * emits from `map.dat` (the `lmlt` half-cell landscape-object lane reduced to one typeId per cell;
  * raw values are the 1-based IR {@link LandscapeType} typeIds, with raw 0 = "no object" mapped to
  * `void`). This is the on-disk twin of the sim's `TerrainMap`, which the sim defines structurally
@@ -14,7 +14,7 @@ import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './l
  * fails at load, not as an out-of-bounds read inside `buildTerrainGraph`.
  *
  * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
- * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
+ * ground patterns; placed landscape objects) - render-only consumers; the sim reads only the grid.
  * The optional {@link elevation} (`lmhe` terrain height) and {@link brightness} (`embr` baked
  * shading) lanes are per-cell render inputs: the projection lift and the ground's per-fragment
  * shading respectively.
@@ -33,7 +33,7 @@ const TerrainMapFields = z.strictObject({
   /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
   objects: TerrainObjects.optional(),
   /**
-   * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) —
+   * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) -
    * not the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
    * (a hard observed ceiling across the real maps).
    * Present when the map ships the lane (older/foreign saves omit it). Consumed by the render's
@@ -46,7 +46,7 @@ const TerrainMapFields = z.strictObject({
    * raw byte values 0..255 with 127 = neutral. The engine's baked shading plane: slope light/shadow
    * plus the fade-to-black map border (the outermost 2–3 rows/columns hold 0). Present when the map
    * ships the lane. Consumed by the ground's per-fragment shading (luminance × brightness/127,
-   * the response curve calibrated against the reference corpus —
+   * the response curve calibrated against the reference corpus -
    * `packages/render/src/data/brightness.ts`).
    */
   brightness: CellLane.optional(),
@@ -54,7 +54,7 @@ const TerrainMapFields = z.strictObject({
    * Per-cell `lmms` band (the lane collapsed to each cell's centre node), row-major, one value per
    * cell. Observed byte values are 0..7 on the owned corpus, but the band SEMANTICS are unconfirmed:
    * it is NOT a water mask (waterless maps carry the same 1..7 bands over meadow, and band 7 sits
-   * mostly under land patterns on river maps — probed 2026-07-16), so the render keys water off
+   * mostly under land patterns on river maps - probed 2026-07-16), so the render keys water off
    * ground-pattern names instead (`packages/render/src/data/water.ts`). Retained as raw probe data;
    * no runtime system consumes it.
    */

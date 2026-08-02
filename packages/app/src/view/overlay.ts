@@ -1,7 +1,7 @@
 import { messages } from '../i18n/index.js';
 
 /**
- * Shared DOM chrome for the app's on-canvas panels — the scene routing error
+ * Shared DOM chrome for the app's on-canvas panels - the scene routing error
  * ({@link import('./scene-overlay.js')}), the animation gallery panel
  * ({@link import('../entries/anim-overlay.js')}) and the main menu ({@link import('../entries/menu.js')}).
  * Plain DOM + floats, app-layer only (never in `sim`).
@@ -35,7 +35,7 @@ export const BUTTON_STYLE = [
   'font:12px ui-monospace,monospace',
 ].join(';');
 
-/** Create an element with an inline `cssText` style and optional text — the terse DOM builder the panels use. */
+/** Create an element with an inline `cssText` style and optional text - the terse DOM builder the panels use. */
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   style: string,
@@ -48,7 +48,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
- * A button that navigates the page (reloads with a new `?…` search string) — used by the gallery's
+ * A button that navigates the page (reloads with a new `?…` search string) - used by the gallery's
  * character/view selectors and the menu, where changing the selection means loading different atlases /
  * a different entry. `active` highlights the current choice.
  */
@@ -64,7 +64,7 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
   return b;
 }
 
-/** The minimal audio-driver shape {@link mountSoundToggle} needs (structural — no `@open-northland/audio` import). */
+/** The minimal audio-driver shape {@link mountSoundToggle} needs (structural - no `@open-northland/audio` import). */
 interface SoundToggleDriver {
   resume(): Promise<void>;
   readonly started: boolean;
@@ -72,7 +72,7 @@ interface SoundToggleDriver {
   setEnabled(enabled: boolean): void;
 }
 
-/** The bottom-centre sound toggle button — a real click target (pointer-events on), so it must sit above panels. */
+/** The bottom-centre sound toggle button - a real click target (pointer-events on), so it must sit above panels. */
 const SOUND_TOGGLE_STYLE = [
   'position:fixed',
   'left:50%',
@@ -92,7 +92,7 @@ const SOUND_TOGGLE_STYLE = [
 /**
  * Mount the bottom-centre sound toggle button. Audio starts muted (the driver is created with
  * `setEnabled(false)`); the game is silent until the user clicks this button. The click doubles as the
- * autoplay gesture — browsers keep an `AudioContext` suspended until a trusted user gesture, so the same
+ * autoplay gesture - browsers keep an `AudioContext` suspended until a trusted user gesture, so the same
  * click that unmutes also `resume()`s the context. Clicking again re-mutes (the context stays running).
  */
 export function mountSoundToggle(driver: SoundToggleDriver): void {
@@ -109,12 +109,12 @@ export function mountSoundToggle(driver: SoundToggleDriver): void {
         enabled = next;
         button.textContent = next ? messages().common.soundOn : messages().common.soundOff;
       })
-      .catch(() => undefined); // constructing/resuming the context can throw (e.g. a context-count cap) — stay silent, not crash
+      .catch(() => undefined); // constructing/resuming the context can throw (e.g. a context-count cap) - stay silent, not crash
   });
 }
 
 /**
- * The full-page (scrollable) entry shell — the dark-parchment page behind the main menu and the sound
+ * The full-page (scrollable) entry shell - the dark-parchment page behind the main menu and the sound
  * gallery. Each page passes only its own density knobs (top padding / body font / content width).
  */
 export function pageRootStyle(paddingTopPx: number, fontPx: number): string {

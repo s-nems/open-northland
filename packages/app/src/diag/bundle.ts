@@ -1,7 +1,7 @@
 /**
- * The diagnostics bundle — the one file a tester attaches to a bug report. Because the sim is
+ * The diagnostics bundle - the one file a tester attaches to a bug report. Because the sim is
  * deterministic and command-driven, the bundle is a full session repro: rebuild the world with the
- * same builder (`entry` + `worldId` name it — world setup is pre-tick-0 builder work, not commands),
+ * same builder (`entry` + `worldId` name it - world setup is pre-tick-0 builder work, not commands),
  * drop the rebuilt sim's pending setup commands (the log already carries them), then
  * `stepReplaying(sim, commandLog, tick)` re-runs the tester's exact session tick by tick (the round
  * trip `test/diag-bundle.test.ts` pins). The rest (log ring, environment header, recorded hashes) is
@@ -19,15 +19,15 @@ import { recordedTraceEvents, type TraceEvent } from './trace.js';
 export const DIAGNOSTICS_BUNDLE_KIND = 'opennorthland-diagnostics';
 export const DIAGNOSTICS_BUNDLE_VERSION = 1;
 
-/** The running game's repro payload — absent when no game session is registered (e.g. the menu). */
+/** The running game's repro payload - absent when no game session is registered (e.g. the menu). */
 export interface DiagnosticsGameReport {
   readonly entry: 'map' | 'scene';
   readonly worldId: string | null;
   readonly seed: number;
   readonly tick: number;
-  /** `hashState()` at bundle time — the replay target; `null` when hashing threw (a wedged sim). */
+  /** `hashState()` at bundle time - the replay target; `null` when hashing threw (a wedged sim). */
   readonly finalHash: string | null;
-  /** The full command log — replaying it from `seed` reconstructs the session (`replay()`). */
+  /** The full command log - replaying it from `seed` reconstructs the session (`replay()`). */
   readonly commandLog: readonly LoggedCommand[];
   /** The recorded per-tick hash trace (`?debug=diag` runs only) for divergence localization. */
   readonly hashes?: readonly { readonly tick: number; readonly hash: string }[];
@@ -36,7 +36,7 @@ export interface DiagnosticsGameReport {
 export interface DiagnosticsBundle {
   readonly kind: typeof DIAGNOSTICS_BUNDLE_KIND;
   readonly version: typeof DIAGNOSTICS_BUNDLE_VERSION;
-  /** Wall-clock ISO timestamp — when the tester generated the report, for correlating with their story. */
+  /** Wall-clock ISO timestamp - when the tester generated the report, for correlating with their story. */
   readonly generatedAt: string;
   readonly log: readonly DiagEntry[];
   readonly game: DiagnosticsGameReport | null;
@@ -63,7 +63,7 @@ export function buildDiagnosticsBundle(
 function gameReport(session: DiagGameSession): DiagnosticsGameReport {
   const { sim } = session;
   // A crash bundle must survive a wedged sim: hashing walks every component, so a half-broken world
-  // may throw — report `null` rather than losing the whole bundle.
+  // may throw - report `null` rather than losing the whole bundle.
   let finalHash: string | null = null;
   try {
     finalHash = sim.hashState();
@@ -85,7 +85,7 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
 
 /**
  * Make one free-form log `data` value JSON-proof: BigInts become strings, a re-visited object is cut
- * as `"[circular]"`, anything still unserializable becomes `"[unserializable]"`. Lossy on purpose —
+ * as `"[circular]"`, anything still unserializable becomes `"[unserializable]"`. Lossy on purpose -
  * and applied ONLY to log data: the game report (the replay payload) and the trace are serializable
  * by contract and must never be cut (a shared command sub-object stringified as `"[circular]"` would
  * corrupt the repro).

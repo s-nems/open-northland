@@ -17,9 +17,9 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for the HerdingSystem — the follow-the-leader movement drive. A herding animal carries a
+ * Tests for the HerdingSystem - the follow-the-leader movement drive. A herding animal carries a
  * `HerdMember` pointing at its pack's leader (set at spawn by `spawnAnimalHerd`); a strayed follower
- * (farther than `maximumleaderdistance` from its leader — a HALF-CELL NODE Manhattan distance, the
+ * (farther than `maximumleaderdistance` from its leader - a HALF-CELL NODE Manhattan distance, the
  * data range consumed verbatim on the node lattice) is sent back via a `MoveGoal` to a free spot
  * BESIDE the leader (never onto an occupied field - two animals on one node draw as one sprite). The
  * leader itself (leader === self) and a solitary animal (no `HerdMember`) run no drive. The
@@ -47,13 +47,13 @@ function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'
   return e;
 }
 
-describe('herdingSystem — follow-the-leader cohesion', () => {
+describe('herdingSystem - follow-the-leader cohesion', () => {
   it('sends a strayed follower back BESIDE the leader - inside the radius, never onto its node', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
     const leader = herderAt(sim, 0, 0, 'self');
-    const follower = herderAt(sim, 8, 0, leader); // 8 nodes away — beyond maximumLeaderDistance 3
+    const follower = herderAt(sim, 8, 0, leader); // 8 nodes away - beyond maximumLeaderDistance 3
 
     herdingSystem(sim.world, ctxOf(sim));
 
@@ -115,7 +115,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
   it('leaves a follower already within maximumLeaderDistance alone (no MoveGoal)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const leader = herderAt(sim, 0, 0, 'self');
-    const follower = herderAt(sim, LEADER_DISTANCE, 0, leader); // exactly at the radius — close enough
+    const follower = herderAt(sim, LEADER_DISTANCE, 0, leader); // exactly at the radius - close enough
 
     herdingSystem(sim.world, ctxOf(sim));
 
@@ -158,7 +158,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const leader = herderAt(sim, 0, 0, 'self');
     const follower = herderAt(sim, 8, 0, leader);
-    sim.world.destroy(leader); // leader killed — its components are gone
+    sim.world.destroy(leader); // leader killed - its components are gone
 
     expect(() => herdingSystem(sim.world, ctxOf(sim))).not.toThrow();
     expect(sim.world.has(follower, MoveGoal)).toBe(false); // nowhere to go
@@ -181,7 +181,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
     expect(endHx).toBeLessThanOrEqual(LEADER_DISTANCE);
   });
 
-  it('two same-seed runs herd identically (deterministic — no RNG)', () => {
+  it('two same-seed runs herd identically (deterministic - no RNG)', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
       const leader = herderAt(sim, 0, 0, 'self');

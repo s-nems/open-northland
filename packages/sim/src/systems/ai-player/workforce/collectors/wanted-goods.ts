@@ -7,7 +7,7 @@ import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
 
 /** The goods the gatherers collect from game start, by stable content id (user plan: clay, stone,
- *  wood). An id absent from the content set — or with no standing resource left on the map — is
+ *  wood). An id absent from the content set - or with no standing resource left on the map - is
  *  skipped. The build order adds its `collector` entries' goods (e.g. iron) once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
@@ -50,7 +50,7 @@ function harvestJobFor(ctx: SystemContext, harvestAtomic: number): number | null
 }
 
 /** The generalist gatherer trade: the harvest job that can flag-harvest the most goods, ties to the
- *  lowest typeId — a strict `(count desc, id asc)` order, so the winner never depends on set
+ *  lowest typeId - a strict `(count desc, id asc)` order, so the winner never depends on set
  *  iteration order. Null when the content has no harvest trade. */
 export function genericCollectorJob(ctx: SystemContext): number | null {
   const index = contentIndex(ctx.content);
@@ -69,7 +69,7 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
   return best;
 }
 
-/** The wanted collector goods — the base set plus the build order's reached `collector` entries — in
+/** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
  *  plan order, each with its gatherer trade and target resolved (`statuses` is the decision's
  *  {@link EntryStatus} snapshot). A good missing from the content set or with no harvest trade is
  *  skipped. */
@@ -95,7 +95,7 @@ export function wantedCollectorGoods(
   return wanted;
 }
 
-/** Whether this settler's accrued XP clears the good's `needforgood` thresholds — the same gate the
+/** Whether this settler's accrued XP clears the good's `needforgood` thresholds - the same gate the
  *  harvest pick applies (`nearestHarvestableFor`), so the allocator never posts a collector its own
  *  target scan would refuse (iron/gold demand clay/stone-track XP in the base data). */
 export function meetsNeed(world: World, ctx: SystemContext, e: Entity, goodType: number): boolean {

@@ -7,17 +7,17 @@ import { realMapPath, realMapWorld } from './real-map-world.js';
 const { Building, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
 const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } = systems;
 
-/** The decoded map under test — a free-play start where every seat opens with an authored, stocked
+/** The decoded map under test - a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
 const MAP_ID = 'magiczny_las';
 /** A seat with an authored HQ that no session defaults to (the human default is seat 0). */
 const AI_SEAT = 2;
-/** Five strategic decisions for the seat — the opening orders all fire on the first one. */
+/** Five strategic decisions for the seat - the opening orders all fire on the first one. */
 const RUN_TICKS = 120;
 
 /**
  * The strategic AI player against a REAL decoded map (the `?map=...&ai=<seat>` flow): the flagged
- * seat must act on its authored headquarters through the same merged content the browser runs —
+ * seat must act on its authored headquarters through the same merged content the browser runs -
  * this is the headless twin of watching the AI play on a real map, and it guards the id joins the
  * synthetic sim fixtures cannot (real building/good ids, authored owners, real footprints).
  */

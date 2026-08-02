@@ -9,7 +9,7 @@ import { type GuiPaletteName, guiPaletteRow, loadGuiPaletteLut, loadGuiWindowInd
 
 /**
  * The one loader + sprite factory for the decoded GUI art (the indexed `ls_gui_window` sheet read
- * through the GUI palette LUT) — shared by the tool panel and the settler action menu so the
+ * through the GUI palette LUT) - shared by the tool panel and the settler action menu so the
  * load/degrade policy and the frame→palette resolution can't drift between HUD modules. A checkout
  * without `content/` yields `null` and every consumer falls back to its flat-`Graphics` look.
  */
@@ -18,7 +18,7 @@ import { type GuiPaletteName, guiPaletteRow, loadGuiPaletteLut, loadGuiWindowInd
 export interface GuiArt {
   readonly layer: SpriteLayer;
   readonly lut: TextureSource;
-  /** LUT row count (its pixel height) — passed to each `PalettedSprite`. */
+  /** LUT row count (its pixel height) - passed to each `PalettedSprite`. */
   readonly colours: number;
 }
 
@@ -32,7 +32,7 @@ let guiArtOnce: Promise<GuiArt | null> | null = null;
 
 /**
  * Load the indexed GUI window sheet + palette LUT, or `null` when either half is missing (the GUI
- * pipeline stage hasn't run) — the consumer then renders its flat fallback at the same geometry.
+ * pipeline stage hasn't run) - the consumer then renders its flat fallback at the same geometry.
  * Memoized per page (like `loadIr`): the tool panel, the action ring, and the details panel all
  * mount it and must share one sheet texture instead of fetching three.
  */

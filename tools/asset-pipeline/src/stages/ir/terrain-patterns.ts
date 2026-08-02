@@ -14,7 +14,7 @@ type TerrainFamily = (typeof TERRAIN_FAMILIES)[number]['family'];
 /**
  * Classifies a {@link LandscapeType} (by its `id` slug) into a coarse ground family. The map's per-cell
  * `lmlt` value is a landscape typeId, but those types are mostly objects (void/tree/rock/iron/wheat/…),
- * not ground classes — so the ground under a cell is approximated from the type's name: a `water` name →
+ * not ground classes - so the ground under a cell is approximated from the type's name: a `water` name →
  * water, a `rock`/`stone` name → mountain, everything else (incl. tree/bush/wood, whose ground is land)
  * → land. This is the deviation the 1:1-oracle-blocked terrain render ships (source basis).
  */
@@ -27,11 +27,11 @@ function classifyTerrainFamily(landscapeId: string): TerrainFamily {
 
 /**
  * Picks the representative {@link GfxPattern} for a family: the pattern of the family's `logicType` whose
- * `editName` starts with the family seed (`water`/`meadow`/`mountain`) — the clean full-tile base — else,
+ * `editName` starts with the family seed (`water`/`meadow`/`mountain`) - the clean full-tile base - else,
  * if none match the seed, any pattern of that `logicType`. Among candidates, the shortest editName,
  * lowest id wins (the unsuffixed base tile like `"water 01"` over a `"block water 00 00 00"` transition
  * variant), a deterministic pick. Returns `undefined` if the family's `logicType` has no usable pattern
- * (no texture / coords) — then that family's typeIds bind nothing.
+ * (no texture / coords) - then that family's typeIds bind nothing.
  */
 function pickRepresentativePattern(
   patterns: readonly GfxPattern[],
@@ -54,8 +54,8 @@ function pickRepresentativePattern(
  * Builds the approximated typeId→ground-pattern table the terrain renderer consumes
  * ({@link TerrainPattern} IR): for each {@link LandscapeType}, classify its ground family
  * ({@link classifyTerrainFamily}) and bind it to that family's one representative
- * {@link GfxPattern} ({@link pickRepresentativePattern}) — its `text_NNN` texture + the two triangles'
- * UVs — plus the family logic type's `debugColor` (the flat-tint fallback). A recorded deviation, not a
+ * {@link GfxPattern} ({@link pickRepresentativePattern}) - its `text_NNN` texture + the two triangles'
+ * UVs - plus the family logic type's `debugColor` (the flat-tint fallback). A recorded deviation, not a
  * 1:1 match (source basis): the original computes the per-cell pattern from corner types + variant
  * lanes, an oracle-blocked algorithm; here every typeId of a family gets the same representative
  * ground. A landscape typeId whose family has no usable pattern is skipped (binds no ground → the

@@ -1,15 +1,15 @@
 /**
- * HALF-CELL ↔ POSITION conversions — the single seam between the sim's fixed-point positions
+ * HALF-CELL ↔ POSITION conversions - the single seam between the sim's fixed-point positions
  * (fractional VISUAL-TILE coords: `x` = column, `y` = row, stagger applied by the projection) and
- * the navigation lattice's integer HALF-CELL nodes (the original's `2W×2H` grid — source basis: the
+ * the navigation lattice's integer HALF-CELL nodes (the original's `2W×2H` grid - source basis: the
  * decoded map lanes `lmlt`/`emla`/`lmlv` and `map.cif` StaticObjects all address this grid).
  *
  * The half-cell grid is RECTANGULAR in world space: node `(hx, hy)` sits at world
- * `(hx·½ column, hy·½ row)` — no stagger of its own; the visual stagger arises from WHICH nodes the
+ * `(hx·½ column, hy·½ row)` - no stagger of its own; the visual stagger arises from WHICH nodes the
  * cell centres occupy (cell `(c, r)` sits at node `(2c + (r&1), 2r)`, the render's
  * `halfCellToScreen` twin). Every integer grid coordinate inside the sim (commands, footprints,
  * NodeBuckets keys, `NodeId`s) is a half-cell coordinate; these helpers are how a fractional
- * Position enters and leaves that grid. Pure fixed-point — quarters of ONE are exact.
+ * Position enters and leaves that grid. Pure fixed-point - quarters of ONE are exact.
  */
 import { type Fixed, fx } from '../core/fixed.js';
 import { staggerShift, worldX } from './world-metric.js';
@@ -23,7 +23,7 @@ export interface HalfCellNode {
 }
 
 /**
- * The half-cell node a fixed-point position occupies — its world coordinates scaled to half-cell
+ * The half-cell node a fixed-point position occupies - its world coordinates scaled to half-cell
  * units and truncated (the same floor-until-arrival semantics `fx.toInt` gave the old full-cell
  * snap; a position standing exactly on a node maps to it exactly, quarters being exact in fixed
  * point). Callers clamp into the grid via `TerrainGraph.nodeAtClamped`, so a border-seam transient
@@ -56,7 +56,7 @@ export function positionOfNode(hx: number, hy: number): { x: Fixed; y: Fixed } {
 }
 
 /**
- * The Position `x` of a WORLD column coordinate at row `y` — the stagger shift removed (the
+ * The Position `x` of a WORLD column coordinate at row `y` - the stagger shift removed (the
  * projection re-adds it). The off-lattice twin of {@link positionOfNode} for points BETWEEN nodes
  * (e.g. a diagonal leg's seam waypoint at an edge midpoint), so the stagger-removal convention has
  * exactly one owner.
@@ -66,7 +66,7 @@ export function positionXOfWorld(wx: Fixed, y: Fixed): Fixed {
 }
 
 /**
- * The half-cell node of a VISUAL-TILE centre `(cx, cy)` — `(2cx + (cy&1), 2cy)`, the stagger made
+ * The half-cell node of a VISUAL-TILE centre `(cx, cy)` - `(2cx + (cy&1), 2cy)`, the stagger made
  * integral. The authoring seam: scenes and sandbox helpers keep placing content by whole tiles, and
  * this is where a tile address becomes the node the sim actually anchors on.
  */
@@ -75,10 +75,10 @@ export function cellAnchorNode(cx: number, cy: number): HalfCellNode {
 }
 
 /**
- * The visual tile whose CENTRE is node `(hx, hy)` — {@link cellAnchorNode}'s inverse, undoing the row's
+ * The visual tile whose CENTRE is node `(hx, hy)` - {@link cellAnchorNode}'s inverse, undoing the row's
  * stagger parity. Exact only for a centre node (even `hy`, `hx` carrying the row's parity); a node
  * between centres has no tile of its own, so callers that may probe one clamp per their own rule. Not
- * the same question as which cell OWNS a node (its 2×2 block — the fog layer's `cellOfNode`).
+ * the same question as which cell OWNS a node (its 2×2 block - the fog layer's `cellOfNode`).
  */
 export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number; readonly cy: number } {
   const cy = hy / 2;
@@ -86,7 +86,7 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
 }
 
 /**
- * Whether two nodes are the same or neighbouring lattice points (Chebyshev ≤ 1) — the
+ * Whether two nodes are the same or neighbouring lattice points (Chebyshev ≤ 1) - the
  * standing-together predicate for paired interactions (the wedding kiss, the gossip chat): the pair
  * occupies adjacent half-cells with no free node between them (observed original behavior).
  */

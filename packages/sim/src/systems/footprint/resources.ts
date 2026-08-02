@@ -16,14 +16,14 @@ import {
   syncResourceBlockedCacheGeneration,
 } from './resource-blocked-cache.js';
 
-// RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies. Opt-in
+// RESOURCE footprints - the `[GfxLandscape]` walk/build/work areas a stamped resource occupies. Opt-in
 // via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior. The blocked-cell
 // overlay these feed lives in ./resource-blocked-cache.ts (maintained by the stamp/unstamp paths below).
 
 /**
  * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload.
  * The source stores repeated rows per valency/growth state; collision for Step 5 is static until the
- * node is removed, so `fullStateBlockAreaCells` (the fresh/full object's cells — also the app's
+ * node is removed, so `fullStateBlockAreaCells` (the fresh/full object's cells - also the app's
  * map-collision join) is the correct conservative consumer.
  */
 function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
@@ -121,7 +121,7 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
 
 /**
  * The caller-resolved shape of a resource node to place: its good, half-cell NODE, starting yield and
- * harvest atomic, plus which harvest LIFECYCLE it runs (a felled tree, a mined deposit, or — neither — a
+ * harvest atomic, plus which harvest LIFECYCLE it runs (a felled tree, a mined deposit, or - neither - a
  * pluck-whole node). The felling/deposit balance constants live in the app catalog, so the caller
  * resolves them and hands the sim a ready spec (the same "app resolves content, sim applies" split as
  * the `attack` effect's pre-resolved damage). Consumed by {@link createResourceNode}.
@@ -135,10 +135,10 @@ export interface ResourceNodeSpec {
   readonly harvestAtomic: number;
   /**
    * OPAQUE render-variant tag: the app's decoded-map species record index ("pine 02", "stones 05
-   * grey" in the APP's content numbering) — stored on {@link Resource.gfxIndex} verbatim and carried
+   * grey" in the APP's content numbering) - stored on {@link Resource.gfxIndex} verbatim and carried
    * out through the snapshot so the render draws the exact original object. The sim NEVER interprets
    * it (footprint/collision still come from the good's own record in the SIM's content set, whose
-   * numbering is unrelated). Omitted for an admin/scene spawn — the per-good representative draws, and
+   * numbering is unrelated). Omitted for an admin/scene spawn - the per-good representative draws, and
    * the component hashes exactly as before, so goldens are untouched.
    */
   readonly gfxIndex?: number;
@@ -146,7 +146,7 @@ export interface ResourceNodeSpec {
   readonly felling?: { readonly chopsLeft: number };
   /** A mined finite deposit (stone/clay/iron/gold): its level ladder and how many work cycles chip one
    *  unit off (the app catalog's observed calibration; omitted → 1). `initial` is the deposit's full
-   *  size — the ladder denominator — for a node placed already part-mined (a map's authored growth
+   *  size - the ladder denominator - for a node placed already part-mined (a map's authored growth
    *  level); omitted it is `remaining`, a node that spawns full. */
   readonly deposit?: {
     readonly levels: number;
@@ -165,18 +165,18 @@ export interface ResourceNodeSpec {
  * carcass) assemble their own extra shape but stamp their footprint through the same seam
  * ({@link stampResourceFootprintOrFallback}).
  *
- * Returns `null` — creating NOTHING, so no entity id is burned — when `good` has no resource footprint
+ * Returns `null` - creating NOTHING, so no entity id is burned - when `good` has no resource footprint
  * record: a scene-setup caller treats that as a hard bug and throws; the command handler treats it as
- * recoverable bad input and skips. The footprint is resolved BEFORE `create()` for exactly that reason —
+ * recoverable bad input and skips. The footprint is resolved BEFORE `create()` for exactly that reason -
  * an id-neutral skip like the `placeBuilding`/`placeBoat` gates, rather than a create-then-destroy that
  * would make the id sequence depend on how many rejected commands were issued. Determinism: a single
- * `create()` plus pure content reads (the footprint stamp maintains its own blocked-cell cache) — no
+ * `create()` plus pure content reads (the footprint stamp maintains its own blocked-cell cache) - no
  * RNG, no wall-clock.
  */
 export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
   // Resolve the footprint FIRST (a memoized content read) so an unknown good is an id-neutral skip
   // before any `create()`. The `stampResourceFootprint` below re-resolves the same memoized record and
-  // so cannot fail here — it does the ResourceFootprint stamp + the incremental blocked-cell cache entry.
+  // so cannot fail here - it does the ResourceFootprint stamp + the incremental blocked-cell cache entry.
   if (resourceFootprintForGood(content, spec.good) === null) return null;
   const e = world.create();
   // `spec.x`/`y` are HALF-CELL NODE coords (like every sim command); the Position is the node's
@@ -195,7 +195,7 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     world.add(e, MineDeposit, {
       initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
-      // Stamp the strike calibration only when the caller provides one — an unstamped node keeps the
+      // Stamp the strike calibration only when the caller provides one - an unstamped node keeps the
       // legacy 1-strike hash shape (the separate-optional-field pattern).
       ...(spec.deposit.strikesPerUnit !== undefined
         ? { strikesPerUnit: spec.deposit.strikesPerUnit, strikes: 0 }

@@ -19,7 +19,7 @@ export function parseContentSet(raw: unknown): ContentSet {
 /**
  * Parse + validate one decoded terrain grid file (`content/maps/<id>.json`) into the structural
  * `TerrainMap` the sim consumes. This is the loader boundary: the build tool / app reads the JSON
- * (I/O — not allowed in the pure sim) and validates the shape + the `typeIds.length === width*height`
+ * (I/O - not allowed in the pure sim) and validates the shape + the `typeIds.length === width*height`
  * invariant here, so a malformed file fails loudly at load rather than as an out-of-bounds read in
  * `buildTerrainGraph`. Throws a zod error with a readable path on a malformed file.
  */

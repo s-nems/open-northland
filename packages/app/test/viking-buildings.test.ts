@@ -8,7 +8,7 @@ import {
 } from '../src/catalog/buildings.js';
 
 /**
- * The committed viking-building catalog is the single source of truth for name → typeId — its pure
+ * The committed viking-building catalog is the single source of truth for name → typeId - its pure
  * shape and lookup contract, self-verifiable on any checkout. The pin back to the pipeline's real
  * output (id + kind match, bound viking bobs) lives in the real-content suite
  * (`test/content/viking-buildings.test.ts`).

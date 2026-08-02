@@ -9,11 +9,11 @@ import { grassCellMap } from '../fixtures/terrain.js';
 /**
  * The combat-feedback SIGNAL: a MELEE blow that CONNECTS emits a `combatHit` (the render/audio blood +
  * impact cue), a swing at AIR emits none. This is the sim half of "a hit that lands draws blood, a whiff
- * draws nothing" — the render layer just consumes the event. The ranged twin (`projectileHit`) is covered
+ * draws nothing" - the render layer just consumes the event. The ranged twin (`projectileHit`) is covered
  * by the projectile tests; here we pin the melee `combatHit` and its miss guard.
  */
 
-/** A 1-tick melee attack atomic (id 81) — AtomicSystem lands the blow the first tick. */
+/** A 1-tick melee attack atomic (id 81) - AtomicSystem lands the blow the first tick. */
 function attack(
   sim: Simulation,
   attacker: Entity,
@@ -32,7 +32,7 @@ function attack(
   });
 }
 
-describe('combatHit — a landed melee blow', () => {
+describe('combatHit - a landed melee blow', () => {
   it('emits combatHit at the victim, carrying the weapon class, on a connecting swing', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
@@ -53,7 +53,7 @@ describe('combatHit — a landed melee blow', () => {
     });
   });
 
-  it('emits NO combatHit when the swing strikes air (target has no Health — a miss)', () => {
+  it('emits NO combatHit when the swing strikes air (target has no Health - a miss)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
     const target = sim.world.create(); // a non-combatant / vanished target: no Health pool
@@ -82,7 +82,7 @@ describe('combatHit — a landed melee blow', () => {
   });
 });
 
-describe('combatSwing — the swing swoosh at the strike frame', () => {
+describe('combatSwing - the swing swoosh at the strike frame', () => {
   it('emits combatSwing at the attacker on a connecting swing (the audible twin of a bow release)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
@@ -99,7 +99,7 @@ describe('combatSwing — the swing swoosh at the strike frame', () => {
     expect(swings[0]).toMatchObject({ attacker, at: eventAt(fx.fromInt(4), fx.fromInt(2)) });
   });
 
-  it('still swooshes on a whiff — the blade cut air even though no combatHit lands', () => {
+  it('still swooshes on a whiff - the blade cut air even though no combatHit lands', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(24, 1) });
     const attacker = sim.world.create();
     sim.world.add(attacker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -125,9 +125,9 @@ describe('combatSwing — the swing swoosh at the strike frame', () => {
   });
 });
 
-describe('melee whiff — the target stepped out of reach', () => {
+describe('melee whiff - the target stepped out of reach', () => {
   /** Place an attacker and a target adjacent, start a 1-tick melee swing carrying reach `maxRange`, then
-   *  optionally shove the target away BEFORE the blow lands — the "enemy backed out of the long swing" case. */
+   *  optionally shove the target away BEFORE the blow lands - the "enemy backed out of the long swing" case. */
   function swingWithMove(maxRange: number, targetTileAtHit: number) {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(24, 1) });
     const attacker = sim.world.create();
@@ -157,7 +157,7 @@ describe('melee whiff — the target stepped out of reach', () => {
   });
 
   it('still connects when the target stayed within reach (the control)', () => {
-    const { sim, target } = swingWithMove(2, 1); // target held its adjacent tile — in reach
+    const { sim, target } = swingWithMove(2, 1); // target held its adjacent tile - in reach
     expect(sim.world.get(target, Health).hitpoints).toBe(400); // took the 100 blow
     expect(sim.snapshot().events.filter((ev) => ev.kind === 'combatHit')).toHaveLength(1);
   });

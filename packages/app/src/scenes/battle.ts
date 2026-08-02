@@ -14,7 +14,7 @@ import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The mass-battle feel scene — 100 fighters a side in mirrored four-rank armies (swords front, then
+ * The mass-battle feel scene - 100 fighters a side in mirrored four-rank armies (swords front, then
  * spears, broadswords, archers), auto-engaging on owner hostility. The crowd-scale sign-off for the
  * body-collision work: the failure mode it judges is a converging army collapsing into one vibrating
  * pile on the closest few contact cells. With melee slots (`approachCell` deals free band cells; a full
@@ -23,7 +23,7 @@ import type { SceneDefinition } from './types.js';
  * gaps as front-liners fall.
  *
  * Both sides get the settler HP from the loaded content's tribe (`settlerHitpoints`, one value for every
- * spawn — no per-scene override), and the sandbox weapon damages are transcribed on the real scale
+ * spawn - no per-scene override), and the sandbox weapon damages are transcribed on the real scale
  * (`game/sandbox/combat.ts`), so the headless twin resolves combat like the browser on real content. The
  * outcome is deterministic from the seed but not scripted, so the headless checks assert crowd-shape
  * properties (the battle really runs at scale; nobody stacks), not a winner.
@@ -74,7 +74,7 @@ function casualties(sim: Simulation): number {
   return 2 * SPAWNED_PER_SIDE - blueLivingSettlers(sim) - enemyLivingSettlers(sim);
 }
 
-/** No node holds a stack of living fighters — the crowd stays bodies, not a pile of sprites. */
+/** No node holds a stack of living fighters - the crowd stays bodies, not a pile of sprites. */
 function nobodyStacks(sim: Simulation): boolean {
   const perNode = new Map<string, number>();
   for (const e of sim.world.query(Settler, Owner, Position)) {

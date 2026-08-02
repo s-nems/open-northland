@@ -23,10 +23,10 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
+describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
   it('an AGGRESSIVE animal attacks a nearby civilization (the unprovoked aggression drive)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive animal — drives an attack
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive animal - drives an attack
     const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a settler within range
 
     combatSystem(sim.world, ctxOf(sim));
@@ -40,7 +40,7 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
   it('a civilization fights an aggressive animal BACK (the fight is mutual)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const bear = fighterAt(sim, 1, 0, BEAR, WOODCUTTER); // an aggressive animal — a valid target for the civ
+    const bear = fighterAt(sim, 1, 0, BEAR, WOODCUTTER); // an aggressive animal - a valid target for the civ
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -62,7 +62,7 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
   it('a cannotBeAttacked animal (decorative fauna) is exempt from a civilization attacking it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 1, 0, BEES, WOODCUTTER); // a bee — aggressive in the record, but cannotBeAttacked
+    fighterAt(sim, 1, 0, BEES, WOODCUTTER); // a bee - aggressive in the record, but cannotBeAttacked
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -84,7 +84,7 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     // What `spawnAnimalHerd` actually places: an animal with jobType NULL (not born into a trade).
     // Its weapon (test_bearfist, tribe 10) keys on a jobType in the data, so a jobless animal must
-    // resolve it by tribe alone — else a spawned aggressive animal would do no damage at all.
+    // resolve it by tribe alone - else a spawned aggressive animal would do no damage at all.
     const bear = fighterAt(sim, 0, 0, BEAR, null);
     const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER);
 
@@ -98,10 +98,10 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
 
   it('a JOBLESS civilization settler is still unarmed (the tribe-keyed path is animals only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    // A jobless VIKING (a civilization) must NOT pick up its tribe's weapon by tribe alone — only an
+    // A jobless VIKING (a civilization) must NOT pick up its tribe's weapon by tribe alone - only an
     // animal tribe resolves a weapon without a job. A jobless civilian is genuinely unarmed.
     const jobless = fighterAt(sim, 0, 0, VIKING, null);
-    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // an enemy in range — but the attacker has no weapon
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // an enemy in range - but the attacker has no weapon
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -109,10 +109,10 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
   });
 });
 
-describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catchable)', () => {
+describe('combatSystem - hunter strike on catchable prey (animaltypes.ini catchable)', () => {
   it('a HUNTER strikes catchable prey (a cow) in its bow band, with the hunter weapon damage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15) — bow minRange 3
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15) - bow minRange 3
     const cow = fighterAt(sim, 3, 0, COW, null); // catchable prey, 6 nodes away (inside the bow band 3..17)
 
     combatSystem(sim.world, ctxOf(sim));
@@ -126,22 +126,22 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   it('a hunter CANNOT fire its bow on prey closer than minRange (an adjacent cow is too near)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow minRange 3
-    fighterAtNode(sim, 1, 0, COW, null); // catchable prey, but only 1 node away — INSIDE the bow's near reach
+    fighterAtNode(sim, 1, 0, COW, null); // catchable prey, but only 1 node away - INSIDE the bow's near reach
 
     combatSystem(sim.world, ctxOf(sim));
 
-    // The cow is a valid prey AND within maxRange, but closer than minRange 3 — a bow can't fire on it.
+    // The cow is a valid prey AND within maxRange, but closer than minRange 3 - a bow can't fire on it.
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
   });
 
   it('minRange is exclusive at the boundary: prey at minRange-1 (2 nodes) is still too near', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow band 3..17
-    fighterAt(sim, 1, 0, COW, null); // 2 nodes away — one inside the near reach (minRange 3)
+    fighterAt(sim, 1, 0, COW, null); // 2 nodes away - one inside the near reach (minRange 3)
 
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // dist 2 < minRange 3 — no shot
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // dist 2 < minRange 3 - no shot
   });
 
   it('a NON-hunter civilian (woodcutter) leaves catchable prey alone (hunting is the hunter trade)', () => {
@@ -155,10 +155,10 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
     expect(sim.world.has(woodcutter, CurrentAtomic)).toBe(false);
   });
 
-  it('a hunter does NOT hunt a non-catchable wild animal (a passive wolf — no catchable flag)', () => {
+  it('a hunter does NOT hunt a non-catchable wild animal (a passive wolf - no catchable flag)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER);
-    fighterAt(sim, 3, 0, WOLVES, null); // a wild animal with no `catchable` flag — not huntable prey
+    fighterAt(sim, 3, 0, WOLVES, null); // a wild animal with no `catchable` flag - not huntable prey
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -169,7 +169,7 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   it('catchable prey (a cow) does NOT hunt the hunter back (predation is one direction)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     fighterAt(sim, 0, 0, VIKING, HUNTER);
-    const cow = fighterAt(sim, 3, 0, COW, null); // passive prey — never picks a fight
+    const cow = fighterAt(sim, 3, 0, COW, null); // passive prey - never picks a fight
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -187,15 +187,15 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   });
 });
 
-describe('combatSystem — hostile-animal advance (the ambush lunge)', () => {
+describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
   it('an aggressive animal beyond weapon reach but inside its aggro radius chases the civ', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
-    fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes — beyond test_bearfist reach 2, inside aggro 8
+    fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes - beyond test_bearfist reach 2, inside aggro 8
 
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // out of reach — no swing yet
+    expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // out of reach - no swing yet
     expect(sim.world.has(bear, Engagement)).toBe(true); // …but the chase drive is on
     expect(sim.world.has(bear, MoveGoal)).toBe(true); // walking at the victim
   });
@@ -203,7 +203,7 @@ describe('combatSystem — hostile-animal advance (the ambush lunge)', () => {
   it('an aggressive animal leaves a civ beyond its aggro radius alone (no map-wide hunt)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
-    fighterAt(sim, 5, 0, VIKING, WOODCUTTER); // 10 nodes — past ANIMAL_AGGRO_RADIUS_NODES (8)
+    fighterAt(sim, 5, 0, VIKING, WOODCUTTER); // 10 nodes - past ANIMAL_AGGRO_RADIUS_NODES (8)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -236,7 +236,7 @@ describe('combatSystem — hostile-animal advance (the ambush lunge)', () => {
   });
 });
 
-describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
+describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
   /**
    * Land one completed `attack` of `damage` on `target` via the real AtomicSystem (the provocation
    * point): give `attacker` a 1-tick `attack` CurrentAtomic at it and run `atomicSystem` once. This
@@ -258,7 +258,7 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
   it('a passive boar (not yet struck) neither attacks nor is attacked', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const boar = fighterAt(sim, 1, 0, BOAR, null); // getAngry but UNPROVOKED — passive like a wolf
+    const boar = fighterAt(sim, 1, 0, BOAR, null); // getAngry but UNPROVOKED - passive like a wolf
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -311,7 +311,7 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
 
     combatSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(boar, CurrentAtomic)).toBe(false); // cooled off — no longer attacks
+    expect(sim.world.has(boar, CurrentAtomic)).toBe(false); // cooled off - no longer attacks
     expect(sim.world.has(boar, Anger)).toBe(false); // the stale timer was reaped on the attacker scan
     expect(sim.world.has(viking, CurrentAtomic)).toBe(false); // a lapsed boar is no longer a target either
   });
@@ -364,18 +364,18 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
     expect(sim.world.has(viking, Anger)).toBe(false); // a civilization carries no anger timer
   });
 
-  it('a HUNTER strike on catchable getAngry prey (a deer) provokes it — the provocation SOURCE', () => {
+  it('a HUNTER strike on catchable getAngry prey (a deer) provokes it - the provocation SOURCE', () => {
     // The end-to-end point of the hunter slice: a hunter, not a test or an aggressive animal, is what
     // FIRST provokes a passive getAngry animal. Run the REAL step() schedule so combatSystem picks the
     // target, atomicSystem lands the hit + stamps Anger, and the deer fights back.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER, 1000);
-    // 3 nodes away — inside the bow band (minRange 3) AND inside the deer's antler reach (maxRange 3),
+    // 3 nodes away - inside the bow band (minRange 3) AND inside the deer's antler reach (maxRange 3),
     // so the hunter can fire and the provoked deer can strike back at this distance.
     const deer = fighterAtNode(sim, 3, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
 
     // combatSystem runs after atomicSystem, so the hunter's swing (started tick 1) completes on tick 5
-    // — the provoking hit (drains HP, stamps Anger). Run 5 ticks for it to land.
+    // - the provoking hit (drains HP, stamps Anger). Run 5 ticks for it to land.
     for (let i = 0; i < 5; i++) sim.step();
     expect(sim.world.get(deer, Health).hitpoints).toBeLessThan(1000); // the hunter's strike landed
     expect(sim.world.has(deer, Anger)).toBe(true); // the strike PROVOKED the deer (the provocation source)

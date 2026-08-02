@@ -22,7 +22,7 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 /**
  * Everything the details panel loads once at mount: the GUI sheet, the vector UI font, the original window
  * bitmap fills, the decoded UI strings, and the per-type building previews. Every piece except the font
- * degrades to `null`/`undefined`/empty when `content/` is absent — the panel then draws its flat Graphics
+ * degrades to `null`/`undefined`/empty when `content/` is absent - the panel then draws its flat Graphics
  * fallback; the bundled font always loads (falling back to a system serif only if its woff2 is blocked).
  *
  * The bitmap fills and previews are stored as ready `Texture`s minted once here: a Pixi `Texture`
@@ -33,7 +33,7 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 /**
  * The original window/button fills from `Data/gui/bitmaps/bg*.pcx` (300×300 texture tiles).
  * `bg` (warm brown) tiles the section-button plates' disabled fallback; `card` is `bg_selected` recoloured
- * through `bg_normal` — the original's grey-blue selected-item card body, tiled under each section headline.
+ * through `bg_normal` - the original's grey-blue selected-item card body, tiled under each section headline.
  */
 export interface GuiBitmapSet {
   readonly bg: Texture | undefined;
@@ -130,7 +130,7 @@ export interface DetailsPanelAssets {
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
   readonly previews: ReadonlyMap<number, BuildingPreview>;
-  /** The decoded level→colour gauge ramp (`bar_hitpoints`), or `undefined` without `content/` — the
+  /** The decoded level→colour gauge ramp (`bar_hitpoints`), or `undefined` without `content/` - the
    *  stat bars then fall back to flat banded colours. */
   readonly barRamp: GuiBarRamp | undefined;
 }

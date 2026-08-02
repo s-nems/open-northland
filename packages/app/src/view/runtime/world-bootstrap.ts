@@ -24,7 +24,7 @@ import type { GameViewDeps } from './game-view.js';
  */
 
 /** The localized real content a playable entry boots on. Both fields degrade on their own so a checkout
- *  without `content/` still boots (no real content — the authored fallbacks stand). */
+ *  without `content/` still boots (no real content - the authored fallbacks stand). */
 export interface LocalizedRealContent {
   /** The app-wide `?lang=` good-name map the HUD and the real content read. */
   readonly goodNames: ReadonlyMap<string, string>;
@@ -35,7 +35,7 @@ export interface LocalizedRealContent {
 /**
  * Load the `?lang=` good names and the real content they localize. A value-returning loader, not a
  * lifecycle hook: the entries interleave it with their own IR/sprite/sim assembly in different orders,
- * and report their own boot phases around it. The IR itself is not loaded here — each entry reads it at
+ * and report their own boot phases around it. The IR itself is not loaded here - each entry reads it at
  * the point its boot phases need it, and `loadIr` is memoized, so asking twice costs one fetch.
  */
 export async function loadLocalizedRealContent(params: URLSearchParams): Promise<LocalizedRealContent> {
@@ -49,7 +49,7 @@ export async function loadLocalizedRealContent(params: URLSearchParams): Promise
  * The retained world renderer both entries draw through: mesh the terrain once, then reuse a pooled
  * sprite graph each frame (no per-frame object churn), so large maps and deep zoom-outs stay within the
  * GPU budget. `?postfx=off` opts out of the post-processing pass (a renderer opt-out, not a player
- * setting — see `WorldRenderer`'s `postFx` option). The caller still sets the terrain.
+ * setting - see `WorldRenderer`'s `postFx` option). The caller still sets the terrain.
  */
 export function createWorldRenderer(
   app: Application,
@@ -79,7 +79,7 @@ export function haltOnMissingContent(err: Error): void {
 
 /**
  * Apply `?fog=off|reveal|recon` to a freshly built sim. Enqueued after whatever fog the world set for
- * itself (FIFO — the later write wins), so the flag overrides a scene's own mode; absent, the world
+ * itself (FIFO - the later write wins), so the flag overrides a scene's own mode; absent, the world
  * keeps its default.
  */
 export function applyFogOverride(sim: Simulation, params: URLSearchParams): void {
@@ -91,7 +91,7 @@ export function applyFogOverride(sim: Simulation, params: URLSearchParams): void
  * Apply an explicit `?progression=on|off` to a freshly built sim (the {@link applyFogOverride}
  * pattern): enqueued after the world's own rule, so the flag overrides a scene's `progression: false`
  * in either direction. An absent/unrecognized flag enqueues nothing, so an untouched URL keeps the
- * command stream — and any golden derived from it — byte-identical to a pre-toggle run.
+ * command stream - and any golden derived from it - byte-identical to a pre-toggle run.
  */
 export function applyProgressionOverride(sim: Simulation, params: URLSearchParams): void {
   const enabled = progressionOverride(params);

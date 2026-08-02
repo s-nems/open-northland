@@ -11,7 +11,7 @@ import {
 import { clientToScreen, screenScale } from './screen-scale.js';
 
 /**
- * The interactive camera's DOM controller — app-layer I/O (DOM + floats, fine here, never in `sim`) that
+ * The interactive camera's DOM controller - app-layer I/O (DOM + floats, fine here, never in `sim`) that
  * wraps the pure {@link panCamera}/{@link zoomCameraAt} reducers around live input so a human can pan
  * (middle-mouse drag / arrow keys / RTS screen-edge scroll) and zoom (scroll wheel, eased toward its
  * target). Installed by the two playable entries over `frame.ts`'s starting frame; the deterministic
@@ -22,14 +22,14 @@ import { clientToScreen, screenScale } from './screen-scale.js';
 const WHEEL_ZOOM_STEP = 1.1;
 /** The arrow keys the controller pans on (so it ignores every other key). */
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
-/** Max wall-clock ms one held-key pan step integrates — a backgrounded tab resumes smoothly, not with a lurch. */
+/** Max wall-clock ms one held-key pan step integrates - a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
 
 /** An installed interactive camera: read the current transform, advance held-key pan, tear down. */
 export interface CameraController {
   /** The current {@link Camera} to hand the renderer's `update`. */
   camera(): Camera;
-  /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
+  /** Apply held-arrow-key panning for a wall-clock delta in ms - call once per frame. */
   update(dtMs: number): void;
   /**
    * Replace the current frame outright (the minimap's click-to-jump). The next `camera()` read returns
@@ -39,14 +39,14 @@ export interface CameraController {
   /**
    * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
    * wheel does not zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
-   * tool panel's `claimsWheel` here (an open pop-up window only — not the broad `claimsPointer`, which also
+   * tool panel's `claimsWheel` here (an open pop-up window only - not the broad `claimsPointer`, which also
    * covers the strip and active placement, where the wheel should still zoom) so scrolling a pop-up list
    * never also zooms the world behind it.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /**
    * Install a predicate that claims a client point for the HUD against EDGE SCROLLING. The game view
-   * wires the open pop-up windows + the minimap here — surfaces whose hover must not also pan the
+   * wires the open pop-up windows + the minimap here - surfaces whose hover must not also pan the
    * camera. The tool-panel STRIP deliberately does NOT claim: it hugs the left screen edge, and the
    * RTS edge-pan must keep working when the cursor rests on it. Pass `null` to clear.
    */
@@ -55,7 +55,7 @@ export interface CameraController {
   dispose(): void;
 }
 
-/** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) — needed to
+/** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) - needed to
  *  map mouse deltas into screen px on the HiDPI window canvas (see {@link screenScale}). */
 export function createCameraController(
   canvas: HTMLCanvasElement,
@@ -77,7 +77,7 @@ export function createCameraController(
   let targetScale = initial.scale ?? 1;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
-  // Last known pointer position (client px) + whether it is over the canvas — the edge-scroll probe.
+  // Last known pointer position (client px) + whether it is over the canvas - the edge-scroll probe.
   // `pointerMoved` gates the probe until a real `mousemove` sample lands: `onPointerEnter` sets
   // `pointerInside` but records no position (the browser fires `mouseenter` when the canvas mounts under
   // a stationary cursor, e.g. the loading-card→scene swap), so without this gate the still-(0,0)
@@ -115,7 +115,7 @@ export function createCameraController(
     pointerInside = false;
   };
   const onWheel = (e: WheelEvent): void => {
-    // Over an open HUD window the wheel belongs to that window's list, not the camera — leave the event
+    // Over an open HUD window the wheel belongs to that window's list, not the camera - leave the event
     // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
@@ -171,13 +171,13 @@ export function createCameraController(
     },
     update: (dtMs) => {
       // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF
-      // pauses, then resumes with one huge elapsed) — the pan stays smooth, never a jump.
+      // pauses, then resumes with one huge elapsed) - the pan stays smooth, never a jump.
       const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
       // Wheel zoom glide: ease the scale toward the last wheel target about its cursor anchor.
       if (targetScale !== (cam.scale ?? 1)) {
         cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);
       }
-      // Pan velocity (screen px/s), applied DIRECTLY — no ramp-up/glide-out easing: an RTS pan must
+      // Pan velocity (screen px/s), applied DIRECTLY - no ramp-up/glide-out easing: an RTS pan must
       // start and stop with the input (hands-on feedback; the spatial edge-margin ramp in
       // `edgePanVelocity` still grades the speed by pointer depth). Camera-scroll convention
       // throughout: an input reveals the world in its direction (look right → the world slides
@@ -192,7 +192,7 @@ export function createCameraController(
       // landed (`pointerMoved`; until then the position is the stale (0,0)) and not while mid-drag (the
       // drag owns the motion), the window is unfocused (RAF still runs when visible), or a HUD surface
       // claims the point (an open window / the minimap must not also pan). A LEFT-drag marquee is not suppressed
-      // — dragging a selection box into the margin pans under the screen-anchored box (a named
+      // - dragging a selection box into the margin pans under the screen-anchored box (a named
       // tradeoff: RTS players use exactly that to select past the screen edge).
       if (
         pointerInside &&

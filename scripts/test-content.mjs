@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Guard + runner for the manual real-content suite (docs/TESTING.md "Real-content test modes"):
-// hard-fails when the IR under test is absent — the suite itself runIf-SKIPS under plain `npm test`,
-// so this explicit mode is the one that refuses to pass vacuously — then runs vitest over
+// hard-fails when the IR under test is absent - the suite itself runIf-SKIPS under plain `npm test`,
+// so this explicit mode is the one that refuses to pass vacuously - then runs vitest over
 // packages/app/test/content. `ON_CONTENT_DIR` (absolute or repo-relative) overrides the default
 // `content/`; `npm run test:pipeline` uses it to point the same suite at a fresh pipeline output.
 import { spawnSync } from 'node:child_process';
@@ -15,7 +15,7 @@ const dir = contentDir();
 const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
 const missing = REQUIRED.filter((rel) => !existsSync(resolve(dir, rel)));
 if (missing.length > 0) {
-  console.error(`test:content needs generated content — missing under ${dir}: ${missing.join(', ')}`);
+  console.error(`test:content needs generated content - missing under ${dir}: ${missing.join(', ')}`);
   console.error('Generate it with: npm run pipeline -- --game "../Cultures 8th Wonder" --out content');
   process.exit(1);
 }

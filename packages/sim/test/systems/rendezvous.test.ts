@@ -43,7 +43,7 @@ describe('driveMirroredPairs', () => {
     const b = world.create();
     const c = world.create();
     pairUp(world, a, b);
-    world.add(c, Pair, { partner: a }); // c points at a, but a points at b — a one-sided mirror
+    world.add(c, Pair, { partner: a }); // c points at a, but a points at b - a one-sided mirror
 
     const orphaned: Entity[] = [];
     const driven: Entity[] = [];

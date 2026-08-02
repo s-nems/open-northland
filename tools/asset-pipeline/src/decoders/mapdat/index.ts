@@ -1,5 +1,5 @@
 /**
- * `map.dat` decoder — the Cultures engine's `hoix`-chunk file (the sibling of `map.cif` that carries
+ * `map.dat` decoder - the Cultures engine's `hoix`-chunk file (the sibling of `map.cif` that carries
  * the binary per-cell landscape grid + entity/object map; `map.cif` is only the logic-header
  * `CStringArray`).
  *

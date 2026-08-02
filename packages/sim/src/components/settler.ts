@@ -5,7 +5,7 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
- * The `(tribe, job)` pair that keys a settler's content lookups — its weapon and armor class, its
+ * The `(tribe, job)` pair that keys a settler's content lookups - its weapon and armor class, its
  * allowed atomics, its animation set. A structural subset of {@link Settler}, so a `world.get(e, Settler)`
  * value assigns straight to it.
  */
@@ -15,7 +15,7 @@ export interface SettlerIdentity {
 }
 
 /**
- * A settler: an autonomous individual. Settlers don't "do jobs" as monolithic logic — they execute atomic
+ * A settler: an autonomous individual. Settlers don't "do jobs" as monolithic logic - they execute atomic
  * actions ({@link CurrentAtomic}) chosen by a planner; `jobType` constrains which atomics are allowed
  * (`jobtypes.allowatomic`), and `experience` keyed by specialization gates progression.
  */
@@ -34,15 +34,15 @@ export const Settler = defineComponent<{
    */
   fatigue: Fixed;
   /**
-   * 0..ONE piety — a target-bound need, satisfied by walking to a site rather than in place. Unlike
+   * 0..ONE piety - a target-bound need, satisfied by walking to a site rather than in place. Unlike
    * {@link hunger} it does not rise over time: only forging a weapon or armor good raises it, and the
    * `pray` atomic (id 12, `setatomic 6 12 "..._pray"`) at a temple clears it.
    */
   piety: Fixed;
   /**
-   * 0..ONE enjoyment — the social/company need. Rises over time like {@link hunger}. The original restores
+   * 0..ONE enjoyment - the social/company need. Rises over time like {@link hunger}. The original restores
    * channel 3 (leisure/social) through the talk/monologuize/listen atomics 14/13/15 plus `enjoy` (17) and
-   * `make_love` (78) — there is no building satisfier. The gossip drive (`systems/social/gossip/`) is the
+   * `make_love` (78) - there is no building satisfier. The gossip drive (`systems/social/gossip/`) is the
    * satisfying half: settlers pair up and the talk/listen animation pulses refill this bar.
    * (Channels: 1 = rest, 2 = hunger, 3 = leisure/social.)
    */
@@ -69,12 +69,12 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
  * pickup=22, harvest=24, eat=10, attack=81). The planner (PlannerSystem) sets this; the AtomicSystem
  * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed
- * {@link AtomicEffect}, emits an `atomicCompleted` event, and removes the component — the planner sees an
+ * {@link AtomicEffect}, emits an `atomicCompleted` event, and removes the component - the planner sees an
  * entity with no CurrentAtomic as ready for its next atomic.
  *
  * `atomicId` keeps the numeric content cross-reference (the join key onto a tribe's `setatomic` animation);
  * `effect` is the typed action the executor applies. `duration` is the animation length in ticks
- * (`AtomicAnimation.length`, supplied by the planner) — at least 1, so a zero-length animation still
+ * (`AtomicAnimation.length`, supplied by the planner) - at least 1, so a zero-length animation still
  * completes in exactly one tick. `targetEntity`/`targetTile` are the action's object. Timing runs off the
  * integer `elapsed`, never an accumulated fixed-point step: `ONE / duration` truncates, so a summed fraction
  * would never reach ONE and the atomic would hang.
@@ -83,7 +83,7 @@ export const CurrentAtomic = defineComponent<{
   atomicId: number;
   /** Whole ticks executed so far; completion is the exact `elapsed >= duration`. */
   elapsed: number;
-  /** Derived `elapsed/duration` in 0..ONE — for render interpolation only, not the completion test. */
+  /** Derived `elapsed/duration` in 0..ONE - for render interpolation only, not the completion test. */
   progress: Fixed;
   duration: number; // animation length in ticks (>= 1)
   effect: AtomicEffect;
@@ -93,22 +93,22 @@ export const CurrentAtomic = defineComponent<{
    * Present (true) only while the atomic runs its inter-swing rest tail: the harvest effect has applied and
    * its completion event fired, and the executor extended `duration` so the gatherer stands its breather in
    * the swing's ready pose (the effect stays the harvest so the tail chains straight into the next swing).
-   * The tail completes silently — no `atomicCompleted` re-emit.
+   * The tail completes silently - no `atomicCompleted` re-emit.
    */
   restTail?: boolean;
   /** Swings landed since the last breather in a multi-swing harvest burst (the rest cadence is counted
-   *  per WORKER, not off the node's counters — an expert's swing advances those by more than one).
+   *  per WORKER, not off the node's counters - an expert's swing advances those by more than one).
    *  Absent outside a burst. */
   swingsSinceRest?: number;
   /** The fractional work credit an experienced gatherer's swings bank across a multi-swing harvest job
-   *  (see swingWorkUnits) — in [0, ONE); absent while whole (every novice swing). */
+   *  (see swingWorkUnits) - in [0, ONE); absent while whole (every novice swing). */
   workCredit?: Fixed;
 }>('CurrentAtomic');
 
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
-/** The most units a settler picks up in one lift — one, globally: a person carries a single good unit at a
+/** The most units a settler picks up in one lift - one, globally: a person carries a single good unit at a
  *  time (observed original behavior; no on-foot batch exists anywhere in the game). Hauling more takes more
  *  trips; a cart/vehicle slice would model the vehicle's own hold, never a bigger personal carry. */
 export const CARRY_CAPACITY = 1;
@@ -134,12 +134,12 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 
 /**
- * A worker→workplace binding: the specific {@link Building} a settler is employed at — the walk-to-workplace
+ * A worker→workplace binding: the specific {@link Building} a settler is employed at - the walk-to-workplace
  * drive heads for this building and the staffs-here pin latches the settler only on it, so two same-type
  * workplaces staff independently. The JobSystem assigns it when it employs an idle settler, picking a concrete
  * understaffed building rather than just a job type. Optional, so an unemployed settler simply has none; a
  * settler standing on a workplace it staffs but lacking a binding (e.g. spawned pre-employed) is adopted by
- * the JobSystem — bound to the building under its feet — so the binding stays authoritative.
+ * the JobSystem - bound to the building under its feet - so the binding stays authoritative.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
@@ -157,7 +157,7 @@ export const Age = defineComponent<{ ticks: number }>('Age');
  * import('../systems/orders/index.js').moveUnit}. While present the PlannerSystem's ECONOMY branch and the
  * combat auto-drives leave the unit alone (the reposition is authoritative), but its NEEDS drives still fire.
  * The {@link import('../systems/orders/index.js').playerOrderSystem} removes it the tick the unit arrives (or
- * the route fails / a need takes over) — there is no post-arrival hold; DEFEND's stance anchor is the "hold
+ * the route fails / a need takes over) - there is no post-arrival hold; DEFEND's stance anchor is the "hold
  * position" tool.
  *
  * `pendingGoal` holds a move order issued to a settler that was still carrying a load: it can't walk with its
@@ -171,11 +171,11 @@ export const PlayerOrder = defineComponent<{ pendingGoal?: NodeId }>('PlayerOrde
 export type DeferrableOrderCommand = Extract<Command, { kind: 'moveUnit' | 'setJob' | 'placeSignpost' }>;
 
 /**
- * A gameplay order parked behind a non-interruptible atomic (a harvest swing, a half-eaten meal — see
+ * A gameplay order parked behind a non-interruptible atomic (a harvest swing, a half-eaten meal - see
  * `isInterruptibleAtomic` for the flag and its default): the handler stores the whole command here instead
  * of cancelling the action, and the {@link import('../systems/orders/index.js').deferredOrderSystem}
  * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins: a newer order of any
- * kind replaces (or, when it executes immediately, clears) the parked one — a named approximation; the
+ * kind replaces (or, when it executes immediately, clears) the parked one - a named approximation; the
  * original's queueing depth under back-to-back orders is unobserved. Hashed state like any component, so
  * replays carry parked orders.
  */

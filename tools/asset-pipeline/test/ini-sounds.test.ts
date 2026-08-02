@@ -6,7 +6,7 @@ describe('extractSounds (soundfx.cif)', () => {
   // Mirrors the real soundfx.cif structure as cifLinesToSections yields it (verified by decoding the
   // actual file): SoundFXStatic groups (some with a LogicSoundType), SoundFXAmbient terrain beds keyed
   // on PatternGroup/LandscapeGroup, and SoundFXJingle life-event stingers with a MusicType. The file
-  // disagrees with itself on case (SFX/sfx, SoundFXAmbient/SoundFxAmbient) — the extractor is
+  // disagrees with itself on case (SFX/sfx, SoundFXAmbient/SoundFxAmbient) - the extractor is
   // case-insensitive, so the fixture deliberately mixes cases. No copyrighted bytes: paths are invented.
   const lines: CifLine[] = [
     { level: 1, text: 'SoundFXStatic' },

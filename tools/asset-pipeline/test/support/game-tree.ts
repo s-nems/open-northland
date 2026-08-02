@@ -5,11 +5,11 @@ import { join } from 'node:path';
 /**
  * Shared temp-workspace scaffolding for the stage tests. Every stage spec lays synthesized (never
  * copyrighted) sources into a throwaway game tree, runs a stage into a sibling out dir, and tears the
- * whole thing down — this module is the one copy of that dance so a spec declares what it writes, not
+ * whole thing down - this module is the one copy of that dance so a spec declares what it writes, not
  * how a temp dir is made.
  */
 
-/** Relative path of the engine bob directory under a game tree — the pipeline's `/bobs/` I/O convention. */
+/** Relative path of the engine bob directory under a game tree - the pipeline's `/bobs/` I/O convention. */
 export const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 
 /** A disposable OS temp directory; `cleanup()` removes it recursively (call from `afterEach`). */

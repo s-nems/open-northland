@@ -27,7 +27,7 @@ const GFX = {
   textures: new TextureCache(),
 };
 
-/** Mirrors the layer's own constants — a bubble tip floats BUBBLE_GAP above the head estimate, and the
+/** Mirrors the layer's own constants - a bubble tip floats BUBBLE_GAP above the head estimate, and the
  *  feet-anchor fallback puts the head HEAD_ABOVE_FEET above the feet. */
 const BUBBLE_GAP = 6;
 const HEAD_ABOVE_FEET = 40;
@@ -71,7 +71,7 @@ describe('SettlerBubbleLayer head anchoring', () => {
   });
 
   it('falls back to the raw snapshot projection plus terrain lift for an undrawn settler', () => {
-    // Nothing drawn (culled off-screen / indoors) — the bubble must still appear over the settler's tile.
+    // Nothing drawn (culled off-screen / indoors) - the bubble must still appear over the settler's tile.
     const flat = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnWith({}) });
     const p = tileToScreen(3, 5);
     expect(flat.x).toBe(p.x);

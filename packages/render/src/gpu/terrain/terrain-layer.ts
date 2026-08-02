@@ -24,7 +24,7 @@ import {
 import { padLaneRows } from './lane-texture.js';
 
 /**
- * The retained terrain layer — the static ground, meshed once per map and drawn per visible block.
+ * The retained terrain layer - the static ground, meshed once per map and drawn per visible block.
  *
  * The mesh is the original's tessellation (`data/terrain/tessellation.ts`): vertices are cell-centre nodes and each
  * cell contributes two triangles spanning between neighbouring centres (△ A down to the SW/SE-below
@@ -40,10 +40,10 @@ import { padLaneRows } from './lane-texture.js';
  * here, so no terrain work happens per frame beyond the visibility toggle.
  */
 
-/** A flat field (no lift) — the shared default for the elevation-free path (synthetic grids / no lane). */
+/** A flat field (no lift) - the shared default for the elevation-free path (synthetic grids / no lane). */
 const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
 
-/** WebGL's default UNPACK_ALIGNMENT, in bytes (1 byte per R8 texel) — the brightness lane's row padding. */
+/** WebGL's default UNPACK_ALIGNMENT, in bytes (1 byte per R8 texel) - the brightness lane's row padding. */
 const ROW_ALIGN = 4;
 
 export class TerrainLayer {
@@ -58,30 +58,30 @@ export class TerrainLayer {
   private brightnessTex: BufferImageSource | undefined;
   /** The lane texture's padded width in texels (the `u` denominator; see {@link set}'s padding note). */
   private laneTexWidth = 0;
-  /** The composed shading field ({@link brightnessField}) — neutral until {@link set} builds a shaded map. */
+  /** The composed shading field ({@link brightnessField}) - neutral until {@link set} builds a shaded map. */
   private field: BrightnessField = makeBrightnessField(undefined, 0, 0);
-  /** The map's ONE shared water-animation uniform group, bound into every shaded mesh — so
+  /** The map's ONE shared water-animation uniform group, bound into every shaded mesh - so
    *  {@link animate} is a single write per frame, not one per chunk. Undefined until {@link set}. */
   private waveGroup: WaveUniforms | undefined;
-  /** Whether the current map has any water-patterned cell — a land map skips {@link animate} outright. */
+  /** Whether the current map has any water-patterned cell - a land map skips {@link animate} outright. */
   private hasWater = false;
 
   /**
-   * (Re)build the cached terrain from a grid — call once per map (a terrain edit re-invalidates). With
+   * (Re)build the cached terrain from a grid - call once per map (a terrain edit re-invalidates). With
    * `textures` it batches every cell's two triangles into one {@link import('pixi.js').Mesh} per texture
    * page per draw layer (draw-call count ~one per page per layer, independent of map size); without them
    * it draws the flat placeholder triangles. Either way the geometry + page textures are built here and
    * retained, so no terrain work happens per frame. The map's baked `embr` shading (`terrain.brightness`,
    * absent → unshaded) rides as an R8 lane texture the shaded meshes sample per fragment, at each vertex's
-   * own cell-centre coordinate — the engine model (one value per node, blended across the triangle).
+   * own cell-centre coordinate - the engine model (one value per node, blended across the triangle).
    */
   set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
     this.ground = dominantGroundColour(terrain.typeIds);
     // One source for the shading: both the CPU field (fallback/flat tints) and the R8 lane texture
-    // are built here from the composed lane — the decoded `embr` bake accented (or replaced, on maps
-    // without it) by elevation hillshade (`data/terrain/hillshade.ts`) — so no caller can hand the mesh and
-    // the fallbacks disagreeing inputs (the elevation field stays injected — the renderer retains it
+    // are built here from the composed lane - the decoded `embr` bake accented (or replaced, on maps
+    // without it) by elevation hillshade (`data/terrain/hillshade.ts`) - so no caller can hand the mesh and
+    // the fallbacks disagreeing inputs (the elevation field stays injected - the renderer retains it
     // per frame).
     const shadingLane = composeShadingLane(
       terrain.brightness,
@@ -94,7 +94,7 @@ export class TerrainLayer {
     // The lane texture the shaded ground shader samples per fragment: the composed lane bytes as an R8
     // grid, linear-filtered + edge-clamped (the GPU twin of `makeCellSampler`'s bilinear + clamp).
     // ~W×H bytes once per map; undefined on an unshaded map (the stock-shader path) and on the flat
-    // placeholder path (which shades CPU-side). Rows are alignment-padded — see `padLaneRows`.
+    // placeholder path (which shades CPU-side). Rows are alignment-padded - see `padLaneRows`.
     if (brightness.shaded && shadingLane !== undefined && textures !== undefined) {
       const lane = padLaneRows(shadingLane, terrain.width, terrain.height, ROW_ALIGN);
       this.laneTexWidth = lane.paddedWidth;
@@ -104,14 +104,14 @@ export class TerrainLayer {
         height: terrain.height,
         format: 'r8unorm',
         // The GPU twin of `makeCellSampler` (bilinear + edge clamp) is a contract, not an inherited
-        // default — pin it (this codebase flips other sources to 'nearest' for pixel art).
+        // default - pin it (this codebase flips other sources to 'nearest' for pixel art).
         scaleMode: 'linear',
         addressMode: 'clamp-to-edge',
       });
     }
     // Water-wave amplitudes ride the shaded mesh path only (`pushTriangle` uploads `aWave` exactly
     // when the batch carries brightness UVs), so a water map WITHOUT a shading lane draws stock
-    // meshes and stays still — gate the per-frame animate() on both, not just the wave field.
+    // meshes and stays still - gate the per-frame animate() on both, not just the wave field.
     const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
     this.hasWater = wave !== NO_WAVE && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
@@ -127,14 +127,14 @@ export class TerrainLayer {
         : buildFlat(this.container, terrain, elevation, brightness);
   }
 
-  /** The flat tint of the map's most-common ground typeId (grass until a map is {@link set}) — the opaque
+  /** The flat tint of the map's most-common ground typeId (grass until a map is {@link set}) - the opaque
    *  backdrop the details-panel portrait inset clears to, so a building framed past the map edge blends
    *  into the map's dominant ground instead of leaving a transparent hole. */
   groundColour(): number {
     return this.ground;
   }
 
-  /** The composed shading field the ground drew with — the one source sprite-anchor shading must share
+  /** The composed shading field the ground drew with - the one source sprite-anchor shading must share
    *  so an entity can't disagree with the ground it stands on. Neutral (`shaded: false`) until a shaded
    *  map is {@link set}. */
   brightnessField(): BrightnessField {
@@ -142,7 +142,7 @@ export class TerrainLayer {
   }
 
   /**
-   * Draw only the blocks whose box meets the viewport (RTS rule — cost tracks the screen, not the map).
+   * Draw only the blocks whose box meets the viewport (RTS rule - cost tracks the screen, not the map).
    * Off-screen blocks stay in the graph but skip rasterization; a bounded MIN_ZOOM keeps the
    * visible-block count small even fully zoomed out.
    */
@@ -153,9 +153,9 @@ export class TerrainLayer {
   }
 
   /**
-   * Advance the water-surface animation to `timeTicks` (the interpolated sim clock, `tick + alpha` —
+   * Advance the water-surface animation to `timeTicks` (the interpolated sim clock, `tick + alpha` -
    * deterministic, so a `?shot` frame reproduces). One write + dirty bump on the map's shared uniform
-   * group — every shaded mesh binds the same group, so the per-frame cost is O(1); a map with no
+   * group - every shaded mesh binds the same group, so the per-frame cost is O(1); a map with no
    * water-patterned cell is a no-op.
    */
   animate(timeTicks: number): void {

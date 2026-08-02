@@ -1,6 +1,6 @@
 /**
  * The pure half of the combat-feedback layer: the sim's one-shot `combatHit` / `projectileHit` / `settlerDied`
- * events (each carrying a half-cell node) fold into a decaying list of render-only ground marks — blood where a
+ * events (each carrying a half-cell node) fold into a decaying list of render-only ground marks - blood where a
  * blow lands, bones where a unit falls. Decay is measured in sim ticks, not wall-clock, so a `?shot` capture and
  * a paused game reproduce exactly.
  *

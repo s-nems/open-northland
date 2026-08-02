@@ -1,7 +1,7 @@
 import type { LiveRefs } from '../../data/scene/index.js';
 
 /**
- * The pure bookkeeping half of the retained pool — the per-frame decisions an agent can self-verify
+ * The pure bookkeeping half of the retained pool - the per-frame decisions an agent can self-verify
  * without a GPU, split out from the Pixi mutation in {@link import('./sprite-pool.js').SpritePool}.
  */
 

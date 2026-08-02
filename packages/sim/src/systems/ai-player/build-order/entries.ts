@@ -1,5 +1,5 @@
 /**
- * The build-order vocabulary — the data the HouseBuild executor walks (genre convention: an
+ * The build-order vocabulary - the data the HouseBuild executor walks (genre convention: an
  * authored opening list executes before any demand logic; Widelands "basic economy" / KaM classic
  * AI / AoE2 opening books). Entries are a discriminated union: place a building, upgrade owned
  * buildings toward a tier, or wait for a flag collector the workforce module hires.
@@ -7,8 +7,8 @@
 
 /** Where a placement should gravitate, on top of the always-on near-HQ rule: toward the seat's
  *  first building of a stable content id, toward the nearest live resource of a good, toward
- *  the map's centre (the barracks rule — face the contested middle, not the town's back), or
- *  toward the settlement's outskirts (past a frontier building — the warehouse rule, user plan
+ *  the map's centre (the barracks rule - face the contested middle, not the town's back), or
+ *  toward the settlement's outskirts (past a frontier building - the warehouse rule, user plan
  *  2026-07-25; `placement.ts` owns which frontier). */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
@@ -18,12 +18,12 @@ export type PlacementAffinity =
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. Owned buildings at the placed tier OR any
-   *  tier above it on the `upgradeTarget` chain count (a `home`-kind id counts every home tier) —
+   *  tier above it on the `upgradeTarget` chain count (a `home`-kind id counts every home tier) -
    *  an upgraded building must not trigger a replacement. `near` pulls the spot toward its
-   *  anchors; `ground: 'plantable'` restricts the footprint to sowable ground (a hard rule — no
+   *  anchors; `ground: 'plantable'` restricts the footprint to sowable ground (a hard rule - no
    *  legal spot stalls the list, user decision 2026-07-18); `apart` keeps the spot clear of the
    *  seat's other buildings of the same KIND, so goods-collection points spread over the settlement
-   *  instead of clustering (the warehouse rule, user decision 2026-07-26 — a preference, not a hard
+   *  instead of clustering (the warehouse rule, user decision 2026-07-26 - a preference, not a hard
    *  rule: with no spaced spot the entry still builds). */
   | {
       readonly kind: 'place';
@@ -37,13 +37,13 @@ export type BuildOrderEntry =
    *  target tier named by the stable content id. */
   | { readonly kind: 'upgrade'; readonly building: string; readonly count: number }
   /** Wait for one flag-bound gatherer of the good (hired by the workforce module once the list
-   *  reaches this entry — see `collectorGoodsWanted`). A good with no live resource is skipped. */
+   *  reaches this entry - see `collectorGoodsWanted`). A good with no live resource is skipped. */
   | { readonly kind: 'collector'; readonly good: string }
   /** Keep every owned building inside some tower's (or the HQ's) assumed defence circle, placing
-   *  towers of the stable content id on the settlement's outskirts as it grows — a PERPETUAL entry:
+   *  towers of the stable content id on the settlement's outskirts as it grows - a PERPETUAL entry:
    *  it re-arms whenever a later building lands uncovered, so the tower count is dynamic (user plan
    *  2026-07-25; see `tower-coverage.ts`). A target with no legal covering spot stalls the list
-   *  (the documented executor contract — expansion's concern, never a skip). */
+   *  (the documented executor contract - expansion's concern, never a skip). */
   | { readonly kind: 'towerCoverage'; readonly building: string };
 
 /**
@@ -52,7 +52,7 @@ export type BuildOrderEntry =
  * deposit and the pottery toward the clay pit (both still near the HQ), the farm→mill→bakery/well
  * chain clusters, and the hive/brewery/animal-farm cluster hangs off the well. Level-2 workshops
  * (sewery, joinery, smithy) are built directly at their level-2 tier with no level-0 intermediate
- * (user decision 2026-07-18; source-backed — the extracted `jobEnablesHouse` rows enable the `_01`
+ * (user decision 2026-07-18; source-backed - the extracted `jobEnablesHouse` rows enable the `_01`
  * tiers as separately placeable house types, each charging its own non-cumulative construction
  * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is hired
  * only when the list reaches it, and the order is material-ordered throughout: the pottery/mason
@@ -61,7 +61,7 @@ export type BuildOrderEntry =
  * The late-game tail (user plan 2026-07-25, revised 2026-07-26) opens with the perpetual
  * tower-coverage entry, then doubles the food/tool economy at the level-2 tiers on the same
  * `jobEnablesHouse` evidence (which also covers `home_level_04`, the player's "level 5" home, whose
- * own bill is two ornaments — so the fourth home onward is placed at the top tier rather than
+ * own bill is two ornaments - so the fourth home onward is placed at the top tier rather than
  * grown). It ends with two outskirts warehouses spread `apart`, a warehouse being a goods-collection
  * point like the HQ. The tower entry interleaves by design: a warehouse landing uncovered re-arms
  * it, a tower goes up, the list resumes.
@@ -139,11 +139,11 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
 ];
 
-/** Concurrent construction sites per seat — upgrades included (user rule, 2026-07-18: exactly one
+/** Concurrent construction sites per seat - upgrades included (user rule, 2026-07-18: exactly one
  *  site at a time). */
 export const MAX_ACTIVE_CONSTRUCTION_SITES = 1;
 
-/** How far from the headquarters a placement may land, in half-cell Manhattan nodes — the bounded
+/** How far from the headquarters a placement may land, in half-cell Manhattan nodes - the bounded
  *  neighbourhood every affinity pull stays inside. Beyond it the executor stalls (expansion's
  *  concern). */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;

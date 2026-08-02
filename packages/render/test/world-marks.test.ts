@@ -97,7 +97,7 @@ describe('WorldMarks', () => {
       }),
     );
     expect(marks.slots.selection.children).toHaveLength(1);
-    // No decoded sign art in a headless test — the badge layer draws its placeholder squares.
+    // No decoded sign art in a headless test - the badge layer draws its placeholder squares.
     expect(marks.slots.doorBadges.children).toHaveLength(1);
     marks.destroy();
   });

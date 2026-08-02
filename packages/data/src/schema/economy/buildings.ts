@@ -58,19 +58,19 @@ export const BuildingType = z.strictObject({
    * failing the whole set).
    */
   kind: z.union([z.enum(BUILDING_KIND), z.templateLiteral(['maintype_', z.string()])]),
-  /** Population capacity tier from `logichomesize` — present only on `home` buildings (else 0). */
+  /** Population capacity tier from `logichomesize` - present only on `home` buildings (else 0). */
   homeSize: z.number().int().nonnegative().default(0),
   workers: z.array(WorkerSlot).default([]),
   stock: z.array(StockSlot).default([]),
   /**
    * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
    * The output side only: the original house table names what a workplace makes, not the input
-   * goods — the pipeline joins those in through each good's `goodtypes.productionInputGoods`
+   * goods - the pipeline joins those in through each good's `goodtypes.productionInputGoods`
    * (→ {@link GoodType.productionInputs}) to materialize {@link recipes}.
    */
   produces: z.array(TypeId).default([]),
   /**
-   * The production recipes — one per producible good, filled by the pipeline's output-side join
+   * The production recipes - one per producible good, filled by the pipeline's output-side join
    * (`fillBuildingRecipes`) for a workplace with a non-empty `produces`; empty on a non-producing
    * building. Each recipe's `inputs` come from that produced good's `productionInputs` and its
    * `outputs` is that single good (amount = its `produces` multiplicity), in `produces` file order.
@@ -78,7 +78,7 @@ export const BuildingType = z.strictObject({
    */
   recipes: z.array(Recipe).default([]),
   /**
-   * Build-material cost — the goods that must be delivered to construct this building, joined onto
+   * Build-material cost - the goods that must be delivered to construct this building, joined onto
    * the logic record from the graphics table's `[GfxHouse]` `LogicConstructionGoods` line (the readable
    * `DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType` id). The source line is a
    * flat good-id list where a repeat encodes quantity (`3 3 26` = 2× stone + pillar), collapsed to
@@ -89,26 +89,26 @@ export const BuildingType = z.strictObject({
    */
   construction: z.array(GoodQuantity).default([]),
   /**
-   * The `typeId` this building upgrades into — the next size level of the same `[GfxHouse]` record
+   * The `typeId` this building upgrades into - the next size level of the same `[GfxHouse]` record
    * (`LogicType <sizeIdx> <typeId>`: the typeId mapped at `sizeIdx + 1`), absent on a chain's top
    * level and on single-level buildings. Level chains are not homes-only: the real data chains
-   * storages (7→8→9), several workplaces, and a tower (40→41). The wonders (47..54) are NOT chained —
+   * storages (7→8→9), several workplaces, and a tower (40→41). The wonders (47..54) are NOT chained -
    * each record maps every size level to its own typeId, a self-link the extractor skips.
    */
   upgradeTarget: TypeId.optional(),
   /**
-   * Max hitpoints — the building's full life pool, from the graphics table's `[GfxHouse]`
+   * Max hitpoints - the building's full life pool, from the graphics table's `[GfxHouse]`
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
    * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =
    * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. Absent when the
-   * graphics table has no record for the type (and on synthetic test content) — a type with no HP
+   * graphics table has no record for the type (and on synthetic test content) - a type with no HP
    * simply carries no life pool.
    */
   hitpoints: z.number().int().positive().optional(),
   /**
    * Ground footprint (collision body / build-exclusion zone / door cell) from the graphics table's
    * `[GfxHouse]` record, overlaid by `typeId` like {@link construction}. Absent when the graphics
-   * table has no record for the type (and on synthetic test content) — see {@link BuildingFootprint}.
+   * table has no record for the type (and on synthetic test content) - see {@link BuildingFootprint}.
    */
   footprint: BuildingFootprint.optional(),
   source: Provenance.optional(),

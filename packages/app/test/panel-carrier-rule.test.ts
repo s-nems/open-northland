@@ -4,7 +4,7 @@ import { isCarrierJob } from '../src/hud/details-panel/model/context.js';
 import type { UnitPanelModelContext } from '../src/hud/details-panel/model/index.js';
 
 /**
- * The details panel must classify the transport trade the way the sim does — one rule, so a workshop's
+ * The details panel must classify the transport trade the way the sim does - one rule, so a workshop's
  * carrier slot is excluded from its operator trades (and a carrier's experience track shows no bonus)
  * whatever typeId the running content gave that job.
  */

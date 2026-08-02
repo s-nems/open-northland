@@ -59,7 +59,7 @@ describe('IR integration', () => {
     // vehicle 37 (reed barge) for the cross-ref to resolve.
     const vehicles = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
     // The tribe binds jobTypes 50/51/55 and the weapons wield jobTypes 51/53, so the job set must
-    // define them all (cross-ref resolvability — validateCrossReferences checks weapon.jobType too).
+    // define them all (cross-ref resolvability - validateCrossReferences checks weapon.jobType too).
     const jobs = [
       ...extractJobs(parseIniSections(JOBTYPES_INI), { file: 'jobtypes.ini' }),
       { typeId: 50, id: 'job_50' },

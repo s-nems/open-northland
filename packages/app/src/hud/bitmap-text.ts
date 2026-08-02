@@ -13,7 +13,7 @@ import {
 import type { TextRun } from './text-run.js';
 
 /**
- * A glyph-run drawer for the decoded `.fnt` bitmap fonts — the first runtime consumer of the pipeline's
+ * A glyph-run drawer for the decoded `.fnt` bitmap fonts - the first runtime consumer of the pipeline's
  * font outputs. A `.fnt` glyph atlas is indexed (like the settler/GUI atlases), so each glyph is drawn by a
  * {@link PalettedSprite} reading the `256 × 4` font colour LUT: same mechanism as player/GUI colours, one
  * row per colour (white/dark/dimmed/red). Layout follows decoded glyph metrics: blit each non-empty
@@ -21,7 +21,7 @@ import type { TextRun } from './text-run.js';
  * `advance`, skip empty glyphs (space/undefined). See source basis ".fnt".
  *
  * A run is a retained `Container` of one PalettedSprite per glyph; {@link BitmapTextRun.place} re-anchors it
- * in screen pixels (the panel re-places on resize/scale change — screen-space meshes carry the resolution).
+ * in screen pixels (the panel re-places on resize/scale change - screen-space meshes carry the resolution).
  */
 
 /** A loaded bitmap font: its indexed glyph atlas + metrics + the shared colour LUT. */
@@ -29,20 +29,20 @@ export interface BitmapFont {
   readonly layer: SpriteLayer;
   readonly metrics: FontMetrics;
   readonly lut: TextureSource;
-  /** LUT row count (its pixel height) — passed to each `PalettedSprite`. */
+  /** LUT row count (its pixel height) - passed to each `PalettedSprite`. */
   readonly colours: number;
 }
 
 /** The UI bitmap font the HUD draws text with (font10 is the standard in-game body font). */
 export const DEFAULT_FONT_KEY = 'font10';
-/** Fallback (no-`.fnt`) text size in design px, scaled by uiscale — kept legible inside the scaled row rects. */
+/** Fallback (no-`.fnt`) text size in design px, scaled by uiscale - kept legible inside the scaled row rects. */
 const FALLBACK_TEXT_PX = 9;
 
 const fontOnce = new Map<string, Promise<BitmapFont | null>>();
 
 /**
  * Load a UI bitmap font (indexed atlas + colour LUT + metrics), or `null` if the pipeline hasn't run.
- * Memoized per key and page — several HUD panels mount the same font and must share its textures.
+ * Memoized per key and page - several HUD panels mount the same font and must share its textures.
  */
 export function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFont | null> {
   let once = fontOnce.get(key);
@@ -68,9 +68,9 @@ export function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFo
 /**
  * Unicode codepoint → CP1250 byte, for codepoints above 0xFF. The decoded UI strings are Unicode
  * (the pipeline decodes the original CP1250 bytes), but the `.fnt` glyph table is indexed by the
- * original byte — so `ę`/`ż`/`Ś`... must be mapped back or their glyphs are silently skipped.
+ * original byte - so `ę`/`ż`/`Ś`... must be mapped back or their glyphs are silently skipped.
  * Codepoints ≤ 0xFF pass through unchanged, which is exact for every character CP1250 shares with
- * Latin-1 (`ó`, umlauts, ß) — a Latin-1 character CP1250 does not carry (e.g. `ñ`) would select a
+ * Latin-1 (`ó`, umlauts, ß) - a Latin-1 character CP1250 does not carry (e.g. `ñ`) would select a
  * wrong glyph, but the decoded CP1250-origin tables can't contain one. Source basis: the CP1250
  * code page (pinned by `test/bitmap-text.test.ts` against `TextDecoder('windows-1250')`); covers
  * the Polish set plus the CP1250 punctuation the string tables use.
@@ -97,7 +97,7 @@ const CP1250_HIGH_CODEPOINTS: ReadonlyMap<number, number> = new Map([
   [0x17d, 0x8e], // Ž
   [0x17e, 0x9e], // ž
   [0x2013, 0x96], // –
-  [0x2014, 0x97], // —
+  [0x2014, 0x97], // -
   [0x201e, 0x84], // „
   [0x201c, 0x93], // “
   [0x201d, 0x94], // ”
@@ -128,7 +128,7 @@ interface RunGlyph {
 
 /**
  * Build a retained run of bitmap glyphs for `text` in the given colour row. Empty glyphs advance the pen but
- * draw nothing (the original's space quirk sidestepped). The run starts unplaced — call {@link TextRun.place}.
+ * draw nothing (the original's space quirk sidestepped). The run starts unplaced - call {@link TextRun.place}.
  */
 export function createBitmapTextRun(
   font: BitmapFont,

@@ -47,7 +47,7 @@ const { Position, Resource } = components;
 const WIDTH = 6;
 const HEIGHT = 1;
 
-/** The fixed placement nodes on the synthetic 6×1 strip — each cell's anchor node (row 0: node
+/** The fixed placement nodes on the synthetic 6×1 strip - each cell's anchor node (row 0: node
  *  (2x, 0)): [HQ, joinery, wood gatherer, carrier, tree, tree]. */
 const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 10, y: 0 },
@@ -69,11 +69,11 @@ function grassMap(): TerrainMap {
 
 /**
  * The terrain grid the scene layer projects, derived from the same {@link TerrainMap} the sim
- * navigates via the render package's `terrainMapToScene` seam — so the demo exercises the exact
+ * navigates via the render package's `terrainMapToScene` seam - so the demo exercises the exact
  * map→scene path a loaded `content/maps/<id>.json` takes, not a hand-duplicated grid.
  *
  * When a `map` is passed (loaded from disk via `loadTerrainMap`), its varied landscape typeIds
- * carry through; otherwise the synthetic grass strip is projected — the reproducible default for
+ * carry through; otherwise the synthetic grass strip is projected - the reproducible default for
  * `npm run shot` + the unit tests, which must not depend on the gitignored `content/`.
  */
 export function sliceTerrain(map?: CellTerrainMap | TerrainMapFile): SceneTerrain {
@@ -85,9 +85,9 @@ const PLACEMENT_CELL_COUNT = 6;
 
 /**
  * The first `count` walkable half-cell nodes of `map`, in canonical row-major id order, as integer
- * `(x, y)` node coords — or `null` if the map has fewer than `count` walkable nodes. "Walkable" is resolved
+ * `(x, y)` node coords - or `null` if the map has fewer than `count` walkable nodes. "Walkable" is resolved
  * from the global sandbox landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
- * the slice's entities land only on cells the sim can stand on — placing a building on water would
+ * the slice's entities land only on cells the sim can stand on - placing a building on water would
  * make the gatherer's path unreachable. Deterministic: a fixed scan order, no RNG.
  *
  * Some real grids are ~all water under the sandbox's base table (e.g. a coastal scenario whose land is
@@ -107,7 +107,7 @@ function walkableCells(
   return out.length < count ? null : out;
 }
 
-/** Signpost navigation confinement is a game fundament: every playable world runs with it ON — a
+/** Signpost navigation confinement is a game fundament: every playable world runs with it ON - a
  *  civilian acts only within its local circle + its player's reachable signpost network (scouts and
  *  fighters roam free). Enqueued per slice builder (scenes get it in `createSceneSim`), keeping the
  *  sim-level default off so pre-signpost goldens stay byte-identical. */
@@ -122,11 +122,11 @@ function newSliceSim(seed: number, map: TerrainMap, content: ContentSet): Simula
 }
 
 /**
- * Enqueue resolved placements in order — the one spot the `placeBuilding`/`spawnSettler` command
+ * Enqueue resolved placements in order - the one spot the `placeBuilding`/`spawnSettler` command
  * shapes are written, shared by the demo strip and the authored import (list order = enqueue order,
  * so determinism follows the placement list). Buildings are forced: both callers place fixture state
  * (a decoded map's authored houses, the pinned demo world) which loads as-is, exactly as the original
- * loads a scenario map — the tech/collision gates govern the player's interactive placements.
+ * loads a scenario map - the tech/collision gates govern the player's interactive placements.
  */
 function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
@@ -149,9 +149,9 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
       });
     } else {
       // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
-      // equipment slot, so an existing soldier's Broń row + drawn weapon match — like an admin spawn.
+      // equipment slot, so an existing soldier's Broń row + drawn weapon match - like an admin spawn.
       // Authored humans spawn with NO experience: a map's starting population earns the `needfor*`
-      // gates like everyone else (dig clay/stone before iron — the original's apprenticeship).
+      // gates like everyone else (dig clay/stone before iron - the original's apprenticeship).
       // `sethuman`'s undecoded trailing columns (tools/asset-pipeline maps decoder) may carry the
       // original per-human stats and would be the source to pin if a map does seed veterans.
       const equipment = weaponEquipmentFor(p.jobType, sim.content.goods);
@@ -171,7 +171,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
 
 /**
  * The first anchor (row-major scan) where `typeId`'s footprint fits against the sim's live placement
- * rule (`Simulation.placementProbe` — the exact gate an interactive click goes through), or `null`
+ * rule (`Simulation.placementProbe` - the exact gate an interactive click goes through), or `null`
  * when nothing on the map fits (a dense map degrades to the walkable-cell fallback). Deterministic:
  * a fixed scan order over the current world state.
  */
@@ -203,7 +203,7 @@ export interface SliceOptions extends WorldContentOptions {
  * no wall-clock: this is the "render scenario X at seed S, step N ticks" entry the harness needs.
  *
  * Without a `map` the slice runs on the synthetic 6×1 grass strip (the reproducible default the shot
- * PNG depends on). With a loaded grid (the `?map=` entry passes the collision-resolved terrain — see
+ * PNG depends on). With a loaded grid (the `?map=` entry passes the collision-resolved terrain - see
  * `content/collision.ts`), the same six entities (HQ, joinery, wood gatherer, carrier, two wood
  * nodes) land on the real grid instead of the hardcoded strip: the two buildings on the first anchors
  * their footprints actually fit ({@link firstPlaceableCell}, stepping one tick between them so the
@@ -217,9 +217,9 @@ export function runSlice(
   options: SliceOptions = {},
 ): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
-  // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
+  // too few walkable cells) falls back to the synthetic strip - content + terrain + cells all revert
   // together, so the fallback world matches the no-map slice (exactly, when the caller also passed no
-  // `footprints`; a real-content caller's fallback carries them, differing only in inert content rows —
+  // `footprints`; a real-content caller's fallback carries them, differing only in inert content rows -
   // fixtures force-place, so nothing behavioral changes).
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
@@ -238,10 +238,10 @@ export function runSlice(
   const own = options.owner !== undefined ? { owner: options.owner } : {};
 
   // Building cells: on a real map, prefer anchors where the footprint actually fits (clear ground, off
-  // the water/forest — the probe applies the same rule the player's clicks go through), stepping one
+  // the water/forest - the probe applies the same rule the player's clicks go through), stepping one
   // tick between the two so the second probe sees the first house. The walkable-cell fallback (a dense
   // map where nothing fits, or the synthetic strip whose 6×1 grid can't host any footprint) force-places
-  // like every fixture. The strip path takes the else-branch untouched — its pinned shot stays identical.
+  // like every fixture. The strip path takes the else-branch untouched - its pinned shot stays identical.
   if (usable) {
     const hq = firstPlaceableCell(sim, BUILDING_HEADQUARTERS, terrain) ?? cellAt(0);
     enqueuePlacements(sim, [
@@ -266,7 +266,7 @@ export function runSlice(
     ]);
   }
   // The strip's two demo wood nodes: bare 4-unit resources with no felling counter/footprint (the
-  // committed shot PNG + the render integration test pin this minimal shape — `placeResourceNode` would
+  // committed shot PNG + the render integration test pin this minimal shape - `placeResourceNode` would
   // add both).
   for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
@@ -278,12 +278,12 @@ export function runSlice(
 }
 
 /**
- * Build a sim on a real decoded map with no placed entities — the map viewer's default for an
+ * Build a sim on a real decoded map with no placed entities - the map viewer's default for an
  * imported map that carries no authored `StaticObjects`. The map's own trees/ore/stone still spawn as
  * harvestable nodes (the `?map=` entry's `spawnMapResources` runs after this); this exists purely so a
  * plain imported map does not get the synthetic HQ/joinery/gatherer/carrier demo cluster dropped onto
  * its first walkable cells. That demo world belongs only to the synthetic-strip fallback (no map) and
- * the deterministic shot PNG — both still go through {@link runSlice}.
+ * the deterministic shot PNG - both still go through {@link runSlice}.
  *
  * Deterministic: seed-fixed, no RNG, no placements. Uses the same global sandbox content + live
  * `footprints` a `runSlice` map path would, so a later interactive build behaves identically.
@@ -296,7 +296,7 @@ export function runBareMap(seed: number, map: TerrainMap, options: WorldContentO
 /**
  * Build + run the slice sim for a map that carries authored entity placements (`map.cif`
  * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
- * building and every `sethuman` a settler at its authored cell — replacing the synthetic
+ * building and every `sethuman` a settler at its authored cell - replacing the synthetic
  * "first walkable cells" demo placement for such maps.
  *
  * The content is the global sandbox content plus any extra authored type ids that are not in the sandbox

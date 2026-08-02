@@ -6,7 +6,7 @@ import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import { createWindowShell, type ToolWindow } from './window-shell.js';
 
-/** Stats window width (design px) — sized to the read-view's longest tally rows. */
+/** Stats window width (design px) - sized to the read-view's longest tally rows. */
 const STATS_WIDTH = 150;
 /** Horizontal gap between the strip and the window (design px): past the menu column + breathing room. */
 const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
@@ -14,7 +14,7 @@ const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
 const STATS_OFFSET_Y = 15;
 /** Title text inset (design px). */
 const TITLE_INSET_Y = 2;
-/** The index of `layoutHud`'s volatile `Tribe N · tick T` row — excluded from the change key. */
+/** The index of `layoutHud`'s volatile `Tribe N · tick T` row - excluded from the change key. */
 const TICK_ROW = 0;
 
 export interface StatsWindowDeps {
@@ -34,7 +34,7 @@ export interface StatsWindow extends ToolWindow {
 /**
  * Build the statistics-window controller on the shared {@link createWindowShell} lifecycle. The per-frame
  * `refresh` is allocation-light: it derives a change key in one pass over the HUD rows and returns early
- * when nothing but the tick moved — the glyph meshes rebuild only on a real tally change.
+ * when nothing but the tick moved - the glyph meshes rebuild only on a real tally change.
  */
 export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   const { ctx } = deps;
@@ -42,7 +42,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   const shell = createWindowShell(deps.container);
 
   let key = '';
-  /** The window's actual drawn rect — the single source of truth for its hit region + close-on-inside. */
+  /** The window's actual drawn rect - the single source of truth for its hit region + close-on-inside. */
   let rect: Rect | null = null;
 
   const origin = (): { x: number; y: number } => ({

@@ -107,7 +107,7 @@ describe('extractTribes', () => {
     expect(tribes).toHaveLength(1);
     expect(tribes[0]).toMatchObject({ typeId: 4, id: 'fenling', name: 'fenling' });
     // The `//`-comment on the third line is stripped by the parser, so the animation token is clean.
-    // A repeated (jobType, atomicId) pair is kept in file order — consumers resolve last-wins.
+    // A repeated (jobType, atomicId) pair is kept in file order - consumers resolve last-wins.
     expect(tribes[0]?.atomicBindings).toEqual([
       { jobType: 50, atomicId: 61, animation: 'fen_broodling_rest' },
       { jobType: 51, atomicId: 65, animation: 'fen_forager_lift' },
@@ -122,7 +122,7 @@ describe('extractTribes', () => {
       layer: 'mod',
     });
     // The real data interleaves the four kinds within a block, so edges keep verbatim file order
-    // (good, house, good, job, vehicle here) — NOT regrouped by kind. The malformed
+    // (good, house, good, job, vehicle here) - NOT regrouped by kind. The malformed
     // `jobEnablesGood notanint 22` (non-int jobType) is dropped, like a malformed setatomic line.
     expect(tribes[0]?.jobEnables).toEqual([
       { jobType: 51, kind: 'good', targetId: 22 },

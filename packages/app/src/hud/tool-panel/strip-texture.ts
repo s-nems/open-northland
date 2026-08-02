@@ -8,25 +8,25 @@ import { type Application, Container } from 'pixi.js';
 import type { DesignRect } from './layout.js';
 
 /**
- * Crisp fractional scaling for the left tool-panel strip — the layout half of the render-layer supersample
+ * Crisp fractional scaling for the left tool-panel strip - the layout half of the render-layer supersample
  * ({@link bakeToFlippedSprite}).
  *
  * The strip + buttons are {@link PalettedSprite} meshes over an indexed atlas (red = palette index), read
- * through the GUI palette LUT and sampled nearest — palette indices can't be linearly filtered (an averaged
+ * through the GUI palette LUT and sampled nearest - palette indices can't be linearly filtered (an averaged
  * index decodes to a wrong colour). At a fractional `uiscale` (the 1.4× default) nearest sampling doubles
  * some texel columns and not others ("pixeloza"). The fix: place the meshes at an integer oversample `ss`
- * into a texture, then draw that texture linear-downscaled to the display size — this module owns the layout
+ * into a texture, then draw that texture linear-downscaled to the display size - this module owns the layout
  * (design bounds → texel placement, the display anchor); the render helper owns the texture + the WebGL
  * Y-flip.
  *
  * This also makes the strip static: it bakes once, re-baking only when a glyph changes (e.g. the game-speed
- * button — {@link SupersampledStrip.redraw}). The display `Sprite` is a normal scene-graph child, so it
+ * button - {@link SupersampledStrip.redraw}). The display `Sprite` is a normal scene-graph child, so it
  * batches and follows canvas resizes for free.
  */
 
 /**
  * Oversample cap for {@link oversampleFor} (which targets double the `uiscale × renderer.resolution`
- * device px per design px so the linear downscale anti-aliases — the 1.4× default at DPR 2 covers
+ * device px per design px so the linear downscale anti-aliases - the 1.4× default at DPR 2 covers
  * 2.8 → ss 5). The cap bounds the texture memory a pathological `?uiscale=`/DPR combination could
  * request (the strip is 433 design px tall; ss 6 ≈ a 300×2598 texture, ~3 MB RGBA, baked once).
  * Flat panel edges need no quality floor (floor 1).
@@ -34,7 +34,7 @@ import type { DesignRect } from './layout.js';
 const MAX_SUPERSAMPLE = 6;
 const MIN_SUPERSAMPLE = 1;
 
-/** One panel mesh plus its design-space rect (pre-scale) — the strip background or a tool button. */
+/** One panel mesh plus its design-space rect (pre-scale) - the strip background or a tool button. */
 export interface StripSpriteSpec {
   readonly spr: PalettedSprite;
   readonly design: DesignRect;
@@ -62,7 +62,7 @@ export function createSupersampledStrip(opts: {
   const texH = Math.ceil(bounds.h * ss);
 
   // Place every mesh in texture texel space: origin = ss × (designPos − boundsOrigin), zoom = ss, resolution
-  // = the texture size (a PalettedSprite maps native px → target px itself via its own uResolution — it does
+  // = the texture size (a PalettedSprite maps native px → target px itself via its own uResolution - it does
   // not ride the scene-graph transform, so it renders into the off-screen target the same way it would the
   // canvas). The detached container is owned by the returned handle's dispose.
   const offscreen = new Container();

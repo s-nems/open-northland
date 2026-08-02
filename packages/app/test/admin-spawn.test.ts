@@ -50,7 +50,7 @@ import {
 } from '../src/view/admin-debug/spawn-catalog.js';
 
 /**
- * The admin/debug spawn palette's PURE command mapping — the data half of the panel (a click → a sim
+ * The admin/debug spawn palette's PURE command mapping - the data half of the panel (a click → a sim
  * command), verifiable without the DOM. The panel's window-capture wiring (a map click enqueues this)
  * is browser-verified; here we pin that a warrior carries its weapon, a civilian does not, the optional
  * HP/armor stamps are omitted when non-positive, and a resource resolves to the right node lifecycle.
@@ -140,10 +140,10 @@ describe('admin spawn command mapping', () => {
     expect(RESOURCE_ENTRIES.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('the goods palette is the running content — every good it defines is droppable (bare-checkout sandbox)', () => {
+  it('the goods palette is the running content - every good it defines is droppable (bare-checkout sandbox)', () => {
     // The panel builds its goods list from `sim.content.goods`, so it can only offer goods the sim will
     // actually drop (a good absent from the content is a `dropGood` no-op). Assert the source it reads on a
-    // bare checkout — the sandbox content — spans the whole catalog, so nothing silently drops out.
+    // bare checkout - the sandbox content - spans the whole catalog, so nothing silently drops out.
     const goods = sandboxContent(grassTerrain(4, 4)).goods;
     const ids = new Set(goods.map((g) => g.id));
     expect(ids.has('wood')).toBe(true);
@@ -195,7 +195,7 @@ describe('admin spawn command mapping', () => {
   });
 });
 
-describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn path shares', () => {
+describe('weaponEquipmentFor - the one job→equipment-weapon map every spawn path shares', () => {
   const sandboxGoods = sandboxContent(grassTerrain(4, 4)).goods;
 
   it('each soldier class carries its matching weapon good (so its Broń row + drawn weapon match)', () => {
@@ -210,7 +210,7 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
     expect(eq(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
   });
 
-  it('resolves the good against the running content — real goodtypes.ini ids, not the sandbox +100', () => {
+  it('resolves the good against the running content - real goodtypes.ini ids, not the sandbox +100', () => {
     // On a decoded map the sim plays on the merged real content whose weapon goods keep the
     // goodtypes.ini ids (37–42); the slug join must land there, or the panel's Broń row shows an
     // unknown good (the empty-socket bug this pins).
@@ -226,14 +226,14 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
 
   it('sabers/heroes carry the good matching the warrior body they borrow; axes stay unarmed', () => {
     const eq = (jobType: number) => weaponEquipmentFor(jobType, sandboxGoods);
-    // No saber goods exist in goodtypes.ini — a saber carries the sword good whose body it borrows.
+    // No saber goods exist in goodtypes.ini - a saber carries the sword good whose body it borrows.
     expect(eq(JOB_SOLDIER_SABER_LONG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
     // Heroes borrow per their baseatomics soldier class (jobtypes.ini): 44→34 (short sword), 45→35.
     expect(eq(JOB_HERO_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
     expect(eq(JOB_HERO_SABER)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
     expect(eq(JOB_HEROINE_BOW)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
     expect(eq(JOB_HERO_UNARMED)).toBeUndefined();
-    // The axe jobs have no weapons.ini record (the sim can't arm them) — an equipment sword would
+    // The axe jobs have no weapons.ini record (the sim can't arm them) - an equipment sword would
     // claim a weapon the unit doesn't swing, so they get none.
     expect(eq(JOB_SOLDIER_AXE_BIG)).toBeUndefined();
   });

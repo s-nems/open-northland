@@ -9,11 +9,11 @@ import type { NavigationLimit } from '../signposts/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { isMinor } from './households.js';
 
-// Who may marry, and how a partner is picked — the pure predicates behind the `marry` command and the
+// Who may marry, and how a partner is picked - the pure predicates behind the `marry` command and the
 // FamilySystem's activity gates.
 
 /**
- * The job `id` slugs that carry the female sex in the source data (`jobtypes.ini` — the sex-tagged
+ * The job `id` slugs that carry the female sex in the source data (`jobtypes.ini` - the sex-tagged
  * age classes and the adult woman role). Matched by slug, not numeric id: a synthetic fixture may
  * reuse a low numeric id for an adult trade (the goldens' woodcutter is jobType 1), and a slug can't
  * collide that way.
@@ -26,7 +26,7 @@ export function isFemaleJobId(id: string | undefined): boolean {
 }
 
 /**
- * Whether a settler of `jobType` is away on a mission — a fighter (soldier/hero) or the scout. Such a
+ * Whether a settler of `jobType` is away on a mission - a fighter (soldier/hero) or the scout. Such a
  * settler neither marries nor comes home to its family (the wife does not wait for it); reverting to any
  * civilian trade restores family life. Source basis: user-specified design over the content-derived job
  * roles ({@link isFighterJob}/{@link isScoutJob}).
@@ -70,10 +70,10 @@ export function raisingChild(world: World, marriage: { child: Entity | null }): 
 
 /**
  * The nearest eligible partner for `seeker`, or null when none exists (the marry order then auto-cancels).
- * Eligible: {@link mayMarry}, the seeker's tribe, the opposite sex, positioned — and, under signpost
+ * Eligible: {@link mayMarry}, the seeker's tribe, the opposite sex, positioned - and, under signpost
  * navigation (`limit` non-null with a `terrain`), standing inside the seeker's allowed area (local circle
  * + reachable guidepost network), so a wedding never chases a match the seeker may not walk to. Nearest
- * by half-cell Manhattan distance from the seeker with the ascending-entity-id tie-break — a canonical
+ * by half-cell Manhattan distance from the seeker with the ascending-entity-id tie-break - a canonical
  * pick over the ascending-id candidate scan, so the winner never depends on store insertion order.
  */
 export function findPartnerFor(
@@ -92,7 +92,7 @@ export function findPartnerFor(
   for (const e of canonicalById(world.query(Settler, Position))) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe) continue;
-    if (world.has(e, Female) === seekerFemale) continue; // same sex — a couple is a woman and a man
+    if (world.has(e, Female) === seekerFemale) continue; // same sex - a couple is a woman and a man
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
     if (
@@ -100,7 +100,7 @@ export function findPartnerFor(
       terrain !== undefined &&
       !limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy))
     ) {
-      continue; // beyond the seeker's signpost area — out of reach for the wedding walk
+      continue; // beyond the seeker's signpost area - out of reach for the wedding walk
     }
     const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
     if (best === null || dist < best.dist) best = { entity: e, dist };

@@ -3,7 +3,7 @@ import { clientToCanvas, type ScreenScale } from '../src/hud/geometry.js';
 
 /**
  * The shared client (CSS) → canvas (screen) point mapping every HUD hit-test and the camera ride on.
- * Pure math over an injected scale, so it is checked headlessly here — the same seam `screenScale`
+ * Pure math over an injected scale, so it is checked headlessly here - the same seam `screenScale`
  * feeds in the live app (see `camera.test.ts` for how the scale itself is derived).
  */
 describe('clientToCanvas', () => {

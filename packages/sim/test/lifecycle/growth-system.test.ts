@@ -20,7 +20,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult over
+ * GrowthSystem - a settler born young ({@link Age}-bearing) matures baby → child → adult over
  * two measured stages ({@link CHILD_AGE_TICKS}, {@link ADULT_AGE_TICKS}), sex preserved (a boy grows into a civilian, a girl into
  * the adult woman role), losing its Age component and its childhood home once grown. Adults never carry an Age, so the system
  * is a no-op for them (the goldens stay untouched).
@@ -58,8 +58,8 @@ function run(sim: Simulation, n: number): void {
   for (let i = 0; i < n; i++) growthSystem(sim.world, ctxOf(sim));
 }
 
-describe('GrowthSystem — non-working settlers mature into workers', () => {
-  // The measured cadence itself — every other case below is written in terms of the stage constants, so
+describe('GrowthSystem - non-working settlers mature into workers', () => {
+  // The measured cadence itself - every other case below is written in terms of the stage constants, so
   // only this one fails if they drift off what was observed in the original.
   it('childhood runs the observed 4 minutes of x1 play: a child at 4 years, an adult at 12', () => {
     expect(ADULT_AGE_TICKS / TICKS_PER_SECOND).toBe(4 * 60);
@@ -83,11 +83,11 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
     expect(isNonWorkingAge(sim.world.get(she, Settler).jobType)).toBe(true);
   });
 
-  it('a child grows up at ADULT_AGE_TICKS, losing Age and its home — a boy a civilian, a girl a woman', () => {
+  it('a child grows up at ADULT_AGE_TICKS, losing Age and its home - a boy a civilian, a girl a woman', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
     const he = bornSettler(sim, BABY_MALE, 0);
-    const home = 999 as Entity; // any id — graduation must drop the binding regardless
+    const home = 999 as Entity; // any id - graduation must drop the binding regardless
     sim.world.add(she, Residence, { home });
     sim.world.add(he, Residence, { home });
 
@@ -99,9 +99,9 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
     run(sim, 1); // crosses ADULT_AGE_TICKS: child → adult
     expect(sim.world.get(he, Settler).jobType).toBe(CIVILIST_JOB); // a grown boy is a civilian
     expect(sim.world.get(she, Settler).jobType).toBe(WOMAN_JOB); // the adult woman role
-    expect(sim.world.has(she, Age)).toBe(false); // grown — no age bookkeeping
+    expect(sim.world.has(she, Age)).toBe(false); // grown - no age bookkeeping
     expect(sim.world.has(he, Age)).toBe(false);
-    expect(sim.world.has(she, Residence)).toBe(false); // moved out — its family slot frees
+    expect(sim.world.has(she, Residence)).toBe(false); // moved out - its family slot frees
     expect(sim.world.has(he, Residence)).toBe(false);
   });
 
@@ -129,7 +129,7 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
       const sim = new Simulation({ seed: 7, content: growthContent() });
       bornSettler(sim, BABY_FEMALE, 0);
       bornSettler(sim, BABY_MALE, 0);
-      // Use the full step schedule (not just growthSystem) so the hash covers the real tick — but
+      // Use the full step schedule (not just growthSystem) so the hash covers the real tick - but
       // mapless, so the AI/movement systems are inert and only growth advances state.
       sim.run(ADULT_AGE_TICKS + 5);
       return sim.hashState();

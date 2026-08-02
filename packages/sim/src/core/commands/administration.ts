@@ -15,12 +15,12 @@ export type RulesCommand =
     }
   | {
       /**
-       * Set the fog-of-war mode globally — one of the {@link import('../../components/rules.js').FOG_MODE} ids
+       * Set the fog-of-war mode globally - one of the {@link import('../../components/rules.js').FOG_MODE} ids
        * (`OFF` / `REVEAL` sticky exploration / `RECON` known terrain with current entity vision). Sets the
        * {@link import('../../components/index.js').FogRules} singleton (created on first use), so the mode hashes
        * and replays like any other state; the VisionSystem rebuilds the per-player masks the same tick.
        * Switching to `OFF` drops the masks (exploration history resets). A `mode` outside the three ids is
-       * recoverable bad input — skipped, still logged.
+       * recoverable bad input - skipped, still logged.
        */
       readonly kind: 'setFogMode';
       /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2). */
@@ -31,7 +31,7 @@ export type RulesCommand =
        * Toggle signpost-navigation confinement globally: while enabled, a civilian settler may only work and
        * walk within its local reach plus a reachable signpost group's circles (`systems/signposts/`). Sets the
        * {@link import('../../components/rules.js').SignpostRules} singleton (created on first use), so the
-       * toggle hashes and replays like any other state. Default off — maps/scenes that ship signposts opt in
+       * toggle hashes and replays like any other state. Default off - maps/scenes that ship signposts opt in
        * (a named deviation: the original always confines, but existing scenes/goldens predate signposts).
        */
       readonly kind: 'setSignpostNavigation';
@@ -40,12 +40,12 @@ export type RulesCommand =
   | {
       /**
        * Toggle the profession-progression tech tree globally: while disabled, the `needfor*` XP thresholds
-       * and the `jobEnables` presence graph stop gating CIVILIAN jobs and goods — every settler may take any
+       * and the `jobEnables` presence graph stop gating CIVILIAN jobs and goods - every settler may take any
        * civilian trade from the start (a multiplayer-style free start). Fighter-band jobs (soldier/hero)
        * stay gated regardless: those are unlocked by barracks training, not by the toggle. XP accrual keeps
        * running, so experience bonuses still pay off. Sets the
        * {@link import('../../components/rules.js').ProgressionRules} singleton (created on first use), so
-       * the toggle hashes and replays like any other state. Default on — the original always gates.
+       * the toggle hashes and replays like any other state. Default on - the original always gates.
        */
       readonly kind: 'setProfessionProgression';
       readonly enabled: boolean;
@@ -54,17 +54,17 @@ export type RulesCommand =
 /** Replayable admin commands used to drive existing mechanics during testing. */
 export type DebugCommand =
   /**
-   * Debug / cheat commands — the admin panel's "make testing trivial" seam. Each is a real, serializable
+   * Debug / cheat commands - the admin panel's "make testing trivial" seam. Each is a real, serializable
    * {@link Command} that mutates through the one command path (so a debug poke replays and hashes like any
-   * order — never an app-side reach into `sim.world`), but is issued only by the debug panel: no system or AI
+   * order - never an app-side reach into `sim.world`), but is issued only by the debug panel: no system or AI
    * emits them, so they never fire on a golden/replay run and the goldens stay put. Every one targets an entity
    * by ref and is a recoverable-bad-input no-op when the target is dead or the wrong kind (a raced/stale ref).
-   * Source basis: pure test affordances, not original mechanics — they drive existing systems (the CleanupSystem
+   * Source basis: pure test affordances, not original mechanics - they drive existing systems (the CleanupSystem
    * reaps a 0-HP kill; the NeedsSystem reacts to a set need) rather than inventing behaviour.
    */
-  /** Kill `target` outright — a settler only (animals included): drain its
+  /** Kill `target` outright - a settler only (animals included): drain its
    *  {@link import('../../components/combat.js').Health} pool to 0 so the CleanupSystem reaps it next tick with
-   *  the normal `settlerDied` event (the real death path, not a silent destroy). A non-settler is a no-op —
+   *  the normal `settlerDied` event (the real death path, not a silent destroy). A non-settler is a no-op -
    *  including a building placed under construction, which carries a `Health` pool but must be torn down via
    *  `demolish` (its worker-unbind seam), never reaped as if it were a unit. */
   | { readonly kind: 'debugKill'; readonly target: Entity }

@@ -27,7 +27,7 @@ export class MeleeSlots {
   private readonly claimed = new Set<NodeId>();
   private blocked?: BlockOverlay;
   /** Encircle candidates per building×weapon band: a building never moves within a tick, so the band scan
-   *  runs once and every chaser — including a full-perimeter holder re-asking each cadence — only filters
+   *  runs once and every chaser - including a full-perimeter holder re-asking each cadence - only filters
    *  taken slots over it. */
   private readonly bands = new Map<string, readonly NodeId[]>();
 
@@ -38,7 +38,7 @@ export class MeleeSlots {
   ) {}
 
   /** Whether `cell` is already spoken for: a standing body, a cell dealt earlier this tick, or another
-   *  chaser's live goal. `ownGoal` is the asker's own goal, which is not taken to itself — a cadence
+   *  chaser's live goal. `ownGoal` is the asker's own goal, which is not taken to itself - a cadence
    *  repath may re-choose and keep it. */
   isTaken(cell: NodeId, ownGoal: NodeId | undefined): boolean {
     this.standing ??= standingFighterNodes(this.world, this.ctx.content, this.terrain);
@@ -49,14 +49,14 @@ export class MeleeSlots {
 
   /** Whether `cell` is ground a route can actually deliver to. A cell under another building's body or a
    *  resource is statically walkable but unroutable, and routing denies a stand-in for a dynamically
-   *  blocked goal — dealing one would fail the route and cancel an ordered unit's whole attack order. */
+   *  blocked goal - dealing one would fail the route and cancel an ordered unit's whole attack order. */
   isOpen(cell: NodeId): boolean {
     if (!this.terrain.isWalkable(cell)) return false;
     this.blocked ??= dynamicBlockOverlay(this.world, this.ctx, this.terrain);
     return !this.blocked.has(cell);
   }
 
-  /** Deal `cell` to the asking chaser — the tick's later chasers aim at the next free one. */
+  /** Deal `cell` to the asking chaser - the tick's later chasers aim at the next free one. */
   claim(cell: NodeId): void {
     this.claimed.add(cell);
   }
@@ -64,7 +64,7 @@ export class MeleeSlots {
   /**
    * The open in-band contact cells around a building: every cell (deduped union of the band boxes around
    * each wall cell) that is {@link isOpen} and whose distance to the body's NEAREST wall is in the weapon
-   * band — the same nearest-wall rule the reach check uses, so a body cell (reach 0) is never dealt.
+   * band - the same nearest-wall rule the reach check uses, so a body cell (reach 0) is never dealt.
    */
   encircleCandidates(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
     const key = `${target}:${weapon.minRange}:${weapon.maxRange}`;
@@ -75,7 +75,7 @@ export class MeleeSlots {
     return candidates;
   }
 
-  /** The uncached band scan behind {@link encircleCandidates} — O(bandCells × body). */
+  /** The uncached band scan behind {@link encircleCandidates} - O(bandCells × body). */
   private buildBand(body: readonly NodeId[], weapon: WeaponBand): readonly NodeId[] {
     const visited = new Set<NodeId>();
     const candidates: NodeId[] = [];
@@ -88,7 +88,7 @@ export class MeleeSlots {
           const y = t.y + dy;
           if (!this.terrain.inBounds(x, y)) continue;
           const cell = this.terrain.nodeAt(x, y);
-          if (visited.has(cell)) continue; // adjacent walls' band boxes overlap — evaluate each cell once
+          if (visited.has(cell)) continue; // adjacent walls' band boxes overlap - evaluate each cell once
           visited.add(cell);
           if (!this.isOpen(cell)) continue;
           const reach = distanceToBody(this.terrain, cell, body);
@@ -101,7 +101,7 @@ export class MeleeSlots {
   }
 }
 
-/** The chase destinations en-route chasers already own — every {@link Engagement}-carrying unit's live
+/** The chase destinations en-route chasers already own - every {@link Engagement}-carrying unit's live
  *  {@link MoveGoal} cell. Membership-only (never iterated for a decision), rebuilt lazily per combat tick
  *  like the standing-body set; conservatively stale within the tick (a goal redirected later this
  *  tick stays marked), which only delays a slot's reuse by one tick. */
@@ -111,7 +111,7 @@ function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
   return out;
 }
 
-/** Manhattan distance from `cell` to the nearest cell of `body` — how the combat reach to a building is
+/** Manhattan distance from `cell` to the nearest cell of `body` - how the combat reach to a building is
  *  measured (the same nearest-wall rule as {@link import('./target-node.js').combatTargetNode}). */
 function distanceToBody(terrain: TerrainGraph, cell: NodeId, body: readonly NodeId[]): number {
   let min = Number.POSITIVE_INFINITY;

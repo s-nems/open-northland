@@ -24,7 +24,7 @@ import { ctxOf, grassMap } from './needs/support.js';
 
 /**
  * The barracks drill: a colonist sent to a training house walks to its door, drills inside for
- * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier — the only route onto the soldier trade,
+ * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier - the only route onto the soldier trade,
  * because its `needforjob` row reads a track only a serving soldier accrues.
  *
  * The fixture mirrors the extracted shape at fixture scale: a `training` house, the civilist's exercise
@@ -47,7 +47,7 @@ const SCHOOLING_REPEATS = 5;
 const HEADQUARTERS_TYPE = 1;
 const FOOD_GOOD = 3;
 const LARDER_FOOD = 5;
-/** Well over the ¾ eat threshold — this recruit seeks food before anything else. */
+/** Well over the ¾ eat threshold - this recruit seeks food before anything else. */
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** The four-cell walk to the door at the fixture's gait, with slack. */
 const WALK_TICKS = 100;
@@ -114,7 +114,7 @@ function simWithBarracks(): Simulation {
   return new Simulation({ seed: 1, content: barracksContent(), map: grassMap(10, 8) });
 }
 
-/** A built headquarters stocked with {@link LARDER_FOOD} food — the larder the eat drive walks to. */
+/** A built headquarters stocked with {@link LARDER_FOOD} food - the larder the eat drive walks to. */
 function larderAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -167,7 +167,7 @@ function terrainOf(sim: Simulation): TerrainGraph {
   return terrain;
 }
 
-describe('trainSoldier — the barracks drill', () => {
+describe('trainSoldier - the barracks drill', () => {
   it('walks a colonist in, drills him, and sends him out a soldier for good', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 6, 3);
@@ -201,7 +201,7 @@ describe('trainSoldier — the barracks drill', () => {
   it('banks exactly one TRAINING point per completed repetition of the drill', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 3, 3);
-    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // already on the door node — no walk
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // already on the door node - no walk
 
     sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, RUN_TICKS);
@@ -221,7 +221,7 @@ describe('trainSoldier — the barracks drill', () => {
     const served = sim.world.get(recruit, TrainingOrder).drillTicksLeft;
     expect(served).toBeLessThan(BARRACKS_DRILL_TICKS);
 
-    // A player walk calls the drill off — the one control that stops it. The order parks behind the
+    // A player walk calls the drill off - the one control that stops it. The order parks behind the
     // repetition in flight (the exercise clip is not interruptible), so it lands a few ticks later.
     sim.enqueue({ kind: 'moveUnit', entity: recruit, x: 1, y: 1 });
     run(sim, EXERCISE_CLIP_TICKS + 2);
@@ -286,7 +286,7 @@ describe('trainSoldier — the barracks drill', () => {
   it('abandons the errand at its next planning when the house is gone', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 3, 3);
-    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // at the door — it drills from tick one
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // at the door - it drills from tick one
 
     sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
@@ -310,7 +310,7 @@ describe('trainSoldier — the barracks drill', () => {
     sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     // Accepting it would cancel whatever the settler was doing, only for the drill rung to drop the
-    // errand next tick — and the AI would re-issue the same order every decision.
+    // errand next tick - and the AI would re-issue the same order every decision.
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
   });
 

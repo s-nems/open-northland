@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { goodsInCategory, goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
 
 /**
- * The goods-palette model — the eight category tabs and the category filtering behind them. The tab a
+ * The goods-palette model - the eight category tabs and the category filtering behind them. The tab a
  * good falls under is the shared `goodCategoryTab` (the same mapping the Magazyn panel uses), keyed by
  * the good's string id. The window geometry it feeds is covered by `tabbed-list.test.ts`.
  */

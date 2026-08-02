@@ -8,9 +8,9 @@ import {
 
 /**
  * The inter-tick motion track: the drawn anchor (`prev` lerped toward `curr` by the frame alpha) and the
- * GAIT PHASE — the walk-cycle clock scaled by ground actually covered. What must hold for the gait: the
+ * GAIT PHASE - the walk-cycle clock scaled by ground actually covered. What must hold for the gait: the
  * animation-only tuning plays the authored 12-frame cycle in 17 ticks while movement still takes 18, a
- * body-pressed/braking walker's cycle slows proportionally (no jogging in place — the treadmill look), a
+ * body-pressed/braking walker's cycle slows proportionally (no jogging in place - the treadmill look), a
  * stationary tick freezes it, and a snap (first sighting / teleport) contributes no strides.
  */
 
@@ -33,7 +33,7 @@ function drawnAt(
   return { x: m.drawX, y: m.drawY };
 }
 
-describe('trackMotion — the inter-tick interpolation decision', () => {
+describe('trackMotion - the inter-tick interpolation decision', () => {
   it('snaps both anchors on first sight (no glide in from the origin)', () => {
     const m = fresh();
     expect(drawnAt(m, 5, 100, 50, 0.5)).toEqual({ x: 100, y: 50 });
@@ -41,7 +41,7 @@ describe('trackMotion — the inter-tick interpolation decision', () => {
 
   it('lerps from the previous tick anchor to the current one by alpha', () => {
     const m = fresh();
-    trackMotion(m, 1, 100, 50, 0); // first sight — snap
+    trackMotion(m, 1, 100, 50, 0); // first sight - snap
     expect(drawnAt(m, 2, 108, 50, 0.25)).toEqual({ x: 102, y: 50 });
     expect(drawnAt(m, 2, 108, 50, 0.75)).toEqual({ x: 106, y: 50 }); // same tick, alpha grows
   });
@@ -51,7 +51,7 @@ describe('trackMotion — the inter-tick interpolation decision', () => {
     trackMotion(m, 1, 100, 0, 0);
     const endOfTick = drawnAt(m, 2, 108, 0, 1);
     const startOfNext = drawnAt(m, 3, 116, 0, 0);
-    expect(startOfNext.x).toBe(endOfTick.x); // 108 both ways — no visible jump at the boundary
+    expect(startOfNext.x).toBe(endOfTick.x); // 108 both ways - no visible jump at the boundary
   });
 
   it('clamps alpha outside [0,1]', () => {
@@ -64,7 +64,7 @@ describe('trackMotion — the inter-tick interpolation decision', () => {
   it('snaps (never lerps) across a teleport-sized jump', () => {
     const m = fresh();
     trackMotion(m, 1, 0, 0, 0);
-    // 500 px in one tick is a respawn, not a walk — both anchors jump, alpha is irrelevant.
+    // 500 px in one tick is a respawn, not a walk - both anchors jump, alpha is irrelevant.
     expect(drawnAt(m, 2, 500, 0, 0.5)).toEqual({ x: 500, y: 0 });
   });
 
@@ -79,7 +79,7 @@ describe('trackMotion — the inter-tick interpolation decision', () => {
 describe('motion gait phase', () => {
   it('plays the walk cycle in 17 ticks without changing the 18-tick cell crossing', () => {
     const m = fresh();
-    trackMotion(m, 0, 0, 0, 1); // first sighting — snap, no strides
+    trackMotion(m, 0, 0, 0, 1); // first sighting - snap, no strides
     for (let t = 1; t <= WALK_TICKS_PER_CELL; t++) {
       trackMotion(m, t, t * FULL_GAIT_PX_PER_TICK, 0, 1);
     }
@@ -102,28 +102,28 @@ describe('motion gait phase', () => {
     const afterStep = m.gaitPhase;
     trackMotion(m, 2, FULL_GAIT_PX_PER_TICK, 0, 1); // stands still
     expect(m.gaitPhase).toBe(afterStep);
-    trackMotion(m, 3, FULL_GAIT_PX_PER_TICK + 500, 0, 1); // a 500 px teleport — snapped, not strode
+    trackMotion(m, 3, FULL_GAIT_PX_PER_TICK + 500, 0, 1); // a 500 px teleport - snapped, not strode
     expect(m.gaitPhase).toBe(afterStep);
   });
 
   it('caps a sub-snap jump so legs never spin cartoonishly', () => {
     const m = fresh();
     trackMotion(m, 0, 0, 0, 1);
-    trackMotion(m, 1, 100, 0, 1); // 100 px in one tick — under the snap threshold, far over any gait
+    trackMotion(m, 1, 100, 0, 1); // 100 px in one tick - under the snap threshold, far over any gait
     expect(m.gaitPhase).toBeLessThanOrEqual(2.5);
   });
 });
 
-describe('stall detection — a moving state with no displacement must read idle, not frozen mid-stride', () => {
+describe('stall detection - a moving state with no displacement must read idle, not frozen mid-stride', () => {
   it('flags a track stalled after STALL_TICKS_TO_IDLE still ticks, and real travel clears it', () => {
     const m = fresh();
     trackMotion(m, 0, 0, 0, 1); // first sight
     trackMotion(m, 1, FULL_GAIT_PX_PER_TICK, 0, 1); // one real step
     for (let t = 2; t < 2 + STALL_TICKS_TO_IDLE; t++) {
-      expect(isStalled(m)).toBe(false); // not yet — a normal stop must not flicker to idle early
+      expect(isStalled(m)).toBe(false); // not yet - a normal stop must not flicker to idle early
       trackMotion(m, t, FULL_GAIT_PX_PER_TICK, 0, 1); // standing on the same anchor
     }
-    expect(isStalled(m)).toBe(true); // held a leg in the air long enough — present the idle pose
+    expect(isStalled(m)).toBe(true); // held a leg in the air long enough - present the idle pose
     trackMotion(m, 10, FULL_GAIT_PX_PER_TICK * 2, 0, 1); // walks again
     expect(isStalled(m)).toBe(false);
   });
@@ -133,7 +133,7 @@ describe('stall detection — a moving state with no displacement must read idle
     trackMotion(m, 0, 0, 0, 1);
     for (let t = 1; t <= STALL_TICKS_TO_IDLE; t++) trackMotion(m, t, 0, 0, 1); // stalls in place
     expect(isStalled(m)).toBe(true);
-    trackMotion(m, 6, 500, 0, 1); // teleport-sized jump — a fresh anchor, not more standing
+    trackMotion(m, 6, 500, 0, 1); // teleport-sized jump - a fresh anchor, not more standing
     expect(isStalled(m)).toBe(false);
   });
 });
@@ -141,7 +141,7 @@ describe('stall detection — a moving state with no displacement must read idle
 /**
  * The track's interpolation decision. A multi-tick gap is not on its own a reason to snap: a
  * continuously-drawn walker legitimately crosses several ticks in one frame (fixed-timestep catch-up,
- * ×2/×3 game speed at low fps). Only a first sighting snaps — which is the seam the pool reuses to
+ * ×2/×3 game speed at low fps). Only a first sighting snaps - which is the seam the pool reuses to
  * resume a track that sat out frames (see the sprite-pool re-entry test).
  */
 describe('motion interpolation', () => {

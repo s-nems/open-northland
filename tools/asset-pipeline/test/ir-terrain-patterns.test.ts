@@ -20,7 +20,7 @@ describe('buildTerrainPatterns (approximated typeId→ground-pattern map)', () =
   // mountain. cifLinesToSections mirrors pattern.cif's CamelCase grammar.
   const patterns = extractPatterns(
     cifLinesToSections([
-      { level: 1, text: 'GfxPattern' }, // a longer water name — must LOSE to "water 01"
+      { level: 1, text: 'GfxPattern' }, // a longer water name - must LOSE to "water 01"
       { level: 2, text: 'EditName "block water 00 00 00"' },
       { level: 2, text: 'LogicType 1' },
       { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\text_233.pcx"' },

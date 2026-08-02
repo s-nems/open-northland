@@ -7,14 +7,14 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 const { Settler } = components;
 
-/** A real viking `sethouse` name whose type carries a walk-block body (`work_well_00`) — the join key a
+/** A real viking `sethouse` name whose type carries a walk-block body (`work_well_00`) - the join key a
  *  decoded map authors, resolved by name here exactly as `resolveAuthoredPlacements` does it. */
 const WELL_EDIT_NAME = 'viking well';
 const WELL_LEVEL = 0;
 const MAP_CELLS = 40;
 const ANCHOR = { hx: 20 * 2, hy: 20 * 2 };
 
-/** The raw IR lanes this test joins over — `buildingBobs` is a graphics lane the sim `ContentSet` does
+/** The raw IR lanes this test joins over - `buildingBobs` is a graphics lane the sim `ContentSet` does
  *  not carry, so it comes from {@link rawIrUnderTest} (see helpers). */
 interface IrRows {
   buildingBobs?: readonly { editName?: string; level?: number; typeId?: number; tribeId?: number }[];
@@ -38,14 +38,14 @@ function grassMap(cells: number) {
 
 /**
  * Authored maps really do place humans inside houses, and `spawnSettler` pushes them off the body itself
- * (`evictSettlerFromBlockedSpawn`, whose doc carries the rule and the measured corpus counts) — the
+ * (`evictSettlerFromBlockedSpawn`, whose doc carries the rule and the measured corpus counts) - the
  * building-side eviction cannot, because `enqueuePlacements` sends every `placeBuilding` before any
  * `spawnSettler`, so a building's pass runs while its future occupant does not exist yet.
  *
  * This is the real-content twin of the synthetic `sim/test/movement/evict.test.ts` cases: same rule, but
  * over the real name join, the real extracted `[GfxHouse]` footprint, and the real enqueue order.
  */
-describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house bodies', () => {
+describe.runIf(hasRealIr())('authored decoded-map humans - spawns inside house bodies', () => {
   it('a human authored onto a house body cell is pushed off it', async () => {
     const { merge } = await loadContentUnderTest();
     const ir = rawIrUnderTest() as IrRows;
@@ -59,7 +59,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house
     expect(blocked.length).toBeGreaterThan(0); // the fixture type must really wall its ground off
 
     // The authored records: a well, and a human standing on the well's anchor. The anchor is a body cell
-    // (offset 0,0) and is not the door, so this human spawns inside the walls — the map bug, in miniature.
+    // (offset 0,0) and is not the door, so this human spawns inside the walls - the map bug, in miniature.
     const door = footprint?.door;
     expect(blocked.some((c) => c.dx === 0 && c.dy === 0)).toBe(true);
     expect(door?.dx === 0 && door?.dy === 0).toBe(false);
@@ -83,13 +83,13 @@ describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house
 
     const settlers = [...sim.world.query(Settler)];
     const [human] = settlers;
-    // Exactly one authored human — a dropped join would leave zero and pass every assertion vacuously.
+    // Exactly one authored human - a dropped join would leave zero and pass every assertion vacuously.
     expect(settlers.length).toBe(1);
     if (human === undefined) throw new Error('the authored human did not resolve');
     const p = sim.world.get(human, components.Position);
     const at = nodeOfPosition(p.x, p.y);
 
-    // The well's walk-block body, in world half-cells — the door stays a passable stand, exactly as
+    // The well's walk-block body, in world half-cells - the door stays a passable stand, exactly as
     // `buildingBlockedCells` carves it out.
     const body = new Set(blocked.map((c) => `${ANCHOR.hx + c.dx},${ANCHOR.hy + c.dy}`));
     if (door !== undefined) body.delete(`${ANCHOR.hx + door.dx},${ANCHOR.hy + door.dy}`);

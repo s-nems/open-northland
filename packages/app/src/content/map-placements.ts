@@ -1,5 +1,5 @@
 /**
- * The one iterator over a decoded map's `objects.placements` lane — a flat run of `[hx, hy, typeIndex]`
+ * The one iterator over a decoded map's `objects.placements` lane - a flat run of `[hx, hy, typeIndex]`
  * triples (the original's `emla` half-cell placements; layout owned by `@open-northland/data`'s terrain
  * schema). It owns the triple stride and the bounds/undefined handling so the object, collision and
  * resource joins read placements one way instead of each re-deriving `i += 3` / `i / 3`.

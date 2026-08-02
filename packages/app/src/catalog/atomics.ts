@@ -1,5 +1,5 @@
 /**
- * The committed catalog of atomic action ids, transcribed from the extracted data — the harvest ids are the
+ * The committed catalog of atomic action ids, transcribed from the extracted data - the harvest ids are the
  * original's `atomicForHarvesting` per raw good (the collector job runs one per good). These are the semantic
  * ids the sim issues and the render/audio layers bind clips/SFX to, so they live in `catalog/` where the game
  * content (`game/sandbox/`) and the binding reducers (`content/settler-gfx.ts`) can both read them without
@@ -8,7 +8,7 @@
  * swing (source basis; see `content/settler-gfx.ts`).
  */
 
-/** The chop atomic id (the original's `harvest`) — wood's harvest action. */
+/** The chop atomic id (the original's `harvest`) - wood's harvest action. */
 export const HARVEST_ATOMIC = 24;
 export const STONE_HARVEST_ATOMIC = 25;
 export const CLAY_HARVEST_ATOMIC = 26;
@@ -25,7 +25,7 @@ export const HARVEST_CADAVER_ATOMIC = 33;
  *  "viking_farmer_plant"`). */
 export const PLANT_ATOMIC = 34;
 /** The farmer's watering action (`goodtypes.ini` wheat `atomicForCultivating 35`; `setatomic 18 35
- *  "viking_farmer_cultivate"` — the watering-can clip). */
+ *  "viking_farmer_cultivate"` - the watering-can clip). */
 export const CULTIVATE_ATOMIC = 35;
 
 /**
@@ -59,7 +59,7 @@ export const KISSED_ATOMIC = 21;
 
 /**
  * The gossip pair (`logicdefines.inc` TALK 14 / LISTEN 15, sim `systems/social/gossip/`). The man body
- * authors one speak clip (`human_man_generic_speak` — the extracted `[gfxanimatomic]` binds it to both
+ * authors one speak clip (`human_man_generic_speak` - the extracted `[gfxanimatomic]` binds it to both
  * actions 14 and 15), the woman body one talk clip (`human_woman_generic_talk`), so on each body both
  * roles bind the same sequence.
  */
@@ -74,5 +74,5 @@ export const LISTEN_ATOMIC = 15;
 export const BUILD_GUIDE_ATOMIC = 43;
 
 /** One drill repetition at the barracks (`logicdefines.inc` EXERCISE 89; `tribetypes.ini setatomic 6 89
- *  "viking_civilist_exercise"` — the sim's `EXERCISE_ATOMIC_ID`). */
+ *  "viking_civilist_exercise"` - the sim's `EXERCISE_ATOMIC_ID`). */
 export const EXERCISE_ATOMIC = 89;

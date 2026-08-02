@@ -7,11 +7,11 @@ import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
  * The app-facing façade end to end through the fake platform seams: one `update()` turns world state
- * into actual (fake) playback — event one-shots, terrain ambient, settler chat voices — and the whole
+ * into actual (fake) playback - event one-shots, terrain ambient, settler chat voices - and the whole
  * pipeline stays a free no-op while the engine is inaudible (no gesture yet / muted).
  */
 
-/** The SocialTalk pair's `logicSoundType` ids (`soundfx.cif`) — what a talk clip's voice cue names. */
+/** The SocialTalk pair's `logicSoundType` ids (`soundfx.cif`) - what a talk clip's voice cue names. */
 const SOCIALTALK_MALE = 61;
 
 const index: SoundIndex = {

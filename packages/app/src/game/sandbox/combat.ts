@@ -23,14 +23,14 @@ import {
 } from './ids/index.js';
 
 /**
- * The sandbox combat content — the weapon swing timings, damages, and the {@link sandboxWeapons} table
+ * The sandbox combat content - the weapon swing timings, damages, and the {@link sandboxWeapons} table
  * the global {@link import('./content/index.js').sandboxContent} set assembles from. Swing lengths + hit frames
  * are transcribed from the extracted viking `atomicanimations.ini` records; the bare-target damages from the
- * readable `weapons.ini` `damagevalue 0` (same source basis), so sandbox combat resolves on the real scale —
+ * readable `weapons.ini` `damagevalue 0` (same source basis), so sandbox combat resolves on the real scale -
  * a headless scene fights like the browser on real content, no separate sandbox-scale tuning.
  */
 
-/** Munition type 1 = arrow — what the bows fire. */
+/** Munition type 1 = arrow - what the bows fire. */
 const ARROW_MUNITION = 1;
 /** The ranged weapon main-type (projectile weapons). */
 const RANGED_MAIN_TYPE = 6;
@@ -56,7 +56,7 @@ export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
 // Bare-target damage (`weapons.ini` `damagevalue 0`) per weapon, transcribed from the readable source like
 // the swing timings above, so sandbox combat runs on the real scale (a ~5000-HP fighter takes several
-// swings — see the battle scene). The per-armor-material columns stay in the extracted IR; the sandbox
+// swings - see the battle scene). The per-armor-material columns stay in the extracted IR; the sandbox
 // models only the bare-target column each soldier job actually swings with.
 const FIST_DAMAGE = 400; // fist
 const SWORD_DAMAGE = 1600; // short_sword
@@ -65,7 +65,7 @@ const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
 // The animal natural weapons, transcribed from the mod `weapons.ini` (`bearfist` / `wolvefist`,
-// `damagevalue 0`), both weapon type 1 — the pair key is `(tribeType, typeId)`, so the shared typeId
+// `damagevalue 0`), both weapon type 1 - the pair key is `(tribeType, typeId)`, so the shared typeId
 // never collides across tribes. The source rows carry `jobtype 49` (one bearfist twin 34) and
 // `goodtype 0`; the sandbox jobs table does not model the animal pseudo-jobs and the jobless-animal
 // binding reads the tribe's first weapon row regardless, so the rows ship job-less, and the good ref
@@ -76,11 +76,11 @@ const ANIMAL_FIST_TYPE = 1;
 const BEAR_FIST_DAMAGE = 800;
 const WOLF_FIST_DAMAGE = 350;
 
-// vs-BUILDING damage — the weapon's HOUSE column (`weapons.ini` `damagevalue 7`,
+// vs-BUILDING damage - the weapon's HOUSE column (`weapons.ini` `damagevalue 7`,
 // {@link import('@open-northland/sim').ARMOR_MATERIAL} `HOUSE`), what a warrior does to a structure.
 // A NAMED SANDBOX APPROXIMATION (the real per-material columns live in the extracted IR, which the browser
 // loads): melee weapons chop a wall near their flesh rate, arrows barely scratch masonry. Sized so a
-// warband razes a home / watchtower / HQ (30k / 60k / 100k HP — `construction.ts`) in a watchable siege,
+// warband razes a home / watchtower / HQ (30k / 60k / 100k HP - `construction.ts`) in a watchable siege,
 // not instantly and not forever.
 const FIST_VS_BUILDING = 120;
 const SWORD_VS_BUILDING = 1000;
@@ -103,7 +103,7 @@ export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, EquipClass> = new Map(
 );
 
 /**
- * The sandbox weapon set — each viking soldier job's weapon with its range band and synthetic damage.
+ * The sandbox weapon set - each viking soldier job's weapon with its range band and synthetic damage.
  * Bound to `sandboxContent().weapons`; the melee weapons swing at range 1(-2), the bows fire arrows.
  */
 export function sandboxWeapons() {

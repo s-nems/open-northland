@@ -5,7 +5,7 @@ import { DEFAULT_HUD_STYLE, HudLayer, type HudStyle } from '../src/gpu/overlays/
 
 /**
  * The retained HudLayer's change-detection state machine is agent-checkable headless (Pixi
- * `Container`/`Graphics`/`Text` construct without a GL context — the same stance as
+ * `Container`/`Graphics`/`Text` construct without a GL context - the same stance as
  * selection-layer.test.ts); only the rasterized glyphs stay human-gated. These pin the pool
  * invariants a later edit would break with a human-visible-only symptom: rows are pooled (hidden,
  * not destroyed), text updates in place, and a row hidden ACROSS a style change restyles on reuse.
@@ -27,7 +27,7 @@ function rowTexts(layer: HudLayer): Text[] {
   return layer.container.children.filter((c): c is Text => c instanceof Text);
 }
 
-describe('HudLayer — retained rows + change detection', () => {
+describe('HudLayer - retained rows + change detection', () => {
   it('toggles visibility for an absent frame and back, keeping the pooled rows', () => {
     const layer = new HudLayer();
     layer.draw({ placement: placement('a', 'b') });
@@ -46,7 +46,7 @@ describe('HudLayer — retained rows + change detection', () => {
     const rows = rowTexts(layer);
     expect(rows).toHaveLength(3);
     layer.draw({ placement: placement('a', 'b') });
-    expect(rowTexts(layer)).toHaveLength(3); // pooled — same objects, no destroy/create churn
+    expect(rowTexts(layer)).toHaveLength(3); // pooled - same objects, no destroy/create churn
     expect(rows[2]?.visible).toBe(false);
     layer.draw({ placement: placement('a', 'b', 'd') });
     expect(rowTexts(layer)).toHaveLength(3);

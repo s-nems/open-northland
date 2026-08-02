@@ -16,7 +16,7 @@ describe('snapshot read-view', () => {
     if (ent === undefined) throw new Error('expected one snapshot entity');
     expect(ent.id).toBe(nthEntity(sim, 0) as number);
 
-    // The Stockpile Map became a plain sorted [k,v] array — no live Map in the snapshot (transferable).
+    // The Stockpile Map became a plain sorted [k,v] array - no live Map in the snapshot (transferable).
     const stock = ent.components.Stockpile as { amounts: Array<[number, number]> };
     expect(stock.amounts).toEqual([[WOOD, 10]]);
     expect(stock.amounts).not.toBeInstanceOf(Map);

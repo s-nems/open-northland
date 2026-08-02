@@ -6,7 +6,7 @@ describe('extractPatterns', () => {
   // Mirrors Data/engine2d/inis/patterns/pattern.cif as cifLinesToSections yields it: level-1 CamelCase
   // `GfxPattern` headers, level-2 CamelCase props. Record 0 = the misc "border" tile (LogicType 0, single
   // EditGroup); record 1 = a meadow tile carrying THREE EditGroups (the real data has groups of length
-  // 1, 2 and 3 — kept verbatim, any count); record 2 has a malformed (5-int) GfxCoordsA -> that tuple
+  // 1, 2 and 3 - kept verbatim, any count); record 2 has a malformed (5-int) GfxCoordsA -> that tuple
   // degrades to undefined but the record still occupies its positional slot.
   const lines: CifLine[] = [
     { level: 1, text: 'GfxPattern' },

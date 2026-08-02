@@ -22,7 +22,7 @@ import {
   woodcutterAt,
 } from './support.js';
 
-describe('atomicPlanner — choosing the next atomic', () => {
+describe('atomicPlanner - choosing the next atomic', () => {
   it('sets a MoveGoal to the nearest harvestable resource when empty-handed and not on one', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
@@ -53,7 +53,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
     woodAt(sim, 4, 0); // node distance 8
-    woodAt(sim, 2, 0); // node distance 4 — should win
+    woodAt(sim, 2, 0); // node distance 4 - should win
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 2, 0));
   });
@@ -111,7 +111,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
       targetTile: null,
     });
     plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(cutter, MoveGoal)).toBe(false); // busy — planner left it alone
+    expect(sim.world.has(cutter, MoveGoal)).toBe(false); // busy - planner left it alone
   });
 
   it('an unemployed settler (no job) runs no atomics', () => {

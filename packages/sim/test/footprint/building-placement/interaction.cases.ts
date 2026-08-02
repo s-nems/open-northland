@@ -17,7 +17,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('door cell — settlers interact with a house at its entry point', () => {
+describe('door cell - settlers interact with a house at its entry point', () => {
   it('resolves the interaction tile to the door (footprinted) or the anchor (footprint-less)', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
@@ -44,14 +44,14 @@ describe('door cell — settlers interact with a house at its entry point', () =
       enjoyment: fx.fromInt(0),
       experience: new Map<number, number>(),
     });
-    sim.world.add(worker, Position, positionOfNode(5, 5)); // ON the walls (the anchor node) — not at work
+    sim.world.add(worker, Position, positionOfNode(5, 5)); // ON the walls (the anchor node) - not at work
     expect(presentOperatorCount(sim.world, ctxOf(sim), hut)).toBe(0);
     Object.assign(sim.world.get(worker, Position), positionOfNode(4, 5)); // at the door node (4,5)
     expect(presentOperatorCount(sim.world, ctxOf(sim), hut)).toBe(1);
   });
 });
 
-describe('wall gate — a door listed inside the walls stays walkable', () => {
+describe('wall gate - a door listed inside the walls stays walkable', () => {
   // The real data's defence wall (`work_pottery_02`, the "Mur" records) puts its LogicDoorPoint
   // INSIDE its own LogicWalkBlockArea: the door IS the wall's passable gate. Without the carve-out
   // a walk-to-door goal would be a blocked cell → findPath fails → the request is never re-issued →
@@ -60,7 +60,7 @@ describe('wall gate — a door listed inside the walls stays walkable', () => {
   const GATE_FOOTPRINT = {
     blocked: [
       { dx: -1, dy: 0 },
-      { dx: 0, dy: 0 }, // the gate cell — ALSO the door below, like the real wall records
+      { dx: 0, dy: 0 }, // the gate cell - ALSO the door below, like the real wall records
       { dx: 1, dy: 0 },
     ],
     familyBody: [
@@ -91,7 +91,7 @@ describe('wall gate — a door listed inside the walls stays walkable', () => {
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
     expect(blocked.has(terrain.nodeAt(3, 3))).toBe(true); // wall segment
     expect(blocked.has(terrain.nodeAt(5, 3))).toBe(true); // wall segment
-    expect(blocked.has(terrain.nodeAt(4, 3))).toBe(false); // the gate/door — carved out, passable
+    expect(blocked.has(terrain.nodeAt(4, 3))).toBe(false); // the gate/door - carved out, passable
     // A path to the gate cell itself (the interaction tile) succeeds instead of wedging.
     expect(interactionNode(sim.world, ctxOf(sim), placedBuilding(sim))).toEqual({ x: 4, y: 3 });
     const walker = sim.world.create();
@@ -106,7 +106,7 @@ describe('wall gate — a door listed inside the walls stays walkable', () => {
   });
 });
 
-describe('findPath — the blocked-start/goal exemptions', () => {
+describe('findPath - the blocked-start/goal exemptions', () => {
   it('trivially succeeds when start === goal even on a building cell (already there)', () => {
     const sim = mappedSim(grassMap(8, 5));
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
@@ -115,6 +115,6 @@ describe('findPath — the blocked-start/goal exemptions', () => {
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
     const wall = terrain.nodeAt(3, 1);
     expect(blocked.has(wall)).toBe(true);
-    expect(findPath(terrain, wall, wall, blocked)).toEqual([wall]); // standing on it — not "unreachable"
+    expect(findPath(terrain, wall, wall, blocked)).toEqual([wall]); // standing on it - not "unreachable"
   });
 });

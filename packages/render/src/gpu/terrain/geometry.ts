@@ -31,14 +31,14 @@ const TILE_COLOURS: readonly number[] = [
   0x3a6ea5, // 1: water (impassable)
   0x8a6d3b, // 2: dirt/path (an object's body)
   0x9a9a9a, // 3: stone (margin)
-  0xc9b26b, // 4: sand (barren — open ground crops can't be sown on)
+  0xc9b26b, // 4: sand (barren - open ground crops can't be sown on)
 ];
 
 /** The default flat tint for an unbound landscape typeId (the fallback triangle's colour). */
 export const DEFAULT_TILE_COLOUR = 0x4a7c3a;
 
 /**
- * The placeholder flat tint for a landscape typeId (`0xRRGGBB`) — the same table the flat-tint ground
+ * The placeholder flat tint for a landscape typeId (`0xRRGGBB`) - the same table the flat-tint ground
  * path batches by, exported so other typeId→colour consumers (the app's minimap raster) fall back to
  * the exact colours the placeholder ground draws instead of re-inventing a palette.
  */
@@ -66,10 +66,10 @@ export function dominantGroundColour(typeIds: readonly number[]): number {
   return best === undefined ? DEFAULT_TILE_COLOUR : flatTileColour(best);
 }
 
-/** A node's upward lift in world px — 0 on a flat map, per-node elevation otherwise. */
+/** A node's upward lift in world px - 0 on a flat map, per-node elevation otherwise. */
 export type NodeLiftFn = (hx: number, hy: number) => number;
 
-/** No lift — the flat map's shared {@link NodeLiftFn}. */
+/** No lift - the flat map's shared {@link NodeLiftFn}. */
 export const NO_LIFT: NodeLiftFn = () => 0;
 
 /** The map's shading + water inputs the mesh emitters thread to {@link pushTriangle}: the R8 lane
@@ -118,9 +118,9 @@ export interface TerrainChunk {
  * block's inclusive tile range to `meshBlock`, wrap the display objects it returns in one {@link
  * Container} (kept at the world origin, so children stay in absolute world coords), record the block's
  * AABB, add it under `parent`, and return the meshed blocks. Empty blocks are skipped. The box is
- * computed analytically from the block's corner cells' triangle extents — a cell's triangles span nodes
+ * computed analytically from the block's corner cells' triangle extents - a cell's triangles span nodes
  * from `hx−1` to `hx+2` and rows `hy..hy+2` (`x ∈ [(2c−1)·halfW, (2c+3)·halfW]`, `y ∈ [r·rowStep,
- * (r+1)·rowStep]`) — so no per-cell scan is needed to know where a block lives on screen.
+ * (r+1)·rowStep]`) - so no per-cell scan is needed to know where a block lives on screen.
  */
 export function buildChunks(
   parent: Container,

@@ -31,7 +31,7 @@ import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '.
  *
  * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, an unknown
  * `jobType`, or a trade whose `needforjob` XP threshold this settler hasn't earned yet
- * ({@link settlerMeetsNeed} — the tech tree's manual seam: a profession must be discovered through
+ * ({@link settlerMeetsNeed} - the tech tree's manual seam: a profession must be discovered through
  * accrued repeats; the profession-progression toggle lifts the civilian gates, fighters stay
  * barracks-gated either way).
  */
@@ -42,7 +42,7 @@ export function setJob(
 ): void {
   const e = command.entity;
   if (!isTradeAssignable(world, e)) return;
-  if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
+  if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job - skip
   if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', command.jobType)) return; // unearned trade
   // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
@@ -74,13 +74,13 @@ export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType
 }
 
 /**
- * Assign one owned settler to work at a specific `building` (the `assignWorker` command — the player-directed
+ * Assign one owned settler to work at a specific `building` (the `assignWorker` command - the player-directed
  * twin of the JobSystem's automatic assignment): resolve the building's open worker job in the command's
- * `jobPriority` preference order ({@link openWorkerJobFromList} — a same-tribe/same-owner, tech-enabled
+ * `jobPriority` preference order ({@link openWorkerJobFromList} - a same-tribe/same-owner, tech-enabled
  * building with an understaffed slot), re-idle the settler as that job, and bind it to the chosen building
  * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback):
  * a settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot, while the
- * tribe-tech gate is relaxed for the player — see {@link openWorkerJobFromList}.
+ * tribe-tech gate is relaxed for the player - see {@link openWorkerJobFromList}.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a target {@link isTradeAssignable}
  * rejects, a dead/stale/non-building target, or a building that offers this settler no open worker job right
@@ -96,7 +96,7 @@ export function assignWorker(
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
   // Signpost confinement: a workplace beyond the settler's allowed area is refused like an out-of-area
-  // move order (moveUnit) — the player extends the network first, then staffs the far building.
+  // move order (moveUnit) - the player extends the network first, then staffs the far building.
   const terrain = ctx.terrain;
   if (terrain !== undefined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -127,17 +127,17 @@ export function assignWorker(
 }
 
 /**
- * Assign one owned builder to a specific construction `site` — the original's "put a builder on a foundation"
+ * Assign one owned builder to a specific construction `site` - the original's "put a builder on a foundation"
  * (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the builder drive raises
  * that site over the nearest one and the site's workers window lists the settler until the build finishes
  * ({@link import('../../settlers/drives/economy/index.js').planBuilder} re-stamps or drops the pin). Only the
- * builder trade qualifies — a civilian right-clicked onto a site is a no-op (the app routes normal buildings
+ * builder trade qualifies - a civilian right-clicked onto a site is a no-op (the app routes normal buildings
  * to `assignWorker` instead). Authoritative like every employment order: it cancels the current
  * action/route/hold so the builder heads for its site this tick.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
  * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site
- * owned by another player (a player pins only its own foundations — two same-tribe players stay apart).
+ * owned by another player (a player pins only its own foundations - two same-tribe players stay apart).
  * Unlike {@link setJob}/{@link assignWorker} it applies no women-take-no-trade gate: this order pins a site
  * rather than changing a trade, and the {@link jobCanBuild} check below already admits only a settler that
  * holds a builder job.
@@ -158,11 +158,11 @@ export function assignBuilder(
   if (!world.isAlive(site) || !world.has(site, Building) || !world.has(site, UnderConstruction)) return;
   const settler = world.get(e, Settler);
   if (settler.tribe !== world.get(site, Building).tribe) return; // not this tribe's foundation
-  if (!sameSide(world, e, site)) return; // another player's foundation — not this side's
+  if (!sameSide(world, e, site)) return; // another player's foundation - not this side's
   if (settler.jobType === null || !jobCanBuild(ctx, settler.jobType)) return;
 
   world.add(e, SiteAssignment, { site, pinned: true });
-  // Obey now — the planner heads for the pinned site this tick. Still an unconditional cancel (a remaining
+  // Obey now - the planner heads for the pinned site this tick. Still an unconditional cancel (a remaining
   // member of the uninterruptible-atomic class, same ticket as reidleAsJob's note).
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // a builder pin executing now supersedes any earlier parked order

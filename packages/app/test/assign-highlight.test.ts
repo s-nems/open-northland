@@ -16,7 +16,7 @@ import { createPickModeController, type PickModeController } from '../src/view/u
 import { countingSnapshot } from './support/snapshot.js';
 
 /**
- * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a
+ * The "przydziel miejsce pracy" verdict - the button places the settler's CURRENT trade only, so a
  * building is green iff it offers that exact trade (canonically) with a free slot. Matched by
  * `canonicalJobType`, so a picker-assigned raw id lines up with the building's rebased slot id.
  */
@@ -36,13 +36,13 @@ const WAREHOUSE_SLOTS = [
   { jobType: rebaseSlotJob(JOB_COLLECTOR), count: 3 }, // a collector (gatherer) slot
 ];
 
-describe('currentTradeSlotAt — the current-trade green/red verdict', () => {
+describe('currentTradeSlotAt - the current-trade green/red verdict', () => {
   it('greens a mint for a coin-maker, matching the rebased slot to the raw current id', () => {
     // The settler is a coin-maker (raw id 14); the mint slot is rebased (1014). They match canonically.
     expect(currentTradeSlotAt(COIN_MAKER, MINT_SLOTS, undefined)).toBe(rebaseSlotJob(COIN_MAKER));
   });
 
-  it('reds a mill for a coin-maker — the building does not offer that trade', () => {
+  it('reds a mill for a coin-maker - the building does not offer that trade', () => {
     expect(currentTradeSlotAt(COIN_MAKER, MILL_SLOTS, undefined)).toBeNull();
   });
 
@@ -55,7 +55,7 @@ describe('currentTradeSlotAt — the current-trade green/red verdict', () => {
     expect(currentTradeSlotAt(JOB_COLLECTOR, WAREHOUSE_SLOTS, undefined)).toBe(rebaseSlotJob(JOB_COLLECTOR));
   });
 
-  it('never falls back to the carrier — a miller on a mint stays red, not a hauler', () => {
+  it('never falls back to the carrier - a miller on a mint stays red, not a hauler', () => {
     // The button does not re-trade: a miller aimed at a mint (no miller slot) is red, never bound as carrier.
     expect(currentTradeSlotAt(19, MINT_SLOTS, undefined)).toBeNull();
   });
@@ -67,7 +67,7 @@ describe('currentTradeSlotAt — the current-trade green/red verdict', () => {
 });
 
 /**
- * The snapshot-level projection over real sandbox content — the functions the view actually calls. The
+ * The snapshot-level projection over real sandbox content - the functions the view actually calls. The
  * key invariant: the highlight verdict (`computeAssignHighlight`, what the player sees green) and the click
  * resolver (`assignableJobForBuilding`, what a click binds) must agree building-for-building, so a green
  * building never silently cancels the click and a red one never binds. Both share one `candidateSlots`

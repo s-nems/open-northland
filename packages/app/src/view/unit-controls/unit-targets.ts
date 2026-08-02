@@ -12,9 +12,9 @@ export interface UnitTargetsDeps {
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
   /** The observer session: every owner counts as "ours", so any player's entities are pickable
-   *  (and none reads as an enemy — a spectator has no side to attack for). */
+   *  (and none reads as an enemy - a spectator has no side to attack for). */
   readonly observer: boolean;
-  /** The frame the player is clicking on — see {@link import('./types.js').UnitControlsOptions.drawnItems}. */
+  /** The frame the player is clicking on - see {@link import('./types.js').UnitControlsOptions.drawnItems}. */
   readonly drawnItems: () => readonly DrawItem[];
   /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
@@ -29,15 +29,15 @@ export type UnitTargetKind = 'settler' | 'building';
 export interface UnitTargets {
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
   owned(kind?: UnitTargetKind): Pickable[];
-  /** Enemy attack targets — settlers AND buildings owned by another player. A right-click on one issues
+  /** Enemy attack targets - settlers AND buildings owned by another player. A right-click on one issues
    *  an `attackUnit` order (the sim accepts a building target). */
   enemies(): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
-  /** The human's standing signposts — direct-click targets only (a marquee never grabs a post). */
+  /** The human's standing signposts - direct-click targets only (a marquee never grabs a post). */
   signposts(): Pickable[];
   /**
-   * The owned settlers among `refs`, in draw order — the set an order is issued to. Unlike the hit-test
+   * The owned settlers among `refs`, in draw order - the set an order is issued to. Unlike the hit-test
    * sets it is bound to the selection, not the screen: a selection survives the camera panning away from
    * it, and it reaches a settler standing inside a building, which the frame does not draw.
    */
@@ -45,7 +45,7 @@ export interface UnitTargets {
 }
 
 /**
- * The pickable target-set builders for the unit controls — each turns the frame the player is looking at
+ * The pickable target-set builders for the unit controls - each turns the frame the player is looking at
  * into the {@link Pickable}s a click hit-tests against. Pure with respect to controller state (they read
  * only the snapshot + the injected render frame data), so they live apart from the selection/order logic.
  */
@@ -109,14 +109,14 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
-        // A unit OR a building is an attack target — a warrior can raze an enemy structure.
+        // A unit OR a building is an attack target - a warrior can raze an enemy structure.
         const itemKind = unitKindOf(it);
         if (itemKind === null) continue;
         // The ghost guard is what keeps the attack set fog-gated: an explored structure the fog has
         // since swallowed still draws, as a memory you cannot order a swing at.
         if (!isHitTarget(it)) continue;
         const owner = ownerOf.get(it.ref);
-        if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" — not an enemy
+        if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" - not an enemy
         out.push(hitTarget(it, itemKind));
       }
       return out;
@@ -130,7 +130,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of deps.drawnItems()) {
         if (it.isFlag !== true || !isHitTarget(it)) continue;
         const gatherer = gathererOf.get(it.ref);
-        if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
+        if (gatherer === undefined) continue; // an unbound / non-human flag - not a selection proxy
         out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
       }
       return out;
@@ -140,7 +140,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const { ownerOf } = ownersOf(deps.snapshot());
       const out: Pickable[] = [];
       for (const it of deps.drawnItems()) {
-        // Only the post itself — its direction boards ride synthetic negative refs (see sprite-scene.ts).
+        // Only the post itself - its direction boards ride synthetic negative refs (see sprite-scene.ts).
         if (it.kind !== 'signpost' || it.ref <= 0 || !isHitTarget(it)) continue;
         if (!pickableOwner(ownerOf.get(it.ref))) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
@@ -160,7 +160,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // this set pairs units to formation slots against each other rather than against the screen.
         out.push({ ref: e.id, ...tileToScreen(pos.x / ONE, pos.y / ONE) });
       }
-      // Front-to-back then by id, the drawn scene's own order — assignFormation's pairing breaks
+      // Front-to-back then by id, the drawn scene's own order - assignFormation's pairing breaks
       // equal-cost ties by input index, so the slot a unit lands in must not depend on entity order.
       out.sort((a, b) => a.y - b.y || a.x - b.x || a.ref - b.ref);
       return out;

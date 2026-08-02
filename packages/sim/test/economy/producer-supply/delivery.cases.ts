@@ -16,7 +16,7 @@ import {
   WOODCUTTER,
 } from './support.js';
 
-describe('gatherer flag-drop — deliver harvested goods to a bound store', () => {
+describe('gatherer flag-drop - deliver harvested goods to a bound store', () => {
   it('a gatherer delivers to its bound flag pile rather than the nearest store', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
     const flag = pileAt(sim, 6, 0); // its assigned drop flag (a bare ground pile), far

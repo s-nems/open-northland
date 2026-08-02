@@ -1,29 +1,29 @@
 import type { Fixed } from '../../core/fixed.js';
 import { defineComponent } from '../../ecs/world.js';
 
-/** One in-flight production BATCH — see {@link Production}. */
+/** One in-flight production BATCH - see {@link Production}. */
 export interface ProductionCycle {
   /** Whole ticks elapsed in this cycle; completion is the exact `elapsed >= duration`. */
   elapsed: number;
   /** Ticks this cycle takes (the recipe's `ticks`, snapshotted at cycle start; >= 1). */
   duration: number;
-  /** The product this batch crafts — the key of the building type's per-product recipe (its
+  /** The product this batch crafts - the key of the building type's per-product recipe (its
    *  first output's goodType), snapshotted at cycle start like `duration`. */
   goodType: number;
 }
 
 /**
  * The in-progress production cycles on a workplace (a {@link Building} whose building type carries
- * `recipes`) — a LIST, one independent batch per operator working the craft, so two millers grind two
+ * `recipes`) - a LIST, one independent batch per operator working the craft, so two millers grind two
  * flours in parallel (each cycle consumed its own recipe's inputs at start and deposits its own
- * output at completion; observed original behaviour — a multi-worker workshop out-produces a
+ * output at completion; observed original behaviour - a multi-worker workshop out-produces a
  * single-worker one). Each tick the ProductionSystem advances as many cycles as there are operators
- * ON STATION (FIFO — the oldest batch first), so a departed worker's batch simply waits; new cycles
+ * ON STATION (FIFO - the oldest batch first), so a departed worker's batch simply waits; new cycles
  * start while there are more present operators than running cycles and some product's inputs/room
  * allow. Which product a new cycle crafts is the starting operator's choice ({@link CraftSelection}).
- * The component exists only while at least one cycle runs — its absence means the workplace is idle.
+ * The component exists only while at least one cycle runs - its absence means the workplace is idle.
  *
- * Timing is the exact integer compare `elapsed >= duration` (like {@link CurrentAtomic}) — never an
+ * Timing is the exact integer compare `elapsed >= duration` (like {@link CurrentAtomic}) - never an
  * accumulated fixed-point step, which would truncate and hang. `duration`/`goodType` mirror the
  * recipe at start (snapshotted so a content edit mid-cycle can't change an in-flight cycle).
  */
@@ -33,13 +33,13 @@ export const Production = defineComponent<{
 }>('Production');
 
 /**
- * A craft worker's product order — which of its workplace's products it crafts, set by the
+ * A craft worker's product order - which of its workplace's products it crafts, set by the
  * `setCraftGoods` command (the crafting twin of the gatherer's `WorkFlag.goodType` filter; the 1:1
- * alternation over a multi-pick is a design decision, user-specified 2026-07-16 — the original's
+ * alternation over a multi-pick is a design decision, user-specified 2026-07-16 - the original's
  * per-worker product scheduling is not decoded). `goods`
  * empty means "every product the workplace offers" (the default; the component may simply be absent).
  * With several products in rotation the worker alternates: each started cycle takes the product at
- * `cursor` (skipping ones whose inputs/room don't allow a start) and advances past it — one short
+ * `cursor` (skipping ones whose inputs/room don't allow a start) and advances past it - one short
  * sword, one plate armor, one short sword… `cursor` indexes the effective rotation list (the selected
  * goods, or all workplace products when `goods` is empty), and is reset by a new selection.
  */
@@ -51,10 +51,10 @@ export const CraftSelection = defineComponent<{
 }>('CraftSelection');
 
 /**
- * A workplace's fractional experience-bonus output — the decimal part of "an experienced baker bakes
+ * A workplace's fractional experience-bonus output - the decimal part of "an experienced baker bakes
  * 1.5 bread per cycle". Each completed batch adds its operator's bonus fraction here per output good;
  * whole units move into the {@link Stockpile} the moment a fraction crosses 1.0 (capacity permitting),
- * so only whole units are ever visible to withdrawal — a 0.9 remainder cannot leave the building
+ * so only whole units are ever visible to withdrawal - a 0.9 remainder cannot leave the building
  * (design rule, user-specified). Values are `Fixed` in [0, capacity-blocked overflow); the component
  * exists only while some remainder is non-zero.
  */

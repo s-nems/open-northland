@@ -4,10 +4,10 @@ import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';
 
 /**
- * INTEGRATION smoke for the scene layer — `render` reading a REAL `Simulation.snapshot()`, not a
+ * INTEGRATION smoke for the scene layer - `render` reading a REAL `Simulation.snapshot()`, not a
  * hand-built one (the unit tests in scene/build-scene.test.ts cover the projection/sort logic on synthetic
  * snapshots). This is the hands-on entry point the screenshot harness will sit on: run the real
- * vertical-slice sim a few ticks, snapshot it, and assert the draw list it produces is sane —
+ * vertical-slice sim a few ticks, snapshot it, and assert the draw list it produces is sane -
  * the building, the woodcutter, the carrier, and the resource nodes all appear and are correctly
  * ordered behind/above the terrain. It proves the snapshot→scene seam against real component data
  * (Maps cloned to arrays, Fixed positions, the actual entity set) rather than a fixture.

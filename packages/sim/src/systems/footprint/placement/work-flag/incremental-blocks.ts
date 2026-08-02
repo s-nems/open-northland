@@ -26,17 +26,17 @@ import {
   signpostBlockerCells,
 } from '../blockers.js';
 
-// The incrementally-maintained work-flag blocked set — the refcounted per-world cache behind
+// The incrementally-maintained work-flag blocked set - the refcounted per-world cache behind
 // ../work-flag's placement queries, with its journal replay, rebuild, and coherence verifier.
 
 /** One blocker's blocked nodes ({@link BLOCKS_WORK_FLAG}, in bounds; duplicates kept so add and removal
- *  replay symmetrically). Captured at admit time — the entity may be destroyed by removal. */
+ *  replay symmetrically). Captured at admit time - the entity may be destroyed by removal. */
 type BlockedCells = readonly NodeId[];
 
 /**
  * The per-world incremental blocked-set state. The refcounted `counts`/`blocked` pair is maintained
  * against the blocker stores' membership journals, so a burst that plants N flags/signposts costs
- * N × O(own footprint) instead of N × O(all blockers) — the rebuild-on-bump memo this replaces made
+ * N × O(own footprint) instead of N × O(all blockers) - the rebuild-on-bump memo this replaces made
  * the AI's opening signpost wave quadratic (profiled 0.6–2.4 s single ticks). The memo feeds command
  * gates and sim decisions (`canPlaceWorkFlag`, the auto-flag plant), so the registered `verifyCaches`
  * verifier proves the held set byte-identical to a full {@link buildBlocks} re-derive.
@@ -46,14 +46,14 @@ interface IncrementalBlocks {
   readonly terrain: TerrainGraph;
   /** Held membership generations of the three journal-replayed stores ({@link STATIC_SOURCES}). */
   readonly gens: Map<Component<unknown>, number>;
-  /** Held {@link ResourceFootprint} membership generation — journal-replayed like the static sources,
+  /** Held {@link ResourceFootprint} membership generation - journal-replayed like the static sources,
    *  but its deltas resync through the Resource capturer (a footprint stamp/unstamp changes which cells
    *  that resource blocks), so a stamp decoupled from its Resource membership change is still caught. */
   footprintGen: number;
   /** Guard for the one input no journal covers: the in-place tier swap (a `World.write` value bump)
-   *  changes captured cells with no membership bump — any move forces a full rebuild (rare). */
+   *  changes captured cells with no membership bump - any move forces a full rebuild (rare). */
   buildingValueGen: number;
-  /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store — O(flags), tiny. */
+  /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store - O(flags), tiny. */
   flagGen: number;
   flagMoves: number;
   /** Node → standing contribution count; `blocked` holds exactly the keys with a positive count. */
@@ -84,7 +84,7 @@ const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
   [BUILDING_ZONE]: false,
 };
 
-/** The entity's blocked nodes under `run`'s visitor — the shared channel/bounds filter of every capturer. */
+/** The entity's blocked nodes under `run`'s visitor - the shared channel/bounds filter of every capturer. */
 function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void): NodeId[] {
   const cells: NodeId[] = [];
   run((x, y, channel) => {
@@ -149,7 +149,7 @@ function resyncEntity(world: World, state: IncrementalBlocks, source: StaticBloc
   addCells(state, cells);
 }
 
-/** Re-derive the whole marker layer from the DeliveryFlag store — flags are the one blocker that MOVES
+/** Re-derive the whole marker layer from the DeliveryFlag store - flags are the one blocker that MOVES
  *  (an in-place Position write the journals cannot see), and the store is small, so any flag change
  *  re-diffs it wholesale in O(flags). */
 function refreshMarkerLayer(world: World, state: IncrementalBlocks): void {
@@ -192,10 +192,10 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
 }
 
 /** Catch `state` up to the live world via the membership journals; false demands a full rebuild
- *  (a journal gap, or a change on an input the journals cannot cover — see {@link IncrementalBlocks}). */
+ *  (a journal gap, or a change on an input the journals cannot cover - see {@link IncrementalBlocks}). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
   if (world.componentValueGeneration(Building) !== state.buildingValueGen) return false;
-  // A footprint stamp/unstamp changes which cells its resource blocks — replay its own journal
+  // A footprint stamp/unstamp changes which cells its resource blocks - replay its own journal
   // through the Resource capturer, so even a stamp decoupled from a Resource add/destroy resyncs
   // exactly the affected entity (resync is idempotent against the Resource replay below).
   const footprintGen = world.componentGeneration(ResourceFootprint);
@@ -237,7 +237,7 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
 }
 
 /** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
- *  markers' cells — the {@link eachBlockerCell} channels {@link BLOCKS_WORK_FLAG} admits, since a
+ *  markers' cells - the {@link eachBlockerCell} channels {@link BLOCKS_WORK_FLAG} admits, since a
  *  resource/building margin remains valid open ground for a flag.
  *  Backed by the incremental {@link IncrementalBlocks} state, so reads share one refcounted set that
  *  changes cost O(own footprint), and the returned view reads that live state rather than a copy of it:
@@ -273,19 +273,19 @@ function blocksWithout(state: IncrementalBlocks, ignoredCells: BlockedCells): Bl
 }
 
 /** The {@link blocksMemo} coherence verifier: while the state claims freshness, a full re-derive must
- *  agree — the tripwire for a missed incremental delta or an input the guards fail to see (`verifyCaches`). */
+ *  agree - the tripwire for a missed incremental delta or an input the guards fail to see (`verifyCaches`). */
 function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGraph): string[] {
   const state = blocksMemo.get(world);
   if (state === undefined || state.content !== content || state.terrain !== terrain) return [];
-  if (!isFresh(world, state)) return []; // a pending catch-up — the next read applies it
+  if (!isFresh(world, state)) return []; // a pending catch-up - the next read applies it
   const fresh = buildBlocks(world, content, terrain, undefined);
   if (sameCells(state.blocked, fresh)) return [];
   return [
-    `workFlagPlacementBlocks holds ${state.blocked.size} nodes but re-derived ${fresh.size} — an incremental delta missed a blocker change`,
+    `workFlagPlacementBlocks holds ${state.blocked.size} nodes but re-derived ${fresh.size} - an incremental delta missed a blocker change`,
   ];
 }
 
-/** Whether every input generation matches the held state — the verifier's "claims freshness" gate. */
+/** Whether every input generation matches the held state - the verifier's "claims freshness" gate. */
 function isFresh(world: World, state: IncrementalBlocks): boolean {
   return (
     world.componentValueGeneration(Building) === state.buildingValueGen &&
@@ -314,8 +314,8 @@ function buildBlocks(
   return blocked;
 }
 
-/** Per-world count of work-flag RELOCATIONS. `componentGeneration` sees only add/remove — a relocate
- *  mutates the flag's `Position` in place, and a flag is the one blocker that moves — so the version
+/** Per-world count of work-flag RELOCATIONS. `componentGeneration` sees only add/remove - a relocate
+ *  mutates the flag's `Position` in place, and a flag is the one blocker that moves - so the version
  *  seam counts moves explicitly. Bumped by the single relocate seam (`relocateWorkFlag`). */
 const flagMoves = new WeakMap<World, number>();
 
@@ -324,7 +324,7 @@ export function noteWorkFlagMove(world: World): void {
   flagMoves.set(world, (flagMoves.get(world) ?? 0) + 1);
 }
 
-/** The current work-flag relocation count — a `workFlagBlockerVersion` input the generation cannot see. */
+/** The current work-flag relocation count - a `workFlagBlockerVersion` input the generation cannot see. */
 export function workFlagMoveCount(world: World): number {
   return flagMoves.get(world) ?? 0;
 }

@@ -1,6 +1,6 @@
 /**
  * The decoded `housewindow` string ids the building sections consume (see `content/gui/strings/<lang>.json`,
- * decoded from the original `ingamegui` tables) — titles and button labels come from the original, with
+ * decoded from the original `ingamegui` tables) - titles and button labels come from the original, with
  * pinned Polish fallbacks for a checkout without `content/`.
  */
 export const HOUSEWINDOW = {
@@ -24,9 +24,9 @@ export const STOCK_ICON_W = 18;
 export const STOCK_AMOUNT_INSET = 6;
 
 /**
- * Stock amounts render with one decimal, left-aligned inside the plate ("15.0") — both observed off
+ * Stock amounts render with one decimal, left-aligned inside the plate ("15.0") - both observed off
  * the original's 1024×768 screenshots. A row with a declared slot also shows its ceiling
- * ("7.0 / 25.0" — the capacity is the building's extracted `logicstock` slot), so a filling store reads
+ * ("7.0 / 25.0" - the capacity is the building's extracted `logicstock` slot), so a filling store reads
  * at a glance; a dynamic drop (no declared slot) keeps the bare amount.
  */
 export function stockAmount(amount: number, capacity?: number): string {

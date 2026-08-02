@@ -15,19 +15,19 @@ export interface SoundFrameInput {
   readonly canvasH: number;
   /** The landscape grid, for the ambient layer; omit to skip ambient. */
   readonly terrain?: AudioTerrain;
-  /** The local player slot — gates the death stinger to this player's own units; omit → it never rings. */
+  /** The local player slot - gates the death stinger to this player's own units; omit → it never rings. */
   readonly localPlayer?: number;
-  /** The viewer's fog-of-war visibility at a fractional tile — gates the settler chat voices (a
+  /** The viewer's fog-of-war visibility at a fractional tile - gates the settler chat voices (a
    *  settler hidden by the fog must not natter from empty black). Omit → no fog, every chat is audible. */
   readonly visibleTile?: (col: number, row: number) => boolean;
 }
 
-/** {@link SoundDriver} construction options — the engine's platform/tuning seams. */
+/** {@link SoundDriver} construction options - the engine's platform/tuning seams. */
 export interface SoundDriverOptions extends AudioEngineOptions {}
 
 /**
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
- * own unit and this class only composes them — the pure decisions (which events sound, which beds loop)
+ * own unit and this class only composes them - the pure decisions (which events sound, which beds loop)
  * in {@link directAudio}, and the Web Audio playback in the {@link WebAudioEngine}. Settler voices ride
  * the same event path: the sim's `chatVoice` cue (a chat clip's authored voice frame) is just another
  * spatialised one-shot, so voices come only from settlers actually talking on screen.
@@ -43,7 +43,7 @@ export class SoundDriver {
     this.engine = new WebAudioEngine(options);
   }
 
-  /** Start/resume audio — call from inside a user gesture (first click/key) to satisfy autoplay policy. */
+  /** Start/resume audio - call from inside a user gesture (first click/key) to satisfy autoplay policy. */
   resume(): Promise<void> {
     return this.engine.resume();
   }
@@ -63,7 +63,7 @@ export class SoundDriver {
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
     // director decision work at all.
     if (!this.engine.audible) return;
-    // Optionals are spread in only when present — `exactOptionalPropertyTypes` forbids passing `undefined`.
+    // Optionals are spread in only when present - `exactOptionalPropertyTypes` forbids passing `undefined`.
     const frame = directAudio({
       events: input.events,
       snapshot: input.snapshot,

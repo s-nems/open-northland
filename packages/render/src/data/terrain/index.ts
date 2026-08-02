@@ -1,5 +1,5 @@
 /**
- * The terrain folder: the pure, Pixi-free half of drawing the ground — the mesh's node geometry
+ * The terrain folder: the pure, Pixi-free half of drawing the ground - the mesh's node geometry
  * ({@link import('./tessellation.js')}), the pattern-page UV fold ({@link import('./uv.js')}), the
  * transition-lane decode ({@link import('./transitions.js')}), and the per-cell fields the mesh samples
  * (elevation lift, brightness, hillshade, the water wave). The twin of `gpu/terrain/`, so the vertex,

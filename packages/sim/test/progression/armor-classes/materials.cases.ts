@@ -47,7 +47,7 @@ describe('armorWeightOf', () => {
   });
 
   it('does not track the material tier monotonically (weight is its own field)', () => {
-    // leather (tier 2) weighs 0 while cloth (tier 1) weighs 1 — a finer-tier record is the lighter one
+    // leather (tier 2) weighs 0 while cloth (tier 1) weighs 1 - a finer-tier record is the lighter one
     const content = parseContentSet({
       ...SCAFFOLD,
       armor: [
@@ -65,12 +65,12 @@ describe('armorWeightOf', () => {
     // the shared armorContent() fixture declares no weight on any record
     const a = armor(armorContent(), 'cloth');
     expect(armorWeightOf(a)).toBe(0);
-    expect(armorWeightOf(a)).not.toBeUndefined(); // a quantity, not a class enum — always a number
+    expect(armorWeightOf(a)).not.toBeUndefined(); // a quantity, not a class enum - always a number
   });
 });
 
 describe('armorByMaterial', () => {
-  it('partitions the armor by material tier — finer than armorByClass (four buckets, not two)', () => {
+  it('partitions the armor by material tier - finer than armorByClass (four buckets, not two)', () => {
     const byMaterial = armorByMaterial(armorContent());
     // four distinct tiers among the four records, whereas armorByClass yields only two
     expect([...byMaterial.keys()].sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
@@ -101,7 +101,7 @@ describe('armorByMaterial', () => {
       ...SCAFFOLD,
       armor: [
         { typeId: 1, id: 'cloth', materialType: 1 },
-        { typeId: 2, id: 'no_tier' }, // no materialType — dropped, not bucketed under undefined
+        { typeId: 2, id: 'no_tier' }, // no materialType - dropped, not bucketed under undefined
       ],
     });
     const byMaterial = armorByMaterial(content);

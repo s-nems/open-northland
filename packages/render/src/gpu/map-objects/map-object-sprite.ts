@@ -22,7 +22,7 @@ export interface MapObjectSprite {
    *  neighbours don't pulse as one stamp. Static objects (one frame) ignore it. */
   readonly phase: number;
   /**
-   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — subtracted from the drawn `y` so
+   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell - subtracted from the drawn `y` so
    * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its depth key stay
    * pre-lift, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on
    * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
@@ -35,15 +35,15 @@ export interface MapObjectSprite {
   /**
    * The baked `embr` luminance multiplier over the ground this object covers (1 = neutral; the measured
    * curve in `data/terrain/brightness.ts`). The original shades landscape-object pixels with the ground's
-   * baked plane — pinned on the corpus for mine decals, stones and grass (masked opaque-pixel ratio
-   * tracks embr from ×0.58 to ×1.58) — except trees, which draw full-bright even on embr=0 border
+   * baked plane - pinned on the corpus for mine decals, stones and grass (masked opaque-pixel ratio
+   * tracks embr from ×0.58 to ×1.58) - except trees, which draw full-bright even on embr=0 border
    * cells; the app loader omits the field for those (and on unshaded maps). Decor batches apply it
-   * per vertex (full range); tall pooled sprites apply it as a tint, which clamps at ×1 — a named
+   * per vertex (full range); tall pooled sprites apply it as a tint, which clamps at ×1 - a named
    * approximation, Pixi's batch tint cannot brighten.
    */
   readonly brightness?: number;
   /**
-   * The object's cast shadow (the `GfxBobLibs` shadow `.bmd` atlas — pre-baked translucent-black
+   * The object's cast shadow (the `GfxBobLibs` shadow `.bmd` atlas - pre-baked translucent-black
    * silhouettes), when the record names one and it loaded. `frames[i]` pairs with the body
    * {@link frames}`[i]` (`undefined` = that pose casts none), so an animated loop's shadow follows the
    * pose. Only tall objects draw it ({@link import('./tall-blocks.js').TallObjectLayer}); flat decor
@@ -57,7 +57,7 @@ export interface MapObjectSprite {
 }
 
 /** The {@link MapObjectSprite.frames} index an object shows at a given animation tick (static objects
- *  always show frame 0) — shared by the body and shadow binds so the pair can never drift. */
+ *  always show frame 0) - shared by the body and shadow binds so the pair can never drift. */
 export function objectFrameIndexAt(obj: MapObjectSprite, tick: number): number {
   return obj.frames.length <= 1 ? 0 : (tick + obj.phase) % obj.frames.length;
 }

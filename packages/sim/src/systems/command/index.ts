@@ -149,7 +149,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       setFogMode(world, command.mode);
       return;
     case 'setPlayerAi': {
-      // Attach/detach the strategic AI on a seat (the per-player AiPlayer carrier — the rules-singleton
+      // Attach/detach the strategic AI on a seat (the per-player AiPlayer carrier - the rules-singleton
       // pattern, keyed by player): created on first enable, updated in place thereafter, destroyed on
       // disable. The flag drives the AiPlayerSystem, so it hashes/replays like any component. An
       // out-of-range player is skipped (still logged for faithful replay).

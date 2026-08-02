@@ -17,7 +17,7 @@ function contentWithMilitaryPlank() {
   });
 }
 
-describe('productionSystem — forging a military good charges the smith piety', () => {
+describe('productionSystem - forging a military good charges the smith piety', () => {
   it('raises the operator piety by PIETY_PER_MILITARY_CYCLE per completed weapon/armor cycle', () => {
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank() });
     const { worker } = sawmill(sim, [[WOOD, 1]]);

@@ -7,7 +7,7 @@
  */
 
 /**
- * A directional, time-animated bob sequence — the original's `[bobseq]` layout: `dirs` facing
+ * A directional, time-animated bob sequence - the original's `[bobseq]` layout: `dirs` facing
  * directions laid out back-to-back, each `stride` frames long, starting at bob id {@link start}. The
  * frame to draw is `start + facing*stride + (floor(clock / ticksPerFrame) % cycle)`, where `cycle` is
  * {@link frames} (default {@link stride}). The cadence is locked to sim ticks, never stretched to fit
@@ -23,11 +23,11 @@
  * ends as the action completes.
  */
 export interface DirectionalAnim {
-  /** Bob id of direction 0, frame 0 — the sequence's first frame (`startFrame` in `animations.ini`). */
+  /** Bob id of direction 0, frame 0 - the sequence's first frame (`startFrame` in `animations.ini`). */
   readonly start: number;
   /** Number of facing directions laid out back-to-back (Cultures humans use 8). */
   readonly dirs: number;
-  /** Frames per direction in the source layout — the stride between one direction and the next. */
+  /** Frames per direction in the source layout - the stride between one direction and the next. */
   readonly stride: number;
   /** Frames to actually cycle through (default {@link stride}); `1` holds a single pose per direction. */
   readonly frames?: number;
@@ -38,7 +38,7 @@ export interface DirectionalAnim {
    */
   readonly ticksPerFrame?: number;
   /**
-   * Frame index within the cycle to start on (default `0`) — the sequence plays
+   * Frame index within the cycle to start on (default `0`) - the sequence plays
    * `(phaseStart + step) % cycle`. A `[bobseq]` is a continuous loop with no inherent first frame, so
    * this rotates where playback begins, letting an action begin and end on meaningful poses. The chop's
    * 15-frame loop is `0..8` = the axe coming down to the tree (the strike) and `9..14` = the axe rising
@@ -49,29 +49,29 @@ export interface DirectionalAnim {
 }
 
 /**
- * A directional animation laid out as explicit per-facing frame-index lists — the original's
+ * A directional animation laid out as explicit per-facing frame-index lists - the original's
  * `[gfxanimatomic]` `gfxanimframelistdir` binding (extracted as
  * {@link import('@open-northland/data').GfxAnimAtomic}), for an action whose frames are not a uniform
  * `start + facing*stride` strip. Each {@link frameLists} entry is one facing's ordered list of local
  * frame indices into a bobseq pool starting at {@link start} (drawn bob id = `start + frameLists[dir][i]`).
  * The lists differ per facing and author holds/repeats inline (a spear windup repeats its first frame),
- * so playback plays a list verbatim — the reason a melee swing (pool 102/108/150, not divisible by 8)
+ * so playback plays a list verbatim - the reason a melee swing (pool 102/108/150, not divisible by 8)
  * cannot ride {@link DirectionalAnim}. The facing index selects the list ({@link frameLists} length =
  * directions; a length-1 list is facing-locked). Advances one entry every {@link ticksPerFrame} ticks
  * on the driving clock (an action's `elapsed`), the same tick-locked cadence {@link DirectionalAnim}
  * uses. One-shot by default: past the last entry the sprite shows the first entry, the ready stance,
  * instead of wrapping (an authored list is one complete motion, and only some lists author a trailing
- * rest pad). {@link loop} opts a list into wrapping instead — the idle-wait reading, where the list is
+ * rest pad). {@link loop} opts a list into wrapping instead - the idle-wait reading, where the list is
  * a breathing cycle on the endless free tick clock, not a bounded action.
  */
 export interface FrameListAnim {
-  /** Bob id of the pool's frame 0 — the bobseq `start` the local {@link frameLists} indices add to. */
+  /** Bob id of the pool's frame 0 - the bobseq `start` the local {@link frameLists} indices add to. */
   readonly start: number;
   /** Per-facing ordered lists of local frame indices into the pool; outer length = facing directions. */
   readonly frameLists: readonly (readonly number[])[];
-  /** Sim ticks per animation frame — the fixed cadence (default `1`), like {@link DirectionalAnim.ticksPerFrame}. */
+  /** Sim ticks per animation frame - the fixed cadence (default `1`), like {@link DirectionalAnim.ticksPerFrame}. */
   readonly ticksPerFrame?: number;
-  /** Wrap past the last entry (`step % length`) instead of the one-shot return-to-first — for a list
+  /** Wrap past the last entry (`step % length`) instead of the one-shot return-to-first - for a list
    *  driven by the endless free tick clock (an idle wait cycle), which would otherwise play once at
    *  world start and freeze on its first entry. */
   readonly loop?: boolean;
@@ -82,7 +82,7 @@ export interface FrameListAnim {
 export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
 
 /**
- * A settler's per-state frames — which atlas bob to draw for each coarse
+ * A settler's per-state frames - which atlas bob to draw for each coarse
  * {@link import('../scene/index.js').SpriteState}. The original keys these off `tribetypes`
  * `setatomic` (atomic → animation). `idle` is the required base; `moving`/`acting` are optional and
  * fall back to `idle` when absent, and an `acting` settler can bind a specific atomic id via
@@ -90,7 +90,7 @@ export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
  * generic-action fallback when an atomic isn't listed.
  */
 export interface SettlerStateBinding {
-  /** Required base frame — used when no more-specific state frame is bound. */
+  /** Required base frame - used when no more-specific state frame is bound. */
   readonly idle: SpriteFrameRef;
   /** Frame(s) while following a path. Falls back to {@link idle} when absent. */
   readonly moving?: SpriteFrameRef;
@@ -104,7 +104,7 @@ export interface SettlerStateBinding {
   readonly byAtomic?: Readonly<Record<number, SpriteFrameRef>>;
   /**
    * Loaded-gait override, in effect only while the draw item is hauling a good
-   * ({@link import('../scene/index.js').DrawItem.carrying}) — the original's `..._walk_wood` bobseq vs
+   * ({@link import('../scene/index.js').DrawItem.carrying}) - the original's `..._walk_wood` bobseq vs
    * the plain `..._walk`: `moving` while walking a load home, `idle` while standing or depositing it.
    * Each slot falls back to its un-loaded counterpart when absent. A bound atomic animation (e.g. the
    * chop in {@link byAtomic}) still wins, since a settler only carries after it has finished harvesting
@@ -112,7 +112,7 @@ export interface SettlerStateBinding {
    */
   readonly carrying?: CarryingBinding;
   /**
-   * Combat-engaged gait override — the original's `..._walk_agressive` / `..._wait_agressive` bobseqs a
+   * Combat-engaged gait override - the original's `..._walk_agressive` / `..._wait_agressive` bobseqs a
    * soldier plays while advancing on or standing off against an enemy (its weapon readied), distinct
    * from the relaxed economy walk/wait. In effect only while the draw item is
    * {@link import('../scene/index.js').DrawItem.engaged} (the sim `Engagement` marker): `moving` swaps the
@@ -144,12 +144,12 @@ export interface CarryingBinding {
 }
 
 /**
- * A job-keyed lookup with a young (age-class) side table and a total fallback — the shape the
+ * A job-keyed lookup with a young (age-class) side table and a total fallback - the shape the
  * per-character settler binding uses ({@link import('../../gpu/sprite-sheet.js').SettlerCharacterSet}), kept
  * generic and pure here so the pick is unit-testable without GPU layers.
  *
  * Two tables because the original's age classes reuse low `jobtypes` ids (1..4 = baby/child) and a
- * synthetic fixture's adult job ids can collide with them (the demo woodcutter is jobType 1 — the real
+ * synthetic fixture's adult job ids can collide with them (the demo woodcutter is jobType 1 - the real
  * `baby_female` id; see AGENTS.md [dc3ef54]). The sim disambiguates by the `Age` component (only a
  * born-young settler carries one), so the pick does too: a young item keys
  * {@link ByJobTable.youngByJob}, an adult keys {@link ByJobTable.byJob}, and any miss (including a
@@ -161,7 +161,7 @@ export interface ByJobTable<T> {
   /** Looks for an `Age`-carrying (born-young) settler, keyed by its age-class `jobType` (1..4). */
   readonly youngByJob?: Readonly<Record<number, T>>;
   /**
-   * A warrior's look by its equipped weapon good — the drawn weapon follows the equipment weapon slot,
+   * A warrior's look by its equipped weapon good - the drawn weapon follows the equipment weapon slot,
    * not the job. Wins over the job pick when the settler carries a mapped weapon good; an unmapped one
    * falls through to {@link byJob}.
    */
@@ -173,6 +173,6 @@ export interface ByJobTable<T> {
    * settler with no `Equipment` at all (`weaponGood` undefined) never reaches this table.
    */
   readonly unarmedByJob?: Readonly<Record<number, T>>;
-  /** The total fallback — the generic look every unmapped job resolves to. */
+  /** The total fallback - the generic look every unmapped job resolves to. */
   readonly default: T;
 }

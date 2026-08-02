@@ -5,13 +5,13 @@
 
 A field declares no build area, so a building site over standing wheat is accepted like any other. The
 plants under the new walls are then destroyed (`destroyFieldsUnderBuilding`,
-`packages/sim/src/systems/economy/fields.ts`). That is the intended mechanic — but nothing tells the
+`packages/sim/src/systems/economy/fields.ts`). That is the intended mechanic - but nothing tells the
 player it happened:
 
 - `destroyFieldsUnderBuilding` emits no event, unlike its sibling `destroyBerryBushesInReserved`, which
   emits `berryBushRazed` (`packages/sim/src/systems/economy/berries.ts`).
 - The build ghost (`packages/app/src/view/placement-overlay.ts`) is binary allowed/refused, so a plot node
-  reads plain green — identical to bare grass.
+  reads plain green - identical to bare grass.
 - There is no confirmation and no undo.
 
 Sowing a field is farmer labor the player paid for, and this is the one thing on the map a player's own

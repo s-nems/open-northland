@@ -4,12 +4,12 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer that feeds the
+ * Tests for `HashTrace` - the per-tick hash (+ bounded snapshot) ring buffer that feeds the
  * "time-travel / replay inspector" (plan "Cross-cutting DX"). It is the "find tick N" half:
  * cheaply records `{tick, hash}` during a live run so two runs' divergence is detectable WITHOUT
  * re-replaying. `replay()` is the companion "jump to tick N" half. The oracle here is `hashState()`:
  * a real run feeds the trace its own per-tick hashes, and a diverging run is localized to the first
- * mismatching tick — exactly the inspector's "hash diverged at tick N".
+ * mismatching tick - exactly the inspector's "hash diverged at tick N".
  */
 
 const HEADQUARTERS = 1;
@@ -98,7 +98,7 @@ describe('HashTrace', () => {
 
   it('keeps the snapshot window capped while the hash ring is ALSO dropping (shift + age interact)', () => {
     // hashCapacity 4, snapshotCapacity 2, 8 ticks: the hash ring shifts AND snapshots age every tick
-    // past warm-up — the O(1) aging must keep exactly the most-recent 2 snapshots throughout.
+    // past warm-up - the O(1) aging must keep exactly the most-recent 2 snapshots throughout.
     const trace = new HashTrace({ hashCapacity: 4, snapshotCapacity: 2 });
     const fakeSnap = (tick: number) => ({ tick, entities: [], events: [] });
     for (let t = 1; t <= 8; t++) {
@@ -166,7 +166,7 @@ describe('HashTrace', () => {
       const reference = traceRun(1, 40, schedule, { map: grassMap(5, 1) });
 
       // Same commands, DIFFERENT seed: the RNG state is hashed, so the very first tick already
-      // differs — divergedFrom must point at tick 1 (the inspector's "hash diverged at tick N").
+      // differs - divergedFrom must point at tick 1 (the inspector's "hash diverged at tick N").
       const variant = traceRun(2, 40, schedule, { map: grassMap(5, 1) });
 
       const d = variant.divergedFrom(reference);

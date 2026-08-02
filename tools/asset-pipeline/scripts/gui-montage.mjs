@@ -1,13 +1,13 @@
-// GUI-atlas montage generator — the human-oracle tool behind `packages/app/src/content/gui-atlas-map.ts`.
+// GUI-atlas montage generator - the human-oracle tool behind `packages/app/src/content/gui-atlas-map.ts`.
 //
 // Decodes a GUI bob sheet (`ls_gui_window.bmd` / `ls_gui_bubbles.bmd`) straight from an OWNED game copy and
-// lays EVERY frame out in a numbered grid — a big index label + native size + hex id per cell, over a
-// checkerboard so transparency and extent are visible — so a person can identify each sprite by eye and
+// lays EVERY frame out in a numbered grid - a big index label + native size + hex id per cell, over a
+// checkerboard so transparency and extent are visible - so a person can identify each sprite by eye and
 // promote its `unknown_NNN` map entry to a real name. An agent can't self-judge pixels; this makes the
 // frames legible for the one who can. Writes a PNG; commits nothing (reads copyrighted bytes, emits a
 // local file only).
 //
-// Prereq: build the decoders first — `npm run build --workspace @open-northland/asset-pipeline` (raw-TS can't
+// Prereq: build the decoders first - `npm run build --workspace @open-northland/asset-pipeline` (raw-TS can't
 // resolve the `.js` import specifiers; same reason `npm run pipeline` compiles before running).
 //
 // Usage (from the repo root):

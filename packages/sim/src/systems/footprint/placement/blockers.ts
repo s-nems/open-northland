@@ -12,26 +12,26 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
 
 // The single definition of what a standing entity blocks, as (cell, channel) pairs. Every placement rule
-// in this folder — building (./building.ts) and work flag (./work-flag/) — is stamped from this ONE store
+// in this folder - building (./building.ts) and work flag (./work-flag/) - is stamped from this ONE store
 // walk and differs only in which channels it consumes, so a new blocker kind added here reaches every rule
 // and no two rules can drift apart.
 
 /**
- * What a standing entity contributes to a cell — merged across entity KIND within each channel, because
+ * What a standing entity contributes to a cell - merged across entity KIND within each channel, because
  * every rule treats resource and building the same within one:
- *  - **OBSTACLE** — resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
+ *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
  *    building candidate's RESERVED zone (the "minimum distance from a node/wall") and any work flag. A
  *    building's door is part of its family body, so it stays walkable for routing but takes no flag.
- *  - **EXCLUSION** — resource BUILD zones. Rejects a building candidate's FAMILY BODY (its walls may not
+ *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY (its walls may not
  *    sit in a resource's build margin); still valid open ground for a work flag.
- *  - **BUILDING_ZONE** — existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
- *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing — see
+ *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
+ *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing - see
  *    {@link import('./building.js') canPlaceAnchor}); still open ground for a work flag. Kept distinct
  *    from OBSTACLE (which also blocks a flag) and from EXCLUSION (which rejects a body, not a zone).
- *  - **RESOURCE_ANCHOR** — a footprinted resource's own cell, which its walk body need not cover. Blocks a
+ *  - **RESOURCE_ANCHOR** - a footprinted resource's own cell, which its walk body need not cover. Blocks a
  *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
  *    rule), which already covers its anchor for both rules.
- *  - **MARKER** — a delivery flag's cell. Blocks another marker, never a building.
+ *  - **MARKER** - a delivery flag's cell. Blocks another marker, never a building.
  */
 const OBSTACLE = 0;
 const EXCLUSION = 1;
@@ -54,10 +54,10 @@ export interface MarkerScan {
   readonly ignoreFlag: Entity | undefined;
 }
 
-/** A blocker-cell consumer — see {@link eachBlockerCell} for the channel contract. */
+/** A blocker-cell consumer - see {@link eachBlockerCell} for the channel contract. */
 export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
 
-/** One standing resource's (cell, channel) contributions — the per-entity slice of
+/** One standing resource's (cell, channel) contributions - the per-entity slice of
  *  {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift.
  *  A Position-less entity contributes nothing (the query-driven walk never sees it). */
 export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
@@ -92,7 +92,7 @@ export function buildingBlockerCells(
   for (const c of zone) visit(hx + footprintCellDx(hy, c), hy + c.dy, BUILDING_ZONE);
 }
 
-/** One signpost's contribution: its anchor is an OBSTACLE — no building's reserved zone and no
+/** One signpost's contribution: its anchor is an OBSTACLE - no building's reserved zone and no
  *  work flag may cover it (observed original behaviour). It never blocks movement (no walk overlay). */
 export function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
@@ -110,8 +110,8 @@ export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit)
 }
 
 /**
- * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and — when
- * `markers` is given — delivery flags contribute. Consumers filter by channel; a cell may be visited on
+ * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - when
+ * `markers` is given - delivery flags contribute. Consumers filter by channel; a cell may be visited on
  * more than one channel, and every consumer takes set unions / mask writes (membership, no pick), so
  * store-iteration order cannot change any later answer.
  */
@@ -133,21 +133,21 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker INPUTS — the component stores {@link eachBlockerCell} reads
+ * A per-world version of the placement-blocker INPUTS - the component stores {@link eachBlockerCell} reads
  * for every channel but {@link MARKER}: whether each `Building`, `Resource`, `ResourceFootprint` and
- * `Signpost` exists, plus the `Building` VALUE generation — the scan reads `buildingType`, and the home
+ * `Signpost` exists, plus the `Building` VALUE generation - the scan reads `buildingType`, and the home
  * tier upgrade swaps it in place through `World.write`, invisible to every membership generation. (Today
- * that swap cannot change the cells — `familyBody`/`reserved` are level-chain unions, schema.ts — so the
+ * that swap cannot change the cells - `familyBody`/`reserved` are level-chain unions, schema.ts - so the
  * value term only buys a rebuild per upgrade; it is here so a future per-level footprint cannot silently
  * serve a stale set.) Membership generations bump only on add/remove
- * ({@link World.componentGeneration}), so this moves precisely when those cells can change — NOT every
- * tick — and the building overlay reuses its last result until it does. The work-flag rule adds the
+ * ({@link World.componentGeneration}), so this moves precisely when those cells can change - NOT every
+ * tick - and the building overlay reuses its last result until it does. The work-flag rule adds the
  * `DeliveryFlag` generation on top ({@link workFlagBlockerVersion}). Exactness rests on two standing
  * invariants (both hold today):
  *   - buildings and resources never MOVE once placed (only settlers/vehicles/projectiles mutate Position),
  *     so a stored entity's cells are fixed;
  *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
- *     that also moves this version — folding its generation in is belt-and-suspenders for any future path
+ *     that also moves this version - folding its generation in is belt-and-suspenders for any future path
  *     that decouples them. Completeness is load-bearing: the signpost placement probe memoizes on this
  *     version (via `workFlagBlockerVersion`), so a missed input would be a decision on a stale set, not
  *     just an overlay wash.

@@ -9,7 +9,7 @@ import { testContent } from '../../fixtures/content.js';
 
 /**
  * Tests for the PLAYER-order commands (`moveUnit` / `setJob`) and the PlayerOrder timed-override system
- * — the RTS "select a unit and tell it where to go / what to be". A move order is a SOFT, TIMED
+ * - the RTS "select a unit and tell it where to go / what to be". A move order is a SOFT, TIMED
  * override: the unit walks to the spot, stands a while (short for a worker, long for a soldier), then
  * the economy AI reclaims it; needs can pull it away sooner. The fixture matches atomic-planner.test.ts:
  * good 1 = wood (harvest atomic 24), job 1 = woodcutter, tribe 1 = viking.
@@ -31,7 +31,7 @@ export function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 4) });
 }
 
-/** Order `entity` to visual tile (x, y) — moveUnit coords are half-cell nodes, so anchor-convert. */
+/** Order `entity` to visual tile (x, y) - moveUnit coords are half-cell nodes, so anchor-convert. */
 export function orderMove(s: Simulation, entity: Entity, x: number, y: number): void {
   const n = cellAnchorNode(x, y);
   s.enqueue({ kind: 'moveUnit', entity, x: n.hx, y: n.hy });

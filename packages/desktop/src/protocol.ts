@@ -5,7 +5,7 @@ import { net, protocol } from 'electron';
 import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } from './protocol-routing.js';
 
 /**
- * The `app://` scheme the shell serves the game from — the packaged equivalent of the Vite dev
+ * The `app://` scheme the shell serves the game from - the packaged equivalent of the Vite dev
  * server: `app://game/<path>` maps to the built web app's static files plus the shared content
  * routes (`@open-northland/content-resolver`) over the data root's `content/`, and `app://setup/…`
  * serves the first-run installer page from the shell's own renderer files.
@@ -55,7 +55,7 @@ function notFound(): Response {
 }
 
 // Pixi's mangled `app://bobs/...` spelling (see `routePathOf`) is cross-origin to `app://game`, and
-// a worker's fetch enforces CORS even on a custom scheme. Only the game origin is approved — a page
+// a worker's fetch enforces CORS even on a custom scheme. Only the game origin is approved - a page
 // on any other origin (there should never be one) gets no cross-origin read.
 const CORS_HEADER = { 'access-control-allow-origin': 'app://game' } as const;
 
@@ -71,7 +71,7 @@ async function serveFile(file: string, contentType: string, method: string): Pro
 const DIRECTORY_INDEX = 'index.html';
 
 export interface AppProtocolRoots {
-  /** The built web app (`packages/app/dist`) — packaged as a resource, the app dist in dev. */
+  /** The built web app (`packages/app/dist`) - packaged as a resource, the app dist in dev. */
   readonly appRoot: string;
   /** The shell's own renderer files (the setup page). */
   readonly setupRoot: string;

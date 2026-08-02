@@ -14,7 +14,7 @@ import {
 import { DEFAULT_MENU_STATE, type SettlerMenuState } from '../../../hud/action-ring-menu.js';
 
 /**
- * The menu state of the single selected settler — which per-state buttons (marry / assign home /
+ * The menu state of the single selected settler - which per-state buttons (marry / assign home /
  * make son+daughter) its ring shows. A multi-selection (or a missing entity) shows none: the family
  * orders are per-settler, so they only surface when exactly one settler anchors the ring. The scout
  * swap (erect-signpost replaces alert/query) keys on the selection's UNIFORM jobType, so a multi-scout
@@ -37,13 +37,13 @@ export const menuStateFor = (
   const spouseAlive = married !== undefined && entityById(snapshot, married.spouse) !== undefined;
   const onMission = systems.isOnMission(content, settlerJobType(e) ?? null);
   // The one-child limit: a living, still-growing child blocks a fresh order (a grown or dead child
-  // frees it — the sim command re-validates either way; this only decides button visibility).
+  // frees it - the sim command re-validates either way; this only decides button visibility).
   const child = married?.child ?? null;
   const childEntity = child !== null ? entityById(snapshot, child) : undefined;
   const raisingChild = childEntity !== undefined && !isAdult(childEntity);
   return {
     canChangeJob: !isFemale(e), // women keep the woman role for life (the sim guards setJob too)
-    // Marry only lights up when somebody eligible exists — otherwise the click would silently cancel.
+    // Marry only lights up when somebody eligible exists - otherwise the click would silently cancel.
     // isBoundByMarriage mirrors the widowing rule: a widow is free again once her child grows up.
     canMarry:
       !isBoundByMarriage(snapshot, e) &&

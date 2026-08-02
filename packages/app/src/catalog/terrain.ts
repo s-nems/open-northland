@@ -1,9 +1,9 @@
 /**
- * The semantic terrain classes every sim grid navigates on — committed clean-room vocabulary, not
+ * The semantic terrain classes every sim grid navigates on - committed clean-room vocabulary, not
  * extracted data (a catalog leaf both `game/sandbox` and `content/` may import without coupling to
  * each other). Scene grids are authored in these ids directly; a real decoded map is resolved into
  * them by `content/collision.ts` (its ground/object lanes joined against the extracted class tables)
- * before it reaches the sim. The sim never navigates the detailed landscape types — always these five
+ * before it reaches the sim. The sim never navigates the detailed landscape types - always these five
  * classes.
  *
  * `content/real-content.ts` `mergeRealContent` injects {@link NAV_LANDSCAPE_TYPES} so a real-content sim
@@ -20,7 +20,7 @@ export const TERRAIN_CLASS_BASE = 9000;
 /** Plain ground: walkable and buildable. (The sandbox catalog's GRASS is this id.) */
 export const TERRAIN_OPEN = TERRAIN_CLASS_BASE + 0;
 /** Ground that is neither walkable nor buildable. In authored scene grids this is WATER; a resolved
- *  real map also lands its border, mountain-face and void-filler ground here — the class carries the
+ *  real map also lands its border, mountain-face and void-filler ground here - the class carries the
  *  flags, not the one look. */
 export const TERRAIN_IMPASSABLE = TERRAIN_CLASS_BASE + 1;
 /** A landscape object's body (tree trunk / rock / deposit): neither walkable nor buildable. */
@@ -29,7 +29,7 @@ export const TERRAIN_BLOCKED = TERRAIN_CLASS_BASE + 2;
  *  whose `humancanwalkon 1` lacks `housecanbebuildon` (mountain slopes, snow). */
 export const TERRAIN_MARGIN = TERRAIN_CLASS_BASE + 3;
 /** BARREN open ground: walkable and buildable like {@link TERRAIN_OPEN}, but crops cannot be sown on
- *  it — a real ground class with walk+build flags but no `biocanplanton` (sand, beach, desert stone;
+ *  it - a real ground class with walk+build flags but no `biocanplanton` (sand, beach, desert stone;
  *  `trianglepatterntypes.cif` gives that flag to `land` alone). Split from OPEN so the farmer drive's
  *  grass-only field gate survives the semantic-class resolve. */
 export const TERRAIN_BARREN = TERRAIN_CLASS_BASE + 4;
@@ -45,7 +45,7 @@ export interface NavLandscapeType {
 }
 
 /**
- * The five nav-terrain classes as `landscape` rows — the walk/build/plant flags a collision-resolved
+ * The five nav-terrain classes as `landscape` rows - the walk/build/plant flags a collision-resolved
  * grid (`content/collision.ts`) or an authored scene grid navigates on. Row ids keep the authored-scene
  * reading (class 0 shows as grass, class 1 as water) but are documentary: landscape rows are only ever
  * looked up by `typeId`.

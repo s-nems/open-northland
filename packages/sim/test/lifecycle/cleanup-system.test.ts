@@ -20,7 +20,7 @@ import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 
 /**
- * Unit + integration tests for the CleanupSystem — the death/cleanup half of the combat loop. It
+ * Unit + integration tests for the CleanupSystem - the death/cleanup half of the combat loop. It
  * destroys every entity whose {@link Health} pool has reached 0 and emits a `settlerDied` event for
  * render/audio. Pairs with the AtomicSystem's `attack` effect (which drains hitpoints): attack drives
  * the pool to 0, cleanup reaps it.
@@ -29,7 +29,7 @@ import { settlerAt } from '../fixtures/settler.js';
 /** Tribe 13 in the fixture content: passive livestock, no job enables - an `isAnimalTribe` tribe. */
 const ANIMAL_TRIBE = 13;
 
-describe('cleanupSystem — reaping 0-HP combatants', () => {
+describe('cleanupSystem - reaping 0-HP combatants', () => {
   it('destroys an entity whose hitpoints reached 0 and emits settlerDied', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const dead = sim.world.create();
@@ -115,7 +115,7 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
     cleanupSystem(sim.world, ctxOf(sim));
 
     // The destroyed entity carried the cross-reference (settler->building), so it leaves no dangling
-    // binding — its own components are simply gone.
+    // binding - its own components are simply gone.
     expect(sim.world.has(dead, Settler)).toBe(false);
     expect(sim.world.has(dead, Position)).toBe(false);
     expect(sim.world.has(dead, JobAssignment)).toBe(false);
@@ -126,7 +126,7 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
   it("reaps a dead flag-bound gatherer's drop-off flag along with it (no orphan marker)", () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // A gatherer's flag is a SEPARATE entity it points at (WorkFlag.flag), unlike the settler-owned
-    // cross-references above — so reaping the gatherer must also reap the flag, or it orphans on the map.
+    // cross-references above - so reaping the gatherer must also reap the flag, or it orphans on the map.
     const flag = sim.world.create();
     sim.world.add(flag, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
     sim.world.add(flag, DeliveryFlag, {});
@@ -157,7 +157,7 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
   });
 });
 
-describe('cleanupSystem — end-to-end with attack', () => {
+describe('cleanupSystem - end-to-end with attack', () => {
   it('a lethal attack this tick is reaped the same tick (atomic -> cleanup in one step)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
@@ -181,7 +181,7 @@ describe('cleanupSystem — end-to-end with attack', () => {
   });
 });
 
-describe('cleanupSystem — determinism', () => {
+describe('cleanupSystem - determinism', () => {
   it('two same-seed runs that kill the same entities reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: testContent() });

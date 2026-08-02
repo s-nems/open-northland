@@ -1,14 +1,14 @@
 import type { FootprintCell } from '@open-northland/data';
 
 /**
- * Committed per-building geometry corrections over the extracted footprints — half-cell node offsets,
+ * Committed per-building geometry corrections over the extracted footprints - half-cell node offsets,
  * keyed by the catalog building id (`catalog/buildings.ts`).
  *
  * Source basis: the extracted `LogicDoorPoint` is faithful to the mod's data, but for a handful of
  * buildings it does not coincide with the door graphic as our renderer draws it. These shifts are the
  * user's visual sign-off with the admin geometry grid enabled in the sandbox (review of
  * 2026-07-10): every building was checked and only the ones below needed a nudge. They are a named
- * approximation (our render vs the authored data), not extraction fixes — applied at the one seam
+ * approximation (our render vs the authored data), not extraction fixes - applied at the one seam
  * where extracted footprints enter live content (`content/ir/joins.ts` `buildingFootprints`), so the sim's
  * walk-to-door target and the debug overlay can never disagree.
  */
@@ -28,9 +28,9 @@ export const DOOR_SHIFTS: ReadonlyMap<string, FootprintCell> = new Map([
 ]);
 
 /**
- * Where the worker-icon stack anchors, as an offset from the (shifted) door node — the anchor the
- * worker-icon badges and (for homes) the occupancy dots grow up from. The default — one node right of
- * the door, a half field — fits almost every workplace; the overrides come from gallery review (the
+ * Where the worker-icon stack anchors, as an offset from the (shifted) door node - the anchor the
+ * worker-icon badges and (for homes) the occupancy dots grow up from. The default - one node right of
+ * the door, a half field - fits almost every workplace; the overrides come from gallery review (the
  * HQ's wide gangway wants the stack a node further out; the barracks' door wall runs down-right, so the
  * stack follows it). Homes push it a full field (two nodes) right so their occupancy dots clear the wide
  * house door graphic instead of sitting on it (user observation, 2026-07-17).

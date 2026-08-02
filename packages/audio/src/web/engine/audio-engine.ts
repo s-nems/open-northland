@@ -12,7 +12,7 @@ import { AmbientMixer } from './ambient-mixer.js';
 import { SampleCache } from './sample-cache.js';
 
 /**
- * The impure Web Audio playback sink — the only part of the package that owns an `AudioContext`. It
+ * The impure Web Audio playback sink - the only part of the package that owns an `AudioContext`. It
  * takes the pure {@link AudioFrame} the director decided and makes it audible: fires debounced
  * one-shots through a per-play gain+pan graph, and hands the ambient set to the {@link AmbientMixer}
  * to reconcile ({@link SampleCache} loads/decodes). All timing rides the audio clock
@@ -28,11 +28,11 @@ export interface AudioEngineOptions {
   readonly baseUrl?: string;
   /** Overall output gain (0..1). Default {@link DEFAULT_MASTER_GAIN}. */
   readonly masterGain?: number;
-  /** Creates the `AudioContext` — override in tests with a fake. Default the real Web Audio context. */
+  /** Creates the `AudioContext` - override in tests with a fake. Default the real Web Audio context. */
   readonly createContext?: ContextFactory;
-  /** Loads a wav's bytes by URL — override in tests with a stub. Default HTTP `fetch`. */
+  /** Loads a wav's bytes by URL - override in tests with a stub. Default HTTP `fetch`. */
   readonly fetchBytes?: FetchBytes;
-  /** The [0,1) random source for wav picks — override in tests for determinism. Default `Math.random`. */
+  /** The [0,1) random source for wav picks - override in tests for determinism. Default `Math.random`. */
   readonly random?: RandomFn;
 }
 
@@ -72,14 +72,14 @@ export class WebAudioEngine {
     return this.ctx !== null && this.ctx.state === 'running';
   }
 
-  /** Live and audible (started and not muted). While false, applied frames are dropped unheard —
+  /** Live and audible (started and not muted). While false, applied frames are dropped unheard -
    *  callers can skip building them at all. */
   get audible(): boolean {
     return this.canPlay();
   }
 
   /**
-   * Start (or resume) the audio context — must be called from within a user gesture the first time,
+   * Start (or resume) the audio context - must be called from within a user gesture the first time,
    * or the browser keeps it suspended. Creates the context lazily on first call. Safe to call repeatedly.
    */
   async resume(): Promise<void> {
@@ -89,7 +89,7 @@ export class WebAudioEngine {
       try {
         await ctx.resume();
       } catch {
-        // A browser that refuses to resume outside a gesture just stays silent — not an error.
+        // A browser that refuses to resume outside a gesture just stays silent - not an error.
       }
     }
   }

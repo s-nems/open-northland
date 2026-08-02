@@ -1,16 +1,16 @@
 import { el } from '../overlay.js';
 
 /**
- * The admin/debug panel's shared DOM chrome — the right-rail style vocabulary plus the small builders the
+ * The admin/debug panel's shared DOM chrome - the right-rail style vocabulary plus the small builders the
  * panel assembles itself from (collapsible sections, button rows, a name filter, the labelled number/
  * select fields). Kept apart from the panel wiring ({@link import('./index.js')}) and the spawn/action
  * data catalogs so "how the panel looks" has one home and the wiring reads as layout, not CSS strings.
  * Plain DOM + inline styles, app-layer only (never in `sim`).
  */
 
-/** The rail width — narrow enough to leave the map readable beside it. */
+/** The rail width - narrow enough to leave the map readable beside it. */
 export const PANEL_WIDTH_PX = 300;
-/** Half the toggle chip's ~140px width — so the chip centres over the rail that opens below it. */
+/** Half the toggle chip's ~140px width - so the chip centres over the rail that opens below it. */
 const TOGGLE_CHIP_HALF_WIDTH_PX = 70;
 
 export const TOGGLE_STYLE = [
@@ -50,7 +50,7 @@ export const ADMIN_PANEL_STYLE = [
 
 /** The static (non-scrolling) header + settings block. */
 export const HEADER_STYLE = 'padding:10px 12px 8px;border-bottom:1px solid #5a4a36';
-/** The scrolling palette body — the only part that grows/scrolls. */
+/** The scrolling palette body - the only part that grows/scrolls. */
 export const BODY_STYLE = 'flex:1;min-height:0;overflow-y:auto;padding:0 12px';
 /** The pinned status footer. */
 export const FOOTER_STYLE = 'padding:8px 12px;border-top:1px solid #5a4a36;min-height:16px';

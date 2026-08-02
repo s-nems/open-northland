@@ -92,8 +92,8 @@ describe('extractMapInfo', () => {
 
 describe('extractStaticObjects', () => {
   // Mirrors a real map.cif `StaticObjects` section: sethouse and sethuman (both 0-based player,
-  // sethouse's fourth column is the constant 1 — see the extractor doc), setanimal, plus an
-  // `addgoods` run stocking the sethouse it follows (the real grammar — `addgoods "<good>" <count>`,
+  // sethouse's fourth column is the constant 1 - see the extractor doc), setanimal, plus an
+  // `addgoods` run stocking the sethouse it follows (the real grammar - `addgoods "<good>" <count>`,
   // e.g. SPECJALNA- FORTECA's HQs). All coordinates are half-cells (the emla 2W×2H lattice).
   const staticObjectsLines: CifLine[] = [
     { level: 1, text: 'StaticObjects' },
@@ -104,7 +104,7 @@ describe('extractStaticObjects', () => {
     { level: 2, text: 'sethuman 0 "viking" "baby_female" 385 101 0 0' },
     { level: 2, text: 'sethuman 1 "viking" "soldier_bow_long" 120 44 0 0' },
     { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' },
-    { level: 2, text: 'addgoods "meat" 5' }, // follows setanimal, not a house — dropped
+    { level: 2, text: 'addgoods "meat" 5' }, // follows setanimal, not a house - dropped
   ];
 
   it('extracts sethouse/sethuman/setanimal rows verbatim (names + half-cells + original player bases)', () => {
@@ -133,7 +133,7 @@ describe('extractStaticObjects', () => {
     });
   });
 
-  // The real `setproducedgood` shapes (source basis: the unpacked `staticobjects.inc` corpus) — the verb
+  // The real `setproducedgood` shapes (source basis: the unpacked `staticobjects.inc` corpus) - the verb
   // directly after its `sethuman`, and separated from it by the in-block modifiers the decoder drops.
   it('attaches setproducedgood to its sethuman, across intervening in-block modifiers', () => {
     const lines: CifLine[] = [
@@ -144,7 +144,7 @@ describe('extractStaticObjects', () => {
       { level: 2, text: 'setexpierence 4 13' },
       { level: 2, text: 'attachtohouse 359 358 2' },
       { level: 2, text: 'setproducedgood "fish"' },
-      { level: 2, text: 'sethuman 1 "viking" "collector" 12 14 0 0' }, // no pick — gathers everything
+      { level: 2, text: 'sethuman 1 "viking" "collector" 12 14 0 0' }, // no pick - gathers everything
     ];
     expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
       { tribe: 'byzantine', role: 'collector', player: 2, hx: 220, hy: 206, producedGood: 'wood' },
@@ -158,9 +158,9 @@ describe('extractStaticObjects', () => {
       { level: 1, text: 'StaticObjects' },
       { level: 2, text: 'sethuman 0 "viking" "collector" 10 12 0 0' },
       { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' }, // a new placement ends the block
-      { level: 2, text: 'setproducedgood "wood"' }, // no human to pick for — dropped
-      { level: 2, text: 'sethuman 1 "viking" "collector"' }, // truncated — skipped, retargets the pick away
-      { level: 2, text: 'setproducedgood "stone"' }, // its human was skipped — dropped
+      { level: 2, text: 'setproducedgood "wood"' }, // no human to pick for - dropped
+      { level: 2, text: 'sethuman 1 "viking" "collector"' }, // truncated - skipped, retargets the pick away
+      { level: 2, text: 'setproducedgood "stone"' }, // its human was skipped - dropped
     ];
     expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
       { tribe: 'viking', role: 'collector', player: 0, hx: 10, hy: 12 },
@@ -182,11 +182,11 @@ describe('extractStaticObjects', () => {
     const lines: CifLine[] = [
       { level: 1, text: 'StaticObjects' },
       { level: 2, text: 'sethouse 0 "viking headquarters house" 0 1 10 10 0' },
-      { level: 2, text: 'sethouse 1 "viking barracks"' }, // truncated — skipped, retargets goods away
-      { level: 2, text: 'addgoods "wheat" 15' }, // its house was skipped — dropped
+      { level: 2, text: 'sethouse 1 "viking barracks"' }, // truncated - skipped, retargets goods away
+      { level: 2, text: 'addgoods "wheat" 15' }, // its house was skipped - dropped
       { level: 2, text: 'sethouse 2 "viking barn" 0 1 20 20 0' },
-      { level: 2, text: 'addgoods "wood"' }, // no count — skipped
-      { level: 2, text: 'addgoods "stone" 0' }, // zero count — skipped
+      { level: 2, text: 'addgoods "wood"' }, // no count - skipped
+      { level: 2, text: 'addgoods "stone" 0' }, // zero count - skipped
       { level: 2, text: 'addgoods "flour" 5' },
     ];
     const out = extractStaticObjects(cifLinesToSections(lines));
@@ -214,10 +214,10 @@ describe('extractStaticObjects', () => {
   });
 
   it('extracts the SAME rows from an unpacked map plaintext staticobjects.inc', () => {
-    // The CnMod majority ship no map.cif — their StaticObjects live in a readable `staticobjects.inc`
+    // The CnMod majority ship no map.cif - their StaticObjects live in a readable `staticobjects.inc`
     // parsed via parseIniSections (the pipeline's plaintext route), with addgoods/setproducedgood/
     // trailing columns interspersed exactly as the real files carry them (magiczny_las, blekiny_nurt).
-    // The extractor must read it identically to the cif path — that join is what makes those maps import.
+    // The extractor must read it identically to the cif path - that join is what makes those maps import.
     const inc = [
       '[StaticObjects]',
       'sethouse 0 "viking headquarters" 0 1 81 78 1002',

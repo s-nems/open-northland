@@ -7,12 +7,12 @@ every call. It exists so a *pick* over a store's goods is canonical, but three p
 where AGENTS.md Ordering says canonicalization is not needed ("Do not sort membership checks,
 commutative sums, or loops whose result cannot change with order"):
 
-- `hasHaulableOutput` (`systems/settlers/targets/stores/outputs.ts`) — a boolean existence check, and the
+- `hasHaulableOutput` (`systems/settlers/targets/stores/outputs.ts`) - a boolean existence check, and the
   AI planner's per-tick haul dormancy gate over **all** stockpiles (`systems/settlers/planner/pass.ts`).
   Order cannot change a `return true`.
-- `storedFoodUnits` (`systems/family/households.ts`) — a commutative integer sum, reached per home-store
+- `storedFoodUnits` (`systems/family/households.ts`) - a commutative integer sum, reached per home-store
   candidate from the hungry-settler food scan and from the child-making checks.
-- `storedFoodGood` (`systems/settlers/targets/food.ts`) — a min-pick that sorts the whole goods map and
+- `storedFoodGood` (`systems/settlers/targets/food.ts`) - a min-pick that sorts the whole goods map and
   then returns on the first match, once per candidate store inside a ring scan. The winner is
   load-bearing, so this one becomes a min-over-`amounts` scan rather than an unordered walk.
 
@@ -22,7 +22,7 @@ per probe on paths that already run thousands of times per tick.
 ## Scope
 
 Walk `stock.amounts` directly in the first two; replace the third with an allocation-free minimum scan
-that returns the same goodType. Leave `consumeFoodUnits` (`households.ts`) alone — it genuinely
+that returns the same goodType. Leave `consumeFoodUnits` (`households.ts`) alone - it genuinely
 consumes in ascending order.
 
 Do not widen this into a `stockpileEntries` audit: the other callers are real canonical picks.

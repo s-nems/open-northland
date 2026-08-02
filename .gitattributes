@@ -3,6 +3,6 @@
 # gate (and any byte-sensitive golden test) before a single test runs.
 * text=auto eol=lf
 
-# Binary assets — never end-of-line converted.
+# Binary assets - never end-of-line converted.
 *.png binary
 *.webp binary

@@ -1,25 +1,25 @@
 import { clamp01 } from '../math.js';
 
 /**
- * The drawn projectile's ballistic arc — a pure, render-only presentation layer over the sim's straight
+ * The drawn projectile's ballistic arc - a pure, render-only presentation layer over the sim's straight
  * homing flight. The sim advances a shot on a straight origin→target line (its own named approximation);
  * this lobs the drawn arrow above that line and tilts it along the arc's tangent, so a longbow shot visibly
- * arcs. No Pixi, no sim read-back — screen-space trig, unit-tested like the rest of the scene layer.
+ * arcs. No Pixi, no sim read-back - screen-space trig, unit-tested like the rest of the scene layer.
  * Source basis: observed original behaviour (arrows visibly lob); the shape is tuned by eye.
  */
 
 /**
  * Ballistic-arc shape: the lob's peak height is this fraction of the shot's total origin→target screen
- * distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow shot (23 tiles — up to
+ * distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow shot (23 tiles - up to
  * ~1560 px on an east–west chord at 68 px/cell) doesn't leave the screen. Height is `4·peak·p·(1−p)` over
  * the fraction flown `p`, zero at both the bow and the impact. Exported so the tests pin the formula, not a
  * copy of today's tuning.
  */
 export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
-/** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
+/** Cap on the lob's peak height (screen px) - see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
 export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
-/** A drawn projectile's arc presentation: the upward lob height (px, rides the lift draw channel — never
+/** A drawn projectile's arc presentation: the upward lob height (px, rides the lift draw channel - never
  *  the depth key) and the arrow's rotation (radians) tangent to the arc. */
 export interface ProjectileArc {
   readonly lift: number;
@@ -28,7 +28,7 @@ export interface ProjectileArc {
 
 /**
  * The lob height + tangent rotation for a projectile drawn at `current`, flying toward `target`, loosed
- * from `origin` — all in screen space. Without a readable `origin` (or a degenerate chord/flight) the arrow
+ * from `origin` - all in screen space. Without a readable `origin` (or a degenerate chord/flight) the arrow
  * simply points straight at the target and flies flat (`lift 0`), never a throw. With one: the fraction
  * flown `p` along the origin→target chord sets a parabolic height `4·peak·p·(1−p)` and shears the straight
  * heading by the arc's slope `dh/ds` (screen-up is −y) so the nose rides up while climbing, down while

@@ -12,10 +12,10 @@ export interface TransitionsLayer {
 
 /**
  * Decodes the `emt1..emt4` per-cell transition-overlay lanes + the `eatd` transition-name dictionary.
- * Each lane is one u8 per cell (row-major, length === width·height — same resolution as `empa`/`empb`,
+ * Each lane is one u8 per cell (row-major, length === width·height - same resolution as `empa`/`empb`,
  * confirmed on the real maps); `255` = no overlay, `v < 255` selects transition `⌊v/6⌋` from the
  * dictionary and pair variant `v % 6` of its six UV pairs. The lanes and the dictionary are carried
- * verbatim (no compaction — the ⌊v/6⌋ join is positional, and re-encoding packed values could collide
+ * verbatim (no compaction - the ⌊v/6⌋ join is positional, and re-encoding packed values could collide
  * with the 255 sentinel). Source basis in docs/SOURCES.md "terrain tessellation". Returns undefined
  * when the map lacks any of the five chunks; throws on a length mismatch or an out-of-dictionary value.
  */

@@ -25,12 +25,12 @@ import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/dr
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
- * The gossip PLANNER half — the rungs that START a chat (see `index.ts` for the mechanic's source
+ * The gossip PLANNER half - the rungs that START a chat (see `index.ts` for the mechanic's source
  * basis): the deficit-driven {@link planGossipSeek} and the bottom-of-ladder {@link planGossipIdle},
  * with their shared candidate machinery. The started pair is then driven per tick by `drive.ts`.
  */
 
-/** Company deficit at or above which a WORKING settler leaves its work to find a chat partner — ¾ of a
+/** Company deficit at or above which a WORKING settler leaves its work to find a chat partner - ¾ of a
  *  full bar, mirroring the eat/sleep/pray triggers (`drives/needs.ts`; the same approximation basis). */
 const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
@@ -38,27 +38,27 @@ const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
  *  neighbourhood ring search, not a map scan. */
 const CHAT_SEEK_RADIUS_NODES = 32;
 
-/** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped — the
+/** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped - the
  *  de-stack drive is about to step it aside, and a pair chatting from one node stands inside each other. */
 const CHAT_PARTNER_MIN_DIST_NODES = 1;
 
-/** The idle-chat search covers exactly the adjacent lattice nodes ({@link nodesAdjacent}: Chebyshev 1 —
+/** The idle-chat search covers exactly the adjacent lattice nodes ({@link nodesAdjacent}: Chebyshev 1 -
  *  Manhattan ring 2 reaches the diagonals, the accept filter drops the ring's non-adjacent (2,0) points).
  *  An idle settler chats with a NEIGHBOUR immediately and in place; walking to more distant company is
  *  the paced wander below, so idle chatter never instantly perturbs a standing formation. */
 const CHAT_IDLE_MAX_RING = 2;
 
 /** How far (half-cell nodes, ~6 cells) an idle settler may wander to reach a distant idle partner once
- *  its {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires (design value — near enough to feel local). */
+ *  its {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires (design value - near enough to feel local). */
 const CHAT_IDLE_WALK_RADIUS_NODES = 12;
 
-/** Mean ticks an idle settler stands before deciding to wander to a distant partner — a per-tick `1/N`
+/** Mean ticks an idle settler stands before deciding to wander to a distant partner - a per-tick `1/N`
  *  seeded roll, so idlers mostly stay put and idle chatter never herds standing crowds into one heap
  *  (design value, ~20 s at the 12 Hz tick; adjacent neighbours still chat at once with no roll). */
 const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
 
 /** Whether `e` is still inside its post-chat breather at `tick` (the {@link ChatCooldown} stamped by the
- *  drive half's endChat). Expired stamps just sit until the next chat overwrites them — reading is pure,
+ *  drive half's endChat). Expired stamps just sit until the next chat overwrites them - reading is pure,
  *  no removal. */
 function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
   const cd = world.tryGet(e, ChatCooldown);
@@ -67,7 +67,7 @@ function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
 
 /**
  * Lazily-built per-tick chat-candidate buckets: every settler statically able to gossip (adult, employed,
- * not a fighter — the soldier/hero `forbidatomic` exclusion; dropping `Age` holders is the named
+ * not a fighter - the soldier/hero `forbidatomic` exclusion; dropping `Age` holders is the named
  * children-don't-chat approximation, see the module doc), bucketed by node for the ring searches. Built
  * on the first settler that actually looks for a partner, so a tick with nobody lonely pays nothing;
  * per-candidate dynamic state (busy, claimed, mid-wedding) is checked at accept time instead.
@@ -114,14 +114,14 @@ function mayJoinChat(world: World, tick: number, e: Entity): boolean {
   return s.hunger < HUNGER_EAT_THRESHOLD && s.fatigue < FATIGUE_SLEEP_THRESHOLD;
 }
 
-/** Stamp the mirrored {@link Chat} pair — the seeker (who walks, and whose refill ends the chat) speaks
+/** Stamp the mirrored {@link Chat} pair - the seeker (who walks, and whose refill ends the chat) speaks
  *  the first round. */
 function startChat(world: World, seeker: Entity, partner: Entity): void {
   world.add(seeker, Chat, { partner, seeker: true, talking: false, speaks: true });
   world.add(partner, Chat, { partner: seeker, seeker: false, talking: false, speaks: false });
 }
 
-/** The seek/idle rungs' shared partner predicate: an eligible same-owner settler standing free — chat-free
+/** The seek/idle rungs' shared partner predicate: an eligible same-owner settler standing free - chat-free
  *  ({@link mayJoinChat}) and not walking anywhere. One home so partner eligibility can't drift between the
  *  two rungs. */
 function idlePartnerFilter(
@@ -139,10 +139,10 @@ function idlePartnerFilter(
 
 /**
  * The working settler's company rung: at/above {@link CHAT_SEEK_THRESHOLD} it leaves its work and claims
- * the nearest chat-free settler — preferring an IDLE one (standing, nothing to do), else "grabbing" any
+ * the nearest chat-free settler - preferring an IDLE one (standing, nothing to do), else "grabbing" any
  * eligible one mid-errand (the grabbed half finishes its current swing, then stands and talks). Same-owner
  * only. A CARRYING seeker chats with its load in hand and delivers after (only partners are gated on
- * {@link Carrying} — a grabbed half must have its hands free, a desperate seeker needn't). Returns `true`
+ * {@link Carrying} - a grabbed half must have its hands free, a desperate seeker needn't). Returns `true`
  * when a chat was started (the settler is spoken for this tick).
  */
 export function planGossipSeek(
@@ -175,7 +175,7 @@ export function planGossipSeek(
 
 /**
  * The idle-settler chat rung, at the very bottom of the drive ladder: a settler with nothing at all to do
- * strikes up a chat with another idle settler — even on a full company bar, idle neighbours gossip because
+ * strikes up a chat with another idle settler - even on a full company bar, idle neighbours gossip because
  * why not (the original's settlements visibly chatter; design rule). A partner ALREADY STANDING BESIDE it
  * ({@link nodesAdjacent}) is chatted up at once, in place; a more distant idle partner (within
  * {@link CHAT_IDLE_WALK_RADIUS_NODES}) is only wandered to after the {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS}
@@ -193,7 +193,7 @@ export function planGossipIdle(
 ): boolean {
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (chatCooldownActive(world, ctx.tick, e)) return false;
-  // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek. The gate sits before the
+  // Owner-gated like the seek rung (and deStackIdle) - see planGossipSeek. The gate sits before the
   // wander roll below, so unowned golden fixtures consume no RNG and stay byte-identical.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;

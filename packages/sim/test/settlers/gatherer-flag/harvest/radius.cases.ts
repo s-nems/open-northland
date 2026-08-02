@@ -27,7 +27,7 @@ import {
   WIDE_RADIUS,
 } from '../support.js';
 
-describe('flag-bound gatherer — works only within its flag radius (req 3)', () => {
+describe('flag-bound gatherer - works only within its flag radius (req 3)', () => {
   it('harvests a tree inside the radius', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const gatherer = makeWoodcutter(sim, 3, 0);
@@ -70,7 +70,7 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     expect(all.effect.kind === 'harvest' && all.effect.resource).toBe(wood);
   });
 
-  it('ignores a tree beyond the radius and never fells it — it idles by the flag', () => {
+  it('ignores a tree beyond the radius and never fells it - it idles by the flag', () => {
     // flag@1, radius 4; the only tree is @20 (dist 38 ≫ radius). The gatherer must never roam out to it.
     const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(24, 1) });
     const gatherer = makeWoodcutter(sim, 1, 0);
@@ -88,14 +88,14 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
   });
 });
 
-describe('flag-bound gatherer — never targets a tree it cannot reach (mosty na rzece)', () => {
+describe('flag-bound gatherer - never targets a tree it cannot reach (mosty na rzece)', () => {
   // A river of WATER nodes at columns 10,11 splits the map: left bank hx≤9, right bank hx≥12 (a single
   // water node kills the straight step and its diagonal flanks, so the banks are separate components).
   // Tile (tx,ty) sits at node (2·tx, 2·ty); a footprint-less tree's work cell is its own anchor node.
   const RIVER = [10, 11] as const;
 
   it('picks a reachable farther tree over the nearest one across the river (planner, one tick)', () => {
-    // Flag@tile4 (node 8, left bank). The tree NEAREST the flag is @tile6 (node 12, RIGHT bank, dist 4) —
+    // Flag@tile4 (node 8, left bank). The tree NEAREST the flag is @tile6 (node 12, RIGHT bank, dist 4) -
     // unreachable across the water. A reachable tree sits @tile1 (node 2, left bank, dist 6), and the
     // gatherer stands on it. Pre-fix the distance-only pick latched onto the node-12 tree and the gatherer
     // walked at the river forever; now the cross-component tree is skipped and it chops the reachable one.
@@ -121,7 +121,7 @@ describe('flag-bound gatherer — never targets a tree it cannot reach (mosty na
     const gatherer = makeWoodcutter(sim, 4, 1);
     bindToFlag(sim, gatherer, 4, 1, WIDE_RADIUS);
     const acrossRiver = placeFellableTree(sim, 6, 1); // nearest, unreachable
-    placeFellableTree(sim, 1, 1); // farther, reachable — the one that gets worked
+    placeFellableTree(sim, 1, 1); // farther, reachable - the one that gets worked
 
     const violations = runTicks(sim, 800);
 
@@ -129,7 +129,7 @@ describe('flag-bound gatherer — never targets a tree it cannot reach (mosty na
     const standing = [...sim.world.query(Resource)];
     expect(standing).toEqual([acrossRiver]); // only the far-bank tree still stands…
     expect(sim.world.get(acrossRiver, Felling).chopsLeft).toBe(CHOPS_TO_FELL); // …and it was never chopped
-    // The gatherer never crossed the river — it stayed on its own (left) bank.
+    // The gatherer never crossed the river - it stayed on its own (left) bank.
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(5);
     expect(violations).toEqual([]);
   });

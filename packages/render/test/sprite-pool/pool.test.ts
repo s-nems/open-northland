@@ -11,7 +11,7 @@ import { entity, snapshotOf } from '../support/fixtures.js';
 /**
  * The retained pool's SCREEN-bounded reconcile: per-frame work must track what's on screen, not the whole
  * pool (the render contract). The detach and paletted-placement passes iterate the {@link SpritePool}
- * `attached` set — the entities on the layer — so the attached-layer child count IS that scan domain,
+ * `attached` set - the entities on the layer - so the attached-layer child count IS that scan domain,
  * while `stats().pooled` is the whole pool.
  *
  * SpritePool is Pixi-coupled, but its display objects construct headlessly (the map-object-removal +
@@ -22,7 +22,7 @@ import { entity, snapshotOf } from '../support/fixtures.js';
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const CAMERA: Camera = { offsetX: 0, offsetY: 0 };
 
-/** A minimal drawable building at a tile — `Building` + `Position` is all the scene collector classifies. */
+/** A minimal drawable building at a tile - `Building` + `Position` is all the scene collector classifies. */
 function building(id: number, col: number, row: number): ReturnType<typeof entity> {
   return entity(id, col, row, { Building: {} });
 }
@@ -68,7 +68,7 @@ const FRAMES_FIRST: Viewport = {
 // all-attached pool without hand-fitting the box to each generated position.
 const FRAMES_EVERYTHING: Viewport = { minX: -1e9, maxX: 1e9, minY: -1e9, maxY: 1e9 };
 
-describe('SpritePool — reconcile scans track the screen, not the pool', () => {
+describe('SpritePool - reconcile scans track the screen, not the pool', () => {
   it('attaches only the visible entities and keeps culled ones pooled', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
@@ -79,7 +79,7 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
 
     pool.reconcile(poolFrame(snapshotOf(BUILDINGS), FRAMES_FIRST));
     expect(layer.children.length).toBe(1); // the detach pass leaves only the visible one on the layer
-    expect(pool.stats().pooled).toBe(3); // the two culled entities stay pooled — they scroll back
+    expect(pool.stats().pooled).toBe(3); // the two culled entities stay pooled - they scroll back
   });
 
   it('re-attaches a culled entity when it scrolls back into view (never re-mints it)', () => {
@@ -158,7 +158,7 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
   });
 });
 
-/** A drawable settler at a tile — `Settler` + `Position` is all the scene collector needs. */
+/** A drawable settler at a tile - `Settler` + `Position` is all the scene collector needs. */
 function settler(
   id: number,
   col: number,
@@ -171,10 +171,10 @@ function settler(
 /**
  * The motion track across a gap in the draw list. A pooled entity keeps its track while it is not drawn
  * (indoors, fogged, culled), so resuming the lerp from that stale anchor would glide it in from wherever it
- * vanished — `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px. The pool must reset the
+ * vanished - `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px. The pool must reset the
  * track at re-entry instead, without disturbing the interpolation of anything drawn continuously.
  */
-describe('SpritePool — motion track across a gap in the draw list', () => {
+describe('SpritePool - motion track across a gap in the draw list', () => {
   /** The anchor a ref was drawn at this frame, failing the test if it was not drawn at all. */
   function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
     const anchor = pool.anchorOf(ref);
@@ -185,20 +185,20 @@ describe('SpritePool — motion track across a gap in the draw list', () => {
   it('snaps a settler re-entering the draw set instead of gliding from its stale anchor', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
-    const inside = { Resting: { at: 99 } }; // the workplace marker — live and pooled, but not drawn
+    const inside = { Resting: { at: 99 } }; // the workplace marker - live and pooled, but not drawn
 
-    // Frame 1: at its workplace door, first sighting — snaps, so this IS the door anchor.
+    // Frame 1: at its workplace door, first sighting - snaps, so this IS the door anchor.
     pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0)]), FRAMES_ALL), tick: 0 });
     const door = anchorAt(pool, 1);
 
-    // Frames 2-4: inside, working. Not drawn, but pooled — the track goes stale where it stood.
+    // Frames 2-4: inside, working. Not drawn, but pooled - the track goes stale where it stood.
     for (let tick = 1; tick <= 3; tick++) {
       pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0, inside)]), FRAMES_ALL), tick });
       expect(pool.anchorOf(1)).toBeUndefined();
     }
     expect(pool.stats().pooled).toBe(1); // kept across the gap (a re-mint would snap for the wrong reason)
 
-    // Frame 5: back out, one tile on — near enough that SNAP_DISTANCE cannot be what saves it. Settler 2 is
+    // Frame 5: back out, one tile on - near enough that SNAP_DISTANCE cannot be what saves it. Settler 2 is
     // the oracle: first sighted here this frame, so it snaps, and its anchor IS this tile's anchor.
     pool.reconcile({
       ...poolFrame(snapshotOf([settler(1, 0, 1), settler(2, 0, 1)]), FRAMES_ALL),
@@ -209,11 +209,11 @@ describe('SpritePool — motion track across a gap in the draw list', () => {
     // Guards the setup, not the fix: were this gap ever to exceed SNAP_DISTANCE, trackMotion would snap on
     // its own and the assertion below would pass without a re-entry reset at all. Per-axis, like trackMotion.
     expect(Math.max(Math.abs(emerged.x - door.x), Math.abs(emerged.y - door.y))).toBeLessThan(SNAP_DISTANCE);
-    expect(emerged).not.toEqual(door); // it did move — the assertion below is not vacuous
+    expect(emerged).not.toEqual(door); // it did move - the assertion below is not vacuous
     expect(emerged).toEqual(anchorAt(pool, 2)); // drawn where a freshly-sighted settler on this tile draws
   });
 
-  it('interpolates a settler drawn on consecutive frames — the reset must not fire on every frame', () => {
+  it('interpolates a settler drawn on consecutive frames - the reset must not fire on every frame', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
 
@@ -228,19 +228,19 @@ describe('SpritePool — motion track across a gap in the draw list', () => {
       alpha: 0.5,
     });
     const to = anchorAt(pool, 2);
-    // Half a tick behind the sim, as the fixed-timestep contract wants — NOT snapped onto `to`. Pins the
+    // Half a tick behind the sim, as the fixed-timestep contract wants - NOT snapped onto `to`. Pins the
     // other half of the predicate: were the `lastSeen` stamp ever hoisted above the reset, every entity
     // would read as re-entering, snap every frame, and inter-tick interpolation would silently die.
     expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
   });
 });
 
-describe('SpritePool — details-panel portrait subject visibility', () => {
+describe('SpritePool - details-panel portrait subject visibility', () => {
   // Any camera framings do: the assertions below are about visibility pairing, not placement.
   const INSET = { camera: CAMERA, width: 64, height: 64 };
   const MAIN = { camera: CAMERA, width: 800, height: 600 };
 
-  /** The force-hidden portrait subject — the only invisible child on the layer after a reconcile. */
+  /** The force-hidden portrait subject - the only invisible child on the layer after a reconcile. */
   function hiddenSubject(layer: Container): Container {
     const hidden = layer.children.filter((c) => !c.visible);
     expect(hidden).toHaveLength(1);
@@ -259,7 +259,7 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
 
     const subjectContainer = hiddenSubject(layer); // force-drawn (attached) but hidden on the main map
     pool.portraitPass(INSET, MAIN, (soloKeep) => {
-      expect(soloKeep).toBeNull(); // off-screen, not indoor — it renders with the world around it
+      expect(soloKeep).toBeNull(); // off-screen, not indoor - it renders with the world around it
       expect(subjectContainer.visible).toBe(true); // revealed for the cutout render
     });
     expect(subjectContainer.visible).toBe(false); // hidden again for the main stage
@@ -285,7 +285,7 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const workplace = building(10, 0, 0);
-    const other = settler(2, 0, 0); // another on-screen unit — a sprite-layer sibling
+    const other = settler(2, 0, 0); // another on-screen unit - a sprite-layer sibling
     const subject = settler(1, 0, 0, { Resting: { at: 10 } }); // waiting inside its workplace
 
     pool.reconcile({ ...poolFrame(snapshotOf([workplace, other, subject]), FRAMES_ALL), portraitRef: 1 });
@@ -293,13 +293,13 @@ describe('SpritePool — details-panel portrait subject visibility', () => {
 
     const before = layer.children.map((c) => c.visible);
     pool.portraitPass(INSET, MAIN, (soloKeep) => {
-      expect(soloKeep).toBe(layer); // indoor — keep the sprite layer, blank the rest of the world
+      expect(soloKeep).toBe(layer); // indoor - keep the sprite layer, blank the rest of the world
       for (const c of layer.children) expect(c.visible).toBe(c === subjectContainer); // only the subject draws
     });
     expect(layer.children.map((c) => c.visible)).toEqual(before); // every sibling restored exactly
   });
 
-  it('restores the borrow when the render throws — no unit stays hidden, no sibling stays blanked', () => {
+  it('restores the borrow when the render throws - no unit stays hidden, no sibling stays blanked', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
     const workplace = building(10, 0, 0);

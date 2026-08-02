@@ -10,7 +10,7 @@ import {
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
-/** Resolve a landscape type by its `id` (throws if absent — a test-fixture programmer error). */
+/** Resolve a landscape type by its `id` (throws if absent - a test-fixture programmer error). */
 function land(content: ContentSet, id: string): LandscapeType {
   const found = content.landscape.find((t) => t.id === id);
   if (found === undefined) throw new Error(`fixture has no landscape "${id}"`);
@@ -18,7 +18,7 @@ function land(content: ContentSet, id: string): LandscapeType {
 }
 
 /**
- * The landscape placement-layer read views — `waterLayerLandscape`/`isWaterLayerType` and
+ * The landscape placement-layer read views - `waterLayerLandscape`/`isWaterLayerType` and
  * `universalLayerLandscape`/`isUniversalLayerType` classify the rows out of `content.landscape` *by the
  * data alone* (the `allowedonwater`/`allowedoneverything` flags the original `landscapetypes.ini` carries),
  * never by a hardcoded list. These flags are genuinely extracted (unlike `walkable`/`buildable`, which keep
@@ -36,12 +36,12 @@ function landscapeContent(): ContentSet {
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' }],
     landscape: [
-      // wall_gate_open (typeId 84) declared first — a water-layer type. Proves the sort, not declaration order.
+      // wall_gate_open (typeId 84) declared first - a water-layer type. Proves the sort, not declaration order.
       { typeId: 84, id: 'wall_gate_open', allowedOnLand: true, allowedOnWater: true, maxValency: 100 },
-      { typeId: 30, id: 'grass', allowedOnLand: true }, // plain land — neither water nor everything
-      { typeId: 82, id: 'wall', allowedOnLand: true, allowedOnWater: true, maxValency: 100 }, // water layer, after 84 — proves sort puts it first
+      { typeId: 30, id: 'grass', allowedOnLand: true }, // plain land - neither water nor everything
+      { typeId: 82, id: 'wall', allowedOnLand: true, allowedOnWater: true, maxValency: 100 }, // water layer, after 84 - proves sort puts it first
       { typeId: 1, id: 'void', allowedOnEverything: true, maxValency: 100 }, // the only universal-layer type
-      { typeId: 40, id: 'tree', allowedOnLand: true, maxValency: 5 }, // land decor — neither
+      { typeId: 40, id: 'tree', allowedOnLand: true, maxValency: 5 }, // land decor - neither
     ],
   });
 }
@@ -117,7 +117,7 @@ describe('landLayerLandscape', () => {
   it('returns every land-layer type and excludes the void, sorted by typeId', () => {
     // Mirrors the real IR shape: every row but `void` carries allowedonland (86/87 there).
     const typeIds = landLayerLandscape(landscapeContent()).map((t) => t.typeId);
-    expect(typeIds).toEqual([30, 40, 82, 84]); // grass, tree, wall, wall_gate_open — void(1) excluded
+    expect(typeIds).toEqual([30, 40, 82, 84]); // grass, tree, wall, wall_gate_open - void(1) excluded
   });
 
   it('is byte-stable call-to-call (a pure function of content)', () => {

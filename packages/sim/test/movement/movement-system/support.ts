@@ -8,7 +8,7 @@ import { fx, type Simulation } from '../../../src/index.js';
 import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
 
 /**
- * Unit + integration tests for the MovementSystem's path-following mode — the seam that consumes a
+ * Unit + integration tests for the MovementSystem's path-following mode - the seam that consumes a
  * {@link PathFollow}, ramps the gait (the movement-inertia approximation: accelerate from rest,
  * shed speed through corners, brake into the final waypoint), steps the entity toward each
  * cell-centre waypoint, advances the waypoint index on arrival, and drops the path when complete.
@@ -25,7 +25,7 @@ export const GRASS = 0;
 
 export const FX_ZERO = fx.fromInt(0);
 
-/** The gait ramp's per-tick acceleration at the default walk (divCeil(G/3) — see ACCEL_TICKS). */
+/** The gait ramp's per-tick acceleration at the default walk (divCeil(G/3) - see ACCEL_TICKS). */
 export const ACCEL_STEP = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
 
 /** Build a mapped sim and place an entity at (x,y) with a straight-line PathFollow to the waypoints.

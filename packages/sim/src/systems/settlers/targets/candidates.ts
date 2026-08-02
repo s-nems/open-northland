@@ -22,7 +22,7 @@ import { SinkAvailability } from './stores/sinks.js';
 
 export interface YardTargets {
   readonly blocked: BlockOverlay;
-  /** Per yard-heap node: its good, fill, and owning player — `owner` mirrors the heap's {@link Owner}
+  /** Per yard-heap node: its good, fill, and owning player - `owner` mirrors the heap's {@link Owner}
    *  so the yard steering can refuse a rival's heap exactly where `stackOntoTile` would refuse the merge. */
   readonly occupied: ReadonlyMap<
     NodeId,
@@ -51,7 +51,7 @@ export interface TargetCandidates {
   readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
-  /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id — so a farmer
+  /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id - so a farmer
    *  reads only its own farm's fields instead of filtering the settlement's whole crop list per tick. */
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
   /** Good type to its content-authored harvesting atomic. */
@@ -68,7 +68,7 @@ export interface TargetCandidates {
  *  settler asks for a nearest store / temple / site
  *  never constructs that index. Deferring the build cannot move a pick: each index is built from the
  *  eager candidate list here, and its constructor reads only `Building` + `Position` + the content
- *  footprint — none of which the planner pass mutates — so the first-access build is byte-identical
+ *  footprint - none of which the planner pass mutates - so the first-access build is byte-identical
  *  to a tick-start build. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
   const harvestAtomicByGood = new Map<number, number>();

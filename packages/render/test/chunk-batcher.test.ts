@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ChunkBatcher } from '../src/gpu/terrain/chunk-batcher.js';
 
 /**
- * Pins the chunk batcher's PAINT ORDER — the compositing half of the transition overlays that no
+ * Pins the chunk batcher's PAINT ORDER - the compositing half of the transition overlays that no
  * pure test covers: overlays alpha-blend over whatever drew before them, so `children()` MUST
  * return fallback → base → overlay2 → overlay1 regardless of push order, or layer-1 seams would
  * render UNDER layer 2 (or under the ground) and the whole organic-transition look silently breaks
@@ -45,7 +45,7 @@ describe('ChunkBatcher paint order', () => {
     expect(children.slice(1).map(tagOf)).toEqual([100, 101, 200, 300]);
   });
 
-  it('keeps one batch per (layer × page) — the same page on two layers stays two draws', () => {
+  it('keeps one batch per (layer × page) - the same page on two layers stays two draws', () => {
     const batcher = new ChunkBatcher();
     pushTagged(batcher, 'tran_meadow.masked', 'overlay1', 1);
     pushTagged(batcher, 'tran_meadow.masked', 'overlay2', 2);

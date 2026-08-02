@@ -16,7 +16,7 @@ import { interactionNode } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { isOrderableSettler } from './guards.js';
 
-// The family order handlers — marry / assignHouse / makeChild. Like every order, bad input is a
+// The family order handlers - marry / assignHouse / makeChild. Like every order, bad input is a
 // recoverable skip (still logged for faithful replay), never a throw.
 
 /**
@@ -28,17 +28,17 @@ export function marry(world: World, ctx: SystemContext, command: Extract<Command
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !mayMarry(world, ctx.content, e)) return;
   // Signpost confinement: the partner search only sees candidates inside the issuer's allowed area
-  // (local circle + reachable guidepost network) — the same rule as every other target search.
+  // (local circle + reachable guidepost network) - the same rule as every other target search.
   const terrain = ctx.terrain;
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, e) : null;
   const partner = findPartnerFor(world, ctx.content, e, terrain, limit);
-  if (partner === null) return; // nobody to marry — the order cancels itself
+  if (partner === null) return; // nobody to marry - the order cancels itself
   startWedding(world, e, partner);
 }
 
 /**
  * The `assignHouse` handler: move the issuer's whole family (see {@link familyOf}) into `house`. The
- * home type's `homeSize` caps FAMILIES (`logichomesize` 1..5 — see {@link familiesOf}), so the move
+ * home type's `homeSize` caps FAMILIES (`logichomesize` 1..5 - see {@link familiesOf}), so the move
  * needs a free family slot beside the households already living there. Skips: a non-adult/dead/neutral
  * issuer, a target that is not a built same-tribe home, or a home with no free slot.
  */
@@ -54,7 +54,7 @@ export function assignHouse(
   if (type === undefined) return;
   if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
   // Signpost confinement: a home beyond the issuer's allowed area is refused like an out-of-area
-  // assignWorker/move order — the player extends the network first, then houses the far family.
+  // assignWorker/move order - the player extends the network first, then houses the far family.
   const terrain = ctx.terrain;
   if (terrain !== undefined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -70,7 +70,7 @@ export function assignHouse(
   const others = familiesOf(world, house).filter((fam) => !fam.some((m) => members.has(m))).length;
   if (others + 1 > type.homeSize) return; // no free family slot
   for (const member of family) {
-    world.add(member, Residence, { home: house }); // add overwrites — a move drops the old home
+    world.add(member, Residence, { home: house }); // add overwrites - a move drops the old home
   }
 }
 
@@ -87,7 +87,7 @@ export function unassignHouse(
 ): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
-  if (!world.has(e, Residence)) return; // already homeless — nothing to free
+  if (!world.has(e, Residence)) return; // already homeless - nothing to free
   for (const member of familyOf(world, e)) world.remove(member, Residence);
 }
 

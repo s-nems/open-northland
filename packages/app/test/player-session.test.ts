@@ -29,7 +29,7 @@ describe('localPlayerParam', () => {
     expect(localPlayerParam(new URLSearchParams('player=overseer'))).toBe(0);
   });
 
-  it('marks only the observer read-only — the overseer god-mode keeps control', () => {
+  it('marks only the observer read-only - the overseer god-mode keeps control', () => {
     expect(readOnlyObserverParam(new URLSearchParams('player=observer'))).toBe(true);
     expect(readOnlyObserverParam(new URLSearchParams('player=overseer'))).toBe(false);
     expect(readOnlyObserverParam(new URLSearchParams('player=2'))).toBe(false);

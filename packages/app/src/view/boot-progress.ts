@@ -36,7 +36,7 @@ export interface BootProgress {
  * The share of an entry's boot that is done when `phase` starts. Steps are weighted equally: their real
  * costs differ a lot (the content parse dwarfs the minimap), but a weighting would be invented numbers,
  * so the honest signal is the step label and the bar is a coarse "how far through the list".
- * A phase outside `phases` reads as 0 rather than throwing — a mislabelled bar must not break boot.
+ * A phase outside `phases` reads as 0 rather than throwing - a mislabelled bar must not break boot.
  */
 export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): number {
   const index = phases.indexOf(phase);
@@ -59,7 +59,7 @@ const PAINT_TIMEOUT_MS = 250;
  * only reach the screen after that step had already finished.
  *
  * Boot must never *depend* on this resolving: a hidden tab fires no rAF, and waiting for one there would
- * stall the load until the player came back — so a hidden tab (which has nothing to paint anyway) skips
+ * stall the load until the player came back - so a hidden tab (which has nothing to paint anyway) skips
  * the yield, and a tab hidden mid-yield falls through on the timeout.
  */
 function nextPaint(): Promise<void> {
@@ -75,7 +75,7 @@ function nextPaint(): Promise<void> {
   });
 }
 
-/** Create an element with a class and optional children — the terse builder this card's small tree needs. */
+/** Create an element with a class and optional children - the terse builder this card's small tree needs. */
 function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {
   const div = document.createElement('div');
   div.className = className;

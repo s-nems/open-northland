@@ -82,8 +82,8 @@ export const plGame = {
     selectedCount: 'Wybrano: {count}',
     subjectCount: 'Liczba poddanych na liście: {count}',
     commandHint: 'Kliknij PPM na świecie, aby wydać rozkaz.',
-    dropHint: '{label} — kliknij, aby położyć; Esc kończy',
-    placementHint: '{label} — kliknij, aby postawić; Esc anuluje',
+    dropHint: '{label} - kliknij, aby położyć; Esc kończy',
+    placementHint: '{label} - kliknij, aby postawić; Esc anuluje',
     resources: 'Surowce',
     statuses: {
       ordered: 'idzie na rozkaz',
@@ -174,7 +174,7 @@ export const plGame = {
     house_c: 'Przydział domu',
     house_d: 'Przydział domu',
   },
-  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG — the details
+  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG - the details
   // panel resolves these before falling back to the raw content name (which is the untranslated slug).
   lifeStage: {
     baby_female: 'Niemowlę (dziewczynka)',
@@ -204,12 +204,12 @@ export const plGame = {
     actions: 'Akcje',
     targetSettler: 'jednostkę',
     targetBuilding: 'budynek',
-    nothingArmed: 'Nic nie wybrano — wybierz jednostkę, złoże, towar lub narzędzie powyżej.',
-    armedResource: 'Wybrano złoże „{label}” — klikaj świat (PPM/Esc anuluje).',
-    armedGood: 'Wybrano stos „{label}” — klikaj świat (PPM/Esc anuluje).',
-    armedAction: 'Wybrano: {label} — kliknij {target} (PPM/Esc anuluje).',
-    armedUnit: 'Wybrano: {label} (gracz {player} — {name}) — klikaj świat (PPM/Esc anuluje).',
-    armedAnimal: 'Wybrano stado „{label}” — klikaj świat (PPM/Esc anuluje).',
+    nothingArmed: 'Nic nie wybrano - wybierz jednostkę, złoże, towar lub narzędzie powyżej.',
+    armedResource: 'Wybrano złoże „{label}” - klikaj świat (PPM/Esc anuluje).',
+    armedGood: 'Wybrano stos „{label}” - klikaj świat (PPM/Esc anuluje).',
+    armedAction: 'Wybrano: {label} - kliknij {target} (PPM/Esc anuluje).',
+    armedUnit: 'Wybrano: {label} (gracz {player} - {name}) - klikaj świat (PPM/Esc anuluje).',
+    armedAnimal: 'Wybrano stado „{label}” - klikaj świat (PPM/Esc anuluje).',
     resourceFallback: 'surowiec',
     goodFallback: 'towar',
     needsCaption: 'Głód, sen itd.',

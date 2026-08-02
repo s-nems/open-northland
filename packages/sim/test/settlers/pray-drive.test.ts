@@ -15,9 +15,9 @@ import {
 } from './needs/support.js';
 
 /**
- * Unit + integration tests for the PRAY DRIVE — the planner choosing a `pray` atomic (id 12, the
+ * Unit + integration tests for the PRAY DRIVE - the planner choosing a `pray` atomic (id 12, the
  * original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY`) when a settler's piety crosses the threshold,
- * WALKING TO A TEMPLE (the first target-bound need — unlike eat at a store / sleep in place) and
+ * WALKING TO A TEMPLE (the first target-bound need - unlike eat at a store / sleep in place) and
  * zeroing piety on completion, closing the NeedsSystem's rise→pray→reset loop.
  *
  * The viking tribe binds pray atomic 12 → "viking_pray" (length 7); the pray atomic id (12) is pinned
@@ -29,9 +29,9 @@ import {
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
 const PRAY_ATOMIC = 12;
-// Just over the ¾·ONE pray threshold — a settler this devout-overdue prays before any work.
+// Just over the ¾·ONE pray threshold - a settler this devout-overdue prays before any work.
 const DEVOUT: Fixed = justAbove(NEED_THRESHOLD);
-// Comfortably below the threshold — a piety-satisfied settler ignores the pray drive and works.
+// Comfortably below the threshold - a piety-satisfied settler ignores the pray drive and works.
 const PIOUS: Fixed = fx.div(ONE, fx.fromInt(2));
 
 function settlerAt(
@@ -52,8 +52,8 @@ function templeAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-describe('prayDrive — the planner choosing to pray (target-bound: walk to a temple)', () => {
-  it('walks to the nearest temple when piety crosses the threshold (no atomic yet — must arrive)', () => {
+describe('prayDrive - the planner choosing to pray (target-bound: walk to a temple)', () => {
+  it('walks to the nearest temple when piety crosses the threshold (no atomic yet - must arrive)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const settler = settlerAt(sim, 0, 0, DEVOUT);
     const temple = templeAt(sim, 4, 0);
@@ -78,7 +78,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(settler, MoveGoal)).toBe(false); // already here — no walk
+    expect(sim.world.has(settler, MoveGoal)).toBe(false); // already here - no walk
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(PRAY_ATOMIC);
     expect(atomic.duration).toBe(7); // viking setatomic 12 -> "viking_pray" length 7
@@ -93,7 +93,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // Headed for the wood, not the temple — the pray drive did not fire.
+    // Headed for the wood, not the temple - the pray drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
@@ -119,12 +119,12 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
     plannerSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(settler, CurrentAtomic);
-    expect(atomic.atomicId).toBe(8); // SLEEP — survival needs outrank devotion
+    expect(atomic.atomicId).toBe(8); // SLEEP - survival needs outrank devotion
     expect(atomic.effect.kind).toBe('sleep');
   });
 });
 
-describe('pray atomic — zeroing piety on completion (AtomicSystem)', () => {
+describe('pray atomic - zeroing piety on completion (AtomicSystem)', () => {
   it('clears piety and consumes no goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, DEVOUT);
@@ -145,7 +145,7 @@ describe('pray atomic — zeroing piety on completion (AtomicSystem)', () => {
   });
 });
 
-describe('pray drive — closing the rise→pray→reset loop through the real schedule', () => {
+describe('pray drive - closing the rise→pray→reset loop through the real schedule', () => {
   it('a settler grows devout, walks to the temple, prays, and its piety resets', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(4, 1) });
     // Start near the threshold so it crosses within a short headless run; temple a couple cells away.

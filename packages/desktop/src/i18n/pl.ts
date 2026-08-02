@@ -2,15 +2,15 @@ import type { Messages } from './en.js';
 
 /**
  * The installer's Polish catalog, structurally checked against {@link Messages}. Unlike the game's
- * app catalog — where a later i18n pass owns Polish and new strings ship in English — the installer's
+ * app catalog - where a later i18n pass owns Polish and new strings ship in English - the installer's
  * Polish is authored here directly, since this surface targets the (Polish-community) CulturesNation
  * mod and the EN/PL pair was requested up front.
  */
 export const pl = {
   setup: {
-    title: 'Open Northland — pierwsze uruchomienie',
+    title: 'Open Northland - pierwsze uruchomienie',
     introHtml:
-      'Open Northland to darmowa reimplementacja gry <em>Cultures — 8th Wonder of the World</em>. Nie ' +
+      'Open Northland to darmowa reimplementacja gry <em>Cultures - 8th Wonder of the World</em>. Nie ' +
       'zawiera żadnej grafiki ani dźwięków gry: przy tym pierwszym uruchomieniu konwertuje zasoby Twojej ' +
       'własnej kopii oryginalnej gry do swojego folderu danych. Wskaż folder, w którym zainstalowana jest ' +
       'gra (ten z plikiem <code>Game.exe</code> i katalogiem <code>DataX</code>), aby zacząć.',
@@ -30,21 +30,21 @@ export const pl = {
     probe: {
       withMod: 'Znaleziono grę (z modem culturesnation).',
       externalMod: 'Znaleziono grę. Używany mod CulturesNation z {path}.',
-      noMod: 'Znaleziono grę — ale brakuje moda CulturesNation.',
-      noArchives: 'Nie znaleziono tam archiwów gry (.lib) — wskaż folder zawierający Game.exe oraz DataX.',
+      noMod: 'Znaleziono grę - ale brakuje moda CulturesNation.',
+      noArchives: 'Nie znaleziono tam archiwów gry (.lib) - wskaż folder zawierający Game.exe oraz DataX.',
     },
     status: {
       ready: 'Zawartość gry jest zainstalowana. Wygeneruj ją tutaj ponownie, jeśli chcesz świeżej konwersji.',
       staleRevision:
         'Twoja zawartość gry jest niekompletna lub została wygenerowana przez starszą wersję Open ' +
-        'Northland — zalecane jest wygenerowanie jej ponownie.',
+        'Northland - zalecane jest wygenerowanie jej ponownie.',
       staleSchema:
-        'Twoja zawartość gry została wygenerowana przez niezgodną starszą wersję Open Northland — trzeba ' +
+        'Twoja zawartość gry została wygenerowana przez niezgodną starszą wersję Open Northland - trzeba ' +
         'ją wygenerować ponownie przed graniem.',
     },
     run: {
       starting: 'Rozpoczynanie…',
-      // Genitive plural "plików" for the running counter — a named approximation over Polish's full
+      // Genitive plural "plików" for the running counter - a named approximation over Polish's full
       // plural rules (1 plik / 2 pliki / 5 plików), adequate for a progress line.
       files: '{done} plików',
       failed: 'Instalacja zawartości gry nie powiodła się.',
@@ -65,14 +65,14 @@ export const pl = {
       requiredHtml:
         'Darmowy mod społecznościowy <strong>CulturesNation</strong> jest wymagany do gry, a Twój folder ' +
         'gry go nie zawiera. Open Northland może pobrać go za Ciebie (~600 MB, z linku Google Drive serwisu ' +
-        '<code>culturesnation.pl</code>) do swojego folderu danych — Twój folder gry pozostaje nienaruszony.',
+        '<code>culturesnation.pl</code>) do swojego folderu danych - Twój folder gry pozostaje nienaruszony.',
       download: 'Pobierz mod',
       haveIt: 'Już go mam…',
       downloading: 'Pobieranie moda…',
       unpacking: 'Rozpakowywanie…',
       cancelled: 'Pobieranie anulowane.',
-      downloadFailed: 'Pobieranie moda nie powiodło się: {message} — {fallback}',
-      pickFailed: '{message} — {fallback}',
+      downloadFailed: 'Pobieranie moda nie powiodło się: {message} - {fallback}',
+      pickFailed: '{message} - {fallback}',
       fallbackNote:
         'Możesz pobrać mod samodzielnie z culturesnation.pl (strona z aktualnościami → CnMod), rozpakować ' +
         'zip i wskazać rozpakowany folder przyciskiem „Już go mam…”.',
@@ -88,7 +88,7 @@ export const pl = {
     leaveGame: 'Opuść grę',
     stay: 'Zostań',
     leaveGameMessage: 'Opuścić trwającą grę?',
-    leaveGameDetail: 'Zapisywanie nie jest jeszcze dostępne — bieżąca sesja zostanie utracona.',
+    leaveGameDetail: 'Zapisywanie nie jest jeszcze dostępne - bieżąca sesja zostanie utracona.',
   },
   menu: {
     game: 'Gra',
@@ -96,13 +96,13 @@ export const pl = {
     openDataFolder: 'Otwórz folder danych',
   },
   errors: {
-    modStillDownloading: 'mod wciąż się pobiera — poczekaj na zakończenie',
+    modStillDownloading: 'mod wciąż się pobiera - poczekaj na zakończenie',
     noArchives: 'nie znaleziono archiwów gry (.lib) w wybranym folderze',
     modRequired:
-      'mod culturesnation jest wymagany — pobierz go poniżej lub wskaż kreatorowi rozpakowaną kopię',
+      'mod culturesnation jest wymagany - pobierz go poniżej lub wskaż kreatorowi rozpakowaną kopię',
     modDownloadRunning: 'pobieranie moda już trwa',
-    noDataCnmd: 'nie znaleziono tam DataCnmd/ — wskaż rozpakowany folder moda (pobierz go z {url})',
+    noDataCnmd: 'nie znaleziono tam DataCnmd/ - wskaż rozpakowany folder moda (pobierz go z {url})',
     incompatibleSchema:
-      'zawartość została wygenerowana dla niezgodnego schematu — najpierw wygeneruj ją ponownie',
+      'zawartość została wygenerowana dla niezgodnego schematu - najpierw wygeneruj ją ponownie',
   },
 } as const satisfies Messages;

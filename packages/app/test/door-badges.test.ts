@@ -5,7 +5,7 @@ import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projection
 import { building, type Ent, resident, settler, snapshotOf } from './support/snapshot.js';
 
 /**
- * computeDoorBadges — the pure snapshot→door-badge projection the render layer draws. It reads the sim's
+ * computeDoorBadges - the pure snapshot→door-badge projection the render layer draws. It reads the sim's
  * {@link JobAssignment} binding, so a badge row appears for every worker bound to a building
  * (auto-assigned or player-assigned), split by worker role (craftsman / carrier / gatherer via
  * `roleOf`). The projection owns the bottom-to-top stack order and each row's click-pick settler id;
@@ -16,7 +16,7 @@ const CARRIER = 26; // a carrier job id
 const CRAFTSMAN = 1008; // a rebased craftsman job id
 const GATHERER = 20; // a gatherer job id (the sandbox gatherer band)
 
-/** The test's role classifier — the same three-way split the sandbox `workerRoleOf` makes. */
+/** The test's role classifier - the same three-way split the sandbox `workerRoleOf` makes. */
 const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' =>
   jobType === CARRIER ? 'carrier' : jobType === GATHERER ? 'gatherer' : 'craftsman';
 
@@ -71,7 +71,7 @@ describe('computeDoorBadges', () => {
   it('emits no badge for an unstaffed building, and ignores an unbound settler', () => {
     const snap = snapshotOf([
       building(1, 7, 4, 4), // no workers bound here
-      settler(2, CRAFTSMAN, null), // unemployed / unbound — no badge
+      settler(2, CRAFTSMAN, null), // unemployed / unbound - no badge
     ]);
 
     expect(computeDoorBadges(snap, new Map(), roleOf)).toEqual([]);
@@ -96,7 +96,7 @@ describe('computeDoorBadges', () => {
 
     const badge = computeDoorBadges(snap, types, roleOf)[0];
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
-    // The literal committed override (two nodes right of the door), NOT read back through the table —
+    // The literal committed override (two nodes right of the door), NOT read back through the table -
     // deleting the table entry must fail this test, not silently fall back to the default.
     const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
     expect(badge?.x).toBe(iconPos.x);

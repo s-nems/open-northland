@@ -6,7 +6,7 @@ import type { PipelineEvent } from './ipc.js';
 
 /**
  * Main-process side of the conversion: forks the bundled pipeline child (`pipeline-child.cjs`) as a
- * `utilityProcess` and streams its structured events + stdio lines to one sink. One run at a time —
+ * `utilityProcess` and streams its structured events + stdio lines to one sink. One run at a time -
  * a second start while a child lives is a caller bug.
  */
 export class PipelineHost {
@@ -56,7 +56,7 @@ export class PipelineHost {
   }
 
   /** Kill a running conversion (wizard Cancel, window closed); resolves after the child exits.
-   * Deliberate, so the sink gets no done/error for this run — the caller owns the UI transition. */
+   * Deliberate, so the sink gets no done/error for this run - the caller owns the UI transition. */
   async stop(): Promise<void> {
     const child = this.child;
     if (child === undefined) return;

@@ -15,13 +15,13 @@ import {
 import { HUMAN_DEFAULT_MENU } from '../src/hud/action-ring-menu.js';
 
 /**
- * Headless tests for the settler ACTION MENU's pure logic — the radial arm footprint transcribed from the
+ * Headless tests for the settler ACTION MENU's pure logic - the radial arm footprint transcribed from the
  * original engine, the hit-test that turns a click into a command, and the (approximated) button→icon
  * assignment. The agent self-validates these; the browser `?scene=sandbox` view is where a human judges
  * the pixels (round buttons in original art, sensible glyphs) + the profession list window. See docs/SCENES.md.
  */
 
-/** Non-null array access — throws (a test bug) rather than reaching for a forbidden `!`. */
+/** Non-null array access - throws (a test bug) rather than reaching for a forbidden `!`. */
 function nth<T>(arr: readonly T[], i: number): T {
   const v = arr[i];
   if (v === undefined) throw new Error(`no element at index ${i}`);
@@ -34,7 +34,7 @@ const centre = (p: PlacedActionButton): { x: number; y: number } => ({
 /** An inert placeholder button (the default menu is mostly these). */
 const ph = (id: string): ActionButton => ({ kind: 'placeholder', id, icon: 'order_build' });
 
-describe('action-ring-layout — arm footprint (transcribed from BuildHumanActionButtons)', () => {
+describe('action-ring-layout - arm footprint (transcribed from BuildHumanActionButtons)', () => {
   it('places a group as a horizontal row centred under the settler (bottom arm), in reading order', () => {
     const group: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
     const l = layoutActionRing([group], 500, 400, 1, 2000, 2000);
@@ -68,7 +68,7 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
     expect(Math.max(yOf('c'), yOf('d'))).toBeLessThan(400); // top
   });
 
-  it('scales the whole menu by the given scale (sub-1 values included — the ring runs shrunk)', () => {
+  it('scales the whole menu by the given scale (sub-1 values included - the ring runs shrunk)', () => {
     const group: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
     const l1 = layoutActionRing([group], 500, 400, 1, 4000, 4000);
     const l2 = layoutActionRing([group], 500, 400, 2, 4000, 4000);
@@ -96,7 +96,7 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
     const top: ActionGroup = { group: TOP_ARM, buttons: [ph('d'), ph('e'), ph('f')] };
     const l = layoutActionRing([bottom, top], 500, 40, 1, 1000, 800);
     for (const p of l.buttons) expect(p.rect.y).toBeGreaterThanOrEqual(0);
-    // The whole menu shifted as a rigid body — relative spacing is preserved (bottom row still 32 apart).
+    // The whole menu shifted as a rigid body - relative spacing is preserved (bottom row still 32 apart).
     const c = l.buttons
       .filter((p) => p.button.kind === 'placeholder' && ['a', 'b', 'c'].includes(p.button.id))
       .map((p) => centre(p).x)
@@ -105,7 +105,7 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
   });
 });
 
-describe('action-ring-layout — hit-test (a click → the right behaviour)', () => {
+describe('action-ring-layout - hit-test (a click → the right behaviour)', () => {
   it('returns the button under a click and null off the menu', () => {
     const l = layoutActionRing(HUMAN_DEFAULT_MENU, 500, 400, 1, 2000, 2000);
     // The "change profession" button (open-jobs) is present and hit-testable.
@@ -125,7 +125,7 @@ describe('action-ring-layout — hit-test (a click → the right behaviour)', ()
   });
 });
 
-describe('action-ring-layout — icon assignment (approximated, but every name must resolve)', () => {
+describe('action-ring-layout - icon assignment (approximated, but every name must resolve)', () => {
   it('every icon the default menu draws is a real GUI-atlas frame (a typo would throw here)', () => {
     for (const g of HUMAN_DEFAULT_MENU) {
       for (const b of g.buttons) expect(() => guiFrameIndex(b.icon)).not.toThrow();

@@ -26,7 +26,7 @@ import type { PoolFrame } from './sprite-pool.js';
  *  there). */
 export type BindFrame = Pick<PoolFrame, 'camera' | 'screenW' | 'screenH' | 'highlight'>;
 
-/** The faint tints an assign-mode candidate building draws with — a light green when the settler can be
+/** The faint tints an assign-mode candidate building draws with - a light green when the settler can be
  *  assigned there, a light red when not. Pale (near-white) so it reads as a wash over the building art
  *  rather than repainting it. */
 const HIGHLIGHT_OK_TINT = 0x88ff88;
@@ -45,7 +45,7 @@ export class LayerBinder {
   /** Scratch accumulator for the drawn layers' box union, reset per entity so the bounds pass allocates
    *  nothing. Never read outside the {@link bind} call that fills it. */
   private readonly layerBounds = new BoundsUnion();
-  /** Scratch for the layer geometry of the sprite being bound — refilled per layer, never retained. */
+  /** Scratch for the layer geometry of the sprite being bound - refilled per layer, never retained. */
   private readonly drawBox = createLayerDrawBox();
 
   constructor(
@@ -88,7 +88,7 @@ export class LayerBinder {
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
     // A custom-shader mesh can't ride the camera-transformed spriteLayer (Pixi leaves its transform UBO
-    // unbound), so it self-places in screen space — mirror the camera the plain sprites inherit: screen
+    // unbound), so it self-places in screen space - mirror the camera the plain sprites inherit: screen
     // feet-anchor = camera applied to this entity's drawn (lerped) anchor. Unused on the plain path.
     const camScale = frame.camera.scale ?? 1;
     const originX = cameraScreenX(frame.camera, drawX);
@@ -112,8 +112,8 @@ export class LayerBinder {
       pe.shadowFlags[i] = layer.shadow === true;
       // A reveal layer with time data draws per-pixel: each pixel appears in place once the eased
       // progress, mapped into the stage's own [fromPct,toPct] window, reaches its baked TimeMask
-      // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` — no time data or
-      // no bake (headless, unreadable atlas pixels) — draws the bottom-up crop below instead. Buildings
+      // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` - no time data or
+      // no bake (headless, unreadable atlas pixels) - draws the bottom-up crop below instead. Buildings
       // never take the paletted path.
       const revealTexture =
         layer.reveal !== undefined &&
@@ -136,7 +136,7 @@ export class LayerBinder {
       } else {
         this.bindPlainLayer(pe, i, layer, revealTexture, box, tint);
       }
-      // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
+      // An animated state overlay (the mill's rotor) draws but never moves the entity's box - its spin
       // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
       if (layer.boundsExempt === true) continue;
       bounds.add(box.ox, box.oy, box.ox + box.width, box.oy + box.height);
@@ -149,7 +149,7 @@ export class LayerBinder {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;
     }
-    // A fog ghost stamps no bounds: it must not be pickable — the ref may be a dead entity, and
+    // A fog ghost stamps no bounds: it must not be pickable - the ref may be a dead entity, and
     // click-selecting a live one through the fog would leak its current state into the details panel.
     if (!bounds.isEmpty() && item.ghost !== true) {
       this.stampBounds(
@@ -210,7 +210,7 @@ export class LayerBinder {
       pe.container.addChild(spr);
     }
     if (revealTexture === null && box.hiddenTop >= layer.frame.height) {
-      // Nothing revealed yet (a foundation at 0%): draw nothing this frame — but bounds still stamp,
+      // Nothing revealed yet (a foundation at 0%): draw nothing this frame - but bounds still stamp,
       // so the flat site stays clickable over its plot.
       spr.visible = false;
       return;
@@ -223,14 +223,14 @@ export class LayerBinder {
     spr.position.set(box.ox, box.drawnOy);
     spr.scale.set(layer.scale);
     // A fog ghost dims to the explored-grey grading; checked every bind so a sprite reused across
-    // the live↔ghost transition always carries the right tint, but assigned only on change — the
+    // the live↔ghost transition always carries the right tint, but assigned only on change - the
     // per-frame no-op-tint churn guard (see TallObjectLayer.update, the same allocating setter).
     // (Ghosts are never paletted, statics don't take the mesh path.)
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;
   }
 
-  /** Show (lazily building) the placeholder marker — the unbound / no-sheet fallback — and stamp the
+  /** Show (lazily building) the placeholder marker - the unbound / no-sheet fallback - and stamp the
    *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A projectile
    *  always draws this path (no decoded arrow bob exists): its arrow flies at body height and rotates
    *  to the item's flight heading each frame. */
@@ -248,7 +248,7 @@ export class LayerBinder {
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight);
     if (pe.placeholder.tint !== tint) pe.placeholder.tint = tint;
     // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
-    // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
+    // above is not rotated with it - the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
     if (item.ghost === true) return;
     const box = placeholderBounds(pe.kind);
@@ -257,7 +257,7 @@ export class LayerBinder {
     this.stampBounds(pe, drawX + box.minX, drawY + box.minY, drawX + box.maxX, drawY + box.maxY, frameId);
   }
 
-  /** Restamp a pooled entity's bounds in place for this frame — no allocation in the per-frame pass. */
+  /** Restamp a pooled entity's bounds in place for this frame - no allocation in the per-frame pass. */
   private stampBounds(
     pe: PooledEntity,
     minX: number,

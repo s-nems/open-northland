@@ -3,7 +3,7 @@
  * fast as the display allows and interpolates the leftover fraction. This decoupling is what keeps
  * the simulation deterministic regardless of frame rate.
  *
- * This helper is pure timing bookkeeping — it holds no game state and uses no wall-clock itself;
+ * This helper is pure timing bookkeeping - it holds no game state and uses no wall-clock itself;
  * the caller passes elapsed milliseconds (so tests can drive it with synthetic time).
  */
 /** User-requested fidelity approximation: the base game clock advances at 12 simulation ticks per second. */

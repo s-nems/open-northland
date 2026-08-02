@@ -3,7 +3,7 @@ import { Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { CYCLE_TICKS, PLANK, sawmill, WOOD } from './support.js';
 
-describe('productionSystem — determinism', () => {
+describe('productionSystem - determinism', () => {
   it('two same-seed runs reach the same state hash through the full schedule', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: testContent() });

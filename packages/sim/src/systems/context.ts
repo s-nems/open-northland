@@ -19,19 +19,19 @@ export interface SystemContext {
   /** Emit one-shot events for render/audio (never read back in sim logic). */
   readonly events: EventBuffer;
   /**
-   * The serializable command queue — the single mutation seam. CommandSystem drains and applies it;
+   * The serializable command queue - the single mutation seam. CommandSystem drains and applies it;
    * the AiPlayerSystem enqueues its decisions into it (applied next tick, logged like player input);
    * no other system touches it.
    */
   readonly commands: CommandQueue;
   /**
-   * The terrain cell-adjacency graph — the navigation/placement model (see nav/terrain/). Optional
+   * The terrain cell-adjacency graph - the navigation/placement model (see nav/terrain/). Optional
    * because trivial fixtures (the determinism golden) run with no map; the pathfinding/terrain
    * systems that need it must check and no-op when it is absent rather than assume it exists.
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks (see systems/vision.ts) — a mutable world resource the
+   * The per-player fog-of-war masks (see systems/vision.ts) - a mutable world resource the
    * VisionSystem rebuilds and the combat gates read. Optional like `terrain` (a mapless sim has no
    * grid to mask); present but inert while the fog mode is OFF (the default).
    */
@@ -41,5 +41,5 @@ export interface SystemContext {
 export type System = (world: World, ctx: SystemContext) => void;
 
 /** The slice of a {@link SystemContext} a pure content lookup reads. A helper taking this is callable
- *  outside a tick — from a read view, which holds a `ContentSet` and no live context. */
+ *  outside a tick - from a read view, which holds a `ContentSet` and no live context. */
 export type ContentContext = Pick<SystemContext, 'content'>;

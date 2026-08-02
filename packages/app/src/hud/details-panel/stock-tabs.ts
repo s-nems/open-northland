@@ -9,12 +9,12 @@ import { stockTabLabels } from '../good-categories.js';
  * `hud/good-categories.ts`.
  */
 
-/** The stock tabs' native plate width — must track atlas frames 170–177 (decoded 32×18 plates). */
+/** The stock tabs' native plate width - must track atlas frames 170–177 (decoded 32×18 plates). */
 const STOCK_TAB_W = 32;
 
 /**
  * The details-panel Magazyn's leading "Wszystkie" tab: the held goods across every category, fullest
- * first, zeros hidden — so clicking a general store shows what is actually inside at a glance. The
+ * first, zeros hidden - so clicking a general store shows what is actually inside at a glance. The
  * category tabs follow at detail-tab index `category + 1`. Details-panel-only: the tool panel's goods
  * window keeps the plain eight categories.
  */
@@ -33,7 +33,7 @@ export function detailsStockTabLabels(): readonly string[] {
  * a hovered slot names exactly the drawn good:
  *  - compact store → every declared slot, declared order (stable while amounts change);
  *  - the "Wszystkie" tab → only held goods (`amount > 0`), fullest first (equal amounts keep declared
- *    order — Array.sort is stable);
+ *    order - Array.sort is stable);
  *  - a category tab → its category's slots, held goods bubbled above the fold (stable).
  */
 export function visibleStockRows<T extends { readonly category: number; readonly amount: number }>(
@@ -52,7 +52,7 @@ export function visibleStockRows<T extends { readonly category: number; readonly
 }
 
 /**
- * The tab-plate rects laid out across the strip — the one geometry both the tab drawing and the
+ * The tab-plate rects laid out across the strip - the one geometry both the tab drawing and the
  * pointer hit-test consume, so the drawn tab and the clicked tab are the same rect by construction.
  * `count` defaults to the plain eight categories; the details panel passes
  * {@link DETAILS_STOCK_TAB_COUNT} for its extra "Wszystkie" tab.

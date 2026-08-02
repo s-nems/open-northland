@@ -7,7 +7,7 @@ import { resolveFileUnderRoot } from './under-root.js';
 /**
  * The single table of app-facing `content/` routes, shared by every host that serves the pipeline's
  * output (the Vite dev middleware in `packages/app/vite.config.ts` and the desktop shell's `app://`
- * handler). Hosts pass the raw URL pathname — percent-decoding happens here — and get `undefined`
+ * handler). Hosts pass the raw URL pathname - percent-decoding happens here - and get `undefined`
  * for anything unmatched, absent, or malformed, so a data dir without `content/` degrades to the
  * host's own 404 rather than crashing.
  */

@@ -142,13 +142,13 @@ per row `56px | 1fr | 280px | 240px`, gap 24px, padding 20px 26px.
   `#e9f1ee`, sub "tu siedzisz" (20px `#8fb8ad`), control cell a static "Człowiek" (23px `#8ff0c8`,
   2px border accent .5).
 - **Locked scenario-AI slot:** row at .75 opacity, border accent .12, name (for example "Jarl
-  Sigurd") plus sub "przeciwnik scenariusza", control "SI — zablokowany" (muted). No sit action, not
+  Sigurd") plus sub "przeciwnik scenariusza", control "SI - zablokowany" (muted). No sit action, not
   editable.
 - **Open slot:** name "Wolny slot" plus a sub reflecting its state; control is a segmented toggle
   *Komputer / Bezczynny* (active segment `#63c4a0` background); the last cell is a "Usiądź tutaj"
   button (2px dashed accent .35, to solid `#63c4a0` with `#8ff0c8` text on hover). Sitting moves the
   player between slots.
-- Footnote: "Sloty definiuje mapa — nie da się ich dodać ani usunąć. Możesz zmienić miejsce,
+- Footnote: "Sloty definiuje mapa - nie da się ich dodać ani usunąć. Możesz zmienić miejsce,
   siadając w wolnym slocie."
 
 **Right column (420px):** map preview 260px, name and meta, a "Zmień mapę" underlined link, and a
@@ -185,7 +185,7 @@ Header: "← Menu" plus "O projekcie".
 
 **Left (max 860px):** intro paragraph 30px/1.55 `#dbe8e3`, second paragraph 26px muted (original
 game files are not included; the user points at their own *Cultures - 8th Wonder of the World*
-copy), then two ghost buttons, "Kod źródłowy — GitHub" (accent border) and "Zgłoś błąd"
+copy), then two ghost buttons, "Kod źródłowy - GitHub" (accent border) and "Zgłoś błąd"
 (white-muted border), wired to the repo URLs.
 
 **Right (max 520px):** two cards (border accent .2, background surface, padding 28px 32px),

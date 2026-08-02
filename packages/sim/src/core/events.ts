@@ -6,17 +6,17 @@ import type { Fixed } from './fixed.js';
  * One-shot things that happened during a tick (a building appeared, a settler died, an atomic
  * completed → trigger a sound/effect). Render and audio consume these; they NEVER reach into sim
  * component stores. Events are PRODUCED into an append-only per-tick buffer and exposed READ-ONLY
- * on the snapshot — never delivered via callbacks (a callback could mutate sim state and break
+ * on the snapshot - never delivered via callbacks (a callback could mutate sim state and break
  * determinism). This is the decoupling seam that keeps render a pure consumer.
  *
- * COORDINATES: every positioned event's `at` is a {@link HalfCellNode} — the sim's one grid vocabulary,
+ * COORDINATES: every positioned event's `at` is a {@link HalfCellNode} - the sim's one grid vocabulary,
  * the same space command payloads use (`core/commands.ts`, `nav/halfcell.ts`). Emitters mint it via
  * {@link eventAt} (or pass a command's node through verbatim); consumers project it through the node
  * lattice (render's `halfCellToScreen`), never as a tile coordinate, and ask {@link eventNode} whether an
  * event carries one rather than keeping their own list of `at`-carrying kinds.
  *
  * Deterministic: the buffer is cleared at the start of each tick and sealed at the end, so the
- * event list for tick N is a pure function of the sim — reproducible, replayable, hashable.
+ * event list for tick N is a pure function of the sim - reproducible, replayable, hashable.
  */
 export type SimEvent =
   | {
@@ -34,9 +34,9 @@ export type SimEvent =
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {
       /**
-       * Two settlers became spouses this tick — the pair finished its wedding kiss (FamilySystem) and
+       * Two settlers became spouses this tick - the pair finished its wedding kiss (FamilySystem) and
        * now carries mirrored {@link import('../components/family.js').Marriage} components. `at` is the
-       * kiss node (where the ceremony stood), for a render/audio cue — the original's marriage jingle
+       * kiss node (where the ceremony stood), for a render/audio cue - the original's marriage jingle
        * (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`, `logicdefines.inc`).
        */
       readonly kind: 'settlersMarried';
@@ -46,10 +46,10 @@ export type SimEvent =
     }
   | {
       /**
-       * A combatant was reaped this tick — its {@link import('../components/combat.js').Health} pool hit 0
+       * A combatant was reaped this tick - its {@link import('../components/combat.js').Health} pool hit 0
        * and `cleanupSystem` removed it. `cause` is a render/audio hint (`'damage'` today). `player` is the
        * dead unit's {@link import('../components/ownership.js').Owner} slot, read before the destroy (the
-       * entity is gone by the snapshot, so a consumer can't look it up) — `null` for an unowned death
+       * entity is gone by the snapshot, so a consumer can't look it up) - `null` for an unowned death
        * (wildlife / a neutral), so audio can play the "your settler died" stinger for the local player only.
        * `at` is the death node (the reaped unit's last position), so render can leave a bones marker there
        * (for humans only - see `animal`); omitted only if the dying entity somehow carried no `Position`.
@@ -67,7 +67,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A building came down this tick — razed in combat (its
+       * A building came down this tick - razed in combat (its
        * {@link import('../components/combat.js').Health} pool hit 0 and `cleanupSystem` removed it, the
        * structure twin of {@link 'settlerDied'}) or demolished by its owner's command; both paths share the
        * one cue so render plays the same collapse. `player` is the building's
@@ -75,13 +75,13 @@ export type SimEvent =
        * unowned structure), so audio can play the "you lost a building" cue for its owner only; `at` is the
        * building's node and `buildingType` its content type, so render can re-resolve the sprite for the
        * collapse transient (the entity leaves the snapshot the same tick). Render also culls the vanished
-       * building from the snapshot diff on its own — this event is the one-shot cue, not the removal.
+       * building from the snapshot diff on its own - this event is the one-shot cue, not the removal.
        */
       readonly kind: 'buildingDestroyed';
       readonly entity: Entity;
       readonly player: number | null;
       readonly buildingType: number;
-      /** Build progress at destruction as a fixed-point fraction of ONE (65536 = finished) — render
+      /** Build progress at destruction as a fixed-point fraction of ONE (65536 = finished) - render
        *  resolves an unfinished site's construction-stage body for the collapse, not the finished one. */
       readonly built: number;
       readonly at?: HalfCellNode;
@@ -89,7 +89,7 @@ export type SimEvent =
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
   | {
       /**
-       * An atomic reached its authored PLAY_SOUND_FX frame this tick — the mid-animation cue the
+       * An atomic reached its authored PLAY_SOUND_FX frame this tick - the mid-animation cue the
        * original triggers the action's sound at (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, e.g. the
        * builder's hammer knock at frame 4 of its 15-frame swing). Distinct from `atomicCompleted` (the
        * swing end): audio plays the per-swing SFX here so it lands on the visual strike instead of trailing
@@ -102,9 +102,9 @@ export type SimEvent =
     }
   | {
       /**
-       * A chat half's talk/listen clip crossed its authored PLAY_SOUND_FX frame this tick — the voice cue
+       * A chat half's talk/listen clip crossed its authored PLAY_SOUND_FX frame this tick - the voice cue
        * the original fires from the conversation (`event <frame> 34 <id>` in `atomicanimations.ini`: the
-       * talker at frame 0, the listener's mid-clip response). `soundType` is that event's value — the sound
+       * talker at frame 0, the listener's mid-clip response). `soundType` is that event's value - the sound
        * bank's `logicSoundType` id of the voice group (`soundfx.cif` "SocialTalk Male" 61 / "SocialTalk
        * Female" 62), sex-correct by construction because each body's clip names its own voice. Located by
        * the emitter's snapshot position; audio spatialises + viewport-culls it like any action SFX.
@@ -115,15 +115,15 @@ export type SimEvent =
     }
   | {
       /**
-       * A melee blow connected this tick — an in-place `attack` swing reached a live target and drained its
+       * A melee blow connected this tick - an in-place `attack` swing reached a live target and drained its
        * {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the victim's
        * node (where the wound is), so render draws its blood there and audio plays the weapon-impact SFX
        * from that spot; `weaponMainType` is the striker's weapon class (1 fist / 2 spear / 3 sword /
-       * 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact sound can be
+       * 4 saber / 5 axe - `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact sound can be
        * weapon-specific, `undefined` when the weapon lists no class. A swing that struck air resolves
-       * nothing and emits no `combatHit` — "miss = no blood" falls out of the hit-resolution guard. The
+       * nothing and emits no `combatHit` - "miss = no blood" falls out of the hit-resolution guard. The
        * ranged twin is {@link 'projectileHit'}, which render/audio treat the same way. `structure` marks a
-       * blow that landed on a building (a besieged wall) rather than a body, so render draws no blood — a
+       * blow that landed on a building (a besieged wall) rather than a body, so render draws no blood - a
        * wall doesn't bleed; the impact SFX still plays.
        */
       readonly kind: 'combatHit';
@@ -135,7 +135,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A melee swing was loosed this tick — a fighter started an in-place `attack` (the swoosh, at the
+       * A melee swing was loosed this tick - a fighter started an in-place `attack` (the swoosh, at the
        * attacker's node), the melee twin of `projectileLaunched`. Fires on every melee swing whether it
        * connects or whiffs, so combat is audible throughout the animation and not just at the brief connect;
        * the impact clang is the separate {@link 'combatHit'}. Render ignores it (no wound → no blood); it
@@ -153,7 +153,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy/index.js').Felling} node was chopped down this tick — the
+       * A {@link import('../components/economy/index.js').Felling} node was chopped down this tick - the
        * standing node `node` was destroyed and replaced at `at` by a bare `Stockpile` `trunk` (a
        * {@link import('../components/economy/index.js').GroundDrop} holding the whole `amount` of `goodType`)
        * plus a {@link import('../components/economy/index.js').Stump} decor. Render/audio use it for the
@@ -170,10 +170,10 @@ export type SimEvent =
     }
   | {
       /**
-       * A ranged weapon LOOSED a {@link import('../components/combat.js').Projectile} this tick — the
+       * A ranged weapon LOOSED a {@link import('../components/combat.js').Projectile} this tick - the
        * `shooter` released an arrow/rock (`munitionType`: 1 arrow / 2 rock) at `target` from `at`, at its
        * ATTACK-event frame. `projectile` is the entity now in flight (render draws it from the snapshot each
-       * frame; this one-shot is the launch cue — a bow-twang sound, a muzzle puff). Paired with
+       * frame; this one-shot is the launch cue - a bow-twang sound, a muzzle puff). Paired with
        * {@link 'projectileHit'}.
        */
       readonly kind: 'projectileLaunched';
@@ -185,10 +185,10 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/combat.js').Projectile} LANDED its blow this tick — the arrow/rock
+       * A {@link import('../components/combat.js').Projectile} LANDED its blow this tick - the arrow/rock
        * `projectile` (loosed by `shooter`, `munitionType` 1 arrow / 2 rock) reached `target` at `at` and
        * dealt its damage; the projectile entity is destroyed the same tick. Render/audio use it for the
-       * impact cue (a thunk sound, a hit spark) — the ranged twin of an `atomicCompleted` melee swing. A
+       * impact cue (a thunk sound, a hit spark) - the ranged twin of an `atomicCompleted` melee swing. A
        * projectile whose target died mid-flight expires silently (no hit event). `structure` marks a shot
        * that struck a building rather than a body, so render draws no blood (the impact SFX still plays).
        */
@@ -216,7 +216,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy/index.js').Resource} node was EXHAUSTED and removed this tick —
+       * A {@link import('../components/economy/index.js').Resource} node was EXHAUSTED and removed this tick -
        * a mined {@link import('../components/economy/index.js').MineDeposit} deposit whose last unit was chipped
        * off, or a trivial direct-pickup node (a mushroom) after its single harvest. Distinct from
        * `resourceFelled` (a tree coming down, which leaves a trunk + stump): a depleted node just vanishes,
@@ -231,7 +231,7 @@ export type SimEvent =
   | {
       /**
        * One unit was chipped off a still-standing {@link import('../components/economy/index.js').MineDeposit}
-       * node this tick — the node survives (its `remaining` is the value after the chip; the removal of the
+       * node this tick - the node survives (its `remaining` is the value after the chip; the removal of the
        * last unit emits `resourceDepleted` instead). The cue a consumer needs the moment a virgin node is
        * first worked: the `?map=` view hands the node from its retained static decor layer to the live
        * sprite pool here, so the drawn deposit starts shrinking with its levels; audio can hook a chip
@@ -244,7 +244,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy/index.js').BerryBush} was just FORAGED — its last ripe fruit
+       * A {@link import('../components/economy/index.js').BerryBush} was just FORAGED - its last ripe fruit
        * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment a
        * virgin bush is first worked: the `?map=` view hands the bush from its retained static decor layer
        * (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks its growth
@@ -257,7 +257,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A wild {@link import('../components/economy/index.js').BerryBush} was RAZED this tick — a building was
+       * A wild {@link import('../components/economy/index.js').BerryBush} was RAZED this tick - a building was
        * placed over it and `destroyBerryBushesInReserved` removed it. Distinct from `berryForaged` (the bush
        * survives, flips ripe→bare): the bush entity is gone by the snapshot. Render uses it to drop the bush's
        * retained static-decor quad (a `?map=` virgin bush is drawn by the static layer, not the pool, so its
@@ -271,7 +271,7 @@ export type SimEvent =
 export type SimEventKind = SimEvent['kind'];
 
 /** Mint a positioned event's `at` from a fixed-point Position: the half-cell node the position
- *  truncates to — the one coordinate space every `at` carries (see the header note). */
+ *  truncates to - the one coordinate space every `at` carries (see the header note). */
 export function eventAt(x: Fixed, y: Fixed): HalfCellNode {
   return nodeOfPosition(x, y);
 }
@@ -280,7 +280,7 @@ export function eventAt(x: Fixed, y: Fixed): HalfCellNode {
  * The half-cell node an event locates at, or `null` for one that locates by its emitter entity instead.
  * Derived from the event itself, so a new positioned variant needs no consumer edit: a hand-kept list of
  * `at`-carrying kinds drifts silently, since a structural cast hides the missing variant from the compiler.
- * Total over the union — `settlerDied` carries `at` only when the reaped unit had a Position.
+ * Total over the union - `settlerDied` carries `at` only when the reaped unit had a Position.
  */
 export function eventNode(ev: SimEvent): HalfCellNode | null {
   return 'at' in ev && ev.at !== undefined ? ev.at : null;

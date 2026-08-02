@@ -141,7 +141,7 @@ export function targetSearch(entry: string, current = new URLSearchParams(window
   const entryParams = new URLSearchParams(entry.startsWith('?') ? entry.slice(1) : entry);
   for (const [key, value] of entryParams) target.set(key, value);
   // Maps default to classic sticky fog when the player picked no mode; scenes keep their own authored
-  // fog (usually none — a static showcase must stay fully visible, not hide behind reveal fog), still
+  // fog (usually none - a static showcase must stay fully visible, not hide behind reveal fog), still
   // overridable through the dropdown, which carries an explicit choice for either entry kind.
   const selectedFog = target.get('fog');
   if (entryParams.has('map') && !MENU_FOG_MODES.some((mode) => mode === selectedFog))

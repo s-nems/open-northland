@@ -14,7 +14,7 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `localizeDivergence()` — the headless composition that wires the four replay-inspector
+ * Tests for `localizeDivergence()` - the headless composition that wires the four replay-inspector
  * primitives (`HashTrace.divergedFrom` → `replay` ×2 → `diffSnapshots`) into the inspector's
  * documented "hash diverged at tick N → jump there → inspect what differs" workflow.
  */
@@ -39,7 +39,7 @@ function recordRun(
     sim.step();
     trace.record(sim.tick, sim.hashState(), sim.snapshot());
   }
-  // The log is a plain value (LoggedCommand[]) — the replay inputs the tests reconstruct from.
+  // The log is a plain value (LoggedCommand[]) - the replay inputs the tests reconstruct from.
   const log: LoggedCommand[] = [...sim.commands.log];
   return { run: { content: testContent(), seed, map, log }, trace };
 }
@@ -47,7 +47,7 @@ function recordRun(
 describe('localizeDivergence', () => {
   it('localizes the first split tick and diffs the two runs there', () => {
     const map = grassMap(6, 1);
-    // Two runs identical except run B spawns an EXTRA settler at tick 7 — so they diverge at tick 7.
+    // Two runs identical except run B spawns an EXTRA settler at tick 7 - so they diverge at tick 7.
     const base = new Map<number, Command[]>([
       [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],

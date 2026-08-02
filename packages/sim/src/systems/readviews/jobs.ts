@@ -3,22 +3,22 @@ import { isCarrierJobId, isFighterRole, jobRoleOfId } from '../../core/content-i
 import { contentIndex } from '../../core/content-index.js';
 
 /**
- * Whether `jobType` is a **fighter** trade — a soldier or hero class, the units whose whole role is combat.
+ * Whether `jobType` is a **fighter** trade - a soldier or hero class, the units whose whole role is combat.
  * Scouts and hunters are not: they carry weapons, but their role is exploration/predation. A `jobType` the
- * content declares no job for (and a jobless settler, `null`) is not a fighter — the roles are read off the
+ * content declares no job for (and a jobless settler, `null`) is not a fighter - the roles are read off the
  * content's job table (`core/content-index/jobs.ts`), never a hardcoded id band.
  */
 export function isFighterJob(content: ContentSet, jobType: number | null): boolean {
   return isSoldierJob(content, jobType) || isHeroJob(content, jobType);
 }
 
-/** Whether `jobType` is a **soldier** class — the trained half of {@link isFighterJob}, kept apart from
+/** Whether `jobType` is a **soldier** class - the trained half of {@link isFighterJob}, kept apart from
  *  {@link isHeroJob} because the two feed different general fight-XP tracks. */
 export function isSoldierJob(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).soldierJobs.has(jobType);
 }
 
-/** The soldier class a barracks drill enlists a trained settler into — the lowest soldier trade the content
+/** The soldier class a barracks drill enlists a trained settler into - the lowest soldier trade the content
  *  declares, or null when it declares none. An ordering heuristic for "the weaponless base every armed
  *  class specializes from": it picks `jobtypes.ini` 31 `soldier_unarmed` in every playable tribe, and the
  *  direct signal (the one soldier class with no `weapons.ini` `jobtype` row) waits on the weapon slice. */
@@ -30,30 +30,30 @@ export function baseSoldierJobType(content: ContentSet): number | null {
   return lowest;
 }
 
-/** Whether `jobType` is a **hero** class — the named mission elites ({@link isSoldierJob}). */
+/** Whether `jobType` is a **hero** class - the named mission elites ({@link isSoldierJob}). */
 export function isHeroJob(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).heroJobs.has(jobType);
 }
 
-/** Whether a job ROW is a fighter trade — {@link isFighterJob} for a caller holding job rows rather than
+/** Whether a job ROW is a fighter trade - {@link isFighterJob} for a caller holding job rows rather than
  *  the running content (the HUD reads a readonly content slice, not the `ContentSet`). */
 export function isFighterJobRow(job: Pick<JobType, 'id'>): boolean {
   return isFighterRole(jobRoleOfId(job.id));
 }
 
-/** Whether a job ROW is the transport trade — the row-level twin of
+/** Whether a job ROW is the transport trade - the row-level twin of
  *  {@link import('../stores/index.js').isCarrierJob}, for the same row-holding callers. */
 export function isCarrierJobRow(job: Pick<JobType, 'id'>): boolean {
   return isCarrierJobId(job.id);
 }
 
-/** Whether `jobType` is a **scout** trade — the non-combat explorer that erects signposts. */
+/** Whether `jobType` is a **scout** trade - the non-combat explorer that erects signposts. */
 export function isScoutJob(content: ContentSet, jobType: number | null): boolean {
   return jobType !== null && contentIndex(content).scoutJobs.has(jobType);
 }
 
 /**
- * Whether `jobType` is a **hunter** trade — the civilization job that hunts game (the `mayHunt` predation
+ * Whether `jobType` is a **hunter** trade - the civilization job that hunts game (the `mayHunt` predation
  * relation). Every tribe's hunter binds the same attack atomic (`setatomic <hunter> 81 "..._hunter_attack"`,
  * verified in `DataCnmd/tribetypes12/tribetypes.ini`), so its strike reuses the combat attack/weapon/hit path.
  */
@@ -61,7 +61,7 @@ export function isHunterJob(content: ContentSet, jobType: number | null): boolea
   return jobType !== null && contentIndex(content).hunterJobs.has(jobType);
 }
 
-/** The job id an AI assigns to make a settler a scout — the lowest scout trade the content declares (a
+/** The job id an AI assigns to make a settler a scout - the lowest scout trade the content declares (a
  *  canonical pick), or null when it declares none. */
 export function scoutJobType(content: ContentSet): number | null {
   let lowest: number | null = null;
@@ -80,7 +80,7 @@ export function scoutJobType(content: ContentSet): number | null {
 const SEA_JOB_SUFFIX = '_sea';
 
 /**
- * Whether a {@link JobType} is water-borne, keyed on the {@link SEA_JOB_SUFFIX} its extracted `id` carries —
+ * Whether a {@link JobType} is water-borne, keyed on the {@link SEA_JOB_SUFFIX} its extracted `id` carries -
  * the only readable param separating a sea job from its land counterpart. In the real IR the suffix isolates
  * exactly `fisher_sea` (23) and `trader_sea` (26).
  */

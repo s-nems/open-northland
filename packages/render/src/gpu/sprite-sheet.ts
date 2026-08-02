@@ -9,13 +9,13 @@ import type {
 } from '../data/sprites/index.js';
 
 /**
- * The plain-data GPU-input shapes the renderer draws a settler world from — the loaded-atlas contract
+ * The plain-data GPU-input shapes the renderer draws a settler world from - the loaded-atlas contract
  * between the app's content loader and {@link import('./sprite-pool/index.js').SpritePool}: frame
  * geometry + bindings + decoded `TextureSource`s. The one-time GPU boot that produces the sources lives
  * in {@link import('./pixi-app.js')}, the terrain twin in {@link import('./terrain-textures.js')}.
  *
  * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
- * copy and gitignored — see AGENTS.md "Legal guardrails"). Floats are fine: this is `render`, never read
+ * copy and gitignored - see AGENTS.md "Legal guardrails"). Floats are fine: this is `render`, never read
  * back into the deterministic sim.
  */
 
@@ -55,14 +55,14 @@ export interface SpriteLayer {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
   /**
-   * CPU copy of the atlas's build-progress time sheet (the house atlases' sibling `.build.png`) —
+   * CPU copy of the atlas's build-progress time sheet (the house atlases' sibling `.build.png`) -
    * present only when the manifest announced one. Feeds the per-pixel construction reveal
    * ({@link import('./texture-cache.js').TextureCache.revealed}); absent, an under-construction
    * building falls back to the bottom-up crop approximation.
    */
   readonly times?: BuildTimeSheet;
   /**
-   * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas — pre-baked translucent-black
+   * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas - pre-baked translucent-black
    * silhouettes whose frame ids parallel this layer's bob ids), when the content names one and it
    * loaded. A drawn bob prepends its same-id shadow frame under the body; absent, the bob casts
    * none. Character atlases never carry one (settlers draw shadow-less by design).
@@ -71,18 +71,18 @@ export interface SpriteLayer {
 }
 
 /**
- * One composited settler look — the original's `[jobbasegraphics]` record: a body bob set, the head
+ * One composited settler look - the original's `[jobbasegraphics]` record: a body bob set, the head
  * looks that overlay it, and the per-state animation binding played from that body's own `[bobseq]`
  * ranges. Several jobs may share one character (the whole soldier family is the armoured
  * `cr_hum_body_05`; every unmapped trade is the generic man), and each body's sequences live in its own
  * frame-id space, so the binding travels with the layers instead of staying a sheet-global.
  */
 export interface SettlerCharacter {
-  /** The body bob atlas — the base layer, whose `[bobseq]` ranges the {@link SettlerCharacter.binding} indexes. */
+  /** The body bob atlas - the base layer, whose `[bobseq]` ranges the {@link SettlerCharacter.binding} indexes. */
   readonly body: SpriteLayer;
   /**
    * The head looks that can overlay this body (the `gfxbobmanagerhead` slots), drawn at the same bob id
-   * as the body frame. The renderer picks one per individual — stable by entity id — so a crowd shows
+   * as the body frame. The renderer picks one per individual - stable by entity id - so a crowd shows
    * varied faces the way the original's per-individual random head does. Empty/omitted for a body-only
    * character (the baby, whose head is baked into the body bob).
    */
@@ -90,7 +90,7 @@ export interface SettlerCharacter {
   /** The per-state animation binding resolved against this body's own `[bobseq]` frame ranges. */
   readonly binding: SettlerStateBinding;
   /**
-   * The binding the head overlay resolves through when it must differ from {@link binding} — the
+   * The binding the head overlay resolves through when it must differ from {@link binding} - the
    * head-borrow case: most carry-walk variants ship empty head bobs (the head is authored once, on the
    * base walk), so their head plays the walk range at the same (facing, frame) offset while the body
    * carries the load. Absent, heads resolve at the body's own bob id (the usual case).
@@ -99,7 +99,7 @@ export interface SettlerCharacter {
 }
 
 /**
- * The per-job settler character table ({@link ByJobTable} of {@link SettlerCharacter}) — the render-side
+ * The per-job settler character table ({@link ByJobTable} of {@link SettlerCharacter}) - the render-side
  * `[jobbasegraphics]` join: an item's `jobType` (+ its young flag, see {@link ByJobTable}) picks which
  * body/heads/binding compose the settler. When a sheet carries one, settlers draw through it instead of
  * the sheet-global `bindings.settler` + `source`/`overlays` pair, which stays the fallback for a sheet
@@ -141,14 +141,14 @@ export interface SpriteSheet {
   /**
    * Per-kind dedicated atlas layers. The base `source`/`atlas` (+ `overlays`) is the human body+head set,
    * so a `resource` (a tree from `ls_trees.bmd`) or a `building` (its own house `.bmd`) cannot share its
-   * bob-id space. A kind listed here is blitted from this layer's own `source`+`atlas` — one feet-anchored
+   * bob-id space. A kind listed here is blitted from this layer's own `source`+`atlas` - one feet-anchored
    * sprite, no head overlay; a kind with no entry falls back to the shared body+overlays path (the
    * settler), and an unresolved/empty frame to placeholder geometry.
    */
   readonly kindLayers?: Partial<Record<SpriteKind, SpriteLayer>>;
   /**
    * Per-kind render scale (default 1 = native bob pixels). A decoded bob is blitted 1:1, but the source
-   * art for different kinds was authored at different scales relative to the settler — the `ls_houses_*`
+   * art for different kinds was authored at different scales relative to the settler - the `ls_houses_*`
    * building bobs draw ~6–10× the settler's height at native size, larger than the original showed them
    * relative to a person. A kind listed here is drawn at that factor about its feet anchor, an
    * approximation that brings the building back into proportion with the native-scale settler + tree. A
@@ -156,7 +156,7 @@ export interface SpriteSheet {
    */
   readonly kindScales?: Partial<Record<SpriteKind, number>>;
   /**
-   * Named building-family atlas layers — the multi-`.bmd` building case. A viking settlement draws its
+   * Named building-family atlas layers - the multi-`.bmd` building case. A viking settlement draws its
    * buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a separate
    * decoded atlas with its own frame-id space, so the single {@link kindLayers}.`building` layer can't
    * address them all. A layer-qualified {@link import('../data/sprites/index.js').BuildingTypeBinding}
@@ -165,7 +165,7 @@ export interface SpriteSheet {
    */
   readonly families?: Readonly<Record<string, SpriteLayer>>;
   /**
-   * Per-family render scale (default {@link kindScales}'s `building`, else 1) — the {@link families} twin
+   * Per-family render scale (default {@link kindScales}'s `building`, else 1) - the {@link families} twin
    * of {@link kindScales}, since each building `.bmd` was authored at its own size relative to the
    * settler. A family drawn from {@link families} scales about its feet anchor by this factor; a family
    * with no entry inherits the `building` kind scale.
@@ -173,8 +173,8 @@ export interface SpriteSheet {
   readonly familyScales?: Readonly<Record<string, number>>;
   /**
    * Per-job settler characters (the `[jobbasegraphics]` job → body/head/animation join). When present, a
-   * settler draws its job's {@link SettlerCharacter} — the armoured soldier body for the soldier family,
-   * the woman/child bodies for theirs, the generic man for every unmapped job — instead of the
+   * settler draws its job's {@link SettlerCharacter} - the armoured soldier body for the soldier family,
+   * the woman/child bodies for theirs, the generic man for every unmapped job - instead of the
    * sheet-global body (`source`/`overlays`) + `bindings.settler`. Absent (the synthetic sheet), the
    * sheet-global path draws.
    */

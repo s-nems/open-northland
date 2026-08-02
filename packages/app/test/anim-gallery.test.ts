@@ -56,7 +56,7 @@ describe('parseDirection', () => {
 
 describe('buildGalleryClips', () => {
   // A head atlas with a non-empty head at the base walk (1988) and one carry variant (4580), but EMPTY at
-  // the fish carry (2468) — the mix that exercises the borrow.
+  // the fish carry (2468) - the mix that exercises the borrow.
   const headAtlas: SpriteAtlas = {
     width: 1,
     height: 1,

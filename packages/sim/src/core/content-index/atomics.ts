@@ -1,11 +1,11 @@
 import { type ContentSet, resolveJobAtomics } from '@open-northland/data';
 
 /** The flag-gathering trades ({@link import('../content-index.js').ContentIndex.harvestJobs}): a job whose
- *  resolved atomics include some non-farmed good's harvest atomic — inherited from its base job or not. */
+ *  resolved atomics include some non-farmed good's harvest atomic - inherited from its base job or not. */
 export function harvestCapableJobs(content: ContentSet): ReadonlySet<number> {
   const harvestAtomics = new Set<number>();
   for (const g of content.goods) {
-    if (g.farming !== undefined) continue; // field-farmed — its harvester is a bound farmer, not a flag gatherer
+    if (g.farming !== undefined) continue; // field-farmed - its harvester is a bound farmer, not a flag gatherer
     if (g.atomics.harvest !== undefined) harvestAtomics.add(g.atomics.harvest);
   }
   const jobs = new Set<number>();
@@ -20,7 +20,7 @@ export function harvestCapableJobs(content: ContentSet): ReadonlySet<number> {
   return jobs;
 }
 
-/** The per-tribe `setatomic` binding tables (first-wins per tribe typeId; last-wins per binding —
+/** The per-tribe `setatomic` binding tables (first-wins per tribe typeId; last-wins per binding -
  *  see {@link import('../content-index.js').ContentIndex.atomicBindingsByTribe}). */
 export function atomicBindingTables(
   content: ContentSet,

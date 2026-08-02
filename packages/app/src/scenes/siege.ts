@@ -16,15 +16,15 @@ import { enemyBuildings } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The siege scene — a viking warband razes an enemy base. It signs off the "warriors attack enemy
+ * The siege scene - a viking warband razes an enemy base. It signs off the "warriors attack enemy
  * buildings" slice: a soldier/archer with the ATTACK stance auto-acquires an enemy STRUCTURE (not just an
  * enemy unit), advances on the nearest wall face (so the attackers spread around the footprint rather than
  * queueing at one door), and drains its Health on the weapon's vs-building column until it is razed. It also
- * signs off the auto-focus priority — the warband smashes the HEADQUARTERS and defensive
+ * signs off the auto-focus priority - the warband smashes the HEADQUARTERS and defensive
  * TOWERS (on par with the enemy defenders) before it ever turns on the plain HOMES, which it razes only
  * once no high-value structure or defender remains (the user rule).
  *
- * Layout: a blue warband on the left (sword/broadsword/spear ranks + archers) facing a compact red base —
+ * Layout: a blue warband on the left (sword/broadsword/spear ranks + archers) facing a compact red base -
  * an HQ flanked by two watchtowers, plain homes tucked around them, and a thin picket of defenders. Every
  * building sits inside the warband's sight, so the tier order (units + HQ + towers first, homes last) is
  * what decides the sequence, not distance.
@@ -47,7 +47,7 @@ const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
 const RANK_Y_FIRST = 8;
 const RANK_Y_LAST = 15;
 
-/** The red base — an HQ + two towers (the high-value tier), four plain homes (the fallback tier), all in
+/** The red base - an HQ + two towers (the high-value tier), four plain homes (the fallback tier), all in
  *  the warband's sight so priority, not distance, orders the siege. */
 const ENEMY_HQ: readonly [string, number, number] = ['headquarters', 15, 11];
 const ENEMY_TOWERS: readonly (readonly [string, number, number])[] = [
@@ -60,7 +60,7 @@ const ENEMY_HOMES: readonly (readonly [string, number, number])[] = [
   ['home_level_00', 22, 10],
   ['home_level_00', 22, 12],
 ];
-/** A thin picket of enemy defenders (killed first — units share the high-priority tier with HQ/towers). */
+/** A thin picket of enemy defenders (killed first - units share the high-priority tier with HQ/towers). */
 const ENEMY_DEFENDERS: readonly [number, number, number][] = [
   [JOB_SOLDIER_SWORD, 10, 10],
   [JOB_SOLDIER_SWORD, 10, 12],
@@ -85,7 +85,7 @@ function build(sim: Simulation): void {
   }
 }
 
-/** Whether a live enemy building is one of the high-value structures (HQ or a defensive tower) — the
+/** Whether a live enemy building is one of the high-value structures (HQ or a defensive tower) - the
  *  same id/kind keys the sim's siege-priority policy (`readviews/buildings.ts` buildingCombatClass)
  *  reads, so this acceptance check moves with the rule instead of silently testing a stale copy. */
 function isHighValue(sim: Simulation, e: Entity): boolean {
@@ -104,7 +104,7 @@ function meanHpFraction(sim: Simulation, buildings: readonly Entity[]): number {
   return sum / buildings.length;
 }
 
-/** Whether every enemy defender (unit) has fallen — units share the high-priority tier with HQ/towers. */
+/** Whether every enemy defender (unit) has fallen - units share the high-priority tier with HQ/towers. */
 function enemyDefendersDead(sim: Simulation): boolean {
   for (const e of sim.world.query(components.Settler, components.Owner, components.Health)) {
     if (
@@ -118,7 +118,7 @@ function enemyDefendersDead(sim: Simulation): boolean {
 }
 
 // runTicks lands in the window (deterministic from the seed) after the warband has razed the HQ + both
-// towers and cut down the defenders, but BEFORE it turns on the plain homes — so the end state itself shows
+// towers and cut down the defenders, but BEFORE it turns on the plain homes - so the end state itself shows
 // the auto-focus priority: high-value structures gone, homes still whole. (The browser view keeps running,
 // so a human watches the homes fall next; the sim unit test covers that razing directly.)
 export const siegeScene: SceneDefinition = {
@@ -130,7 +130,7 @@ export const siegeScene: SceneDefinition = {
   initialZoom: 0.8,
   checks: [
     {
-      // The core mechanic — warriors destroy STRUCTURES (here even the 100k-HP HQ), not only units.
+      // The core mechanic - warriors destroy STRUCTURES (here even the 100k-HP HQ), not only units.
       label: 'the enemy HQ and both watchtowers are razed',
       predicate: (sim) => enemyBuildings(sim).filter((e) => isHighValue(sim, e)).length === 0,
     },

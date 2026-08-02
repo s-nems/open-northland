@@ -11,11 +11,11 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `rebaseContent()` — the headless, self-verifiable half of the "Content hot-reload" DX win
+ * Tests for `rebaseContent()` - the headless, self-verifiable half of the "Content hot-reload" DX win
  * (plan "Cross-cutting DX"). The app reads/watches a content file (Vite-HMR glue, render-side);
  * this validates the new raw blob and, if valid, REBASES the run onto it by replaying the command log
  * into a fresh sim built with the NEW content. Two oracles: (1) rebasing onto the SAME content
- * reproduces the run byte-for-byte (`hashState()` — inherited from `replay`); (2) rebasing onto
+ * reproduces the run byte-for-byte (`hashState()` - inherited from `replay`); (2) rebasing onto
  * CHANGED content reaches a state the changed data dictates, NOT the old one.
  */
 
@@ -28,7 +28,7 @@ const VIKING = 1;
 /**
  * A RAW content blob (a plain object), the shape the app would read off disk and hand to
  * `rebaseContent`. A parsed `ContentSet` is plain JSON-serializable data, so a deep clone of the
- * test fixture IS a valid raw blob — re-parsing it is a no-op round-trip. `mutate` lets a test tweak
+ * test fixture IS a valid raw blob - re-parsing it is a no-op round-trip. `mutate` lets a test tweak
  * one balance param so the rebase's effect is observable.
  */
 function rawContent(mutate?: (c: ReturnType<typeof testContent>) => void): unknown {
@@ -153,10 +153,10 @@ describe('rebaseContent', () => {
   it('a rebased sim re-logs the command history, so a SECOND reload chains off the first', () => {
     // The documented hot-reload workflow is REPEATED: a designer edits, then edits AGAIN. For the
     // second `rebaseContent` to carry the run forward, the first rebase's sim must expose the SAME
-    // command log it was rebased from — replay re-applies each command through CommandSystem, which
+    // command log it was rebased from - replay re-applies each command through CommandSystem, which
     // re-records it (commands.ts `record`), so `rebased.commands.log` reproduces the input log. If it
     // didn't, the next reload would replay an empty/partial log and silently drop the player's history
-    // — a diff-empty correctness trap the workflow lives or dies on. This pins that chain.
+    // - a diff-empty correctness trap the workflow lives or dies on. This pins that chain.
     const schedule = new Map<number, Command[]>([
       [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],
@@ -176,7 +176,7 @@ describe('rebaseContent', () => {
     );
     expect(first.kind).toBe('ok');
     if (first.kind !== 'ok') return;
-    // The rebased sim must carry the WHOLE history forward — its log equals the input log byte-for-byte
+    // The rebased sim must carry the WHOLE history forward - its log equals the input log byte-for-byte
     // (CommandSystem re-records each replayed command on the same apply tick).
     const rebasedLog = [...first.sim.commands.log];
     expect(rebasedLog).toEqual(log);
@@ -195,7 +195,7 @@ describe('rebaseContent', () => {
     expect(second.sim.hashState()).toBe(finalHash);
   });
 
-  it('returns a typed error on MALFORMED content (schema failure) — no sim is built', () => {
+  it('returns a typed error on MALFORMED content (schema failure) - no sim is built', () => {
     const result = rebaseContent(
       rawContent((c) => {
         // Break the schema: a good's typeId must be a number.
@@ -208,7 +208,7 @@ describe('rebaseContent', () => {
     expect(result.message.length).toBeGreaterThan(0);
   });
 
-  it('returns a typed error on a CROSS-REFERENCE failure (dangling id) — not a throw', () => {
+  it('returns a typed error on a CROSS-REFERENCE failure (dangling id) - not a throw', () => {
     const result = rebaseContent(
       rawContent((c) => {
         // A building worker pointing at a job that doesn't exist trips validateCrossReferences.
@@ -237,7 +237,7 @@ describe('rebaseContent', () => {
       { seed: 5, map: grassMap(4, 1), log: [...sim.commands.log], untilTick: 10 },
     );
     expect(result.kind).toBe('error');
-    // The live sim is untouched — same hash, still steppable.
+    // The live sim is untouched - same hash, still steppable.
     expect(sim.hashState()).toBe(before);
     sim.step();
     expect(sim.tick).toBe(11);

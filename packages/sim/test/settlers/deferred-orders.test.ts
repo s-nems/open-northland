@@ -30,7 +30,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 const VIKING = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
-const SCOUT = 27; // fixture job 27 — allowatomic 43 only, like the original scout
+const SCOUT = 27; // fixture job 27 - allowatomic 43 only, like the original scout
 const HUMAN_PLAYER = 0;
 const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
@@ -96,7 +96,7 @@ describe('moveUnit during a non-interruptible atomic', () => {
     expect(sim.world.has(e, PlayerOrder)).toBe(false);
     expect(sim.world.get(e, DeferredOrder).command.kind).toBe('moveUnit');
 
-    // The tick the meal completes, the parked order applies — no idle gap for a drive to claim.
+    // The tick the meal completes, the parked order applies - no idle gap for a drive to claim.
     sim.run(EAT_TICKS - 1);
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
     expect(sim.world.has(e, DeferredOrder)).toBe(false);
@@ -169,7 +169,7 @@ describe('a parked order and the multi-swing harvest chain', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(4), y: fx.fromInt(1) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
-    sim.world.add(tree, Felling, { chopsLeft: 5 }); // far from felled — an ungated chain would re-arm
+    sim.world.add(tree, Felling, { chopsLeft: 5 }); // far from felled - an ungated chain would re-arm
     const swingTicks = 3; // fixture `viking_chop` length
     sim.world.add(e, CurrentAtomic, {
       atomicId: HARVEST_ATOMIC,
@@ -186,7 +186,7 @@ describe('a parked order and the multi-swing harvest chain', () => {
     expect(sim.world.get(e, CurrentAtomic).atomicId).toBe(HARVEST_ATOMIC); // the swing in flight survives
 
     sim.run(swingTicks - 1);
-    // Exactly one chop landed, then the settler was released to its order — not re-armed tree-to-fall.
+    // Exactly one chop landed, then the settler was released to its order - not re-armed tree-to-fall.
     expect(sim.world.get(tree, Felling).chopsLeft).toBe(4);
     expect(sim.world.has(e, CurrentAtomic)).toBe(false);
     expect(sim.world.has(e, MoveGoal)).toBe(true);
@@ -203,7 +203,7 @@ describe('placeSignpost during a non-interruptible atomic', () => {
     sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     sim.step();
 
-    // Nothing of the order landed yet — no erect intent beside a parked walk.
+    // Nothing of the order landed yet - no erect intent beside a parked walk.
     expect(sim.world.get(scout, CurrentAtomic).atomicId).toBe(BUILD_GUIDE_ATOMIC_ID);
     expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false);
     expect(sim.world.get(scout, DeferredOrder).command.kind).toBe('placeSignpost');

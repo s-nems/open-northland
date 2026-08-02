@@ -5,11 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * The house and building-family atlases are loaded by both the world sprite sheet
  * (`content/sprite-sheet/human-sheet.ts`, with shadow twins) and the details panel's building previews
  * (`hud/details-panel/assets.ts`, without), so `content/ir/load.ts` caches the atlas BODY per stem and composes
- * the shadow on top — keying on `(stem, shadowStem)` would dedupe neither call site.
+ * the shadow on top - keying on `(stem, shadowStem)` would dedupe neither call site.
  *
  * Pixi's `Assets` already dedupes the `<stem>.png` upload by URL. What the cache removes is the manifest
  * fetch + frame indexing and, for a `build: true` atlas, a second CPU readback of the `<stem>.build.png`
- * time sheet — that one goes through `fetchImageData`, which nothing else caches.
+ * time sheet - that one goes through `fetchImageData`, which nothing else caches.
  */
 
 /**
@@ -33,7 +33,7 @@ vi.mock('@open-northland/render', async (importOriginal) => {
 
 /**
  * `content/ir/load.ts` pulls in the whole Pixi graph, and under a full-suite run its cold Vite transform costs
- * seconds that are charged to whichever test triggers it — well past the 5 s default. (Run this file
+ * seconds that are charged to whichever test triggers it - well past the 5 s default. (Run this file
  * alone, against a warm cache, and the whole suite finishes in under 2 s.)
  */
 const IR_LOADER_TIMEOUT_MS = 30_000;
@@ -152,7 +152,7 @@ describe('the decoded atlas layer cache', { timeout: IR_LOADER_TIMEOUT_MS }, () 
     // is the one case that pins the ordering: the body is awaited FIRST, so its `MissingAtlasError` is
     // what the caller sees. Racing the two would surface the shadow's error instead, and the callers
     // that degrade on a missing atlas (`hud/details-panel/assets.ts`, `content/objects.ts`) rethrow
-    // anything else — a partial `content/` would hard-fail rather than fall back.
+    // anything else - a partial `content/` would hard-fail rather than fall back.
     vi.stubGlobal('fetch', ((input: RequestInfo | URL) =>
       String(input) === `/bobs/${SHADOW_STEM}.atlas.json`
         ? Promise.reject(new Error('shadow transport failed'))

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The served `content/ir.json` is multi-MB and several domains read lanes out of it, so `content/ir/load.ts`
- * owns ONE memoized fetch + JSON parse per page (`loadIrRaw`) that both views derive from — the graphics
+ * owns ONE memoized fetch + JSON parse per page (`loadIrRaw`) that both views derive from - the graphics
  * `loadIr` and the sim-side `loadRealContent`. This pins that: re-adding a second fetch fails here.
  * Each test re-imports the modules under `vi.resetModules()` so the module-level memo starts fresh.
  */
@@ -19,7 +19,7 @@ await Promise.all([import('../src/content/ir/load.js'), import('../src/content/r
 /** Generous: even primed, a cold-cache run pays a real (multi-second) transform for this graph. */
 const IR_LOADER_TIMEOUT_MS = 30_000;
 
-/** The smallest document `parseContentSet` accepts — every other lane defaults to empty. */
+/** The smallest document `parseContentSet` accepts - every other lane defaults to empty. */
 const MINIMAL_IR = {
   manifest: { version: IR_VERSION, generatedFrom: { game: 'test' } },
   goods: [],
@@ -74,7 +74,7 @@ describe('the shared ir.json fetch', { timeout: IR_LOADER_TIMEOUT_MS }, () => {
 
     expect(await loadIr()).toBeNull();
     expect(await loadRealContent()).toBeNull();
-    expect(urls).toHaveLength(2); // no memo pinned to the failure — each consumer retried
+    expect(urls).toHaveLength(2); // no memo pinned to the failure - each consumer retried
 
     served = new Response(JSON.stringify(MINIMAL_IR));
     const [ir, content] = await Promise.all([loadIr(), loadRealContent()]);

@@ -24,7 +24,7 @@ export interface WorldRendererOptions {
   /**
    * Interactive view smoothing: snap the camera pan to whole device pixels (nearest-sampled art
    * shimmer-crawls on fractional-pixel pans) and switch the world atlases to linear minification while
-   * zoomed out below 1 (nearest minification sparkles). For the live entries only — the deterministic
+   * zoomed out below 1 (nearest minification sparkles). For the live entries only - the deterministic
    * `?shot` capture must stay byte-stable, so it never enables this.
    */
   readonly viewSmoothing?: boolean | undefined;
@@ -70,7 +70,7 @@ export interface WorldFrame {
   readonly snapshot: WorldSnapshot;
   /** The world layer's own transform (screen = world*scale + offset). */
   readonly camera: Camera;
-  /** The integer sim tick the snapshot is at — the animation clock for gaits/rotors/decor (default 0). */
+  /** The integer sim tick the snapshot is at - the animation clock for gaits/rotors/decor (default 0). */
   readonly tick?: number | undefined;
   /** The HUD text frame to repaint, or absent to leave the HUD unchanged. */
   readonly hud?: HudFrame | undefined;

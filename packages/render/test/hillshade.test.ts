@@ -42,7 +42,7 @@ describe('composeShadingLane', () => {
 
   it('only accents an existing brightness lane (bounded fraction of the full hillshade)', () => {
     const embr = new Array<number>(9).fill(BRIGHTNESS_NEUTRAL);
-    const mirrored = [16, 8, 0, 16, 8, 0, 16, 8, 0]; // shadowed slope — deltas below neutral
+    const mirrored = [16, 8, 0, 16, 8, 0, 16, 8, 0]; // shadowed slope - deltas below neutral
     const accented = composeShadingLane(embr, mirrored, 3, 3);
     const full = composeShadingLane(undefined, mirrored, 3, 3);
     const accentDelta = BRIGHTNESS_NEUTRAL - (accented?.[4] ?? 0);

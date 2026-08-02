@@ -21,7 +21,7 @@ import { draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 
-// The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
+// The NEEDS drives - the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
 // design: eat > sleep > pray (survival outranks rest outranks devotion), and an unsatisfiable need
 // FALLS THROUGH to normal work (the need stays clamped at ONE) rather than freezing the settler.
@@ -30,7 +30,7 @@ import { sleepAtHome } from './sleep-at-home.js';
  * Hunger level (fixed-point, in [0, ONE]) at or above which a settler stops working to eat. Set to
  * ¾ of a full bar: a settler works most of the way up the hunger bar, then seeks food before it
  * pins at ONE. APPROXIMATED (see source basis): the original drives eating off the per-animation
- * hunger events (`event 30 2 <delta>` in event units — the eat clip's one +4000 maps to a full bar,
+ * hunger events (`event 30 2 <delta>` in event units - the eat clip's one +4000 maps to a full bar,
  * the same 4000-unit scale gossip's SOCIAL_EVENT_UNITS_PER_BAR reads) with no single readable "go eat
  * at X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
  * decoded and calibration-by-observation pins the real cadence. Exported for the gossip cancel check.
@@ -43,7 +43,7 @@ export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
  * reaching it means the eat drive has been firing for ~160 s at 1× without finding food. The bubble
  * therefore reports a famine in the settlement, not one settler being due a meal.
  *
- * Source basis: observed original — the icon appears when settlers have trouble finding food, not on
+ * Source basis: observed original - the icon appears when settlers have trouble finding food, not on
  * every meal (user observation). The exact fraction is approximated; it is set by the gap it leaves
  * above the eat trigger, not by a readable constant.
  */
@@ -64,14 +64,14 @@ export const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4
  * {@link HUNGER_BUBBLE_THRESHOLD}. Rest needs the gap even more than hunger does: fatigue crosses its
  * ¾ trigger every ~160 s and the settler then walks to a bed and sleeps a 237-tick clip, so keying the
  * icon on the drive trigger would leave a large share of the map permanently bubbling. Past this, the
- * settler has been unable to bed down — boxed in, or confined away from any open ground.
+ * settler has been unable to bed down - boxed in, or confined away from any open ground.
  */
 export const FATIGUE_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
 /**
  * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
  * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. Since piety no longer
- * rises over time — it climbs only when a smith forges a weapon/armor good (`chargeMilitaryPiety`) — in
+ * rises over time - it climbs only when a smith forges a weapon/armor good (`chargeMilitaryPiety`) - in
  * practice only smiths reach this threshold; other trades keep their seeded starting piety and never pray.
  * APPROXIMATED (see source basis): like the eat/sleep triggers, the original drives praying off the
  * per-animation devotion events with no single readable "pray at X" threshold; this constant is the slice's
@@ -80,7 +80,7 @@ export const FATIGUE_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt
 const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
- * Whether any needs-ladder rung would fire for these need levels — the cheap pre-gate a caller uses to
+ * Whether any needs-ladder rung would fire for these need levels - the cheap pre-gate a caller uses to
  * skip {@link planNeeds}'s target/limit setup for a sated settler (the ladder re-checks each threshold,
  * so gating on this elides only provably-null work and can never change a pick).
  */
@@ -94,19 +94,19 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
 
 /**
  * Run the needs ladder for one idle settler. Returns `true` when a drive acted (started an atomic or
- * set a walk goal — the settler is spoken for this tick), `false` when every need is either below its
- * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to the
+ * set a walk goal - the settler is spoken for this tick), `false` when every need is either below its
+ * threshold or unsatisfiable (no food anywhere, no temple) - the caller then falls through to the
  * ownership gate and economy work, with the unsatisfied bar staying clamped at ONE.
  *
  *  - **EAT** (highest): eat a carried edible on the spot; else drink a carried draught in place
  *    ({@link draughtSlotFor} - a food potion, else mead); else walk to the NEAREST food of any kind
- *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
+ *    ({@link nearestFood}) - a store holding food, or a ripe wild berry bush (the fallback) - and eat/
  *    forage it there. A settler that finds nothing keeps climbing to {@link HUNGER_BUBBLE_THRESHOLD},
  *    which is where the HUD's famine icon comes in.
- *  - **SLEEP** (below eat — a starving settler eats before it can rest): go home to bed when the settler
+ *  - **SLEEP** (below eat - a starving settler eats before it can rest): go home to bed when the settler
  *    has a house ({@link sleepAtHome}), else step off the workplace doorstep to open ground
  *    ({@link restingCell}) and sleep there.
- *  - **PRAY** (below eat + sleep — survival outranks devotion): the first **target-bound** need —
+ *  - **PRAY** (below eat + sleep - survival outranks devotion): the first **target-bound** need -
  *    walk to the nearest temple and pray on it ({@link nearestTemple}).
  */
 export function planNeeds(
@@ -118,7 +118,7 @@ export function planNeeds(
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
-  /** The settler's signpost confinement, or null when unlimited — a hungry/devout settler only seeks a
+  /** The settler's signpost confinement, or null when unlimited - a hungry/devout settler only seeks a
    *  satisfier inside its allowed area (an unsatisfiable need falls through to work as ever). */
   limit: NavigationLimit | null,
   /** The planner-tick occupancy/claim state the sleep rung picks a bed out of ({@link restingCell}). */
@@ -146,7 +146,7 @@ export function planNeeds(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    // Find the NEAREST food of any kind — a stocked/produced larder or a wild berry bush (the fallback
+    // Find the NEAREST food of any kind - a stocked/produced larder or a wild berry bush (the fallback
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
     const food = nearestFood(targets, world, ctx, terrain, here, e, gate);
@@ -174,11 +174,11 @@ export function planNeeds(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    // A settler with a house goes home to bed — the data gives that a clip of its own worth the same
+    // A settler with a house goes home to bed - the data gives that a clip of its own worth the same
     // rest in a fifth of the time (see {@link sleepAtHome}).
     if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
     // Homeless (or the house is gone / still a site / out of area): bed down in the open rather than
-    // where the settler happens to be standing — it steps off the workplace doorstep first (see
+    // where the settler happens to be standing - it steps off the workplace doorstep first (see
     // {@link restingCell}); already out in the open, it sleeps on the spot.
     atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
       startAtomic(

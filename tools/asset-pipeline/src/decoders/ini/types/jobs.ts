@@ -26,9 +26,9 @@ import {
 /**
  * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
  * job may perform: `allowatomic` (granted) and `forbidatomic` (hard-denied), repeated single-value
- * lines kept in file order, plus `baseatomics` — a single parent-job `type` the job inherits its
+ * lines kept in file order, plus `baseatomics` - a single parent-job `type` the job inherits its
  * atomics from, despite the plural key name. Every value in `Data/logic/jobtypes.ini` is a `[jobtype]`
- * `type`, and every id `soldier_unarmed` forbids is one its base `civilist` grants — a denial list that
+ * `type`, and every id `soldier_unarmed` forbids is one its base `civilist` grants - a denial list that
  * would be inert if the field were the job's own atomics.
  */
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
@@ -54,14 +54,14 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
 
 /**
  * Extracts `[humanjobexperiencetype]` sections (`Data/logic/humanjobexperiencetypes.ini`) into
- * validated {@link HumanJobExperienceType} IR — the per-specialization experience tracks the
+ * validated {@link HumanJobExperienceType} IR - the per-specialization experience tracks the
  * ProgressionSystem accrues XP into. A track names its owning `job` (always) and, when good-specific,
  * the `good` it trains on; `experiencefactor` scales accrual and `baserepeatcounter` (on a few records)
- * is the original's repeat-count tuning. The numeric semantics are captured raw — interpreting the XP
+ * is the original's repeat-count tuning. The numeric semantics are captured raw - interpreting the XP
  * curve is the ProgressionSystem's concern, not this extraction slice. The `job`/`good` ids are
  * cross-checked against the job/good tables by `validateCrossReferences`. Throws on a record missing
  * the required numeric `type` id (matches {@link extractGoods}'s throw-on-malformed stance). The base
- * `.ini` is the source — there is no mod twin and no readable-vs-encrypted choice to make here.
+ * `.ini` is the source - there is no mod twin and no readable-vs-encrypted choice to make here.
  */
 export function extractJobExperience(
   sections: readonly RuleSection[],
@@ -104,7 +104,7 @@ const JOB_ENABLES_KIND: Readonly<Record<string, JobEnablesKind>> = {
  * Collects one `[tribetype]` section's `jobEnables<Kind> <jobType> <targetId>` lines into unified
  * {@link JobEnables} tech-graph edges in exact source order. The real data interleaves the four
  * kinds within a job's block (e.g. job 8's goods, then its jobs, then its houses), so a single
- * file-order pass — recognizing any of the four keys — keeps that order verbatim rather than
+ * file-order pass - recognizing any of the four keys - keeps that order verbatim rather than
  * regrouping by kind. A line missing either int is skipped, matching the `setatomic` malformed-line
  * stance. (A non-`jobEnables*` prop yields no key match and is ignored.)
  */
@@ -160,8 +160,8 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
 
 /**
  * Extracts `[tribetype]` sections into validated {@link TribeType} IR. The payload is each tribe's
- * `setatomic <jobType> <atomicId> "animation"` bindings — the per-tribe atomic→animation table that
- * carries tribal identity — plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}) and
+ * `setatomic <jobType> <atomicId> "animation"` bindings - the per-tribe atomic→animation table that
+ * carries tribal identity - plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}) and
  * its `{need,train}for*` experience requirements ({@link extractJobRequirements}). The readable mod
  * `tribetypes.ini` covers playable tribes AND animals. Malformed `setatomic` lines (missing the
  * job/atomic ints or the animation token) are skipped.

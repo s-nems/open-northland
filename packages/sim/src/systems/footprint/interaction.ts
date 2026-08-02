@@ -22,23 +22,23 @@ import {
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
 
-// INTERACTION — where a unit stands to use a building or resource: a building's door node, and the
+// INTERACTION - where a unit stands to use a building or resource: a building's door node, and the
 // walkable work cell adjacent to (or on) a resource/ground drop.
 
-/** An integer HALF-CELL NODE a unit stands on to interact with something — see {@link interactionNode}. */
+/** An integer HALF-CELL NODE a unit stands on to interact with something - see {@link interactionNode}. */
 export type InteractionNode = { readonly x: number; readonly y: number };
 
 /**
- * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building — its door node
+ * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building - its door node
  * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node
  * itself (the pre-footprint same-node model, which synthetic content keeps). This is the single
  * seam every "walk to the building / are we at the building" consumer resolves through (the AI
  * walk targets + arrival checks, the JobSystem adopt bucket, the production worker-presence gate),
- * so the walk goal and the presence test can never disagree about where "at the building" is —
+ * so the walk goal and the presence test can never disagree about where "at the building" is -
  * with the walls now blocking, the anchor node itself is typically unreachable, and the door is
  * where the original's settlers enter. A door node OFF the map (impossible for a gate-placed
- * footprinted building — the placement rule forces the whole reserved zone, door included,
- * in-bounds — but reachable through hand-authored content) falls back to the anchor node, so every
+ * footprinted building - the placement rule forces the whole reserved zone, door included,
+ * in-bounds - but reachable through hand-authored content) falls back to the anchor node, so every
  * consumer stays consistent instead of a clamped walk goal disagreeing with the raw-node presence
  * checks. Returns null for an entity without a Building or Position.
  */
@@ -186,12 +186,12 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
 
 /**
  * Every cell {@link resourceWorkCell} could pick as this resource's work stance, over ALL possible
- * `from` positions — its pools with the nearest-pick left to the caller. A walkable deposit whose
- * work area includes its own anchor node is worked standing ON the deposit — the OBSERVED original
+ * `from` positions - its pools with the nearest-pick left to the caller. A walkable deposit whose
+ * work area includes its own anchor node is worked standing ON the deposit - the OBSERVED original
  * clay digger squarely on its pit. Today that anchor-listing comes from the sandbox's invented work
  * areas (`game/sandbox/content/`), NOT the real clay records: those list the anchor only in
  * their partial states, and the sim collapses `workAreas` to the FULL state
- * (`fullStateBlockAreaCells`), whose rows exclude `(0,0)` — so if real records ever feed this,
+ * (`fullStateBlockAreaCells`), whose rows exclude `(0,0)` - so if real records ever feed this,
  * the digger silently reverts to an adjacent stance unless that collapse is revisited. A blocking
  * node's anchor never survives the walkable filter, so trees/stones/ore keep the adjacent stance;
  * a resource whose only legal work cell is its anchor (a one-tile mushroom fixture) remains

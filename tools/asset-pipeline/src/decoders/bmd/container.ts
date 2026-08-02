@@ -1,5 +1,5 @@
 /**
- * `.bmd` "bob" container decoder — CBobManager (storable id 0x3F4).
+ * `.bmd` "bob" container decoder - CBobManager (storable id 0x3F4).
  *
  * A `.bmd` holds a framed sprite set ("bobs"): GUI windows, settler animation frames, terrain bobs.
  * On disk it is one serialized `CStorable`:
@@ -20,7 +20,7 @@
  *
  * This module solves the container layer only: it splits a `.bmd` into the header fields, the typed bob
  * records, and the two raw blocks (packed-line bytes + line-control words). Turning the packed-line
- * stream into actual frame pixels (the RLE codec) lives beside it in {@link ./frame} — the same way `.pcx`
+ * stream into actual frame pixels (the RLE codec) lives beside it in {@link ./frame} - the same way `.pcx`
  * keeps `decodePcx` (container) separate from `expandToRgba` (pixels).
  *
  * The layout is documented in `docs/formats/GRAPHICS.md` and pinned by synthetic round-trip tests.
@@ -45,7 +45,7 @@ export const PACKED_X_SHIFT = 22; // high 10 bits = xMin (first non-transparent 
 export const BOB_TYPE_EMPTY = 0;
 /** 8-bit bob: each raw-run byte is a palette index. */
 export const BOB_TYPE_8BIT = 1;
-/** 1-bit mask bob (`TBobType.Bob1Bit`) — the shadow silhouettes: a raw run carries no pixel bytes
+/** 1-bit mask bob (`TBobType.Bob1Bit`) - the shadow silhouettes: a raw run carries no pixel bytes
  *  (the run itself is the coverage); set pixels draw as index 0xFF. */
 export const BOB_TYPE_1BIT = 2;
 /**
@@ -57,7 +57,7 @@ export const BOB_TYPE_TIMEMASK = 3;
  * Double-byte bob: each raw-run pixel is `[index, second]`. The second byte is interpreted per
  * consumer from measured byte distributions and the rendered result: alpha for soft decals (ferns median 172, smoke
  * 77, waves ~35), or a 0–255 construction-progress threshold for the `[GfxHouse]` bobs (measured:
- * spans ~0–255, row-correlated bottom-up, mean ≈100 over solid walls — not coverage), drawn via
+ * spans ~0–255, row-correlated bottom-up, mean ≈100 over solid walls - not coverage), drawn via
  * progressively during construction and fully when finished.
  * `decodeBobFrame`'s `secondByte` option picks the interpretation (`AtlasAlphaMode` routes it).
  */
@@ -83,7 +83,7 @@ export interface BobRecord {
   readonly type: number;
   /**
    * The bob's draw rectangle: `width`×`height` is the frame size; `x`/`y` are the draw offset (where to
-   * blit the frame relative to the entity's anchor/feet — often negative). These are render-time offsets
+   * blit the frame relative to the entity's anchor/feet - often negative). These are render-time offsets
    * only, not indices into the packed-line / line-control data (that base is {@link misc}).
    */
   readonly area: BobArea;
@@ -91,7 +91,7 @@ export interface BobRecord {
    * The bob's first-line index into the global line-control array (record+0x14): its `height` scanlines
    * are `lineControl[misc .. misc+height)`. The line-control array is the per-bob scanlines stacked
    * contiguously (its length equals the sum of every bob's height), so this is each bob's base offset
-   * into that stack — the field {@link import('./frame.js').decodeBobFrame} walks, not `area.y`.
+   * into that stack - the field {@link import('./frame.js').decodeBobFrame} walks, not `area.y`.
    */
   readonly misc: number;
 }

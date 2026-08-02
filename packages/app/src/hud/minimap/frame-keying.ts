@@ -1,19 +1,19 @@
 /**
  * Pixel surgery for the braided frame art (`frame.ts` is the only consumer): keying the removable
  * near-black backdrop out of the baked frame and restoring its silhouette outline. Pure byte-level
- * image ops (no Pixi, no DOM — headlessly unit-tested), split from `model.ts` so the minimap's
+ * image ops (no Pixi, no DOM - headlessly unit-tested), split from `model.ts` so the minimap's
  * layout/projection math and the frame-art processing evolve independently.
  */
 
 /**
- * The removable-backdrop band of the GUI art (max channel below ≈28/255) — mirrors the
+ * The removable-backdrop band of the GUI art (max channel below ≈28/255) - mirrors the
  * `PalettedSprite` shader's `KEY_NEAR_BLACK`, but applied by connectivity here, not colour alone.
  */
 const NEAR_BLACK_MAX = 28;
 
 /**
  * Key out (alpha → 0) every near-black pixel connected to the image edge through other near-black or
- * transparent pixels — the frame art's backdrop treatment. The art fills both the removable outside
+ * transparent pixels - the frame art's backdrop treatment. The art fills both the removable outside
  * (margins around the braid + the window hole, which runs flush to two edges) and the braid's own
  * crevice shadows with the same near-black band, so a colour-only key ('full') punches see-through
  * holes in the braid; flood-filling from the edge removes exactly the outside band and keeps every
@@ -23,7 +23,7 @@ export function keyEdgeConnectedNearBlack(rgba: Uint8ClampedArray, w: number, h:
   const inBand = (i: number): boolean => {
     const o = i * 4;
     const a = rgba[o + 3] ?? 0;
-    if (a < 128) return true; // already transparent — a conduit, and re-clearing it is harmless
+    if (a < 128) return true; // already transparent - a conduit, and re-clearing it is harmless
     return Math.max(rgba[o] ?? 0, rgba[o + 1] ?? 0, rgba[o + 2] ?? 0) < NEAR_BLACK_MAX;
   };
   const visited = new Uint8Array(w * h);
@@ -60,7 +60,7 @@ export function keyEdgeConnectedNearBlack(rgba: Uint8ClampedArray, w: number, h:
  * Draw an opaque black outline onto the transparent side of every opaque↔transparent boundary,
  * `thickness` px deep (4-connected distance). The backdrop keying eats the art's own near-black
  * contour along with the backdrop (they touch, so connectivity can't tell them apart), leaving the
- * silhouette's last pixels frayed against the world — this restores a clean dark rim. In-place over
+ * silhouette's last pixels frayed against the world - this restores a clean dark rim. In-place over
  * straight RGBA.
  */
 export function outlineOpaqueSilhouette(

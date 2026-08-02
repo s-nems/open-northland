@@ -44,7 +44,7 @@ import {
 import { EAT_ATOMIC, SLEEP_ATOMIC } from '../settler-gfx/sequences.js';
 
 /**
- * The viking `[gfxanimatomic]` `logictribe` — `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
+ * The viking `[gfxanimatomic]` `logictribe` - `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
  * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen), and not a value to guess: the same
  * body bobseq name recurs across the human tribes with different per-direction frame lists, so the attack
  * swings must be drawn from this tribe's records (`gfxAtomicFrameLists`), else a soldier swings a
@@ -53,7 +53,7 @@ import { EAT_ATOMIC, SLEEP_ATOMIC } from '../settler-gfx/sequences.js';
 const VIKING_ANIM_TRIBE = 1;
 
 /**
- * A body layer with every frame's draw offset dropped by `shift` px (no shift → the layer verbatim) —
+ * A body layer with every frame's draw offset dropped by `shift` px (no shift → the layer verbatim) -
  * the committed anchor calibration a {@link import('../settler-gfx/index.js').CharacterSpec.feetShiftY}
  * declares (the baby lib's authored hotspots sit above its sprite, so it drew hovering).
  */
@@ -70,8 +70,8 @@ function feetShiftedLayer(layer: SpriteLayer, shift: number | undefined): Sprite
  * {@link import('../settler-gfx/index.js').ADULT_CHARACTER_BY_JOB} / `YOUNG_CHARACTER_BY_JOB`. Bodies are loaded
  * once per roster entry (the six soldier looks share one armoured body atlas); a head that 404s is skipped
  * (the look draws with fewer faces), a body that 404s or an unresolvable binding drops that look (its jobs
- * fall back to the default). Returns `undefined` — no characters, the sheet degrades to the single-body
- * legacy path — when the IR carries no sequences or the civilian look (the required default) can't be built.
+ * fall back to the default). Returns `undefined` - no characters, the sheet degrades to the single-body
+ * legacy path - when the IR carries no sequences or the civilian look (the required default) can't be built.
  */
 export async function loadCharacters(
   ir: ContentIr | null,
@@ -100,12 +100,12 @@ export async function loadCharacters(
       } catch (err) {
         // An optional look must never kill the boot: a missing body (MissingAtlasError) is the expected
         // undecoded-content case; any other failure (a corrupt manifest, a truncated PNG) is a real bug
-        // — surface it loudly, but still degrade this look to the default instead of failing the whole
+        // - surface it loudly, but still degrade this look to the default instead of failing the whole
         // sheet. Strict propagation stays on the base sheet's own loads (loadHumanSpriteSheet).
         if (!(err instanceof MissingAtlasError)) {
           diag.warn(
             'content',
-            `character look '${rosterId}' failed to load — falling back to the default look`,
+            `character look '${rosterId}' failed to load - falling back to the default look`,
             err,
           );
         }
@@ -114,11 +114,11 @@ export async function loadCharacters(
   );
 
   // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq
-  // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
+  // name - the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
   // (not per spec); a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The per-direction frame lists for every dir-list action — gathering, field work, the builder hammer,
-  // the wedding kiss and the gossip talk/listen `[gfxanimatomic]` records — keyed by atomic id: what each
+  // The per-direction frame lists for every dir-list action - gathering, field work, the builder hammer,
+  // the wedding kiss and the gossip talk/listen `[gfxanimatomic]` records - keyed by atomic id: what each
   // spec's `dirListAtomics` becomes FrameListAnims from. An action missing here plays its plain `atomics`
   // strip whole, cycling through the sheet's direction blocks (the "spinning" artifact). Built once; an
   // IR without a record just leaves that action on its fallback clip.
@@ -145,7 +145,7 @@ export async function loadCharacters(
   );
   // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list
   // back-to-back so the whole pick is a single continuous motion (HARVEST_TICKS sizes the atomic to
-  // cover the repeats + a ready-stance breather — settler-gfx.ts, observed-pace approximation).
+  // cover the repeats + a ready-stance breather - settler-gfx.ts, observed-pace approximation).
   const pluck = actionFrameLists.get(MUSHROOM_HARVEST_ATOMIC);
   if (pluck !== undefined) {
     actionFrameLists.set(
@@ -154,7 +154,7 @@ export async function loadCharacters(
         [...pluck].map(([seq, dirs]) => {
           for (const list of dirs) {
             if (list.length !== MUSHROOM_PLUCK_FRAMES) {
-              // The atomic duration is sized off the pin, not this list — a drifted extraction would
+              // The atomic duration is sized off the pin, not this list - a drifted extraction would
               // cut the repeated motion short or pad it; surface it instead of silently mistiming.
               diag.warn(
                 'content',
@@ -189,7 +189,7 @@ export async function loadCharacters(
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
       .filter((l): l is SpriteLayer => l !== undefined);
     // Head-borrow: goods whose carry cycle ships empty head bobs resolve the head through the base walk
-    // instead (carryHeadAnims) — else a stone/grain hauler draws headless. All of a body's heads share
+    // instead (carryHeadAnims) - else a stone/grain hauler draws headless. All of a body's heads share
     // one bob layout, so checking the first head atlas stands for the set.
     const byGood = binding.carrying?.byGood;
     const headAtlas = heads[0]?.atlas;

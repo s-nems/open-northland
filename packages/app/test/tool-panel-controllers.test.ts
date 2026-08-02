@@ -26,9 +26,9 @@ import { messages } from '../src/i18n/index.js';
 
 /**
  * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / goods / stats / placement) over a stubbed
- * {@link PanelContext} — the seams the package split opened up. These pin the input-routing contracts
+ * {@link PanelContext} - the seams the package split opened up. These pin the input-routing contracts
  * the mount relies on (claim regions, close-on-pick, close-on-inside) and the stats change-key guard
- * (a tick-only change must NOT rebuild the glyph runs — the per-frame perf contract).
+ * (a tick-only change must NOT rebuild the glyph runs - the per-frame perf contract).
  */
 
 const SCREEN = { width: 800, height: 600 };
@@ -215,7 +215,7 @@ describe('tabbed-list window controller (goods palette)', () => {
     { goodType: 11, id: 'stone', label: 'Kamień' },
   ];
 
-  /** The same layout the controller builds internally — dropping from the palette's own strip button. */
+  /** The same layout the controller builds internally - dropping from the palette's own strip button. */
   const expectedLayout = (ctx: PanelContext) => expectedListLayout(ctx, goodsTabbedList(GOODS));
 
   const goodsWindow = (ctx: PanelContext, onPick: (goodType: number) => void) =>
@@ -547,7 +547,7 @@ describe('placement controller', () => {
     placement.enter(23);
     expect(placement.isActive()).toBe(true);
     expect(placement.handleClick(10, 10)).toBe(true);
-    // Player placement is always a construction site (`underConstruction`) — builders raise it globally.
+    // Player placement is always a construction site (`underConstruction`) - builders raise it globally.
     expect(commands).toEqual([
       { kind: 'placeBuilding', buildingType: 23, x: 4, y: 2, tribe: 1, owner: 0, underConstruction: true },
     ]);
@@ -560,7 +560,7 @@ describe('placement controller', () => {
       () => false, // the probe says the anchor doesn't fit here
     );
     placement.enter(23);
-    expect(placement.handleClick(10, 10)).toBe(true); // claimed — never falls through to picking
+    expect(placement.handleClick(10, 10)).toBe(true); // claimed - never falls through to picking
     expect(commands).toHaveLength(0); // nothing enqueued: the sim would drop it anyway
     expect(placement.isActive()).toBe(true); // a mis-click on the dim wash doesn't end the mode
   });

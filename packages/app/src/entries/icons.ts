@@ -5,14 +5,14 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay.js';
 
 /**
- * The `?icons` icon gallery entry — a browsable board of every decoded bob-atlas frame, so a human can
+ * The `?icons` icon gallery entry - a browsable board of every decoded bob-atlas frame, so a human can
  * find the exact sprite (and its frame index) to wire into a feature. It is the in-app, always-current
  * successor to the throwaway HTML board: the dev server's `/bobs-index` lists every palette-applied RGBA
  * atlas the pipeline emitted (GUI, goods, and every landscape/house/object set), and this page shows one
  * atlas at a time as a grid of frames cropped straight from its sheet PNG, each labelled by frame index.
  *
  * Pure DOM (no Pixi): the atlases are already palette-baked to `<stem>.png`, so a frame is just a CSS
- * background-crop of that sheet — no runtime recolour needed. Real content required (it browses the
+ * background-crop of that sheet - no runtime recolour needed. Real content required (it browses the
  * gitignored `content/`); a bare checkout degrades to a "run the pipeline" message.
  */
 
@@ -43,7 +43,7 @@ interface AtlasJson {
 
 /** GUI-sheet frames carry human names (`content/gui-atlas-map.ts`); show them so the badge search reads. */
 const GUI_BASE = 'ls_gui_window';
-/** Cap the frames rendered at once — a character sheet has thousands; a "show all" toggle lifts it. */
+/** Cap the frames rendered at once - a character sheet has thousands; a "show all" toggle lifts it. */
 const FRAME_CAP = 800;
 
 const STYLE_ID = 'opennorthland-icon-gallery-style';
@@ -92,7 +92,7 @@ function installStyle(): void {
   document.head.append(s);
 }
 
-/** A short, human group label for a base sprite set — enough to find "GUI" / "Dobra" / "Domy" at a glance. */
+/** A short, human group label for a base sprite set - enough to find "GUI" / "Dobra" / "Domy" at a glance. */
 function groupLabel(base: string): string {
   const groups = messages().icons.groups;
   if (base === GUI_BASE) return groups.gui;
@@ -219,7 +219,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
         idxLine.className = 'vig-idx';
         idxLine.append(el('span', '', String(f.bobId)), el('span', '', `0x${f.bobId.toString(16)}`));
         (idxLine.lastChild as HTMLElement).className = 'hx';
-        const nmLine = el('div', '', name || '—');
+        const nmLine = el('div', '', name || '-');
         nmLine.className = 'vig-nm';
         tile.append(chip, idxLine, nmLine);
         tile.addEventListener('click', () => {

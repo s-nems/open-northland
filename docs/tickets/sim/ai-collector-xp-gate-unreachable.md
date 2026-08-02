@@ -12,7 +12,7 @@ sites: the first post and the veteran repost accept any spare man, iron included
 
 The surrounding machinery still runs. `needsVeteran` reads the tribe's requirement rows directly, so the
 veteran repost still fires for iron when the spare pool is dry, moving an ungated good's collector
-onto it — currently harmless but pointless, since the same fresh man `meetsNeed` accepts could have
+onto it - currently harmless but pointless, since the same fresh man `meetsNeed` accepts could have
 taken the iron post directly.
 
 Two unit tests pin the gated behaviour against a fixture seat that carries no `AiPlayer` entity

@@ -1,6 +1,6 @@
 import { halfCellMapFromCells, type TerrainMap } from '../../src/index.js';
 
-/** Ground type id 0 in the synthetic fixtures — plain walkable grass. */
+/** Ground type id 0 in the synthetic fixtures - plain walkable grass. */
 const GRASS = 0;
 
 /**
@@ -13,7 +13,7 @@ export function grassCellMap(width: number, height: number): TerrainMap {
 }
 
 /**
- * All-grass map given in RAW half-cell node dimensions — `width × height` is already the node
+ * All-grass map given in RAW half-cell node dimensions - `width × height` is already the node
  * lattice, no upsampling. This is a 2× finer coordinate space than {@link grassCellMap}; the two are
  * NOT interchangeable. Use this only when a test addresses individual half-cell nodes.
  */

@@ -15,7 +15,7 @@ The culturesnation mod breaks that: 17 `.bmd` referenced by real graphics bindin
 `Data/engine2d/bin/bobs/nowe/` and `.../bobs/test/` (`f_bakery`, `f_druid`, `f_herb`, `f_krawiec`,
 `f_potter`, `frank_mill`, `frank_well_hive`, `mur`, `frank_farmm`, plus their `_s` shadows). The shipped
 `content/ir.json` already carries 23 `buildingBobs` rows pointing at them, so the app asks for
-`/bobs/f_bakery.ship_house.png` and gets a 404 — the file is at `bobs/nowe/f_bakery.ship_house.png`.
+`/bobs/f_bakery.ship_house.png` and gets a 404 - the file is at `bobs/nowe/f_bakery.ship_house.png`.
 `buildBobsIndexEntries` reads `bobsRoot` non-recursively, so the `?icons` gallery misses them too.
 
 Before the loose-over-lib precedence fix these atlases were never generated at all (the index read only
@@ -27,7 +27,7 @@ case-sensitively; nothing folds a *loose* layer's spelling. A tree spelling `dat
 `Data/Engine2D/Bin/Bobs/` writes every derived file outside its route on a case-sensitive host, and the
 loaders read the 404 as absent content and fall back silently. Pre-existing for the `/textures/` pages
 (the loose `.pcx` walk has always mirrored the loose spelling); the atlas stages now inherit it too. The
-owned copy is consistent — all 1365 shared paths agree in spelling — so this is latent, not live.
+owned copy is consistent - all 1365 shared paths agree in spelling - so this is latent, not live.
 
 ## Scope
 

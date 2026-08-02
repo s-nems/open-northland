@@ -27,8 +27,8 @@ import {
   wallAt,
 } from './support.js';
 
-describe('unit body collision — firm routing and resolution', () => {
-  it('two walking fighters cross head-on and both arrive — movers never deadlock movers', () => {
+describe('unit body collision - firm routing and resolution', () => {
+  it('two walking fighters cross head-on and both arrive - movers never deadlock movers', () => {
     const s = sim();
     const east = settlerAt(s, 4, 6, SOLDIER, P0);
     const west = settlerAt(s, 16, 6, SOLDIER, P0);
@@ -42,14 +42,14 @@ describe('unit body collision — firm routing and resolution', () => {
     expect(s.world.has(west, PathFollow)).toBe(false);
   });
 
-  it('a sealed standing line makes the far side unroutable — the order fails cleanly, nobody grinds', () => {
+  it('a sealed standing line makes the far side unroutable - the order fails cleanly, nobody grinds', () => {
     const s = sim();
     wallAt(s, 10, P1);
     const runner = settlerAt(s, 4, 6, SOLDIER, P0);
     orderTo(s, runner, 16, 6);
     s.run(20); // inside the stranded-recovery park window
 
-    expect(nodeOf(s, runner)).toEqual({ x: 4, y: 6 }); // never set off — no route exists
+    expect(nodeOf(s, runner)).toEqual({ x: 4, y: 6 }); // never set off - no route exists
     expect(s.world.tryGet(runner, PathRequest)?.failed).toBe(true); // parked on the failed route
 
     s.run(100); // past the retry pace: the planner sheds the dead goal instead of freezing on it
@@ -72,7 +72,7 @@ describe('unit body collision — firm routing and resolution', () => {
     expect(s.world.has(runner, PathFollow)).toBe(false); // Obstructed give-up dropped the route
     expect(s.world.has(runner, Obstructed)).toBe(false); // and the counter was cleaned up with it
     for (const [i, p] of posts.entries()) {
-      // No post was displaced an ulp — standing bodies are immovable.
+      // No post was displaced an ulp - standing bodies are immovable.
       const pos = s.world.get(p, Position);
       expect({ x: pos.x, y: pos.y }).toEqual(held[i]);
     }
@@ -94,14 +94,14 @@ describe('unit body collision — firm routing and resolution', () => {
     const runner = settlerAt(s, 4, 6, SOLDIER, P0);
     orderTo(s, runner, 16, 6);
     s.run(30); // en route on the straight line, planned before any wall existed
-    // A SHORT enemy line drops across the stale route (standing spawns) — rows 4..8 of column 10,
+    // A SHORT enemy line drops across the stale route (standing spawns) - rows 4..8 of column 10,
     // leaving both flanks open. The stale path aims straight into it; the walker must grind only
     // {@link OBSTRUCTED_REROUTE_TICKS}, drop the path, and re-plan around a flank. The old give-up
     // (24 ticks of marching in place, then standing down with the goal dropped) never arrived.
     for (let hy = 4; hy <= 8; hy++) settlerAt(s, 10, hy, SOLDIER, P1);
     s.run(250);
 
-    expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 }); // arrived — flowed around the flank
+    expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 }); // arrived - flowed around the flank
     expect(s.world.has(runner, Obstructed)).toBe(false);
   });
 
@@ -116,7 +116,7 @@ describe('unit body collision — firm routing and resolution', () => {
     expect(at).not.toEqual({ x: 12, y: 6 }); // the occupied node itself stays the post's
     expect(Math.abs(at.x - 12) + Math.abs(at.y - 6)).toBeLessThanOrEqual(2); // ...but it stood down right beside it
     expect(nodeOf(s, post)).toEqual({ x: 12, y: 6 });
-    expect(s.world.has(runner, MoveGoal)).toBe(false); // the re-aimed goal completed — no failed order left
+    expect(s.world.has(runner, MoveGoal)).toBe(false); // the re-aimed goal completed - no failed order left
     expect(s.world.has(runner, PathRequest)).toBe(false);
   });
 
@@ -149,8 +149,8 @@ describe('unit body collision — firm routing and resolution', () => {
 
   it('never pushes a body onto unwalkable ground: a shove toward water is clamped', () => {
     // Top CELL row is water (node rows 0–1); the runner walks the first grass node row (hy=2).
-    // The post stands OFF-CENTRE between node rows 2 and 3, so the radial resolve points NORTH —
-    // straight at the water — and the landing clamp must drop that axis.
+    // The post stands OFF-CENTRE between node rows 2 and 3, so the radial resolve points NORTH -
+    // straight at the water - and the landing clamp must drop that axis.
     const ids = new Array<number>(12 * 6).fill(GRASS);
     for (let cx = 0; cx < 12; cx++) ids[cx] = WATER;
     const s = new Simulation({

@@ -13,18 +13,18 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
- * The `?sounds` verification gallery — the audio twin of the `?anim` character gallery. An agent can't
+ * The `?sounds` verification gallery - the audio twin of the `?anim` character gallery. An agent can't
  * self-judge whether a sound is the right sound (root AGENTS.md "How to verify your work"), so this is the
- * human-oracle seam for audio: it lists every wired mapping — which sim happening triggers which decoded
- * clip, the settler voice pools split by sex/age, the life-event jingles and the terrain ambient beds —
+ * human-oracle seam for audio: it lists every wired mapping - which sim happening triggers which decoded
+ * clip, the settler voice pools split by sex/age, the life-event jingles and the terrain ambient beds -
  * each with a ▶ that plays the wav straight off the `/sounds` dev route. A click is a user gesture, so the
  * browser lets it sound without the live loop's suspended-until-gesture dance.
  *
- * Two halves like the anim gallery: a pure {@link buildSoundGalleryModel} (unit-tested — it is where the
+ * Two halves like the anim gallery: a pure {@link buildSoundGalleryModel} (unit-tested - it is where the
  * event→sound bindings become an auditable list) and the DOM render below.
  */
 
-/** A named group and the interchangeable clips the engine picks from — the leaf of every gallery row. */
+/** A named group and the interchangeable clips the engine picks from - the leaf of every gallery row. */
 export interface ClipList {
   readonly group: string;
   readonly clips: readonly string[];
@@ -43,7 +43,7 @@ export interface ActionRow {
   readonly clips: readonly string[];
 }
 
-/** The voice pools for one sex/age class — what an on-screen settler of that class draws its murmur from. */
+/** The voice pools for one sex/age class - what an on-screen settler of that class draws its murmur from. */
 export interface VoiceClassView {
   readonly cls: VoiceClass;
   readonly label: string;
@@ -68,7 +68,7 @@ type ActionKind =
   | 'settlerBorn'
   | 'settlerDied';
 
-/** The action rows to show, in a readable order — `chop` is the atomic binding, the rest are `byEvent`. */
+/** The action rows to show, in a readable order - `chop` is the atomic binding, the rest are `byEvent`. */
 const ACTION_EVENTS: readonly {
   readonly kind: ActionKind;
 }[] = [
@@ -87,7 +87,7 @@ function groupClips(sounds: SoundBank, name: string): readonly string[] {
   return g?.sfx.map((s) => s.file) ?? [];
 }
 
-/** Resolve a binding into its display sound (name + clips) — a group for spatial, a jingle for a MusicType. */
+/** Resolve a binding into its display sound (name + clips) - a group for spatial, a jingle for a MusicType. */
 function resolveSound(
   sound: EventSound | undefined,
   sounds: SoundBank,
@@ -107,7 +107,7 @@ function resolveSound(
 /**
  * Turn the decoded bank + the resolved {@link SoundBindings} into the auditable gallery model: the
  * happening→sound rows (the chop atomic + the event bindings), the sex/age voice pools, the jingles and
- * the ambient beds. Pure — no DOM, no Audio — so the "which sound answers which happening" join is
+ * the ambient beds. Pure - no DOM, no Audio - so the "which sound answers which happening" join is
  * unit-tested. `chopAtomicId` is the content's woodcutter-chop atomic (the app owns it, like the driver).
  */
 export function buildSoundGalleryModel(
@@ -119,7 +119,7 @@ export function buildSoundGalleryModel(
   for (const ev of ACTION_EVENTS) {
     const bound = ev.kind === 'chop' ? bindings.byAtomic.get(chopAtomicId) : bindings.byEvent[ev.kind];
     const resolved = resolveSound(bound, sounds);
-    if (resolved === null) continue; // unbound in this build — omit the row rather than show an empty one
+    if (resolved === null) continue; // unbound in this build - omit the row rather than show an empty one
     const copy = messages().soundGallery.actionsCatalog[ev.kind];
     actions.push({ label: copy.label, trigger: copy.trigger, ...resolved });
   }
@@ -150,10 +150,10 @@ export function buildSoundGalleryModel(
 
 // ─── DOM render (browser-only; the pure model above is what the test covers) ─────────────────────────
 
-/** Cap on individual per-clip play buttons a group shows — the rest are reachable via "▶ losowy". */
+/** Cap on individual per-clip play buttons a group shows - the rest are reachable via "▶ losowy". */
 const MAX_CLIP_BUTTONS = 16;
 
-/** The gallery's page-shell knobs (shared shell in view/overlay.ts) — denser than the menu. */
+/** The gallery's page-shell knobs (shared shell in view/overlay.ts) - denser than the menu. */
 const ROOT_STYLE = pageRootStyle(32, 14);
 const INNER_STYLE = pageInnerStyle(1040);
 
@@ -176,7 +176,7 @@ const ROW_STYLE = [
   'border-radius:6px',
 ].join(';');
 
-/** The single active player — clicking a new ▶ stops the previous clip so sounds never stack. */
+/** The single active player - clicking a new ▶ stops the previous clip so sounds never stack. */
 let current: HTMLAudioElement | null = null;
 /** Play one wav off the `/sounds` dev route (a click gesture, so autoplay policy is satisfied). */
 function play(file: string): void {
@@ -185,7 +185,7 @@ function play(file: string): void {
   void current.play().catch(() => undefined);
 }
 
-/** The basename of a `dir/name.wav` path — the short label a play button shows. */
+/** The basename of a `dir/name.wav` path - the short label a play button shows. */
 function basename(file: string): string {
   const slash = file.lastIndexOf('/');
   return slash >= 0 ? file.slice(slash + 1) : file;
@@ -212,7 +212,7 @@ function clipButtons(clips: readonly string[]): HTMLElement {
       CLIP_BTN_STYLE,
       formatMessage(messages().common.randomMore, { count: clips.length - MAX_CLIP_BUTTONS }),
     );
-    // Math.random is fine here — this is the browser gallery, not the deterministic sim.
+    // Math.random is fine here - this is the browser gallery, not the deterministic sim.
     rand.addEventListener('click', () => play(clips[Math.floor(Math.random() * clips.length)] as string));
     wrap.append(rand);
   }
@@ -258,7 +258,7 @@ function mountFullPageMessage(title: string, detail: string): void {
 /**
  * Render the `?sounds` gallery: fetch the decoded bank, build the model, and lay out the four sections
  * with a ▶ on every clip. Degrades to a "run the pipeline" message when `content/` (and thus the sound
- * bank) is absent — the same graceful-without-content stance the other real-content entries take.
+ * bank) is absent - the same graceful-without-content stance the other real-content entries take.
  */
 export async function renderSoundGallery(
   _canvas: HTMLCanvasElement,
@@ -266,7 +266,7 @@ export async function renderSoundGallery(
 ): Promise<void> {
   const ir = await loadIr();
   const sounds = ir?.sounds;
-  // Empty (or absent) bank ⇒ nothing to audition — the same emptiness the live driver treats as "run silent".
+  // Empty (or absent) bank ⇒ nothing to audition - the same emptiness the live driver treats as "run silent".
   if (!hasSoundContent(sounds)) {
     mountFullPageMessage(messages().soundGallery.missingTitle, messages().soundGallery.missingDetail);
     return;

@@ -18,7 +18,7 @@ import { computeDoorBadges } from '../src/view/projections/index.js';
  * End-to-end proof of the door-badge chain over the REAL sandbox content (the seam the right-click
  * gesture drives): a player `assignWorker` command binds an owned settler to a sandbox workshop, and
  * {@link computeDoorBadges} then surfaces a badge at that building's door. This is what the browser
- * gesture ultimately does — select a settler, right-click a workshop — minus the mouse pick (covered by
+ * gesture ultimately does - select a settler, right-click a workshop - minus the mouse pick (covered by
  * picking.ts) and the pixel (covered by badge-layer.test.ts).
  */
 describe('assignWorker → door badge, over sandbox content', () => {
@@ -38,7 +38,7 @@ describe('assignWorker → door badge, over sandbox content', () => {
 
     const snap0 = sim.snapshot();
     const buildings = snap0.entities.filter((e) => isBuilding(e) && buildingTypeOf(e) === potteryType);
-    // The extra pottery is the easternmost one (EXTRA.x is far right of the village) — selected by
+    // The extra pottery is the easternmost one (EXTRA.x is far right of the village) - selected by
     // position, not placement order, which the snapshot does not promise.
     const posX = (e: (typeof buildings)[number]): number =>
       num((e.components.Position as { x?: unknown } | undefined)?.x) ?? Number.NEGATIVE_INFINITY;

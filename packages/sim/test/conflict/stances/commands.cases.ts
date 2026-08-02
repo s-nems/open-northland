@@ -9,7 +9,7 @@ import { spawnSettler } from '../../../src/systems/spawn/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { cell, combatant, ctxOf, grassMap, P0, VIKING, WOODCUTTER } from './support.js';
 
-describe('stance defaults — the job → military-mode lookup', () => {
+describe('stance defaults - the job → military-mode lookup', () => {
   it('classifies the roster: soldiers/heroes ATTACK, scout/hunter IGNORE, everyone else FLEE', () => {
     const content = testContent();
     expect(defaultStanceForJob(content, 31)).toBe(MILITARY_MODE.ATTACK); // soldier_unarmed
@@ -23,7 +23,7 @@ describe('stance defaults — the job → military-mode lookup', () => {
     expect(defaultStanceForJob(content, 41)).toBe(MILITARY_MODE.FLEE);
   });
 
-  it('stamps the job default on an OWNED settler at spawn — and NONE on an unowned one', () => {
+  it('stamps the job default on an OWNED settler at spawn - and NONE on an unowned one', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const ctx = ctxOf(sim);
     spawnSettler(sim.world, ctx, {

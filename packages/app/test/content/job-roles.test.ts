@@ -11,7 +11,7 @@ import {
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
- * The job-role derivation over the REAL extracted job table — the join the fallback catalog cannot prove.
+ * The job-role derivation over the REAL extracted job table - the join the fallback catalog cannot prove.
  * `jobtypes.ini` has no role field, so the sim reads the roles off each job's extracted id slug; a slug
  * rename upstream would otherwise silently turn the soldiers into civilians, or move a job across the
  * soldier/hero line and reroute its general fight XP.

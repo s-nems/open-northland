@@ -178,7 +178,7 @@ describe('resource footprints', () => {
 
   it('skips a clay deposit buried under a building and heads for a reachable one instead', () => {
     // A house may legally land on a footprint-empty clay/mud deposit (its build zone is empty), burying it.
-    // Its only work cell is its own walkable anchor, now walled in — a blocked goal findPath rejects. The pick
+    // Its only work cell is its own walkable anchor, now walled in - a blocked goal findPath rejects. The pick
     // must skip it so the digger works a reachable deposit rather than stranding forever on the buried one.
     const sim = mappedSim(grassMap(10, 3));
     const terrain = terrainOf(sim);
@@ -187,7 +187,7 @@ describe('resource footprints', () => {
     placeResource(sim, CLAY, CLAY_ATOMIC, 6, 1); // farther, open ground
     sim.enqueue({ kind: 'placeBuilding', buildingType: TEST_HUT, x: 2, y: 1, tribe: VIKING, force: true });
     sim.step();
-    expect(sim.world.isAlive(buried)).toBe(true); // a deposit is a resource, not decor — it survives under the house
+    expect(sim.world.isAlive(buried)).toBe(true); // a deposit is a resource, not decor - it survives under the house
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -197,7 +197,7 @@ describe('resource footprints', () => {
   });
 
   it('leaves a lone buried clay deposit un-mined without stranding the digger', () => {
-    // With no reachable alternative the pick simply returns nothing — the digger never latches onto a route it
+    // With no reachable alternative the pick simply returns nothing - the digger never latches onto a route it
     // can't complete, and the buried deposit survives full (faithful: clay stays under the house). Without the
     // gate the digger would hold a MoveGoal to the buried anchor (2,1) every tick, forever.
     const sim = mappedSim(grassMap(6, 3));
@@ -233,7 +233,7 @@ describe('resource footprints', () => {
     expect(goal).not.toBe(treeNode); // snapped off the blocked anchor
     expect(terrain.isWalkable(goal)).toBe(true);
     expect(dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(goal)).toBe(false);
-    expect(terrain.neighbours(treeNode)).toContain(goal); // the nearest node — a neighbour of the tree
+    expect(terrain.neighbours(treeNode)).toContain(goal); // the nearest node - a neighbour of the tree
     expect(sim.world.has(worker, PlayerOrder)).toBe(true); // the order took (was not refused)
 
     sim.run(30);
@@ -249,12 +249,12 @@ describe('resource footprints', () => {
     sim.enqueue({ kind: 'moveUnit', entity: worker, x: 5, y: 2 }); // open grass
     sim.step();
 
-    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(5, 2)); // untouched — fast path
+    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(5, 2)); // untouched - fast path
   });
 
   it('collects a drop under a non-blocking deposit before starting another harvest', () => {
     const sim = mappedSim(grassMap(5, 3));
-    // The digger stands ON the clay anchor — a walkable deposit that lists its own anchor as a work
+    // The digger stands ON the clay anchor - a walkable deposit that lists its own anchor as a work
     // cell is worked from the anchor (the original's clay digger squarely on the pit), so the work
     // cell resolves to the anchor even for a settler approaching from the side.
     const worker = placeSettler(sim, CLAY_DIGGER, 2, 1);

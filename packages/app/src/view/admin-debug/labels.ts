@@ -32,7 +32,7 @@ export interface AdminLabels {
   /** A good/resource entry's palette name (the live localized name, else the catalog id fallback). */
   readonly good: (entry: { readonly good: number; readonly id: string }) => string;
   readonly unit: (preset: UnitPreset) => string;
-  /** A species entry's palette name — the content tribe slug (a debug tool label, not player copy). */
+  /** A species entry's palette name - the content tribe slug (a debug tool label, not player copy). */
   readonly animal: (entry: AnimalEntry) => string;
   readonly action: (action: DebugAction) => string;
   readonly player: (player: number) => string;
@@ -63,7 +63,7 @@ export function createAdminLabels(
     return preset.id;
   };
   const actionLabel = (action: DebugAction): string => copy.actionsCatalog[action.id];
-  // The tribe slug with underscores opened up (`evil_hares` → `evil hares`) — readable enough for a
+  // The tribe slug with underscores opened up (`evil_hares` → `evil hares`) - readable enough for a
   // debug palette without a 34-species translation table.
   const animalLabel = (entry: AnimalEntry): string => entry.id.replace(/_/g, ' ');
   const playerName = (player: number): string => messages.animation.playerColors[player] ?? String(player);

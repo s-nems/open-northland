@@ -3,7 +3,7 @@ import { actorsOf, isSettler, num } from '../../game/snapshot.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 export const MAX_WORKERS = 8;
-/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell —
+/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell -
  *  members of one family stand close, the next family starts after this breather. */
 export const FAMILY_GAP_FRAC = 0.45;
 
@@ -37,8 +37,8 @@ export function groupedWorkers(
 }
 
 /** The (snapshot-ordered, capped) settler ids bound to `buildingId`. With
- *  `siteCrew` (a construction site — builders are never JobAssignment-bound to it) a settler counts by
- *  its persistent crew membership (`SiteAssignment` — hammering, waiting for material, or detoured, it
+ *  `siteCrew` (a construction site - builders are never JobAssignment-bound to it) a settler counts by
+ *  its persistent crew membership (`SiteAssignment` - hammering, waiting for material, or detoured, it
  *  stays listed), and a plain hauler shows transiently while depositing there
  *  (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). A view read, so snapshot
  *  order is fine.

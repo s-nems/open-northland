@@ -1,5 +1,5 @@
 /**
- * `.cif` container decoder — Cultures Information File.
+ * `.cif` container decoder - Cultures Information File.
  *
  * The layout is documented in `docs/formats/CIF.md` and pinned by synthetic round-trip tests. It was
  * established through byte-level inspection of tables from an owned game copy.
@@ -106,7 +106,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
 
 /**
  * Decodes a `.cif` whose root is a `CStringArray` (type tables, maps). Returns the decrypted,
- * level-tagged text lines plus the array header. Throws on a structurally invalid container — so a
+ * level-tagged text lines plus the array header. Throws on a structurally invalid container - so a
  * batch pipeline over many owned files must wrap each call per-file (one corrupt `.cif` shouldn't
  * abort the run).
  *

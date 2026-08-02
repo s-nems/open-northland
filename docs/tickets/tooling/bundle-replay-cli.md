@@ -12,7 +12,7 @@ recorded tick). Operationalize it: one command a dev points at a downloaded bund
 1. `npm run replay -- <bundle.json>` (a node script over `dist/`, like the planned bench harness):
    - parse + validate the bundle (`kind`/`version`),
    - rebuild the world: scene bundles via the registered scene builder; map bundles via the decoded
-     map (`content/maps/<worldId>.json` from the local checkout — the bundle never carries map bytes),
+     map (`content/maps/<worldId>.json` from the local checkout - the bundle never carries map bytes),
    - drop the rebuilt sim's pending setup commands, `stepReplaying` to `game.tick`,
    - report: final hash vs the bundle's `finalHash`, first divergence against `game.hashes` when
      present (`HashTrace.divergedFrom` semantics), and `checkInvariants` at the final tick.

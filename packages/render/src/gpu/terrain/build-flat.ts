@@ -13,7 +13,7 @@ import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } fro
 /**
  * Quantization steps for the flat placeholder's CPU-side shading: its meshes batch by exact colour,
  * so the multiplier snaps to this many levels per unit to keep the per-block mesh count bounded (a
- * placeholder path — coarse banding is acceptable, hundreds of one-cell meshes are not).
+ * placeholder path - coarse banding is acceptable, hundreds of one-cell meshes are not).
  */
 const FLAT_SHADE_STEPS = 8;
 
@@ -23,7 +23,7 @@ const FLAT_SHADE_STEPS = 8;
  * block is a single draw call regardless of tile count. Not one `Graphics` of N stroked cells:
  * that tessellates the stroke of every cell and does not batch, so at 65 536 cells it costs
  * ~1 s/frame on any renderer. A shaded map scales each
- * cell's tint CPU-side, quantized to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by
+ * cell's tint CPU-side, quantized to {@link FLAT_SHADE_STEPS} steps - the batches are keyed by
  * exact colour, so an unquantized smooth gradient would explode the per-block mesh count. The
  * flat tint is a placeholder, not the 1:1 look, so the coarse cell-centre shading is fine.
  */

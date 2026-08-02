@@ -7,21 +7,21 @@ import type { PlannerSpacing } from '../settlers/planner/spacing.js';
 import { navigationLimitFor } from '../signposts/index.js';
 
 /**
- * The child stroll — a growing settler (baby/child) with a home occasionally walks to a random spot
+ * The child stroll - a growing settler (baby/child) with a home occasionally walks to a random spot
  * beside it instead of standing frozen at the door (user-requested feel; the original's children
  * likewise potter around the house). Runs from the planner's Age gate for an idle young settler,
- * below a child's eat/sleep drives — a hungry child feeds first and strolls when sated.
+ * below a child's eat/sleep drives - a hungry child feeds first and strolls when sated.
  */
 
-/** How far from the home anchor a stroll may aim (half-cell nodes — ~3 visual tiles). */
+/** How far from the home anchor a stroll may aim (half-cell nodes - ~3 visual tiles). */
 const CHILD_WANDER_RADIUS_NODES = 6;
-/** Mean ticks between strolls (each idle tick rolls 1/N) — a stroll every few seconds, not a patrol. */
+/** Mean ticks between strolls (each idle tick rolls 1/N) - a stroll every few seconds, not a patrol. */
 const CHILD_WANDER_PERIOD_TICKS = 90;
 
 /**
  * Maybe send the idle child `e` on a stroll near its home. Owned children only (unowned fixtures stay
  * byte-identical, the {@link PlannerSpacing} Owner convention); a homeless or orphaned-of-home child
- * stays put. The target must be walkable and outside building footprints — a goal the router would
+ * stays put. The target must be walkable and outside building footprints - a goal the router would
  * refuse wastes the stroll (the planner's stranded recovery parks the child for its retry pace), so
  * an unlucky roll just waits for the next one.
  */

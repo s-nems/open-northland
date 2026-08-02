@@ -34,7 +34,7 @@ import {
 import { mountGalleryOverlay } from './anim-overlay.js';
 
 /**
- * The `?anim` entry — the character animation gallery, the animation twin of the sandbox/catalog
+ * The `?anim` entry - the character animation gallery, the animation twin of the sandbox/catalog
  * catalog. It plays the extracted `[bobseq]` of a viking body straight from the atlas so a human can
  * validate that each animation decodes, cycles, and (for the locomotion clips) reads correctly in all 8
  * directions. A pure viewer: no sim, DOM + wall-clock are fine here (`app` boundary). This file holds the
@@ -42,13 +42,13 @@ import { mountGalleryOverlay } from './anim-overlay.js';
  * in `anim-overlay.ts`.
  *
  * Two axes over the full viking roster ({@link VIKING_CHARACTERS}):
- *  - `?char=<id>` picks the character — civilian / warrior (its own broadsword / sword / bow / spear /
+ *  - `?char=<id>` picks the character - civilian / warrior (its own broadsword / sword / bow / spear /
  *    bare-handed combat set) / woman / child / baby. Changing it reloads that body + head atlases.
- *  - `?view=anim|heads` picks the layout — `anim` (default) plays every sequence of the body with its
+ *  - `?view=anim|heads` picks the layout - `anim` (default) plays every sequence of the body with its
  *    default head; `heads` plays the plain walk once per head look, the montage of all faces/hats.
  *
  * Also: `?dir=full|0..7` (the global facing every clip plays; live, no reload), `?cols=N`, `?filter=<substr>`
- * (narrows sequences by name / looks by head), `?zoom`, `?speed`. Real decoded graphics are required — a
+ * (narrows sequences by name / looks by head), `?zoom`, `?speed`. Real decoded graphics are required - a
  * checkout without `content/` shows a "run the pipeline" message instead of crashing.
  */
 
@@ -61,7 +61,7 @@ export async function renderAnimationGallery(
   params: URLSearchParams,
 ): Promise<void> {
   // No `?char=` → the default landing: the whole roster on one screen, every look walking, nothing to
-  // click. A `?char=` drills into that one body — its full animation set (`?view=anim`) or its heads montage.
+  // click. A `?char=` drills into that one body - its full animation set (`?view=anim`) or its heads montage.
   if (params.get('char') === null) {
     await renderRosterMontage(canvas, params);
   } else {
@@ -70,7 +70,7 @@ export async function renderAnimationGallery(
 }
 
 /**
- * The full-roster montage — the "pełny set wikingów" on one image: one animated cell per viking look (every
+ * The full-roster montage - the "pełny set wikingów" on one image: one animated cell per viking look (every
  * roster body × each of its heads), all playing the plain walk. Each body is loaded in turn; a body absent
  * from a partial `content/` is skipped (not fatal) so the rest still show. Degrades to a message only when
  * nothing loads.
@@ -87,7 +87,7 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
       loadedAny = true;
       loaded.push({ char, body, heads, rows: await loadBodyClips(char.imagelib) });
     } catch (err) {
-      if (err instanceof MissingAtlasError) continue; // a body missing from a partial content/ — skip it
+      if (err instanceof MissingAtlasError) continue; // a body missing from a partial content/ - skip it
       throw err;
     }
   }
@@ -108,7 +108,7 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
 
 /**
  * One character's gallery drill-down: its full animation set (`?view=anim`) or its heads/looks montage
- * (`?view=heads`) — reached by clicking a character in the roster panel.
+ * (`?view=heads`) - reached by clicking a character in the roster panel.
  */
 async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const char = findCharacter(params.get('char'));

@@ -1,5 +1,5 @@
 /**
- * A cursor-following text tooltip — a small dark chip that names what's under the pointer (a ground pile's
+ * A cursor-following text tooltip - a small dark chip that names what's under the pointer (a ground pile's
  * good + count, a warehouse row's good). It is DOM, not Pixi: the chip must float above the WebGL canvas and
  * a per-hover text element has no place in the retained sprite batcher. One instance per hover surface (the
  * world, the warehouse panel); they are mutually exclusive by cursor position, so each surface owning its
@@ -8,7 +8,7 @@
 
 /** How far below-right of the cursor the chip sits, so it never hides the pixel being pointed at. */
 const CURSOR_OFFSET = 14;
-/** The chip wraps to at most this wide (CSS px) — a long recipe-inputs line breaks downward instead of
+/** The chip wraps to at most this wide (CSS px) - a long recipe-inputs line breaks downward instead of
  *  running as one endless row. */
 const MAX_WIDTH = 300;
 /** Minimum gap kept between the chip and the viewport edges when clamping (CSS px). */

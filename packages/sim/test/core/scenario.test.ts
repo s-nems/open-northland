@@ -8,7 +8,7 @@ const VIKING = 1;
 
 /**
  * INTEGRATION + GAME-LEVEL (e2e) examples. These run the whole deterministic sim headless via the
- * scenario harness — the layer an agent uses to self-validate game behavior without a screen.
+ * scenario harness - the layer an agent uses to self-validate game behavior without a screen.
  * These smoke tests prove long-run determinism, invariant checking, and readable scenario failures;
  * mechanic-specific outcomes live beside their systems and in acceptance scenes. See docs/TESTING.md.
  */
@@ -33,7 +33,7 @@ describe('integration: deterministic over many ticks', () => {
 
   it('the seed reaches component state, not just the hashed RNG word', () => {
     // A settler's starting needs are rolled off the RNG (`NEED_INIT_MAX_DEFICIT_PERCENT`), so spawning
-    // one is what makes a run consume the stream at all — a bare sim never draws, and `hashState` mixes
+    // one is what makes a run consume the stream at all - a bare sim never draws, and `hashState` mixes
     // the RNG word in, so comparing seeds without a draw only ever compares the seeds themselves.
     const runWithSeed = (seed: number): Simulation => {
       const sim = new Simulation({ seed, content: testContent(), map: grassNodeMap(5, 1) });

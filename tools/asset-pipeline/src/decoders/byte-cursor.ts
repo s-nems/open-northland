@@ -1,24 +1,24 @@
 /**
- * Shared low-level byte primitives — the little-endian `ByteCursor`/`ByteWriter` for the container
+ * Shared low-level byte primitives - the little-endian `ByteCursor`/`ByteWriter` for the container
  * decoders (`.cif`/`.bmd`/`.lib`/`.map`), plus the endian-neutral `viewOf` the image decoders share.
  *
  * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
- * raw byte runs, ASCII names). This shared reader is deliberately domain-free — no storable ids, no
- * format knowledge — so `storable.ts` layers the shared object vocabulary on top of it and the
+ * raw byte runs, ASCII names). This shared reader is deliberately domain-free - no storable ids, no
+ * format knowledge - so `storable.ts` layers the shared object vocabulary on top of it and the
  * per-format decoders layer on that.
  */
 
 /**
  * A `DataView` spanning exactly `bytes` (its `byteOffset`/`byteLength`), not the whole backing buffer.
  * The container and image decoders pass `.subarray()` slices, where the bare `new DataView(x.buffer)`
- * would silently read from the start of the shared buffer — this is the one correct construction.
+ * would silently read from the start of the shared buffer - this is the one correct construction.
  */
 export function viewOf(bytes: Uint8Array): DataView {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
 /**
- * Little-endian sequential reader over a byte buffer. Throws on overrun — a corrupt container is a
+ * Little-endian sequential reader over a byte buffer. Throws on overrun - a corrupt container is a
  * boundary failure, not a recoverable state. The `prefix` tags every error with the owning format's
  * namespace (`cif:`/`bmd:`/`lib:` …), which the decoder tests assert on, so pass the format's short id.
  */
@@ -69,18 +69,18 @@ export class ByteCursor {
     return slice;
   }
 
-  /** Next `n` bytes as a latin1 string — the faithful 1:1 mapping for the containers' ASCII names. */
+  /** Next `n` bytes as a latin1 string - the faithful 1:1 mapping for the containers' ASCII names. */
   ascii(n: number): string {
     return decodeLatin1(this.take(n));
   }
 }
 
 /**
- * Little-endian sequential writer that grows its backing buffer as needed — the write-side twin of
+ * Little-endian sequential writer that grows its backing buffer as needed - the write-side twin of
  * {@link ByteCursor}, shared by the container encoders that append fields in order without knowing the
  * total size upfront (`.bmd`/`.lib`). The fixed-layout serializers (`.png` big-endian, `.cur`/palette/
  * `map.dat` with reserved gaps and u16/random-access writes) pre-size an exact buffer and write at
- * computed offsets instead — a sequential writer would obscure their fixed on-disk layout.
+ * computed offsets instead - a sequential writer would obscure their fixed on-disk layout.
  */
 export class ByteWriter {
   private buf = new Uint8Array(256);

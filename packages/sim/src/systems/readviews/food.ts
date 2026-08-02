@@ -2,20 +2,20 @@ import type { ContentSet } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import type { SystemContext } from '../context.js';
 
-/** The good-`id` prefix identifying the eat-slot food goods (`food_simple`/`food_extra`) — see
+/** The good-`id` prefix identifying the eat-slot food goods (`food_simple`/`food_extra`) - see
  *  {@link isFood} for the source basis of this inference. */
 const FOOD_GOOD_ID_PREFIX = 'food_';
 
 /**
- * Whether a good is **edible** — the food a hungry settler consumes to reset its hunger (the `eat`
+ * Whether a good is **edible** - the food a hungry settler consumes to reset its hunger (the `eat`
  * atomic's target good). In the original, the eat slot (`setatomic <job> 10 "..._eat_slot_food"`)
  * consumes the `food_simple`/`food_extra` goods (`goodtypes.ini` types 16/17); there is no explicit
  * "iseatable" flag in `goodtypes.ini`, so the slot-food goods are identified by the good's `id`
- * carrying the `food` prefix (the source's own naming — `food_simple`/`food_extra`). (`potion_food_*`
+ * carrying the `food` prefix (the source's own naming - `food_simple`/`food_extra`). (`potion_food_*`
  * are a separate potion-consumable mechanic, not the eat slot, so the `food_`-prefix match excludes
  * them by construction.)
  *
- * source-basis (approximated — see source basis): the eat atomic id (10) is pinned to the original's
+ * source-basis (approximated - see source basis): the eat atomic id (10) is pinned to the original's
  * `setatomic` bindings, but *which goods feed* is inferred from the slug rather than a source flag
  * (the original maps the food goods to the eat slot at a level not in the readable rule files). Refine
  * to a content flag if the slot→good binding is later decoded. Cross-system: the AI eat-drive planner
@@ -31,7 +31,7 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
  * The dish goods, by good `id`, and the edible each becomes when carried out of the house producing it.
  *
  * source-basis, evidenced for THREE of the six: `houses.ini` gives bread a `logicstock` slot only in
- * `work bakery 00`/`01`, candy only in `work bakery 01`, and meat only in `work animal farm` — no
+ * `work bakery 00`/`01`, candy only in `work bakery 01`, and meat only in `work animal farm` - no
  * warehouse, home, barracks or workshop holds one, and no house recipe takes one as an input
  * (`goodtypes.ini` does name meat as sausage's `productionInputGoods`, but no house declares that
  * recipe). The stored forms `food_simple` (16) and `food_extra` (17) are slotted by every larder
@@ -47,7 +47,7 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
  * The simple/extra split is pinned for CANDY: good 17 and good 20 share one display name
  * ("Ciastko"/"Ciastka") in `text/pol/strings/gameobjects/goods.ini`, the eat slots are named for the
  * same pair (`..._eat_slot_food`, `..._eat_slot_candy`), and `atomicanimations.ini` gives the candy clip
- * a second need payout the plain food clip lacks — the luxury food. The other five are `food_simple` by
+ * a second need payout the plain food clip lacks - the luxury food. The other five are `food_simple` by
  * elimination, since no readable rule file states the split
  * (docs/tickets/sim/dish-edible-split-evidence.md).
  */
@@ -87,7 +87,7 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
  *
  * Applying it is where the sim stops conserving good *identity*: the count is conserved (one unit out,
  * one unit on the back), but the bakery's bread leaves as `food_simple`. Without that a dish is a dead
- * end — `stockCapacity` is 0 for it in every store, so routing finds no sink, no carrier ever lifts it,
+ * end - `stockCapacity` is 0 for it in every store, so routing finds no sink, no carrier ever lifts it,
  * and the kitchen wedges at a full shelf with its workers idle.
  *
  * Scope: this resolves the mapping only - {@link carriedGoodForm} and `pileupIntoStore` decide WHEN it

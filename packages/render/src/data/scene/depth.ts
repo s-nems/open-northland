@@ -9,11 +9,11 @@ import type { DrawKind } from './draw-item.js';
  */
 
 /**
- * Same-feet-anchor paint priority per drawable kind — a higher value draws later (in front) when two
+ * Same-feet-anchor paint priority per drawable kind - a higher value draws later (in front) when two
  * sprites resolve to (nearly) the same depth. A worker stands on the resource cell it harvests and a
  * delivery flag sits on the ground drops piling up around it, so without a tiebreak the taller node/drop
  * paints over the unit/flag by mere attach order. Each composed key scales it by its own sub-cell
- * epsilon — orders of magnitude below one row's depth separation — so it only breaks ties at a shared
+ * epsilon - orders of magnitude below one row's depth separation - so it only breaks ties at a shared
  * anchor and never reorders sprites a genuine row apart. `tile` is 0 (tiles carry their own sub-zero
  * depth band).
  */
@@ -33,22 +33,22 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
 /**
  * Extra fractional paint-order step a delivery flag gets above a plain `stockpile` heap on the same
  * tile. A flag and the goods heaps it collects are both `stockpile` kind (same
- * {@link SPRITE_PAINT_ORDER}), so the kind bias alone ties them — and since the flag is created first
+ * {@link SPRITE_PAINT_ORDER}), so the kind bias alone ties them - and since the flag is created first
  * (lowest id) the id tiebreak would bury it under the later heap. Half a paint step lifts the flag
  * just past a co-located heap; `2 + 0.5` sits below `settler`'s `3`, so a worker on the tile still
  * draws in front.
  */
 const FLAG_PAINT_STEP = 0.5;
 
-/** The same-feet-anchor paint bias of a draw item — the kind's {@link SPRITE_PAINT_ORDER} plus the
- *  extra {@link FLAG_PAINT_STEP} for a delivery flag — as a unitless order value. */
+/** The same-feet-anchor paint bias of a draw item - the kind's {@link SPRITE_PAINT_ORDER} plus the
+ *  extra {@link FLAG_PAINT_STEP} for a delivery flag - as a unitless order value. */
 function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
   return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
 }
 
 /**
  * Oracle depth packing. A sprite's sort key is `tileY * ROW_STRIDE + tileX`, so the integer-tile
- * `y` dominates and `x` orders within a row — valid only while `tileX < ROW_STRIDE`, which holds for
+ * `y` dominates and `x` orders within a row - valid only while `tileX < ROW_STRIDE`, which holds for
  * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Terrain tiles
  * sit in a band shifted strictly below every sprite (see {@link import('./terrain-scene.js')}).
  */

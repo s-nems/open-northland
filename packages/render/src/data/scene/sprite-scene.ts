@@ -47,11 +47,11 @@ export interface LiveRefs {
 }
 
 /** One frame's sprite scene: the culled, depth-sorted draw list plus the pre-cull liveness view,
- *  produced in one pass over the snapshot — or over the spatial index's viewport buckets when the
+ *  produced in one pass over the snapshot - or over the spatial index's viewport buckets when the
  *  caller retains one (see {@link collectSpriteScene}). */
 export interface SpriteScene {
   readonly items: SpriteDrawItem[];
-  /** Membership over every drawable entity before the cull — the view the retained pool reconciles
+  /** Membership over every drawable entity before the cull - the view the retained pool reconciles
    *  against (a ref answering false has died; one answering true but not in {@link items} is merely
    *  off-screen). Valid for this build's frame only: the index-backed view reads shared mutable state
    *  (the spatial index's generation, the caller's `staticRefs`). */
@@ -61,11 +61,11 @@ export interface SpriteScene {
 /** The optional inputs of a scene build. Every field accepts an explicit `undefined` so callers can
  *  pass through their own optionals directly. */
 export interface SpriteSceneOptions {
-  /** The (margin-inflated) world-space camera box — cull to it; absent = emit every sprite. */
+  /** The (margin-inflated) world-space camera box - cull to it; absent = emit every sprite. */
   readonly viewport?: Viewport | undefined;
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
-  /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) —
+  /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) -
    *  skipped entirely: no draw item, excluded from {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
   /**
@@ -77,7 +77,7 @@ export interface SpriteSceneOptions {
    */
   readonly index?: SpriteSpatialIndex | undefined;
   /** The fog-of-war cull (`data/fog/mask.ts` over the viewer's `FogView`); absent = no fog. An entity whose tile
-   *  it rejects is treated like a viewport-culled one — no draw item, but kept live so its pooled sprite
+   *  it rejects is treated like a viewport-culled one - no draw item, but kept live so its pooled sprite
    *  survives until the fog lifts. */
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   /** The viewer's remembered statics (`data/fog/ghosts.ts`, pre-filtered to explored ground by the store),
@@ -87,8 +87,8 @@ export interface SpriteSceneOptions {
    *  items: the store deletes records on visible ground, and the fog cull drops live items elsewhere. */
   readonly ghosts?: readonly FogGhost[] | undefined;
   /**
-   * Keep settlers that are inside a building — mid-exchange in a completed store, or waiting in their
-   * workplace between chores (the sim `Resting` marker) — forced to the `idle` standing pose. The map
+   * Keep settlers that are inside a building - mid-exchange in a completed store, or waiting in their
+   * workplace between chores (the sim `Resting` marker) - forced to the `idle` standing pose. The map
    * hides these (observed original: off-duty workers wait in the house, not lined up at the door); the
    * details panel's worker field sets this so a bound worker who stepped inside still shows there.
    * Each kept settler is tagged {@link DrawItem.frozen}. Approximation: the observation covers hiding
@@ -114,7 +114,7 @@ export interface SpriteSceneOptions {
 /**
  * The extra input only the draw-list entry point accepts. `onlyRefs` resolves each listed ref by
  * `entityById` instead of walking the snapshot, which also keeps unlisted entities out of
- * {@link SpriteScene.liveRefs} — safe here because {@link buildSpriteScene} discards that view, and
+ * {@link SpriteScene.liveRefs} - safe here because {@link buildSpriteScene} discards that view, and
  * unavailable to {@link collectSpriteScene} (the retained pool's reconcile) which would read a narrowed
  * set as "everything else died" and destroy the map's sprites.
  */
@@ -129,7 +129,7 @@ export interface DrawListOptions extends SpriteSceneOptions {
 }
 
 /**
- * The depth-sorted sprite draw list alone (no terrain) — the per-frame half the retained
+ * The depth-sorted sprite draw list alone (no terrain) - the per-frame half the retained
  * {@link import('../../gpu/world-renderer/index.js').WorldRenderer} consumes. Terrain is static and built once
  * (`setTerrain`), so only moving/animated entities flow through here. An item is kept iff its screen anchor
  * is inside the already margin-inflated `viewport` box.
@@ -139,12 +139,12 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
 }
 
 /**
- * Build the depth-sorted sprite draw list and the pre-cull liveness view in one pass — the shared core
+ * Build the depth-sorted sprite draw list and the pre-cull liveness view in one pass - the shared core
  * of {@link import('./terrain-scene.js').buildScene}, {@link buildSpriteScene} and the retained pool's
  * per-frame reconcile, which needs both and would otherwise classify every entity twice per frame. Each
  * drawable entity is projected to its feet anchor and tagged with the render-side reads (state/facing/
  * carrying/atomic/buildingType) a per-kind binding needs; the per-kind reads run only for items that
- * survive the cull. Sorted by feet anchor `(y, x)` then entity id — a total, stable order, so both
+ * survive the cull. Sorted by feet anchor `(y, x)` then entity id - a total, stable order, so both
  * culling and the entity source (full walk vs the spatial index's arbitrary bucket order) leave the
  * emitted list identical. Each option is documented on {@link SpriteSceneOptions}.
  */
@@ -176,7 +176,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const enterableStores = enterableStoresOf(snapshot);
 
   const emit = (entity: EntitySnapshot): void => {
-    // Drawn by the retained static layer instead (a virgin map resource) — not worth a classify.
+    // Drawn by the retained static layer instead (a virgin map resource) - not worth a classify.
     if (staticRefs?.has(entity.id)) return;
     const components = entity.components;
     const kind = classify(components);
@@ -225,7 +225,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const drawY = screen.y;
     // Cull to the framed viewport. Uses the drawn anchor; the box is pre-inflated by the renderer to
     // cover a tall sprite's extent, so a building straddling the edge still draws. The portrait subject is
-    // never culled — it must stay drawn for its cutout even when scrolled off-screen.
+    // never culled - it must stay drawn for its cutout even when scrolled off-screen.
     const offscreen = viewport !== undefined && !isVisible(viewport, drawX, drawY);
     if (offscreen && !isPortrait) return;
     // Fog-of-war cull: an entity on ground the viewer does not currently see stays pooled but draws
@@ -269,7 +269,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
         pushSignpostItems(items, collected, snapshot, item, components, tileX, tileY, lift, playerColourOf);
         break;
       case 'projectile':
-        // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
+        // Rides the lift draw channel, like terrain lift - never the depth key (see assignProjectileArc).
         arcLift = assignProjectileArc(item, components, screen, posByRef);
         break;
       case 'stockpile':
@@ -299,7 +299,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   };
 
   // In the walk modes `collected` IS the liveness set. The index mode never walks the map, so its
-  // answer becomes a view: the frame's own refs (boards, ghosts, emitted candidates — `collected` is
+  // answer becomes a view: the frame's own refs (boards, ghosts, emitted candidates - `collected` is
   // probed live, so the ghost refs pushed below are covered) plus the index's drawables minus the
   // statically drawn.
   let liveRefs: LiveRefs = collected;
@@ -308,7 +308,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     // exact per-item cull above, so the emitted set matches the full walk's.
     index.update(snapshot);
     for (const entity of index.query(viewport)) emit(entity);
-    // The force-emitted portrait subject may sit outside the queried buckets — resolve it by id.
+    // The force-emitted portrait subject may sit outside the queried buckets - resolve it by id.
     if (portraitRef !== undefined && !collected.has(portraitRef)) {
       const subject = entityById(snapshot, portraitRef);
       if (subject !== undefined) emit(subject);

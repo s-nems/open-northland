@@ -19,7 +19,7 @@ import { hudLabels } from '../view/projections/index.js';
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
  * "Visual validation via Playwright"): render scenario X at seed S, advance N ticks, draw one frame, then
- * signal ready — not the wall-clock `requestAnimationFrame` loop. The harness boots the page with `?shot`,
+ * signal ready - not the wall-clock `requestAnimationFrame` loop. The harness boots the page with `?shot`,
  * polls `window.__opennorthlandShotReady`, and screenshots the canvas.
  *
  * The sim is seed-deterministic and `buildScene` is pure, so the same `?shot&seed=…&ticks=…` produces the
@@ -50,7 +50,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   // `?map=<id>` runs + draws an actual decoded `content/maps/<id>.json` grid: the sim navigates the
   // real grid (settlers/buildings placed on its first walkable cells) and the renderer draws it as the
   // terrain (loaded over the dev/shot vite server). Absent or unloadable, both fall back to the
-  // synthetic grass strip — so the default `npm run shot` stays reproducible without the gitignored maps.
+  // synthetic grass strip - so the default `npm run shot` stays reproducible without the gitignored maps.
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
@@ -59,10 +59,10 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const terrainGrid = sliceTerrain(loaded ?? undefined);
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
-  // `?atlas=real` binds the real decoded human-body atlas (settlers draw actual decoded pixels — the
+  // `?atlas=real` binds the real decoded human-body atlas (settlers draw actual decoded pixels - the
   // human-gated decoder/render check; gitignored content over the /bobs server, see content/sprite-sheet.ts).
   // `?atlas` (or `?atlas=synthetic`) binds the free synthetic atlas so the textured-sprite draw path is
-  // exercised without copyrighted data. Absent, sprites draw as placeholder geometry — the
+  // exercised without copyrighted data. Absent, sprites draw as placeholder geometry - the
   // byte-reproducible default the committed shot PNG depends on.
   const sheet =
     params.get('atlas') === 'real'

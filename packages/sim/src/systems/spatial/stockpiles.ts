@@ -4,15 +4,15 @@ import { createSpatialMemo } from './memo.js';
 import { NodeBuckets } from './nodes.js';
 
 /**
- * The per-world STOCKPILE node index — every positioned {@link Stockpile} bucketed by its half-cell node, so
+ * The per-world STOCKPILE node index - every positioned {@link Stockpile} bucketed by its half-cell node, so
  * "which heap is on this tile?" costs O(1) instead of a scan over every alive entity. It is the golden-rule-6
  * lever for the per-drop tile lookups: the ground-pile drops (`atomics/effects/goods/piles.ts`) and the sow
  * occupancy test used to walk `canonicalEntities()`, ~17k on a decoded map, nearly all of them resource nodes
- * carrying no stock at all — the store this indexes holds only buildings, boat hulls and loose heaps.
+ * carrying no stock at all - the store this indexes holds only buildings, boat hulls and loose heaps.
  *
  * Derived read-state, never hashed: a {@link createSpatialMemo} rider, maintained incrementally against the
  * Stockpile store generation (create/destroy). Two invariants make that key sound, and the registered verifier
- * re-derives the buckets and fires if either stops holding — a future violation surfaces there instead of as a
+ * re-derives the buckets and fires if either stops holding - a future violation surfaces there instead of as a
  * silent wrong pick:
  *
  * - A positioned stockpile never moves and never loses its Position without dying. True of a building, a heap,
@@ -38,7 +38,7 @@ const memo = createSpatialMemo<NodeBuckets, { hx: number; hy: number }>(
         const heldBucket = held.at(b.x, b.y);
         if (heldBucket.length !== b.entities.length || b.entities.some((e, i) => heldBucket[i] !== e)) {
           return [
-            `stockpileNodeIndex bucket (${b.x},${b.y}) diverges from a fresh rebuild — a positioned stockpile moved in place`,
+            `stockpileNodeIndex bucket (${b.x},${b.y}) diverges from a fresh rebuild - a positioned stockpile moved in place`,
           ];
         }
       }
@@ -48,7 +48,7 @@ const memo = createSpatialMemo<NodeBuckets, { hx: number; hy: number }>(
 );
 
 /**
- * Every positioned {@link Stockpile} whose Position snaps to half-cell node `(hx, hy)`, ascending-id — empty
+ * Every positioned {@link Stockpile} whose Position snaps to half-cell node `(hx, hy)`, ascending-id - empty
  * when the node holds none. A superset of the entities at any one exact Position on that node (a fractional
  * drop and a lattice-snapped heap share a node), so a caller re-checking its own exact-Position and marker
  * filters over this list picks the same entity a full canonical scan would.

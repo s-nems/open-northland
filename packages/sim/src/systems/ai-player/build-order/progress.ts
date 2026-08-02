@@ -18,11 +18,11 @@ import {
 import type { BuildOrderEntry } from './entries.js';
 import { firstUncoveredBuilding } from './tower-coverage.js';
 
-// ENTRY PROGRESS — the one shared reading of "is this build-order entry done", used by the
+// ENTRY PROGRESS - the one shared reading of "is this build-order entry done", used by the
 // executor (what to do next) and the workforce allocator (which collector goods the list has
 // reached). Both read the same world state within a decision, so they can never disagree.
 
-/** `skip`: not expressible in this content set / nothing to collect — treated as done for
+/** `skip`: not expressible in this content set / nothing to collect - treated as done for
  *  sequencing. `satisfied`: the world meets the entry. `unmet`: the entry wants action. */
 export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
@@ -53,7 +53,7 @@ export function entryStatus(
     case 'place': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      // The placed tier or anything above it on its chain counts — an upgraded workshop must not
+      // The placed tier or anything above it on its chain counts - an upgraded workshop must not
       // trigger a duplicate placement (a home entry counts every home tier, upgraded or not).
       const counted = tiersAtOrAbove(index, type);
       let have = 0;
@@ -81,7 +81,7 @@ export function entryStatus(
       for (const e of ownedSettlers(world, player)) {
         if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
       }
-      // Nothing left to collect anywhere — treat as done so the list never stalls on a dry map.
+      // Nothing left to collect anywhere - treat as done so the list never stalls on a dry map.
       // The seat's HQ seeds the expanding-box existence probe (collector goods gather around it).
       const hq = headquartersOf(world, ctx, player);
       const near = hq === null ? null : anchorNodeOf(world, hq);
@@ -96,10 +96,10 @@ export function entryStatus(
 }
 
 /**
- * Every entry's {@link EntryStatus} in list order, over one `ownedBuildings` computation — the
+ * Every entry's {@link EntryStatus} in list order, over one `ownedBuildings` computation - the
  * decision-wide snapshot the workforce module derives its collector gating from.
  * Statuses are recomputed each decision, so they can REGRESS (a razed home; a fringe building
- * re-arming `towerCoverage`) — consumers must tolerate a temporary drop.
+ * re-arming `towerCoverage`) - consumers must tolerate a temporary drop.
  */
 export function entryStatuses(
   world: World,
@@ -112,7 +112,7 @@ export function entryStatuses(
 }
 
 /** The lowest-id owned BUILT building the seat can upgrade toward `target` (its type strictly below
- *  the target on the chain; a site — including an in-flight upgrade — has `built < ONE` and is
+ *  the target on the chain; a site - including an in-flight upgrade - has `built < ONE` and is
  *  skipped), or null. `owned` is canonical ascending, so first hit wins deterministically. */
 export function upgradeCandidate(
   world: World,
@@ -130,13 +130,13 @@ export function upgradeCandidate(
 }
 
 /**
- * The collector goods the build order has reached, in list order — the workforce allocator hires a
+ * The collector goods the build order has reached, in list order - the workforce allocator hires a
  * flag gatherer for each (on top of its base goods). An entry is reached while every entry before it
- * is satisfied (or skipped), and a reached-but-unmet collector blocks the entries after it — the
+ * is satisfied (or skipped), and a reached-but-unmet collector blocks the entries after it - the
  * plan's sequencing. Reached state is re-derived each decision (`statuses` is the matching
  * {@link entryStatuses} snapshot), not persisted: if an earlier entry regresses (a razed home), a
  * later collector drops out of the wanted set and its holder returns to the pool until the plan
- * re-reaches the entry — self-healing, at the cost of a mid-career re-hire.
+ * re-reaches the entry - self-healing, at the cost of a mid-career re-hire.
  */
 export function collectorGoodsWanted(
   order: readonly BuildOrderEntry[],

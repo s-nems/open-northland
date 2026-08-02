@@ -14,7 +14,7 @@ describe('fullStateBlockAreaCells', () => {
   });
 
   it('keeps only the largest (full-grown) state and drops smaller states', () => {
-    // state 0 is the sapling, state 1 the grown object — collision is conservatively at the grown size.
+    // state 0 is the sapling, state 1 the grown object - collision is conservatively at the grown size.
     const cells = fullStateBlockAreaCells([
       [0, 0, 0, 2],
       [1, 5, 5, 1],
@@ -31,7 +31,7 @@ describe('fullStateBlockAreaCells', () => {
   });
 
   it('emits overlapping cells only once', () => {
-    // Two full-state rows whose runs overlap at (1,0) — the shared cell appears once.
+    // Two full-state rows whose runs overlap at (1,0) - the shared cell appears once.
     expect(
       fullStateBlockAreaCells([
         [0, 0, 0, 2],

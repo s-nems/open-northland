@@ -14,7 +14,7 @@ import { ctxOf } from './support.js';
 
 const HUMAN_PLAYER = 0;
 const AI_PLAYER = 1;
-/** The fixture's `soldier_unarmed` — a job the content classifies as a fighter, so it is gated by
+/** The fixture's `soldier_unarmed` - a job the content classifies as a fighter, so it is gated by
  *  barracks training and never by work XP. */
 const SOLDIER_JOB = 31;
 
@@ -23,7 +23,7 @@ function makeAiSeat(sim: Simulation, player: number): void {
   sim.world.add(sim.world.create(), AiPlayer, { player, modules: aiModuleEnables() });
 }
 
-/** Gate {@link SOLDIER_JOB} behind fight XP — the fixture tribe carries no fighter requirement. */
+/** Gate {@link SOLDIER_JOB} behind fight XP - the fixture tribe carries no fighter requirement. */
 function gateSoldierJob(sim: Simulation): void {
   sim.content.tribes[0]?.jobRequirements.push({
     requirement: 'need',
@@ -34,7 +34,7 @@ function gateSoldierJob(sim: Simulation): void {
   });
 }
 
-describe('experienceRequirementMet — a single needfor XP threshold', () => {
+describe('experienceRequirementMet - a single needfor XP threshold', () => {
   // Track 1 (woodcutter wood) accrues at factor 10, so the amount-30 threshold needs 300 raw XP:
   // `amount` counts REPEATS (completed works), not raw XP.
   const WOOD_TRACK = 1;
@@ -55,7 +55,7 @@ describe('experienceRequirementMet — a single needfor XP threshold', () => {
   });
 
   it('does not clear a repeats threshold with raw XP alone (the pre-repeats reading)', () => {
-    // 30 raw XP is only 3 completed works on a factor-10 track — far short of 30 repeats.
+    // 30 raw XP is only 3 completed works on a factor-10 track - far short of 30 repeats.
     expect(experienceRequirementMet(ctx, new Map([[WOOD_TRACK, 30]]), need)).toBe(false);
   });
 
@@ -64,7 +64,7 @@ describe('experienceRequirementMet — a single needfor XP threshold', () => {
   });
 
   it('sums REPEATS across all named experience types, each at its own factor', () => {
-    // Track 1 (woodcutter wood) accrues at factor 10, track 4 (carpenter plank) at factor 7 — the
+    // Track 1 (woodcutter wood) accrues at factor 10, track 4 (carpenter plank) at factor 7 - the
     // same raw XP is worth different repeats per track, so the sum must divide per track, not add
     // raw XP. Both are good-SPECIFIC tracks (a general one would widen to its whole job, below).
     const twoTracks: JobRequirement = { ...need, experienceTypes: [1, 4] };
@@ -101,7 +101,7 @@ describe('experienceRequirementMet — a single needfor XP threshold', () => {
   });
 
   it('counts each track once when a row names a general track beside its own specific', () => {
-    // Track 2 is woodcutter-GENERAL, track 1 its wood specific — the general's whole-job widening
+    // Track 2 is woodcutter-GENERAL, track 1 its wood specific - the general's whole-job widening
     // must not credit the wood repeats a second time for being named directly.
     const both: JobRequirement = { ...need, experienceTypes: [2, 1] };
     expect(experienceRequirementMet(ctx, new Map([[1, 290]]), both)).toBe(false); // 29, not 58
@@ -109,7 +109,7 @@ describe('experienceRequirementMet — a single needfor XP threshold', () => {
   });
 
   it('counts raw XP as repeats for an expType with no track record (rate-1 buckets)', () => {
-    // The fight/TRAINING/scout ids back no HumanJobExperienceType — they accrue at rate 1, so raw
+    // The fight/TRAINING/scout ids back no HumanJobExperienceType - they accrue at rate 1, so raw
     // XP already is the repeat count.
     const TRACKLESS = 77;
     const bucket: JobRequirement = { ...need, amount: 5, experienceTypes: [TRACKLESS] };
@@ -127,8 +127,8 @@ describe('experienceRequirementMet — a single needfor XP threshold', () => {
   });
 });
 
-describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
-  // The fixture gates PLANK behind 30 repeats of track 1 (factor 10) — 300 raw XP.
+describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
+  // The fixture gates PLANK behind 30 repeats of track 1 (factor 10) - 300 raw XP.
   const WOOD_TRACK = 1;
   const PLANK = 2;
   const VIKING = 1;
@@ -149,7 +149,7 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
 
   it('ignores the train requirement on the same target (only need thresholds apply)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    // The fixture also carries a `train` requirement on PLANK with amount 999 — if it were treated as
+    // The fixture also carries a `train` requirement on PLANK with amount 999 - if it were treated as
     // an accrued-XP threshold, 300 XP could never clear it. settlerMeetsNeed must skip it.
     expect(settlerMeetsNeed(sim.world, ctxOf(sim), human(300), 'good', PLANK)).toBe(true);
   });
@@ -189,12 +189,12 @@ describe('settlerMeetsNeed — all needfor thresholds gating a target', () => {
     expect(settlerMeetsNeed(sim.world, ctx, bot, 'good', PLANK)).toBe(true);
     // The fighter carve-out is the toggle's, so it holds for the AI too (barracks training, not XP).
     expect(settlerMeetsNeed(sim.world, ctx, bot, 'job', SOLDIER_JOB)).toBe(false);
-    // A neutral (unowned) settler has no seat to exempt — it stays gated.
+    // A neutral (unowned) settler has no seat to exempt - it stays gated.
     expect(settlerMeetsNeed(sim.world, ctx, { ...human(), owner: undefined }, 'good', PLANK)).toBe(false);
   });
 });
 
-describe('settlerMeetsNeed — the barracks schooling path onto a fighter trade', () => {
+describe('settlerMeetsNeed - the barracks schooling path onto a fighter trade', () => {
   const VIKING = 1;
   /** The `trainforjob` bucket: a track-less id, so raw XP already is the repeat count. */
   const TRAINING_TRACK = 77;
@@ -225,7 +225,7 @@ describe('settlerMeetsNeed — the barracks schooling path onto a fighter trade'
     expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
   });
 
-  it('opens it for an AI seat and with progression off — the drill is the one route either way', () => {
+  it('opens it for an AI seat and with progression off - the drill is the one route either way', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     gateSoldierJob(sim);
@@ -238,7 +238,7 @@ describe('settlerMeetsNeed — the barracks schooling path onto a fighter trade'
     expect(settlerMeetsNeed(sim.world, ctx, drilled(5), 'job', SOLDIER_JOB)).toBe(true);
   });
 
-  it('leaves a civilian target alone — its own train rows are the school slice, not this one', () => {
+  it('leaves a civilian target alone - its own train rows are the school slice, not this one', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // The fixture gates good 2 behind 30 wood repeats AND carries a train row on it with amount 999.
     // A schooled reading of that row would still refuse it; a civilian target must not read it at all.

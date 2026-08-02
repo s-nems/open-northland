@@ -5,12 +5,12 @@ import type { SystemContext } from '../context.js';
 import { reservedZoneOf } from '../footprint/geometry.js';
 import { entityNode } from '../spatial/nodes.js';
 
-/** A spatial region-index `near` query — every entity of one decor kind whose anchor lies within `reach`
+/** A spatial region-index `near` query - every entity of one decor kind whose anchor lies within `reach`
  *  nodes of `(hx, hy)`, ascending-id (e.g. `bushesNearNode`, `stumpsNearNode`). */
 type NearQuery = (world: World, hx: number, hy: number, reach: number) => Entity[];
 
 /**
- * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone — the
+ * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone - the
  * shared candidate resolution behind the placement razing passes (berry bushes, felled-tree stumps). Each
  * caller then applies its own removal policy: a bush announces itself first (its `?map=` static quad must be
  * dropped), a stump just destroys.

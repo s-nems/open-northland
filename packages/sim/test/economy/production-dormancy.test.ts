@@ -14,7 +14,7 @@ import {
 } from './production-system/support.js';
 
 // Counts every NodeBuckets construction, so the tests below can prove productionSystem builds its
-// operator index only when a workplace actually looks up operators — never on a workshop-less or
+// operator index only when a workplace actually looks up operators - never on a workshop-less or
 // fully starved tick. (vi.hoisted, because the hoisted vi.mock factory below closes over it.)
 const constructed = vi.hoisted(() => vi.fn());
 vi.mock('../../src/systems/spatial/nodes.js', async (importOriginal) => {
@@ -39,7 +39,7 @@ describe('productionSystem operator-index dormancy', () => {
 
   it('builds no settler index while every workshop is starved of inputs', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sawmill(sim, [[WOOD, 0]]); // no input — anyCycleStartable gates before the operator lookup
+    sawmill(sim, [[WOOD, 0]]); // no input - anyCycleStartable gates before the operator lookup
     constructed.mockClear();
     productionSystem(sim.world, ctxOf(sim));
     expect(constructed).not.toHaveBeenCalled();

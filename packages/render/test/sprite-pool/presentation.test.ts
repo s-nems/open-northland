@@ -16,7 +16,7 @@ const WALKER: DrawItem = { ...ANCHOR, kind: 'settler', state: 'moving', facing: 
 /** A re-pathing walker: still `moving`, but with no heading to read this tick. */
 const HEADINGLESS_WALKER: DrawItem = { ...ANCHOR, kind: 'settler', state: 'moving' };
 const IDLE_SETTLER: DrawItem = { ...ANCHOR, kind: 'settler', state: 'idle' };
-/** A non-settler in the state the settler rules would rewrite — isolates the kind guard. */
+/** A non-settler in the state the settler rules would rewrite - isolates the kind guard. */
 const MOVING_BUILDING: DrawItem = { ...ANCHOR, kind: 'building', state: 'moving' };
 const SITE: DrawItem = { ...ANCHOR, kind: 'building', state: 'idle', builtPct: 90 };
 const UPGRADE_SITE: DrawItem = { ...ANCHOR, kind: 'building', state: 'idle', upgradePct: 90 };
@@ -102,7 +102,7 @@ describe('revealedItem', () => {
     expect(revealedItem(SITE, 0.5).upgradePct).toBeUndefined();
   });
 
-  it('never presents an in-progress site as complete — completion is the sim dropping the field', () => {
+  it('never presents an in-progress site as complete - completion is the sim dropping the field', () => {
     expect(revealedItem(SITE, 1).builtPct).toBe(99);
   });
 

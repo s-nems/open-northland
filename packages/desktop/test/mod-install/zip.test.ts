@@ -23,7 +23,7 @@ describe('zip reader', () => {
     const stored = Uint8Array.from([1, 2, 3, 4]);
     const compressible = new TextEncoder().encode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
     const { path, size } = await writeZip([
-      // Local extra differs from the central record's (real archives do this) — the data offset
+      // Local extra differs from the central record's (real archives do this) - the data offset
       // must come from the local header.
       {
         name: 'CnMod 1.3.1/DataCnmd/types/houses.ini',

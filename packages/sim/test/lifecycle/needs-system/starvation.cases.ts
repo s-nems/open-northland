@@ -13,7 +13,7 @@ import {
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
 
-describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => {
+describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
   /** A settler whose hunger is already pinned at ONE, carrying an explicit Health pool. */
   function starvingSettler(sim: Simulation, hitpoints: number): Entity {
     const e = settlerWithHunger(sim, ONE);
@@ -53,7 +53,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     expect(sim.world.has(e, Settler)).toBe(false); // reaped by cleanupSystem
   });
 
-  it('exempts animals and jobless settlers (jobType null — no eat/graze path to save them)', () => {
+  it('exempts animals and jobless settlers (jobType null - no eat/graze path to save them)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
     setSettlerJob(sim.world, e, null);
@@ -61,7 +61,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
 
-  it('exempts a growing baby (Age carrier in a baby stage) — a cared-for newborn cannot self-feed', () => {
+  it('exempts a growing baby (Age carrier in a baby stage) - a cared-for newborn cannot self-feed', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // A baby's jobType is an age-class id (non-null), so Age + a baby stage marks it as cared-for;
     // the AI planner runs no needs-drives for it, so without this exemption every borne baby would die
@@ -74,10 +74,10 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
 
-  it('starves a pinned child (Age carrier in a child stage) — it self-feeds, so it bites like an adult', () => {
+  it('starves a pinned child (Age carrier in a child stage) - it self-feeds, so it bites like an adult', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // A child runs the planner's eat drive (the drive ladder); with no food anywhere its hunger pins and the
-    // starvation bite applies — only the baby stage keeps the cared-for exemption.
+    // starvation bite applies - only the baby stage keeps the cared-for exemption.
     const e = starvingSettler(sim, 300);
     setSettlerJob(sim.world, e, CHILD_MALE);
     sim.world.add(e, components.Age, { ticks: CHILD_AGE_TICKS });

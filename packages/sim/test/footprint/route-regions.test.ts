@@ -14,7 +14,7 @@ import { grassMap, mappedSim, terrainOf } from './resource-footprint/support.js'
 /**
  * The route-region memo: a clear node sealed inside blocker walls is provably unroutable from
  * outside, while everything the memo cannot prove stays routable (fail-open). The veto direction
- * must be exact — a wrong "unroutable" would retire a reachable node with no expiry, unlike the
+ * must be exact - a wrong "unroutable" would retire a reachable node with no expiry, unlike the
  * time-bounded failed-goal memo.
  */
 
@@ -26,7 +26,7 @@ function wallAt(sim: Simulation, x: number, y: number, offsets: Array<{ dx: numb
   return e;
 }
 
-/** The 8 step-neighbour offsets of the anchor — a ring that seals the anchor node alone. */
+/** The 8 step-neighbour offsets of the anchor - a ring that seals the anchor node alone. */
 const SEAL_RING = [
   { dx: 1, dy: 0 },
   { dx: -1, dy: 0 },
@@ -39,7 +39,7 @@ const SEAL_RING = [
 ];
 
 /** A rectangle wall in anchor-relative offsets: rows dy=0 and dy=height-1 span the full width, and
- *  the two side columns fill the rows between — a one-node-thick perimeter, which the 8-direction
+ *  the two side columns fill the rows between - a one-node-thick perimeter, which the 8-direction
  *  step set cannot cross (straight steps hit a blocked destination, diagonals a blocked flank pair). */
 function rectangleWall(width: number, height: number): Array<{ dx: number; dy: number }> {
   const offsets: Array<{ dx: number; dy: number }> = [];
@@ -64,7 +64,7 @@ describe('routeRegions', () => {
   it('keeps two nodes of the same pocket routable to each other', () => {
     const sim = mappedSim(grassMap(12, 6));
     const terrain = terrainOf(sim);
-    // A 3-wide, 7-tall perimeter sealing the interior column (11, 3..7) — a 5-node pocket.
+    // A 3-wide, 7-tall perimeter sealing the interior column (11, 3..7) - a 5-node pocket.
     wallAt(sim, 10, 2, rectangleWall(3, 7));
     const regions = routeRegions(sim.world, ctxOf(sim), terrain);
 
@@ -97,7 +97,7 @@ describe('routeRegions', () => {
     expect(regions.unroutable(outside, sealed)).toBe(false);
   });
 
-  it('never vetoes from a blocked start — the walker may step off its own blocked node', () => {
+  it('never vetoes from a blocked start - the walker may step off its own blocked node', () => {
     const sim = mappedSim(grassMap(12, 6));
     const terrain = terrainOf(sim);
     wallAt(sim, 10, 6, SEAL_RING);
@@ -140,7 +140,7 @@ describe('routeRegions', () => {
   });
 
   it('reads a pocket larger than the flood cap as open (fail-open to the route + memo path)', () => {
-    // 80×40 nodes; the perimeter seals a (38-2)×(20-2) = 648-node interior — beyond the cap.
+    // 80×40 nodes; the perimeter seals a (38-2)×(20-2) = 648-node interior - beyond the cap.
     const sim = mappedSim(grassMap(40, 20));
     const terrain = terrainOf(sim);
     const wallWidth = 38;

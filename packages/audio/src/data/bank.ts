@@ -8,7 +8,7 @@ import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data
 export interface SoundIndex {
   /** Lower-cased static-group name → its interchangeable wav files (the engine picks one per play). */
   readonly groupsByName: ReadonlyMap<string, readonly string[]>;
-  /** A static group's `logicSoundType` id → its wav files — the id space animation events reference
+  /** A static group's `logicSoundType` id → its wav files - the id space animation events reference
    *  (`event <frame> 34 <id>`; the sim's `chatVoice` carries it as `soundType`). First-listed group
    *  wins a duplicated id (one known collision: 44, tribe variants of the generic female voice). */
   readonly groupsByLogicSoundType: ReadonlyMap<number, readonly string[]>;

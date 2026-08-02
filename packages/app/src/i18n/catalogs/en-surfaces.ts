@@ -55,10 +55,10 @@ export const enSurfaces = {
     seatTake: 'Sit here',
     seatTaken: 'You play here',
     observerName: 'Observer',
-    observerDetail: 'Watch the match — inspect any unit or building, but issue no orders',
+    observerDetail: 'Watch the match - inspect any unit or building, but issue no orders',
     observerTaken: 'You observe',
     overseerName: 'Overseer',
-    overseerDetail: 'Sandbox god-mode — watch and command every seat',
+    overseerDetail: 'Sandbox god-mode - watch and command every seat',
     overseerTaken: 'You oversee',
     vacantIdle: 'Idle',
     vacantAi: 'AI',
@@ -77,7 +77,7 @@ export const enSurfaces = {
       7: 'Egyptians',
     } as Readonly<Record<number, string>>,
   },
-  // One label per `view/boot-progress.ts` BootPhase — the card's only text.
+  // One label per `view/boot-progress.ts` BootPhase - the card's only text.
   loading: {
     graphics: 'Starting the graphics…',
     map: 'Reading the map…',
@@ -182,8 +182,8 @@ export const enSurfaces = {
     filter: 'Filter frames…',
     zoom: 'Zoom',
     loadFailed: 'Could not load /bobs/{stem}.atlas.json',
-    frameCount: '{stem} — {count} frames{note}',
-    copied: '{tag}{name} — copied',
+    frameCount: '{stem} - {count} frames{note}',
+    copied: '{tag}{name} - copied',
     frameCapNote: ' (showing {count})',
     groups: {
       gui: 'GUI (buttons, glyphs, panel)',

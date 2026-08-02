@@ -19,31 +19,31 @@ import { createProfessionPicker } from './profession-picker.js';
 import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js';
 
 /**
- * The settler action menu — the contextual command buttons that fan out around the selected settler(s), in
+ * The settler action menu - the contextual command buttons that fan out around the selected settler(s), in
  * original GUI art. It is the Pixi + input glue over the pure {@link import('../../hud/action-ring-layout.js')}
  * geometry (the twin split of `hud/tool-panel*`): the layout module transcribes the original's radial arm
  * footprint and assigns each command a best-guess order-icon; this module draws those icons as
  * {@link PalettedSprite}s over the indexed `ls_gui_window` atlas (the round wooden order buttons, `context`
- * palette) and turns a click into a `setJob` through the callback seam — never touching sim state (app-layer
+ * palette) and turns a click into a `setJob` through the callback seam - never touching sim state (app-layer
  * I/O, one-way flow).
  *
  * We draw the whole default human menu (every arm of the original), rebuilt per frame from the selected
  * settler's state ({@link menuForSettler}): "change profession" (`open-jobs`) opens the scrollable
- * profession-picker window — a DOM panel styled to evoke the original's parchment/rope selection windows
+ * profession-picker window - a DOM panel styled to evoke the original's parchment/rope selection windows
  * (warm-wood fill, double rope-tan frame, engraved headline + close box, the shared serif face), kept DOM
  * so the grouped profession set scrolls with no Pixi masking; picking a row issues `setJob` and returns to
  * the menu. The family buttons are live too: `marry` (an unmarried eligible adult), `assign_house` (arms
- * the click-a-house pick mode), and the make-son/make-daughter pair (a married woman) — each issued
+ * the click-a-house pick mode), and the make-son/make-daughter pair (a married woman) - each issued
  * through its callback seam. The offered professions + their labels come from the shared
  * `catalog/professions.ts` roster + `i18n/`, so the picker and the details-panel label can't drift. The
  * remaining buttons are inert placeholders. Three modes: `closed` → `menu` (the default arms) → `jobs`
  * (the list window over the hidden ring).
  *
  * It is brought up by a right-click on the settler or by Space (the info card stays always-on), and holds
- * the screen spot it opened on until it closes — see {@link anchor}. The order buttons are drawn
+ * the screen spot it opened on until it closes - see {@link anchor}. The order buttons are drawn
  * with the `'round'` colour key, so each reads as a round disc (no square backdrop). When the decoded GUI art
  * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
- * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
+ * geometry, staying visible and fully clickable - the tooltip (a DOM label) carries each button's meaning.
  *
  * The pure pieces live beside this glue: the selection centroid projection (`selection-centre.ts`, bound
  * to the live selection and injected), the per-settler button derivation ({@link menuStateFor}), and the
@@ -51,10 +51,10 @@ import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js
  * machine that ties them together.
  */
 
-/** Draw the menu above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
+/** Draw the menu above the world (and the tool panel, which is on the far-left strip - they rarely overlap). */
 const RING_Z = 1000;
 
-/** The "no ring" layout — menu closed or nothing selected (no buttons, zero bounds). */
+/** The "no ring" layout - menu closed or nothing selected (no buttons, zero bounds). */
 const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
 
 const TOOLTIP_STYLE = [
@@ -77,17 +77,17 @@ const TOOLTIP_STYLE = [
  */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
-  // The ring's effective scale: the shared uiscale, shrunk by the ring's own factor (see actionRingScale) —
+  // The ring's effective scale: the shared uiscale, shrunk by the ring's own factor (see actionRingScale) -
   // the same value feeds the icon bake and layoutActionRing, so the drawn icon always fills its hit-rect.
   const scale = actionRingScale(opts.uiscale);
 
-  /** Client (CSS) point → canvas px — the space the layout and every hit-test work in. */
+  /** Client (CSS) point → canvas px - the space the layout and every hit-test work in. */
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToScreen(canvas, app.renderer.resolution, clientX, clientY);
 
   const art = await loadGuiArt();
 
-  // Every button any menu state can show (family + scout variants included) — the retained visuals are
+  // Every button any menu state can show (family + scout variants included) - the retained visuals are
   // baked once for the union, and each frame's layout places only the active state's subset. The
   // profession picker is a DOM list window (below), so the canvas holds just the menu buttons.
   const allButtons: readonly ActionButton[] = ALL_MENU_BUTTONS;
@@ -103,7 +103,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const tooltip = el('div', TOOLTIP_STYLE);
   document.body.append(tooltip);
 
-  // The retained button graphics (round order-icon discs, real art or flat fallback) — built once, placed
+  // The retained button graphics (round order-icon discs, real art or flat fallback) - built once, placed
   // each frame by layout. See action-ring-visuals.ts.
   const visuals = createActionRingVisuals({
     app,
@@ -119,7 +119,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
   let actionTargets: readonly number[] = [];
   /**
-   * Where the menu is pinned, in SCREEN (canvas) px — captured once when it opens and held for the rest of
+   * Where the menu is pinned, in SCREEN (canvas) px - captured once when it opens and held for the rest of
    * the open session (null = not anchored yet / closed), so neither the settler walking on nor a camera pan
    * moves it. Source basis: the original stores the cursor at bring-up and rebuilds the menu box at those
    * desktop coords, never reprojecting (`Selection_ActionButtons_BringUp` → `_selectionActionButtonsMouseX/Y`,
@@ -134,7 +134,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel over the (hidden) ring ------
-  // The serif UI face (shared with the details panel) — falls back to a serif stack until/if it resolves.
+  // The serif UI face (shared with the details panel) - falls back to a serif stack until/if it resolves.
   const uiFont = await loadUiFont();
   const picker = createProfessionPicker({
     professions: opts.professions,
@@ -143,7 +143,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       // Apply to whoever is selected right now (actionTargets is refreshed each frame in `update`).
       if (actionTargets.length > 0) opts.onSetJob(actionTargets, jobType);
       // Picking a profession commits the menu: close it entirely (list and ring), rather than stepping back
-      // to the arms — the order is issued, so there is nothing left to do in the menu.
+      // to the arms - the order is issued, so there is nothing left to do in the menu.
       closeMenu();
     },
     // The ✕ box / a backdrop click steps back to the ring (the twin of Escape), keeping the unit selected.
@@ -162,20 +162,20 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     if (mode === 'jobs') mode = 'menu';
   };
   /**
-   * Fully close the whole menu — the list and the ring, back to `closed`. The commit/teardown path (picking a
+   * Fully close the whole menu - the list and the ring, back to `closed`. The commit/teardown path (picking a
    * profession, or an external {@link SettlerActions.close}), as opposed to {@link closeJobWindow}'s "step back
    * to the ring" used by Escape / the ✕ box / a backdrop click.
    */
   const closeMenu = (): void => {
     picker.hide();
     mode = 'closed';
-    anchor = null; // "no anchor ⟺ no open session" — the one place `closed` is entered
+    anchor = null; // "no anchor ⟺ no open session" - the one place `closed` is entered
     root.visible = false;
     hideTransient();
   };
 
   /**
-   * Open (or re-open) the default arms, pinned on `atClient` when the caller has a cursor to give — a
+   * Open (or re-open) the default arms, pinned on `atClient` when the caller has a cursor to give - a
    * re-open always re-pins, so right-clicking a settler the menu has drifted away from brings it back.
    * Without a cursor the anchor stays null and {@link update} pins the centroid on the next frame.
    */
@@ -205,7 +205,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       visuals.hideAll();
       return;
     }
-    // Space opens with no cursor to pin to, so the selection's centroid stands in — projected here, on the
+    // Space opens with no cursor to pin to, so the selection's centroid stands in - projected here, on the
     // first frame of the session, and then frozen like any other anchor. (The right-click path pins the
     // cursor itself, as the original does; Space is a project-added binding, so the centroid is a named
     // approximation of an anchor the original never had to choose.)

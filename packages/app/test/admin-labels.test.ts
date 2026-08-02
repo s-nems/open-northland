@@ -10,7 +10,7 @@ import {
 } from '../src/view/admin-debug/spawn-catalog.js';
 
 /**
- * The admin/debug panel's label + arm-equality resolution — the pure presentation half pulled out of the
+ * The admin/debug panel's label + arm-equality resolution - the pure presentation half pulled out of the
  * DOM mount (`createAdminLabels` / `sameArmed`). The mount's pointer wiring stays browser-verified; here we
  * pin that each palette entry and status-footer line resolves through the right message keys and that a
  * button's active highlight compares arms by identity.

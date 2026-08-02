@@ -6,7 +6,7 @@ import { testContent } from '../../fixtures/content.js';
 
 import { ACCEL_STEP, FX_ZERO, followerAt, grassMap, pos, ticksToArrive } from './support.js';
 
-describe('movementSystem — path following', () => {
+describe('movementSystem - path following', () => {
   it('consumes the start waypoint (its own cell) on the first tick, then heads to the next', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = followerAt(sim, 0, 0, [
@@ -15,7 +15,7 @@ describe('movementSystem — path following', () => {
     ]);
 
     // One target per tick: tick 1 reaches waypoint 0 (already standing on it) and advances the index
-    // to 1 — no movement toward waypoint 1 yet, but the gait ramp is already one accel-step warm.
+    // to 1 - no movement toward waypoint 1 yet, but the gait ramp is already one accel-step warm.
     sim.step();
     expect(pos(sim, e).x).toBeCloseTo(0, 6);
     expect(sim.world.get(e, PathFollow).index).toBe(1);
@@ -32,7 +32,7 @@ describe('movementSystem — path following', () => {
       { x: 5, y: 0 }, // long enough that the brake horizon stays far away during the ramp
     ]);
     sim.step(); // consume wp0; speed = A
-    // Ramp: A per tick until the gait is reached — 2A, then 3A overshoots and clamps onto G on the
+    // Ramp: A per tick until the gait is reached - 2A, then 3A overshoots and clamps onto G on the
     // third tick (the divCeil accel step makes a from-rest ramp exactly ACCEL_TICKS long).
     const speeds: number[] = [];
     for (let i = 0; i < 6; i++) {
@@ -70,7 +70,7 @@ describe('movementSystem — path following', () => {
       { x: 3, y: 0 },
     ]);
     // Advance until the follower has just arrived on cell 1 (index points at cell 2's waypoint and
-    // the position sits exactly on x=1): from here to x=2 is a pure cruise leg — no ramp (already at
+    // the position sits exactly on x=1): from here to x=2 is a pure cruise leg - no ramp (already at
     // full gait; the headings of collinear legs are bit-identical, so no corner projection), no brake
     // (not the last leg).
     while (sim.world.get(e, PathFollow).index < 2) sim.step();
@@ -107,7 +107,7 @@ describe('movementSystem — path following', () => {
     sim.step(); // first move toward (0,1) at 2·A
     const p1 = pos(sim, e);
     // The leg's world length is ≈0.75 of a column (49143 ulp), so a 2·A = 2428 world-step advances
-    // the row coordinate by 2428/49143 ≈ 0.0494 — the grid delta scaled to the world metric. This is
+    // the row coordinate by 2428/49143 ≈ 0.0494 - the grid delta scaled to the world metric. This is
     // what keeps the ON-SCREEN pace identical in every heading (51 px vs 68 px legs).
     expect(p1.x).toBeCloseTo(0, 9); // the grid delta is pure +row; the stagger lives in the render
     expect(p1.y).toBeCloseTo(2428 / 49143, 3);
@@ -132,7 +132,7 @@ describe('movementSystem — path following', () => {
   it('walks a vertical leg dead straight on screen: worldX constant through the seam waypoint', () => {
     // The two sub-legs of a vertical S step (cell centre -> seam -> cell centre, as routing.ts
     // splices them): grid x bends half a column left and back, EXACTLY cancelling the stagger's
-    // triangle wave — so the world x (what the render projects) never moves. This is the sim-side
+    // triangle wave - so the world x (what the render projects) never moves. This is the sim-side
     // guarantee behind "ordered straight down, walks straight down".
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 5) });
     const e = followerAt(sim, 2, 0, [
@@ -174,7 +174,7 @@ describe('movementSystem — path following', () => {
   });
 });
 
-describe('movementSystem — precedence: PathFollow over Velocity', () => {
+describe('movementSystem - precedence: PathFollow over Velocity', () => {
   it('a path-driven entity ignores its Velocity (moves once, toward the path)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = sim.world.create();
@@ -211,7 +211,7 @@ describe('movementSystem — precedence: PathFollow over Velocity', () => {
       hy: FX_ZERO,
     });
     sim.step();
-    // The path was handled this tick, so Velocity must NOT also apply — position stays at the cell.
+    // The path was handled this tick, so Velocity must NOT also apply - position stays at the cell.
     expect(pos(sim, e).x).toBeCloseTo(0, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
     // The very next tick (no path now) it resumes full-velocity movement.
@@ -229,9 +229,9 @@ describe('movementSystem — precedence: PathFollow over Velocity', () => {
   });
 });
 
-describe('movementSystem — determinism', () => {
+describe('movementSystem - determinism', () => {
   it('two same-seed sims following the same path reach the same state hash', () => {
-    // Each sim owns its stores, so two same-seed runs are independent; compare the final hashes —
+    // Each sim owns its stores, so two same-seed runs are independent; compare the final hashes -
     // same seed + same path must yield byte-identical state.
     const runOne = (): string => {
       const s = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
@@ -249,7 +249,7 @@ describe('movementSystem — determinism', () => {
   });
 });
 
-describe('movementSystem — invoked directly (unit, no sim)', () => {
+describe('movementSystem - invoked directly (unit, no sim)', () => {
   it('no-ops on an entity with neither PathFollow nor Velocity', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();

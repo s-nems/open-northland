@@ -34,16 +34,16 @@ describe('moveUnit order', () => {
 
     const p = s.world.get(e, Position);
     expect([p.x, p.y]).toEqual([fx.fromInt(5), fx.fromInt(0)]); // arrived at the ordered spot
-    // A civilian is handed back to the economy the moment it gets there — the order never parks it
+    // A civilian is handed back to the economy the moment it gets there - the order never parks it
     // (with nothing to do on this empty map it simply stands, but as a FREE unit).
     expect(s.world.has(e, PlayerOrder)).toBe(false);
   });
 
-  it('keeps advancing when re-ordered MID-STEP — no snap back to the tile centre', () => {
+  it('keeps advancing when re-ordered MID-STEP - no snap back to the tile centre', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     orderMove(s, e, 6, 0);
-    s.run(6); // walking — now genuinely between node centres
+    s.run(6); // walking - now genuinely between node centres
     const before = s.world.get(e, Position).x;
     expect(before).toBeGreaterThan(fx.fromInt(0));
     expect(before).toBeLessThan(fx.fromInt(1)); // mid-tile, the case that used to back up
@@ -54,7 +54,7 @@ describe('moveUnit order', () => {
     expect(s.world.get(e, Position).x).toBeGreaterThan(before); // advanced, never snapped back
   });
 
-  it('is skipped for a NEUTRAL (unowned) settler — only owned units are orderable', () => {
+  it('is skipped for a NEUTRAL (unowned) settler - only owned units are orderable', () => {
     const s = sim();
     const e = s.world.create();
     s.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -88,7 +88,7 @@ describe('moveUnit order', () => {
     expect(s.commands.log).toHaveLength(2); // still logged for faithful replay
   });
 
-  it('releases a combatant on arrival exactly like a worker — no post-arrival hold', () => {
+  it('releases a combatant on arrival exactly like a worker - no post-arrival hold', () => {
     const s = sim();
     const warrior = ownedWoodcutter(s, 0, 1);
     s.world.add(warrior, Health, { hitpoints: 100, max: 100 }); // a combatant
@@ -100,7 +100,7 @@ describe('moveUnit order', () => {
       released = !s.world.has(warrior, PlayerOrder);
     }
     // The timed soldier stand was cut (user feedback 2026-07-14): arriving ends the order for every
-    // unit — a DEFEND stance (its relocated anchor) is the position-holding tool now.
+    // unit - a DEFEND stance (its relocated anchor) is the position-holding tool now.
     expect(released).toBe(true);
   });
 
@@ -118,7 +118,7 @@ describe('moveUnit order', () => {
     s.step();
     const spliced = s.world.get(e, PathFollow).speed;
     const accelStep = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
-    expect(spliced).toBeGreaterThan(accelStep); // more than a from-rest ramp tick — momentum survived
+    expect(spliced).toBeGreaterThan(accelStep); // more than a from-rest ramp tick - momentum survived
     expect(spliced).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK); // and never above the cruise gait
   });
 
@@ -149,10 +149,10 @@ describe('moveUnit order', () => {
     orderMove(s, worker, 9, 0);
     s.run(60); // mid-walk (9 tiles ≈ 110 ticks with the gait ramp)
     expect(s.world.has(worker, PlayerOrder)).toBe(true); // still obeying the order
-    expect(s.world.has(worker, Carrying)).toBe(false); // NOT working — it walks where it was sent
+    expect(s.world.has(worker, Carrying)).toBe(false); // NOT working - it walks where it was sent
 
     // The tick it arrives the zero civilian dwell releases it and the economy re-tasks it at once:
-    // it turns around and heads back to the wood — a detour, never a parking order.
+    // it turns around and heads back to the wood - a detour, never a parking order.
     s.run(300);
     expect(s.world.has(worker, PlayerOrder)).toBe(false); // released on arrival
     expect(s.world.get(worker, Position).x).not.toBe(fx.fromInt(9)); // went straight back to work

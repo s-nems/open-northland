@@ -2,7 +2,7 @@ import type { TextureSource } from 'pixi.js';
 import { type DrawableResource, isDrawableResource, readable2dContext } from '../drawable-resource.js';
 
 /**
- * Per-atlas alpha masks for pixel-accurate sprite hit-testing — "click the graphic, not the box".
+ * Per-atlas alpha masks for pixel-accurate sprite hit-testing - "click the graphic, not the box".
  *
  * The picker's first pass is the sprite's AABB ({@link import('./pooled-entity.js').EntityBounds}); a
  * large building's box swallows a lot of transparent corner, so a click *next to* the house still
@@ -17,11 +17,11 @@ import { type DrawableResource, isDrawableResource, readable2dContext } from '..
  * Minimum alpha (0..255) a texel needs to count as clickable. Bob art is mostly hard-edged, but
  * decoded `Double8Bit` bobs carry soft per-pixel alpha (anti-aliased rims, baked shadow skirts);
  * half-opacity keeps the anti-aliased body edge clickable while dropping shadows and glow, which read
- * as "next to the building", not on it. An approximation — the original never alpha-picks at all.
+ * as "next to the building", not on it. An approximation - the original never alpha-picks at all.
  */
 export const SOLID_ALPHA_MIN = 128;
 
-/** A 1-bit solid/transparent mask over a whole atlas sheet (row-major, bit-packed — ~2 MB for 4096²). */
+/** A 1-bit solid/transparent mask over a whole atlas sheet (row-major, bit-packed - ~2 MB for 4096²). */
 export interface AlphaMask {
   readonly width: number;
   readonly height: number;
@@ -52,7 +52,7 @@ export function maskSolidAt(mask: AlphaMask, x: number, y: number): boolean {
 }
 
 /** Lazily-built masks per atlas sheet. WeakMap: a dropped TextureSource releases its mask with it.
- *  `null` is cached too — an unreadable source (no 2d context, non-drawable resource) is not retried
+ *  `null` is cached too - an unreadable source (no 2d context, non-drawable resource) is not retried
  *  on every click. */
 const maskCache = new WeakMap<TextureSource, AlphaMask | null>();
 
@@ -65,13 +65,13 @@ function readPixels(resource: DrawableResource, width: number, height: number): 
     ctx.drawImage(resource, 0, 0);
     return ctx.getImageData(0, 0, width, height);
   } catch {
-    return null; // tainted/undecodable source — the caller falls back to the box hit
+    return null; // tainted/undecodable source - the caller falls back to the box hit
   }
 }
 
 /**
  * The alpha mask of an atlas sheet, built once on first use from the texture's CPU-side image
- * (`TextureSource.resource` — the very ImageBitmap Pixi uploaded), or `null` when the pixels are
+ * (`TextureSource.resource` - the very ImageBitmap Pixi uploaded), or `null` when the pixels are
  * unreadable (the picker then falls back to the AABB hit, the pre-mask behaviour).
  */
 export function alphaMaskOf(source: TextureSource): AlphaMask | null {

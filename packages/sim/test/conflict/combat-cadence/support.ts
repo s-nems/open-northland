@@ -32,7 +32,7 @@ export function fighterAt(
   return fighterAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, tribe, jobType, opts);
 }
 
-/** A combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell (2 nodes on a
+/** A combatant standing exactly on half-cell node (hx, hy) - reach geometry a whole cell (2 nodes on a
  *  row) cannot express, e.g. a maxRange-1 weapon needs an ADJACENT node. */
 export function fighterAtNode(
   sim: Simulation,

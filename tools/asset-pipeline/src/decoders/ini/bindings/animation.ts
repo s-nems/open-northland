@@ -1,5 +1,5 @@
 /**
- * Animation frame bindings from `mapmoveableanimations/animations.ini` — the `[bobseq]` named frame
+ * Animation frame bindings from `mapmoveableanimations/animations.ini` - the `[bobseq]` named frame
  * ranges, the `[gfxanimatomic]` per-facing atomic-action frame lists, and the `[gfxwalkatomic]`
  * good → loaded-gait table.
  */
@@ -18,7 +18,7 @@ import {
 
 /**
  * Extracts the `[bobseq]` records from `animations.ini` (the mod's
- * `animation/mapmoveableanimations/animations.ini`) into one {@link BobSequenceSet} per bob set — the
+ * `animation/mapmoveableanimations/animations.ini`) into one {@link BobSequenceSet} per bob set - the
  * named animation ranges (`seq "<name>" <start> <length>`, e.g. `WALK` start 1988, `CHOP` 5106). Each
  * record names its `imagelib` `.bmd` (the bob
  * set the ids index into) plus an optional `shadowlib`, and lists every sequence as a `seq` line whose
@@ -30,7 +30,7 @@ import {
  * …); each set is emitted independently so a consumer resolves by `(imagelib, name)`. `imagelib`/
  * `shadowlib` are normalized (lower-cased; they are bare `.bmd` filenames) to join case-insensitively
  * onto the decoded atlas stems. A record with no `imagelib` (nothing to index) or a `seq` line missing
- * its start/length (non-numeric) is skipped, never thrown — one malformed line must not abort the batch.
+ * its start/length (non-numeric) is skipped, never thrown - one malformed line must not abort the batch.
  */
 export function extractBobSequences(sections: readonly RuleSection[], src: SourceRef): BobSequenceSet[] {
   const sets: BobSequenceSet[] = [];
@@ -61,16 +61,16 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
 
 /**
  * Extracts the `[gfxanimatomic]` records from `mapmoveableanimations/animations.ini` into
- * {@link GfxAnimAtomic} rows — the atomic-action → directional body-animation binding the renderer needs
+ * {@link GfxAnimAtomic} rows - the atomic-action → directional body-animation binding the renderer needs
  * to play an action (an attack swing, a work stroke) facing its target. Unlike {@link extractBobSequences}
  * (which reads only the `[bobseq]` frame ranges), this reads the `gfxanimframelistdir <dir> <idx…>` lines
- * that lay an animation out per facing — the layout a bare `start`/`length` cannot encode (a melee swing
+ * that lay an animation out per facing - the layout a bare `start`/`length` cannot encode (a melee swing
  * pool is not `length / 8` and authors per-facing holds/reuse; see {@link GfxAnimAtomic}).
  *
  * Each `gfxanimframelistdir` is placed at its leading `<dir>` slot so `dirFrames[d]` is facing `d`
  * regardless of file order; a record with a single non-directional `gfxanimframelist` yields one
  * facing-locked list. A record missing its tribe/job/action/body-seq, or carrying no frame list at all, is
- * skipped (never thrown) — one malformed record must not abort the batch. The same `(job, action)` recurs
+ * skipped (never thrown) - one malformed record must not abort the batch. The same `(job, action)` recurs
  * per tribe, and one job/action may have several records (the unarmed soldier's four punch variants); all
  * are emitted, and a consumer resolves by `(tribe, job, action)` or by `bodySeq` name.
  */
@@ -112,7 +112,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
       dirFrames = [];
       for (let d = 0; d <= maxDir; d++) dirFrames.push(byDir.get(d) ?? []);
     } else {
-      // A non-directional record: one facing-locked list (`gfxanimframelist <idx…>` — no leading dir).
+      // A non-directional record: one facing-locked list (`gfxanimframelist <idx…>` - no leading dir).
       const single = findProps(sec, 'gfxanimframelist')[0];
       if (single === undefined) continue;
       const ids = single.values.map((v) => Number.parseInt(v, 10)).filter((n) => !Number.isNaN(n) && n >= 0);
@@ -136,12 +136,12 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
 
 /**
  * Extracts the `[gfxwalkatomic]` records from `mapmoveableanimations/animations.ini` into
- * {@link GfxWalkAtomic} rows — the original's good → loaded-gait table, joining
+ * {@link GfxWalkAtomic} rows - the original's good → loaded-gait table, joining
  * `(logictribe, logicjob, logicgoodtype)` to the `[bobseq]` a hauler plays while carrying that good.
  * Without it the renderer has to guess a carry look by good name, which the source contradicts (honey
  * binds `..._walk_potion`, wool `..._walk_flour`).
  *
- * A record missing its tribe/job/good or its body seq is skipped (never thrown) — one malformed record
+ * A record missing its tribe/job/good or its body seq is skipped (never thrown) - one malformed record
  * must not abort the batch. The record's `gfxwalkframelist`/`gfxturnframelist`/`logicwalkspeed` lines are
  * not read; see {@link GfxWalkAtomic} for why.
  */

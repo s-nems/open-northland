@@ -12,14 +12,14 @@ import { testContent } from '../fixtures/content.js';
  * twin of an animal's `hitpointsAdult`) via {@link settlerHitpoints}, so a tribe carrying a pool spawns
  * every settler with it, a tribe that leaves it 0 falls back to {@link DEFAULT_SETTLER_HITPOINTS}, and an
  * explicit command override still wins. This is the wiring the real-content overlay (5000 on the playable
- * tribes) rides — pinning it keeps a future refactor from silently reverting every real settler to 300.
+ * tribes) rides - pinning it keeps a future refactor from silently reverting every real settler to 300.
  */
 
 const VIKING = 1;
 const HUMAN_HP = 5000;
 
 const spec = (tribe: number, hitpoints?: number) => ({
-  jobType: 0, // the idle sentinel — valid on any content
+  jobType: 0, // the idle sentinel - valid on any content
   x: 0,
   y: 0,
   tribe,
@@ -35,7 +35,7 @@ function contentWithTribeHp(hitpoints: number) {
   });
 }
 
-describe('settlerHitpoints — the tribe HP pool read at spawn', () => {
+describe('settlerHitpoints - the tribe HP pool read at spawn', () => {
   it("reads the tribe's hitpoints, or 0 when it carries none", () => {
     expect(settlerHitpoints(testContent(), VIKING)).toBe(0); // the fixture leaves it unset
     expect(settlerHitpoints(contentWithTribeHp(HUMAN_HP), VIKING)).toBe(HUMAN_HP);

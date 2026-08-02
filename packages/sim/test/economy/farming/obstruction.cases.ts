@@ -28,11 +28,11 @@ import {
 
 // A farm whose plot has to find the gaps around whatever already stands on its ground: walls it cannot walk
 // through, and bodies that merely occupy a node without blocking it. The walled cases run on the fixture's
-// one walled type (`blockhouseAt`) — the rest of the fixture blocks nothing, which is exactly what makes it
+// one walled type (`blockhouseAt`) - the rest of the fixture blocks nothing, which is exactly what makes it
 // the fixture for the occupancy half.
 
 describe('a building raised over a field', () => {
-  it('is allowed onto a standing plot — farmland never refuses a site', () => {
+  it('is allowed onto a standing plot - farmland never refuses a site', () => {
     // A farm's mature plot is scattered over its whole ring, so if a field were a placement obstacle the
     // settlement could not build anywhere near its own farm until harvest. Placed through the ORDINARY
     // command (no `force`), which is the path a player takes.
@@ -63,7 +63,7 @@ describe('a building raised over a field', () => {
 describe('sowing against standing walls', () => {
   it('a sow swing that lands on a walled node plants nothing', () => {
     // The race the planner cannot filter: the building goes up while the farmer is mid sow-walk. Aimed at
-    // the wall node BESIDE the anchor — the anchor carries the building's own store, which the standing-
+    // the wall node BESIDE the anchor - the anchor carries the building's own store, which the standing-
     // entity check would reject on its own and so would prove nothing about the walls.
     const sim = new Simulation({ seed: 1, content: wallsContent(), map: grassMap(10, 10) });
     const farm = farmAt(sim, 8, 8);
@@ -77,7 +77,7 @@ describe('sowing against standing walls', () => {
 
   it('a farmer skips a ripe field walled in behind it and keeps banking wheat', () => {
     // A field the walls closed over AFTER it was sown (so no placement pass cleared it) is the nearest
-    // ripe target the reap step can see, and its work cell is its own blocked node — a route that can
+    // ripe target the reap step can see, and its work cell is its own blocked node - a route that can
     // only fail. The farmer has to fall through to the rest of its plot instead of re-picking it forever.
     const sim = new Simulation({ seed: 7, content: wallsContent(), map: grassMap(12, 12) });
     const farm = farmAt(sim, 6, 6);
@@ -93,7 +93,7 @@ describe('sowing against standing walls', () => {
 
   it('never sows the far bank of a river its field radius happens to span', () => {
     // Grass across water is walkable and plantable, and Manhattan distance does not know about the
-    // channel — so without a component check the lattice offers the far bank and the farmer walks at a
+    // channel - so without a component check the lattice offers the far bank and the farmer walks at a
     // route that cannot exist. The near bank is deliberately almost all barren: with plantable ground to
     // spare at home the nearest-first pick would never reach across, and the case would prove nothing.
     // The symptom is the STRANDED FARMER, not a misplaced field: the far-bank sow never completes, so

@@ -37,7 +37,7 @@ describe('installer i18n', () => {
 
   it('interpolates named placeholders and leaves unknown ones verbatim', () => {
     expect(formatMessage('{done} plików', { done: 12 })).toBe('12 plików');
-    expect(formatMessage('{a} — {b}', { a: 'x', b: 'y' })).toBe('x — y');
+    expect(formatMessage('{a} - {b}', { a: 'x', b: 'y' })).toBe('x - y');
     expect(formatMessage('keep {missing}', {})).toBe('keep {missing}');
   });
 

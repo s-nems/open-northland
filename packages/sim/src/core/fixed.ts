@@ -8,7 +8,7 @@
  * Why a `number` (double), not int32: JS doubles represent integers EXACTLY up to 2^53. The basic
  * ops (+ - * and Math.round/trunc on integer-valued doubles) are IEEE-deterministic across
  * platforms. Storing in a double (instead of `x | 0`) avoids the silent int32 overflow that bit
- * a previous Q16.16-in-int32 design above ~32767 units. NEVER use Math.sqrt/sin/cos/pow here —
+ * a previous Q16.16-in-int32 design above ~32767 units. NEVER use Math.sqrt/sin/cos/pow here -
  * add integer helpers if you need them (see fx.isqrt).
  *
  * A `Fixed` is an integer-valued double where one whole unit (e.g. one tile) == ONE == 65536.
@@ -17,7 +17,7 @@
  *
  * `Fixed` is a BRANDED type: a raw `number` is not assignable to it, so you cannot accidentally
  * mix an unscaled count with a scaled value or pass a goodType where a Fixed is expected. The `fx`
- * helpers are the only mint authority — `fx.fromInt(1)`, not the literal `1`.
+ * helpers are the only mint authority - `fx.fromInt(1)`, not the literal `1`.
  */
 import type { Brand } from './brand.js';
 export type Fixed = Brand<number, 'Fixed'>;
@@ -25,11 +25,11 @@ export type Fixed = Brand<number, 'Fixed'>;
 const SHIFT = 16;
 export const ONE: Fixed = (1 << SHIFT) as Fixed; // 65536
 
-/** Fixed-point zero — the additive identity (a from-rest gait, a heading sentinel, the origin). */
+/** Fixed-point zero - the additive identity (a from-rest gait, a heading sentinel, the origin). */
 export const ZERO: Fixed = 0 as Fixed;
 
 /**
- * The smallest positive Fixed — one scaled-integer ulp (1/65536 of a unit). The floor for per-tick
+ * The smallest positive Fixed - one scaled-integer ulp (1/65536 of a unit). The floor for per-tick
  * quanta minted by division (`ONE/duration` truncates): a quantum truncated to 0 makes no progress
  * ever, so a consumer that must terminate floors it here instead of stalling.
  */
@@ -116,7 +116,7 @@ export const fx = {
   },
   /**
    * `a·b/c` with a SINGLE truncation (toward zero): the scales cancel, so no intermediate
-   * fixed-point rounding — `mul` then `div` truncates twice and can shave several ulps (enough to
+   * fixed-point rounding - `mul` then `div` truncates twice and can shave several ulps (enough to
    * cost a movement step an extra near-stationary tick). For ratio scaling like "advance `a` by
    * `b/c` of itself"; when `a === c` the result is exactly `b`. Intermediate `a*b` must stay
    * < 2^53 (dev-asserted, like {@link fx.mul}).
@@ -130,7 +130,7 @@ export const fx = {
   abs(a: Fixed): Fixed {
     return (a < 0 ? -a : a) as Fixed;
   },
-  /** Exact remainder (JS `%` semantics — result carries the sign of `a`); for cyclic phase math.
+  /** Exact remainder (JS `%` semantics - result carries the sign of `a`); for cyclic phase math.
    *  Integer-exact on the scaled representation, so it never rounds. */
   mod(a: Fixed, b: Fixed): Fixed {
     if (b === 0) throw new Error('fixed-point modulo by zero');

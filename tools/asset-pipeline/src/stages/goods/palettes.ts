@@ -12,7 +12,7 @@ import { readSourceFile } from '../source-files.js';
  */
 
 /** The palette alias table: `[GfxPalette256]` records mapping a palette editname (`gold01`) to its real
- *  `.pcx` — a name rarely names a `<name>.pcx` file directly (`gold01` → `landscapes/gold.pcx`). */
+ *  `.pcx` - a name rarely names a `<name>.pcx` file directly (`gold01` → `landscapes/gold.pcx`). */
 const PALETTES_INI = join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini');
 /** Fallback dirs a `goods_*` recolor palette `.pcx` may live in when the alias table has no entry. */
 const PALETTE_DIRS = [
@@ -37,7 +37,7 @@ export async function loadPaletteAliases(roots: SourceRoots): Promise<PaletteAli
 
 /**
  * Resolve a recolor palette by name to its 256-colour table. First via the {@link PALETTES_INI} alias graph
- * (`gold01` → `landscapes/gold.pcx`) — a palette name rarely matches a `<name>.pcx` file directly, so without
+ * (`gold01` → `landscapes/gold.pcx`) - a palette name rarely matches a `<name>.pcx` file directly, so without
  * this the aliased landscape palettes (`gold01`/`clay01`/`house_saracen01`/`human_colors`) fall to a neutral
  * row and their goods render washed-out white in the HUD (the coin, the plate/wool armour). Falls back to the
  * direct {@link PALETTE_DIRS} search for a name with no alias entry; `undefined` if unresolved everywhere.
@@ -52,7 +52,7 @@ export async function loadGoodsPalette(
     try {
       return decodePcx(await readSourceFile(roots, aliased)).palette;
     } catch {
-      // aliased file unreadable — fall through to the by-path search
+      // aliased file unreadable - fall through to the by-path search
     }
   }
   for (const dir of PALETTE_DIRS) {

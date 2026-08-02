@@ -92,7 +92,7 @@ describe('convertMapDatTree', () => {
 
   it('emits the meta sidecar from text/pol/strings.ini (CP1250, observed 0/1 string ids) + the minimap PNG', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
-    // "BŁĘKIT" with CP1250 bytes (Ł=0xA3, Ę=0xCA) — the map strings' real codepage.
+    // "BŁĘKIT" with CP1250 bytes (Ł=0xA3, Ę=0xCA) - the map strings' real codepage.
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });
     await writeFile(
       join(dir, 'text', 'pol', 'strings.ini'),
@@ -166,7 +166,7 @@ describe('convertMapDatTree', () => {
   it('falls back to the encrypted strings.cif when no strings.ini exists (re-decoded to CP1250)', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });
-    // 0xB3/0xEA are ł/ę in CP1250 — the .cif seam decodes latin1, the stage re-decodes for display.
+    // 0xB3/0xEA are ł/ę in CP1250 - the .cif seam decodes latin1, the stage re-decodes for display.
     await writeFile(
       join(dir, 'text', 'pol', 'strings.cif'),
       buildStringCif([
@@ -198,7 +198,7 @@ describe('convertMapDatTree', () => {
 
   it('resolves the string ids from a readable misc.inc header before the encrypted map.cif', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
-    // misc.inc says 99/98 (the real corpus carries ~25 such headers); the map.cif disagrees — the
+    // misc.inc says 99/98 (the real corpus carries ~25 such headers); the map.cif disagrees - the
     // readable header must win (golden rule 4).
     await writeFile(
       join(dir, 'misc.inc'),
