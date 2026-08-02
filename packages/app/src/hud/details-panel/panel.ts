@@ -76,6 +76,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field, so it
    *  selects that settler (dropping the building), exactly like clicking the worker on the map. */
   readonly onSelectEntity?: (entityId: number) => void;
+  /** Re-centre the main view on this entity - invoked by the portrait box (which already shows it live)
+   *  and the building's Wycentruj button. */
+  readonly onCenterOnEntity: (entityId: number) => void;
   /** A cursor tooltip to name the hovered Magazyn stock row - injected (structural shape) like
    *  `backingScale`, so the hud layer never imports the view-layer element. Absent → no stock-row tooltip. */
   readonly tooltip?: {
@@ -194,6 +197,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const click = panelClickAt(view, x, y, toggleModifier);
     if (click === null) return true;
     switch (click.kind) {
+      case 'centerOnEntity':
+        opts.onCenterOnEntity(click.entityId);
+        break;
       case 'setGatherGood':
         opts.onSetGatherGood(click.entityId, click.goodType);
         break;

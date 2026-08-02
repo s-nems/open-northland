@@ -66,7 +66,7 @@ export const enGame = {
     demolish: 'Demolish',
     signpost: 'Signpost',
     demolishSignpost: 'Tear down this signpost',
-    center: 'Center',
+    center: 'Centre',
     help: 'Help',
     statistics: 'Statistics',
     systemMenu: 'Menu',

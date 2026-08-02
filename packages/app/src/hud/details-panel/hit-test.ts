@@ -73,6 +73,12 @@ export const hitEquipAction = (view: PanelView, x: number, y: number): EquipActi
   return view.layout.equipActionHits.find((hit) => contains(hit.rect, x, y));
 };
 
+/** The entity whose portrait box holds a canvas point, or null. */
+export const hitPortrait = (view: PanelView, x: number, y: number): number | null => {
+  if (view.kind !== 'settler' && view.kind !== 'building') return null;
+  return contains(view.layout.preview, x, y) ? view.model.entityId : null;
+};
+
 /** The good name under a canvas point in the stock grid, or null. Probes the same slot rects the rows
  *  draw into ({@link stockSlotRects}), then maps the slot index through the same visible-row split the
  *  draw applies, so a hovered slot names exactly the drawn good. */

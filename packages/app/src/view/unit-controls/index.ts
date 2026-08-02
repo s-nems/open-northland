@@ -5,7 +5,7 @@ import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js
 import { isPlainHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickDoorBadgeRow, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
-import { memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
+import { entityAnchor, memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
@@ -116,6 +116,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onUnequipSlot: (id, ref) =>
       opts.enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),
     onSelectEntity: (id) => selectFromPanel(id),
+    // The original centres the view from its own controls (`housewindow` 116/117, `humanwindow` 100).
+    // Approximation for a building: the portrait frames its drawn bounds while this centres its base,
+    // so a tall house sits above centre after the jump.
+    onCenterOnEntity: (id) => {
+      const at = entityAnchor(opts.snapshot(), id, opts.elevation);
+      if (at !== null) opts.centerOn(at.x, at.y);
+    },
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
   // The contextual action menu, anchored on the selected settler. Mounted before this controller's own

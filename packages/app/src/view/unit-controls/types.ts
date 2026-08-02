@@ -33,6 +33,9 @@ export interface UnitControlsOptions {
    *  choices); absent = identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: Command) => void;
+  /** Re-centre the main view on a world-px point at the current zoom - the camera controller's jump,
+   *  injected like the minimap's (the hud layer never reaches the camera itself). */
+  readonly centerOn: (worldX: number, worldY: number) => void;
   /** The renderer's culled, depth-sorted draw list for the last drawn frame (empty before the first) -
    *  what a click hit-tests against, so selection and attack targeting inherit the frame's viewport and
    *  fog culls instead of re-deriving them from the snapshot. */

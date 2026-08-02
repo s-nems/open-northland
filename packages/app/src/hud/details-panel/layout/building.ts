@@ -138,8 +138,8 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
  */
 const COMPACT_STOCK_MAX = 16;
 
-/** Which buttons the building's general section offers; upgrade, cancel-upgrade + demolish are wired.
- *  Both upgrade actions sit ABOVE demolish, matching the original's button order (housewindow
+/** Which buttons the building's general section offers; upgrade, cancel-upgrade, demolish + center are
+ *  wired. Both upgrade actions sit ABOVE demolish, matching the original's button order (housewindow
  *  110/112 before 114): Upgrade for an upgradable building (built, with a next level to rise into),
  *  Cancel-upgrade for a running upgrade site - never both at once. */
 function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
@@ -147,7 +147,7 @@ function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAc
     ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
     ...(model.cancelable ? [{ action: 'cancelUpgrade', enabled: true } as const] : []),
     { action: 'demolish', enabled: true },
-    { action: 'center', enabled: false },
+    { action: 'center', enabled: true },
     { action: 'workers', enabled: false },
     { action: 'help', enabled: false },
   ];

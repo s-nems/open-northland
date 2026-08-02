@@ -123,6 +123,31 @@ describe('details panel click intents', () => {
     });
   });
 
+  it('resolves a click on the portrait box into a re-centre on the entity it shows', () => {
+    const settler = viewOfKind(panelModelOf(gathererSettler), 'settler');
+    const sp = center(settler.layout.preview);
+    expect(panelClickAt(settler, sp.x, sp.y, NO_TOGGLE)).toEqual({
+      kind: 'centerOnEntity',
+      entityId: SETTLER_ID,
+    });
+
+    const building = viewOfKind(panelModelOf(buildingEntity(4, BUILDING_HEADQUARTERS)), 'building');
+    const bp = center(building.layout.preview);
+    expect(panelClickAt(building, bp.x, bp.y, NO_TOGGLE)).toEqual({
+      kind: 'centerOnEntity',
+      entityId: 4,
+    });
+
+    // The building's own Wycentruj button is the same intent, reached by its label instead of the box.
+    const button = building.layout.buttons.find((b) => b.action === 'center');
+    if (button === undefined || !button.enabled) throw new Error('expected a live center button');
+    const cp = center(button.rect);
+    expect(panelClickAt(building, cp.x, cp.y, NO_TOGGLE)).toEqual({
+      kind: 'centerOnEntity',
+      entityId: 4,
+    });
+  });
+
   it('resolves a building stock tab click into that tab', () => {
     const view = viewOfKind(panelModelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), 'building');
     const tab = view.layout.stockTabHits[2];
