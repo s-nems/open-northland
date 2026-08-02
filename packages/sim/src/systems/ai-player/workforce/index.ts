@@ -7,8 +7,8 @@ import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
+import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
 import { headquartersOf } from '../shared.js';
-import { nextSignpostTarget } from '../signpost-coverage.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
@@ -18,12 +18,14 @@ import {
 import { tuneCraftSelections } from './craft.js';
 import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
+import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 
 export { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } from './collectors/index.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
+export { OPENING_HUNT_UNTIL_BUILDING_ID } from './hunter.js';
 export { builderJobOf } from './pool.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
@@ -55,6 +57,7 @@ function runWorkforce(
   const taken: TakenFlagNodes = new Set();
   return [
     ...allocateCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken, builderJob),
+    ...allocateOpeningHunter(world, ctx, player, hq, force, builderJob),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob), // construction never starves
@@ -67,12 +70,16 @@ function runWorkforce(
   ];
 }
 
-/** The scout hire and retire: the scout exists exactly while signpost work remains - an idle scout turns back into a
- *  builder; the lattice calls one up again when a post is missing. Only an UNMARRIED man is hired
- *  (user rule - a scout is away on a mission and its wife would wait forever); a married
- *  scout already working is retired only through the normal idle path, never mid-post. A scout
- *  mid-action is left alone: `setJob` cancels the running atomic, so retiring one mid-meal would
- *  throw the meal away (see signpost-coverage.ts). */
+/** The scout hire and retire: the scout exists exactly while either of its duties has work, a missing
+ *  signpost or a catchable animal in range (`scout/index.ts`), and an idle scout turns back into a
+ *  builder. Only an UNMARRIED man is hired (user rule: a scout is away on a mission and its wife
+ *  would wait forever); a married scout already working is retired only through the normal idle path,
+ *  never mid-post. A scout mid-action is left alone: `setJob` cancels the running atomic, so retiring
+ *  one mid-meal would throw the meal away.
+ *
+ *  The hire is deliberately blind to the seat's `guideBuild` toggle, which gates only the module that
+ *  ORDERS him: this allocator is the one module allowed to claim a settler, so a seat that disables
+ *  GuideBuild keeps paying one man for duties nobody issues. */
 function allocateScout(
   world: World,
   ctx: SystemContext,
@@ -83,8 +90,13 @@ function allocateScout(
 ): Command[] {
   const commands: Command[] = [];
   const scoutJob = scoutJobType(ctx.content);
-  // The trade to keep one settler in, or null when the content declares no scout or no post is missing.
-  const keepScoutAs = scoutJob !== null && nextSignpostTarget(world, ctx, player) !== null ? scoutJob : null;
+  // The trade to keep one settler in, or null when the content declares no scout or neither duty has
+  // work. The round-up probes first even though it ranks second: measured on a settled map, a
+  // satisfied lattice costs ~970 us to answer null (it has to scan every ring to say so) against
+  // ~200 us for the herd scan, so the cheap probe short-circuits the expensive one here.
+  const hasScoutWork =
+    nextLivestockCatch(world, ctx, player) !== null || nextSignpostTarget(world, ctx, player) !== null;
+  const keepScoutAs = scoutJob !== null && hasScoutWork ? scoutJob : null;
   if (keepScoutAs !== null && scouts.length === 0) {
     const spare = force.take((e) => !isMarried(world, e));
     if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: keepScoutAs });

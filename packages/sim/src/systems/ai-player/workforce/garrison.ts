@@ -15,7 +15,7 @@ import { draftableTrade } from '../../assistant/index.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { baseSoldierJobType, isBarracks } from '../../readviews/index.js';
-import { assistantCounterCommand } from '../shared.js';
+import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
 /**
@@ -73,14 +73,14 @@ function hasBarracks(world: World, ctx: SystemContext, player: number): boolean 
   return false;
 }
 
-/** The seat's marriageable men beyond its marriageable women - the men the family plan will never
+/** The seat's marriageable men beyond its marriageable women, the men the family plan will never
  *  need as husbands. {@link mayMarry} decides both sides (it already rejects a recruit committed to
- *  a drill). A commutative sum, so it walks store order rather than paying for a canonical sort it
- *  cannot observe. */
+ *  a drill) but judges a settler alone, so the count must come from {@link ownedSettlers}: claimed
+ *  livestock is an owned `Settler` with no `Female` and reads as a marriageable bachelor, and each
+ *  head would license one more draft out of the men the brides are waiting for. */
 function bachelorSurplus(world: World, ctx: SystemContext, player: number): number {
   let surplus = 0;
-  for (const e of world.query(Settler, Owner)) {
-    if (ownerOf(world, e) !== player) continue;
+  for (const e of ownedSettlers(world, player)) {
     if (!mayMarry(world, ctx.content, e)) continue;
     surplus += world.has(e, Female) ? -1 : 1;
   }

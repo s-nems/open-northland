@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Building, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
-const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } = systems;
+const { Building, JobAssignment, Owner, Position, Settler, UnderConstruction, WorkFlag, isAiPlayer } =
+  components;
+const { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET, isHunterJob } = systems;
 
 /** The decoded map under test - a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -26,7 +27,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
   it('an AI-flagged seat opens its build order from the authored headquarters', {
     timeout: 60_000,
   }, async () => {
-    const { sim, ir } = await realMapWorld({ mapId: MAP_ID, aiSeats: [AI_SEAT] });
+    const { sim, ir, content } = await realMapWorld({ mapId: MAP_ID, aiSeats: [AI_SEAT] });
     // Resolve the headquarters typeId from the served IR by its stable id (the same 'headquarters'
     // join the sim keys on) rather than inlining the decoded number, so the assertion still checks
     // the HQ if the decoded typeId ever shifts.
@@ -45,6 +46,15 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
     expect(sites).toBe(1); // one site at a time (the concurrent-construction cap)
+    // The opening hunt: exactly one man employed on the headquarters' hunter slot, the real join
+    // behind it (a hunter trade, a hunter seat on the authored HQ) proven by the seat acting on it.
+    const hunters = [...sim.world.query(Settler, JobAssignment)].filter(
+      (e) =>
+        sim.world.tryGet(e, Owner)?.player === AI_SEAT &&
+        sim.world.get(e, JobAssignment).workplace === hq &&
+        isHunterJob(content, sim.world.get(e, Settler).jobType),
+    );
+    expect(hunters).toHaveLength(1);
     // The workforce allocator flagged collectors beside real resources: each owned flag-bound
     // gatherer is pinned to one collected good. How many of the three goods get a collector depends
     // on what the map actually holds, but a forest map guarantees at least the wood one, and no good

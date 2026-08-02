@@ -72,7 +72,13 @@ describe('setPlayerAi - the AI seat flag', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     // The standing state the modules publish, plus a class row only a human hand sets.
-    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'extraMen', value: 0, infinite: true });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: AI_SEAT,
+      counter: 'extraMen',
+      value: 0,
+      infinite: true,
+    });
     sim.enqueue({
       kind: 'setAssistantCounter',
       player: AI_SEAT,
@@ -80,7 +86,13 @@ describe('setPlayerAi - the AI seat flag', () => {
       value: 5,
       infinite: false,
     });
-    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'trainSword', value: 3, infinite: false });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: AI_SEAT,
+      counter: 'trainSword',
+      value: 3,
+      infinite: false,
+    });
     sim.step();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
@@ -93,7 +105,13 @@ describe('setPlayerAi - the AI seat flag', () => {
   it("withdraws a module's counters when its publishing gate flips off, keeping the rest", () => {
     const sim = fresh();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'extraWomen', value: 4, infinite: false });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: AI_SEAT,
+      counter: 'extraWomen',
+      value: 4,
+      infinite: false,
+    });
     sim.enqueue({
       kind: 'setAssistantCounter',
       player: AI_SEAT,
@@ -111,7 +129,13 @@ describe('setPlayerAi - the AI seat flag', () => {
 
   it("leaves a never-AI seat's counters alone on a redundant disable", () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setAssistantCounter', player: OTHER_SEAT, counter: 'trainSpear', value: 7, infinite: false });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: OTHER_SEAT,
+      counter: 'trainSpear',
+      value: 7,
+      infinite: false,
+    });
     sim.enqueue({ kind: 'setPlayerAi', player: OTHER_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantCounters(OTHER_SEAT).trainSpear.value).toBe(7);

@@ -13,6 +13,7 @@ export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
   DEFAULT_COLLECTOR_TARGET,
+  OPENING_HUNT_UNTIL_BUILDING_ID,
   STAFFING_BY_BUILDING_ID,
 } from './ai-player/workforce/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
@@ -55,6 +56,7 @@ export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
 // The content-derived job roles - the profession picker and the action ring offer exactly what the
 // matching commands accept, off the same roles.
 export {
+  hunterJobType,
   isCarrierJobRow,
   isFighterJob,
   isFighterJobRow,

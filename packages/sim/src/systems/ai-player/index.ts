@@ -4,14 +4,14 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { populationModule } from './population.js';
+import { scoutModule } from './scout/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from './shared.js';
-import { signpostCoverageModule } from './signpost-coverage.js';
 import { workforceModule } from './workforce/index.js';
 
 export * from './build-order/index.js';
 export * from './population.js';
+export * from './scout/index.js';
 export * from './shared.js';
-export * from './signpost-coverage.js';
 export * from './workforce/index.js';
 
 /**
@@ -33,13 +33,13 @@ export interface AiPlayerModule {
 
 /**
  * The strategic modules, in fixed run order: the workforce allocator first (it is the one module
- * that claims settlers, so no later module races it for a person), then building placement, signpost
- * coverage, and population planning. A per-seat `AiPlayer.modules` flag gates each.
+ * that claims settlers, so no later module races it for a person), then building placement, the
+ * scout's orders, and population planning. A per-seat `AiPlayer.modules` flag gates each.
  */
 export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
   workforceModule(DEFAULT_BUILD_ORDER),
   buildOrderModule(DEFAULT_BUILD_ORDER),
-  signpostCoverageModule,
+  scoutModule,
   populationModule,
 ];
 

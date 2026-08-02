@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { ContentSet } from '@open-northland/data';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../src/entries/map/world.js';
@@ -28,6 +29,8 @@ export interface RealMapWorldOptions {
 
 export interface RealMapWorld {
   readonly sim: Simulation;
+  /** The merged content the sim runs on - what a caller passes back into the sim's content read views. */
+  readonly content: ContentSet;
   /** The raw fetched-IR document, exactly what the browser flow hands these consumers - callers assert
    *  against real ids (building typeIds, good ids) through it rather than inlining decoded numbers. */
   readonly ir: ContentIr & AuthoredJoinRows;
@@ -64,5 +67,5 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     berryBushes: options.berryBushes === true,
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);
-  return { sim: world.sim, ir, mapCells: { width: map.width, height: map.height } };
+  return { sim: world.sim, content: merge.content, ir, mapCells: { width: map.width, height: map.height } };
 }
