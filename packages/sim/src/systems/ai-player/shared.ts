@@ -28,8 +28,9 @@ import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spati
 // AI_DECISION_INTERVAL_TICKS per seat, so plain canonical scans stay within the RTS budget).
 
 // The HQ content id lives with the building read views (a building content fact); re-exported here so
-// the AI barrel's consumers keep their import site. A seat with no built, owned headquarters gets no
-// strategic decisions (user rule: no HQ → the AI stays off).
+// the AI barrel's consumers keep their import site. A seat with no built, owned headquarters builds no
+// economy (user rule: no HQ → the AI stays off); the army is the one exception, gating on its barracks
+// instead, so a seat that loses its seat keeps fighting.
 export { HEADQUARTERS_BUILDING_ID };
 
 /**

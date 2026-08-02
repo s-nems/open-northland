@@ -64,14 +64,38 @@ export function aiContent(): ContentSet {
       { typeId: 21, id: 'brewer' },
       { typeId: 24, id: 'carrier' },
       { typeId: 27, id: 'scout', allowedAtomics: [43] },
-      // A fighter-band trade (31..41): the tower garrison the staffing plan must never fill.
+      // The fighter band (31..41): the weaponless base class the barracks drill enlists into, plus the
+      // two armed classes the `weapons` rows below bind. The bow class doubles as the tower garrison
+      // slot the staffing plan must never fill.
+      { typeId: 31, id: 'soldier_unarmed' },
+      { typeId: 32, id: 'soldier_spear_wooden' },
       { typeId: 40, id: 'soldier_bow_short' },
+    ],
+    // The fighter classes' weapons, keyed by (tribe, job) as in the original - including the base
+    // class's bare fist, which the real `weapons.ini` binds to job 31 too. The short bow carries a
+    // `munitionType`, the data-pinned ranged marker the army census splits on; the other two strike
+    // in reach.
+    weapons: [
+      { typeId: 2, id: 'viking_fist', tribeType: 1, jobType: 31, minRange: 1, maxRange: 1 },
+      { typeId: 5, id: 'viking_spear_wooden', tribeType: 1, jobType: 32, minRange: 1, maxRange: 2 },
+      {
+        typeId: 6,
+        id: 'viking_bow_short',
+        tribeType: 1,
+        jobType: 40,
+        munitionType: 1,
+        speed: 8,
+        minRange: 3,
+        maxRange: 17,
+      },
     ],
     buildings: [
       {
         typeId: 1,
         id: 'headquarters',
         kind: 'storage',
+        // A life pool, so a placed HQ carries Health and can be marched on (the army's objective).
+        hitpoints: 500,
         // A transport band plus the gatherer band - the collector reconciliation must pick the
         // harvest-capable slot (8), never the carrier one (24).
         workers: [
@@ -226,6 +250,8 @@ export function aiContent(): ContentSet {
         typeId: 13,
         id: 'stock_00',
         kind: 'storage',
+        // The only other building with a life pool: the fallback objective when no enemy HQ stands.
+        hitpoints: 200,
         workers: [
           { jobType: 24, count: 3 },
           { jobType: 8, count: 3 },
@@ -250,6 +276,8 @@ export function aiContent(): ContentSet {
         typeId: 15,
         id: 'tower_01',
         kind: 'tower',
+        // A life pool like the HQ's: the campaign's middle siege tier is a standing tower.
+        hitpoints: 300,
         workers: [
           { jobType: 40, count: 4 },
           { jobType: 24, count: 4 },
