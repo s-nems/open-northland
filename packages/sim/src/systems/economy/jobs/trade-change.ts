@@ -11,7 +11,6 @@ import {
   GatherSelection,
   HuntRest,
   Owner,
-  ownerOf,
   Position,
   SiteAssignment,
   SupplyRun,
@@ -119,5 +118,5 @@ function shedSlotGood(
   if (pos === undefined) return;
   const node = nodeOfPosition(pos.x, pos.y);
   const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice tile, so drops stack
-  placeUnitOnTile(world, at.x, at.y, worn.goodType, ownerOf(world, e));
+  placeUnitOnTile(world, at.x, at.y, worn.goodType);
 }
