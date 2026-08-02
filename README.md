@@ -10,8 +10,9 @@ Viking-era strategy game. It combines a deterministic TypeScript simulation, a P
 an offline asset pipeline.
 
 The repository does not include game files or decoded assets. To play with the original maps,
-graphics, and audio, provide your own copy of *Cultures - 8th Wonder of the World* and generate a
-local `content/` directory.
+graphics, and audio, provide your own copy of *Cultures - 8th Wonder of the World* (available on
+[Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
+[GOG](https://www.gog.com/en/game/cultures_34)) and generate a local `content/` directory.
 
 ![A settlement rendered by Open Northland using locally decoded game data](docs/images/settlement.webp)
 
@@ -27,7 +28,9 @@ but stable signed releases do not. Current actionable work lives in [`docs/ticke
 ## Requirements
 
 - Node.js `^20.19.0` or `>=22.12.0`
-- A legally obtained copy of *Cultures - 8th Wonder of the World* for playable content
+- A legally obtained copy of *Cultures - 8th Wonder of the World* for playable content. It is sold on
+  [Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
+  [GOG](https://www.gog.com/en/game/cultures_34).
 - The free CulturesNation mod; CnMod 1.3.1 is the current verified input
 
 ## Build and test
