@@ -77,6 +77,27 @@ export const plSurfaces = {
       7: 'Egipcjanie',
     } as Readonly<Record<number, string>>,
   },
+  mainMenu: {
+    eyebrow: 'Otwarta reimplementacja serii Cultures',
+    items: {
+      newGame: 'Nowa gra',
+      loadGame: 'Wczytaj grę',
+      multiplayer: 'Multiplayer',
+      settings: 'Ustawienia',
+      credits: 'Twórcy',
+      exit: 'Wyjście',
+    },
+    comingSoon: 'wkrótce',
+    back: 'Menu',
+    underConstruction: 'Ten ekran jest w budowie.',
+    screenTitles: {
+      newGame: 'Nowa gra',
+      lobby: 'Lobby',
+      load: 'Wczytaj grę',
+      settings: 'Ustawienia',
+      credits: 'O projekcie',
+    },
+  },
   loading: {
     graphics: 'Uruchamianie grafiki…',
     map: 'Wczytywanie mapy…',

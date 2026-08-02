@@ -77,6 +77,29 @@ export const enSurfaces = {
       7: 'Egyptians',
     } as Readonly<Record<number, string>>,
   },
+  // The redesigned menu flow (docs/design/main-menu); the `menu` block above leaves with the
+  // legacy menu once every screen has landed.
+  mainMenu: {
+    eyebrow: 'An open reimplementation of the Cultures series',
+    items: {
+      newGame: 'New game',
+      loadGame: 'Load game',
+      multiplayer: 'Multiplayer',
+      settings: 'Settings',
+      credits: 'Credits',
+      exit: 'Exit',
+    },
+    comingSoon: 'coming soon',
+    back: 'Menu',
+    underConstruction: 'This screen is under construction.',
+    screenTitles: {
+      newGame: 'New game',
+      lobby: 'Lobby',
+      load: 'Load game',
+      settings: 'Settings',
+      credits: 'About the project',
+    },
+  },
   // One label per `view/boot-progress.ts` BootPhase - the card's only text.
   loading: {
     graphics: 'Starting the graphics…',
