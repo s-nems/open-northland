@@ -39,7 +39,7 @@ const FARMER_WHEAT_XP_TRACK = {
   baseRepeatCounter: WHEAT_WORK_REPEATS,
 } as const;
 
-/** The complete validated hand-authored content set shared by scenes and the playable vertical slice. */
+/** The complete validated hand-authored content set shared by scenes and the playable demo world. */
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);

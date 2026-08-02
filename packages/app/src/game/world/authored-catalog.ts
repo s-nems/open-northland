@@ -1,5 +1,5 @@
-import { JOB_IDLE } from '../catalog/jobs.js';
-import type { SandboxContentExtras } from '../game/sandbox/index.js';
+import { JOB_IDLE } from '../../catalog/jobs.js';
+import type { SandboxContentExtras } from '../sandbox/index.js';
 import type { AuthoredJoinRows, AuthoredPlacement } from './authored-placements.js';
 
 /**

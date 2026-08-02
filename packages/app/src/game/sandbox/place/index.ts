@@ -1,5 +1,5 @@
 /**
- * The sandbox world-population helpers scenes and the vertical slice share. Buildings, settlers and
+ * The sandbox world-population helpers scenes and the demo world share. Buildings, settlers and
  * resource nodes all go through the one command seam at runtime (`placeBuilding` / `spawnSettler` /
  * `placeResource`) - the admin/debug palette and a future scenario editor spawn through them so a mid-run
  * placement stays replay-faithful. The `place*` helpers instead build a node directly (the sanctioned

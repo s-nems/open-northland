@@ -2,7 +2,7 @@ import type { TerrainMapFile } from '@open-northland/data';
 import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
 import { GRASS } from '../../src/catalog/buildings.js';
 
-/** The synthetic maps the slice tests run over - the one place their grids are described. */
+/** The synthetic maps the world-builder tests run over - the one place their grids are described. */
 
 /** A HALF-CELL grid (the sim's node resolution) with typeIds the synthetic strip never declares
  *  (5, 16, 22, …), cycling per node - folding those into the demo content is exactly what lets the sim's

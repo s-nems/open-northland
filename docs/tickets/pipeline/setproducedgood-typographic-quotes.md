@@ -10,7 +10,7 @@ not a decode artifact: a codepage fault would have hit all 104 uniformly). It is
 733 of the corpus's 819 picks resolve cleanly, and these 86 are the entire remainder.
 
 The decoder keeps names verbatim, the loader's name join finds no `„gold”` good, so those 86 collectors
-fall back to gather-everything (`packages/app/src/slice/authored-placements.ts`, counted in
+fall back to gather-everything (`packages/app/src/game/world/authored-placements.ts`, counted in
 `droppedGoods`). That is the current, deliberate behavior - this ticket only decides whether it is the
 FAITHFUL one.
 

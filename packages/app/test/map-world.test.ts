@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { buildMapWorld, type MapWorldOptions } from '../src/entries/map/world.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
-import { authoredMapFile } from './support/slice-maps.js';
+import { authoredMapFile } from './support/world-maps.js';
 
 /**
  * Which world the `?map=` entry lands on for a given decode, and the session rules it carries in.

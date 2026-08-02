@@ -2,7 +2,7 @@ import { components, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../src/game/rules.js';
-import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
+import { runAuthoredMap } from '../../src/game/world/index.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 const { Settler, WorkFlag } = components;
@@ -62,7 +62,7 @@ describe.runIf(hasRealIr())('authored decoded-map gatherers - the setproducedgoo
       return good.typeId;
     };
 
-    const sim = runAuthoredSlice(7, 1, grassMap(MAP_CELLS), entities, rows, { content: merge.content });
+    const sim = runAuthoredMap(7, 1, grassMap(MAP_CELLS), entities, rows, { content: merge.content });
     expect(sim).not.toBeNull();
     if (sim === null) return;
 

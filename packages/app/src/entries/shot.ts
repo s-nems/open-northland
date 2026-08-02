@@ -7,11 +7,11 @@ import {
   WorldRenderer,
 } from '@open-northland/render';
 import { halfCellMapFromCells } from '@open-northland/sim';
+import { loadTerrainMap } from '../content/map-loader.js';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
-import { loadTerrainMap } from '../slice/map-loader.js';
-import { runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import { runDemoWorld, terrainSceneFor } from '../game/world/index.js';
 import { cameraFor } from '../view/camera/index.js';
 import { floatParam, intParam } from '../view/params.js';
 import { hudLabels } from '../view/projections/index.js';
@@ -38,8 +38,8 @@ const CANVAS_W = 960;
 const CANVAS_H = 540;
 
 /**
- * Run the slice, draw a single deterministic frame to `canvas`, and flag readiness. The camera pans
- * the iso world into view (the slice's leftmost tiles project to negative screen-x, so we offset to
+ * Run the demo world, draw a single deterministic frame to `canvas`, and flag readiness. The camera
+ * pans the iso world into view (its leftmost tiles project to negative screen-x, so we offset to
  * roughly centre it). Returns once the frame is on the GPU and the ready flag is set.
  */
 export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
@@ -54,9 +54,9 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
-  const sim = runSlice(seed, ticks, loaded !== null ? halfCellMapFromCells(loaded) : undefined);
+  const sim = runDemoWorld(seed, ticks, loaded !== null ? halfCellMapFromCells(loaded) : undefined);
   const snap = sim.snapshot();
-  const terrainGrid = sliceTerrain(loaded ?? undefined);
+  const terrainGrid = terrainSceneFor(loaded ?? undefined);
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   // `?atlas=real` binds the real decoded human-body atlas (settlers draw actual decoded pixels - the

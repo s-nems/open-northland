@@ -2,8 +2,8 @@
 
 **Area:** app, render · **Priority:** P2
 
-Authored placements collapse to `{typeId, tribe, x, y}` (`packages/app/src/slice/
-authored-placements.ts`) and every typeId draws its canonical bob
+Authored placements collapse to `{typeId, tribe, x, y}`
+(`packages/app/src/game/world/authored-placements.ts`) and every typeId draws its canonical bob
 (`packages/app/src/content/building-gfx/families.ts`
 `CANONICAL_EDIT_NAME = {1:'viking headquarters'}` → bob 34, crane roof). But the bridge map
 authors `"viking headquarters house"` = bob 44 (longhouse) - so imported bases draw the wrong
@@ -16,7 +16,7 @@ building bodies. No entityId→BuildingBobRef override channel exists.
 ## Scope
 
 - Carry the `buildingBobs` row (bmd/palette/bobId) alongside each `AuthoredPlacement`.
-- After `runAuthoredSlice`'s placement tick, build an `entityId→BuildingBobRef` override map
+- After `runAuthoredMap`'s placement tick, build an `entityId→BuildingBobRef` override map
   (match sim building entities to placements by cell+typeId); thread it through the
   SpriteSheet-binding channel; the sprite pool consults it before the per-type binding.
 - Only override with refs whose `BUILDING_FAMILIES` family is loaded (count + report the rest).

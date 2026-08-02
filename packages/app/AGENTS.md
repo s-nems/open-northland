@@ -64,6 +64,7 @@ Group code by user-facing concern:
 - `view/runtime/`: shared playable runtime and frame loop;
 - `content/`: generated-content loaders and pure bindings;
 - `catalog/` and `game/sandbox/`: fallback content and rules;
+- `game/world/`: the deterministic worlds a playable entry builds over decoded or fallback content;
 - `hud/`: interface models, layout, drawing, and controllers;
 - `scenes/`: deterministic acceptance setups;
 - `diag/`: logging, crash reports, replay diagnostics, and performance instrumentation.

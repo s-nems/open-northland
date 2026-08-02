@@ -4,8 +4,8 @@ import { components, type TerrainMap } from '@open-northland/sim';
 /**
  * The pure middle of the authored-entity placement import: resolve a decoded map's `entities` layer
  * (names + half-cells, verbatim from `map.cif` `StaticObjects`) into sim placements over narrow
- * structural views of the served IR. No fetch, no sim construction - headlessly unit-testable
- * (`test/vertical-slice.test.ts`); `runAuthoredSlice` consumes the result.
+ * structural views of the served IR. No fetch, no sim construction - headlessly unit-testable;
+ * {@link import('./decoded.js').runAuthoredMap} consumes the result.
  */
 
 /**
