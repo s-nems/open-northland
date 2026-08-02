@@ -4,9 +4,7 @@ import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
-import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import { clientToCanvas } from '../geometry.js';
-import { isPlainHotkey } from '../hotkeys.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
@@ -15,13 +13,8 @@ import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
-import {
-  buildToolPanelLayout,
-  hitTestToolPanel,
-  pointOverToolPanel,
-  TOOL_PANEL_STRIP,
-  type ToolButtonId,
-} from './layout.js';
+import { createToolPanelInput, type HeldMode } from './input.js';
+import { buildToolPanelLayout, pointOverToolPanel, TOOL_PANEL_STRIP, type ToolButtonId } from './layout.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
 import { buildOutlinedButtonSpecs } from './strip-outline.js';
@@ -42,8 +35,8 @@ import { createToolWindows } from './windows.js';
  * shared HUD default, not the decoded `.fnt` bitmap face.
  *
  * The package splits by concern: the pure geometry / speed-state / menu models (headlessly unit-tested),
- * the pop-up window layer (`windows.ts`), and the held placement / good-drop modes, each over the shared
- * {@link PanelContext}. This module mounts the strip, owns the speed button, and routes input into them.
+ * the pop-up window layer (`windows.ts`), the held placement / good-drop modes, and the pointer and
+ * keyboard routing (`input.ts`), each over the shared {@link PanelContext}. This module assembles them.
  */
 
 export interface ToolPanelOptions {
@@ -148,9 +141,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const bannerContainer = new Container(); // placement banner
   root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
 
-  const hoverG = new Graphics();
-  hoverContainer.addChild(hoverG);
-
   // --- The strip + buttons (real sprites, or a flat-Graphics fallback) ------------------------------
   // The real art path rasterizes the strip+buttons into an off-screen texture at an integer oversample and
   // draws it linear-downscaled to the fractional `uiscale` (crisp - no pixeloza; see `strip-texture.ts`).
@@ -208,6 +198,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     enqueue,
     screenToTile: opts.screenToTile,
   });
+  /** The modes that claim the canvas until the player commits or cancels them. */
+  const held: readonly HeldMode[] = [placement, goodsDrop];
+
   const windows = createToolWindows({
     ctx,
     container: windowContainer,
@@ -236,8 +229,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const surfaces: ToolButtonSurfaces = {
     windows: windows.byId,
     cancelHeld: () => {
-      placement.cancel();
-      goodsDrop.cancel();
+      for (const mode of held) mode.cancel();
     },
     cycleSpeed: () => speedButton.cycle(),
     openSystemMenu: () => opts.onSystemMenu?.(),
@@ -249,89 +241,24 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
+  const input = createToolPanelInput({
+    canvas,
+    container: hoverContainer,
+    layout,
+    toCanvas,
+    windows,
+    held,
+    activateButton,
+    togglePause: () => speedButton.togglePause(),
+    ...(opts.deferToOverlay !== undefined ? { deferToOverlay: opts.deferToOverlay } : {}),
+  });
+
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
     if (pointOverToolPanel(layout, x, y)) return true;
     if (windows.claims(x, y)) return true;
-    // Placement / good-drop claim the whole canvas until placed/cancelled.
-    return placement.isActive() || goodsDrop.isActive();
+    return held.some((mode) => mode.isActive());
   };
-
-  const onMouseDown = (e: MouseEvent): void => {
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-
-    // Right button cancels an active placement / good-drop; otherwise it's a world order (left to the
-    // unit controls).
-    if (e.button === 2) {
-      if (placement.isActive() || goodsDrop.isActive()) {
-        e.preventDefault();
-        // Stop the same event reaching unit-controls' mousedown (it re-checks claimPointer after this
-        // handler runs - cancel clears the claim, so without this the right-click would also issue a
-        // world move order). We register first (mounted before unit-controls), so this wins.
-        e.stopImmediatePropagation();
-        placement.cancel();
-        goodsDrop.cancel();
-        return;
-      }
-      // macOS delivers Ctrl+left-click as button 2 (the OS right-click convention): with Ctrl down
-      // and nothing to cancel, fall through as the primary press so the Ctrl coarse step works.
-      if (!e.ctrlKey) return;
-    } else if (e.button !== 0) return;
-    // A higher overlay covers this point: whatever sits under it is invisible, so the panel must not
-    // consume the press - the overlay's own handler acts on it instead (see the option's doc).
-    if (opts.deferToOverlay?.(e.clientX, e.clientY) === true) return;
-
-    // Track whether the panel consumes this press; if so, stop it from also reaching world picking.
-    // Priority: strip button > open pop-up > active placement / good drop.
-    let consumed = false;
-    const btn = hitTestToolPanel(layout, x, y);
-    if (btn !== null) {
-      activateButton(btn);
-      consumed = true;
-    } else {
-      consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
-    }
-    if (!consumed) consumed = placement.handleClick(e.clientX, e.clientY);
-    if (!consumed) consumed = goodsDrop.handleClick(e.clientX, e.clientY);
-    if (consumed) e.stopImmediatePropagation();
-  };
-
-  let hover: ToolButtonId | null = null;
-  const onMouseMove = (e: MouseEvent): void => {
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    windows.handleHover(x, y);
-    const next = hitTestToolPanel(layout, x, y);
-    if (next === hover) return;
-    hover = next;
-    hoverG.clear();
-    if (hover !== null) {
-      const rect = layout.buttons.find((b) => b.id === hover)?.placed;
-      if (rect !== undefined)
-        hoverG.rect(rect.x, rect.y, rect.w, rect.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
-    }
-  };
-
-  // A wheel over an open pop-up belongs to that window, and the browser's default must not page the
-  // document behind the canvas. The camera's pointer guard already skips zoom over these same windows.
-  const onWheel = (e: WheelEvent): void => {
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    if (windows.handleWheel(x, y, e.deltaY)) e.preventDefault();
-  };
-
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === 'Escape') {
-      if (placement.isActive()) placement.cancel();
-      if (goodsDrop.isActive()) goodsDrop.cancel();
-    }
-    // `P` toggles pause (remembering the running speed for the resume). Non-repeat matters beyond the
-    // shared guard here: each toggle re-rasterizes the strip, so a held key would flicker it.
-    if (isPlainHotkey(e, 'KeyP')) speedButton.togglePause();
-  };
-
-  canvas.addEventListener('mousedown', onMouseDown);
-  canvas.addEventListener('mousemove', onMouseMove);
-  canvas.addEventListener('wheel', onWheel, { passive: false });
-  window.addEventListener('keydown', onKeyDown);
 
   speedButton.init(); // initialise the speed button graphic only - the loop keeps the entry's seeded speed
 
@@ -348,14 +275,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       // The strip is a static baked texture (a scene-graph sprite that batches + follows resizes for
       // free), so no per-frame re-placement. The pop-ups and the held banners re-place themselves.
       windows.refresh(hudFor);
-      placement.placeBanner();
-      goodsDrop.placeBanner();
+      for (const mode of held) mode.placeBanner();
     },
     dispose(): void {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      canvas.removeEventListener('mousemove', onMouseMove);
-      canvas.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKeyDown);
+      input.dispose();
       root.destroy({ children: true });
       supersampled?.dispose();
     },
