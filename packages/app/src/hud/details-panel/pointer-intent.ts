@@ -3,6 +3,7 @@ import {
   hitCraftChoice,
   hitEquipAction,
   hitGatherChoice,
+  hitPortrait,
   hitStockTab,
   nextCraftGoods,
 } from './hit-test.js';
@@ -12,9 +13,11 @@ import type { PanelView } from './selection-view.js';
 // What a canvas point means to the details panel: the order the probes in `hit-test.ts` are consulted
 // and the intent each hit carries.
 
-/** One resolved left-click intent. `stockTab` is panel-local (it re-bakes); the rest are player orders. */
+/** One resolved left-click intent. `stockTab` is panel-local (it re-bakes) and `centerOnEntity` moves the
+ *  view; the rest are player orders. */
 export type PanelClick =
   | { readonly kind: 'setGatherGood'; readonly entityId: number; readonly goodType: number | null }
+  | { readonly kind: 'centerOnEntity'; readonly entityId: number }
   | { readonly kind: 'setCraftGoods'; readonly entityId: number; readonly goods: readonly number[] }
   | { readonly kind: 'equipSlot'; readonly entityId: number; readonly ref: EquipSlotRef }
   | { readonly kind: 'unequipSlot'; readonly entityId: number; readonly ref: EquipSlotRef }
@@ -61,6 +64,7 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
       const entityId = view.model.entityId;
       if (action === 'upgrade') return { kind: 'upgrade', entityId };
       if (action === 'cancelUpgrade') return { kind: 'cancelUpgrade', entityId };
+      if (action === 'center') return { kind: 'centerOnEntity', entityId };
       return action === 'demolish' ? { kind: 'demolish', entityId } : null;
     }
     case 'settler': {
@@ -87,6 +91,8 @@ export const panelClickAt = (
   y: number,
   toggleModifier: boolean,
 ): PanelClick | null => {
+  const portrait = hitPortrait(view, x, y);
+  if (portrait !== null) return { kind: 'centerOnEntity', entityId: portrait };
   if (view.kind === 'settler') {
     const field = settlerFieldClick(view, x, y, toggleModifier);
     if (field !== null) return field;

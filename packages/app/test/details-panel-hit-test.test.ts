@@ -7,6 +7,7 @@ import {
   hitCraftChoice,
   hitEquipAction,
   hitGatherChoice,
+  hitPortrait,
   hitStockTab,
   nextCraftGoods,
   tooltipTextAt,
@@ -41,6 +42,23 @@ describe('details panel hit-testing', () => {
     expect(hitGatherChoice(view, p.x, p.y)).toBe(choice.goodType);
     expect(hitCraftChoice(view, p.x, p.y)).toBeUndefined();
     expect(tooltipTextAt(view, p.x, p.y, SCALE, ALL_STOCK_TAB)).toBe(choice.label);
+  });
+
+  it('reports the portrait box entity, and carries no hover text over it', () => {
+    const settler = viewOfKind(modelOf(gathererSettler), 'settler');
+    const sp = center(settler.layout.preview);
+
+    expect(hitPortrait(settler, sp.x, sp.y)).toBe(gathererSettler.id);
+    // The box is a live world cutout - a chip over it would cover the settler it exists to show.
+    expect(tooltipTextAt(settler, sp.x, sp.y, SCALE, ALL_STOCK_TAB)).toBeNull();
+    // The name line sits beside the box, not in it - a hover there must not read as the portrait.
+    const beside = center(settler.layout.name);
+    expect(hitPortrait(settler, beside.x, beside.y)).toBeNull();
+
+    const building = viewOfKind(modelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), 'building');
+    const bp = center(building.layout.preview);
+    expect(hitPortrait(building, bp.x, bp.y)).toBe(1);
+    expect(tooltipTextAt(building, bp.x, bp.y, SCALE, ALL_STOCK_TAB)).toBeNull();
   });
 
   it('routes a building button and names its stock tab', () => {

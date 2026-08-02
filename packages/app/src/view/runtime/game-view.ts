@@ -234,6 +234,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // imports `view/` - passed as options per the hud contract).
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToScreenPx(canvas, app.renderer.resolution, clientX, clientY);
+  // Bring a world-px spot to the middle of the view at the current zoom.
+  const jumpToWorld = (wx: number, wy: number): void => {
+    const zoom = cameraCtl.camera().scale ?? 1;
+    cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
+  };
   // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
   // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
   // camera on the pointed world spot at the current zoom. Mounted after the tool panel (draws over its
@@ -249,10 +254,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     uiscale,
     camera: () => cameraCtl.camera(),
-    onJump: (wx, wy) => {
-      const zoom = cameraCtl.camera().scale ?? 1;
-      cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
-    },
+    onJump: jumpToWorld,
     toScreenPx: clientToScreen,
   });
 
@@ -295,6 +297,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: issueCommand,
+    centerOn: jumpToWorld,
     drawnItems: () => renderer.drawnItems(),
     doorBadges: () => pickableDoorBadges?.() ?? [],
     equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
