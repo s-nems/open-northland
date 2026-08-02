@@ -8,7 +8,7 @@ export interface MoverSnapshot {
   hy: Fixed;
 }
 
-interface SeparationScratch {
+export interface SeparationScratch {
   readonly movers: Entity[];
   readonly posts: Entity[];
   readonly firmMovers: Set<Entity>;
