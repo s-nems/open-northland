@@ -1,12 +1,9 @@
 import {
   Building,
   GroundDrop,
-  ownerOf,
-  ownersCompatible,
   Position,
   Stockpile,
   setStockAmount,
-  stampOwner,
   Vehicle,
 } from '../../../../../components/index.js';
 import type { Fixed } from '../../../../../core/fixed.js';
@@ -82,21 +79,10 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
  * {@link dropOrStackGood} - the difference is the overflow policy: this reports the placed count so the caller
  * can carry the remainder to the next tile, where `dropOrStackGood` (a hand-placed pile) silently drops it.
  *
- * `owner` is the dropping settler's player: a FRESH heap is stamped with it ({@link stampOwner}), so a
- * gatherer's yard heap / a porter's shed load stays on its own side and a rival cannot fetch it. An
- * EXISTING heap merges only when its side is compatible ({@link ownersCompatible}) - a rival's same-good
- * heap counts as a full tile (returns 0, the load walks on), so a drop never feeds the other side. A
- * compatible merge leaves the heap's owner untouched, so an owned settler topping up a NEUTRAL heap
- * keeps it neutral (fetchable by either side).
+ * Goods resting on the ground belong to nobody, so a heap is never owner-stamped and any settler may
+ * stack onto any heap of its good.
  */
-export function stackOntoTile(
-  world: World,
-  x: Fixed,
-  y: Fixed,
-  good: number,
-  want: number,
-  owner: number | undefined,
-): number {
+export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, want: number): number {
   if (want <= 0) return 0;
   const at = nodeOfPosition(x, y);
   for (const e of stockpilesAtNode(world, at.hx, at.hy)) {
@@ -104,7 +90,6 @@ export function stackOntoTile(
     const stock = world.get(e, Stockpile);
     const pos = world.get(e, Position);
     if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
-    if (!ownersCompatible(owner, ownerOf(world, e))) return 0; // a rival's heap - never merge across sides
     // Skip a tile occupied by a different good; a heap of our good (even one drained to 0 by a porter and not
     // yet reaped) is stackable - testing the stocked good, not `size`, is what keeps a re-fill from livelocking
     // against a stale zero entry.
@@ -121,32 +106,24 @@ export function stackOntoTile(
   const pile = world.create();
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[good, placed]]) });
-  stampOwner(world, pile, owner);
   return placed;
 }
 
 /**
  * Set ONE unit of `good` down on the tile at exactly `(x, y)` without ever losing it: stack onto the
- * tile's own heap when it takes the unit ({@link stackOntoTile}), else start a second owned heap beside
- * it - the tile's heap refuses when it is full, holds another good, or belongs to a rival. Two heaps on
- * one tile is a supported state (they render as one pile and each is pickable), so this trades a
- * cosmetic overlap for goods conservation. One unit only, because that is what the single caller sheds:
- * a good leaving an equipment slot with no carrier to hold it (see
+ * tile's own heap when it takes the unit ({@link stackOntoTile}), else start a second heap beside it -
+ * the tile's heap refuses when it is full or holds another good. Two heaps on one tile is a supported
+ * state (they render as one pile and each is pickable), so this trades a cosmetic overlap for goods
+ * conservation. One unit only, because that is what the single caller sheds: a good leaving an
+ * equipment slot with no carrier to hold it (see
  * {@link import('../../../../orders/work/employment.js')}). A multi-unit set-down would have to spill the
  * remainder across rings the way {@link dropCarriedLoad} does.
  */
-export function placeUnitOnTile(
-  world: World,
-  x: Fixed,
-  y: Fixed,
-  good: number,
-  owner: number | undefined,
-): void {
-  if (stackOntoTile(world, x, y, good, 1, owner) > 0) return;
+export function placeUnitOnTile(world: World, x: Fixed, y: Fixed, good: number): void {
+  if (stackOntoTile(world, x, y, good, 1) > 0) return;
   const pile = world.create();
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[good, 1]]) });
-  stampOwner(world, pile, owner);
 }
 
 /**

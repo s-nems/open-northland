@@ -2,7 +2,6 @@ import {
   Building,
   Crop,
   GroundDrop,
-  ownerOf,
   Position,
   Resource,
   Stockpile,
@@ -22,12 +21,9 @@ import { SinkAvailability } from './stores/sinks.js';
 
 export interface YardTargets {
   readonly blocked: BlockOverlay;
-  /** Per yard-heap node: its good, fill, and owning player - `owner` mirrors the heap's {@link Owner}
-   *  so the yard steering can refuse a rival's heap exactly where `stackOntoTile` would refuse the merge. */
-  readonly occupied: ReadonlyMap<
-    NodeId,
-    { readonly good: number; readonly fill: number; readonly owner: number | undefined }
-  >;
+  /** Per yard-heap node: the good it holds and how full it is - what the yard steering needs to tell a
+   *  tile that still takes a unit from one `stackOntoTile` would refuse. */
+  readonly occupied: ReadonlyMap<NodeId, { readonly good: number; readonly fill: number }>;
 }
 
 /** Canonically ordered target categories shared by every settler planned during one tick. */
@@ -77,7 +73,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   }
 
   const stockpiles = canonicalById(world.query(Stockpile, Position));
-  const yardOccupied = new Map<NodeId, { good: number; fill: number; owner: number | undefined }>();
+  const yardOccupied = new Map<NodeId, { good: number; fill: number }>();
   for (const entity of stockpiles) {
     if (!isYardHeap(world, entity)) continue;
     const stock = world.get(entity, Stockpile);
@@ -87,7 +83,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     yardOccupied.set(terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)), {
       good,
       fill: stock.amounts.get(good) ?? 0,
-      owner: ownerOf(world, entity),
     });
   }
   const buildings = canonicalById(world.query(Building, Position));

@@ -1,13 +1,4 @@
-import {
-  Building,
-  GroundDrop,
-  HarvestedBy,
-  ownerOf,
-  Position,
-  Stockpile,
-  stampOwner,
-  Vehicle,
-} from '../../components/index.js';
+import { Building, GroundDrop, HarvestedBy, Position, Stockpile, Vehicle } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
@@ -78,7 +69,6 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
     if (trunk !== undefined) world.add(moved, GroundDrop, { goodType: trunk.goodType });
     const harvested = world.tryGet(pile, HarvestedBy);
     if (harvested !== undefined) world.add(moved, HarvestedBy, { by: harvested.by });
-    stampOwner(world, moved, ownerOf(world, pile)); // the displaced pile stays on its own side
     world.destroy(pile);
   }
 }

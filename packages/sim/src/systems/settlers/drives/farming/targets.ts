@@ -1,4 +1,4 @@
-import { Position, Stockpile, sameSideAs } from '../../../../components/index.js';
+import { Position, Stockpile } from '../../../../components/index.js';
 import { coordHash } from '../../../../core/coord-hash.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
@@ -37,31 +37,23 @@ export function nearestFarmSheaf(
   // Ranked from the farmer (`here`); the field-radius gate measures from the farm `anchor` instead, so a
   // farmer never chases a sheaf across the map (a separate origin the shared loop leaves inside `resolve`).
   return (
-    nearestByCell(
-      terrain,
-      targets.groundDrops,
-      here,
-      (e) => {
-        if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) return null; // not this farm's crop
-        // Cheap radius prefilter on the drop's own anchor node before the interaction-cell resolve - that
-        // resolve walks the resource store per drop, so paying it for every same-good drop world-wide per
-        // replanning farmer was an O(drops × resources) tick cost. The slack covers the most an interaction
-        // cell can sit from its anchor (one footprint cell), so no drop the exact check below would accept
-        // is ever pre-dropped.
-        const p = world.get(e, Position);
-        const n = nodeOfPosition(p.x, p.y);
-        const own = terrain.nodeAtClamped(n.hx, n.hy);
-        if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) return null;
-        const cell = interactionCell(world, ctx, terrain, e, here);
-        if (claims.nodes.has(cell)) return null; // a colleague is already carrying this one off
-        if (unreachableWorkCell(gates, here, cell)) return null; // a sheaf cut under a fresh wall - unreachable
-        if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) return null; // beyond the farm's fields
-        return { cell, payload: null };
-      },
-      // A sheaf carries its farm's Owner (`reapField`), so where two players' fields overlap a farmer reaps
-      // only its own side's sheaves - its own farm's are the same player and still pass.
-      sameSideAs(world, plan.owner),
-    )?.entity ?? null
+    nearestByCell(terrain, targets.groundDrops, here, (e) => {
+      if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) return null; // not this farm's crop
+      // Cheap radius prefilter on the drop's own anchor node before the interaction-cell resolve - that
+      // resolve walks the resource store per drop, so paying it for every same-good drop world-wide per
+      // replanning farmer was an O(drops × resources) tick cost. The slack covers the most an interaction
+      // cell can sit from its anchor (one footprint cell), so no drop the exact check below would accept
+      // is ever pre-dropped.
+      const p = world.get(e, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      const own = terrain.nodeAtClamped(n.hx, n.hy);
+      if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) return null;
+      const cell = interactionCell(world, ctx, terrain, e, here);
+      if (claims.nodes.has(cell)) return null; // a colleague is already carrying this one off
+      if (unreachableWorkCell(gates, here, cell)) return null; // a sheaf cut under a fresh wall - unreachable
+      if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) return null; // beyond the farm's fields
+      return { cell, payload: null };
+    })?.entity ?? null
   );
 }
 

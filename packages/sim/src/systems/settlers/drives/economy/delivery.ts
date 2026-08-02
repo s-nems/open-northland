@@ -132,7 +132,6 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
             store,
             load.goodType,
             here,
-            plan.owner,
             sameYard?.goal,
             plan.limit ?? undefined,
           );

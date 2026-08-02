@@ -1,7 +1,6 @@
 import {
   Building,
   GroundDrop,
-  ownersCompatible,
   Position,
   Stockpile,
   sameSideAs,
@@ -129,9 +128,6 @@ export function nearestFreeYardNode(
   flag: Entity,
   good: number,
   here: NodeId,
-  /** The gatherer's owning player - a rival's heap counts as occupied ({@link ownersCompatible}),
-   *  mirroring `stackOntoTile`'s merge refusal so the steering never picks a tile the drop rejects. */
-  owner: number | undefined,
   after?: NodeId,
   /** The gatherer's signpost confinement - a yard tile outside its allowed area is never a drop spot
    *  (the flag itself was placed inside the area, so in practice this trims only the yard's far fringe). */
@@ -141,9 +137,7 @@ export function nearestFreeYardNode(
   const flagNode = terrain.nodeAtClamped(nodeHxOfPosition(fp.x, fp.y), nodeHyOfPosition(fp.y));
   const hasRoom = (node: NodeId): boolean => {
     const o = yard.occupied.get(node);
-    return (
-      o === undefined || (o.good === good && o.fill < MAX_GROUND_STACK && ownersCompatible(owner, o.owner))
-    );
+    return o === undefined || (o.good === good && o.fill < MAX_GROUND_STACK);
   };
   const component = terrain.componentOf(here);
   const usable = (node: NodeId): boolean =>
