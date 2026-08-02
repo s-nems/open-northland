@@ -11,22 +11,25 @@ It compounds: `claimable`/`hidden`/`aiAllowed` are derived at serve time in the 
 consumer reading the sidecar directly gets different answers than one reading `/maps-index`, and
 any schema evolution must be mirrored by hand.
 
-Related: [maps-index-multiplayer-degrade](../app/maps-index-multiplayer-degrade.md) fixes the
-*behavior* of this same path (malformed rosters must warn and drop, not invent defaults). This
-ticket fixes its *structure*; done together, `safeParse` failure is the natural warn-and-drop
-trigger and completing both closes both.
+The duplicate parser also gives malformed data plausible defaults. A present but invalid
+`multiplayer` node becomes `NO_MULTIPLAYER`, and malformed `slotOptions` rows are skipped while the
+rest of the roster is still served. In the current CnMod 1.3.1 corpus, the authored table makes 45 AI
+slots across 18 maps claimable by a human and denies AI for 47 Human/Closed-only rows across 15 maps.
+Losing that table makes the first group unseatable and gives the second a bogus Idle/AI toggle.
 
 ## Scope
 
 - Add `@open-northland/data` as a dependency and validate sidecars with the zod schema
-  (`safeParse`). On validation failure follow the degrade ticket's outcome: warn and drop the
-  roster; an absent table stays silent.
-- Move the `claimable`/`hidden`/`aiAllowed` derivation to one shared producer (pipeline emit or a
-  helper in `data`), so the served index and the raw sidecar agree by construction.
+  (`safeParse`). A present invalid script or multiplayer table must warn and drop the roster; an
+  absent table stays silent.
+- Add one pure data-package helper that derives `claimable`/`hidden`/`aiAllowed` from a validated
+  `MapScript`; use it from the resolver and direct sidecar consumers instead of reimplementing the
+  lobby rules at the HTTP boundary.
 - Non-goal: changing the served `/maps-index` response shape.
 
 ## Verify
 
 `npm test`, `npm run check`, `npm run build`; `npm run test:content` where local content exists.
-The existing maps-index tests must pass unchanged, plus one case proving an invalid sidecar still
-degrades instead of throwing.
+The maps-index tests cover malformed metadata, a malformed script, a malformed `multiplayer` node,
+and malformed `slotOptions`: invalid roster data warns and drops instead of throwing or inventing
+defaults. The real corpus must trip no new warning.

@@ -10,11 +10,11 @@ the 55 `[jobtype]` sections): `canBeTrainedFlag` 55, `canHaveWorkHouseFlag` 41,
 
 Two consumers already approximate what these state outright:
 
-- `packages/sim/src/core/content-index/jobs.ts` `jobRoleOfId` reads the soldier/hero/scout/hunter
-  roles off the extracted id slug because "jobtypes.ini declares no role field". `ignoresHomeHouseFlag
-  1` is the closest readable signal, covering exactly {25 trader, 27 scout, 31..47}. It is only
-  partial: it does not split soldier from hero (the fight-XP routing needs that) and does not isolate
-  the hunter, so it cannot replace the slug reading on its own.
+- The semantic job-capability bindings tracked in
+  [job-semantic-capabilities](../app/job-semantic-capabilities.md) currently
+  read soldier/hero/scout/hunter roles from id slugs. `ignoresHomeHouseFlag 1` is the closest readable
+  signal, covering exactly {25 trader, 27 scout, 31..47}, but it neither splits soldier from hero nor
+  isolates the hunter. Extract it as source data without treating it as a replacement role field.
 - `packages/sim/src/systems/settlers/targets/workplaces.ts` `boundWorkplaceTarget` cites
   `mustHaveFinishedWorkHouseFlag` in prose and hardcodes the gate it describes.
 
@@ -24,8 +24,8 @@ Two consumers already approximate what these state outright:
   owned copy first (they are case-sensitive and not all 55 sections carry every key).
 - Replace `boundWorkplaceTarget`'s hardcoded finished-workhouse gate with the extracted flag, and
   record whether the real values change its behaviour.
-- Keep `jobRoleOfId` as the named slug approximation: `ignoresHomeHouseFlag` does not distinguish the
-  soldier, hero, or hunter roles it needs.
+- Keep the extracted behavioral flags separate from the authored semantic capabilities: none of these
+  flags alone distinguishes the soldier, hero, or hunter roles.
 
 ## Verify
 
