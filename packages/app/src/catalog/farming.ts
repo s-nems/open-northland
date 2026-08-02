@@ -17,7 +17,7 @@ import type { GoodFarming } from '@open-northland/data';
  * {@link FARM_MAX_FIELDS} sets the plot (hence its independence from the crew). The plot size and the
  * crews of 2-4 land; the FIRST rung does not — a lone farmer measures ~9 (per-farmer 9.0 / 12.5 / 12.3 /
  * 11.5), because it cannot re-water 24 fields inside a stage, so the ladder bends at the bottom instead of
- * running straight. Closing that is docs/tickets/sim/lone-farmer-shortfall.md.
+ * running straight.
  */
 
 /** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`

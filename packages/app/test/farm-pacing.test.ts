@@ -142,8 +142,7 @@ describe('farm pacing against the original', { timeout: PACING_RUN_TIMEOUT_MS },
     // A full crew never collapses to a lone farmer's rate — the plot is not a growth-capped timer that
     // extra hands queue behind. The band is one-sided on purpose: a LONE farmer currently runs ~25% below
     // the per-farmer rate of crews 2-4 (it cannot re-water 24 fields inside a stage), so the ladder is
-    // not the straight line the original measures. Calibrating that out is
-    // docs/tickets/sim/lone-farmer-shortfall.md.
+    // not the straight line the original measures.
     expect(rateOf(4) / rateOf(1)).toBeGreaterThan(0.8);
   });
 
