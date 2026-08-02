@@ -1,45 +1,28 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  Building,
-  DeliveryFlag,
-  Position,
-  Resource,
-  ResourceFootprint,
-  Signpost,
-} from '../../../../components/index.js';
+import { Building, DeliveryFlag, Position, ResourceFootprint } from '../../../../components/index.js';
 import type { Component, Entity, World } from '../../../../ecs/world.js';
 import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
 import {
-  type BlockerChannel,
-  type BlockerVisit,
-  BUILDING_ZONE,
-  buildingBlockerCells,
-  EXCLUSION,
-  eachBlockerCell,
-  MARKER,
-  markerBlockerCells,
-  OBSTACLE,
-  RESOURCE_ANCHOR,
-  resourceBlockerCells,
-  signpostBlockerCells,
-} from '../blockers.js';
+  allBlockedCells,
+  type BlockedCells,
+  markerCells,
+  RESOURCE_SOURCE,
+  STATIC_SOURCES,
+  type StaticBlockerSource,
+} from './blocker-cells.js';
+import { workFlagMoveCount } from './flag-moves.js';
 
 // The incrementally-maintained work-flag blocked set - the refcounted per-world cache behind
 // ../work-flag's placement queries, with its journal replay, rebuild, and coherence verifier.
 
-/** One blocker's blocked nodes ({@link BLOCKS_WORK_FLAG}, in bounds; duplicates kept so add and removal
- *  replay symmetrically). Captured at admit time - the entity may be destroyed by removal. */
-type BlockedCells = readonly NodeId[];
-
 /**
  * The per-world incremental blocked-set state. The refcounted `counts`/`blocked` pair is maintained
  * against the blocker stores' membership journals, so a burst that plants N flags/signposts costs
- * N × O(own footprint) instead of N × O(all blockers) - the rebuild-on-bump memo this replaces made
- * the AI's opening signpost wave quadratic (profiled 0.6–2.4 s single ticks). The memo feeds command
+ * N × O(own footprint) instead of the N × O(all blockers) a rebuild-on-bump memo pays. It feeds command
  * gates and sim decisions (`canPlaceWorkFlag`, the auto-flag plant), so the registered `verifyCaches`
- * verifier proves the held set byte-identical to a full {@link buildBlocks} re-derive.
+ * verifier proves the held set byte-identical to a full {@link allBlockedCells} re-derive.
  */
 interface IncrementalBlocks {
   readonly content: ContentSet;
@@ -59,60 +42,19 @@ interface IncrementalBlocks {
   /** Node → standing contribution count; `blocked` holds exactly the keys with a positive count. */
   readonly counts: Map<NodeId, number>;
   readonly blocked: Set<NodeId>;
-  readonly resourceCells: Map<Entity, BlockedCells>;
-  readonly buildingCells: Map<Entity, BlockedCells>;
-  readonly signpostCells: Map<Entity, BlockedCells>;
+  readonly records: Map<Component<unknown>, Map<Entity, BlockedCells>>;
   readonly flagCells: Map<Entity, BlockedCells>;
 }
 const blocksMemo = new WeakMap<World, IncrementalBlocks>();
 
-/** One journal-replayed blocker store: its component, member-record map, and per-entity capturer. */
-interface StaticBlockerSource {
-  readonly component: Component<unknown>;
-  readonly members: (state: IncrementalBlocks) => Map<Entity, BlockedCells>;
-  readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => NodeId[];
+function recordsOf(state: IncrementalBlocks, source: StaticBlockerSource): Map<Entity, BlockedCells> {
+  let held = state.records.get(source.component);
+  if (held === undefined) {
+    held = new Map();
+    state.records.set(source.component, held);
+  }
+  return held;
 }
-
-/** Which blocker channels block a work flag: every channel but the margin zones, which stay open ground
- *  for a flag. Exhaustive over {@link BlockerChannel}, so a channel added later must state its own
- *  answer here instead of inheriting one. */
-const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
-  [OBSTACLE]: true,
-  [RESOURCE_ANCHOR]: true,
-  [MARKER]: true,
-  [EXCLUSION]: false,
-  [BUILDING_ZONE]: false,
-};
-
-/** The entity's blocked nodes under `run`'s visitor - the shared channel/bounds filter of every capturer. */
-function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void): NodeId[] {
-  const cells: NodeId[] = [];
-  run((x, y, channel) => {
-    if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) cells.push(terrain.nodeAt(x, y));
-  });
-  return cells;
-}
-
-const RESOURCE_SOURCE: StaticBlockerSource = {
-  component: Resource,
-  members: (s) => s.resourceCells,
-  capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
-};
-
-const STATIC_SOURCES: readonly StaticBlockerSource[] = [
-  RESOURCE_SOURCE,
-  {
-    component: Building,
-    members: (s) => s.buildingCells,
-    capture: (world, content, terrain, e) =>
-      captureCells(terrain, (v) => buildingBlockerCells(world, content, e, v)),
-  },
-  {
-    component: Signpost,
-    members: (s) => s.signpostCells,
-    capture: (world, _content, terrain, e) => captureCells(terrain, (v) => signpostBlockerCells(world, e, v)),
-  },
-];
 
 function addCells(state: IncrementalBlocks, cells: BlockedCells): void {
   for (const node of cells) {
@@ -137,7 +79,7 @@ function removeCells(state: IncrementalBlocks, cells: BlockedCells): void {
 /** Replay one journal entry: drop the held record, then re-admit from live state. Idempotent, so a
  *  same-entity op sequence (add + destroy, remove + re-add) converges on the final membership. */
 function resyncEntity(world: World, state: IncrementalBlocks, source: StaticBlockerSource, e: Entity): void {
-  const map = source.members(state);
+  const map = recordsOf(state, source);
   const held = map.get(e);
   if (held !== undefined) {
     removeCells(state, held);
@@ -156,7 +98,7 @@ function refreshMarkerLayer(world: World, state: IncrementalBlocks): void {
   for (const cells of state.flagCells.values()) removeCells(state, cells);
   state.flagCells.clear();
   for (const e of world.query(DeliveryFlag, Position)) {
-    const cells = captureCells(state.terrain, (v) => markerBlockerCells(world, e, v));
+    const cells = markerCells(world, state.terrain, e);
     state.flagCells.set(e, cells);
     addCells(state, cells);
   }
@@ -176,12 +118,10 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
     footprintGen: world.componentGeneration(ResourceFootprint),
     buildingValueGen: world.componentValueGeneration(Building),
     flagGen: world.componentGeneration(DeliveryFlag),
-    flagMoves: flagMoves.get(world) ?? 0,
+    flagMoves: workFlagMoveCount(world),
     counts: new Map(),
     blocked: new Set(),
-    resourceCells: new Map(),
-    buildingCells: new Map(),
-    signpostCells: new Map(),
+    records: new Map(),
     flagCells: new Map(),
   };
   for (const source of STATIC_SOURCES) {
@@ -215,7 +155,7 @@ function catchUp(world: World, state: IncrementalBlocks): boolean {
     state.gens.set(source.component, gen);
   }
   const flagGen = world.componentGeneration(DeliveryFlag);
-  const moves = flagMoves.get(world) ?? 0;
+  const moves = workFlagMoveCount(world);
   if (flagGen !== state.flagGen || moves !== state.flagMoves) {
     refreshMarkerLayer(world, state);
     state.flagGen = flagGen;
@@ -236,13 +176,11 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
   return fresh;
 }
 
-/** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
- *  markers' cells - the {@link eachBlockerCell} channels {@link BLOCKS_WORK_FLAG} admits, since a
- *  resource/building margin remains valid open ground for a flag.
- *  Backed by the incremental {@link IncrementalBlocks} state, so reads share one refcounted set that
- *  changes cost O(own footprint), and the returned view reads that live state rather than a copy of it:
- *  read it fresh within a decision, never hold it across sim mutations. The `ignoreFlag` variant (a
- *  flag re-placed over its own cell) withholds that flag's contributions via the refcounts. */
+/** The nodes a work flag may NOT occupy - the {@link allBlockedCells} rule, served off the incremental
+ *  state so reads share one refcounted set that changes cost O(own footprint). The returned view reads
+ *  that live state rather than a copy of it: read it fresh within a decision, never hold it across sim
+ *  mutations. The `ignoreFlag` variant (a flag re-placed over its own cell) withholds that flag's
+ *  contributions via the refcounts. */
 export function workFlagPlacementBlocks(
   world: World,
   content: ContentSet,
@@ -278,7 +216,7 @@ function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGra
   const state = blocksMemo.get(world);
   if (state === undefined || state.content !== content || state.terrain !== terrain) return [];
   if (!isFresh(world, state)) return []; // a pending catch-up - the next read applies it
-  const fresh = buildBlocks(world, content, terrain, undefined);
+  const fresh = allBlockedCells(world, content, terrain);
   if (sameCells(state.blocked, fresh)) return [];
   return [
     `workFlagPlacementBlocks holds ${state.blocked.size} nodes but re-derived ${fresh.size} - an incremental delta missed a blocker change`,
@@ -291,40 +229,7 @@ function isFresh(world: World, state: IncrementalBlocks): boolean {
     world.componentValueGeneration(Building) === state.buildingValueGen &&
     world.componentGeneration(ResourceFootprint) === state.footprintGen &&
     world.componentGeneration(DeliveryFlag) === state.flagGen &&
-    (flagMoves.get(world) ?? 0) === state.flagMoves &&
+    workFlagMoveCount(world) === state.flagMoves &&
     STATIC_SOURCES.every((s) => world.componentGeneration(s.component) === (state.gens.get(s.component) ?? 0))
   );
-}
-
-function buildBlocks(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  ignoreFlag: Entity | undefined,
-): ReadonlySet<NodeId> {
-  const blocked = new Set<NodeId>();
-  eachBlockerCell(
-    world,
-    content,
-    (x, y, channel) => {
-      if (BLOCKS_WORK_FLAG[channel] && terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
-    },
-    { ignoreFlag },
-  );
-  return blocked;
-}
-
-/** Per-world count of work-flag RELOCATIONS. `componentGeneration` sees only add/remove - a relocate
- *  mutates the flag's `Position` in place, and a flag is the one blocker that moves - so the version
- *  seam counts moves explicitly. Bumped by the single relocate seam (`relocateWorkFlag`). */
-const flagMoves = new WeakMap<World, number>();
-
-/** Record one work-flag relocation, invalidating every `workFlagBlockerVersion`-keyed memo. */
-export function noteWorkFlagMove(world: World): void {
-  flagMoves.set(world, (flagMoves.get(world) ?? 0) + 1);
-}
-
-/** The current work-flag relocation count - a `workFlagBlockerVersion` input the generation cannot see. */
-export function workFlagMoveCount(world: World): number {
-  return flagMoves.get(world) ?? 0;
 }

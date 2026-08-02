@@ -4,7 +4,8 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { closer, forEachRingOffset } from '../../geometry.js';
 import { placementBlockerVersion } from '../blockers.js';
-import { workFlagMoveCount, workFlagPlacementBlocks } from './incremental-blocks.js';
+import { workFlagMoveCount } from './flag-moves.js';
+import { workFlagPlacementBlocks } from './incremental-blocks.js';
 
 // The work-flag placement queries - the command-gate and spawn-time picks over the incremental
 // blocked set (./incremental-blocks.ts).
