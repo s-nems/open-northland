@@ -6,7 +6,6 @@ import {
   aiModuleEnables,
   Building,
   CurrentAtomic,
-  Female,
   JobAssignment,
   Marriage,
   Owner,
@@ -726,7 +725,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(commands.filter((c) => c.kind === 'trainSoldier')).toEqual([]);
   });
 
-  it('sends one true-surplus man to the barracks per decision', () => {
+  it('sizes the trainSoldiers counter to the free civilians left after the ladder', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({
@@ -737,24 +736,33 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, 40, BUILDER); // well past every post, reserve and collector tier
+    spawnMen(sim, 40); // civilists, well past every post, reserve and collector tier
     makeAiSeat(sim, SEAT);
     sim.step();
 
+    // The seat hand-picks no recruit (user rule 2026-08-02): the rung publishes the leftover
+    // free-civilian count as the standing `trainSoldiers` order and the assistant drafts from it.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
-    const recruits = commands.filter((c) => c.kind === 'trainSoldier');
-    expect(recruits.length).toBe(1); // the labour force steps down one man at a time
-    expect(recruits[0]?.house).toBe(entityOfBuilding(sim, BARRACKS_TYPE));
-    // The recruit is nobody else's this decision - the allocator hands out each man once.
-    const claimed = recruits[0]?.entity;
+    expect(commands.filter((c) => c.kind === 'trainSoldier')).toEqual([]);
+    const claimed = new Set<Entity>();
     for (const c of commands) {
-      if (c.kind === 'setJob' || c.kind === 'assignWorker' || c.kind === 'setWorkFlag') {
-        expect(c.entity).not.toBe(claimed);
-      }
+      if (c.kind === 'setJob' || c.kind === 'assignWorker') claimed.add(c.entity);
     }
+    const counters = commands.flatMap((c) => (c.kind === 'setAssistantCounter' ? [c] : []));
+    expect(counters).toEqual([
+      {
+        kind: 'setAssistantCounter',
+        player: SEAT,
+        counter: 'trainSoldiers',
+        value: 40 - claimed.size,
+        infinite: false,
+      },
+    ]);
+    // Well past the old six-man garrison - no fixed size caps the army.
+    expect(40 - claimed.size).toBeGreaterThan(6);
   });
 
-  it('keeps drafting decision after decision - no fixed size caps the army', () => {
+  it('the assistant executes the standing order: civilians march to drill unpicked', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({
@@ -765,21 +773,18 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(sim, 40, BUILDER);
+    spawnMen(sim, 40);
     makeAiSeat(sim, SEAT);
-    sim.step();
-
-    // Each recruit keeps its TrainingOrder and leaves the pool; the next spare bachelor follows.
-    // Well past the old six-man garrison the draft is still running.
-    const hired = new Set<Entity>();
-    for (let decision = 0; decision < 10; decision++) {
-      for (const c of [...collectModule.run(sim.world, ctxOf(sim), SEAT)]) {
-        if (c.kind === 'trainSoldier') hired.add(c.entity);
-        sim.enqueue(c);
-      }
-      sim.step();
-    }
-    expect(hired.size).toBe(10);
+    // The live loop: the seat publishes the counter, the assistant's beats pace the drafts - no
+    // `trainSoldier` command from the AI anywhere in the log.
+    sim.run(80);
+    expect([...sim.world.query(TrainingOrder)].length).toBeGreaterThanOrEqual(2);
+    expect(sim.commands.log.filter((c) => c.command.kind === 'trainSoldier')).toEqual([]);
+    // Stable under in-flight drafts: each recruit left the free pool AND counts as booked, so the
+    // wanted value is unchanged and the rung re-issues nothing.
+    expect(
+      [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCounter'),
+    ).toEqual([]);
 
     const off = aiSim();
     placeHq(off);
@@ -791,16 +796,16 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    spawnMen(off, 40, BUILDER);
+    spawnMen(off, 40);
     makeAiSeat(off, SEAT, { military: false });
     off.step();
     expect(
-      [...collectModule.run(off.world, ctxOf(off), SEAT)].filter((c) => c.kind === 'trainSoldier'),
+      [...collectModule.run(off.world, ctxOf(off), SEAT)].filter((c) => c.kind === 'setAssistantCounter'),
     ).toEqual([]);
   });
 
-  it('drafts only the bachelor surplus beyond the waiting brides', () => {
-    const draft = (men: number, women: number): Command[] => {
+  it('caps the standing order at the bachelor surplus beyond the waiting brides', () => {
+    const counterOf = (men: number, women: number): number => {
       const sim = aiSim();
       placeHq(sim);
       sim.enqueue({
@@ -811,7 +816,7 @@ describe('workforce module - the barracks and craft selections', () => {
         tribe: VIKING,
         owner: SEAT,
       });
-      spawnMen(sim, men, BUILDER);
+      spawnMen(sim, men);
       for (let i = 0; i < women; i++) {
         sim.enqueue({
           kind: 'spawnSettler',
@@ -824,81 +829,16 @@ describe('workforce module - the barracks and craft selections', () => {
       }
       makeAiSeat(sim, SEAT);
       sim.step();
-      return [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+      const counters = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].flatMap((c) =>
+        c.kind === 'setAssistantCounter' ? [c] : [],
+      );
+      return counters[0]?.value ?? 0; // no command = the counter stays at its default zero
     };
     // A soldier neither marries nor fathers children, and the sons of housed couples are the army's
-    // only future recruits - with a bride waiting for every bachelor, nobody drills.
-    expect(draft(20, 20).filter((c) => c.kind === 'trainSoldier')).toEqual([]);
-    // One bachelor beyond the brides: exactly he is spare for the army.
-    expect(draft(21, 20).filter((c) => c.kind === 'trainSoldier')).toHaveLength(1);
-  });
-
-  it('never drafts a married man - his family grows the recruits to come', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    sim.enqueue({
-      kind: 'placeBuilding',
-      buildingType: BARRACKS_TYPE,
-      x: 40,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    spawnMen(sim, 20, BUILDER);
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 4, y: 28, tribe: VIKING, owner: SEAT });
-    makeAiSeat(sim, SEAT);
-    sim.step();
-
-    // The scout, the eight-builder reserve, and the HQ's three carriers claim the twelve lowest-id
-    // men; marrying the thirteenth puts a husband at the head of the spare pool.
-    const men = [...sim.world.query(Settler)]
-      .filter((e) => !sim.world.has(e, Female) && sim.world.get(e, Settler).jobType === BUILDER)
-      .sort((a, b) => a - b);
-    const husband = men[12];
-    const wife = [...sim.world.query(Settler)].find((e) => sim.world.has(e, Female));
-    if (husband === undefined || wife === undefined) throw new Error('setup: crew missing');
-    sim.world.add(husband, Marriage, { spouse: wife, child: null });
-    sim.world.add(wife, Marriage, { spouse: husband, child: null });
-
-    const recruits = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
-      (c) => c.kind === 'trainSoldier',
-    );
-    // The draft steps over the husband and takes the bachelor behind him.
-    expect(recruits.map((c) => c.entity)).toEqual([men[13]]);
-  });
-
-  it('sends a man whose drill was interrupted back in', () => {
-    // Writing an interrupted recruit off would burn one man out of the pool per interruption; he
-    // simply stays eligible, and the next full term enlists him.
-    const live = aiSim();
-    placeHq(live);
-    live.enqueue({
-      kind: 'placeBuilding',
-      buildingType: BARRACKS_TYPE,
-      x: 40,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    spawnMen(live, 40, BUILDER);
-    makeAiSeat(live, SEAT);
-    live.step();
-    const first = [...collectModule.run(live.world, ctxOf(live), SEAT)].find(
-      (c) => c.kind === 'trainSoldier',
-    );
-    if (first === undefined) throw new Error('no recruit hired');
-    const recruit = first.entity;
-    live.enqueue(first);
-    live.step();
-    // The player walks him off mid-drill: the order goes, and he drops back into the hire pool.
-    live.enqueue({ kind: 'moveUnit', entity: recruit, x: 2, y: 2 });
-    for (let i = 0; i < 8; i++) live.step();
-    expect(live.world.tryGet(recruit, TrainingOrder)).toBeUndefined();
-    expect(
-      [...collectModule.run(live.world, ctxOf(live), SEAT)].some(
-        (c) => c.kind === 'trainSoldier' && c.entity === recruit,
-      ),
-    ).toBe(true);
+    // only future recruits - with a bride waiting for every bachelor, the order stays empty.
+    expect(counterOf(20, 20)).toBe(0);
+    // One bachelor beyond the brides: the settlement can spare exactly one man.
+    expect(counterOf(21, 20)).toBe(1);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {
@@ -1602,7 +1542,7 @@ describe('population module (homeExpansion)', () => {
     expect(weddings.map((c) => c.entity)).toEqual(womenOf(sim));
   });
 
-  it('houses married women and orders daughters up to the family slots, then sons', () => {
+  it('houses married women and drives the birth counters: daughters to the slots, sons infinite', () => {
     const sim = populationSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 36, y: 16, tribe: VIKING, owner: SEAT });
     for (const woman of womenOf(sim)) sim.enqueue({ kind: 'marry', entity: woman });
@@ -1610,20 +1550,27 @@ describe('population module (homeExpansion)', () => {
     for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
     expect(womenOf(sim).every((w) => sim.world.has(w, Marriage))).toBe(true);
 
+    // 2 women against 2 family slots: no daughter deficit, so the module raises only the standing
+    // infinite son counter - the assistant keeps every family expecting a boy from here on.
     const houseCommands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
     const home = entityOfBuilding(sim, HOME_TYPE);
     expect(houseCommands.filter((c) => c.kind === 'assignHouse').map((c) => c.house)).toEqual([home, home]);
+    expect(houseCommands.filter((c) => c.kind === 'makeChild')).toEqual([]);
+    expect(houseCommands.filter((c) => c.kind === 'setAssistantCounter')).toEqual([
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: true },
+    ]);
     for (const c of houseCommands) sim.enqueue(c);
     sim.step();
 
-    // 2 women against 2 family slots: the count is met, so both standing orders are sons. A second
-    // home (2 more slots) flips the next orders to daughters.
-    const orders = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
-    expect(orders.filter((c) => c.kind === 'makeChild').map((c) => c.child)).toEqual(['male', 'male']);
+    // Both counters at their wanted state, everyone married and housed: the decision is a no-op.
+    expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+
+    // A second home (2 more slots) opens a two-daughter deficit; the son counter stands untouched.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 24, y: 16, tribe: VIKING, owner: SEAT });
     sim.step();
-    const withRoom = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
-    expect(withRoom.filter((c) => c.kind === 'makeChild').map((c) => c.child)).toEqual(['female', 'female']);
+    expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([
+      { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
+    ]);
   });
 });
 

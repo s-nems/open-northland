@@ -33,7 +33,8 @@ export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
  * spare pool in the priority order the returned array spells out: the essentials first, then the
  * tiers the surplus pays for - collector top-ups and the surplus staffing tier rank behind every
  * target post (user rule: extra collectors and the third farmer are of little use early) - and the
- * garrison last of all. No second module ever races this one for a person. A transient conflict
+ * garrison sizing last of all (it counts the leftovers into the `trainSoldiers` assistant counter
+ * instead of claiming a man). No second module ever races this one for a person. A transient conflict
  * with the live world self-heals on the next decision because every target is recomputed from
  * state, never remembered.
  */

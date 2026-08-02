@@ -1,35 +1,39 @@
-import { aiModuleRuns, CurrentAtomic, Female, Owner, ownerOf, Settler } from '../../../components/index.js';
+import {
+  ASSISTANT_COUNTER_MAX,
+  AssistantRecruit,
+  aiModuleRuns,
+  Female,
+  Owner,
+  ownerOf,
+  Settler,
+} from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { mayMarry } from '../../family/eligibility.js';
-import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
-import { drillDoorOpen } from '../../settlers/drives/training.js';
-import { interactionCell } from '../../settlers/targets/index.js';
-import { navigationLimitFor } from '../../signposts/index.js';
-import { ownedBuildings } from '../shared.js';
+import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
+import { baseSoldierJobType, isBarracks } from '../../readviews/index.js';
+import { assistantCounterCommand, ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
 /**
- * The garrison hire: send a true surplus man to the barracks, where the drill enlists him
- * (`settlers/drives/training.ts`) - the seat's only route to a soldier.
+ * The garrison sizing: the seat trains through the settlement assistant (user rule 2026-08-02) -
+ * this rung keeps the `trainSoldiers` counter at the number of men the settlement can spare, and the
+ * dispatcher (`systems/assistant/`) drafts, walks and drills them. The more free civilians, the
+ * larger the standing order; the AI hand-picks no recruit.
  *
  * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound
- * is the breeding engine that grows the next recruits: a fighter neither marries nor fathers children
- * (`isOnMission`), and the conversion is one-way, so the hire drafts only a BACHELOR beyond the
- * seat's waiting brides ({@link bachelorSurplus}). Married men and the last matchable bachelors stay
- * civilians, keeping every family line producing the sons the garrison drafts later.
+ * is the breeding engine that grows the next recruits: a fighter neither marries nor fathers
+ * children, and the conversion is one-way, so the target is capped by the bachelor surplus beyond
+ * the seat's waiting brides ({@link bachelorSurplus}) - in aggregate, every family line keeps a
+ * husband. Named approximation: the dispatcher picks free men in canonical order, not bachelors
+ * first, so WHICH man drills can differ from the old hand-pick; the cap bounds how many go.
  *
- * Runs last in the workforce ladder, so a recruit is a man no collector post, no building slot, no builder
- * reserve and no flag wanted. One man per decision, so the labour force steps down gradually instead of
- * losing a whole crew's worth on the tick the surplus first appears. The seat picks its lowest-id built
- * barracks - a canonical pick, not the nearest: the drill's cost is the walk, and re-picking per recruit
- * would send one batch to two houses.
- *
- * The seat's `military` HAI toggle gates it, even though it runs inside the workforce allocator: the
- * allocator is the one module allowed to claim a settler, so the army is hired here rather than in a run
- * slot of its own.
+ * Runs last in the workforce ladder: the target counts only the draft-shaped men (civilist or
+ * trade-less - the assistant's own free-man rule) left unclaimed by every post, reserve and flag,
+ * plus the recruits already booked in flight (a counter's value counts everything still
+ * unproduced). Outflow pacing is the assistant's trickle brake, no longer one man per decision.
+ * The seat's `military` HAI toggle gates the rung.
  */
 export function trainGarrison(
   world: World,
@@ -38,18 +42,22 @@ export function trainGarrison(
   force: SpareForce,
 ): Command[] {
   if (!aiModuleRuns(world, player, 'military')) return [];
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return []; // mapless sim: no door to walk to
-  if (baseSoldierJobType(ctx.content) === null) return []; // content with no soldier class to enlist into
-  const house = garrisonHouse(world, ctx, player);
-  if (house === null) return [];
-  if (bachelorSurplus(world, ctx, player) <= 0) return []; // every bachelor has a bride to meet
-  const door = interactionCell(world, ctx, terrain, house);
-  const recruit = force.take(
-    (e) => mayMarry(world, ctx.content, e) && isDrillCandidate(world, ctx, terrain, e, door),
-  );
-  // No eligible surplus this decision - the rest waits for grown sons.
-  return recruit === null ? [] : [{ kind: 'trainSoldier', entity: recruit, house }];
+  const target = garrisonTarget(world, ctx, player, force);
+  const command = assistantCounterCommand(world, player, 'trainSoldiers', target, false);
+  return command === null ? [] : [command];
+}
+
+/** The wanted `trainSoldiers` value: spare free civilians capped by the bachelor surplus, plus the
+ *  in-flight bookings; zero when the content has no soldier class or the seat no barracks. */
+function garrisonTarget(world: World, ctx: SystemContext, player: number, force: SpareForce): number {
+  if (baseSoldierJobType(ctx.content) === null) return 0; // no soldier class to enlist into
+  if (!ownedBuildings(world, player).some((e) => isBarracks(world, ctx, e))) return 0;
+  const surplus = Math.max(0, bachelorSurplus(world, ctx, player));
+  const free = force.remaining().filter((e) => {
+    const job = world.get(e, Settler).jobType;
+    return job === CIVILIST_JOB || job === null;
+  }).length;
+  return Math.min(ASSISTANT_COUNTER_MAX, Math.min(free, surplus) + bookedRecruits(world, player));
 }
 
 /** The seat's marriageable men beyond its marriageable women - the men the family plan will never
@@ -66,30 +74,13 @@ function bachelorSurplus(world: World, ctx: SystemContext, player: number): numb
   return surplus;
 }
 
-/** The seat's lowest-id standing barracks, or null when it has none yet. */
-function garrisonHouse(world: World, ctx: SystemContext, player: number): Entity | null {
-  for (const e of ownedBuildings(world, player)) {
-    if (isBarracks(world, ctx, e)) return e;
+/** The seat's in-flight plain-drill bookings - recruits the assistant already dispatched for
+ *  `trainSoldiers` but has not enlisted yet (enlistment pays the counter and drops the mark). */
+function bookedRecruits(world: World, player: number): number {
+  let booked = 0;
+  for (const e of world.query(AssistantRecruit)) {
+    if (ownerOf(world, e) !== player) continue;
+    if (world.get(e, AssistantRecruit).intent === 'trainSoldiers') booked++;
   }
-  return null;
-}
-
-/**
- * Whether a spare man may be sent to drill. Two exclusions, both about a hire that would repeat forever:
- * a settler mid-action would have that action stomped by the order (the same hazard the scout hire
- * avoids), and a settler the barracks door is shut to would be handed the errand only for the drill rung
- * to abandon it next tick. A man whose drill was interrupted is simply eligible again - the next full
- * term enlists him.
- */
-function isDrillCandidate(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  e: Entity,
-  door: NodeId,
-): boolean {
-  if (world.has(e, CurrentAtomic)) return false;
-  const s = world.tryGet(e, Settler);
-  if (s === undefined || isFighterJob(ctx.content, s.jobType)) return false;
-  return drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e));
+  return booked;
 }

@@ -346,6 +346,23 @@ describe('the training queue', () => {
     expect(sim.world.get(second, Settler).jobType).toBe(CIVILIST);
   });
 
+  it('re-dispatches a recruit walked off mid-drill instead of draining the queue', () => {
+    const sim = trainSim();
+    barracksAt(sim, 6, 3);
+    const man = settlerAt(sim, CIVILIST, 3, 3);
+    setCounter(sim, 'trainSoldiers', 1);
+    runUntil(sim, () => sim.world.has(man, TrainingOrder), BEAT_TICKS, 'dispatched');
+
+    // The player walks him off: the drill order dies, the booking goes stale, the counter is unpaid.
+    sim.enqueue({ kind: 'moveUnit', entity: man, x: 5, y: 3 });
+    runUntil(sim, () => !sim.world.has(man, TrainingOrder), BEAT_TICKS, 'interrupted');
+    expect(sim.assistantCounters(PLAYER).trainSoldiers.value).toBe(1);
+
+    // The sweep clears the stale booking, and the standing counter simply drafts him again.
+    runUntil(sim, () => sim.world.has(man, TrainingOrder), 6 * BEAT_TICKS, 're-dispatched');
+    expect(sim.world.get(man, AssistantRecruit)).toEqual({ intent: 'trainSoldiers', armed: false });
+  });
+
   it('an infinite counter keeps queueing every free man and never drains', () => {
     const sim = trainSim();
     barracksAt(sim, 6, 3);

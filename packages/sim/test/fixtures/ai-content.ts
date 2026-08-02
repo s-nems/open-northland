@@ -288,6 +288,10 @@ export function aiContent(): ContentSet {
         typeId: 1,
         id: 'viking',
         atomicBindings: [{ jobType: 6, atomicId: 89, animation: 'viking_civilist_exercise' }],
+        // Only a civilization carries a `jobEnables` tech graph - the data signature `isAnimalTribe`
+        // reads (the assistant's free-man draft relies on it). The pair is inert: nothing auto-hires
+        // the woman sex-slug job, so no placement/production/hiring gate arms in these tests.
+        jobEnables: [{ jobType: 6, kind: 'job', targetId: 5 }],
         jobRequirements: [
           { requirement: 'need', target: 'good', targetId: 5, amount: 10, experienceTypes: [4, 5] },
         ],

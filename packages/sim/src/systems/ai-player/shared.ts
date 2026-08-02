@@ -1,5 +1,16 @@
 import type { BuildingType, ContentSet, GoodType } from '@open-northland/data';
-import { Building, Owner, ownerOf, Position, Resource, Settler } from '../../components/index.js';
+import {
+  type AssistantCounterKind,
+  AssistantCounters,
+  assistantCountersEntity,
+  Building,
+  Owner,
+  ownerOf,
+  Position,
+  Resource,
+  Settler,
+} from '../../components/index.js';
+import type { Command } from '../../core/commands/index.js';
 import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -143,6 +154,25 @@ export function anyLiveResource(world: World, goodType: number, near: HalfCellNo
     if (isLiveResource(world, e, goodType)) return true;
   }
   return false;
+}
+
+/**
+ * The `setAssistantCounter` command moving `player`'s `kind` to exactly `{value, infinite}`, or null
+ * when the counter already sits there - the modules' idempotence convention (a decision that changes
+ * nothing issues nothing). Callers pass `value` inside the counter bounds.
+ */
+export function assistantCounterCommand(
+  world: World,
+  player: number,
+  kind: AssistantCounterKind,
+  value: number,
+  infinite: boolean,
+): Command | null {
+  const carrier = assistantCountersEntity(world, player);
+  const current =
+    carrier === null ? { value: 0, infinite: false } : world.get(carrier, AssistantCounters).counters[kind];
+  if (current.value === value && current.infinite === infinite) return null;
+  return { kind: 'setAssistantCounter', player, counter: kind, value, infinite };
 }
 
 /** The seat's buildings (any construction state) in canonical ascending-id order. */
