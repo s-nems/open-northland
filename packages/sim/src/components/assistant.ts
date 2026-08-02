@@ -1,10 +1,9 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
- * The assistant's six production counters, in the chest window's row order. The two `extra*` kinds
- * queue births (`extraWomen` outranks `extraMen` when both are set); the four `train*` kinds queue
- * barracks drills, the class kinds additionally arming the recruit (`systems/assistant/`,
- * `systems/settlers/planner/recruit-arming.ts`).
+ * The assistant's six production counters - the two `extra*` kinds queue births, the four `train*`
+ * kinds barracks drills. Dispatch order and priorities live with the dispatcher
+ * (`systems/assistant/`); arming with `systems/settlers/planner/recruit-arming.ts`.
  */
 export const ASSISTANT_COUNTER_KINDS = [
   'extraWomen',
@@ -148,11 +147,16 @@ export function consumeAssistantCounter(
  */
 export const AssistantChildOrder = defineComponent<{ sex: 'female' | 'male' }>('AssistantChildOrder');
 
-/** The training-counter kinds a recruit booking can carry; the three class kinds also arm. */
-export type AssistantRecruitIntent = Extract<
-  AssistantCounterKind,
-  'trainSoldiers' | 'trainSword' | 'trainSpear' | 'trainBow'
->;
+/** The training-counter kinds a recruit booking can carry (the dispatcher's queue set - deriving the
+ *  type from this list keeps a new intent and its dispatch coverage one edit); the three class kinds
+ *  also arm. */
+export const ASSISTANT_RECRUIT_INTENTS = [
+  'trainSoldiers',
+  'trainSword',
+  'trainSpear',
+  'trainBow',
+] as const satisfies readonly AssistantCounterKind[];
+export type AssistantRecruitIntent = (typeof ASSISTANT_RECRUIT_INTENTS)[number];
 
 /**
  * The assistant's training booking on a dispatched recruit: which `train*` counter funds it, and

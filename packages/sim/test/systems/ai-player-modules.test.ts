@@ -4,6 +4,7 @@ import {
   type AiModuleEnables,
   AiPlayer,
   aiModuleEnables,
+  AssistantRecruit,
   Building,
   CurrentAtomic,
   JobAssignment,
@@ -839,6 +840,33 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(counterOf(20, 20)).toBe(0);
     // One bachelor beyond the brides: the settlement can spare exactly one man.
     expect(counterOf(21, 20)).toBe(1);
+  });
+
+  it('publishes no extra recruit for a booking whose drill was abandoned', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 40);
+    makeAiSeat(sim, SEAT);
+    sim.run(80); // the standing order is published and at least two drafts are in flight
+    const drilling = [...sim.world.query(AssistantRecruit)].filter((e) => sim.world.has(e, TrainingOrder));
+    const interrupted = drilling[0];
+    expect(interrupted).toBeDefined();
+    if (interrupted === undefined) return;
+    // An abandoned drill (a wall, an override) drops the order while the booking survives until the
+    // sweep: the man is back in the spare pool, so counting his booking too would publish one
+    // recruit past the standing want. The rung must still see a settled state and re-issue nothing.
+    sim.world.remove(interrupted, TrainingOrder);
+    expect(
+      [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCounter'),
+    ).toEqual([]);
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {

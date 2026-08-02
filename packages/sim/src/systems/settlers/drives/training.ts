@@ -23,7 +23,8 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 /**
  * How long a recruit stays inside the barracks before it comes back out a soldier - 15 s of game time
  * (design rule, user-specified 2026-07-27), drawn down per COMPLETED repetition by
- * {@link serveDrillRepetition}, so the last one always overruns.
+ * {@link serveDrillRepetition}, so the last one always overruns. Every recruit serves this ONE
+ * standard drill and exits unarmed - arming is a separate later step (user rule 2026-08-01).
  */
 export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
 
@@ -74,9 +75,9 @@ export function planTraining(
 
 /**
  * Whether `e` may walk to a drill at `door` right now: its signpost area must admit the node and its
- * failed-goal memo must not already name it. The `trainSoldier` handler refuses on a false and the AI's
- * garrison hire picks another man, so a walled-off barracks cannot be re-ordered and re-abandoned every
- * decision - each acceptance cancels whatever the recruit was doing.
+ * failed-goal memo must not already name it. The `trainSoldier` handler and the assistant's dispatch
+ * gate (`mayDrillAt`) refuse on a false, so a walled-off barracks cannot be re-ordered and
+ * re-abandoned every beat - each acceptance cancels whatever the recruit was doing.
  */
 export function drillDoorOpen(
   world: World,
@@ -91,10 +92,10 @@ export function drillDoorOpen(
 
 /**
  * One finished drill repetition: charge its `ticks` against the errand's remaining time. Nothing else
- * accrues - a drill banks no experience stat, it only serves the term that unlocks the trade (user
- * rule 2026-08-02). Called from the atomic executor, so a repetition cut short (a stagger, a
- * re-issued order) costs the recruit no time. The charge takes the executor's own floor of one tick
- * per repetition, so a zero-length clip cannot stall the drill forever.
+ * accrues (the no-XP rule - `progression/experience.ts`'s TRAINING bucket states it). Called from
+ * the atomic executor, so a repetition cut short (a stagger, a re-issued order) costs the recruit no
+ * time. The charge takes the executor's own floor of one tick per repetition, so a zero-length clip
+ * cannot stall the drill forever.
  */
 export function serveDrillRepetition(world: World, e: Entity, ticks: number): void {
   const order = world.tryGet(e, TrainingOrder);
@@ -113,12 +114,11 @@ function abandonDrill(world: World, e: Entity): boolean {
 
 /**
  * Enlist a settler that has served its drill: it takes the base soldier class ({@link baseSoldierJobType})
- * unconditionally - the served term IS the qualification, the barracks only unlocks the trade and no
- * schooling stat exists (user rule 2026-08-02). The `trainfor*` rows stay in the data as the closed
- * gate on every OTHER door (manual employment, the job system's openings): nothing accrues their
- * bucket, so the barracks remains the one route in. A settler that already holds a fighter trade
- * keeps it - his drill is a plain no-op (the original's paid barracks retraining is deliberately not
- * implemented). A tribe whose data names no soldier class gets its settler back out unchanged.
+ * unconditionally - the served term IS the qualification. Why no stat accrues and why the `trainfor*`
+ * rows still gate every OTHER door is stated once, on `progression/experience.ts`'s TRAINING bucket.
+ * A settler that already holds a fighter trade keeps it - his drill is a plain no-op (the original's
+ * paid barracks retraining is deliberately not implemented). A tribe whose data names no soldier
+ * class gets its settler back out unchanged.
  *
  * The only trade change made from inside the planner sweep: `reidleAsJob` destroys the recruit's work flag
  * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either (today it indexes

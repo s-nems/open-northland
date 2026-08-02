@@ -2,6 +2,7 @@ import {
   ASSISTANT_COUNTER_KINDS,
   ASSISTANT_COUNTER_MAX,
   ASSISTANT_COUNTER_MIN,
+  type AssistantCounterKind,
   AssistantCounters,
   AssistantGrants,
   assistantCountersAtDefault,
@@ -17,9 +18,8 @@ import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
 /**
- * Toggle one good in `player`'s assistant grant list - see the command doc. The carrier follows the
- * rules-singleton lifecycle: created on the first grant, updated in place, destroyed when the last
- * grant is revoked (so an all-off player hashes exactly like one that never touched the assistant).
+ * Toggle one good in `player`'s assistant grant list - see the command doc. Owns the rules-singleton
+ * carrier lifecycle stated on {@link AssistantGrants}.
  */
 export function setAssistantGrant(
   world: World,
@@ -48,9 +48,8 @@ export function setAssistantGrant(
 }
 
 /**
- * Set one assistant production counter to an absolute state - see the command doc. The carrier
- * follows the grant list's rules-singleton lifecycle: created on the first non-default write,
- * updated in place, destroyed when every counter returns to zero-and-finite.
+ * Set one assistant production counter to an absolute state - see the command doc. Owns the
+ * rules-singleton carrier lifecycle stated on {@link AssistantCounters}.
  */
 export function setAssistantCounter(
   world: World,
@@ -74,5 +73,22 @@ export function setAssistantCounter(
   }
   const block = world.get(carrier, AssistantCounters);
   block.counters[command.counter] = { value, infinite };
+  if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
+}
+
+/**
+ * Reset `kinds` of `player`'s counters to the default (zero, finite) - the strategic AI's teardown
+ * seam (`orders/ai.ts`): a detached module's standing queues stop, while counters other hands own
+ * (the class rows a human set) survive. Destroys the carrier at all-default like any write.
+ */
+export function resetAssistantCounters(
+  world: World,
+  player: number,
+  kinds: readonly AssistantCounterKind[],
+): void {
+  const carrier = assistantCountersEntity(world, player);
+  if (carrier === null) return;
+  const block = world.get(carrier, AssistantCounters);
+  for (const kind of kinds) block.counters[kind] = { value: 0, infinite: false };
   if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
 }

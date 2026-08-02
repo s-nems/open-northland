@@ -1,8 +1,4 @@
 import {
-  AiPlayer,
-  aiModuleEnables,
-  aiPlayerEntity,
-  isValidPlayer,
   setFogMode,
   setNeedsEnabled,
   setProfessionProgression,
@@ -13,6 +9,9 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
+// Deliberately the module, not the orders barrel: the handler reaches into `ai-player/shared.js` for
+// the published-counter map, and routing that through the barrel would widen its import graph.
+import { setPlayerAi } from '../orders/ai.js';
 import {
   assignBuilder,
   assignHouse,
@@ -152,22 +151,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setFogMode':
       setFogMode(world, command.mode);
       return;
-    case 'setPlayerAi': {
-      // Attach/detach the strategic AI on a seat (the per-player AiPlayer carrier - the rules-singleton
-      // pattern, keyed by player): created on first enable, updated in place thereafter, destroyed on
-      // disable. The flag drives the AiPlayerSystem, so it hashes/replays like any component. An
-      // out-of-range player is skipped (still logged for faithful replay).
-      if (!isValidPlayer(command.player)) return;
-      const carrier = aiPlayerEntity(world, command.player);
-      if (!command.enabled) {
-        if (carrier !== null) world.destroy(carrier);
-        return;
-      }
-      const modules = aiModuleEnables(command.modules);
-      if (carrier === null) world.add(world.create(), AiPlayer, { player: command.player, modules });
-      else world.get(carrier, AiPlayer).modules = modules;
+    case 'setPlayerAi':
+      setPlayerAi(world, command);
       return;
-    }
     case 'debugKill':
       debugKill(world, command);
       return;

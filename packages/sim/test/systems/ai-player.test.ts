@@ -67,6 +67,55 @@ describe('setPlayerAi - the AI seat flag', () => {
     sim.step();
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(false);
   });
+
+  it('withdraws the AI-published counters on disable, sparing the class rows', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    // The standing state the modules publish, plus a class row only a human hand sets.
+    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'extraMen', value: 0, infinite: true });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: AI_SEAT,
+      counter: 'trainSoldiers',
+      value: 5,
+      infinite: false,
+    });
+    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'trainSword', value: 3, infinite: false });
+    sim.step();
+    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
+    sim.step();
+    const counters = sim.assistantCounters(AI_SEAT);
+    expect(counters.extraMen).toEqual({ value: 0, infinite: false });
+    expect(counters.trainSoldiers).toEqual({ value: 0, infinite: false });
+    expect(counters.trainSword).toEqual({ value: 3, infinite: false });
+  });
+
+  it("withdraws a module's counters when its publishing gate flips off, keeping the rest", () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter: 'extraWomen', value: 4, infinite: false });
+    sim.enqueue({
+      kind: 'setAssistantCounter',
+      player: AI_SEAT,
+      counter: 'trainSoldiers',
+      value: 5,
+      infinite: false,
+    });
+    sim.step();
+    // `military` off breaks the garrison rung's publishing conjunction; the births keep their module.
+    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
+    sim.step();
+    expect(sim.assistantCounters(AI_SEAT).trainSoldiers.value).toBe(0);
+    expect(sim.assistantCounters(AI_SEAT).extraWomen.value).toBe(4);
+  });
+
+  it("leaves a never-AI seat's counters alone on a redundant disable", () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'setAssistantCounter', player: OTHER_SEAT, counter: 'trainSpear', value: 7, infinite: false });
+    sim.enqueue({ kind: 'setPlayerAi', player: OTHER_SEAT, enabled: false });
+    sim.step();
+    expect(sim.assistantCounters(OTHER_SEAT).trainSpear.value).toBe(7);
+  });
 });
 
 /** A world with one AI seat per given player, added directly (a pre-tick fixture). */

@@ -1,5 +1,4 @@
 import {
-  ASSISTANT_COUNTER_MAX,
   AssistantChildOrder,
   Building,
   ChildOrder,
@@ -76,8 +75,13 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     // accounted inside the counter itself (its value counts everything not yet born).
     if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;
   }
-  const deficit = Math.min(ASSISTANT_COUNTER_MAX, Math.max(0, familySlotsTotal - femaleStock));
-  const daughters = assistantCounterCommand(world, player, 'extraWomen', deficit, false);
+  const daughters = assistantCounterCommand(
+    world,
+    player,
+    'extraWomen',
+    familySlotsTotal - femaleStock,
+    false,
+  );
   if (daughters !== null) commands.push(daughters);
   const sons = assistantCounterCommand(world, player, 'extraMen', 0, true);
   if (sons !== null) commands.push(sons);

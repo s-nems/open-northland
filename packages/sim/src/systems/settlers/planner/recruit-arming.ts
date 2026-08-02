@@ -35,12 +35,10 @@ import { anotherSystemOwns } from './replan.js';
  * served) from any reachable store in ONE outing - the weapon first (the good→class transform lands
  * in the equip effect, which also pays the counter), then the equip drive chains the armor want at
  * the store via {@link chainRecruitArmor} before the single walk home (user rule 2026-08-01: no
- * second trip). Weapon preference is the strongest reachable row of the intent's class, no schooling
- * gate - a soldier handles any weapon, the barracks only unlocks the profession (user rule
- * 2026-08-01). Bare-target damage decides (a long bow outranks a short one, never a good id); armor is
- * a random pick among the heavy tier's goods in store, the light tier's when no heavy is stocked,
- * and skipped entirely when neither is (the spec's "if available"). Runs on the grants pass's stride
- * beat with the same one-errand rule.
+ * second trip). Weapon preference is the strongest reachable row of the intent's class (no schooling
+ * gate - `atomics/effects/goods/weapon-class.ts` states the rule): bare-target damage decides, a
+ * long bow outranks a short one, never a good id. Armor comes from {@link pickReachableArmor}. Runs
+ * on the grants pass's stride beat with the same one-errand rule.
  */
 export function dispatchRecruitArming(pass: PlannerPass): void {
   const { world, ctx } = pass;
@@ -138,9 +136,8 @@ function dispatchWeaponFetch(
 }
 
 /**
- * Send the armed recruit for one armor good: a seeded-random pick among the heavy tier's reachable
- * goods, the light tier's as fallback. True when an errand was dispatched, false when no tier has a
- * reachable unit (the caller releases the recruit unarmored).
+ * Send the armed recruit for one {@link pickReachableArmor} good. True when an errand was
+ * dispatched, false when no tier has a reachable unit (the caller releases the recruit unarmored).
  */
 function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolean {
   const { world, ctx, terrain, targets } = pass;
@@ -184,14 +181,15 @@ export function chainRecruitArmor(
   }
   const pick = pickReachableArmor(world, ctx, terrain, targets, here, owner, limit, veto);
   if (pick === null) {
-    world.remove(e, AssistantRecruit); // no tier reachable: released unarmored (the spec's "if available")
+    world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
     return null;
   }
   return pick;
 }
 
-/** A seeded-random reachable armor good - the heavy tier's picks first, the light tier's as the
- *  fallback; null when no tier has a reachable unit. */
+/** The armor policy's one home: a seeded-random reachable good from the heavy tier, the light tier
+ *  as the fallback, null when no tier has a reachable unit - the spec's "if available", so a recruit
+ *  may complete unarmored. */
 function pickReachableArmor(
   world: World,
   ctx: SystemContext,

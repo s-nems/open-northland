@@ -59,9 +59,9 @@ export const SIM_KIND_BY_COUNTER_ID: Readonly<Record<AssistantCounterId, compone
   trainArchers: 'trainBow',
 };
 
-/** The rows carrying an infinity toggle - derived from the sim's own policy (every queue but
- *  `extraWomen`, whose priority over `extraMen` would let an infinite value starve every son order),
- *  so a policy change there cannot leave a dead toggle here. */
+/** The rows carrying an infinity toggle - derived from the sim's own policy
+ *  (`INFINITE_COUNTER_KINDS` states why `extraWomen` is excluded), so a policy change there cannot
+ *  leave a dead toggle here. */
 export const INFINITE_COUNTER_IDS: ReadonlySet<AssistantCounterId> = new Set(
   (Object.keys(SIM_KIND_BY_COUNTER_ID) as AssistantCounterId[]).filter((id) =>
     components.INFINITE_COUNTER_KINDS.has(SIM_KIND_BY_COUNTER_ID[id]),
@@ -87,10 +87,13 @@ export function defaultAssistantState(): AssistantState {
 }
 
 /** `state` with `id` stepped by `delta`, clamped to the counter bounds; stepping an infinite
- *  counter drops the infinity (the player asked for a concrete number). Identical state on a no-op. */
+ *  counter only drops the infinity and surfaces the retained value unchanged - the lemniscate hides
+ *  the number, so stepping it blind would land unpredictably. Identical state on a no-op. */
 export function adjustCounter(state: AssistantState, id: AssistantCounterId, delta: number): AssistantState {
   const current = state.counters[id];
-  const next = Math.min(COUNTER_MAX, Math.max(COUNTER_MIN, current.value + delta));
+  const next = current.infinite
+    ? current.value
+    : Math.min(COUNTER_MAX, Math.max(COUNTER_MIN, current.value + delta));
   if (next === current.value && !current.infinite) return state;
   return { ...state, counters: { ...state.counters, [id]: { value: next, infinite: false } } };
 }
@@ -127,7 +130,9 @@ const BLOCK_GAP = 8;
 const MENU_WIDTH = 260;
 /** The −/+ stepper plates and the recessed value cell between them. */
 const STEPPER = 14;
-const VALUE_W = 24;
+/** Sized for the cap's three digits ("100") at the row text size - an overrun would drift toward
+ *  the plus plate (`addRunCentred` clamps its centring at the cell's left edge). */
+const VALUE_W = 28;
 const CONTROL_GAP = 3;
 /** The Wł./Wył. switch plate. */
 const SWITCH_W = 36;

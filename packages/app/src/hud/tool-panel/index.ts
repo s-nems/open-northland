@@ -277,10 +277,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         e.stopImmediatePropagation();
         placement.cancel();
         goodsDrop.cancel();
+        return;
       }
-      return;
-    }
-    if (e.button !== 0) return;
+      // macOS delivers Ctrl+left-click as button 2 (the OS right-click convention): with Ctrl down
+      // and nothing to cancel, fall through as the primary press so the Ctrl coarse step works.
+      if (!e.ctrlKey) return;
+    } else if (e.button !== 0) return;
     // A higher overlay covers this point: whatever sits under it is invisible, so the panel must not
     // consume the press - the overlay's own handler acts on it instead (see the option's doc).
     if (opts.deferToOverlay?.(e.clientX, e.clientY) === true) return;
