@@ -39,8 +39,8 @@ export interface LifeHeartFrame {
 const HEART_GAP = 4;
 /** Feet→back estimate (world px) when the pool has no sprite bounds for the unit. */
 const BACK_ABOVE_FEET = 26;
-/** Half-width of a heart lobe (world px) - the shape scales off this one knob. */
-const LOBE_RADIUS = 3;
+/** Half-width of a heart lobe (world px) - the shape, its rim, and its gauge all scale off this one knob. */
+const LOBE_RADIUS = 3.5;
 /** Lobe centres, in lobe radii: this far to each side of the axis, this far above the tip. The shape
  *  tops out one radius higher again. */
 const LOBE_SPREAD = 0.9;
