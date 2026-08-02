@@ -22,8 +22,8 @@ export interface ArmyCensus {
   /** Out on the map with no focus left, free to be re-aimed at the next objective. */
   readonly afield: readonly Entity[];
   /** How many of {@link muster} shoot, and how many fight in reach (they sum to `muster.length`).
-   *  Both are 0 for a seat whose recruits are all the weaponless base class the drill enlists -
-   *  arming them is the un-started equip drive (docs/tickets/features/barracks-recruitment.md). */
+   *  Both are 0 for a seat whose recruits are all the weaponless base class the drill enlists: the
+   *  garrison rung publishes only `trainSoldiers`, never the assistant's weapon-class counters. */
   readonly ranged: number;
   readonly melee: number;
 }
