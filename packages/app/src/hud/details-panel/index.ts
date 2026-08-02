@@ -1,7 +1,4 @@
-/**
- * The bottom-right selection details panel: pure model (`model/`), geometry (`layout.ts`),
- * original-art drawing (`chrome.ts` + `sections.ts`), and the app wiring (`panel.ts`).
- */
+/** The bottom-right selection details panel; `panel.ts` names who does what inside the folder. */
 
 export type { EquipSlotRef } from './layout/index.js';
 export type {
