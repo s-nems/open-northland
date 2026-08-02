@@ -10,7 +10,7 @@ import {
   spawnSandboxSettler,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
-import { computeLivestockHearts } from '../view/projections/livestock-hearts.js';
+import { computeLifeHearts } from '../view/projections/life-hearts.js';
 import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
@@ -79,6 +79,16 @@ function ownedOf(sim: Simulation, tribe: number): Entity[] {
   return owned;
 }
 
+/** Every sheep and cow on the map, claimed or wild. */
+function animalIds(sim: Simulation): Set<number> {
+  const ids = new Set<number>();
+  for (const e of sim.world.query(Settler)) {
+    const tribe = sim.world.get(e, Settler).tribe;
+    if (tribe === ANIMAL_TRIBE_SHEEP || tribe === ANIMAL_TRIBE_CATTLE) ids.add(e);
+  }
+  return ids;
+}
+
 function farmStock(sim: Simulation, slug: string): number {
   for (const e of sim.world.query(Building, Stockpile)) {
     if (sim.world.get(e, Building).buildingType !== BUILDING_ANIMAL_FARM) continue;
@@ -142,7 +152,7 @@ export const livestockScene: SceneDefinition = {
       },
     },
     {
-      label: 'the heart projection marks exactly the claimed animals and mirrors their life',
+      label: 'the heart projection marks exactly the claimed animals (no wild one) and mirrors their life',
       predicate: (sim) => {
         // An animal inside the farm (a processing visit's Resting) is not drawn, so no heart either.
         const claimed = [...ownedOf(sim, ANIMAL_TRIBE_SHEEP), ...ownedOf(sim, ANIMAL_TRIBE_CATTLE)].filter(
@@ -154,15 +164,17 @@ export const livestockScene: SceneDefinition = {
           if (h === undefined) return false;
           poolOf.set(e, h);
         }
-        const hearts = computeLivestockHearts(
-          sim.snapshot(),
-          (tribe) => systems.isCatchableAnimal(sim.content, tribe),
-          undefined,
-        );
+        const hearts = computeLifeHearts(sim.snapshot(), {
+          isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
+        });
+        // The people on the map get hearts by their own rule (selected or wounded) - this check owns the
+        // animals, so it holds the projection to the herds only.
+        const animals = animalIds(sim);
+        const animalHearts = hearts.filter((heart) => animals.has(heart.id));
         return (
           claimed.length > 0 &&
-          hearts.length === claimed.length &&
-          hearts.every((heart) => {
+          animalHearts.length === claimed.length &&
+          animalHearts.every((heart) => {
             const pool = poolOf.get(heart.id);
             return pool !== undefined && heart.life === pool.hitpoints / pool.max;
           })

@@ -252,7 +252,7 @@ export class WorldRenderer {
       doorBadges = NO_BADGES,
       constructionSigns: signItems = NO_SIGNS,
       settlerBubbles = NO_BUBBLES,
-      livestockHearts = NO_HEARTS,
+      lifeHearts = NO_HEARTS,
       flagged = NO_REFS,
     } = frame;
     // View smoothing: pin the pan to whole device pixels (kills nearest-sampling shimmer-crawl) and
@@ -311,7 +311,7 @@ export class WorldRenderer {
       doorBadges,
       constructionSigns: signItems,
       settlerBubbles,
-      livestockHearts,
+      lifeHearts,
     });
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);

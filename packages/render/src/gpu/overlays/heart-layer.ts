@@ -6,16 +6,14 @@ import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The life-heart layer - the faction-coloured heart the original floats over a unit whose life the
- * player tracks (today the claimed livestock; settlers are the planned next feeder). The heart is a
- * gauge over ONE silhouette (plus a thin black rim for contrast): the bottom `life` fraction wears
- * the faction colour, the drained rest above the horizontal boundary a darkened shade of the same
- * colour - a full pool is simply one solid faction heart. A client-side projection of the read-only
- * snapshot, anchored and retained
- * exactly like the settler bubbles: the heart rides the pool's lerped sprite bounds (falling back
- * to the raw `Position` projection), is culled to the viewport, and is rebuilt only when its colour
- * changes (a re-capture). The heart art is a placeholder vector shape (two lobes + a point) until
- * the original's glyph is identified.
+ * The life-heart layer - the faction-coloured heart the original floats over a unit whose life the player
+ * tracks. The app's life-heart projection decides who wears one and carries that rule's source basis; this
+ * layer only draws the list. The heart is a gauge over ONE silhouette (plus a thin black rim
+ * for contrast): the bottom `life` fraction wears the faction colour, the drained rest above the horizontal
+ * boundary a darkened shade of the same colour - a full pool is simply one solid faction heart. Retained
+ * exactly like the settler bubbles: culled to the viewport, rebuilt only when its colour changes (a
+ * re-capture). The heart art is a placeholder vector shape (two lobes + a point) until the original's glyph
+ * is identified.
  */
 
 /** One unit's heart: its entity id (the retained key), snapshot `Position` (fixed-point units), the
@@ -35,7 +33,9 @@ export interface LifeHeartFrame {
   readonly elevation?: ElevationField | undefined;
 }
 
-/** World-px the heart floats above the unit's back (the sprite-bounds top, or the feet estimate). */
+/** World-px the heart floats above the unit's back (the sprite-bounds top, or the feet estimate).
+ *  Unstacked: the bubble layer anchors on the same point and reaches higher, so a settler that is both
+ *  hearted and bubbling draws the heart across the balloon's lower edge. Neither layer owns the head. */
 const HEART_GAP = 4;
 /** Feet→back estimate (world px) when the pool has no sprite bounds for the unit. */
 const BACK_ABOVE_FEET = 26;

@@ -54,6 +54,9 @@ export interface UnitControlsOptions {
 
 export interface UnitControls {
   readonly selectedIds: () => ReadonlySet<number>;
+  /** Bumped on every actual selection change - {@link selectedIds} is one mutated set, so its identity
+   *  cannot key a memo. */
+  readonly selectionVersion: () => number;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The green/red workplace-assignment wash for the render building-highlight layer, or null when the

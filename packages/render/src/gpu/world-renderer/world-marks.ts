@@ -64,7 +64,7 @@ export interface WorldMarksFrame {
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
-  readonly livestockHearts: readonly LifeHeart[];
+  readonly lifeHearts: readonly LifeHeart[];
 }
 
 export class WorldMarks {
@@ -79,7 +79,7 @@ export class WorldMarks {
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
-  /** Faction-coloured life hearts over claimed livestock. */
+  /** Faction-coloured life hearts over the units whose life the player tracks. */
   private readonly hearts = new LifeHeartLayer();
   /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
@@ -146,7 +146,7 @@ export class WorldMarks {
     this.badges.draw(frame.doorBadges, elevation, viewport);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
-    this.hearts.draw({ hearts: frame.livestockHearts, drawn, elevation }, viewport);
+    this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
   }
 
   destroy(): void {

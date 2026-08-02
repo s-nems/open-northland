@@ -11,6 +11,7 @@
 export { SHADOW_DEPTH_EPS, screenDepth } from './depth.js';
 export type { DrawItem, DrawKind, SpriteDrawItem, SpriteKind, SpriteState } from './draw-item.js';
 export { PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX } from './projectile-arc.js';
+export { isIndoorSettler } from './snapshot-index.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
 export { SpriteSpatialIndex } from './spatial-index.js';
 export { buildSpriteScene, collectSpriteScene, type LiveRefs, type SpriteScene } from './sprite-scene.js';

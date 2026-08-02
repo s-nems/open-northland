@@ -5,6 +5,7 @@ import {
   readBuiltPct,
   readPosition,
   readProjectileTarget,
+  readStoreExchangeRef,
 } from './snapshot-readers/index.js';
 
 /**
@@ -90,6 +91,21 @@ const NO_SIGNPOSTS: readonly EntitySnapshot[] = [];
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return sceneIndexOf(snapshot).enterableStores;
+}
+
+/**
+ * Whether the scene hides this settler inside a building: the `Resting` marker in its workplace, or a
+ * goods exchange running against an enterable store (see {@link enterableStoresOf}). Shared so an overlay
+ * that must not hang over an empty doorway asks the same question the scene answered. The bubble layer is
+ * the deliberate exception: it keeps drawing a need over a settler that has stepped inside.
+ */
+export function isIndoorSettler(
+  snapshot: WorldSnapshot,
+  components: Readonly<Record<string, unknown>>,
+): boolean {
+  if ('Resting' in components) return true;
+  const store = readStoreExchangeRef(components);
+  return store !== null && enterableStoresOf(snapshot).has(store);
 }
 
 /**

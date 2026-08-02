@@ -85,8 +85,8 @@ export interface WorldFrame {
   readonly constructionSigns?: readonly ConstructionSign[] | undefined;
   /** Per-settler thought bubbles to float over a settler's head (make-child / wedding; default none). */
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
-  /** Faction-coloured life hearts to float over claimed livestock (default none). */
-  readonly livestockHearts?: readonly LifeHeart[] | undefined;
+  /** Faction-coloured life hearts to float over the units whose life the player tracks (default none). */
+  readonly lifeHearts?: readonly LifeHeart[] | undefined;
   /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
 }

@@ -44,7 +44,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     doorBadges: [],
     constructionSigns: [],
     settlerBubbles: [],
-    livestockHearts: [],
+    lifeHearts: [],
     ...over,
   };
 }
