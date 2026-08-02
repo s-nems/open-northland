@@ -51,7 +51,9 @@ fresh conversion into a temporary directory and validates the result. It uses
 
 ## Browser entries
 
-`npm run dev` opens the main menu. Direct entries are useful during focused work:
+`npm run dev` opens the redesigned main menu, which is landing screen by screen
+(`docs/design/main-menu/`). Until its map-select screen ships, starting a game from UI goes through
+`?menu=legacy`. Direct entries are useful during focused work:
 
 | URL query | Purpose |
 | --- | --- |
@@ -61,10 +63,11 @@ fresh conversion into a temporary directory and validates the result. It uses
 | `?icons` | decoded sprite-frame gallery |
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
+| `?menu=legacy` | the previous menu, kept while the redesigned menu lands screen by screen |
 
 Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<...>`, `player=<...>`, `ai=<...>`,
-`sound=off`, and `postfx=off`. The main menu exposes normal settings, so direct query parameters are
-mainly for reproducible diagnostics.
+`sound=off`, and `postfx=off`. The legacy menu exposes normal settings, so direct query parameters
+are mainly for reproducible diagnostics.
 
 Debug modes:
 
