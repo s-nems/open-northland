@@ -136,10 +136,9 @@ export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amoun
 /**
  * A worker→workplace binding: the specific {@link Building} a settler is employed at - the walk-to-workplace
  * drive heads for this building and the staffs-here pin latches the settler only on it, so two same-type
- * workplaces staff independently. The JobSystem assigns it when it employs an idle settler, picking a concrete
- * understaffed building rather than just a job type. Optional, so an unemployed settler simply has none; a
- * settler standing on a workplace it staffs but lacking a binding (e.g. spawned pre-employed) is adopted by
- * the JobSystem - bound to the building under its feet - so the binding stays authoritative.
+ * workplaces staff independently. The `assignWorker` order stamps it, naming a concrete understaffed
+ * building rather than just a job type; nothing else employs a settler. Optional, so an unemployed - or
+ * merely unposted - settler simply has none.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 

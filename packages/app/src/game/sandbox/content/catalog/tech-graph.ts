@@ -31,7 +31,7 @@ import {
 } from '../../ids/index.js';
 
 /**
- * The sandbox tribe's `jobEnables` tech graph - what the sim's `buildingEnabled`/`goodEnabled`/`jobEnabled`
+ * The sandbox tribe's `jobEnables` tech graph - what the sim's `buildingEnabled`/`goodEnabled`
  * gate reads. Each edge means a settler of `jobType` being alive in the tribe unlocks `targetId`.
  *
  * Source basis: a faithful subset of the extracted viking `tribetypes.ini jobEnables` (ir.json) - every edge

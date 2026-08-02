@@ -54,6 +54,9 @@ export interface OpeningsQuery extends NeedSubject {
  * and that staff waits at the site until it stands ({@link import('../../settlers/drives/economy/index.js').planSiteStaff}).
  * An upgrade site reports the slots of the tier it currently IS - the target tier is adopted only on
  * completion - so the extra seats a higher tier brings cannot be filled early.
+ *
+ * source-basis: hiring onto a foundation at all, and the upgrade's base-tier cap, are a user rule with no original oracle - the original offers no pre-completion staffing. The slot counts and
+ * the tier chain themselves are extracted (`logicworker`, `upgradeTarget`); only the timing is ours.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,
@@ -84,7 +87,7 @@ export function openWorkerJobFromList(
  * Determinism: a count of bound settlers (addition commutes), so iterating query insertion order is
  * fine - it's not a *pick*, just a sum (AGENTS.md: only a chosen-entity scan needs canonical order).
  */
-export function jobUnderstaffed(query: OpeningsQuery, building: Entity, jobType: number): boolean {
+function jobUnderstaffed(query: OpeningsQuery, building: Entity, jobType: number): boolean {
   const { world, ctx } = query;
   const b = world.get(building, Building);
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);

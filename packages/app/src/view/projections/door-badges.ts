@@ -27,11 +27,10 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
  * The door-badge projection turns the read-only snapshot into the per-building sign rows the render
- * {@link DoorBadge} layer draws at each staffed building's sign post. It reads the same employment
- * binding the sim's JobSystem writes ({@link JobAssignment}.`workplace`), so a row appears for every
- * worker bound to a building, whether auto-assigned or player-assigned (the `assignWorker` command).
- * Pure over the snapshot + the building-type table + a job-role classifier (unit-tested); called once
- * per frame.
+ * {@link DoorBadge} layer draws at each staffed building's sign post. It reads the employment binding
+ * the `assignWorker` order writes ({@link JobAssignment}.`workplace`), so a row appears for every worker
+ * posted to a building - including one still going up. Pure over the snapshot + the building-type table
+ * + a job-role classifier (unit-tested); called once per frame.
  *
  * This projection owns the stack order (bottom-to-top: resident families, worker discs, carrier
  * pennants on top) and each row's click-pick settler id, so drawing and picking share one row list.

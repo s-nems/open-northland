@@ -14,10 +14,6 @@ import { unreachableGoalVeto } from '../../unreachable-goals.js';
  * waits for the scarce good). One unit per trip (the global {@link CARRY_CAPACITY}). The needs already
  * discount other settlers' live supply errands (SupplyRun), and this fetch stamps its own - so a crew spreads
  * over the still-unclaimed materials instead of racing to the same unit. Returns whether a fetch was started.
- *
- * Shared by the two trades that supply a foundation: the builder raising it
- * ({@link import('./builder.js').planBuilder}) and a carrier posted to the unfinished building
- * ({@link import('./site-staff.js').planSiteStaff}).
  */
 export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;

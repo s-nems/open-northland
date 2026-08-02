@@ -47,7 +47,7 @@ describe('setJob order', () => {
     s.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
     s.step();
     expect(s.world.get(e, Settler).jobType).toBe(CARPENTER);
-    expect(s.world.has(e, JobAssignment)).toBe(false); // re-employed at the new job by the JobSystem
+    expect(s.world.has(e, JobAssignment)).toBe(false); // unposted - the player picks its next workplace
     expect(s.world.has(e, PlayerOrder)).toBe(false); // profession change hands it back to the economy
     expect(s.world.has(e, CurrentAtomic)).toBe(false);
   });

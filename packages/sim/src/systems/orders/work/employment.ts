@@ -26,8 +26,11 @@ import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '.
 
 /**
  * Change one owned settler's profession: reset it to a fresh idle worker of the new trade
- * ({@link reidleAsJob}) and drop the old workplace binding ({@link JobAssignment}) so the JobSystem
- * re-employs it at a building of the new job.
+ * ({@link reidleAsJob}) and drop the old workplace binding ({@link JobAssignment}).
+ *
+ * It leaves the settler UNPOSTED, and nothing employs it again on its own: a trade whose work runs
+ * through a binding (a carrier's haul rung, a craftsman's producer loop) stays inert until the player
+ * also posts it somewhere ({@link assignWorker}). Trading and posting are two decisions in this engine.
  *
  * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, an unknown
  * `jobType`, or a trade whose `needforjob` XP threshold this settler hasn't earned yet
@@ -47,16 +50,15 @@ export function setJob(
   // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 
-  world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
+  world.remove(e, JobAssignment); // the old post is not the new trade's - the player picks the next one
   reidleAsJob(world, ctx, e, command.jobType);
 }
 
 /**
  * The authoritative half of a profession change: cancel whatever the settler was doing under the old trade
  * (its action, its route, any live or parked {@link PlayerOrder}) and set its load down, before taking up
- * `jobType` ({@link applyTradeChange}). That cancel is the whole difference from the JobSystem's automatic
- * hire, which runs the trade change alone: an auto-hired settler keeps its action, its route and its player
- * order. Shared by the employment orders and the barracks drill (`settlers/drives/training.ts`).
+ * `jobType` ({@link applyTradeChange}). Shared by the employment orders and the barracks drill
+ * (`settlers/drives/training.ts`).
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   // setJob vets interruptibility before reaching here (deferOrderDuringAtomic); assignWorker still cancels
@@ -74,8 +76,8 @@ export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType
 }
 
 /**
- * Assign one owned settler to work at a specific `building` (the `assignWorker` command - the player-directed
- * twin of the JobSystem's automatic assignment): resolve the building's open worker job in the command's
+ * Assign one owned settler to work at a specific `building` (the `assignWorker` command - the one way a
+ * settler becomes employed): resolve the building's open worker job in the command's
  * `jobPriority` preference order ({@link openWorkerJobFromList} - a same-tribe/same-owner, tech-enabled
  * building with an understaffed slot), re-idle the settler as that job, and bind it to the chosen building
  * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback):

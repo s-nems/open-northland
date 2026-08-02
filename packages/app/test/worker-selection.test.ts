@@ -32,6 +32,16 @@ describe('boundWorkers', () => {
     expect(boundWorkers(snap, BUILDING, false)).toEqual([3]);
   });
 
+  it('lists the POSTED staff before the crew raising the site, so a full field keeps the posting', () => {
+    // The crew is older than the posting in real play (builders exist before the foundation), so entity
+    // order alone would push the posted worker out of a full field.
+    const crew = Array.from({ length: MAX_WORKERS }, (_, i) =>
+      sett(i + 1, { SiteAssignment: { site: BUILDING } }),
+    );
+    const snap = snapshotOf([...crew, sett(99, { JobAssignment: { workplace: BUILDING } })]);
+    expect(boundWorkers(snap, BUILDING, true)[0]).toBe(99);
+  });
+
   it('counts the construction crew and transient haulers only when the site crew is wanted', () => {
     const snap = snapshotOf([
       sett(1, { SiteAssignment: { site: BUILDING } }), // persistent crew membership

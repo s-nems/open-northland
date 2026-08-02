@@ -1,13 +1,13 @@
-import { type ContentSet, lastByTypeId } from '@open-northland/data';
+import { type ContentSet, lastByTypeId, resolveJobAtomics } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import {
   type Command,
   type Entity,
   entityById,
   nodeOfPosition,
+  systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { JOB_BUILDER } from '../../catalog/jobs.js';
 import { assignmentPriorityFor, trainsRatherThanEmploys } from '../../game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
@@ -41,6 +41,12 @@ type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['
 /** Route right-click RTS intent into the one-way sim command seam. */
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
+  // Whether a trade may raise a foundation, read the way the sim's own `jobCanBuild` gate reads it: the
+  // job's resolved atomics carry the build-house atomic. Real content gives it to the joiner and armorer as
+  // well as the builder, so an id test would re-trade those two instead of putting them on the site.
+  const buildingTrades = resolveJobAtomics(deps.content.jobs);
+  const canRaiseSites = (jobType: number): boolean =>
+    buildingTrades.get(jobType)?.has(systems.BUILD_HOUSE_ATOMIC_ID) === true;
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
@@ -98,7 +104,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         for (const target of commanded) {
           const self = entityById(snapshot, target.ref);
           const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-          if (currentJob === JOB_BUILDER) {
+          if (currentJob !== undefined && canRaiseSites(currentJob)) {
             deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
             continue;
           }

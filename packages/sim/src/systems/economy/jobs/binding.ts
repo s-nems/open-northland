@@ -8,8 +8,7 @@ import { jobCanHarvest, removeWorkFlag } from '../work-flag.js';
  * building harvests its stored goods instead of a flag yard, and a gather/craft pick made at another post
  * would mis-steer this one, which offers a different product and store set.
  *
- * The single home of that reset, shared by the JobSystem's automatic assignment and the player's
- * `assignWorker` order, so the two employment paths cannot drift.
+ * The single home of that reset, applied by the one path that employs anyone - the `assignWorker` order.
  */
 export function bindEmployment(
   world: World,

@@ -88,8 +88,8 @@ function farmingSpecFor(ctx: SystemContext, goodType: number): FarmingSpec | nul
 /**
  * The field-farmed good a workplace cultivates, or null when it farms none - the first of the building type's
  * `produces` goods that resolves a {@link FarmingSpec} (`produces` is a fixed content array, so the pick is
- * deterministic). The data-driven "is this building a farm" test the planner and the JobSystem's adopt pass key
- * on - a workplace that produces a farmable good runs the field loop, never a hardcoded building-type id.
+ * deterministic). The data-driven "is this building a farm" test the planner keys on - a workplace that
+ * produces a farmable good runs the field loop, never a hardcoded building-type id.
  */
 export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity): FarmingSpec | null {
   const b = world.tryGet(workplace, Building);

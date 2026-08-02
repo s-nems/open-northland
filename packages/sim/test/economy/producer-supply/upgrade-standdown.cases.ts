@@ -4,11 +4,13 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  Position,
   UnderConstruction,
   Upgrading,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { fx, nodeOfPosition, Simulation } from '../../../src/index.js';
+import { constructionWorkCells, dynamicBlockOverlay } from '../../../src/systems/footprint/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -48,6 +50,24 @@ function startUpgrade(sim: Simulation, b: Entity): void {
   sim.world.add(b, Upgrading, { savedStock: new Map(), seeded: new Map() });
 }
 
+/** Assert `settler` is waiting out `site`'s build: standing on one of its work cells, or walking to one. */
+function expectWaitingAtSite(sim: Simulation, settler: Entity, site: Entity): void {
+  const terrain = sim.terrain;
+  if (terrain === null || terrain === undefined) throw new Error('fixture has no terrain');
+  const ctx = ctxOf(sim);
+  const cells = constructionWorkCells(
+    sim.world,
+    ctx,
+    terrain,
+    site,
+    dynamicBlockOverlay(sim.world, ctx, terrain),
+  );
+  const goal = sim.world.tryGet(settler, MoveGoal)?.cell;
+  const pos = sim.world.get(settler, Position);
+  const node = nodeOfPosition(pos.x, pos.y);
+  expect(cells).toContain(goal ?? terrain.nodeAtClamped(node.hx, node.hy));
+}
+
 describe('an upgrading workplace - its crew stands down', () => {
   it('the bound producer neither fetches inputs nor takes a seat while the upgrade runs', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
@@ -58,10 +78,10 @@ describe('an upgrading workplace - its crew stands down', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // …but the workhouse is a site: no fetch walk to the store, no pickup - the smith waits it out at
-    // the site (its only legal move is onto the site's own perimeter).
-    expect(sim.world.tryGet(smith, MoveGoal)?.cell).not.toBe(cell(sim, 5, 0));
+    // …but the workhouse is a site: no fetch walk to the store, no pickup - the smith waits it out ON the
+    // site's own work perimeter.
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expectWaitingAtSite(sim, smith, mill);
   });
 
   it('a load lifted before the upgrade goes to a store, never into the sealed workshop', () => {
@@ -90,6 +110,7 @@ describe('an upgrading workplace - its crew stands down', () => {
     // The porter rung is off (its store is a site, and the fixture's headquarters has no upgrade bill to
     // fetch either), so nothing is lifted: it waits at the site with the rest of the crew.
     expect(sim.world.has(porter, CurrentAtomic)).toBe(false);
+    expectWaitingAtSite(sim, porter, hq);
   });
 
   it('a store carrier never strips an upgrade site whose delivered stock looks like recipe output', () => {

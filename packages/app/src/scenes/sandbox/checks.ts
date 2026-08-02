@@ -2,16 +2,15 @@ import type { Entity, Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
-import { JOB_CARRIER } from '../../catalog/jobs.js';
 import { staffableCrewFor } from '../../game/sandbox/index.js';
 import { GATHERER_BY_GOOD, type GatherCamp, MINE_DEPOSIT_SCALE, WAREHOUSE_IDS } from './placements.js';
 
-/** The world queries the sandbox scene's checks are stated in - staffing tallies, camp depletion, and
+/** The world queries the sandbox scene's checks are stated in - staffing counts, camp depletion, and
  *  the seeded warehouse stores. */
 
 const { Building, JobAssignment, Resource, Settler, Stockpile } = components;
 
-/** Bound settlers per (building, jobType) - the check-side mirror of the JobSystem's staffing tally. */
+/** Bound settlers per (building, jobType). */
 function boundCrewCount(sim: Simulation, building: Entity, jobType: number): number {
   let n = 0;
   for (const e of sim.world.query(Settler, JobAssignment)) {
@@ -21,22 +20,20 @@ function boundCrewCount(sim: Simulation, building: Entity, jobType: number): num
   return n;
 }
 
-/** Every placed building's staffable production (non-carrier) slots hold exactly their crew. Carriers are
- *  covered by the settlement-wide total instead (a loose carrier reports in to the first open post in
- *  canonical order, so an individual carrier may post to a neighbour). */
+/** Every placed building's staffable slots hold exactly their own crew - carriers included, since a
+ *  fixture posts each one to the building it works rather than letting it find a post. */
 export function producingCrewsComplete(sim: Simulation): boolean {
   for (const e of sim.world.query(Building)) {
     const type = sim.world.get(e, Building).buildingType;
     for (const slot of staffableCrewFor(sim, type)) {
-      if (slot.jobType === JOB_CARRIER) continue;
       if (boundCrewCount(sim, e, slot.jobType) !== slot.count) return false;
     }
   }
   return true;
 }
 
-/** Total staffable slots across the placed settlement vs total bound settlers - the carriers' half of the
- *  staffing proof (see {@link producingCrewsComplete}). */
+/** Total staffable slots across the placed settlement vs total bound settlers - the settlement-wide twin of
+ *  {@link producingCrewsComplete}, which catches a settler bound to a building that has no slot for it. */
 export function settlementFullyStaffed(sim: Simulation): boolean {
   let expected = 0;
   for (const e of sim.world.query(Building)) {

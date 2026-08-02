@@ -311,12 +311,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const b = view.layout.workers.body;
     // The compact limits line sits in the first row; below it the sprite field. A construction site shows
     // the same strip (it employs while it is raised) and adds the build crew to the field - the overlay's
-    // siteCrew selector.
+    // siteCrew selector. An unfinished HOME draws no line (no family slot yet, see drawWorkersSection), so
+    // it keeps the row for its crew.
     const siteCrew = view.model.construction !== null;
-    const inset = Math.round(ROW_H * scale);
+    const inset = siteCrew && view.model.home !== null ? 0 : Math.round(ROW_H * scale);
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
     // A home's field draws its residents grouped per family (the Mieszkańcy window) instead of the
-    // bound-worker scan.
+    // bound-worker scan - until it has any, which is every home still going up (see the overlay).
     const groups = view.model.home?.families.map((f) => f.members);
     workerOverlay.update(snapshot, view.model.entityId, field, {
       siteCrew,

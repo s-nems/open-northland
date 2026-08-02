@@ -159,7 +159,7 @@ export const economyContent = {
       kind: 'storage',
       // A transport slot beside the gatherer slots (the original HQ declares `logicworker 24 3`,
       // houses.ini; count 1 here is a fixture simplification - one carrier keeps the golden legible):
-      // the JobSystem's report-in pass posts a loose carrier here, and only a POSTED carrier hauls
+      // a carrier is posted here, and only a POSTED carrier hauls
       // (the planner's store-carrier rung requires the binding).
       workers: [
         { jobType: 1, count: 3 },

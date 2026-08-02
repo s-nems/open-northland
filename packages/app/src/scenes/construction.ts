@@ -58,8 +58,8 @@ const CREW = { x: 15, y: 13 } as const;
  *  employs nobody, so the two home sites are raised by the loose builders alone. */
 const SITE_BAKERS = 1;
 const SITE_CARRIERS = 1;
-/** Headroom over the measured full-rise run - the shared crew raises all four foundations by ~tick
- *  4400 (deterministic, seed 7); 8000 keeps ~1.8× slack. */
+/** Headroom over the measured full-rise run - the crew raises all four foundations by tick 3409
+ *  (deterministic, seed 7); 8000 keeps ~2.3× slack. */
 const RUN_TICKS = 8_000;
 
 const { Building, JobAssignment, Settler, UnderConstruction } = components;
@@ -92,8 +92,8 @@ function build(sim: Simulation): void {
   }
 }
 
-/** The settlers still posted to a FINISHED building of `ref`'s type - the staff a site kept through its
- *  build (a posting survives the rise; nothing re-employs anyone). */
+/** How many settlers are posted to a building that has finished rising - the staff its site kept through
+ *  the build (a posting survives the rise, and nothing re-employs anyone). */
 function staffOnFinished(sim: Simulation): number {
   let posted = 0;
   for (const e of sim.world.query(Settler, JobAssignment)) {

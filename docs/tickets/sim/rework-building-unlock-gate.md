@@ -11,7 +11,7 @@ followed by a silently rejected command.
 
 - Pin the progression rule from extracted `jobEnablesHouse` and `needfor*` data; name any unobserved XP
   interaction as an approximation.
-- Consult the `ProgressionRules` singleton the way `jobEnabled`/`goodEnabled` do
+- Consult the `ProgressionRules` singleton the way `goodEnabled` does
   (`progression/unlocks.ts`): with profession progression off, building unlocks must lift too.
 - Expose the same enablement in the building menu, upgrade control, and placement probe, including a
   localized explanation of the enabling trade.

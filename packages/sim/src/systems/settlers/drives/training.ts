@@ -128,7 +128,7 @@ function enlist(world: World, ctx: SystemContext, e: Entity): void {
   if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
   const jobType = baseSoldierJobType(ctx.content);
   if (jobType === null) return;
-  world.remove(e, JobAssignment); // re-employed by the JobSystem, as on any profession change
+  world.remove(e, JobAssignment); // its old post is not a soldier's, and nothing re-posts on its own
   reidleAsJob(world, ctx, e, jobType);
   // A counter-funded recruit pays its counter here if the base class was the whole ask; a weapon-class
   // booking is paid by the arming step instead (`planner/recruit-arming.ts`), so it stays marked.
