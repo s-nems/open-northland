@@ -132,18 +132,6 @@ export function buildingWorkerJobs(world: World, ctx: SystemContext, building: E
   return contentIndex(ctx.content).workerJobsByBuilding.get(typeId) ?? EMPTY_JOBS;
 }
 
-/** {@link buildingWorkerJobs} as an ascending list - the canonical slot order a workplace offers its
- *  jobs in, so a multi-slot workplace assigns by lowest job id rather than by `Set` insertion order. */
-export function canonicalBuildingWorkerJobs(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-): readonly number[] {
-  const typeId = knownBuildingTypeId(world, ctx, building);
-  if (typeId === undefined) return EMPTY_JOB_LIST;
-  return contentIndex(ctx.content).canonicalWorkerJobsByBuilding.get(typeId) ?? EMPTY_JOB_LIST;
-}
-
 function knownBuildingTypeId(world: World, ctx: SystemContext, building: Entity): number | undefined {
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
@@ -151,8 +139,6 @@ function knownBuildingTypeId(world: World, ctx: SystemContext, building: Entity)
 }
 
 const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
-/** Frozen so a caller that widens the `readonly` type can't mutate the shared sentinel (see `NO_ENTITIES`). */
-const EMPTY_JOB_LIST: readonly number[] = Object.freeze([]);
 
 /**
  * The set of good types a building's `stock` slots store, or undefined when it has no Building/type

@@ -1,17 +1,12 @@
 import type { Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
-import {
-  grassTerrain,
-  placedBuildingTypes,
-  resolveVikingBuilding,
-  VIKING_BUILDINGS,
-} from '../../catalog/buildings.js';
+import { grassTerrain, placedBuildingTypes, VIKING_BUILDINGS } from '../../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import {
+  placeBuiltSandboxBuilding,
   placeFlag,
   placeResourceNode,
   placeSandboxBerryBush,
-  placeSandboxBuilding,
   spawnBoundGatherer,
   staffBuildingFully,
 } from '../../game/sandbox/index.js';
@@ -65,10 +60,10 @@ const RUN_TICKS = 1200;
 
 function buildVillage(sim: Simulation, ox: number, oy: number): void {
   for (const b of VILLAGE) {
-    placeSandboxBuilding(sim, b.id, ox + b.x, oy + b.y, HUMAN_PLAYER, {
+    const e = placeBuiltSandboxBuilding(sim, b.id, ox + b.x, oy + b.y, HUMAN_PLAYER, {
       fillStock: WAREHOUSE_IDS.has(b.id),
     });
-    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, ox + b.x, oy + b.y);
+    staffBuildingFully(sim, e);
   }
 }
 

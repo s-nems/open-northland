@@ -11,6 +11,7 @@ import {
   GOOD_BREAD,
   GOOD_FLOUR,
   GOOD_WATER,
+  placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSandboxSettler,
   spawnWorkersAtDoor,
@@ -72,16 +73,16 @@ function build(sim: Simulation): void {
   // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone
   // collector must be present or none of the crews below get employed - the gatherer a real game's HQ seeds.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
-  placeSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
-  placeSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);
-  placeSandboxBuilding(sim, BUILDING_BAKERY, BAKERY.x, BAKERY.y);
-  placeSandboxBuilding(sim, BUILDING_WELL, WELL.x, WELL.y);
+  const farm = placeBuiltSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
+  const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);
+  const bakery = placeBuiltSandboxBuilding(sim, BUILDING_BAKERY, BAKERY.x, BAKERY.y);
+  const well = placeBuiltSandboxBuilding(sim, BUILDING_WELL, WELL.x, WELL.y);
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y);
-  // Each crew spawns at its building's door so the adopt pass binds it on tick 1 (see spawnWorkersAtDoor).
-  spawnWorkersAtDoor(sim, BUILDING_FARM, FARM.x, FARM.y, FARMERS);
-  spawnWorkersAtDoor(sim, BUILDING_MILL, MILL.x, MILL.y, MILLERS);
-  spawnWorkersAtDoor(sim, BUILDING_BAKERY, BAKERY.x, BAKERY.y, BAKERS);
-  spawnWorkersAtDoor(sim, BUILDING_WELL, WELL.x, WELL.y, WELL_CARRIERS);
+  // Each crew spawns bound to its building, standing at the door (see spawnWorkersAtDoor).
+  spawnWorkersAtDoor(sim, farm, FARMERS);
+  spawnWorkersAtDoor(sim, mill, MILLERS);
+  spawnWorkersAtDoor(sim, bakery, BAKERS);
+  spawnWorkersAtDoor(sim, well, WELL_CARRIERS);
 }
 
 /** Total units of one good across every stockpile in the world (building stores + loose piles). */

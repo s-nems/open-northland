@@ -141,14 +141,14 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('demolish unbinds the workplace operators: each returns to idle and re-employable', () => {
     const sim = fresh();
-    // A sawmill (type 2, one carpenter slot) and a carpenter standing on its tile. The JobSystem (in
-    // the step schedule) ADOPTS the pre-employed-but-unbound operator, binding it to the mill it staffs.
+    // A sawmill (type 2, one carpenter slot) and its bound carpenter. Employment is directed, so the
+    // binding is stamped here rather than grown by the schedule.
     sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 5, y: 5, tribe: VIKING });
     sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 5, y: 5, tribe: VIKING });
     sim.step();
     const mill = nthEntity(sim, 0);
     const worker = nthEntity(sim, 1);
-    expect(sim.world.get(worker, JobAssignment).workplace).toBe(mill); // bound to THIS mill
+    sim.world.add(worker, JobAssignment, { workplace: mill });
 
     // Demolish the mill: its operator must be released, not left latched to a dead entity.
     sim.enqueue({ kind: 'demolish', building: mill });

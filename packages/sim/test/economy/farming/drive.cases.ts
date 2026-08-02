@@ -171,8 +171,7 @@ describe('planFarmer - the drive ladder', () => {
 
   it('never sows past the farm plot cap', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 10) });
-    farmAt(sim, 5, 5);
-    farmerAt(sim, 5, 5); // unbound: adopted by the jobSystem's farm-adopt pass on tick 1
+    farmerAt(sim, 5, 5, farmAt(sim, 5, 5));
     // Growth is slow (10 ticks/stage × 5 stages) relative to this window, so nothing ripens and the
     // count below is the standing-roster max, not a harvested-and-resown churn.
     sim.run(TICKS_PER_STAGE * STAGES - 1);

@@ -7,6 +7,7 @@ import {
   BUILDING_FARM,
   BUILDING_WAREHOUSE_00,
   GOOD_WHEAT,
+  placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSandboxSettler,
   spawnWorkersAtDoor,
@@ -62,9 +63,9 @@ function measure(farmers: number): Measured {
     terrain: grassTerrain(MAP, MAP),
     build: (s: Simulation) => {
       spawnSandboxSettler(s, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
-      placeSandboxBuilding(s, BUILDING_FARM, FARM.x, FARM.y);
+      const farm = placeBuiltSandboxBuilding(s, BUILDING_FARM, FARM.x, FARM.y);
       placeSandboxBuilding(s, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y);
-      spawnWorkersAtDoor(s, BUILDING_FARM, FARM.x, FARM.y, farmers);
+      spawnWorkersAtDoor(s, farm, farmers);
     },
   });
 

@@ -108,14 +108,7 @@ export function assignWorker(
 
   const settler = world.get(e, Settler);
   const jobType = openWorkerJobFromList(
-    {
-      world,
-      ctx,
-      tribe: settler.tribe,
-      owner: ownerOf(world, e),
-      experience: settler.experience,
-      mode: { kind: 'playerDirected' },
-    },
+    { world, ctx, tribe: settler.tribe, owner: ownerOf(world, e), experience: settler.experience },
     b,
     command.jobPriority,
   );

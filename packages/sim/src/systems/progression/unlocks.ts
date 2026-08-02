@@ -17,7 +17,7 @@ import { requirementRepeats } from './bonus.js';
 
 /** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
  *  the progression/experience system - see docs/tickets/sim/rework-building-unlock-gate.md; when it lands,
- *  the gate should consult `ProgressionRules` the way {@link jobEnabled}/{@link goodEnabled} do. Annotated
+ *  the gate should consult `ProgressionRules` the way {@link goodEnabled} does. Annotated
  *  `boolean` (not narrowed to the literal) so both branches of the gate stay live for the type checker. */
 const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 
@@ -68,18 +68,6 @@ export function recipeOutputsEnabled(
     if (!goodEnabled(world, ctx, tribe, output.goodType)) return false;
   }
   return true;
-}
-
-/**
- * Is `jobType` itself unlocked for `tribe` right now? The `job` kind of the tech-graph:
- * `jobEnablesJob <jobType> <targetJob>` means a settler of `jobType` unlocks the target job - a
- * specialization a tribe can't staff until the prerequisite trade exists (a smith unlocking a weaponsmith).
- * Consumed by the JobSystem's assignment gate ({@link openJobAt}).
- */
-export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobType: number): boolean {
-  // free start, fighters stay gated
-  if (!professionProgressionEnabled(world) && !isFighterJob(ctx.content, jobType)) return true;
-  return tribeUnlockEnabled(world, ctx, tribe, 'job', jobType);
 }
 
 /**

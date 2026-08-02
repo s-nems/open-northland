@@ -25,7 +25,6 @@ import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
 import { livestockTables } from './content-index/livestock.js';
 import {
-  canonicalWorkerJobLists,
   inputlessProducerTypes,
   mergedRecipes,
   recipeProductTables,
@@ -109,9 +108,6 @@ export interface ContentIndex {
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). Precomputed so the per-tick staffing gates don't allocate. */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
-  /** Per building type: the same job types as {@link workerJobsByBuilding}, ascending - the canonical
-   *  slot order the automatic job scan offers them in. */
-  readonly canonicalWorkerJobsByBuilding: ReadonlyMap<number, readonly number[]>;
   /** Per building type: the set of good types its `stock` slots store - what an employed gatherer may
    *  forage for. Absent for a type declaring no stock slots. */
   readonly storedGoodsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
@@ -242,7 +238,6 @@ function buildIndex(content: ContentSet): ContentIndex {
     livestockMeatGood: livestock.meatGood,
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobs,
-    canonicalWorkerJobsByBuilding: canonicalWorkerJobLists(workerJobs),
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content, livestock.workplaceTypes),

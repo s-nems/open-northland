@@ -15,9 +15,9 @@ import {
   GOOD_PLANK,
   GOOD_STONE,
   GOOD_WOOD,
-  placeSandboxBuilding,
-  spawnIdleSettler,
+  placeBuiltSandboxBuilding,
   spawnSandboxSettler,
+  staffBuildingFully,
 } from '../game/sandbox/index.js';
 import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
@@ -27,9 +27,8 @@ import type { SceneDefinition } from './types.js';
  * staffs, stops at the store's per-good limit, and moves on to the next good instead of jamming.
  *
  * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
- * piles. Three carriers spawn unemployed beside it; a passive store isn't adopted by a settler at its door
- * (only recipe workshops/farms are), so the JobSystem assign pass employs them into its three carrier slots
- * ({@link JOB_CARRIER} fills first). Bound to a recipe-less store, each becomes a porter: it collects the
+ * piles. Three carriers are posted to it at build - nothing employs a settler on its own - filling its three
+ * carrier slots. Bound to a recipe-less store, each becomes a porter: it collects the
  * nearest loose pile whose good the store can still take and carries it home one unit per foot-trip.
  *
  * Wood is over-supplied (1.5× its cap, read from content) nearest the door, so the store fills to 100/100 and
@@ -53,10 +52,8 @@ const WAREHOUSE_Y = 6;
 /** The tech enabler's corner - far from the store, goods and carriers so it just idles (no gathering: the loose
  *  piles are ground drops, not resource nodes a collector harvests). */
 const ENABLER = { x: 2, y: MAP_H - 2 } as const;
-/** Three carriers - the warehouse's carrier-slot count; spawned unemployed just below it so the assign pass
- *  staffs all three into its carrier slots on the first tick. */
+/** Three carriers - the warehouse's carrier-slot count, all posted to it at build. */
 const CARRIERS = 3;
-const CARRIER_ROW_Y = 9;
 
 /** The loose-good field: wood hugging the store (short trips, worked first, fills the store to its cap with a
  *  surplus left over), a scatter of other goods farther out (well under the cap, worked once wood tops out). */
@@ -85,17 +82,12 @@ function warehouseCapacity(sim: Simulation, goodType: number): number {
 }
 
 function build(sim: Simulation): void {
-  placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
+  const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
+  // Its three carrier slots, staffed - nobody employs themselves, so the scene posts the crew.
+  staffBuildingFully(sim, store, HUMAN_PLAYER);
 
-  // The warehouse (house 7) is `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone collector
-  // must be present or the carriers below never get employed - the gatherer a real game's HQ seeds, placed
-  // off in a corner where it idles.
+  // A lone collector off in a corner, where it idles: the gatherer a real game's HQ seeds.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y, HUMAN_PLAYER);
-
-  // Three unemployed settlers by the warehouse - the assign pass employs them into its carrier slots.
-  for (let i = 0; i < CARRIERS; i++) {
-    spawnIdleSettler(sim, WAREHOUSE_X - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER);
-  }
 
   // Wood over-supplied (1.5× cap), in full-stack tiles in rows near the store (worked first): the store
   // fills and the surplus stays on the ground.

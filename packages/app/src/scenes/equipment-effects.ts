@@ -6,8 +6,8 @@ import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_MILL,
   GATHERERS,
+  placeBuiltSandboxBuilding,
   placeResourceNode,
-  placeSandboxBuilding,
   spawnSandboxSettler,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
@@ -70,7 +70,7 @@ function build(sim: Simulation): void {
     },
   });
 
-  placeSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y, HUMAN_PLAYER);
+  const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y, HUMAN_PLAYER);
   const pile = cellAnchorNode(WHEAT_PILE.x, WHEAT_PILE.y);
   sim.enqueue({
     kind: 'dropGood',
@@ -80,7 +80,7 @@ function build(sim: Simulation): void {
     amount: WHEAT_UNITS,
   });
   // The tooled miller, with draughts for both bars so a pressing need is a sip, not a work stoppage.
-  spawnWorkersAtDoor(sim, BUILDING_MILL, MILL.x, MILL.y, MILLERS, HUMAN_PLAYER, {
+  spawnWorkersAtDoor(sim, mill, MILLERS, HUMAN_PLAYER, {
     tool: { goodType: goodBySlug(sim, 'tool_iron') },
     misc: [
       { goodType: goodBySlug(sim, 'potion_food_big') },

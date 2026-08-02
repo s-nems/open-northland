@@ -55,7 +55,7 @@ function build(sim: Simulation): void {
     s.amounts.set(goodBySlug(sim, 'water'), STARTER_WATER);
     s.amounts.set(goodBySlug(sim, 'wheat'), STARTER_WHEAT);
   });
-  spawnWorkersAtDoor(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y, BREEDERS);
+  spawnWorkersAtDoor(sim, farm, BREEDERS);
   spawnSandboxSettler(sim, JOB_HUNTER, HUNTER.x, HUNTER.y, HUMAN_PLAYER);
 
   for (const herd of [

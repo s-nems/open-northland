@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Felling, Position, Resource } from '../../src/components/index.js';
+import { Building, Felling, JobAssignment, Position, Resource, Settler } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -37,9 +38,9 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  *     3 chops and dropping a 4-wood trunk (the wood good's `gathering` felling spec).
  * The whole goods chain runs end to end and conserves goods: the woodcutter FELLS each tree (3 chops
  * yielding nothing → the tree drops a ground trunk holding its whole 4 wood) and banks the felled wood
- * at its own work flag → the CARRIER - posted to the HQ's transport slot on tick 1 by the JobSystem's
- * report-in pass (hauling is worked only through an assignment) - ferries the flag-banked wood into
- * the HQ and hauls finished planks there too → the carpenter runs its own supply→produce→deliver
+ * at its own work flag → the CARRIER - posted to the HQ's transport slot on tick 1 (hauling is worked
+ * only through an assignment, and nothing employs a settler on its own) - ferries the flag-banked wood
+ * into the HQ and hauls finished planks there too → the carpenter runs its own supply→produce→deliver
  * loop, fetching the HQ's wood into the mill (the input-supply drive) and hauling planks back out.
  * 2 stumps are left where the trees stood; goods are conserved throughout, invariant-clean for the
  * whole 1000-tick tail (10 stored + 8 felled wood; the produced count is pinned below).
@@ -112,6 +113,10 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   const invariantViolations: string[] = [];
   for (let i = 0; i < ticks; i++) {
     sim.step();
+    // Employment is directed, never automatic, so the slice posts its own crew: the carpenter to the
+    // sawmill it stands on and the carrier to the HQ's transport slot. Enqueued after tick 1, the first
+    // tick on which the CommandSystem has actually created the buildings and settlers these name.
+    if (sim.tick === 1) staffSlice(sim);
     for (const ev of sim.events.current()) {
       if (ev.kind === 'atomicCompleted') trace.push(`${sim.tick}:${ev.entity}:${ev.atomicId}`);
       else if (ev.kind === 'goodProduced') produced += ev.amount;
@@ -122,6 +127,27 @@ function runSlice(seed: number, ticks: number): GoldenRun {
     }
   }
   return { hash: sim.hashState(), trace, produced, invariantViolations };
+}
+
+/** Post the slice's crew: the carpenter to the sawmill it stands on, the carrier to the headquarters'
+ *  transport slot. Stamped straight onto the entities the placement commands just created - the
+ *  `assignWorker` order is owned-only and the slice's fixture is deliberately unowned, so it binds the
+ *  way a scene fixture does. Each is resolved by its type, never by a hard-coded entity id. */
+function staffSlice(sim: Simulation): void {
+  const buildingOfType = (buildingType: number): Entity => {
+    for (const e of sim.world.query(Building)) {
+      if (sim.world.get(e, Building).buildingType === buildingType) return e;
+    }
+    throw new Error(`golden slice: no building of type ${buildingType}`);
+  };
+  const settlerOfJob = (jobType: number): Entity => {
+    for (const e of sim.world.query(Settler)) {
+      if (sim.world.get(e, Settler).jobType === jobType) return e;
+    }
+    throw new Error(`golden slice: no settler of job ${jobType}`);
+  };
+  sim.world.add(settlerOfJob(CARPENTER), JobAssignment, { workplace: buildingOfType(SAWMILL) });
+  sim.world.add(settlerOfJob(CARRIER), JobAssignment, { workplace: buildingOfType(HEADQUARTERS) });
 }
 
 describe('golden: the vertical slice over ~1000 ticks', () => {
@@ -136,60 +162,60 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // cell in 18 ticks, the inter-swing breather lands after every 2nd swing of a worker's burst, and a
   // trained swing advances a tree by more than one chop (the woodcutter's second tree).
   const GOLDEN_TRACE: readonly string[] = [
-    '26:8:22',
+    '27:8:22',
     '43:5:24',
     '46:5:24',
-    '52:8:23',
+    '53:8:23',
     '64:5:24',
     '68:5:22',
     '90:7:22',
-    '98:8:22',
+    '99:8:22',
     '112:5:23',
-    '124:8:23',
+    '125:8:23',
     '152:7:23',
     '156:5:22',
-    '170:8:22',
-    '196:8:23',
+    '171:8:22',
+    '197:8:23',
     '200:5:23',
     '214:7:22',
-    '242:8:22',
+    '243:8:22',
     '265:5:24',
     '268:5:24',
-    '268:8:23',
+    '269:8:23',
     '276:7:23',
     '286:5:24',
     '290:5:22',
-    '314:8:22',
-    '340:8:23',
+    '315:8:22',
+    '341:8:23',
     '352:5:23',
     '374:7:22',
-    '386:8:22',
-    '412:8:23',
+    '387:8:22',
+    '413:8:23',
     '414:5:22',
-    '458:8:22',
+    '459:8:22',
     '472:7:23',
     '476:5:23',
-    '484:8:23',
-    '530:8:22',
-    '556:8:23',
+    '485:8:23',
+    '531:8:22',
+    '557:8:23',
     '570:7:22',
-    '602:8:22',
-    '628:8:23',
+    '603:8:22',
+    '629:8:23',
     '668:7:23',
-    '674:8:22',
-    '700:8:23',
-    '746:8:22',
+    '675:8:22',
+    '701:8:23',
+    '747:8:22',
     '766:7:22',
-    '772:8:23',
-    '818:8:22',
-    '844:8:23',
+    '773:8:23',
+    '819:8:22',
+    '845:8:23',
     '864:7:23',
-    '890:8:22',
-    '916:8:23',
+    '891:8:22',
+    '917:8:23',
     '962:7:22',
-    '962:8:22',
-    '988:8:23',
-    '992:8:22',
+    '963:8:22',
+    '989:8:23',
+    '993:8:22',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -201,7 +227,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('c556c610');
+    expect(run.hash).toBe('da5232aa');
   });
 
   it('matches the golden atomic-action trace', () => {

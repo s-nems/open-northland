@@ -216,18 +216,6 @@ describe('confinement gates the carried-load delivery sink', () => {
 });
 
 describe('confinement gates job assignment', () => {
-  it('an idle settler is not employed by an out-of-area workplace, but takes an in-area one', () => {
-    const sim = confinedSim();
-    const idle = ownedSettler(sim, 2, 2, null);
-    sawmillAt(sim, OUT_OF_AREA, 2);
-    sim.step();
-    expect(sim.world.get(idle, Settler).jobType).toBeNull();
-
-    sawmillAt(sim, IN_AREA, 2);
-    sim.step();
-    expect(sim.world.get(idle, Settler).jobType).toBe(CARPENTER);
-  });
-
   it('assignWorker to an out-of-area building is refused like an out-of-area move order', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
