@@ -1,30 +1,19 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
-import { buildCollisionTerrain } from '../../src/content/collision.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
-import {
-  mapResourceObjectNames,
-  spawnMapBerryBushes,
-  spawnMapResources,
-} from '../../src/game/sandbox/index.js';
+import { buildMapWorld } from '../../src/entries/map/world.js';
 import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
-import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
-import { grantAssistantDefaults } from '../../src/view/assistant-grants.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
- * The one headless build of a REAL decoded map - the same chain `entries/map.ts` assembles for
- * `?map=<id>&ai=<seats>&fog=<mode>` (real merged content → collision terrain → {@link runAuthoredSlice}
- * → fog → AI seats → their assistant grants → map objects). Shared by the real-content scenario tests
- * and the real-map benchmark so neither drifts from the browser boot the way two copies would. Only
- * the render half is skipped, and `?speed=` with it - speed multiplies the RAF loop, not the sim.
+ * The one headless build of a REAL decoded map - the `?map=<id>&ai=<seats>&fog=<mode>` world through the
+ * entry's own {@link buildMapWorld}, so a scenario run and the browser boot cannot drift. Only the render
+ * half is skipped, and `?speed=` with it - speed multiplies the RAF loop, not the sim.
  */
 
-/** The seed the browser's vertical slice runs on (`SLICE_SEED` in `entries/map.ts`). */
-const SLICE_SEED = 7;
-/** Authored placements are enqueued pre-tick-0; the slice runs one tick so they drain. */
-const PLACEMENT_DRAIN_TICKS = 1;
+/** The seed the browser's map entry runs on (`SLICE_SEED` in `entries/map.ts`). */
+const MAP_SEED = 7;
 
 export interface RealMapWorldOptions {
   /** Decoded map id under `content/maps/<id>.json`. */
@@ -59,20 +48,21 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
-  const simMap = buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
-  // Only `content` matters here: the real-content override replaces the sandbox build whole, so a
-  // footprint overlay would be ignored (see resolveWorldContent).
-  const sim = runAuthoredSlice(SLICE_SEED, PLACEMENT_DRAIN_TICKS, simMap, map.entities, ir, {
-    content: merge.content,
+  const world = buildMapWorld({
+    seed: MAP_SEED,
+    map,
+    ir,
+    // Only `content` matters here: the real-content override replaces the sandbox build whole, so a
+    // footprint overlay would be ignored (see resolveWorldContent).
+    content: { content: merge.content },
+    aiSeats: options.aiSeats,
+    // Each AI seat's assistant, so a headless run measures an economy that dresses itself like the
+    // browser's. The entry also grants to the seat the person controls; a headless run has none.
+    assistantSeats: options.aiSeats,
+    fog: options.fog ?? null,
+    progression: null,
+    berryBushes: options.berryBushes === true,
   });
-  if (sim === null) throw new Error(`${options.mapId} resolved no authored placements`);
-  if (options.fog !== undefined) sim.enqueue({ kind: 'setFogMode', mode: options.fog });
-  for (const seat of options.aiSeats) sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
-  // Each AI seat's assistant, so a headless run measures an economy that dresses itself like the browser's.
-  // The entry also grants to the seat the person controls; a headless run has none.
-  grantAssistantDefaults(sim, merge.content, options.aiSeats);
-  // The map's own trees/stone/clay as harvestable Resource nodes - the collectors flag themselves beside these.
-  spawnMapResources(sim, map.objects, ir);
-  if (options.berryBushes === true) spawnMapBerryBushes(sim, map.objects, ir);
-  return { sim, ir, mapCells: { width: map.width, height: map.height } };
+  if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);
+  return { sim: world.sim, ir, mapCells: { width: map.width, height: map.height } };
 }

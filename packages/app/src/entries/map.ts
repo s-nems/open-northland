@@ -4,8 +4,6 @@ import {
   makeElevationField,
   type TerrainTextureSet,
 } from '@open-northland/render';
-import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
-import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
@@ -21,28 +19,22 @@ import {
   playerColourMap,
   readOnlyObserverParam,
 } from '../game/player-session.js';
-import {
-  mapResourceObjectNames,
-  sandboxGoods,
-  spawnMapBerryBushes,
-  spawnMapResources,
-} from '../game/sandbox/index.js';
+import { sandboxGoods } from '../game/sandbox/index.js';
+import { sessionRuleOverrides } from '../game/session-rules.js';
 import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
-import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
-import { grantAssistantDefaults } from '../view/assistant-grants.js';
+import { sliceTerrain } from '../slice/vertical-slice.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { bindHarvestableHandover } from '../view/harvestable-handover.js';
 import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
-  applyFogOverride,
-  applyProgressionOverride,
   createWorldRenderer,
   haltOnMissingContent,
   loadLocalizedRealContent,
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
+import { buildMapWorld } from './map/world.js';
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid - the
@@ -160,50 +152,39 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       diag.warn('content', `map objects unavailable, bare ground fallback: ${String(err)}`);
     }
   }
-  // The slice sim (kept live and stepped one tick per fixed interval) is built below; its demo units are
-  // owned by the human player so they can be selected + ordered.
+  await boot.begin('world');
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles.
-  await boot.begin('world');
   const footprints = buildingFootprints(ir);
-  // The sim navigates + validates placement against the collision grid - the map's raw landscape lane
-  // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
-  // stones, ore deposits block; see content/collision.ts). The render layers keep reading `loaded`
-  // (raw typeIds drive the per-triangle fallback + the ambience beds). The `ir !== null` guards here
-  // and below are type narrowing only: the terrain halt above proves the IR at runtime.
-  // Harvestable placements are excluded from the static grid: they spawn as `Resource` entities below,
-  // whose dynamic footprints block while standing and unblock when felled/depleted - statically baked,
-  // a felled tree's cell stayed walled off forever and its dropped trunk was unreachable.
-  const simMap =
-    loaded !== null && ir !== null
-      ? buildCollisionTerrain(loaded, ir, mapResourceObjectNames(ir))
-      : loaded !== null
-        ? halfCellMapFromCells(loaded)
-        : null;
-  const contentOptions = {
-    footprints,
-    goodNames,
-    ...(realContent !== null ? { content: realContent.content } : {}),
-  };
-  // A map that carries authored entities places those; a real decoded map without them gets a bare sim
-  // (no demo cluster - {@link runBareMap}); only the synthetic-strip fallback (no map loaded) keeps the
-  // HQ/joinery/gatherer/carrier demo world (via {@link runSlice}, shared with the deterministic shot PNG).
-  // The placing slices run one tick, not zero: `placeBuilding`/`spawnSettler` are queued commands that
-  // apply on the sim's first step, so a 0-tick sim's snapshot is still empty - the start-camera focus
-  // below would then read no entities and fall back to the map centre. One tick applies every placement
-  // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
-  const authoredSim =
-    loaded?.entities !== undefined && ir !== null && simMap !== null
-      ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, contentOptions)
-      : null;
-  const sim =
-    authoredSim ??
-    (simMap !== null
-      ? runBareMap(SLICE_SEED, simMap, contentOptions)
-      : // Roster-less fallback (no decodable map): the synthetic slice is OWNED by the session seat,
-        // so ?player= changes initial sim state here - deterministic per URL, and the menu never
-        // emits ?player without a rostered map. Real maps take ownership from map data instead.
-        runSlice(SLICE_SEED, 1, undefined, { ...contentOptions, owner: localPlayer }));
+  // `?ai=<seat>[,…]` flags seats for the strategic AI player - emitted by the menu roster's AI
+  // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat
+  // without a built headquarters stays inert by the AI's own rule).
+  const aiSeats = aiSeatsParam(params);
+  // The controlled seat and every AI seat start with their chest-window grants ON (user decisions
+  // 2026-07-24 / 2026-07-27; scenes stay neutral fixtures, like the needs toggle). A seat nobody
+  // drives stays bare - a rostered idle/hidden slot, a scripted soldier camp, or the seat a READ-ONLY
+  // spectator merely watches (`localPlayerParam` answers HUMAN_PLAYER for both pseudo-seats, so the
+  // commanding overseer keeps it). Asymmetry to live with: the chest window edits only `localPlayer`,
+  // so an overseer cannot switch an AI seat's grants back off.
+  const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
+  // The render layers keep reading `loaded` (raw typeIds drive the per-triangle fallback + the ambience
+  // beds); the sim runs on the collision resolution of the same map.
+  const { sim, harvestablePlacements } = buildMapWorld({
+    seed: SLICE_SEED,
+    map: loaded,
+    ir,
+    content: {
+      footprints,
+      goodNames,
+      ...(realContent !== null ? { content: realContent.content } : {}),
+    },
+    aiSeats,
+    assistantSeats: [...controlled, ...aiSeats],
+    ...sessionRuleOverrides(params),
+    // Only the no-decodable-map fallback takes ownership from the session seat, so ?player= changes its
+    // initial sim state - deterministic per URL. Real maps take ownership from map data instead.
+    demoOwner: localPlayer,
+  });
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,
@@ -212,44 +193,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     hashTrace: hashTraceFor(params),
   });
 
-  // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
-  applyFogOverride(sim, params);
-  // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
-  applyProgressionOverride(sim, params);
-
-  // `?ai=<seat>[,…]` flags seats for the strategic AI player - emitted by the menu roster's AI
-  // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat
-  // without a built headquarters stays inert by the AI's own rule).
-  const aiSeats = aiSeatsParam(params);
-  for (const seat of aiSeats) {
-    sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
-  }
-
-  // The controlled seat and every AI seat start with their chest-window grants ON (user decisions
-  // 2026-07-24 / 2026-07-27; scenes stay neutral fixtures, like the needs toggle). A seat nobody
-  // drives stays bare - a rostered idle/hidden slot, a scripted soldier camp, or the seat a READ-ONLY
-  // spectator merely watches (`localPlayerParam` answers HUMAN_PLAYER for both pseudo-seats, so the
-  // commanding overseer keeps it). Asymmetry to live with: the chest window edits only `localPlayer`,
-  // so an overseer cannot switch an AI seat's grants back off.
-  const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
-  grantAssistantDefaults(sim, sim.content, [...controlled, ...aiSeats]);
-
-  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (and its fruited bushes
-  // as forageable BerryBush entities), so a gatherer can actually work them, not just see render-only
-  // decor. Direct spawn into the sim (after its one placement tick above), in the map's placement order
-  // (deterministic ids) - the authored buildings/settlers already exist, so these nodes take later ids.
-  let harvestableHandover: ((events: readonly SimEvent[]) => void) | null = null;
-  if (loaded?.objects !== undefined && ir !== null) {
-    const { placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
-    const bushes = spawnMapBerryBushes(sim, loaded.objects, ir);
-    if (staticObjects !== undefined) {
-      harvestableHandover = bindHarvestableHandover(
-        renderer,
-        [...placementByEntity, ...bushes.placementByEntity],
-        staticObjects.byPlacement,
-      );
-    }
-  }
+  // First-touch handover: a worked resource leaves the built-once static layer and the sprite pool
+  // draws it on. Without the static sprites (a partial `content/`) every node is pool-drawn already.
+  const harvestableHandover =
+    staticObjects !== undefined
+      ? bindHarvestableHandover(renderer, harvestablePlacements, staticObjects.byPlacement)
+      : null;
 
   // Interactive camera: the start frame centres on the player's start ({@link mapStartFocus}: the human
   // player's headquarters/settler cluster, else the map centre) so entering a map lands on the action, not
@@ -291,7 +240,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
-    // First-touch handover: a worked resource leaves the static layer and the pool draws it on.
     ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
   });
   await boot.finish();
