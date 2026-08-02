@@ -75,9 +75,9 @@ The loader also exposes per-lane dimensions and dictionaries needed to resolve n
 ## Lanes not imported
 
 The remaining chunks are dropped on import. Meanings below follow the CulturesNation documentation,
-which reports replaying each derivable section byte-identically against original maps; of these only
-the `lmwb`/`lmbb` derivation is independently verified here (see below). "Derivable" sections can be
-recomputed from the imported lanes plus landscape data; "authored" ones carry map content we
+which reports replaying each derivable section byte-identically against original maps; of these the
+`lmwb`/`lmbb` and `lmtw` derivations are independently verified here (see below). "Derivable" sections
+can be recomputed from the imported lanes plus landscape data; "authored" ones carry map content we
 currently lose.
 
 Treat these meanings as probe targets, not implementation evidence, until they are re-checked.
@@ -86,7 +86,7 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | --- | --- | --- |
 | `lmpa`, `lmpb` | derivable | pattern `LogicType` per triangle (water = 1, void = {0, 5, 6}, land = rest) |
 | `lmco`, `laco` | derivable | flood-filled continent id per node, plus the continent table (type, anchor, size) |
-| `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions |
+| `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions (derivation verified below) |
 | `lmpr` | derivable | roughness 0..5 slowing movement; 1 on water and road nodes |
 | `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |
 | `lmro`, `lmsb`, `lmhf`, `emm1` | derivable | road presence, walk-sector point marks, zeros, road-overlay visibility |
@@ -124,6 +124,38 @@ verified stamp rule, per placement at half-cell `(x, y)` and per block-area row 
 stale sections (several maps carry an empty or outdated `lmbb`). The engine's runtime stamping is what
 the sim mirrors (`footprintCellDx` in `packages/data`); the conservative full-state collapse
 (`fullStateBlockAreaCells`) remains a named approximation of the valency gate.
+
+### Verified `lmtw` derivation: ground walkability is per triangle, and land wins
+
+Replaying `lmtw` from `empa`/`empb` alone reproduces all 130 decodable owned maps byte-identically,
+which settles how the original classes ground under a mixed cell. Each of the `2W x 2H` lattice nodes
+takes a type from the triangles touching it, by priority `land > void > water`, where land is every
+`trianglepatterntypes` row with `humancanwalkon 1`, water is the `iswater` row, and void is the rest
+plus the row-less `border` type. An edge between two nodes carries its direction bit when both nodes
+and the triangles tangent to that edge resolve to the same type. The outer band is unconditionally
+impassable: 4 node rows top and bottom, and 3 to 5 node columns per side depending on `y % 4`.
+
+So one blocking triangle never seals its cell: every node the cell's walkable triangle touches is a
+land node. The 124 decoded maps paint 58738 cells with exactly one walkable triangle (43664 mixed
+with water, 7733 with moor, 7341 with `border`, which is also the interior void filler and not only
+the frame band), so shoreline and void margins drawn out of them walk in the original.
+
+### How `content/collision.ts` approximates it
+
+The join keeps ground classes at cell resolution and mirrors the node rule per flag: better triangle
+for walking, worse for building and sowing. Two named gaps, measured against the replayed `lmtw`
+components over the same 124 maps:
+
+- **Permissive inside a mixed cell.** A walkable triangle opens all four of the cell's nodes, not
+  just the ones it touches, so a mixed cell is a 4-node crossing rather than a 3-node one. On 17 maps
+  that attaches one pocket of 202 to 556 nodes to a mainland the original keeps separate. On every
+  other map, and for every larger region, each of our components falls inside a single `lmtw`
+  component: the join never welds two landmasses the original holds apart.
+- **Restrictive at a fully blocking cell.** Its nodes are impassable here even where a neighbouring
+  cell's walkable triangle touches them, and the unconditional outer band is not implemented at all.
+
+The worst-triangle collapse this replaced was wrong in the other direction and by more: it split
+landmasses the original's own `lmtw` joins, on 7 of the maps sampled.
 
 ## Tests
 

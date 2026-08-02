@@ -13,7 +13,6 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../catalog/terrain.js';
-import { isBridgeRecord } from './ir/joins.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**
@@ -27,9 +26,9 @@ import { forEachPlacement } from './map-placements.js';
  *    mountain faces and snow are walkable but reject building (they land on `TERRAIN_MARGIN`),
  *    every fully-flagged land class is open. The one gap in the data is the `border` pattern
  *    (logicType 0, no table row): classed impassable — a named approximation (the map frame band is
- *    visually outside the playfield in the original). A cell takes its worst triangle's class
- *    (conservative: a half-water cell rejects a building wall). When an older `ir.json` carries no
- *    `trianglePatternTypes` lane, the split degrades to a pinned approximation of the same table.
+ *    visually outside the playfield in the original). A cell joins its two triangles per flag
+ *    ({@link joinTriangleClasses}). When an older `ir.json` carries no `trianglePatternTypes` lane,
+ *    the split degrades to a pinned approximation of the same table.
  *  - **objects**: each placed landscape object (tree/rock/deposit/palisade…) joins `landscapeGfx` by
  *    `EditName` and stamps its `LogicWalkBlockArea` cells as its body (neither walk nor build) and
  *    its `LogicBuildBlockArea`-only cells as its margin — the per-object blocking the original's
@@ -41,7 +40,6 @@ import { forEachPlacement } from './map-placements.js';
  *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal).
  *    A skipped placement's collision is then the sim-content footprint (own-node), a named
  *    approximation of the IR area until real per-variant footprints enter the sim's content set.
- *    Bridges are the other exception, and {@link objectFootprints} holds why.
  *
  * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
@@ -117,17 +115,7 @@ interface ObjectFootprint {
   readonly margin: readonly Readonly<FootprintCell>[];
 }
 
-/**
- * `EditName` → footprint for every object that blocks something (harvestables skipped, module doc).
- *
- * A bridge contributes no body, so its cells block building only. This is an approximation standing in
- * for a fix elsewhere, not the original's rule: the map's derivable `lmwb` plane bakes every object's
- * walk area, a bridge's included (`docs/formats/MAPDAT.md`), and that area is a parapet outline whose
- * corridor carries the authored crossing. Our per-cell ground collapse seals that corridor at its
- * land/water cells, which is what actually severs the crossings;
- * `docs/tickets/app/shoreline-half-water-cells.md` owns the real fix and reverting this exception.
- * Until then settlers also walk the parapets and abutment stonework, which the original blocks.
- */
+/** `EditName` → footprint for every object that blocks something (harvestables skipped, module doc). */
 function objectFootprints(
   rows: NonNullable<CollisionIrView['landscapeGfx']>,
   skipObjectNames?: ReadonlySet<string>,
@@ -136,14 +124,13 @@ function objectFootprints(
   const out = new Map<string, ObjectFootprint>();
   for (const g of rows) {
     if (g.editName === undefined || skipObjectNames?.has(g.editName)) continue;
-    const walk = fullStateBlockAreaCells(g.walkBlockAreas);
+    const body = fullStateBlockAreaCells(g.walkBlockAreas);
     const build = fullStateBlockAreaCells(g.buildBlockAreas);
-    if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
-    const body = isBridgeRecord(g) ? [] : walk;
-    // Every cell the object blocks at all, minus the body: the two areas overlap, hence the set.
+    if (body.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
+    // The build area minus the body: the two areas overlap, and a body cell must not be downgraded.
     const claimed = new Set(body.map(key));
     const margin: FootprintCell[] = [];
-    for (const cell of [...build, ...walk]) {
+    for (const cell of build) {
       const k = key(cell);
       if (claimed.has(k)) continue;
       claimed.add(k);
@@ -154,10 +141,18 @@ function objectFootprints(
   return out;
 }
 
-/** The worse of two ground classes (impassable > margin > barren > open) — a cell takes its worst
- *  triangle. */
-function worseGroundClass(a: number, b: number): number {
-  if (a === TERRAIN_IMPASSABLE || b === TERRAIN_IMPASSABLE) return TERRAIN_IMPASSABLE;
+/**
+ * The two triangle classes joined into the cell's class: it walks unless BOTH triangles refuse, and
+ * builds/sows only on the worse of the two. A half-water shoreline cell therefore walks but refuses
+ * a wall and a plough.
+ *
+ * Cell-resolution approximation of the original's per-node rule (`docs/formats/MAPDAT.md`, which
+ * measures the corpus gap both ways): a walkable triangle opens all four of the cell's nodes here,
+ * only the nodes it touches there.
+ */
+function joinTriangleClasses(a: number, b: number): number {
+  if (a === TERRAIN_IMPASSABLE && b === TERRAIN_IMPASSABLE) return TERRAIN_IMPASSABLE;
+  if (a === TERRAIN_IMPASSABLE || b === TERRAIN_IMPASSABLE) return TERRAIN_MARGIN;
   if (a === TERRAIN_MARGIN || b === TERRAIN_MARGIN) return TERRAIN_MARGIN;
   if (a === TERRAIN_BARREN || b === TERRAIN_BARREN) return TERRAIN_BARREN;
   return TERRAIN_OPEN;
@@ -179,8 +174,7 @@ export function buildCollisionTerrain(
   const { width, height } = map;
 
   // --- ground: class each cell by its two triangles' extracted walk/build flags, then upsample ----
-  // (A per-triangle split below cell resolution has no pinned mapping, so ground classes are
-  // per-cell; `halfCellMapFromCells` owns the cell → 2×2-node-block convention.)
+  // (`halfCellMapFromCells` owns the cell → 2×2-node-block convention.)
   const cellClasses = new Array<number>(width * height).fill(TERRAIN_OPEN);
   if (map.ground !== undefined && ir.gfxPatterns !== undefined) {
     const classTable = groundClassTable(ir);
@@ -197,7 +191,7 @@ export function buildCollisionTerrain(
       return classTable.get(logicType) ?? TERRAIN_OPEN;
     };
     for (let i = 0; i < width * height; i++) {
-      cellClasses[i] = worseGroundClass(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
+      cellClasses[i] = joinTriangleClasses(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
     }
   }
   const upsampled = halfCellMapFromCells({ width, height, typeIds: cellClasses });
