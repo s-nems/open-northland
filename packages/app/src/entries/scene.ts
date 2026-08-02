@@ -5,13 +5,12 @@ import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
+import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
-  applyFogOverride,
-  applyProgressionOverride,
   createWorldRenderer,
   haltOnMissingContent,
   loadLocalizedRealContent,
@@ -82,11 +81,9 @@ export async function renderSceneMode(
     sim,
     hashTrace: hashTraceFor(params),
   });
-  // `?fog=off|reveal|recon` overrides the scene's own fog mode - a named divergence from the headless
-  // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different fog rule.
-  applyFogOverride(sim, params);
-  // `?progression=off` frees every civilian trade from the experience tech tree (fighters stay gated).
-  applyProgressionOverride(sim, params);
+  // `?fog=` / `?progression=` override the scene's own rules - a named divergence from the headless
+  // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different rule.
+  applySessionRuleOverrides(sim, sessionRuleOverrides(params));
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);

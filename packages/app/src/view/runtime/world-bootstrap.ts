@@ -1,6 +1,5 @@
 import type { SpriteSheet, TerrainTextureSet } from '@open-northland/render';
 import { WorldRenderer } from '@open-northland/render';
-import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { goodLocaleParam, loadGoodNameMap } from '../../content/good-names.js';
 import {
@@ -9,8 +8,6 @@ import {
   type RealContentMerge,
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
-import { fogModeParam } from '../../game/fog.js';
-import { progressionOverride } from '../../game/progression.js';
 import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { mountMessage, navButton } from '../overlay.js';
@@ -75,27 +72,6 @@ export function haltOnMissingContent(err: Error): void {
   diag.warn('content', `real terrain unavailable: ${err.message}`);
   dismissBootProgress();
   mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [navButton(copy.backToMenu, false, '')]);
-}
-
-/**
- * Apply `?fog=off|reveal|recon` to a freshly built sim. Enqueued after whatever fog the world set for
- * itself (FIFO - the later write wins), so the flag overrides a scene's own mode; absent, the world
- * keeps its default.
- */
-export function applyFogOverride(sim: Simulation, params: URLSearchParams): void {
-  const fogOverride = fogModeParam(params);
-  if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
-}
-
-/**
- * Apply an explicit `?progression=on|off` to a freshly built sim (the {@link applyFogOverride}
- * pattern): enqueued after the world's own rule, so the flag overrides a scene's `progression: false`
- * in either direction. An absent/unrecognized flag enqueues nothing, so an untouched URL keeps the
- * command stream - and any golden derived from it - byte-identical to a pre-toggle run.
- */
-export function applyProgressionOverride(sim: Simulation, params: URLSearchParams): void {
-  const enabled = progressionOverride(params);
-  if (enabled !== null) sim.enqueue({ kind: 'setProfessionProgression', enabled });
 }
 
 /** The minimap's ground colours from the real terrain set's per-type debug colours, as a spreadable

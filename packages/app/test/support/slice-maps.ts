@@ -1,4 +1,6 @@
+import type { TerrainMapFile } from '@open-northland/data';
 import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
+import { GRASS } from '../../src/catalog/buildings.js';
 
 /** The synthetic maps the slice tests run over - the one place their grids are described. */
 
@@ -14,8 +16,18 @@ export function mixedGrid(width: number, height: number): TerrainMap {
   };
 }
 
-/** A 6×6 all-grass CELL grid (demo typeId 5, walkable), upsampled to the sim's 12×12 node lattice -
- *  authored half-cell coords run 0..11 on each axis and bounds-check against those node dims. */
+/** A 6×6 all-grass decoded map file, carrying `entities` when the case authors some. Its 12×12 node
+ *  lattice is what the authored half-cell coords (0..11 per axis) bounds-check against. */
+export function authoredMapFile(entities?: TerrainMapFile['entities']): TerrainMapFile {
+  return {
+    width: 6,
+    height: 6,
+    typeIds: new Array(36).fill(GRASS),
+    ...(entities !== undefined ? { entities } : {}),
+  };
+}
+
+/** {@link authoredMapFile} at the sim's node resolution. */
 export function authoredMap(): TerrainMap {
-  return halfCellMapFromCells({ width: 6, height: 6, typeIds: new Array(36).fill(5) });
+  return halfCellMapFromCells(authoredMapFile());
 }
