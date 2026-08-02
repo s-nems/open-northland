@@ -113,6 +113,7 @@ export {
   isWarrantableAnimal,
   livestockGoodOfTribe,
   livestockMeatGoodOf,
+  livestockTribeFedBy,
   livestockTribeOfGood,
   locomotionOf,
   mayAttack,
