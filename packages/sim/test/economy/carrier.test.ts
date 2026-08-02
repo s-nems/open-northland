@@ -37,9 +37,8 @@ const GRANARY = 6; // passive store with ONLY a wheat slot - it can never take a
 const FARMER = 18; // a non-carrier trade with nothing to do on a bare strip
 const VIKING = 1;
 
-// The WHOLE component namespace, not a hand-picked subset - the JobSystem's report-in pass now
-// stamps JobAssignment in the end-to-end runs, and a missed store leaks across the in-test reruns
-// (the sim AGENTS.md's most-rediscovered trap).
+// The WHOLE component namespace, not a hand-picked subset: a missed store leaks across the in-test
+// reruns (the sim AGENTS.md's most-rediscovered trap).
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 
@@ -223,9 +222,9 @@ describe('carrier - end-to-end haul through the real schedule', () => {
   it('a carrier moves planks from the sawmill to the HQ (goods conserved)', () => {
     // Strip: carrier@0, sawmill@1 (2 planks), HQ@2. Short hops keep it fast.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const carrier = carrierAt(sim, 0, 0);
+    const hq = hqAt(sim, 2, 0); // the carrier's post - hauling is worked only through an assignment
+    const carrier = carrierAt(sim, 0, 0, hq);
     const mill = sawmillAt(sim, 1, 0, 2);
-    const hq = hqAt(sim, 2, 0);
 
     let delivered = 0;
     for (let i = 0; i < 80 && delivered === 0; i++) {
@@ -242,9 +241,9 @@ describe('carrier - end-to-end haul through the real schedule', () => {
 
   it('empties the sawmill over a longer run - all planks reach the HQ, none created or lost', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const carrier = carrierAt(sim, 0, 0);
-    const mill = sawmillAt(sim, 1, 0, 3);
     const hq = hqAt(sim, 2, 0);
+    const carrier = carrierAt(sim, 0, 0, hq);
+    const mill = sawmillAt(sim, 1, 0, 3);
 
     for (let i = 0; i < 400; i++) sim.step();
 
@@ -258,9 +257,8 @@ describe('carrier - determinism', () => {
   it('two same-seed runs of the haul reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 13, content: testContent(), map: grassMap(4, 1) });
-      carrierAt(sim, 0, 0);
+      carrierAt(sim, 0, 0, hqAt(sim, 2, 0));
       sawmillAt(sim, 1, 0, 3);
-      hqAt(sim, 2, 0);
       for (let i = 0; i < 120; i++) sim.step();
       return sim.hashState();
     };

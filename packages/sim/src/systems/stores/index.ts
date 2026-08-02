@@ -28,7 +28,6 @@ export {
 export {
   buildingProduces,
   buildingWorkerJobs,
-  canonicalBuildingWorkerJobs,
   isCarrierJob,
   mayFetchGoodFrom,
   mergedRecipeOf,

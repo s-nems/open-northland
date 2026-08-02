@@ -4,7 +4,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
+import { canonicalJobType, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
 import { isBuilding, isSettler, ownerPlayerOf, settlerJobType } from '../src/game/snapshot.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import {
@@ -82,10 +82,15 @@ describe('computeAssignHighlight / assignableJobForBuilding over sandbox content
     const snapshot = sim.snapshot();
     const buildingsByType = lastByTypeId(sim.content.buildings);
 
+    // A camp collector: the sandbox posts every craft and transport slot at build, so a collector's trade
+    // is the one with openings left - the warehouses' gatherer slots, which a fixture never staffs.
     const settler = snapshot.entities.find(
-      (e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER && settlerJobType(e) !== undefined,
+      (e) =>
+        isSettler(e) &&
+        ownerPlayerOf(e) === HUMAN_PLAYER &&
+        settlerJobType(e) === canonicalJobType(JOB_COLLECTOR),
     );
-    if (settler === undefined) throw new Error('no employed owned settler in the sandbox');
+    if (settler === undefined) throw new Error('no owned collector in the sandbox');
 
     const items = computeAssignHighlight(snapshot, settler.id, buildingsByType);
     expect(items.length).toBeGreaterThan(0); // some own building employs someone

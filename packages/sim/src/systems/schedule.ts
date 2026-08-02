@@ -9,7 +9,6 @@ import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { fieldReclaimSystem } from './economy/field-reclaim.js';
 import { cropGrowthSystem } from './economy/fields.js';
-import { jobSystem } from './economy/jobs/index.js';
 import { productionSystem } from './economy/production.js';
 import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
@@ -42,7 +41,6 @@ interface ScheduledSystem {
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'command', system: commandSystem },
   { name: 'needs', system: needsSystem },
-  { name: 'job', system: jobSystem },
   // Before herding, so a fresh scatter outranks the cohesion recall (a frightened follower runs first,
   // the herd pulls it home only once the scare lapses).
   { name: 'animalFright', system: animalFrightSystem },

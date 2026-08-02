@@ -5,7 +5,6 @@ import { Simulation } from '../../../src/index.js';
 import {
   experienceRequirementMet,
   goodEnabled,
-  jobEnabled,
   type NeedSubject,
   settlerMeetsNeed,
 } from '../../../src/systems/index.js';
@@ -248,22 +247,13 @@ describe('settlerMeetsNeed - the barracks schooling path onto a fighter trade', 
 });
 
 describe('jobEnables tech-graph under the profession-progression toggle', () => {
-  it('bypasses the presence graph for civilian jobs and goods while off, fighters stay gated', () => {
-    const content = testContent();
-    // Gate the carpenter job and a soldier job on a (nonexistent) living woodcutter.
-    content.tribes[0]?.jobEnables.push(
-      { jobType: 1, kind: 'job', targetId: 2 },
-      { jobType: 1, kind: 'job', targetId: SOLDIER_JOB },
-    );
-    const sim = new Simulation({ seed: 1, content });
+  it('bypasses the presence graph for goods while off', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    // Gated while progression is on: no woodcutter is alive.
-    expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(false);
-    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(false); // fixture: plank gated on a woodcutter
+    // Gated while progression is on: the fixture gates the plank on a woodcutter, and none is alive.
+    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(false);
 
     setProfessionProgression(sim.world, false);
-    expect(jobEnabled(sim.world, ctx, 1, 2)).toBe(true); // civilian job: free start
-    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(true); // goods: free start
-    expect(jobEnabled(sim.world, ctx, 1, SOLDIER_JOB)).toBe(false); // a fighter: still gated
+    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(true); // free start
   });
 });
