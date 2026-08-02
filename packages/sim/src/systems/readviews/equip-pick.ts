@@ -10,7 +10,9 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { ContentContext } from '../context.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { mayFetchGoodFrom } from '../stores/index.js';
 import { isFighterJob } from './jobs.js';
 
 /** One equip pick-menu row: an equippable good for the slot and how many units the settler can reach. */
@@ -27,8 +29,9 @@ export interface EquipPickEntry {
  * IS available, per the feature spec).
  *
  * Mirrors the equip errand's source predicate (`nearestStoreHolding`): a positioned stockpile on the
- * settler's own side that is not a construction site. Two named approximations against the errand's
- * exact walk: the confinement gate tests the store's own node (not its interaction cell), and the
+ * settler's own side that is not a construction site, and not a workshop holding the good as its own
+ * recipe input (`mayFetchGoodFrom`). Two named approximations against the errand's exact walk: the
+ * confinement gate tests the store's own node (not its interaction cell), and the
  * buried-under-a-building filter is skipped - a menu row may thus rarely name a unit the fetch then
  * fails to reach, which the errand already survives (it returns empty-handed).
  *
@@ -50,6 +53,7 @@ export function equipPickList(
     if (good.equip?.category === group) available.set(good.typeId, 0);
   }
   if (available.size === 0) return [];
+  const ctx: ContentContext = { content };
   const limit = terrain === undefined ? null : navigationLimitFor(world, content, terrain, entity);
   const onSide = sameSideAs(world, ownerOf(world, entity)); // never count a rival's stock (the errand won't fetch it)
   for (const store of world.query(Stockpile, Position)) {
@@ -62,7 +66,9 @@ export function equipPickList(
     }
     for (const [goodType, amount] of world.get(store, Stockpile).amounts) {
       const held = available.get(goodType);
-      if (held !== undefined && amount > 0) available.set(goodType, held + amount);
+      if (held === undefined || amount <= 0) continue;
+      if (!mayFetchGoodFrom(world, ctx, store, goodType)) continue;
+      available.set(goodType, held + amount);
     }
   }
   const rows: EquipPickEntry[] = [];

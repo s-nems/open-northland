@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AssistantGrants,
@@ -43,6 +44,8 @@ const FIGHTER_JOB = 31;
 const SCOUT_JOB = 27;
 const VIKING = 1;
 const HEADQUARTERS = 1;
+/** Appended by this suite alone, out of the 10..19 band the shared fixture reserves for that. */
+const MINT = 10;
 const HUMAN_PLAYER = 0;
 const RIVAL_PLAYER = 1;
 
@@ -93,6 +96,39 @@ function wearBoots(sim: Simulation, e: Entity, goodType: number): void {
 
 function grant(sim: Simulation, goodType: number, enabled = true, player = HUMAN_PLAYER): void {
   sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled });
+}
+
+/** The shared fixture plus a workplace that CONSUMES a wearable - the `work_coin_mint` shape, which
+ *  strikes an amulet out of a pair of shoes, so its shoe slot is a reserve and not grantable stock. */
+function mintContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: MINT,
+        id: 'coin_mint',
+        kind: 'workplace',
+        stock: [
+          { goodType: SHOES, capacity: 10, initial: 0 },
+          { goodType: MEAD, capacity: 10, initial: 0 },
+        ],
+        recipes: [
+          { inputs: [{ goodType: SHOES, amount: 1 }], outputs: [{ goodType: MEAD, amount: 1 }], ticks: 20 },
+        ],
+      },
+    ],
+  });
+}
+
+/** A built mint holding `shoes` pairs on its INPUT slot. */
+function mintAt(sim: Simulation, x: number, y: number, shoes: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType: MINT, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map([[SHOES, shoes]]) });
+  return e;
 }
 
 /** Step one tick at a time, recording the highest concurrent acquire-stage fetch count seen. */
@@ -163,6 +199,25 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
 
     expect(peak).toBe(1); // one pair, so at most one fetcher underway at any tick
     const shod = [first, second].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
+    expect(shod).toHaveLength(1);
+  });
+
+  it("never counts a workshop's input reserve toward the grant budget", () => {
+    // The budget is a reservation bound, so it has to count only what a settler could actually lift.
+    // One loose pair plus three locked in the mint's shoe slot must dispatch ONE fetcher, not four.
+    // The per-settler `nearestStoreHolding` scan cannot catch this on its own: each of the four would
+    // find the loose pile and set out, and three would come home to an empty tile.
+    const sim = new Simulation({ seed: 1, content: mintContent(), map: grassMap(16, 6) });
+    setNeedsEnabled(sim.world, false);
+    const settlers = [2, 3, 4, 5].map((y) => ownedSettler(sim, 2, y));
+    pileAt(sim, 12, 2, SHOES, 1);
+    mintAt(sim, 12, 4, 3); // the pairs it strikes amulets out of - not the assistant's to hand out
+    grant(sim, SHOES);
+
+    const peak = runTrackingFetches(sim, ERRAND_TICKS);
+
+    expect(peak).toBe(1);
+    const shod = settlers.filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
     expect(shod).toHaveLength(1);
   });
 

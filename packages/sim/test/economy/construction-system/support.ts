@@ -35,6 +35,9 @@ export const STONE = 1;
 export const WOOD = 2;
 export const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 3·STRIKES_PER_UNIT swings)
 export const HEADQUARTERS = 1; // free — empty construction cost
+/** A workplace whose recipe turns wood into stone: its WOOD is a protected input reserve, its STONE the
+ *  finished shelf a builder may still lift — both sides of the fetch reserve rule in one building. */
+export const WORKSHOP = 5;
 export const GRASS = 0;
 export const CARRIER = 36; // a job with no harvest atomics — it can only haul a load it already carries
 export const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
@@ -86,8 +89,35 @@ export function constructionContent(): ContentSet {
           ],
         },
       },
+      {
+        typeId: WORKSHOP,
+        id: 'work_mason',
+        kind: 'workplace',
+        produces: [STONE],
+        recipes: [{ inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: STONE, amount: 1 }] }],
+        stock: [
+          { goodType: WOOD, capacity: 10 },
+          { goodType: STONE, capacity: 10 },
+        ],
+      },
     ],
   });
+}
+
+/** A fully-built building of any type at a tile, holding the given stock. */
+export function builtBuildingAt(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  stock: Array<[number, number]> = [],
+  level = 0,
+): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level });
+  sim.world.add(e, Stockpile, { amounts: new Map(stock) });
+  return e;
 }
 
 /**
@@ -268,18 +298,4 @@ export function levelChainWithCarrier(): ContentSet {
       },
     ],
   });
-}
-
-export function builtHomeAt(
-  sim: Simulation,
-  buildingType: number,
-  level: number,
-  x: number,
-  y: number,
-): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level });
-  sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
-  return e;
 }

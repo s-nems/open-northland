@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
+  CurrentAtomic,
   MoveGoal,
   Owner,
   Position,
@@ -10,13 +11,15 @@ import {
   SupplyRun,
   UnderConstruction,
 } from '../../../src/components/index.js';
+import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 
 import {
   builderAt,
-  builtHomeAt,
+  builtBuildingAt,
   constructionContent,
   ctxOf,
   grassMap,
@@ -30,7 +33,18 @@ import {
   siteAt,
   VIKING,
   WOOD,
+  WORKSHOP,
 } from './support.js';
+
+/** Step until `settler` starts a pickup and return that effect — which store it chose to lift from. */
+function firstPickup(sim: Simulation, settler: Entity): AtomicEffect | null {
+  for (let i = 0; i < 400; i++) {
+    sim.step();
+    const effect = sim.world.tryGet(settler, CurrentAtomic)?.effect;
+    if (effect?.kind === 'pickup') return effect;
+  }
+  return null;
+}
 
 describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () => {
   it('a construction site is a valid delivery sink for its outstanding materials, but not random goods', () => {
@@ -284,6 +298,41 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(builder, MoveGoal).cell).toBe(terrain.nodeAt(20, 4));
   });
 
+  it("a builder fetch walks past a workshop's input reserve to the farther warehouse", () => {
+    // The joinery complaint: every construction bill is paid in goods the workshops also consume, so the
+    // nearest wood was routinely the joinery's own reserve and the builder emptied the shop it was
+    // standing next to. The workshop's wood is its recipe input — off limits — so the pick must fall
+    // through to the warehouse, however much farther it stands (user rule 2026-07-27).
+    const sim = new Simulation({ seed: 11, content: constructionContent(), map: grassMap(12, 1) });
+    // Empty hold and no stone anywhere, so the bill falls through to its wood line (the fetch-any-
+    // available-line rule the case above pins).
+    const site = siteAt(sim, HOUSE, 0, 0);
+    builtBuildingAt(sim, WORKSHOP, 4, 0, [[WOOD, 5]]); // wood = its recipe input, and the NEARER source
+    const warehouse = builtBuildingAt(sim, HEADQUARTERS, 10, 0, [[WOOD, 5]]); // the far warehouse
+    const builder = builderAt(sim, 3, 0); // standing beside the workshop
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: WOOD });
+    // It walked past the workshop and lifted the wood out of the warehouse, not the reserve.
+    expect(firstPickup(sim, builder)).toMatchObject({ goodType: WOOD, from: warehouse });
+  });
+
+  it("still lifts a workshop's OUTPUT — the pottery's own bricks pay for its upgrade", () => {
+    // The other half of the rule: the finished shelf is not a reserve. `work_pottery_01`'s bill is paid
+    // in brick, which the pottery itself makes, and no recipe in real content consumes brick, tile,
+    // pillar or ornament at all — so a builder must still be able to lift a producer's product.
+    const sim = new Simulation({ seed: 12, content: constructionContent(), map: grassMap(12, 1) });
+    const site = siteAt(sim, HOUSE, 0, 0); // empty hold; stone is the least-covered line
+    const workshop = builtBuildingAt(sim, WORKSHOP, 4, 0, [[STONE, 5]]); // stone = its recipe OUTPUT
+    builtBuildingAt(sim, HEADQUARTERS, 10, 0, [[STONE, 5]]); // the far alternative
+    const builder = builderAt(sim, 3, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: STONE });
+    // The near shelf wins: an output is nobody's reserve, so the far warehouse is never walked to.
+    expect(firstPickup(sim, builder)).toMatchObject({ goodType: STONE, from: workshop });
+  });
+
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {
     // A 4-row map: the near site's footprint must not wall off the corridor to the far one.
     const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
@@ -435,7 +484,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)', () => {
   it('end-to-end: the command opens the site, carriers haul the difference, a builder hammers it up', () => {
     const sim = new Simulation({ seed: 2, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-    const home = builtHomeAt(sim, HOME_L0, 0, 3, 0); // L0 (homeSize 1) — the L1 difference is 2 stone
+    const home = builtBuildingAt(sim, HOME_L0, 3, 0); // L0 (homeSize 1) — the L1 difference is 2 stone
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 1, 0, STONE, 1);
     builderAt(sim, 5, 0);
@@ -462,7 +511,7 @@ describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)',
     // has no stock slots), so the carrier finds no sink and sets the stone down rather than stand
     // holding it forever.
     const sim = new Simulation({ seed: 3, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-    const home = builtHomeAt(sim, HOME_L0, 0, 3, 0);
+    const home = builtBuildingAt(sim, HOME_L0, 3, 0);
     const carrier = loadedCarrierAt(sim, 0, 0, STONE, 1);
     for (let i = 0; i < 60; i++) sim.step();
     expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // nothing delivered
@@ -473,7 +522,7 @@ describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)',
   it('is deterministic — two same-seed upgrade-delivery runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-      const home = builtHomeAt(sim, HOME_L0, 0, 3, 0);
+      const home = builtBuildingAt(sim, HOME_L0, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 1, 0, STONE, 1);
       builderAt(sim, 5, 0);
