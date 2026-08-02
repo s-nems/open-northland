@@ -333,10 +333,24 @@ describe('tool windows registry', () => {
     read: () => ({ giveBoots: true, giveWoodenTools: true, giveIronTools: true, giveMead: true }),
     set: () => true,
   };
+  /** `windows.ts`'s mount order: each pop-up's child index in the panel's window container, which is the
+   *  order they draw in. */
+  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3 } as const;
+
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
-    const { ctx } = stubContext();
+    const { ctx: base } = stubContext();
     const picks: number[] = [];
     const container = new Container();
+    /** Every text run built so far, to check which pop-up ends up drawing it. */
+    const textRuns: Container[] = [];
+    const ctx: PanelContext = {
+      ...base,
+      makeText: (text, color, px) => {
+        const run = base.makeText(text, color, px);
+        textRuns.push(run.container);
+        return run;
+      },
+    };
     const windows = createToolWindows({
       ctx,
       container,
@@ -346,14 +360,23 @@ describe('tool windows registry', () => {
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });
-    return { ctx, windows, picks, container };
+    return { ctx, windows, picks, container, textRuns };
   }
 
-  /** Whether the build menu's row-hover highlight is drawn. The menu mounts first and parents
-   *  back < frame < hover, so its highlight layer is the window container's third child. */
+  /** The row-wash layer's index inside a tabbed list's own container (back < frame < hover < labels). */
+  const HOVER_LAYER = 2;
+
+  /** The container one pop-up draws everything inside, by its mount index. */
+  function popupContainer(container: Container, at: number): Container {
+    const win = container.children[at];
+    if (!(win instanceof Container)) throw new Error(`no pop-up mounted at index ${at}`);
+    return win;
+  }
+
+  /** Whether the build menu's row-hover highlight is drawn. */
   function hasRowHighlight(container: Container): boolean {
-    const layer = container.children[2];
-    if (!(layer instanceof Graphics)) throw new Error('the build menu no longer owns child 2');
+    const layer = popupContainer(container, MOUNT_INDEX.menu).children[HOVER_LAYER];
+    if (!(layer instanceof Graphics)) throw new Error('the build menu no longer owns its hover layer');
     return layer.context.instructions.length > 0;
   }
 
@@ -429,6 +452,25 @@ describe('tool windows registry', () => {
     // no longer makes.
     windows.handleHover(ctx.layout.width + STATS_GAP_X * ctx.scale + 1, row.y + 1);
     expect(hasRowHighlight(container)).toBe(false);
+  });
+
+  it('keeps a rebuilt menu below a pop-up mounted after it', () => {
+    const { ctx, windows, container, textRuns } = mountWindows(MANY);
+    windows.byId.menu.toggle();
+    windows.byId.stats.toggle();
+    windows.refresh(() => TALL_HUD); // the per-frame pass refreshes in mount order, statistics last
+    expect(textRuns.at(-1)?.parent).toBe(popupContainer(container, MOUNT_INDEX.stats));
+
+    textRuns.length = 0; // from here only the menu rebuilds, so every new run is one of its labels
+    const p = firstRowPoint(ctx);
+    expect(windows.handleWheel(p.x, p.y, 120)).toBe(true); // a scroll repaints its chrome and labels
+    expect(textRuns.length).toBeGreaterThan(0);
+
+    // Each pop-up draws inside one child of the panel's container, so the menu's labels stay under the
+    // statistics frame mounted after them instead of landing on top of it.
+    expect(container.children).toHaveLength(Object.keys(MOUNT_INDEX).length);
+    const menu = popupContainer(container, MOUNT_INDEX.menu);
+    for (const run of textRuns) expect(run.parent).toBe(menu);
   });
 
   it('consumes the wheel over any open pop-up, list or not', () => {
