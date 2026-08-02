@@ -13,7 +13,7 @@ import {
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem, SpriteState } from './draw-item.js';
-import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
+import { isIndoorSettler, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {
   assignStaticFields,
   classify,
@@ -22,7 +22,6 @@ import {
   readAtomicTargetEntity,
   readPosition,
   readSpriteState,
-  readStoreExchangeRef,
 } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
 
@@ -173,7 +172,6 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
   // reused across the frames that render it (see targetPositionsOf), empty when no actor needs it.
   const posByRef = targetPositionsOf(snapshot);
-  const enterableStores = enterableStoresOf(snapshot);
 
   const emit = (entity: EntitySnapshot): void => {
     // Drawn by the retained static layer instead (a virgin map resource) - not worth a classify.
@@ -186,13 +184,11 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     // The details-panel portrait's subject is force-emitted through every cull below, so its live cutout
     // never blanks off-screen or when it steps inside a building.
     const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
-    // A settler inside a building (mid-exchange in a completed store, or the `Resting` marker in its
-    // workplace) stays live/pooled but is not drawn, unless `keepIndoorSettlers` (the worker field) or the
-    // portrait force overrides it.
+    // A settler inside a building stays live/pooled but is not drawn, unless `keepIndoorSettlers` (the
+    // worker field) or the portrait force overrides it.
     let indoorSettler = false;
     if (kind === 'settler') {
-      const store = readStoreExchangeRef(components);
-      indoorSettler = 'Resting' in components || (store !== null && enterableStores.has(store));
+      indoorSettler = isIndoorSettler(snapshot, components);
       if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) {
         collected.add(entity.id);
         return;

@@ -32,6 +32,7 @@ export {
   buildScene,
   buildSpriteScene,
   type DrawItem,
+  isIndoorSettler,
   type SceneGround,
   type SceneTerrain,
   terrainMapToScene,

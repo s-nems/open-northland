@@ -26,13 +26,32 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
     const next = snapshotOf([building(10, HOME_TYPE, 1, 1)]); // a new tick's snapshot - a new instance
     expect(doorBadgesFor(next)).not.toBe(doorBadgesFor(snap));
   });
+
+  it('re-reads the hearts when the selection moves under a held snapshot (a paused pick)', () => {
+    const selected = new Set<number>();
+    let version = 0;
+    const { lifeHeartsFor } = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), {
+      isLivestockTribe: () => false,
+      selection: { ids: () => selected, version: () => version },
+    });
+    const unhurt = snapshotOf([
+      { id: 1, components: { Settler: { tribe: 1 }, Owner: { player: 0 }, Position: { x: 0, y: 0 } } },
+    ]);
+    expect(lifeHeartsFor(unhurt)).toBe(lifeHeartsFor(unhurt)); // still memoized within one version
+    expect(lifeHeartsFor(unhurt)).toHaveLength(0);
+
+    selected.add(1);
+    version++;
+    expect(lifeHeartsFor(unhurt)).toHaveLength(1); // same snapshot instance - the version is the key
+  });
 });
 
 /**
  * The scale half of the same contract: a decoded map's entity count is dominated by scenery, so the
  * per-tick projections must share ONE walk of it (`actorsOf`) instead of each re-walking the map. Pinned
  * by counting entities handed out, because a projection that quietly walks `entities` again still returns
- * the right answer.
+ * the right answer. The heart projection also reaches for render's scene index, a second walk with a memo
+ * of its own; the last case below bounds that one.
  */
 describe('per-tick projections - one walk of the map between them', () => {
   const HOME_TYPE = 2;
@@ -57,7 +76,7 @@ describe('per-tick projections - one walk of the map between them', () => {
     for (let i = 0; i < SCENERY; i++) entities.push(tree(100 + i));
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
 
-    const { doorBadgesFor, settlerBubblesFor, livestockHeartsFor } = createSnapshotProjections(
+    const { doorBadgesFor, settlerBubblesFor, lifeHeartsFor } = createSnapshotProjections(
       new Map(),
       workerRoleOf,
       createFogGates(),
@@ -65,10 +84,39 @@ describe('per-tick projections - one walk of the map between them', () => {
     );
     doorBadgesFor(snapshot); // a tally pass, a projection pass, and the household grouping
     settlerBubblesFor(snapshot);
-    livestockHeartsFor(snapshot);
+    lifeHeartsFor(snapshot);
     forEachMinimapDot(snapshot, null, terrainWorldBounds(8, 8), 0.5, undefined, () => undefined);
 
     // One shared pass builds the actor index; each projection then reads only that.
     expect(visits()).toBe(entities.length);
+  });
+
+  it("builds render's scene index once for a heart-wearer mid store-exchange, however many ask", () => {
+    // The one case the shared pass does not answer: a wounded carrier inside a completed store is not
+    // drawn, so it gets no heart - and only render's scene index knows that. Under the running renderer
+    // that index already exists; a headless caller pays for it, but once per snapshot, not per projection.
+    const store = owned(building(10, HOME_TYPE, 1, 1), 1, 1);
+    const PEOPLE_TRIBE = 1;
+    const hurt: Ent = {
+      id: 11,
+      components: {
+        ...owned(settler(11, 0, 10), 2, 2).components,
+        Settler: { jobType: 0, tribe: PEOPLE_TRIBE },
+        Health: { hitpoints: 50, max: 100 },
+        CurrentAtomic: { effect: { kind: 'pileup', store: store.id } },
+      },
+    };
+    const entities: Ent[] = [store, hurt];
+    for (let i = 0; i < SCENERY; i++) entities.push(tree(100 + i));
+    const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
+    const heartInputs = { isLivestockTribe: () => false };
+
+    const first = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), heartInputs);
+    expect(first.lifeHeartsFor(snapshot)).toHaveLength(0); // hidden indoors
+    expect(visits()).toBe(entities.length * 2); // the actor index, plus the scene index once
+
+    const second = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), heartInputs);
+    second.lifeHeartsFor(snapshot);
+    expect(visits()).toBe(entities.length * 2); // unchanged - both indexes key on the snapshot, not on us
   });
 });

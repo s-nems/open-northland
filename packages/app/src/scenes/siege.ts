@@ -12,6 +12,7 @@ import {
   WEAPON_SPEAR,
   WEAPON_SWORD,
 } from '../game/sandbox/index.js';
+import { computeLifeHearts, WOUNDED_LIFE_FRACTION } from '../view/projections/life-hearts.js';
 import { enemyBuildings } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
@@ -28,6 +29,12 @@ import type { SceneDefinition } from './types.js';
  * an HQ flanked by two watchtowers, plain homes tucked around them, and a thin picket of defenders. Every
  * building sits inside the warband's sight, so the tier order (units + HQ + towers first, homes last) is
  * what decides the sequence, not distance.
+ *
+ * It is also the life-heart scene. The browser plays from tick 0, so both sides take hits: a human judges
+ * that a heart floats over exactly the hurt bodies, that each wears its own faction's colour (an enemy's
+ * lost life must be readable, and told apart from ours at a glance), and that selecting a warrior gives it
+ * one whatever its life. The headless twin below checks only the settled end state, after the defenders
+ * are down.
  *
  * Named divergence (like every scene): the headless twin runs the hand-authored sandbox footprints +
  * vs-building damage approximation (`game/sandbox/combat.ts`); the browser feeds the real extracted
@@ -146,6 +153,28 @@ export const siegeScene: SceneDefinition = {
     {
       label: 'the enemy defenders were cut down',
       predicate: enemyDefendersDead,
+    },
+    {
+      // The wounded tell: the warriors the picket hurt wear a heart, the rest of the warband stays bare.
+      label: 'exactly the wounded warriors wear a life heart',
+      predicate: (sim) => {
+        const wounded = new Set<number>();
+        let unhurt = 0;
+        for (const e of sim.world.query(components.Settler, components.Owner, Health)) {
+          const h = sim.world.get(e, Health);
+          if (h.hitpoints / h.max <= WOUNDED_LIFE_FRACTION) wounded.add(e);
+          else unhurt++;
+        }
+        // No animal on this field and no warrior steps into a building, so every heart the projection
+        // returns is a warrior's, and none of the wounded is hidden from it.
+        const hearts = computeLifeHearts(sim.snapshot(), { isLivestockTribe: () => false });
+        return (
+          wounded.size > 0 &&
+          unhurt > 0 &&
+          hearts.length === wounded.size &&
+          hearts.every((heart) => wounded.has(heart.id))
+        );
+      },
     },
   ],
 };

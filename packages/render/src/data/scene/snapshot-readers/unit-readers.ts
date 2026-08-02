@@ -35,12 +35,8 @@ export function readAtomicTargetEntity(components: Readonly<Record<string, unkno
   return readNumFieldOrNull(components, 'CurrentAtomic', 'targetEntity');
 }
 
-/**
- * The store a settler's running atomic exchanges goods with - the `pileup` deposit's `store` or the
- * `pickup` lift's `from` - or `null` for any other/no atomic. The scene builder hides a settler whose
- * exchange partner is a completed building for the atomic's duration: the original's carrier walks into
- * the house and vanishes for the exchange (observed), rather than pantomiming the deposit at the door.
- */
+/** The store a settler's running atomic exchanges goods with - the `pileup` deposit's `store` or the
+ *  `pickup` lift's `from` - or `null` for any other/no atomic. See `isIndoorSettler` for what reads it. */
 export function readStoreExchangeRef(components: Readonly<Record<string, unknown>>): number | null {
   const a = components.CurrentAtomic as { effect?: unknown } | undefined;
   const effect = a?.effect as { kind?: unknown; store?: unknown; from?: unknown } | undefined;

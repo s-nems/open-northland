@@ -6,7 +6,7 @@ import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
-import { computeLivestockHearts } from './livestock-hearts.js';
+import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /**
@@ -31,21 +31,29 @@ export function memoBySnapshot<T>(
   };
 }
 
+/** The live selection the heart projection reads, paired with its memo key. */
+export interface HeartSelection {
+  readonly ids: () => ReadonlySet<number>;
+  readonly version: () => number;
+}
+
+/** {@link LifeHeartInputs} as the factory takes it: the selection arrives live, not as a frozen set. */
+export interface HeartProjectionInputs extends Omit<LifeHeartInputs, 'selected'> {
+  readonly selection?: HeartSelection | undefined;
+}
+
 /** The snapshot read projections the frame loop shares across HUD/render consumers. */
 export function createSnapshotProjections(
   buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
-  livestock: {
-    readonly isLivestockTribe: (tribe: number) => boolean;
-    readonly playerColourOf?: ((player: number) => number) | undefined;
-  },
+  hearts: HeartProjectionInputs,
 ): {
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   readonly constructionSignsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
-  readonly livestockHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLivestockHearts>;
+  readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
 } {
   return {
     hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE), hudLabels())),
@@ -66,10 +74,17 @@ export function createSnapshotProjections(
       const fog = fogGates.current();
       return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
     }),
-    livestockHeartsFor: memoBySnapshot((snapshot) => {
-      const hearts = computeLivestockHearts(snapshot, livestock.isLivestockTribe, livestock.playerColourOf);
-      const fog = fogGates.current();
-      return fog === null ? hearts : hearts.filter((h) => fogTileVisible(fog, h.x / ONE, h.y / ONE));
-    }),
+    lifeHeartsFor: memoBySnapshot(
+      (snapshot) => {
+        const list = computeLifeHearts(snapshot, {
+          isLivestockTribe: hearts.isLivestockTribe,
+          playerColourOf: hearts.playerColourOf,
+          selected: hearts.selection?.ids(),
+        });
+        const fog = fogGates.current();
+        return fog === null ? list : list.filter((h) => fogTileVisible(fog, h.x / ONE, h.y / ONE));
+      },
+      () => hearts.selection?.version() ?? 0,
+    ),
   };
 }

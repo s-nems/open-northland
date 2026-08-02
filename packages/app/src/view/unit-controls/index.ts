@@ -61,7 +61,7 @@ const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
-  // Bumped on every actual selection change - the memo key for the projections that read `selected`,
+  // The memo key for the projections that read `selected` (see UnitControls.selectionVersion),
   // which the snapshot identity alone cannot invalidate (a click re-selects within the same tick).
   let selectionVersion = 0;
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
@@ -325,6 +325,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   return {
     selectedIds: () => selected,
+    selectionVersion: () => selectionVersion,
     portrait: () => panel.portrait(),
     flaggedFlagIds,
     assignHighlight: pickMode.highlight,
