@@ -12,7 +12,7 @@ and it then acts as a unit or transport, not a ware.
 ## Current state (temporary block)
 
 The pipeline strips vehicle goods from every building's `stock` and `produces` before the recipe join
-(`stripVehicleGoods` in `tools/asset-pipeline/src/decoders/ini/types/buildings.ts`, called from
+(`stripVehicleGoods` in `tools/asset-pipeline/src/stages/ir/building-recipes.ts`, called from
 `tools/asset-pipeline/src/stages/ir/index.ts`). A vehicle good is identified by its id slug matching a
 `[logicvehicletype]` id (the two tables share debugname slugs). So today no workshop crafts, stores,
 or lists a vehicle; the `vehicles` IR table and the goods records themselves are untouched.
