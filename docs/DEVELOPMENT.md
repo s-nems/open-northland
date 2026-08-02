@@ -52,8 +52,9 @@ fresh conversion into a temporary directory and validates the result. It uses
 ## Browser entries
 
 `npm run dev` opens the redesigned main menu, which is landing screen by screen
-(`docs/design/main-menu/`). Until its map-select screen ships, starting a game from UI goes through
-`?menu=legacy`. Direct entries are useful during focused work:
+(`docs/design/main-menu/`). With `content/` served it runs the live PROLOG scene behind the menu;
+without it the static brand art stands in. Until its map-select screen ships, starting a game from
+UI goes through `?menu=legacy`. Direct entries are useful during focused work:
 
 | URL query | Purpose |
 | --- | --- |

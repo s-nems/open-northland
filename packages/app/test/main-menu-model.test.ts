@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { backTarget, MAIN_NAV, type MainNavItem, moveFocus } from '../src/entries/main-menu/model.js';
+import {
+  backTarget,
+  CAMERA_DRIFT_PERIOD_MS,
+  CAMERA_DRIFT_RADIUS_X_PX,
+  cameraDrift,
+  MAIN_NAV,
+  type MainNavItem,
+  moveFocus,
+} from '../src/entries/main-menu/model.js';
 
 describe('backTarget', () => {
   it('keeps Esc inert on the main screen', () => {
@@ -55,5 +63,20 @@ describe('moveFocus', () => {
       { id: 'multiplayer', kind: 'comingSoon' },
     ];
     expect(moveFocus(allBadged, 0, 1)).toBe(0);
+  });
+});
+
+describe('cameraDrift', () => {
+  it('starts every lap on the authored frame', () => {
+    expect(cameraDrift(0)).toEqual({ dx: 0, dy: 0 });
+    const wrapped = cameraDrift(CAMERA_DRIFT_PERIOD_MS);
+    expect(wrapped.dx).toBeCloseTo(0);
+    expect(wrapped.dy).toBeCloseTo(0);
+  });
+
+  it('peaks horizontally at the quarter lap', () => {
+    const quarter = cameraDrift(CAMERA_DRIFT_PERIOD_MS / 4);
+    expect(quarter.dx).toBeCloseTo(CAMERA_DRIFT_RADIUS_X_PX);
+    expect(quarter.dy).toBeCloseTo(0);
   });
 });

@@ -49,7 +49,7 @@ async function route(canvas: HTMLCanvasElement, params: URLSearchParams): Promis
   if (params.has('sounds')) return renderSoundGallery(canvas, params);
   if (params.has('map')) return renderMap(canvas, params);
   if (params.get('menu') === 'legacy') return renderMenu(canvas, params);
-  return renderMainMenu(canvas);
+  return renderMainMenu(canvas, params);
 }
 
 // A boot that throws never reaches its own `finish()`, so the playable entries' progress card would sit

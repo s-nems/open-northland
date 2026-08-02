@@ -1,5 +1,6 @@
 import { messages } from '../../i18n/index.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
+import { startMenuScene } from './live-scene.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus } from './model.js';
 
 /** Shown verbatim under the logo, per the accepted design frame. */
@@ -7,9 +8,9 @@ const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
-/** Background layers, bottom to top (docs/design/main-menu/README.md "Background stack").
- *  `scene` is the brand backdrop until the live-scene slice replaces it. */
-const BACKGROUND_LAYERS = ['scene', 'tint', 'shade', 'aurora-green', 'aurora-blue'] as const;
+/** The grade layers above the scene, bottom to top (docs/design/main-menu/README.md
+ *  "Background stack"); the scene layer itself is built separately as the canvas host. */
+const OVERLAY_LAYERS = ['tint', 'shade', 'aurora-green', 'aurora-blue'] as const;
 
 function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLButtonElement {
   const copy = messages().mainMenu;
@@ -89,12 +90,18 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
   return section;
 }
 
-export async function renderMainMenu(canvas: HTMLCanvasElement): Promise<void> {
-  canvas.hidden = true;
+export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const root = document.createElement('main');
   root.className = 'main-menu';
   root.style.setProperty('--menu-scene-art', `url("${BRAND_BACKDROP}")`);
-  for (const layer of BACKGROUND_LAYERS) {
+  // The scene layer hosts the static art and, over it, the live-scene canvas (transparent until
+  // startMenuScene crossfades it in).
+  const sceneLayer = document.createElement('div');
+  sceneLayer.className = 'main-menu__scene';
+  canvas.hidden = false;
+  sceneLayer.append(canvas);
+  root.append(sceneLayer);
+  for (const layer of OVERLAY_LAYERS) {
     const element = document.createElement('div');
     element.className = `main-menu__${layer}`;
     root.append(element);
@@ -103,6 +110,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement): Promise<void> {
   content.className = 'main-menu__content';
   root.append(content);
   document.body.append(root);
+  void startMenuScene(sceneLayer, canvas, params);
 
   let screen: MenuScreen = 'main';
   const show = (next: MenuScreen): void => {
