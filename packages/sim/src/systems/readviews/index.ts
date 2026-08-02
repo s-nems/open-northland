@@ -70,7 +70,7 @@ export {
   weaponKey,
 } from './combat.js';
 export { type EquipPickEntry, equipPickList } from './equip-pick.js';
-export { exportedGoodForm, isFood } from './food.js';
+export { edibleGoodFormOf, exportedGoodForm, isFood } from './food.js';
 export {
   baseSoldierJobType,
   hunterJobType,

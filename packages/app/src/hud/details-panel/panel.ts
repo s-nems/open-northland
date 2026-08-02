@@ -115,16 +115,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   // itself re-bakes at most 4 Hz.
   const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, WORKER_OVERLAY_Z, opts.playerColourOf);
 
-  const ctx: UnitPanelModelContext = {
-    buildings: opts.buildings,
-    goods: opts.goods,
-    jobs: opts.jobs,
-    jobExperience: opts.jobExperience,
-    tribes: opts.tribes,
-    ...(opts.isLivestockWorkplace !== undefined ? { isLivestockWorkplace: opts.isLivestockWorkplace } : {}),
-    ...(opts.isLivestockGood !== undefined ? { isLivestockGood: opts.isLivestockGood } : {}),
-    ...(opts.livestockMeatGood !== undefined ? { livestockMeatGood: opts.livestockMeatGood } : {}),
-  };
+  // The options ARE a model context (the interface extends it), so pass them through rather than
+  // re-listing the fields: a hand-copied list silently drops each new content seam the model grows.
+  const ctx: UnitPanelModelContext = opts;
 
   let selectedIds: ReadonlySet<number> = new Set();
   /** Bumped by every rebuild: the model + layout the worker overlay reads change only there. */

@@ -5,6 +5,7 @@ import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_02,
   buildingDef,
+  DISHES_KEPT_OUT_OF_STORES,
   dropSandboxGood,
   GOOD_COIN,
   GOOD_GOLD,
@@ -21,12 +22,14 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The global goods-catalog scene: proves the whole original goods catalog is available in every scene -
- * storable in a warehouse (with its HUD icon, across the eight category tabs) and droppable on the ground.
+ * droppable on the ground and, bar the {@link DISHES_KEPT_OUT_OF_STORES}, storable in a warehouse (with its HUD
+ * icon, across the eight category tabs).
  *
  * It places one warehouse and drops one loose pile of every storable
  * good on a grid, via the `dropGood` command. There are no settlers, so the piles simply rest where they
  * land - a static field of the full catalog for the human to eyeball. The headless half asserts the
- * catalog is wired, every good rests as its own pile, and the warehouse advertises a stock slot for each.
+ * catalog is wired, every good rests as its own pile, and the warehouse's stock set is exactly the
+ * storable catalog minus the dishes their own producing house keeps.
  */
 
 const MAP_W = 44;
@@ -113,10 +116,12 @@ export const goodsCatalogScene: SceneDefinition = {
       predicate: (sim) => countGroundPiles(sim) === DROP_GOODS.length,
     },
     {
-      label: 'the warehouse advertises a stock slot for every dropped (storable) good',
+      label: 'the warehouse advertises a stock slot for every dropped good but the house-only dishes',
       predicate: (sim) => {
         const stock = warehouseStockGoods(sim);
-        return DROP_GOODS.every((good) => stock.has(good));
+        return DROP_GOODS.every((good) =>
+          DISHES_KEPT_OUT_OF_STORES.includes(good) ? !stock.has(good) : stock.has(good),
+        );
       },
     },
   ],

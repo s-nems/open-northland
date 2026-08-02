@@ -38,6 +38,9 @@ export interface UnitPanelModelContext {
   /** The meat byproduct good every completed feed batch lands (`livestockMeatGoodOf`) - the second
    *  icon of a livestock chain row; null/absent without one in content. */
   readonly livestockMeatGood?: number | null | undefined;
+  /** The sim's dish→edible mapping (`edibleGoodFormOf`): a gatherer's workplace counts as stocking a
+   *  dish when it slots the edible, since the deposit converts. Absent = no conversion (plain views). */
+  readonly edibleGoodForm?: ((goodType: number) => number) | undefined;
 }
 
 export interface Comp {

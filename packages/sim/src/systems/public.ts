@@ -52,7 +52,7 @@ export {
   needAtomicDuration,
 } from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';
-export { EDIBLE_FORM_BY_DISH } from './readviews/food.js';
+export { EDIBLE_FORM_BY_DISH, edibleGoodFormOf } from './readviews/food.js';
 // The content-derived job roles - the profession picker and the action ring offer exactly what the
 // matching commands accept, off the same roles.
 export {

@@ -31,9 +31,10 @@ export interface CatalogGood {
   /** Human English label for the HUD (e.g. `"Leather"`) - our hand-authored naming. */
   readonly name: string;
   /**
-   * Whether a general-goods store (HQ / warehouse) advertises a stock slot for it. True for the carried
-   * wares; false for the animal/vehicle/special tokens (`prey`, `sheep`, `cattle`, the carts/ships,
-   * `catapult`, `chest`, `anything`) - those are herded/driven/sentinel, not warehoused.
+   * Whether the good is a CARRIED ware at all - false for the animal/vehicle/special tokens (`prey`,
+   * `sheep`, `cattle`, the carts/ships, `catapult`, `chest`, `anything`), which are herded, driven or
+   * sentinel. Which of the carried wares a store actually slots is the sandbox store set's call
+   * (`game/sandbox/building-set.ts`), not this flag's.
    */
   readonly storable: boolean;
 }
@@ -111,5 +112,6 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 165, id: 'anything', name: 'Anything', storable: false },
 ] as const;
 
-/** The extended wares a general-goods store advertises a stock slot for (the storable subset). */
+/** The extended wares that are carried goods (the `storable` subset) - what the general-goods store set
+ *  is drawn from. */
 export const STORABLE_EXTENDED_GOODS: readonly CatalogGood[] = EXTENDED_GOODS.filter((g) => g.storable);

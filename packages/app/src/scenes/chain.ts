@@ -25,9 +25,10 @@ import type { SceneDefinition } from './types.js';
  * bread. Every link is the generic producer/haul AI - no chain-specific code - the goods flowing
  * building-to-building because a workshop fetches each input from the nearest store that holds it, so the
  * mill pulls the farm's wheat and the bakery pulls the mill's flour and the well's water without a depot in
- * between (the warehouse is just the bread sink + overflow). The headless half asserts the whole chain
- * closes (fields sown, flour ground, water drawn, bread baked); the browser half is where a human watches
- * the four workshops and the goods ferried between them.
+ * between (the warehouse is the overflow sink, and it takes the bread as the `food_simple` a lift out of
+ * the bakery converts it to). The headless half asserts the whole chain closes (fields sown, flour ground,
+ * water drawn, bread baked); the browser half is where a human watches the four workshops and the goods
+ * ferried between them.
  */
 
 const MAP_W = 46;

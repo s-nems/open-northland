@@ -1,6 +1,12 @@
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_BABY_MALE, JOB_CHILD_MALE, JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import {
+  JOB_BABY_MALE,
+  JOB_CHILD_MALE,
+  JOB_COLLECTOR,
+  JOB_HUNTER,
+  JOB_SOLDIER,
+} from '../src/catalog/jobs.js';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_ANIMAL_FARM,
@@ -14,6 +20,7 @@ import {
   GOOD_GOLD,
   GOOD_IRON,
   GOOD_LEATHER,
+  GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
   GOOD_PLANK,
@@ -448,6 +455,26 @@ describe('selection details panel model', () => {
     expect(model.work.product).toBe(
       model.work.gatherChoices.find((choice) => choice.goodType === GOOD_STONE)?.label,
     );
+  });
+
+  // The HQ has no raw meat slot - it banks a hunter's kill as food - so a raw-slot-only menu filter drops
+  // Mięso and leaves the settlement's hunter unable to be pinned to his own product. Twin of the sim's
+  // forage filter and of `setGatherGood`'s gate, which read the same banked form.
+  it('offers an HQ hunter the meat his larder banks as food', () => {
+    const snapshot = snapshotOf([
+      buildingEntity(2, BUILDING_HEADQUARTERS),
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_HUNTER },
+          JobAssignment: { workplace: 2 },
+        },
+      },
+    ]);
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+
+    expect(model.work.gatherChoices.map((choice) => choice.goodType)).toContain(GOOD_MEAT);
   });
 
   it('hides a needforgood-gated ware from the gather menu until the settler earns it', () => {

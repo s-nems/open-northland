@@ -22,7 +22,7 @@ import {
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial/nodes.js';
-import { workplaceStoredGoods } from '../../stores/index.js';
+import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { isOrderableSettler } from '../guards.js';
 
 /**
@@ -117,13 +117,16 @@ export function setGatherGood(
     });
   } else {
     // The flag-less employed path: the pick lives in a GatherSelection and must be a good the bound
-    // workplace stockpiles (the "an employed gatherer forages only for its workplace" rule).
+    // workplace stockpiles (the "an employed gatherer forages only for its workplace" rule) - judged by
+    // {@link workplaceStocksGood}, the same test `planGatherer` filters on, so the order never drops a
+    // pick the drive would have honoured.
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     if (workplace === undefined || !world.isAlive(workplace)) return;
     if (goodType === null) {
       world.remove(e, GatherSelection); // back to every stored good
     } else {
-      if (!(workplaceStoredGoods(world, ctx, workplace)?.has(goodType) ?? false)) return;
+      const stored = workplaceStoredGoods(world, ctx, workplace);
+      if (stored === undefined || !workplaceStocksGood(ctx, stored, goodType)) return;
       if (!world.has(e, GatherSelection)) {
         world.add(e, GatherSelection, { goodType });
       } else {

@@ -11,6 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
+import { stockCapacity } from '../../src/systems/index.js';
 import { setGatherGood, setJob } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -33,6 +34,9 @@ const VIKING = 1;
 const HUMAN = 0;
 const SAWMILL = 2; // fixture building type storing wood + plank (no stone)
 const WAREHOUSE = 7; // fixture storage stocking every good (wood AND stone)
+const HEADQUARTERS = 1; // fixture larder: a food_simple slot, no raw meat slot
+const HUNTER = 15;
+const MEAT = 21;
 const WOOD_HARVEST = 24;
 const STONE_HARVEST = 25;
 
@@ -112,6 +116,40 @@ describe('employed gatherer - the workplace store filter', () => {
     expect(sim.world.get(stone, Resource).remaining).toBe(5); // pinned to wood - the stone is not its pick
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: null });
     expect(sim.world.has(worker, GatherSelection)).toBe(false);
+  });
+
+  // The pin accepts a good the workplace stores in its BANKED form, matching the forage filter above and
+  // `pileupIntoStore`: the HQ shelves a hunter's meat as food, so "stored" cannot mean the raw slot alone
+  // or the settlement's hunter could not be pinned to his own product.
+  it('setGatherGood accepts a dish the workplace stores only as its edible', () => {
+    const sim = sceneSim();
+    const hq = placeBuilding(sim, HEADQUARTERS, 1, 1); // a food slot, no meat slot
+    const hunter = settlerAt(sim, { jobType: HUNTER, position: { x: fx.fromInt(4), y: fx.fromInt(1) } });
+    sim.world.add(hunter, Owner, { player: HUMAN });
+    sim.world.add(hunter, JobAssignment, { workplace: hq });
+
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: hunter, goodType: MEAT });
+
+    expect(sim.world.get(hunter, GatherSelection).goodType).toBe(MEAT);
+  });
+
+  // The gate reads the building TYPE's slots, not a live store's capacity: employment has no built gate,
+  // so a collector can report in while its warehouse is still a foundation. Judged on capacity, the order
+  // would measure the construction bill and silently drop a pick the Praca menu still offers.
+  it('accepts a pick at a workplace that is still a construction site', () => {
+    const sim = sceneSim();
+    const site = placeBuilding(sim, WAREHOUSE, 1, 1);
+    sim.world.write(site, Building, (b) => {
+      b.built = fx.fromInt(0);
+    });
+    const worker = employedCollector(sim, 8, 1, site);
+    // The premise: a site advertises only its outstanding materials, and this fixture warehouse bills
+    // none - so a capacity-based gate refuses wood here and the test would pass vacuously without it.
+    expect(stockCapacity(sim.world, ctxOf(sim), site, WOOD)).toBe(0);
+
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: worker, goodType: WOOD });
+
+    expect(sim.world.get(worker, GatherSelection).goodType).toBe(WOOD);
   });
 
   it('rejects a good the workplace does not store (recoverable bad input)', () => {

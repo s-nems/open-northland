@@ -82,10 +82,19 @@ export interface StockSlot {
 }
 
 /**
+ * The dishes a general store must NOT slot, so each reaches a larder as the `food_simple` a lift out of
+ * its own house converts it to (`sim/systems/readviews/food.ts` owns that rule). EXTRACTED basis
+ * (`DataCnmd/types/houses.ini`): meat has a `logicstock` line in "work animal farm" alone, bread in "work
+ * bakery 00"/"01" alone. Candy is house-only there too and is deliberately NOT here - a user decision to
+ * keep it a warehouse ware of its own.
+ */
+export const DISHES_KEPT_OUT_OF_STORES: readonly number[] = [GOOD_MEAT, GOOD_BREAD];
+
+/**
  * The general-goods store set - the core economy goods (the gathered set + plank + coin) followed by every
- * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
- * the whole catalog and the Magazyn panel lists each good (with its icon) across its category tab. The set
- * (which goods a store holds) is a sandbox balance pin, not extracted data.
+ * carried ware from {@link STORABLE_EXTENDED_GOODS} except the {@link DISHES_KEPT_OUT_OF_STORES}, so the HQ
+ * and warehouses advertise a slot for each and the Magazyn panel lists it (with its icon) under its
+ * category tab. The set (which goods a store holds) is a sandbox balance pin, not extracted data.
  */
 const STORE_GOODS: readonly number[] = [
   GOOD_WOOD,
@@ -96,7 +105,9 @@ const STORE_GOODS: readonly number[] = [
   GOOD_IRON,
   GOOD_GOLD,
   GOOD_MUSHROOM,
-  ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
+  ...STORABLE_EXTENDED_GOODS.filter((g) => !DISHES_KEPT_OUT_OF_STORES.includes(g.typeId)).map(
+    (g) => g.typeId,
+  ),
 ];
 
 /**

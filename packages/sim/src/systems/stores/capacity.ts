@@ -3,6 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { exportedGoodForm } from '../readviews/food.js';
 import { vehicleMayCarry } from '../readviews/vehicles.js';
 import { constructionBillOf } from './construction.js';
 
@@ -45,9 +46,6 @@ export const MAX_GROUND_STACK = 5;
  *   limit, {@link MAX_GROUND_STACK} units of the one good it holds; a heap already holding a different good
  *   refuses ours (capacity 0 - piles never mix goods, matching `stackOntoTile`/`dropOrStackGood`).
  * - A store with **none** of the above and no Position (a mapless test fixture) stays uncapped.
- *
- * Used by the AI store scan (`nearestStoreFor`), the atomic `pileup` deposit, and production's
- * `canStartCycle`/`depositOutputs`.
  */
 export function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
   const building = world.tryGet(store, Building);
@@ -84,6 +82,29 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     return MAX_GROUND_STACK;
   }
   return UNCAPPED_CAPACITY;
+}
+
+/**
+ * The slot `store` would shelve a delivered unit of `goodType` in: the good's own where the store type
+ * declares one, else its edible form's ({@link exportedGoodForm}) - a larder with no raw dish slot banks
+ * the hunter's meat as food. Neither declared yields the raw good at capacity 0, a refusal.
+ *
+ * Returns the capacity WITH the form so the sink scan, which probes this per candidate per query, still
+ * spends one {@link stockCapacity} lookup per candidate: only a dish whose raw slot is absent costs the
+ * second. Handing back the form alone would make every caller resolve the capacity again.
+ */
+export function bankedSlot(
+  world: World,
+  ctx: SystemContext,
+  store: Entity,
+  goodType: number,
+): { readonly goodType: number; readonly capacity: number } {
+  const raw = stockCapacity(world, ctx, store, goodType);
+  if (raw > 0) return { goodType, capacity: raw };
+  const edible = exportedGoodForm(ctx, goodType);
+  if (edible === goodType) return { goodType, capacity: 0 };
+  const converted = stockCapacity(world, ctx, store, edible);
+  return converted > 0 ? { goodType: edible, capacity: converted } : { goodType, capacity: 0 };
 }
 
 /** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. A min over the Map's keys,
