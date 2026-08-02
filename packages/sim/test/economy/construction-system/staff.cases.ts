@@ -186,10 +186,10 @@ describe('construction site staffing - the slots a building offers while it is r
     expect(boundTo(sim, second)).toBeUndefined(); // the one mason slot is taken
   });
 
-  it('keeps an upgrade at the CURRENT tier’s limit until it completes, then offers the new seat', () => {
+  it('keeps an upgrade’s crew and takes new hires, but only to the CURRENT tier’s limit', () => {
     const sim = new Simulation({ seed: 1, content: staffContent(), map: grassMap(NODES_W, NODES_H) });
-    // A built L0 smithy re-opened as an upgrade site: one mason already works it, and L1's second mason
-    // seat exists only once the tier is actually adopted.
+    // A built L0 smithy (one mason seat) with a mason already on it, re-opened as an upgrade site toward
+    // L1 (two mason seats).
     const smithy = buildingAt(sim, SMITHY_L0, 3, 0, { stock: [[STONE, 3]] });
     const mason = settlerAt(sim, 0, 0, null);
     post(sim, mason, smithy, [MASON]);
@@ -198,9 +198,15 @@ describe('construction site staffing - the slots a building offers while it is r
     expect(sim.world.has(smithy, UnderConstruction)).toBe(true);
     expect(boundTo(sim, mason)).toBe(smithy); // the upgrade keeps its crew
 
-    const second = settlerAt(sim, 1, 0, null);
+    // Hiring stays open during the upgrade - the carrier seat L0 already offers is filled right now…
+    const hauler = settlerAt(sim, 1, 0, null);
+    post(sim, hauler, smithy, [CARRIER]);
+    expect(boundTo(sim, hauler)).toBe(smithy);
+
+    // …but the SECOND mason is a seat only L1 has, and the site is still an L0 smithy.
+    const second = settlerAt(sim, 2, 0, null);
     post(sim, second, smithy, [MASON]);
-    expect(boundTo(sim, second)).toBeUndefined(); // still a one-mason building
+    expect(boundTo(sim, second)).toBeUndefined();
 
     forceFinishConstruction(sim.world, ctxOf(sim), smithy);
     expect(sim.world.get(smithy, Building).buildingType).toBe(SMITHY_L1);
