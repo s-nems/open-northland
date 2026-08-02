@@ -8,13 +8,16 @@ import {
 } from '../../../../../components/index.js';
 import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
-import { nodeOfPosition } from '../../../../../nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
+import { forEachRingOffset } from '../../../../spatial/nodes.js';
 import { stockpilesAtNode } from '../../../../spatial/stockpiles.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../../../stores/index.js';
 
 // Loose ground piles: create a haulable drop, hand-stack a placed pile, stack a carried load onto a
-// yard heap, and reap a pile a pickup emptied. The shared on-the-ground shapes the harvest, carry, and
-// store-transfer effects all route through - defined once so the drop sites can't drift apart.
+// yard heap, scatter more than one tile holds, and reap a pile a pickup emptied. The shared
+// on-the-ground shapes the harvest, carry, and store-transfer effects all route through - defined once
+// so the drop sites can't drift apart.
 
 /**
  * Create a bare ground pile at (x,y) - a {@link Stockpile}+{@link Position}+{@link GroundDrop} holding `amount`
@@ -116,14 +119,61 @@ export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, wa
  * state (they render as one pile and each is pickable), so this trades a cosmetic overlap for goods
  * conservation. One unit only, because that is what the single caller sheds: a good leaving an
  * equipment slot with no carrier to hold it (see
- * {@link import('../../../../orders/work/employment.js')}). A multi-unit set-down would have to spill the
- * remainder across rings the way {@link dropCarriedLoad} does.
+ * {@link import('../../../../orders/work/employment.js')}). A multi-unit set-down belongs in
+ * {@link spillOverRings} instead.
  */
 export function placeUnitOnTile(world: World, x: Fixed, y: Fixed, good: number): void {
   if (stackOntoTile(world, x, y, good, 1) > 0) return;
   const pile = world.create();
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[good, 1]]) });
+}
+
+/**
+ * The greatest Manhattan ring radius (in half-cell nodes) {@link spillOverRings} walks before giving up, so
+ * goods never scatter further than this from where they fell and the walk stays a constant (a ring at
+ * radius `r` holds O(r) nodes). Named approximation (the original's drop-scatter extent is not decoded).
+ */
+const SPILL_MAX_RADIUS = 32;
+
+/**
+ * Scatter `amount` units of `good` onto the ground around `from`, nearest tile first: Manhattan rings out
+ * to {@link SPILL_MAX_RADIUS}, topping up an existing heap of the good or starting one on a free tile, so
+ * the load lands as a run of {@link MAX_GROUND_STACK}-unit heaps rather than piling past the per-tile cap.
+ * Skipped tiles: one holding a different good ({@link stackOntoTile} never overwrites), an unwalkable one,
+ * and whatever `accept` rejects. Returns how many units reached the ground - short of `amount` only when
+ * every tile within the bound is saturated, which the caller must then account for.
+ *
+ * Determinism: rings expand outward from `from` and each ring's tiles are visited in ascending
+ * {@link NodeId} order - a canonical which-tile-wins pick, no RNG.
+ */
+export function spillOverRings(
+  world: World,
+  terrain: TerrainGraph,
+  from: NodeId,
+  good: number,
+  amount: number,
+  accept?: (node: NodeId) => boolean,
+): number {
+  let left = amount;
+  const { x: cx, y: cy } = terrain.coordsOf(from);
+  for (let r = 0; r <= SPILL_MAX_RADIUS && left > 0; r++) {
+    const ring: NodeId[] = [];
+    forEachRingOffset(r, (dx, dy) => {
+      const node = terrain.nodeAtClamped(cx + dx, cy + dy);
+      if (!terrain.isWalkable(node)) return;
+      if (accept !== undefined && !accept(node)) return;
+      ring.push(node);
+    });
+    ring.sort((a, b) => a - b); // canonical (ascending NodeId) placement order
+    for (const node of ring) {
+      if (left <= 0) break;
+      const c = terrain.coordsOf(node);
+      const at = positionOfNode(c.x, c.y);
+      left -= stackOntoTile(world, at.x, at.y, good, left);
+    }
+  }
+  return amount - left;
 }
 
 /**

@@ -24,6 +24,9 @@ import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
  * full of wood, so stop hauling wood and fetch something else" (the same gate
  * {@link nearestWorkplaceOutput} applies to workplace output). A pile buried under a building's walls is
  * skipped too ({@link buriedUnderBuilding} - an unreachable stand would strand the porter).
+ *
+ * The same-side gate stays even though a ground heap is never owner-stamped: a boat hull is a positioned
+ * building-less stockpile too, so without it a porter would unload a rival's ship.
  */
 export function nearestGroundPile(
   plan: PlannerContext,

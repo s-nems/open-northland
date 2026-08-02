@@ -285,7 +285,8 @@ export class InteractionCellIndex {
  *
  * `onSide` ({@link import('../../../components/ownership.js').sameSideAs}) rejects a candidate owned by a
  * different player than the seeker BEFORE `resolve` runs - the economy same-side gate applied at the shared
- * seam, so every pile/sheaf/resource pick inherits it. Omit it for an ownership-blind scan.
+ * seam. The store scans pass it; a scan over map features (standing resources, ground heaps - neither is
+ * owner-stamped) omits it.
  */
 export function nearestByCell<P = null>(
   terrain: TerrainGraph,
