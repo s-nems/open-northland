@@ -4,7 +4,7 @@ import { SIGN_DEPTH_EPS, screenDepth } from '../src/data/scene/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
 import { BadgeLayer, type DoorBadge, type DoorBadgeRow } from '../src/gpu/overlays/badge-layer.js';
 import { type ConstructionSign, ConstructionSignLayer } from '../src/gpu/overlays/construction-sign-layer.js';
-import { type BuildingSignSheet, signRowAt } from '../src/gpu/overlays/sign-gfx.js';
+import { type BuildingSignSheet, CONSTRUCTION_SIGN_DX, signRowAt } from '../src/gpu/overlays/sign-gfx.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
@@ -274,7 +274,7 @@ describe('signRowAt', () => {
 });
 
 describe('ConstructionSignLayer', () => {
-  it('plants one construction sign per site at its anchor + px offset, retiring it when the site completes', () => {
+  it('plants one construction sign per site beside its sign post, retiring it when the site completes', () => {
     const layer = new ConstructionSignLayer();
     const s = sheet();
     layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
@@ -283,7 +283,8 @@ describe('ConstructionSignLayer', () => {
     expect(layer.container.children).toHaveLength(1);
     const node = layer.container.children[0] as Sprite;
     const p = tileToScreen(4, 2);
-    expect(node.position.x).toBe(p.x + 17);
+    // The stand steps clear of the post the door badges stack on, so the two markers never overlap.
+    expect(node.position.x).toBe(p.x + 17 + CONSTRUCTION_SIGN_DX);
     expect(node.position.y).toBe(p.y + 70);
     layer.draw([]); // site completed
     expect(layer.container.children).toHaveLength(0);

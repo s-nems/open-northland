@@ -28,13 +28,16 @@ import {
 } from './support.js';
 
 /**
- * Workers of an UPGRADING building stand down (user requirement 2026-07-18: "pracownik budynku który
+ * Workers of an UPGRADING building stop working it (user requirement 2026-07-18: "pracownik budynku który
  * jest ulepszany powinien przestać pracować"). Source basis: readable original - `jobtypes.ini` gives
  * every bound trade we model `mustHaveFinishedWorkHouseFlag 1` (its 0 rows - hunter/scout/jester - never
  * bind a workplace), so a trade needs its finished workhouse. The upgrade turns the
  * building back into a construction site whose emptied stockpile is the construction hold, so an
  * ungated crew would read the stashed stock as starvation and shuttle goods, or strip the site's
  * delivered materials as "output".
+ *
+ * What the crew does INSTEAD is `planSiteStaff`: a craftsman waits it out at the site, a carrier hauls the
+ * upgrade's own bill. Neither is its trade's work, which is what these cases pin.
  */
 
 /** Re-open `b` as an upgrade site exactly like the `upgradeBuilding` command: built drops to 0, the
@@ -55,8 +58,9 @@ describe('an upgrading workplace - its crew stands down', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    // …but the workhouse is a site: no fetch walk, no pickup - the smith waits the upgrade out.
-    expect(sim.world.has(smith, MoveGoal)).toBe(false);
+    // …but the workhouse is a site: no fetch walk to the store, no pickup - the smith waits it out at
+    // the site (its only legal move is onto the site's own perimeter).
+    expect(sim.world.tryGet(smith, MoveGoal)?.cell).not.toBe(cell(sim, 5, 0));
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
   });
 
@@ -74,7 +78,7 @@ describe('an upgrading workplace - its crew stands down', () => {
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 1, 0));
   });
 
-  it('a porter bound to an upgrading warehouse stops collecting piles', () => {
+  it('a porter bound to an upgrading warehouse stops ferrying piles into it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hq = buildingAt(sim, HEADQUARTERS, 0, 0);
     startUpgrade(sim, hq);
@@ -83,7 +87,8 @@ describe('an upgrading workplace - its crew stands down', () => {
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(porter, MoveGoal)).toBe(false);
+    // The porter rung is off (its store is a site, and the fixture's headquarters has no upgrade bill to
+    // fetch either), so nothing is lifted: it waits at the site with the rest of the crew.
     expect(sim.world.has(porter, CurrentAtomic)).toBe(false);
   });
 

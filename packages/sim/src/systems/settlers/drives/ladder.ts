@@ -1,13 +1,4 @@
-import {
-  Carrying,
-  Female,
-  JobAssignment,
-  ownerOf,
-  Position,
-  type Settler,
-  Stance,
-  UnderConstruction,
-} from '../../../components/index.js';
+import { Carrying, Female, ownerOf, Position, type Settler, Stance } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -30,6 +21,7 @@ import {
   planGatherer,
   planPorter,
   planProducer,
+  planSiteStaff,
   planWorkshopSupplier,
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
@@ -193,18 +185,10 @@ function planEconomy(
 
   if (planBuilder(plan, pass.spacing, pass.siteLeads)) return;
 
-  // A settler whose bound workplace is a construction site - a running upgrade - stands down instead
-  // of running the remaining trade rungs: its trade needs the finished workhouse. Readable source:
-  // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data collapsed to a blanket here - every
-  // bound trade we model sets 1, the 0 rows (hunter/scout/jester) have no bound-workplace rung, and
-  // the farm/producer rungs above already apply the gate per-rung. Sits below planBuilder (a builder
-  // bound to an upgrading building must still build); the binding survives, so work resumes the tick
-  // the upgrade completes.
-  const boundWorkplace = world.tryGet(e, JobAssignment)?.workplace;
-  if (boundWorkplace !== undefined && world.has(boundWorkplace, UnderConstruction)) {
-    deStackIdle(world, terrain, e, hx, hy, pass.spacing);
-    return;
-  }
+  // A settler posted to a workplace that is still going up - a fresh foundation or a running upgrade -
+  // supplies it (a carrier) or waits at it (every other trade), rather than running the remaining trade
+  // rungs. Sits below planBuilder, so a builder posted to a site still builds it.
+  if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 
   if (planGatherer(plan, pass.harvestClaims)) return;
   if (planPorter(plan)) return;

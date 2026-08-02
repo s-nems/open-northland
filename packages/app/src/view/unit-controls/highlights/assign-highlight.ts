@@ -51,10 +51,12 @@ function buildStaffing(snapshot: WorldSnapshot): Staffing {
 
 /**
  * The candidacy gate - the worker slots of a building this settler could be assigned to at all, or null
- * when it is not a candidate: another owner's / tribe's building, a construction site (takes builders, not
- * workers), or a building that employs nobody (a home). The single home of "which buildings the assign
- * gesture considers", shared by the highlight (a non-candidate is skipped, not tinted red) and the click
- * resolver (a non-candidate cancels) so the green wash and the bind can never disagree about candidacy.
+ * when it is not a candidate: another owner's / tribe's building, or a building that employs nobody (a
+ * home). A building still under construction IS a candidate: its slots take staff from the moment the
+ * foundation is placed, and an upgrade offers the tier it currently is. The single home of "which
+ * buildings the assign gesture considers", shared by the highlight (a non-candidate is skipped, not
+ * tinted red) and the click resolver (a non-candidate cancels) so the green wash and the bind can never
+ * disagree about candidacy.
  */
 function candidateSlots(
   building: SnapshotEntity,
@@ -64,7 +66,6 @@ function candidateSlots(
   if (!isBuilding(building)) return null;
   if (ownerPlayerOf(building) !== ownerPlayerOf(settler)) return null; // only the settler's own buildings
   if (buildingTribeOf(building) !== settlerTribeOf(settler)) return null;
-  if (building.components.UnderConstruction !== undefined) return null; // a site takes builders, not workers
   const typeId = buildingTypeOf(building);
   const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;
   return slots !== undefined && slots.length > 0 ? slots : null; // employs nobody (a home) → not a candidate
@@ -93,8 +94,8 @@ export function currentTradeSlotAt(
 /**
  * The assignment-highlight verdicts for a selected settler over every own building: green when the
  * building offers the settler's current trade with a free slot, red otherwise. Buildings of another
- * owner/tribe or under construction are skipped (never candidates). Pure over the snapshot + the
- * building-type table, so it is unit-testable and never touches sim state.
+ * owner/tribe are skipped (never candidates). Pure over the snapshot + the building-type table, so it is
+ * unit-testable and never touches sim state.
  */
 export function computeAssignHighlight(
   snapshot: WorldSnapshot,

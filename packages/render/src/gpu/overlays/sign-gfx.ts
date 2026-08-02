@@ -105,6 +105,14 @@ export function chainedFrame(kind: BuildingSignKind, frame: AtlasFrame): AtlasFr
 /** World-px the widest sign frame (the disc, 25 px) reaches sideways from a stack's anchor - the
  *  click-pick half-width. */
 const SIGN_HALF_WIDTH = 14;
+
+/**
+ * World-px the construction stand is planted LEFT of the shared sign post, so it stands beside the door
+ * badges instead of over them. Both markers anchor on the same extracted `GfxFlagPoint`, and a building
+ * under construction now carries both at once: its build crew and the staff posted to it draw their badge
+ * chain there while the stand marks the site. Two sign half-widths clears the widest badge frame.
+ */
+export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
 /** World-px the planted base sign's rock clump extends below the stack anchor. */
 const SIGN_BASE_BELOW = 8;
 /** Anchor-space split between a row's emblem band and the band above it - just under the banner cloth

@@ -9,8 +9,9 @@ import {
   BUILDING_WAREHOUSE_00,
   GOOD_STONE,
   GOOD_WOOD,
-  placeSandboxBuilding,
+  placeSandboxSite,
   spawnSandboxSettler,
+  spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -23,10 +24,17 @@ import type { SceneDefinition } from './types.js';
  * its own window ends (so the bakery's roof grows on the roof scaffold rather than the scaffold blinking
  * out at ~64%). Sites rise in parallel around a central depot so a human can catch the roof phase.
  *
- * Headless proves the sites finish (the crew loop converges); the browser is where a human watches each
- * site rise and confirms the scaffold hands off to the body smoothly (root AGENTS.md: pixels need a
- * human). The depot is seeded with wood + stone only (no production goods exist in the world), so a
- * finished bakery has nothing to pull and the whole crew stays on construction hauling.
+ * Each bakery foundation is also STAFFED, which a building takes from the moment it is placed: its baker
+ * waits at the site until the oven stands (the trade needs its finished workhouse), while its posted
+ * carrier hauls the site's own construction bill from the depot alongside the builders. Both keep their
+ * posting through the build, so the bakery opens already crewed.
+ *
+ * Headless proves the sites finish (the crew loop converges) and that the posted staff is still on the
+ * finished buildings; the browser is where a human watches each site rise, confirms the scaffold hands
+ * off to the body smoothly (root AGENTS.md: pixels need a human), and checks that a site's construction
+ * stand does not sit over its worker badges. The depot is seeded with wood + stone only (no production
+ * goods exist in the world), so a finished bakery has nothing to pull and the whole crew stays on
+ * construction hauling.
  */
 
 const MAP_W = 30;
@@ -43,15 +51,18 @@ const SITES: readonly { ref: number; x: number; y: number }[] = [
   { ref: BUILDING_HOME_00, x: 9, y: 15 },
   { ref: BUILDING_HOME_00, x: 21, y: 15 },
 ];
-/** Spare crew beside the depot: builders hammer the sites, carriers haul each bill from the depot. */
+/** Spare crew beside the depot: builders hammer whichever site is nearest. */
 const BUILDERS = 8;
-const CARRIERS = 12;
 const CREW = { x: 15, y: 13 } as const;
+/** The staff posted to each BAKERY foundation - the bakery's own slots, filled before it stands. A home
+ *  employs nobody, so the two home sites are raised by the loose builders alone. */
+const SITE_BAKERS = 1;
+const SITE_CARRIERS = 1;
 /** Headroom over the measured full-rise run - the shared crew raises all four foundations by ~tick
  *  4400 (deterministic, seed 7); 8000 keeps ~1.8× slack. */
 const RUN_TICKS = 8_000;
 
-const { Building, UnderConstruction } = components;
+const { Building, JobAssignment, Settler, UnderConstruction } = components;
 
 function build(sim: Simulation): void {
   // A built warehouse seeded with construction material only - raw command so `initialGoods` seeds
@@ -71,14 +82,26 @@ function build(sim: Simulation): void {
     ],
   });
   for (const s of SITES) {
-    placeSandboxBuilding(sim, s.ref, s.x, s.y, HUMAN_PLAYER, { underConstruction: true });
+    const site = placeSandboxSite(sim, s.ref, s.x, s.y, HUMAN_PLAYER);
+    if (s.ref !== BUILDING_BAKERY) continue;
+    spawnWorkersAtDoor(sim, site, SITE_BAKERS);
+    spawnWorkersAtDoor(sim, site, SITE_CARRIERS, { jobType: JOB_CARRIER });
   }
   for (let i = 0; i < BUILDERS; i++) {
     spawnSandboxSettler(sim, JOB_BUILDER, CREW.x - 2 + (i % 5), CREW.y, HUMAN_PLAYER);
   }
-  for (let i = 0; i < CARRIERS; i++) {
-    spawnSandboxSettler(sim, JOB_CARRIER, CREW.x - 3 + (i % 6), CREW.y + 1, HUMAN_PLAYER);
+}
+
+/** The settlers still posted to a FINISHED building of `ref`'s type - the staff a site kept through its
+ *  build (a posting survives the rise; nothing re-employs anyone). */
+function staffOnFinished(sim: Simulation): number {
+  let posted = 0;
+  for (const e of sim.world.query(Settler, JobAssignment)) {
+    const workplace = sim.world.get(e, JobAssignment).workplace;
+    const building = sim.world.tryGet(workplace, Building);
+    if (building !== undefined && building.built >= ONE) posted++;
   }
+  return posted;
 }
 
 /** Every construction site that has not yet finished (still carries the builder-work marker). */
@@ -101,6 +124,12 @@ export const constructionScene: SceneDefinition = {
     {
       label: 'every foundation was raised to a finished building - the crew loop converged',
       predicate: (sim) => unfinishedSites(sim) === 0,
+    },
+    {
+      label: 'every worker posted to a foundation still staffs the building it became',
+      predicate: (sim) =>
+        staffOnFinished(sim) ===
+        SITES.filter((s) => s.ref === BUILDING_BAKERY).length * (SITE_BAKERS + SITE_CARRIERS),
     },
     {
       label: 'all four commanded sites are present as finished buildings',
