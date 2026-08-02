@@ -43,6 +43,10 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
 export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
   work_farm_00: { operatorTarget: 2, operatorSurplus: 3 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
+  // The one building whose SECOND operator is a minimum: a breeder works a single species line
+  // (see CRAFT_RESTRICTIONS_BY_BUILDING_ID), so the pair is what runs the ox and sheep lines at
+  // once. One breeder still works both, just serially.
+  work_animal_farm: { operatorMin: 2, operatorTarget: 2 },
   // The level-0 bakery has a single baker slot - only its carrier is planned; the two-baker
   // target belongs to the level-2 tier, which actually offers the seats.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },

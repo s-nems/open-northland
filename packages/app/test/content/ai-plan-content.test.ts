@@ -6,8 +6,11 @@ const {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
   DEFAULT_BUILD_ORDER,
+  HEADQUARTERS_BUILDING_ID,
+  OPENING_HUNT_UNTIL_BUILDING_ID,
   STAFFING_BY_BUILDING_ID,
   TOWER_CONTENT_IDS,
+  hunterJobType,
 } = systems;
 
 /**
@@ -69,7 +72,11 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const building = buildingById.get(id);
       expect(building, `staffing override ${id}`).toBeDefined();
       // The staffing cap is min(slot.count, tier) - a real slot must offer the highest tier's seats.
-      const operatorWant = Math.max(staffing.operatorTarget ?? 0, staffing.operatorSurplus ?? 0);
+      const operatorWant = Math.max(
+        staffing.operatorMin ?? 0,
+        staffing.operatorTarget ?? 0,
+        staffing.operatorSurplus ?? 0,
+      );
       if (operatorWant > 0) {
         const fits = building?.workers.some((w) => w.jobType !== carrierJob && w.count >= operatorWant);
         expect(fits, `an operator slot of ${id} offering ${operatorWant} seats`).toBe(true);
@@ -80,6 +87,19 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         expect(fits, `a carrier slot of ${id} offering ${carrierTarget} seats`).toBe(true);
       }
     }
+    // The opening hunt: both halves must resolve, or the post is silently never made (no seat) or
+    // never given up (no milestone tier).
+    const hunterJob = hunterJobType(content);
+    expect(hunterJob, 'a hunter trade').not.toBeNull();
+    const hq = buildingById.get(HEADQUARTERS_BUILDING_ID);
+    expect(
+      hq?.workers.some((w) => w.jobType === hunterJob),
+      'a hunter slot at the headquarters',
+    ).toBe(true);
+    expect(
+      buildingById.has(OPENING_HUNT_UNTIL_BUILDING_ID),
+      `opening-hunt milestone ${OPENING_HUNT_UNTIL_BUILDING_ID}`,
+    ).toBe(true);
     for (const goodId of Object.keys(COLLECTOR_TARGET_BY_GOOD_ID)) {
       expect(
         content.goods.some((g) => g.id === goodId),
@@ -93,11 +113,16 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `tower id ${towerId}`).toBeDefined();
       expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
     }
-    for (const [id, goods] of Object.entries(CRAFT_RESTRICTIONS_BY_BUILDING_ID)) {
+    for (const [id, seats] of Object.entries(CRAFT_RESTRICTIONS_BY_BUILDING_ID)) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
-      for (const goodId of goods) {
+      // One list per operator seat - the building must actually offer every seat the table splits.
+      const operatorSeats = building?.workers
+        .filter((w) => w.jobType !== carrierJob)
+        .reduce((most, w) => Math.max(most, w.count), 0);
+      expect(operatorSeats ?? 0, `operator seats of ${id}`).toBeGreaterThanOrEqual(seats.length);
+      for (const goodId of seats.flat()) {
         const good = content.goods.find((g) => g.id === goodId);
         expect(good, `craft good ${goodId}`).toBeDefined();
         // The restriction must name a product the workplace actually makes - an unmakeable-only

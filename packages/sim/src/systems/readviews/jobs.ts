@@ -23,8 +23,14 @@ export function isSoldierJob(content: ContentSet, jobType: number | null): boole
  *  class specializes from": it picks `jobtypes.ini` 31 `soldier_unarmed` in every playable tribe, and the
  *  direct signal (the one soldier class with no `weapons.ini` `jobtype` row) waits on the weapon slice. */
 export function baseSoldierJobType(content: ContentSet): number | null {
+  return lowestJobOf(contentIndex(content).soldierJobs);
+}
+
+/** The canonical pick over a role's job set: its lowest typeId, or null for an empty set. Set
+ *  iteration order never decides it, so the answer holds whatever the content table's shape. */
+function lowestJobOf(jobs: ReadonlySet<number>): number | null {
   let lowest: number | null = null;
-  for (const jobType of contentIndex(content).soldierJobs) {
+  for (const jobType of jobs) {
     if (lowest === null || jobType < lowest) lowest = jobType;
   }
   return lowest;
@@ -64,11 +70,12 @@ export function isHunterJob(content: ContentSet, jobType: number | null): boolea
 /** The job id an AI assigns to make a settler a scout - the lowest scout trade the content declares (a
  *  canonical pick), or null when it declares none. */
 export function scoutJobType(content: ContentSet): number | null {
-  let lowest: number | null = null;
-  for (const jobType of contentIndex(content).scoutJobs) {
-    if (lowest === null || jobType < lowest) lowest = jobType;
-  }
-  return lowest;
+  return lowestJobOf(contentIndex(content).scoutJobs);
+}
+
+/** The hunter twin of {@link scoutJobType}. */
+export function hunterJobType(content: ContentSet): number | null {
+  return lowestJobOf(contentIndex(content).hunterJobs);
 }
 
 /**

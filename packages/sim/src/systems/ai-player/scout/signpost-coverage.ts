@@ -1,22 +1,15 @@
-import { CurrentAtomic, ErectSignpostOrder, PlayerOrder, Settler } from '../../components/index.js';
-import type { Command } from '../../core/commands/index.js';
-import type { World } from '../../ecs/world.js';
-import type { HalfCellNode } from '../../nav/halfcell.js';
-import { withinNodeRadius } from '../../nav/node-circle.js';
-import type { SystemContext } from '../context.js';
-import { interactionNode, routeRegions } from '../footprint/index.js';
-import { isScoutJob } from '../readviews/index.js';
-import { signpostNetwork, signpostProbe } from '../signposts/index.js';
-import type { AiPlayerModule } from './index.js';
-import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings, ownedSettlers } from './shared.js';
+import type { World } from '../../../ecs/world.js';
+import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { withinNodeRadius } from '../../../nav/node-circle.js';
+import type { SystemContext } from '../../context.js';
+import { interactionNode, routeRegions } from '../../footprint/index.js';
+import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
+import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings } from '../shared.js';
 
 /**
- * The GuideBuild module - the scout tiles the settlement with a hex lattice of signposts (user plan,
- * 2026-07-18): one post beside the headquarters, six around it at near-minimal spacing, and outer
- * lattice spots only once owned buildings stand near them, so the covered field grows with the
- * settlement. One order per decision; the workforce module calls a scout up from the builder pool
- * exactly while {@link nextSignpostTarget} has work, and turns an idle scout back into a builder
- * when it doesn't.
+ * The signpost lattice the scout tiles the settlement with (user plan): one post beside the
+ * headquarters, six around it at near-minimal spacing, and outer lattice spots only once owned
+ * buildings stand near them, so the covered field grows with the settlement.
  */
 
 /** Distance between neighbouring lattice targets, in nodes on the world metric - "almost as close as
@@ -102,8 +95,7 @@ function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode
  * The next erectable lattice target for the seat: the first spot (rings inside-out, walk order) that
  * is wanted (ring ≤ {@link HQ_RING}, or an owned building within one lattice spacing), has no own
  * post within the tolerance, AND a legal node to erect on. Null when the wanted lattice stands
- * complete or every remaining target is unbuildable (off-map, water, blocked) - the workforce module
- * reads that as "no scout work" and returns the scout to the builder pool.
+ * complete or every remaining target is unbuildable (off-map, water, blocked).
  */
 export function nextSignpostTarget(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const terrain = ctx.terrain;
@@ -168,25 +160,3 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
   }
   return null;
 }
-
-function runSignpostCoverage(world: World, ctx: SystemContext, player: number): readonly Command[] {
-  const scout = ownedSettlers(world, player).find((e) =>
-    isScoutJob(ctx.content, world.get(e, Settler).jobType),
-  );
-  if (scout === undefined) return [];
-  // Busy - leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
-  // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a
-  // need drive starts an atomic (orders/movement.ts `playerOrderSystem`, orders/signposts.ts
-  // `signpostOrderSystem`), so an eating scout would otherwise look order-free and be re-ordered every
-  // decision beat.
-  if (world.has(scout, CurrentAtomic)) return [];
-  if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
-  const target = nextSignpostTarget(world, ctx, player);
-  if (target === null) return []; // the wanted lattice is complete - the workforce module retires the scout
-  return [{ kind: 'placeSignpost', entity: scout, x: target.hx, y: target.hy }];
-}
-
-export const signpostCoverageModule: AiPlayerModule = {
-  id: 'guideBuild',
-  run: runSignpostCoverage,
-};

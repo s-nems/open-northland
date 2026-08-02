@@ -7,6 +7,7 @@ import {
   AssistantCounters,
   assistantCountersEntity,
   Building,
+  Livestock,
   Owner,
   ownerOf,
   Position,
@@ -202,9 +203,15 @@ export function ownedBuildings(world: World, player: number): Entity[] {
   return canonicalById(world.query(Building, Owner)).filter((e) => ownerOf(world, e) === player);
 }
 
-/** The seat's living settlers in canonical ascending-id order. */
+/** The seat's PEOPLE, canonical ascending-id order. Claimed livestock is an owned `Settler` too (the
+ *  entity model is shared) and reads as an adult with no trade, so without the exclusion every module
+ *  here would treat the herd as manpower: the round-up would hand the pool a cow, `setJob` would make
+ *  it a builder (which also poisons the tribe's alive-trade set), and it would count as a bachelor the
+ *  garrison may draft against ({@link ownedSettlers} is that count's source for the same reason). */
 export function ownedSettlers(world: World, player: number): Entity[] {
-  return canonicalById(world.query(Settler, Owner)).filter((e) => ownerOf(world, e) === player);
+  return canonicalById(world.query(Settler, Owner)).filter(
+    (e) => ownerOf(world, e) === player && !world.has(e, Livestock),
+  );
 }
 
 /** Whether the building's construction (or its latest upgrade) is complete. */
