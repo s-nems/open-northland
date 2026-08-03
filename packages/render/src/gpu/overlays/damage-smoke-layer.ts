@@ -9,31 +9,25 @@ import {
 import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
-/** The pale ash-grey a puff draws in - one flat circle per puff; density comes from the overlap.
- *  Light, not dark: the plumes rise over the dark roof palette, where a dark grey disappears. */
+/** Pale ash-grey: the plumes rise over the dark roof palette, where a dark grey disappears. */
 const SMOKE_COLOUR = 0xc4c4c4;
 
 /**
- * The damage-smoke overlay - the more battered a building, the more smoke pours off it: one seeded
- * plume per fifth of its Health pool lost ({@link damageSmokeEmitters}), each a phase-staggered loop of
- * rising, swelling, thinning grey puffs ({@link smokePuff}). Driven per frame from the sprite pool's
- * already-culled damaged-building list and its per-entity sprite bounds, so smoke rises from the actual
- * roofline and the cost tracks the screen. A pure function of the CURRENT HP fraction - repairs or an
- * upgrade refill shed the plumes with no event wiring. Retained: one node per building, all
- * {@link MAX_SMOKE_EMITTERS}×{@link SMOKE_PUFFS_PER_EMITTER} puffs minted once, surplus emitters hidden.
+ * Smoke plumes over a damaged building, driven per frame from the sprite pool's already-culled
+ * damaged-building list and its per-entity sprite bounds, so the plumes rise from the actual roofline and
+ * the cost tracks the screen. A pure function of the current HP fraction: repairs or an upgrade refill
+ * shed the plumes with no event wiring.
  */
 export class DamageSmokeLayer {
-  /** World-space, added above the sprite layer - smoke floats over the roofs (like the blood overlay). */
+  /** Added above the sprite layer, so smoke floats over the roofs. */
   readonly container = new Container();
-  /** One retained node per smoking building, keyed by entity ref. */
+  /** One node per smoking building, keyed by entity ref. */
   private readonly nodes = new Map<number, Container>();
-  /** Reused per-frame scratch of refs drawn this frame. */
   private readonly seen = new Set<number>();
 
   /**
-   * Reposition every plume for this frame. `damaged` is the pool's culled damaged-building list, anchored
-   * to `drawn` (a building not drawn this frame retires its node and re-mints it on scroll-back, cheap for
-   * a handful of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks.
+   * A building not drawn this frame retires its node and re-mints it on scroll-back (cheap for a handful
+   * of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks.
    */
   draw(damaged: readonly DamagedBuilding[], drawn: DrawnGeometry, tick: number): void {
     this.seen.clear();
@@ -41,7 +35,7 @@ export class DamageSmokeLayer {
       const emitters = damageSmokeEmitters(hpFrac);
       if (emitters <= 0) continue;
       const bounds = drawn.boundsOf(ref);
-      if (bounds === undefined) continue; // not drawn this frame (culled/hidden) - retire below
+      if (bounds === undefined) continue; // culled or hidden - retired by the sweep below
       let node = this.nodes.get(ref);
       if (node === undefined) {
         node = makeSmokeNode();
@@ -61,9 +55,8 @@ export class DamageSmokeLayer {
   }
 }
 
-/** Mint a building's smoke node: one sub-container per possible emitter, each holding its staggered
- *  puffs (unit circles the per-frame pass scales/moves/fades). Minted at the max once - the per-frame
- *  emitter count only toggles visibility, so worsening damage allocates nothing. */
+/** Minted at the maximum emitter count once: the per-frame count only toggles visibility, so worsening
+ *  damage allocates nothing. */
 function makeSmokeNode(): Container {
   const node = new Container();
   for (let e = 0; e < MAX_SMOKE_EMITTERS; e++) {
@@ -76,8 +69,7 @@ function makeSmokeNode(): Container {
   return node;
 }
 
-/** Place the node's plumes for this frame: the first `emitters` sub-containers sit at their seeded roof
- *  spots inside `bounds`, each puff posed by {@link smokePuff}; the rest are hidden. */
+/** The first `emitters` sub-containers sit at their seeded roof spots inside `bounds`; the rest hide. */
 function placePlumes(
   node: Container,
   seed: number,

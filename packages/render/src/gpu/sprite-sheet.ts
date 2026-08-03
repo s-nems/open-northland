@@ -8,25 +8,12 @@ import type {
   SpriteKind,
 } from '../data/sprites/index.js';
 
-/**
- * The plain-data GPU-input shapes the renderer draws a settler world from - the loaded-atlas contract
- * between the app's content loader and {@link import('./sprite-pool/index.js').SpritePool}: frame
- * geometry + bindings + decoded `TextureSource`s. The one-time GPU boot that produces the sources lives
- * in {@link import('./pixi-app.js')}, the terrain twin in {@link import('./terrain-textures.js')}.
- *
- * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
- * copy and gitignored - see AGENTS.md "Legal guardrails"). Floats are fine: this is `render`, never read
- * back into the deterministic sim.
- */
-
-/** The player-colour LUT the paletted settler meshes read team colours through; the full contract
- *  lives on {@link SpriteSheet.palette}. `colours` is the texture's total row count. The optional
- *  armor axis maps a worn armor good to its recolor tier: the LUT then carries one `playerRows`-row
- *  block per tier (`row = tier * playerRows + player`, tier 0 = the plain player rows), and
- *  {@link paletteLutRow} resolves the row, falling back to the plain player row when the armor rows
- *  are absent (a pre-armor 16-row LUT still loads). */
+/** The player-colour LUT the paletted settler meshes read team colours through. With the optional armor
+ *  axis the texture carries one `playerRows`-row block per recolor tier (`row = tier * playerRows +
+ *  player`, tier 0 = the plain player rows); a pre-armor 16-row LUT still loads. */
 export interface PlayerColourLut {
   readonly source: TextureSource;
+  /** The texture's total row count, across every armor-tier block. */
   readonly colours: number;
   /** Rows per armor-tier block (the player-colour count the LUT was composed with). */
   readonly playerRows?: number;
@@ -34,8 +21,8 @@ export interface PlayerColourLut {
   readonly armorTierByGood?: ReadonlyMap<number, number>;
 }
 
-/** The LUT row a settler reads its colours through: the `(armor tier, player)` block row when the
- *  worn `armorGood` resolves to a tier the texture actually carries, else the plain player row. */
+/** The `(armor tier, player)` block row when the worn `armorGood` resolves to a tier the texture
+ *  actually carries, else the plain player row. */
 export function paletteLutRow(
   palette: PlayerColourLut,
   player: number | undefined,
@@ -49,72 +36,59 @@ export function paletteLutRow(
   return row < palette.colours ? row : base;
 }
 
-/** One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame
- *  geometry (the original composes a human from layered body + head bob sets, not one sprite). */
 export interface SpriteLayer {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
   /**
-   * CPU copy of the atlas's build-progress time sheet (the house atlases' sibling `.build.png`) -
-   * present only when the manifest announced one. Feeds the per-pixel construction reveal
-   * ({@link import('./texture-cache.js').TextureCache.revealed}); absent, an under-construction
-   * building falls back to the bottom-up crop approximation.
+   * CPU copy of the atlas's build-progress time sheet (the house atlases' sibling `.build.png`), present
+   * only when the manifest announced one. Absent, an under-construction building falls back to the
+   * bottom-up crop approximation.
    */
   readonly times?: BuildTimeSheet;
   /**
-   * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas - pre-baked translucent-black
-   * silhouettes whose frame ids parallel this layer's bob ids), when the content names one and it
-   * loaded. A drawn bob prepends its same-id shadow frame under the body; absent, the bob casts
-   * none. Character atlases never carry one (settlers draw shadow-less by design).
+   * The layer's cast-shadow twin: pre-baked translucent-black silhouettes whose frame ids parallel this
+   * layer's bob ids, so a drawn bob prepends its same-id shadow frame under the body. Absent, the bob
+   * casts none - character atlases never carry one, settlers draw shadow-less by design.
    */
   readonly shadow?: Pick<SpriteLayer, 'source' | 'atlas'>;
 }
 
 /**
- * One composited settler look - the original's `[jobbasegraphics]` record: a body bob set, the head
- * looks that overlay it, and the per-state animation binding played from that body's own `[bobseq]`
- * ranges. Several jobs may share one character (the whole soldier family is the armoured
- * `cr_hum_body_05`; every unmapped trade is the generic man), and each body's sequences live in its own
- * frame-id space, so the binding travels with the layers instead of staying a sheet-global.
+ * One composited settler look - the original's `[jobbasegraphics]` record. Several jobs may share one
+ * character, and each body's sequences live in its own frame-id space, so the binding travels with the
+ * layers instead of staying a sheet-global.
  */
 export interface SettlerCharacter {
-  /** The body bob atlas - the base layer, whose `[bobseq]` ranges the {@link SettlerCharacter.binding} indexes. */
+  /** The base layer, whose `[bobseq]` ranges {@link SettlerCharacter.binding} indexes. */
   readonly body: SpriteLayer;
   /**
    * The head looks that can overlay this body (the `gfxbobmanagerhead` slots), drawn at the same bob id
-   * as the body frame. The renderer picks one per individual - stable by entity id - so a crowd shows
-   * varied faces the way the original's per-individual random head does. Empty/omitted for a body-only
-   * character (the baby, whose head is baked into the body bob).
+   * as the body frame. One is picked per individual, stable by entity id, matching the original's
+   * per-individual random head. Empty for a body-only character whose head is baked into the body bob.
    */
   readonly heads?: readonly SpriteLayer[];
   /** The per-state animation binding resolved against this body's own `[bobseq]` frame ranges. */
   readonly binding: SettlerStateBinding;
   /**
-   * The binding the head overlay resolves through when it must differ from {@link binding} - the
-   * head-borrow case: most carry-walk variants ship empty head bobs (the head is authored once, on the
-   * base walk), so their head plays the walk range at the same (facing, frame) offset while the body
-   * carries the load. Absent, heads resolve at the body's own bob id (the usual case).
+   * The binding the head overlay resolves through when it must differ from {@link binding}: most
+   * carry-walk variants ship empty head bobs, so their head plays the walk range at the same (facing,
+   * frame) offset while the body carries the load. Absent, heads resolve at the body's own bob id.
    */
   readonly headBinding?: SettlerStateBinding;
 }
 
 /**
- * The per-job settler character table ({@link ByJobTable} of {@link SettlerCharacter}) - the render-side
- * `[jobbasegraphics]` join: an item's `jobType` (+ its young flag, see {@link ByJobTable}) picks which
- * body/heads/binding compose the settler. When a sheet carries one, settlers draw through it instead of
- * the sheet-global `bindings.settler` + `source`/`overlays` pair, which stays the fallback for a sheet
- * without characters (the synthetic atlas).
+ * The render-side `[jobbasegraphics]` join: an item's `jobType` (plus its young flag) picks which
+ * body/heads/binding compose the settler. A sheet without characters falls back to the sheet-global
+ * `bindings.settler` + `source`/`overlays` pair.
  */
 export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
   /**
-   * The wildlife species looks, keyed by the item's animal `Settler.tribe`
-   * ({@link import('../data/scene/draw-item.js').DrawItem.tribe}), the render-side
+   * The wildlife species looks keyed by the item's animal tribe - the render-side
    * `animals/jobgraphics.ini` join (species body recolour + its own `cr_ani` sequences; animals never
-   * carry heads). A tribe in {@link SettlerCharacterSet.animals.tribes} resolves ONLY here: bound
-   * draws its species look, unbound draws nothing, never the human civilian default (the data-pinned
-   * invisible stance; e.g. butterflies, whose `cr_ani_body_01` ships no readable sequences). The
-   * species atlases are baked recolours with no indexed variant, so an animal always draws plain,
-   * outside the paletted-LUT path.
+   * carry heads). A tribe listed in `tribes` resolves only here: bound draws its species look, unbound
+   * draws nothing, never the human civilian default. The species atlases are baked recolours with no
+   * indexed variant, so an animal always draws outside the paletted-LUT path.
    */
   readonly animals?: {
     readonly byTribe: Readonly<Record<number, SettlerCharacter>>;
@@ -124,14 +98,13 @@ export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
 }
 
 /**
- * A loaded bob atlas ready for the GPU: the atlas image as a Pixi {@link TextureSource} plus the pure
- * {@link SpriteAtlas} frame geometry and per-kind {@link SpriteBindings} the frame lookup needs. Optional
- * input to the renderer: when present, bound sprite kinds draw their atlas frame; when absent (or a
- * kind/frame doesn't resolve) the placeholder geometry draws instead.
+ * A loaded bob atlas ready for the GPU. Optional input to the renderer: when present, bound sprite kinds
+ * draw their atlas frame; when absent, or when a kind or frame does not resolve, the placeholder geometry
+ * draws instead.
  *
- * `overlays` are extra layers drawn on top of the body in order, each indexed by the same resolved bob
- * id (the head bob shares the body's frame numbering). A layer that lacks the id (or has a 0×0 frame
- * there) is skipped for that bob.
+ * `overlays` are extra layers drawn on top of the body in order, each indexed by the same resolved bob id
+ * (the head bob shares the body's frame numbering). A layer that lacks the id, or has a 0×0 frame there,
+ * is skipped for that bob.
  */
 export interface SpriteSheet {
   readonly source: TextureSource;
@@ -140,52 +113,41 @@ export interface SpriteSheet {
   readonly overlays?: readonly SpriteLayer[];
   /**
    * Per-kind dedicated atlas layers. The base `source`/`atlas` (+ `overlays`) is the human body+head set,
-   * so a `resource` (a tree from `ls_trees.bmd`) or a `building` (its own house `.bmd`) cannot share its
-   * bob-id space. A kind listed here is blitted from this layer's own `source`+`atlas` - one feet-anchored
-   * sprite, no head overlay; a kind with no entry falls back to the shared body+overlays path (the
-   * settler), and an unresolved/empty frame to placeholder geometry.
+   * so a `resource` or a `building` from its own `.bmd` cannot share its bob-id space. A kind listed here
+   * is blitted from this layer's own `source`+`atlas` as one feet-anchored sprite with no head overlay; a
+   * kind with no entry falls back to the shared body+overlays path.
    */
   readonly kindLayers?: Partial<Record<SpriteKind, SpriteLayer>>;
   /**
-   * Per-kind render scale (default 1 = native bob pixels). A decoded bob is blitted 1:1, but the source
-   * art for different kinds was authored at different scales relative to the settler - the `ls_houses_*`
-   * building bobs draw ~6–10× the settler's height at native size, larger than the original showed them
-   * relative to a person. A kind listed here is drawn at that factor about its feet anchor, an
-   * approximation that brings the building back into proportion with the native-scale settler + tree. A
-   * kind with no entry draws native (scale 1).
+   * Per-kind render scale (default 1 = native bob pixels). The art for different kinds was authored at
+   * different scales relative to the settler - `ls_houses_*` bobs draw ~6-10× a settler's height at native
+   * size - so a listed kind is drawn at that factor about its feet anchor. An approximation that brings
+   * the building back into proportion with the native-scale settler and tree.
    */
   readonly kindScales?: Partial<Record<SpriteKind, number>>;
   /**
-   * Named building-family atlas layers - the multi-`.bmd` building case. A viking settlement draws its
-   * buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a separate
-   * decoded atlas with its own frame-id space, so the single {@link kindLayers}.`building` layer can't
-   * address them all. A layer-qualified {@link import('../data/sprites/index.js').BuildingTypeBinding}
-   * entry naming a `layer` present here is blitted from that family's own `source`+`atlas`; every other
-   * binding (and every non-`building` kind) uses the {@link kindLayers} path.
+   * Named building-family atlas layers, the multi-`.bmd` building case: a settlement draws its buildings
+   * from many `.bmd` × palette combinations, each a separate decoded atlas with its own frame-id space,
+   * which the single {@link kindLayers}.`building` layer cannot address. A binding naming a `layer`
+   * present here is blitted from that family's own `source`+`atlas`; every other binding uses
+   * {@link kindLayers}.
    */
   readonly families?: Readonly<Record<string, SpriteLayer>>;
   /**
-   * Per-family render scale (default {@link kindScales}'s `building`, else 1) - the {@link families} twin
-   * of {@link kindScales}, since each building `.bmd` was authored at its own size relative to the
-   * settler. A family drawn from {@link families} scales about its feet anchor by this factor; a family
-   * with no entry inherits the `building` kind scale.
+   * Per-family render scale, since each building `.bmd` was authored at its own size relative to the
+   * settler. A family with no entry inherits the `building` {@link kindScales} entry, else 1.
    */
   readonly familyScales?: Readonly<Record<string, number>>;
   /**
    * Per-job settler characters (the `[jobbasegraphics]` job → body/head/animation join). When present, a
-   * settler draws its job's {@link SettlerCharacter} - the armoured soldier body for the soldier family,
-   * the woman/child bodies for theirs, the generic man for every unmapped job - instead of the
-   * sheet-global body (`source`/`overlays`) + `bindings.settler`. Absent (the synthetic sheet), the
-   * sheet-global path draws.
+   * settler draws its job's {@link SettlerCharacter} instead of the sheet-global body (`source`/
+   * `overlays`) + `bindings.settler`, which stays the fallback.
    */
   readonly characters?: SettlerCharacterSet;
   /**
-   * The player-colour LUT for team colours: the `256 × colours` palette texture the {@link characters}
-   * are drawn through when their atlases are the recolourable indexed variant (palette index in red). When
-   * present, {@link import('./sprite-pool/index.js').SpritePool} draws each settler with a {@link
-   * import('./paletted-sprite/index.js').PalettedSprite} at its `DrawItem.player` LUT row; when absent (no LUT
-   * decoded, or the baked-palette characters) it falls back to a plain tinted-atlas {@link import('pixi.js').Sprite}.
-   * One indexed atlas + one LUT serve all `colours` players.
+   * The `256 × colours` team-colour palette texture the {@link characters} are drawn through when their
+   * atlases are the recolourable indexed variant (palette index in red): one indexed atlas plus one LUT
+   * serve all `colours` players. Absent, settlers fall back to a plain tinted-atlas sprite.
    */
   readonly palette?: PlayerColourLut;
 }

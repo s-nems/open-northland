@@ -26,11 +26,9 @@ import {
 } from './geometry.js';
 
 /**
- * The textured terrain emitters: one batched {@link import('pixi.js').Mesh} per texture page per draw
- * layer (the GPU twin of the pure `data/terrain/tessellation.ts` geometry), built once per map. A decoded map carrying
- * its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes {@link buildGround}; the
- * approximated per-typeId path ({@link buildTextured}) stays for synthetic grids. The flat placeholder is
- * the twin file {@link import('./build-flat.js')}.
+ * The textured terrain emitters: one batched mesh per texture page per draw layer, built once per
+ * map. A decoded map's 1:1 `ground` lanes take the exact path; the per-typeId path is an
+ * approximation kept for synthetic grids.
  */
 
 /** One resolved transition record ready to draw: its RGBA page + the six per-pair UV tuples. */
@@ -41,8 +39,6 @@ interface ResolvedTransition {
   readonly coordsB: readonly (readonly number[])[];
 }
 
-/** Append one triangle (positions + UVs + optional per-node brightness-lane UVs and wave amplitudes)
- *  to a batch. */
 function pushTriangle(
   batch: TerrainBatch,
   nodes: readonly [NodeXY, NodeXY, NodeXY],
@@ -63,9 +59,8 @@ function pushTriangle(
   batch.indices.push(base, base + 1, base + 2);
 }
 
-/** One batched {@link import('pixi.js').Mesh} per texture page per draw layer + a fallback
- *  {@link import('pixi.js').Graphics} for unbound triangles, per block - built once from the grid
- *  (no per-frame re-batch); the per-block split is what lets the layer's cull skip off-screen ground. */
+/** One batched mesh per texture page per draw layer plus a fallback trace for unbound triangles, per
+ *  block - built once from the grid, so the layer's cull can skip off-screen ground. */
 export function buildTextured(
   parent: Container,
   terrain: SceneTerrain,
@@ -91,9 +86,8 @@ export function buildTextured(
           for (const nodes of triangles) {
             batcher.drawFallbackTriangle(
               positions(nodes, lift),
-              // Unbound typeId → its flat class colour (`flatTileColour`, the table `buildFlat` uses): a
-              // synthetic grid's nav classes read as grass/water/sand, and a real map's rare untextured
-              // type tints by id rather than one grey (both placeholder-only; a textured cell never gets here).
+              // Unbound typeId → the flat class colour `buildFlat` uses, so a synthetic grid's nav
+              // classes still read as grass/water/sand. A textured cell never reaches here.
               cellTex?.fallbackColour ?? flatTileColour(typeId),
               shaded ? brightness.brightnessAt(col, row) : 1,
             );
@@ -118,13 +112,10 @@ export function buildTextured(
 }
 
 /**
- * The 1:1 per-triangle ground: each cell's two triangles draw the exact {@link GroundPattern} the
- * decoded map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east - see
- * `data/terrain/tessellation.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
- * the two overlay layers, all batched per texture page per layer per block. The per-map pattern
- * and transition names are resolved through {@link TerrainTextureSet.groundFor} /
- * {@link TerrainTextureSet.transitionFor} once into index-aligned tables; a triangle whose
- * pattern (or page) is unresolved falls back to a flat triangle, an unresolved overlay is skipped.
+ * The 1:1 per-triangle ground: each cell's two triangles draw the {@link GroundPattern} the decoded
+ * map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east), plus the `emt1..emt4`
+ * transition overlays as translucent RGBA triangles. A triangle whose pattern or page is unresolved
+ * falls back to a flat triangle; an unresolved overlay is skipped.
  */
 function buildGround(
   parent: Container,
@@ -144,8 +135,8 @@ function buildGround(
       if (source === undefined) return null;
       return { source, pageKey: pattern.pageKey, pattern };
     });
-  // Resolve the map's transition dictionary once (index-aligned; `⌊lane/6⌋` indexes it). A name
-  // the IR lacks (or a page that failed to load) resolves null - that overlay is skipped.
+  // Resolve the map's transition dictionary once (index-aligned; `⌊lane/6⌋` indexes it). A name the
+  // IR lacks, or a page that failed to load, resolves null and that overlay is skipped.
   const transitions = terrain.transitions;
   const resolvedTransitions: (ResolvedTransition | null)[] = (transitions?.types ?? []).map((name) => {
     const t = textures.transitionFor?.(name);
@@ -158,8 +149,6 @@ function buildGround(
   const shaded = lane.brightnessTex !== undefined;
   return buildChunks(parent, terrain, elevation.maxLift, (c0, r0, c1, r1) => {
     const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms);
-    // One transition overlay onto one triangle: lane value → record ⌊v/6⌋ + pair v%6 → that
-    // pair's A or B UV tuple, batched on the overlay's draw layer.
     const pushOverlay = (
       laneValue: number,
       nodes: readonly [NodeXY, NodeXY, NodeXY],
@@ -215,8 +204,8 @@ function buildGround(
           );
         }
         if (transitions !== undefined) {
-          // Layer 1 (`emt1`/`emt2`) composites ON TOP of layer 2 (`emt3`/`emt4`) - paint order
-          // lives in the batcher's layer buckets, so push order here is immaterial.
+          // Layer 1 (`emt1`/`emt2`) composites on top of layer 2 (`emt3`/`emt4`). Paint order lives
+          // in the batcher's layer buckets, so push order here is immaterial.
           pushOverlay(transitions.a1[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay1');
           pushOverlay(transitions.b1[cell] ?? TRANSITION_NONE, nodesB, 'b', 'overlay1');
           pushOverlay(transitions.a2[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay2');

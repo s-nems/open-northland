@@ -1,11 +1,5 @@
 import { MeshGeometry, Shader, type TextureSource } from 'pixi.js';
 
-/**
- * The GL program behind {@link import('./paletted-sprite.js').PalettedSprite}: the vertex/fragment
- * source, the shared quad geometry, and the factories that build them. The class in
- * `./paletted-sprite.ts` owns per-frame placement and uniform mutation.
- */
-
 const VERTEX = `#version 300 es
 in vec2 aPosition; // native bob pixels (already offset by the frame's draw origin)
 in vec2 aUV;
@@ -108,25 +102,24 @@ void main(void) {
   finalColor = vec4(rgb, 1.0) * texel.a;
 }`;
 
-/** A unit quad's index buffer (two triangles) - positions/UVs are rewritten per frame by the sprite's `setFrame`. */
+/** A unit quad's index buffer; positions and UVs are rewritten per frame by the sprite's `setFrame`. */
 const QUAD_INDICES = new Uint32Array([0, 1, 2, 0, 2, 3]);
 
 /** Width of the palette LUT (one texel per 8-bit palette index). */
 const LUT_WIDTH = 256;
 
-/** The mesh's mutable uniforms (Pixi wraps the plain object in a UniformGroup; this is the typed handle). */
+/** The mesh's mutable uniforms. Every field is a `Float32Array` mutated in place, not a scalar `f32`,
+ *  because the shared GL program re-uploads a loose uniform only when its array contents change. */
 export interface PalettedUniforms {
   uniforms: {
-    /** [feetX, feetY, scale, playerRow] - mutated in place so a shared program re-uploads it. */
+    /** [feetX, feetY, scale, playerRow]. */
     uPlacement: Float32Array;
     /** [width, height] - the logical canvas size (see the vertex-shader note on why not `uResolution`). */
     uScreen: Float32Array;
     uLutSize: Float32Array;
-    /** [keyMagenta, nearBlackMode] - a `Float32Array`, not a scalar `f32`, which a shared program would
-     *  not re-upload per-mesh. */
+    /** [keyMagenta, nearBlackMode]. */
     uColorKey: Float32Array;
-    /** [flipY, _] - `.x > 0.5` renders upright into a bottom-up render texture (a `Float32Array` for the
-     *  same per-mesh re-upload reason as `uColorKey`). */
+    /** [flipY, _] - `.x > 0.5` renders upright into a bottom-up render texture. */
     uFlip: Float32Array;
     /** [uMin, vMin, uMax, vMax] - the current frame's atlas-UV box, for the 'round' corner key. */
     uFrameUV: Float32Array;
@@ -137,8 +130,8 @@ export interface PalettedUniforms {
   update(): void;
 }
 
-/** The per-mesh quad geometry: eight zeroed position/uv floats + the shared two-triangle index buffer.
- *  The sprite's `setFrame` rewrites the positions/UVs each frame. */
+/** The per-mesh quad geometry: eight zeroed position/uv floats plus the shared two-triangle index
+ *  buffer, which the sprite's `setFrame` rewrites. */
 export function createPalettedGeometry(): MeshGeometry {
   return new MeshGeometry({
     positions: new Float32Array(8),
@@ -148,9 +141,8 @@ export function createPalettedGeometry(): MeshGeometry {
 }
 
 /**
- * Compile (through `Shader.from`'s program cache) the paletted-sprite GL program and wire its per-mesh
- * uniform group. `lut` is the `256 × colours` palette LUT bound to both `uLut` and `uTexture`; `colours`
- * sets `uLutSize`'s row count.
+ * Compile the paletted-sprite GL program through `Shader.from`'s program cache and wire its per-mesh
+ * uniform group. `colours` sets `uLutSize`'s row count.
  */
 export function createPalettedShader(lut: TextureSource, colours: number): Shader {
   const vars = {

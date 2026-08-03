@@ -2,15 +2,11 @@ import { Sprite, Texture } from 'pixi.js';
 import { readable2dContext } from './drawable-resource.js';
 
 /**
- * The world post pass - an OpenNorthland visual enhancement, not an original mechanism: one
- * screen-space multiply sprite over the world (under the HUD) carrying a radial vignette with a warm
- * grade baked into its gradient. Deliberately NOT a Pixi `Filter` on the world layer: the team-colour
- * `PalettedSprite` meshes hand-roll their screen→clip projection (see `gpu/paletted-sprite/`), so a
- * layer filter's render-texture pass would draw every settler upside-down unless the whole `uFlip`
- * machinery were threaded through the main render. This sprite avoids that path: zero batching
- * impact, one extra draw call, and no effect on the deterministic `?shot` capture.
- *
- * All constants are tuned by eye (named enhancement, human pass pending).
+ * The world post pass - a named OpenNorthland enhancement, not an original mechanism: one screen-space
+ * multiply sprite over the world carrying a radial vignette with a warm grade baked into its gradient.
+ * Deliberately not a Pixi `Filter` on the world layer, because the `PalettedSprite` meshes hand-roll
+ * their screen→clip projection, so a filter's render-texture pass would draw every settler upside-down.
+ * All constants below are tuned by eye.
  */
 
 /** The grade at the screen centre (multiply tint): near-white with a gentle warm cast. */
@@ -19,12 +15,12 @@ const GRADE_CENTRE = { r: 255, g: 250, b: 242 } as const;
 const VIGNETTE_STRENGTH = 0.22;
 /** Fraction of the corner radius where the vignette starts falling off (inside it: pure centre grade). */
 const VIGNETTE_INNER_RADIUS = 0.55;
-/** Baked gradient texture size (px) - the linear-sampled radial gradient upscales smoothly. */
+/** Baked gradient texture size (px). */
 const VIGNETTE_TEXTURE_SIZE = 512;
 
 /**
- * Build the multiply-blended vignette sprite, sized by the caller to the screen each frame. Returns
- * `null` when no 2d canvas is available to bake the gradient (the caller simply goes without).
+ * Build the multiply-blended vignette sprite, sized by the caller to the screen each frame. `null` when
+ * no 2d canvas is available to bake the gradient.
  */
 export function makeVignetteSprite(): Sprite | null {
   const ctx = readable2dContext(VIGNETTE_TEXTURE_SIZE, VIGNETTE_TEXTURE_SIZE);

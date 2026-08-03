@@ -2,19 +2,10 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { HudPlacement } from '../../data/hud/index.js';
 
 /**
- * The retained HUD overlay - a pinned panel (not under the camera), repainted from a placed
- * {@link import('../../data/hud/place.js').HudPlacement}. The load-bearing decisions (which number, laid out
- * where) are the pure `data/hud/` half; this is only the pixel repaint + the tunable style
- * (colour/font/opacity).
- *
- * Retained like every other layer ({@link import('../world-renderer/index.js').WorldRenderer} calls
- * {@link draw} every frame): the panel {@link Graphics} and a {@link Text} pool persist across frames,
- * and a row's `.text` is only reassigned when the string actually changed - a Pixi `Text` re-rasterizes
- * its glyphs on every text/style write, so repainting every row per frame would be canvas rasterization +
- * GC churn for a panel that changes maybe once a second (a tick counter line).
+ * The pinned HUD panel. `data/hud/` decides which number is laid out where; this half only repaints
+ * pixels and carries the tunable style.
  */
 
-/** Visual style for the HUD panel - the part a human tunes (colour/font/opacity). */
 export interface HudStyle {
   readonly panelColor: number;
   readonly panelAlpha: number;
@@ -23,7 +14,6 @@ export interface HudStyle {
   readonly fontFamily: string;
 }
 
-/** A readable default HUD style (a dark translucent panel, light monospace text). */
 export const DEFAULT_HUD_STYLE: HudStyle = {
   panelColor: 0x000000,
   panelAlpha: 0.55,
@@ -32,14 +22,12 @@ export const DEFAULT_HUD_STYLE: HudStyle = {
   fontFamily: 'monospace',
 };
 
-/** One frame's HUD overlay: the placed panel/rows ({@link HudPlacement}) + an optional style override. */
 export interface HudFrame {
   readonly placement: HudPlacement;
   readonly style?: HudStyle;
 }
 
-/** Field-wise {@link HudStyle} equality (the placement is rebuilt per frame, so identity can't be
- *  trusted for change detection - 5 scalar compares are cheaper than one wrong repaint). */
+/** Field-wise equality - the frame is rebuilt every frame, so identity cannot detect a style change. */
 function sameStyle(a: HudStyle, b: HudStyle): boolean {
   return (
     a.panelColor === b.panelColor &&
@@ -51,14 +39,14 @@ function sameStyle(a: HudStyle, b: HudStyle): boolean {
 }
 
 export class HudLayer {
-  /** The overlay container - a sibling of the world layer (not under the camera), so it stays pinned. */
+  /** A sibling of the world layer, not under the camera, so the panel stays pinned. */
   readonly container = new Container();
-  /** The panel backdrop, repainted only when its box or style changes. */
+  /** Repainted only when its box or style changes. */
   private readonly panel = new Graphics();
-  /** The pooled text rows, grown on demand and hidden (never destroyed) when a frame needs fewer. */
+  /** Pooled rows: grown on demand, hidden rather than destroyed when a frame needs fewer. */
   private readonly rows: Text[] = [];
-  /** Monotonic style generation + the generation each pooled row was last styled at - a row hidden
-   *  across a style change is restyled on reuse (the hide loop doesn't touch styles), never stale. */
+  /** Style generation, and the generation each pooled row was last styled at: a row hidden across a
+   *  style change is restyled on reuse, never left stale. */
   private styleGen = 0;
   private readonly rowStyleGen: number[] = [];
   private lastStyle: HudStyle | undefined;
@@ -69,7 +57,7 @@ export class HudLayer {
     this.container.addChild(this.panel);
   }
 
-  /** Repaint the pinned HUD in place: update only what changed since the last frame (see class doc). */
+  /** Repaint the pinned HUD in place, touching only what changed since the last frame. */
   draw(hud?: HudFrame): void {
     if (hud === undefined) {
       this.container.visible = false;
@@ -78,8 +66,8 @@ export class HudLayer {
     this.container.visible = true;
     const style = hud.style ?? DEFAULT_HUD_STYLE;
     const styleChanged = this.lastStyle === undefined || !sameStyle(style, this.lastStyle);
-    // Snapshot the style by value - a caller may legally mutate one options object in place, and a
-    // stored reference would then always compare equal to itself and mask the change.
+    // Snapshot by value: a caller may legally mutate one options object in place, and a stored reference
+    // would then always compare equal to itself and mask the change.
     if (styleChanged) {
       this.lastStyle = { ...style };
       this.styleGen++;
@@ -107,10 +95,8 @@ export class HudLayer {
         this.rows[i] = text;
         this.container.addChild(text);
       } else {
-        // Only touch what re-rasterizes: `.text`/`.style` writes redraw the glyph canvas, a position
-        // write is a cheap transform update. Compare per-row generations (not just this frame's
-        // `styleChanged`): a row that sat hidden across a style change was skipped then, so it
-        // restyles here on reuse.
+        // Only touch what re-rasterizes: a `.text` or `.style` write redraws the glyph canvas, while a
+        // position write is a cheap transform update.
         if (this.rowStyleGen[i] !== this.styleGen) {
           text.style = { fill: style.textColor, fontSize: style.fontSize, fontFamily: style.fontFamily };
         }
@@ -120,14 +106,12 @@ export class HudLayer {
       text.position.set(row.x, row.y);
       text.visible = true;
     }
-    // Hide surplus pooled rows from a taller earlier frame (kept for when the panel grows back).
     for (let i = p.rows.length; i < this.rows.length; i++) {
       const text = this.rows[i];
       if (text !== undefined) text.visible = false;
     }
   }
 
-  /** Tear down the overlay layer (the panel + every pooled row is a child, so one destroy frees all). */
   destroy(): void {
     this.container.destroy({ children: true });
     this.rows.length = 0;

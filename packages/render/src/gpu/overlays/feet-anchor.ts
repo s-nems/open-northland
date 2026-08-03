@@ -3,10 +3,8 @@ import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js'
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 
 /**
- * An entity's feet point in world space, the shared anchor a ground overlay hangs off: the sprite pool's
- * drawn feet anchor when it drew the entity this frame, else the raw snapshot projection of its tile
- * dropped onto the sloped ground. `pos` is the fixed-point snapshot `Position`; the projection and lift
- * are computed only on the fallback path, so a pooled entity pays nothing here.
+ * An entity's feet point in world space: the sprite pool's drawn anchor when it drew the entity this
+ * frame, else the projection of `pos` (fixed-point snapshot `Position`) dropped onto the sloped ground.
  */
 export function feetAnchor(
   drawn: DrawnGeometry | undefined,

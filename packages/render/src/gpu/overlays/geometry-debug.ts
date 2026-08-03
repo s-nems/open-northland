@@ -4,34 +4,22 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 
 /**
- * The building-geometry debug overlay (`?debug=geometry`) - draws every placed building's logic
- * geometry over the world so a human can verify the extracted data against the drawn graphic:
- *
- *  - reserved cells (build-exclusion zone, `footprint.reserved`) - amber outline diamonds;
- *  - blocked cells (walk collision, `footprint.blocked`) - red filled diamonds;
- *  - the door node (`footprint.door`) - green filled diamond (the settler entry cell);
- *  - the worker-icon anchor (door + the building's worker-icon offset: default one node right,
- *    per-building overrides in the app's `catalog/building-tweaks.ts`) - blue dot;
- *  - the anchor node - white cross (the building's own placement node);
- *  - an optional label under the anchor.
- *
- * A debug tool, not a game surface: it rebuilds its whole (small) scene graph on every `set` and is
- * only fed when the flag is on and the building set changed - never per frame. It sits above the
- * sprite layer so the cells read over the building art (which is exactly what is being verified);
- * fills stay translucent so the art stays visible under them.
+ * The `?debug=geometry` overlay: every placed building's logic geometry drawn over the world so a human
+ * can check the extracted data against the drawn graphic. A debug tool, not a game surface - it rebuilds
+ * its whole scene graph on every `set`, which is only called when the flag is on and the building set
+ * changed.
  */
 
-/** One half-cell offset from the item's anchor node (the `FootprintCell` shape, re-declared so
- *  `render` stays plain-data like the rest of its inputs). */
+/** One half-cell offset from the item's anchor node - the `FootprintCell` shape, re-declared so `render`
+ *  stays plain-data. */
 export interface GeometryDebugCell {
   readonly dx: number;
   readonly dy: number;
 }
 
-/** One building's geometry. The cell channels (`blocked`/`reserved`/`door`) are AUTHORED-frame
- *  offsets from the IR footprint - the overlay applies the odd-row parity shift when drawing, the
- *  same way the sim stamps them. `iconAnchor` is an already-resolved absolute node (the app computes
- *  it through the door helpers), so it is drawn verbatim. */
+/** One building's geometry. The cell channels are authored-frame offsets from the IR footprint - the
+ *  overlay applies the odd-row parity shift when drawing, the same way the sim stamps them. `iconAnchor`
+ *  is already an absolute node, so it is drawn verbatim. */
 export interface GeometryDebugItem {
   /** The building's anchor node on the half-cell lattice. */
   readonly anchor: { readonly hx: number; readonly hy: number };
@@ -41,12 +29,11 @@ export interface GeometryDebugItem {
   readonly reserved: readonly GeometryDebugCell[];
   /** The settler entry cell (`footprint.door`). */
   readonly door?: GeometryDebugCell | undefined;
-  /** The worker-icon stack anchor as an ABSOLUTE node (door + worker-icon offset, app-resolved). */
+  /** Door node plus the building's worker-icon offset, resolved by the app. */
   readonly iconAnchor?: { readonly hx: number; readonly hy: number } | undefined;
   readonly label?: string | undefined;
 }
 
-/** Overlay palette - one colour per geometry channel (legend order = z order, back to front). */
 const RESERVED_COLOR = 0xe0b040;
 const BLOCKED_COLOR = 0xd94040;
 const DOOR_COLOR = 0x40d960;
@@ -60,16 +47,13 @@ const LABEL_STYLE = {
   stroke: { color: 0x000000, width: 3 },
 } as const;
 
-/** px the label sits below its building's anchor node (clear of the sprite's base). */
+/** px the label sits below its building's anchor node. */
 const LABEL_DROP = 14;
 
 export class GeometryDebugLayer {
   readonly container = new Container();
 
-  /**
-   * Rebuild the overlay from `items` (or clear it with `null`). Node positions ride the shared
-   * {@link projectNode} projection (half-cell, lifted by the terrain height under the node).
-   */
+  /** Rebuild the overlay from `items`; `null` clears it. */
   set(items: readonly GeometryDebugItem[] | null, elevation?: ElevationField): void {
     for (const child of this.container.removeChildren()) child.destroy();
     if (items === null || items.length === 0) return;
@@ -77,8 +61,6 @@ export class GeometryDebugLayer {
     const g = new Graphics();
     this.container.addChild(g);
     for (const item of items) {
-      // The same odd-row parity shift the sim stamps with (`footprintCellDx`), so the drawn
-      // diamonds are the cells the sim actually blocks.
       const at = (cell: GeometryDebugCell): { x: number; y: number } =>
         projectNode(
           elevation,
@@ -123,8 +105,8 @@ export class GeometryDebugLayer {
 }
 
 /**
- * Path one node's diamond: half the lattice pitch as half-extents (nodes sit `TILE_HALF_W` apart in x
- * and `TILE_HALF_H/2` in y), so neighbouring cells' diamonds interlock without overlapping.
+ * Half the lattice pitch as half-extents (nodes sit `TILE_HALF_W` apart in x and `TILE_HALF_H/2` in y),
+ * so neighbouring cells' diamonds interlock without overlapping.
  */
 function diamond(g: Graphics, p: { x: number; y: number }): Graphics {
   const rx = TILE_HALF_W / 2;

@@ -2,33 +2,25 @@ import type { TextureSource } from 'pixi.js';
 import { type DrawableResource, isDrawableResource, readable2dContext } from '../drawable-resource.js';
 
 /**
- * Per-atlas alpha masks for pixel-accurate sprite hit-testing - "click the graphic, not the box".
- *
- * The picker's first pass is the sprite's AABB ({@link import('./pooled-entity.js').EntityBounds}); a
- * large building's box swallows a lot of transparent corner, so a click *next to* the house still
- * selected it. This module supplies the refinement: a 1-bit solid/transparent mask per atlas sheet,
- * built lazily from the decoded atlas pixels and sampled at the clicked texel.
- *
- * This deliberately uses pixel hit-testing rather than the original's observed footprint-based house
- * selection. Anywhere on the drawn graphic selects; transparent pixels do not.
+ * Per-atlas alpha masks refining the picker's AABB hit to the drawn texel. Pixel hit-testing is a
+ * deliberate deviation from the original's observed footprint-based house selection.
  */
 
 /**
- * Minimum alpha (0..255) a texel needs to count as clickable. Bob art is mostly hard-edged, but
- * decoded `Double8Bit` bobs carry soft per-pixel alpha (anti-aliased rims, baked shadow skirts);
- * half-opacity keeps the anti-aliased body edge clickable while dropping shadows and glow, which read
- * as "next to the building", not on it. An approximation - the original never alpha-picks at all.
+ * Minimum alpha (0..255) a texel needs to count as clickable. Half-opacity keeps a decoded
+ * `Double8Bit` bob's anti-aliased body edge clickable while dropping its soft shadow skirt and glow.
+ * An approximation - the original never alpha-picks.
  */
 export const SOLID_ALPHA_MIN = 128;
 
-/** A 1-bit solid/transparent mask over a whole atlas sheet (row-major, bit-packed - ~2 MB for 4096²). */
+/** A 1-bit solid/transparent mask over a whole atlas sheet, row-major and bit-packed. */
 export interface AlphaMask {
   readonly width: number;
   readonly height: number;
   readonly bits: Uint8Array;
 }
 
-/** Pack RGBA pixel data into an {@link AlphaMask}: bit set ⇔ `alpha >= SOLID_ALPHA_MIN`. */
+/** Pack RGBA pixel data into a mask: a bit is set when `alpha >= SOLID_ALPHA_MIN`. */
 export function buildAlphaMask(
   rgba: Uint8Array | Uint8ClampedArray,
   width: number,
@@ -51,13 +43,12 @@ export function maskSolidAt(mask: AlphaMask, x: number, y: number): boolean {
   return ((mask.bits[i >> 3] ?? 0) & (1 << (i & 7))) !== 0;
 }
 
-/** Lazily-built masks per atlas sheet. WeakMap: a dropped TextureSource releases its mask with it.
- *  `null` is cached too - an unreadable source (no 2d context, non-drawable resource) is not retried
- *  on every click. */
+/** Lazily-built masks per atlas sheet; a dropped source releases its mask with it. `null` is cached
+ *  too, so an unreadable source is not retried on every click. */
 const maskCache = new WeakMap<TextureSource, AlphaMask | null>();
 
-/** Read the RGBA pixels of a drawable via a throwaway 2d canvas, or `null` when unavailable
- *  (headless test env without canvas, or a context the platform refuses). */
+/** Read the RGBA pixels of a drawable via a throwaway 2d canvas, or `null` when no 2d context exists
+ *  (a headless environment without canvas). */
 function readPixels(resource: DrawableResource, width: number, height: number): ImageData | null {
   const ctx = readable2dContext(width, height);
   if (ctx === null) return null;
@@ -70,9 +61,8 @@ function readPixels(resource: DrawableResource, width: number, height: number): 
 }
 
 /**
- * The alpha mask of an atlas sheet, built once on first use from the texture's CPU-side image
- * (`TextureSource.resource` - the very ImageBitmap Pixi uploaded), or `null` when the pixels are
- * unreadable (the picker then falls back to the AABB hit, the pre-mask behaviour).
+ * The alpha mask of an atlas sheet, built once on first use from the texture's CPU-side image, or
+ * `null` when the pixels are unreadable - the picker then falls back to the AABB hit.
  */
 export function alphaMaskOf(source: TextureSource): AlphaMask | null {
   const cached = maskCache.get(source);

@@ -1,10 +1,3 @@
-/**
- * Temporarily blanking a container's children and putting back exactly what was blanked - the shared
- * half of the details-panel portrait's second render, which hides the world (or the sprite layer's
- * siblings) around its subject, draws the cutout, and restores. Plain display-object visibility flags,
- * owned by no layer: both the sprite pool's solo pass and the portrait's world pass use it.
- */
-
 /** One child's visibility remembered across a temporary hide, so the restore puts back exactly what the
  *  hide changed rather than making everything visible. */
 export interface StashedVisibility {
@@ -14,8 +7,8 @@ export interface StashedVisibility {
 
 /**
  * Hide every child but `except`, recording each hidden child's prior visibility for {@link restoreStash}.
- * `into` lets a per-frame caller reuse a retained array (cleared up front, so a skipped restore can't
- * corrupt the next one); omitting it mints a fresh stash per call.
+ * `into` lets a per-frame caller reuse a retained array; it is cleared up front, so a skipped restore
+ * cannot corrupt the next stash.
  */
 export function stashHidden(
   children: readonly { visible: boolean }[],
