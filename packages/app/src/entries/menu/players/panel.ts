@@ -92,7 +92,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
     const fixed = shown?.fixedColors === true;
     swatch.title = fixed
-      ? `${lobbyCopy.teamColour}: ${colourName} — ${lobbyCopy.teamColourLocked}`
+      ? `${lobbyCopy.teamColour}: ${colourName} (${lobbyCopy.teamColourLocked})`
       : `${lobbyCopy.teamColour}: ${colourName}`;
     swatch.setAttribute('aria-label', swatch.title);
     swatch.disabled = fixed;

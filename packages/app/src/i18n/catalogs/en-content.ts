@@ -189,7 +189,7 @@ export const enContent = {
     construction: {
       title: 'Raising buildings',
       summary:
-        'Foundations rise the normal way - carriers haul wood and stone, builders hammer - while the scaffolding stays up until the roof grows over it and comes down at completion.',
+        'Foundations rise the normal way (carriers haul wood and stone, builders hammer) while the scaffolding stays up until the roof grows over it and comes down at completion.',
     },
     upgrade: {
       title: 'Building upgrades',
@@ -211,7 +211,7 @@ export const enContent = {
     gossip: {
       title: 'Gossip and need bubbles',
       summary:
-        'Idle settlers pair up and chat to refill their company need - soldiers never join - while hungry and sleepy settlers show thought bubbles.',
+        'Idle settlers pair up and chat to refill their company need (soldiers never join) while hungry and sleepy settlers show thought bubbles.',
     },
     wildlife: {
       title: 'Wildlife herds',
