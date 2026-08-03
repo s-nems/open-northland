@@ -42,6 +42,7 @@ export function towerPostOrders(
 ): PostOrders {
   const commands: Command[] = [];
   const claimed = new Set<Entity>();
+  if (ready.length === 0) return { commands, claimed }; // nobody to post: the tally below is a full scan
   // Resolved on the first tower and not before: most seats own no garrison building for most of a game.
   let staffing: StaffingTally | null = null;
   for (const tower of owned) {
@@ -92,13 +93,9 @@ interface Wall {
 }
 
 /**
- * The free archer closest to `door` this `wall` still has room for, or null. `ready` arrives ascending-id,
- * so the strict `<` keeps the lowest id among equal distances.
- *
- * The gates mirror the ones `assignWorker` applies (same tribe, an understaffed slot of the settler's own
- * class) so a refused command is never issued: an issued-and-refused posting would bench its man from the
- * wave for nothing, decision after decision. The free-band guard is the recall's ({@link spokenFor}) - an
- * assignment cancels the same drill, equip run and action a walk order would.
+ * The free archer closest to `door` this `wall` still has room for, or null. The gates mirror
+ * `assignWorker`'s own, so a refused command is never issued. `ready` arrives ascending-id, so the strict
+ * `<` keeps the lowest id among equal distances.
  */
 function nearestFreeArcher(
   world: World,

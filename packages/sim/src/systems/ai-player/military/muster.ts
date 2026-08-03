@@ -8,9 +8,9 @@ import { entityNode, manhattan } from '../../spatial/nodes.js';
 import type { WeaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 
-// Where the army gathers and when it leaves. Every constant here is a named approximation: the original
-// exposes one `HAI_DisableMilitary` toggle and no readable army plan, so the sizes and radii are genre
-// convention.
+// Where the army gathers and when it leaves. The autonomous HAI exposes only `HAI_DisableMilitary`, so
+// every size and radius here is an approximation; the scripted `AI_MainTask_Attack` vocabulary in map
+// `[aidata]` blocks is readable per-map authoring, and is where a calibration pass would start.
 
 /** How close to the barracks door (Manhattan half-cell nodes) counts as formed up; an idle fighter
  *  outside this ring is called in. */
@@ -74,7 +74,7 @@ export function waveWorthy(mix: WeaponMix, meleeCore: number): boolean {
   return mix.total >= WAVE_MIN_SOLDIERS && mix.melee >= meleeCore;
 }
 
-/** Whether the gathered `mix` marches THIS decision: a band that also wins its roll. */
+/** Whether the gathered `mix` marches this decision: a band that also wins its roll. */
 export function waveReady(ctx: SystemContext, mix: WeaponMix, meleeCore: number): boolean {
   if (!waveWorthy(mix, meleeCore)) return false;
   return ctx.rng.int(WAVE_FULL_SOLDIERS - WAVE_MIN_SOLDIERS + 1) <= mix.total - WAVE_MIN_SOLDIERS;
@@ -95,8 +95,8 @@ export function marchOrders(world: World, units: readonly Entity[], target: Enti
 
 /**
  * Gather `units` at the seat's own door, each on his own spot ({@link holdSpot}), on the fighter default
- * ATTACK. This door is the army's only waiting place: a band that formed up short of the objective instead
- * waited inside its fire.
+ * ATTACK. This door is the army's only rally: waiting short of the objective instead puts the band inside
+ * its fire.
  *
  * The walk is an attack-move because a plain move order benches the engage rung for its whole length
  * (`conflict/engage-combatant.ts`, `suppressedByMoveOrder`), leaving every man called in across contested
@@ -128,7 +128,7 @@ export function gatherAt(
   return commands;
 }
 
-/** The man's OWN standing place in the hold ring, keyed off his entity id so it never moves under him:
+/** The man's own standing place in the hold ring, keyed off his entity id so it never moves under him:
  *  one shared goal would walk the whole wave onto a single node. */
 function holdSpot(terrain: TerrainGraph, rally: NodeId, e: Entity, reachable: number): NodeId {
   const spot = HOLD_SPOTS[e % HOLD_SPOTS.length];
@@ -137,7 +137,7 @@ function holdSpot(terrain: TerrainGraph, rally: NodeId, e: Entity, reachable: nu
   return terrain.componentOf(node) === reachable ? node : rally;
 }
 
-/** Offsets filling the hold ring outward, one cell (two nodes) apart, stopping a cell SHORT of the rim:
+/** Offsets filling the hold ring outward, one cell (two nodes) apart, stopping a cell short of the rim:
  *  a spot on the rim itself drops its man out of the band the moment a neighbour jostles him a node, and
  *  a man outside the ring is not formed up. More men than spots simply share a spot. */
 const HOLD_SPOTS: readonly { dx: number; dy: number }[] = (() => {

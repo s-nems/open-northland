@@ -1,20 +1,30 @@
-import { Building, Health, Livestock, Owner, Position, Settler } from '../../../../components/index.js';
+import {
+  Building,
+  DefenceMode,
+  Health,
+  Livestock,
+  Owner,
+  Position,
+  Settler,
+} from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { standsAtPost } from '../../../conflict/tower-post.js';
 import type { SystemContext } from '../../../context.js';
 import { houseBow, isFighterJob } from '../../../readviews/index.js';
+import { interactionCell } from '../../../settlers/targets/index.js';
 import { canonicalById, entityNode } from '../../../spatial/nodes.js';
-import { isBuilt } from '../../shared.js';
 
 // The raid a seat reads before it decides anything: which enemy fighters stand on its ground, and how close
 // they have come to a building of its own.
 
-/** An enemy fighter, at the node he stands on this decision. */
+/** An enemy fighter, at the node he stands on this decision, with the walkable component that node
+ *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him. */
 export interface Raider {
   readonly entity: Entity;
   readonly x: number;
   readonly y: number;
+  readonly component: number;
 }
 
 /** How far past its watch band ({@link threatWatchNodes}) a raider must draw off before the seat stands
@@ -27,10 +37,23 @@ export const THREAT_STAND_DOWN_MARGIN_NODES = 6;
 const HOUSE_BOW_REACH_NODES = 29;
 
 /** How close a raider comes before a building of `tribe` counts as threatened: the reach of the bow its
- *  people answer with from inside ({@link houseBow} - a sheltering civilian shoots at its plain range, the
- *  tower bonus belongs to the employed post), so the seat reacts exactly when the building can shoot back. */
+ *  people answer with from inside ({@link houseBow}). A sheltering civilian shoots at its plain range; the
+ *  tower bonus belongs to the employed post. */
 export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
   return houseBow(ctx.content, tribe)?.maxRange ?? HOUSE_BOW_REACH_NODES;
+}
+
+/**
+ * The band `building` watches this decision, widened by {@link THREAT_STAND_DOWN_MARGIN_NODES} while its
+ * alarm already stands.
+ *
+ * The alarm and the sortie read the same band on purpose. A raider inside the margin but outside the plain
+ * reach holds the town in cover while standing where nothing indoors can shoot him, so he has to be
+ * somebody the seat comes out at - otherwise one man shuts a settlement down for good.
+ */
+export function watchBandOf(world: World, ctx: SystemContext, building: Entity): number {
+  const watch = threatWatchNodes(ctx, world.get(building, Building).tribe);
+  return world.has(building, DefenceMode) ? watch + THREAT_STAND_DOWN_MARGIN_NODES : watch;
 }
 
 /**
@@ -56,21 +79,29 @@ export function seatRaiders(
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
     if (standsAtPost(world, e) !== null) continue;
-    raiders.push({ entity: e, ...terrain.coordsOf(entityNode(world, terrain, e)) });
+    const at = entityNode(world, terrain, e);
+    raiders.push({ entity: e, ...terrain.coordsOf(at), component: terrain.componentOf(at) });
   }
   return raiders;
 }
 
-/** The raider nearest `(x, y)` within `radius`, with his distance, or null when none is that close.
- *  Candidates arrive ascending-id, so the strict `<` keeps the lowest id among equal distances. */
+/**
+ * The raider nearest `(x, y)` within `radius`, with his distance, or null when none is that close.
+ * Candidates arrive ascending-id, so the strict `<` keeps the lowest id among equal distances.
+ *
+ * `reachable` is the walkable component a candidate must share, or null to take him wherever he stands:
+ * the alarm answers anyone who can shoot into the town, while an order to go out at him cannot.
+ */
 export function nearestRaiderWithin(
   raiders: readonly Raider[],
   x: number,
   y: number,
   radius: number,
+  reachable: number | null,
 ): { raider: Raider; distance: number } | null {
   let best: { raider: Raider; distance: number } | null = null;
   for (const raider of raiders) {
+    if (reachable !== null && raider.component !== reachable) continue;
     const distance = Math.abs(raider.x - x) + Math.abs(raider.y - y);
     if (distance > radius) continue;
     if (best === null || distance < best.distance) best = { raider, distance };
@@ -79,10 +110,14 @@ export function nearestRaiderWithin(
 }
 
 /**
- * The raider standing closest to anything the seat has built, or null when nothing is at the gates. Read
- * off every standing building rather than the shelters alone: a band burning the outlying farms is a raid
- * too. Ties break on the raider's id, so two buildings equidistant from two men cannot pick by iteration
- * order.
+ * The raider standing closest to anything the seat owns and can walk to, or null when nothing is at the
+ * gates. Read off every building rather than the shelters alone, construction sites included: a band
+ * burning the outlying farms is a raid, and a site is a building the seat is losing.
+ *
+ * A man on ground the building's door does not connect to is skipped. He may still hold the alarm up, but
+ * answering him is impossible, and treating him as a raid would bench the campaign for a siege that can
+ * never be joined. Ties break on the raider's id, so two buildings equidistant from two men cannot pick by
+ * iteration order.
  */
 export function raidOnTheSettlement(
   world: World,
@@ -94,10 +129,9 @@ export function raidOnTheSettlement(
   if (raiders.length === 0) return null;
   let best: { raider: Raider; distance: number } | null = null;
   for (const e of owned) {
-    if (!isBuilt(world, e)) continue;
     const at = terrain.coordsOf(entityNode(world, terrain, e));
-    const watch = threatWatchNodes(ctx, world.get(e, Building).tribe);
-    const found = nearestRaiderWithin(raiders, at.x, at.y, watch);
+    const door = terrain.componentOf(interactionCell(world, ctx, terrain, e));
+    const found = nearestRaiderWithin(raiders, at.x, at.y, watchBandOf(world, ctx, e), door);
     if (found === null) continue;
     if (
       best === null ||
