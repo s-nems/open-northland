@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   Building,
+  CurrentAtomic,
   Engagement,
   Health,
   MoveGoal,
@@ -23,8 +24,10 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 // Warriors sieging enemy BUILDINGS - the target/order/damage/priority slice: a building joins the combat
 // target index (never as a seeker), takes the weapon's vs-building (HOUSE) column, and is razed at 0 HP
@@ -307,10 +310,15 @@ describe('warriors attack enemy buildings', () => {
     [7, 7],
   ];
 
+  /** The half-cell node a settler stands on. */
+  function nodeOf(sim: Simulation, e: Entity): { hx: number; hy: number } {
+    const p = sim.world.get(e, Position);
+    return nodeOfPosition(p.x, p.y);
+  }
+
   /** Manhattan distance (half-cell nodes) from a settler's node to the fort's nearest wall cell. */
   function distToFort(sim: Simulation, e: Entity): number {
-    const p = sim.world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
+    const n = nodeOf(sim, e);
     let min = Number.POSITIVE_INFINITY;
     for (const [wx, wy] of FORT_WALLS) min = Math.min(min, Math.abs(n.hx - wx) + Math.abs(n.hy - wy));
     return min;
@@ -443,5 +451,51 @@ describe('warriors attack enemy buildings', () => {
     const before = sim.world.get(fort, Health).hitpoints;
     for (let i = 0; i < 300 && sim.world.get(fort, Health).hitpoints === before; i++) sim.step();
     expect(sim.world.get(fort, Health).hitpoints).toBeLessThan(before);
+  });
+
+  it('swings on the tick it arrives, goal not yet retired - it does not pace between two slots', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
+      map: grass(7, 7),
+    });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('fixture has no map');
+    buildingAt(sim, 3, 3, FORT, P2, 1_000_000);
+    const soldier = warriorAt(sim, 2, 3, P1); // node (5,6): one west of the fort's (6,6) wall - a contact cell
+
+    // The state the schedule leaves a chaser in on the tick its last leg lands: movement has taken its route
+    // away, but the goal that walked it there is retired only by NEXT tick's planner, which runs before
+    // combat. Combat is driven directly here, because a `step()` would retire the goal before combat saw it.
+    sim.world.add(soldier, Engagement, { repathAt: 0 }); // the cadence expires this tick too
+    sim.world.add(soldier, MoveGoal, { cell: terrain.nodeAt(5, 6) });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // Read as still travelling it could not swing, and the chase re-dealt it a slot - never its own, which
+    // its standing body marks as taken - walking it off the cell it was already fighting from, for the next
+    // cadence to walk it back.
+    expect(sim.world.has(soldier, CurrentAtomic)).toBe(true); // swinging…
+    expect(sim.world.has(soldier, MoveGoal)).toBe(false); // …instead of aimed at the next contact cell
+  });
+
+  it('closes on a wall and settles, over the real schedule - the arrival tick is not a repath', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
+      map: grass(7, 7),
+    });
+    const fort = buildingAt(sim, 3, 3, FORT, P2, 1_000_000);
+    // This approach lands the last leg on a repath tick (planner → movement → combat, all in one tick), the
+    // window the direct-drive case above builds by hand. Untreated, the soldier walked the two nearest
+    // contact cells forever and the fort took no damage in 600 ticks.
+    const soldier = warriorAt(sim, 0, 6, P1);
+
+    for (let i = 0; i < 300; i++) sim.step();
+    const settled = nodeOf(sim, soldier);
+    for (let i = 0; i < 60; i++) sim.step();
+
+    expect(sim.world.get(fort, Health).hitpoints).toBeLessThan(sim.world.get(fort, Health).max);
+    expect(nodeOf(sim, soldier)).toEqual(settled); // parked on one slot, not pacing between two
   });
 });
