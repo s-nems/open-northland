@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Building, JobAssignment, Owner, Position, Settler } from '../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Owner,
+  Position,
+  Settler,
+  setSettlerJob,
+} from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -11,10 +18,11 @@ import { ctxOf } from '../fixtures/context.js';
  * The `assignWorker` command - the one way a settler becomes employed: bind an OWNED settler to a
  * SPECIFIC building as a worker (set its `jobType` to the building's open slot + stamp its
  * {@link JobAssignment} binding). It applies the same-tribe / same-owner / per-building capacity
- * gates, and enforces the per-settler XP threshold (`needforjob`) - a trade is earned by
- * the settler, so a hand assignment cannot mint an unqualified craftsman; it falls through to the next listed
- * job (the hauler slot). The tribe-tech gate (`jobEnablesJob`) is not applied at all, so a workshop is never
- * refused for want of an enabling trade (the "mennica → tragarz" bug). See openings.ts.
+ * gates, and enforces the per-settler XP threshold (`needforjob`) on a trade the settler does not yet hold -
+ * a trade is earned by the settler, so a hand assignment cannot mint an unqualified craftsman; it falls
+ * through to the next listed job (the hauler slot). The tribe-tech gate (`jobEnablesJob`) is not applied at
+ * all, so a workshop is never refused for want of an enabling trade (the "mennica → tragarz" bug). See
+ * openings.ts.
  *
  * The shared fixture's sawmill (type 2) declares one carpenter slot; the HQ (type 1) declares three
  * woodcutter slots.
@@ -200,6 +208,27 @@ describe('assignWorker - bind an owned settler to a chosen building', () => {
     // The craft slot is open but unearned, so the next listed job wins - a tradesman first, else a hauler.
     expect(sim.world.get(fresh, Settler).jobType).toBe(CARRIER);
     expect(sim.world.get(fresh, JobAssignment).workplace).toBe(mill);
+  });
+
+  it('posts a settler to the trade it ALREADY holds, gate unmet - posting is not taking one up', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    gateCarpenter(sim);
+    const mill = placeBuilding(sim, TWIN_MILL, 5, 5); // two carpenter slots + one carrier slot
+    const carpenter = settler(sim); // no repeats: the gate would refuse him the trade today
+    setSettlerJob(sim.world, carpenter, CARPENTER); // …but he already holds it
+
+    assignWorker(sim.world, ctxOf(sim), {
+      kind: 'assignWorker',
+      entity: carpenter,
+      building: mill,
+      jobPriority: [CARPENTER, CARRIER],
+    });
+
+    // Re-gating a trade the settler practises would demote him to hauler on every posting. It is the rule a
+    // tower garrison lives on: a bow soldier's class is earned at the barracks (or by picking the bow up),
+    // never at the tower he is sent to man.
+    expect(sim.world.get(carpenter, Settler).jobType).toBe(CARPENTER);
+    expect(sim.world.get(carpenter, JobAssignment).workplace).toBe(mill);
   });
 
   it('binds the craft slot once the settler has earned its repeats', () => {
