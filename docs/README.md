@@ -29,8 +29,7 @@ files add rules for `sim`, `render`, `audio`, `app`, `data`, `content-resolver`,
 asset pipeline.
 
 Claude workflow definitions live in `.claude/commands/` and reviewer checklists in
-`.claude/agents/`. Cursor files are thin links to those workflows. Tool-specific `CLAUDE.md` and
-`GEMINI.md` files only load the nearest `AGENTS.md`.
+`.claude/agents/`. `CLAUDE.md` only loads the nearest `AGENTS.md`; Codex reads `AGENTS.md` directly.
 
 Do not create running history documents or catch-all planning files. Put stable rules in an
 `AGENTS.md`, current work in a ticket, and completed details in Git history.

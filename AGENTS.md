@@ -3,8 +3,8 @@
 Open Northland is a TypeScript reimplementation of *Cultures - 8th Wonder of the World*. Read this
 file before editing. Package-local `AGENTS.md` files add narrower rules.
 
-`CLAUDE.md`, `GEMINI.md`, and client command files are adapters. Durable project rules belong here or
-in the nearest package contract.
+`CLAUDE.md` and client command files are adapters. Durable project rules belong here or in the
+nearest package contract.
 
 ## Repository and legal boundary
 
