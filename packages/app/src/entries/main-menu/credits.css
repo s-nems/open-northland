@@ -1,21 +1,20 @@
-/* Credits / about (design frame 5a). The scaffold, header and tokens live in menu.css. */
+/* Credits / about: one centered column, deviating from design frame 5a (accepted deviations in
+   docs/design/main-menu/README.md). Scaffold, header and the shared ghost buttons live in menu.css. */
 
 .main-menu__credits {
   flex: 1;
-  display: flex;
-  gap: calc(var(--u) * 100);
   min-height: 0;
-}
-
-.main-menu__credits-story {
-  max-width: calc(var(--u) * 860);
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 36);
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 48);
+  text-align: center;
 }
 
 .main-menu__credits-intro {
   margin: 0;
+  max-width: calc(var(--u) * 940);
   font:
     400 calc(var(--u) * 30) / 1.55 "Alegreya Sans",
     system-ui,
@@ -23,29 +22,20 @@
   color: var(--text-body);
 }
 
-.main-menu__credits-note {
-  margin: 0;
-  font:
-    400 calc(var(--u) * 26) / 1.6 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: rgba(180, 205, 200, 0.7);
-}
-
 .main-menu__credits-links {
   display: flex;
   gap: calc(var(--u) * 20);
 }
 
-.main-menu__credits-aside {
-  flex: 1;
-  max-width: calc(var(--u) * 520);
+.main-menu__credits-cards {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: calc(var(--u) * 28);
 }
 
 .main-menu__credits-card {
+  box-sizing: border-box;
+  width: calc(var(--u) * 460);
   display: flex;
   flex-direction: column;
   gap: calc(var(--u) * 18);
@@ -53,6 +43,7 @@
   border: 2px solid rgba(99, 196, 160, 0.2);
   border-radius: 8px;
   background: rgba(16, 29, 44, 0.55);
+  text-align: left;
 }
 
 .main-menu__credits-card-title {
@@ -68,6 +59,7 @@
 .main-menu__credits-person {
   display: flex;
   justify-content: space-between;
+  gap: calc(var(--u) * 24);
   font:
     400 calc(var(--u) * 24) / 1 "Alegreya Sans",
     system-ui,
