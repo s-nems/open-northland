@@ -5,11 +5,10 @@ import { shadowLayerFor } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
- * Resolve a per-job settler character's layers: the job's own body frame plus one stable head overlay
- * per individual (picked by entity id - ids are monotonic, never reused - so a crowd shows varied faces
- * without per-frame flicker, the render-side analogue of the original's per-individual random head).
- * The head may resolve through its OWN binding (the head-borrow case - a carry variant whose head bobs
- * are empty plays the base walk's head instead).
+ * A per-job settler character's layers: the job's own body frame plus one head overlay picked by entity
+ * id (ids are never reused, so a crowd shows stable varied faces) - the render-side analogue of the
+ * original's per-individual random head. The head may resolve through its own binding, so a carry
+ * variant whose head bobs are empty plays the base walk's head.
  */
 export function resolveCharacterLayers(
   characters: SettlerCharacterSet,
@@ -17,10 +16,8 @@ export function resolveCharacterLayers(
   tick: number,
   gaitClock: number,
 ): ResolvedLayer[] | null {
-  // A wildlife entity resolves ONLY through the species table - the binding contract (bound draws
-  // the species look, listed-but-unbound draws nothing) lives on {@link SettlerCharacterSet.animals}.
-  // One local fact: a BOUND tribe whose resolved bob has no frame is a real gap, so it falls to the
-  // placeholder like a human miss, never silently invisible.
+  // A wildlife entity resolves only through the species table: a listed-but-unbound tribe draws nothing,
+  // while a bound tribe whose resolved bob has no frame is a real gap and falls to the placeholder.
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) {
     const animal = characters.animals.byTribe[item.tribe];
     if (animal === undefined) return [];
@@ -36,7 +33,7 @@ export function resolveCharacterLayers(
   const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(char.body.atlas, bob);
   if (bodyFrame !== null) {
-    // atlasW/H ride along for the paletted mesh path - see ResolvedLayer.
+    // atlasW/H ride along for the paletted mesh path.
     layers.push({
       source: char.body.source,
       frame: bodyFrame,

@@ -27,10 +27,8 @@ import type { CombatBonesGfx } from './frame.js';
 import type { WorldSceneLayers } from './painter-order.js';
 
 /**
- * The marks the world draws ON its entities rather than as entities: feet rings, combat litter, a razed
- * body sinking, damage plumes, door badges, site stands, thought bubbles and the geometry debug overlay.
- * One owner because they fill the mark slots of one painter order and share one frame's inputs, so their
- * slots, feed and teardown cannot drift apart.
+ * The marks the world draws on its entities rather than as entities. One owner because they fill the
+ * mark slots of a single painter order and share one frame's inputs.
  */
 
 /** The painter-order slots the marks fill; every other slot is the renderer's own. */
@@ -51,11 +49,11 @@ export interface WorldMarksFrame {
   readonly snapshot: WorldSnapshot;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
-  /** The sprite cull box. The five marks that take it cull against it directly; damage smoke inherits the
-   *  pool's cull through {@link damaged}, and the selection rings track the selected set, not the screen. */
+  /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
+   *  through `damaged`, and the selection rings track the selected set instead. */
   readonly viewport: Viewport;
-  /** Interpolated render clock (`tick + alpha`), so fades, sinks and plumes glide at any frame rate.
-   *  Decay membership is stamped on the integer tick in {@link WorldMarks.ingest}, keeping `?shot` exact. */
+  /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate.
+   *  Decay membership is stamped on the integer tick in `ingest`, keeping `?shot` exact. */
   readonly renderTime: number;
   readonly damaged: readonly DamagedBuilding[];
   readonly selection: ReadonlySet<number>;
@@ -68,19 +66,17 @@ export interface WorldMarksFrame {
 
 export class WorldMarks {
   private readonly selection = new SelectionLayer();
-  /** Blood on hits and bones on deaths - two containers, since blood paints over the struck body and
-   *  bones litter the ground under it. */
+  /** Two containers, because blood paints over the struck body while bones litter the ground under it. */
   private readonly effects = new CombatEffectsLayer();
   /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite
-   *  layer, not a slot of its own, so fighters still occlude around the falling body. */
+   *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
   private readonly damageSmoke = new DamageSmokeLayer();
-  /** The staffed-building sign chains and the garrison flags. Like the collapses these live inside the
-   *  depth-sorted sprite layer, so a settler walking in front of a chain occludes it. */
+  /** Sign chains and garrison flags. Like the collapses these live inside the depth-sorted sprite layer,
+   *  so a settler walking in front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
-  /** Faction-coloured life hearts over the units whose life the player tracks. */
   private readonly hearts = new LifeHeartLayer();
   /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
@@ -107,8 +103,8 @@ export class WorldMarks {
     };
   }
 
-  /** Fold this frame's sim events into the two event-driven layers: a landed blow leaves blood, a death
-   *  leaves bones, a razed building starts sinking. `tick` is the integer sim tick they decay against. */
+  /** Fold this frame's sim events into the two event-driven layers; `tick` is the integer sim tick they
+   *  decay against. */
   ingest(events: readonly SimEvent[], tick: number): void {
     this.effects.ingest(events, tick);
     this.collapses.ingest(events, tick);

@@ -8,35 +8,25 @@ import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The settler-bubble layer - the decoded thought bubble (`ls_gui_bubbles`) floating over a settler's
- * head while it is in a standing family state (a make-child order, a wedding walk) or a pressing need
- * (too hungry / too sleepy to keep working). A client-side projection of the read-only snapshot (never sim
- * state): the app scans each settler's `ChildOrder` / `Wedding` / need components and hands over the
- * {@link SettlerBubble} list, and this layer draws one bubble sprite per settler above its head, panning/
- * zooming with the world (a child of the camera's `worldLayer`, above the sprites).
+ * The settler-bubble layer - the decoded `ls_gui_bubbles` thought bubble floating over a settler in a
+ * standing family state (a make-child order, a wedding walk) or a pressing need. A client-side
+ * projection of the read-only snapshot: the app decides who wears one, this layer draws it in world
+ * space above the sprites.
  *
- * Anchored like the selection rings, not the door badges: a settler moves (a wedding walk), so the bubble
- * rides the sprite pool's drawn, inter-tick-lerped bounds - its top edge and horizontal centre - so it
- * glides with the interpolated bob and sits just over the head. A settler the pool didn't draw this frame
- * (standing inside a house) falls back to the raw snapshot projection of its `Position`.
+ * The bubble rides the sprite pool's drawn, inter-tick-lerped bounds, so it glides with the interpolated
+ * bob; a settler the pool didn't draw (standing inside a house) falls back to the raw snapshot
+ * projection of its `Position`.
  *
- * Retained per visible settler id (a stable key): a bubble is rebuilt only when its kind changes,
- * otherwise just repositioned each frame; one whose settler left the list (order done, wedding over,
- * settler retired) or scrolled off-screen is destroyed and re-minted on return. That diverges from the
- * sprite pool's detach-and-retain because need bubbles are common transients (a famine puts one over
- * most settlers map-wide), so retaining hidden nodes would grow with the needy population, not the
- * screen. The cull tests the raw snapshot projection before any head estimate, so an off-screen bubble
- * costs a projection and bounds test and holds no node. With no decoded art supplied (a checkout
- * without `content/`) the layer draws nothing.
+ * Retained per visible settler id and re-minted on return, rather than the sprite pool's
+ * detach-and-retain: need bubbles are common transients (a famine puts one over most settlers map-wide),
+ * so retaining hidden nodes would grow with the needy population, not the screen.
  */
 
-/** Which standing state a bubble marks - the make-child order, a wedding in progress, or a pressing
- *  hunger/sleep need. Each kind selects its own frame from the bubble sheet. */
+/** Which standing state a bubble marks: a make-child order, a wedding walk, or a pressing need. */
 export type SettlerBubbleKind = 'child' | 'partner' | 'hungry' | 'sleepy';
 
-/** One settler's bubble: its entity id (the retained-pool key) and the snapshot `Position` (fixed-point
- *  units) the layer culls on and falls back to when the pool didn't draw the settler, plus the state it
- *  marks. */
+/** One settler's bubble: the entity id (the retained-pool key) and the snapshot `Position` in
+ *  fixed-point units, which the layer culls on and falls back to. */
 export interface SettlerBubble {
   readonly id: number;
   readonly x: number;
@@ -44,8 +34,8 @@ export interface SettlerBubble {
   readonly kind: SettlerBubbleKind;
 }
 
-/** The decoded bubble art the app resolves and hands the renderer: the shared `ls_gui_bubbles` atlas page
- *  + the frame each kind draws. */
+/** The decoded `ls_gui_bubbles` art the app resolves: the shared atlas page + the frame each kind
+ *  draws. */
 export interface SettlerBubbleGfx {
   readonly source: TextureSource;
   readonly frameByKind: Readonly<Record<SettlerBubbleKind, AtlasFrame>>;
@@ -62,8 +52,7 @@ interface BubbleGfx extends SettlerBubbleGfx {
  */
 export interface SettlerBubbleFrame {
   readonly bubbles: readonly SettlerBubble[];
-  /** The pool's drawn sprites - the head is the sprite box's top edge, so a bubble glides with the
-   *  interpolated bob. */
+  /** The pool's drawn sprites - the head is the sprite box's top edge. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts the raw-projection fallback onto sloped ground. */
   readonly elevation?: ElevationField;
@@ -87,7 +76,6 @@ export class SettlerBubbleLayer {
   private readonly bubbles = new Map<number, BubbleNode>();
   /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
-  /** The decoded bubble art, when the app has resolved it; unset → the layer draws nothing. */
   private gfx: BubbleGfx | undefined;
 
   /** Provide (or clear) the decoded `ls_gui_bubbles` art. Clearing retires every live bubble. */
@@ -99,21 +87,16 @@ export class SettlerBubbleLayer {
     }
   }
 
-  /**
-   * Reconcile the bubbles to `frame.bubbles`: (re)build one per visible settler whose kind changed, move
-   * it above the settler's head (the pool's lerped bounds, else the raw-projected `Position`), then retire
-   * bubbles for settlers no longer in the list or no longer on screen. An empty list (or unset art)
-   * retires every bubble. A `viewport` bounds the per-frame work and the pool to the screen.
-   */
+  /** Reconcile to `frame.bubbles`: build/move one bubble per visible settler, retire the rest.
+   *  `viewport` bounds the per-frame work to the screen. */
   draw(frame: SettlerBubbleFrame, viewport?: Viewport): void {
     this.seen.clear();
     const gfx = this.gfx;
     if (gfx !== undefined) {
       for (const bubble of frame.bubbles) {
-        // Cull on the raw snapshot projection BEFORE any head estimate: an off-screen needy settler pays
-        // one projection and bounds test, no pool lookups or terrain lift. The viewport's sprite-cull
-        // margin covers the raw-vs-lerped anchor gap and the feet-to-head offset, the same slack the
-        // sprite cull leans on.
+        // Cull on the raw projection before any head estimate, so an off-screen settler pays no pool
+        // lookup or terrain lift. The viewport's sprite-cull margin covers the raw-vs-lerped anchor gap
+        // and the feet-to-head offset.
         const tileX = bubble.x / ONE;
         const tileY = bubble.y / ONE;
         const feet = tileToScreen(tileX, tileY);
@@ -136,9 +119,8 @@ export class SettlerBubbleLayer {
     retireUndrawn(this.bubbles, this.seen, (entry) => entry.node.destroy({ children: true }));
   }
 
-  /** The head point the bubble's tip sits over: the pool's lerped sprite-bounds top+centre when the settler
-   *  was drawn this frame, else its {@link feetAnchor} raised by a head estimate (standing inside a house,
-   *  or no pool this frame). */
+  /** The point the bubble's tip sits over: the pool's lerped sprite-bounds top-centre, else the feet
+   *  anchor raised by the head estimate. */
   private headOf(frame: SettlerBubbleFrame, bubble: SettlerBubble): { x: number; y: number } {
     const bounds = frame.drawn?.boundsOf(bubble.id);
     if (bounds !== undefined) return { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY };
@@ -152,8 +134,8 @@ export class SettlerBubbleLayer {
   }
 }
 
-/** One bubble node: the kind's decoded frame, anchored bottom-centre at the container origin so the
- *  bubble's tip sits at the head point and the balloon reads above the settler. */
+/** One bubble node: the kind's decoded frame, anchored bottom-centre so its tip sits at the head
+ *  point. */
 function makeBubble(gfx: BubbleGfx, kind: SettlerBubbleKind): Container {
   const c = new Container();
   const sprite = new Sprite(gfx.textures.get(gfx.source, gfx.frameByKind[kind]));

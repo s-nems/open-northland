@@ -5,26 +5,21 @@ import { hashCells } from './cell-signature.js';
 
 /**
  * The build-placement overlay: a translucent dark wash over everything the held building cannot anchor
- * on and a slight lift over the ground it can, with no visible tile grid. The blocked set is decided
- * upstream by the sim's placement rule (`Simulation.placementProbe`) and handed here as plain data;
- * this layer is a pure projection of that set and never calls back into the sim.
+ * on and a slight lift over the ground it can, with no visible tile grid. The sim's placement rule
+ * (`Simulation.placementProbe`) decides the blocked set upstream; this layer is a pure projection of it
+ * and never calls back into the sim.
  *
- * The original shows no cell lattice, and per-cell translucent diamond fills leave AA seams between
- * neighbours that read as a grid. So each side of the wash is composited off-screen first: its cells'
- * diamonds - each grown by an overlap pad so neighbours fuse - are rendered opaque into a
- * RenderTexture (overlap saturates instead of double-blending), and only the finished texture is
- * drawn translucently into the scene: the blocked side tinted dark, the buildable side additive.
- * Both textures render at half resolution and upscale with linear filtering, which rounds the diamond
- * boundary into a soft, free-form edge.
+ * Per-cell translucent diamond fills leave AA seams between neighbours that read as a grid, which the
+ * original shows no trace of. So each side is composited off-screen first: its diamonds, grown by an
+ * overlap pad so neighbours fuse, are rendered opaque into a RenderTexture (overlap saturates instead of
+ * double-blending), and only the finished texture is drawn translucently - the blocked side tinted dark,
+ * the buildable side additive. Both render at half resolution and upscale with linear filtering, which
+ * rounds the diamond boundary into a soft, free-form edge.
  *
- * Drawn in world space (a child of the camera's `worldLayer`, below the sprite layer) so the wash pans
- * and zooms with the ground and a house/tree sprite still draws over it. Diamonds ride the terrain
- * lift. The composite is rebuilt only when the frame (band + blocked set) changes: a still camera
- * re-renders nothing, and a pan in build mode re-composites two half-resolution textures, a cost
- * bounded by the screen (golden rule 6).
- *
- * The alpha/softness constants below are tuned by eye against the original's build-mode look, which
- * exposes no measurable overlay parameters (source basis: observed original behavior).
+ * Drawn in world space below the sprite layer, with diamonds riding the terrain lift. The composite is
+ * rebuilt only when the band or blocked set changes, so a still camera re-renders nothing and a pan
+ * re-composites two half-resolution textures. The alpha and softness constants are tuned by eye against
+ * the original's build-mode look (observation).
  */
 
 /** One half-cell node of the probed band (integer col,row on the `2W×2H` lattice). */
@@ -33,10 +28,8 @@ export interface PlacementOverlayCell {
   readonly row: number;
 }
 
-/**
- * One build-mode frame of the overlay: the visible node band the app probed, plus which of its nodes
- * rejected the held building's anchor. The buildable side is the band's complement of `blocked`.
- */
+/** One build-mode frame: the probed node band, plus which of its nodes rejected the held building's
+ *  anchor. The buildable side is the band's complement of `blocked`. */
 export interface PlacementOverlayFrame {
   readonly minCol: number;
   readonly maxCol: number;
@@ -50,13 +43,13 @@ const DIM_COLOR = 0x000000;
 const DIM_ALPHA = 0.42;
 /** The buildable-side lift: additive white, faint - the original's slight contrast boost. */
 const BRIGHT_ALPHA = 0.08;
-/** Half-resolution compositing: halves the fill cost and linear-upscales into a soft, grid-free edge. */
+/** Half-resolution compositing - halves the fill cost. */
 const COMPOSITE_RESOLUTION = 0.5;
-/** World-px pad each diamond grows by, so adjacent same-side cells fuse without hairline seams.
- *  Must exceed 2 composite pixels (= 2 / COMPOSITE_RESOLUTION world px): at half resolution a smaller
- *  pad is sub-pixel, and the AA edges of neighbouring diamonds leave a visible bright seam lattice. */
+/** World-px pad each diamond grows by, so adjacent same-side cells fuse without hairline seams. Must
+ *  exceed 2 composite px (2 / COMPOSITE_RESOLUTION world px); below that the pad is sub-pixel and
+ *  neighbouring AA edges leave a visible seam lattice. */
 const CELL_OVERLAP = 5;
-/** Composite-texture allocation step (texture px) - see {@link PlacementOverlayLayer.ensureTextures}. */
+/** Composite-texture allocation step (texture px). */
 const TEXTURE_QUANT = 128;
 
 /** The world-space box of a band's composite, padded for the border diamonds + the terrain lift. */
@@ -68,10 +61,9 @@ interface OverlayBounds {
 }
 
 /**
- * The world-space bounds of a band's composite: the node centres' extent grown on every side by a
- * border node diamond's half-extents (`TILE_HALF_W` × `TILE_HALF_H/2` - the rectangular node
- * lattice has no stagger overhang) plus the {@link CELL_OVERLAP} fusing pad each diamond grows by,
- * and by the map's max terrain lift upward. Pure - unit-testable without a GL context.
+ * The world-space bounds of a band's composite: the node centres' extent grown on every side by a border
+ * diamond's half-extents (`TILE_HALF_W` × `TILE_HALF_H/2` - the rectangular node lattice has no stagger
+ * overhang) plus the fusing pad, and by the map's max terrain lift upward. Pure, so it tests without GL.
  */
 export function overlayBounds(
   frame: Pick<PlacementOverlayFrame, 'minCol' | 'maxCol' | 'minRow' | 'maxRow'>,
@@ -92,16 +84,16 @@ export function overlayBounds(
 export class PlacementOverlayLayer {
   readonly container = new Container();
   private readonly renderer: Renderer;
-  /** The dim wash sprite (the blocked cells' fused diamonds), tinted dark + translucent. */
+  /** The blocked cells' fused diamonds, tinted dark and translucent. */
   private readonly dim = new Sprite();
-  /** The buildable-side brightening sprite (the buildable cells' fused diamonds), additive + faint. */
+  /** The buildable cells' fused diamonds, additive and faint. */
   private readonly bright = new Sprite();
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
   /** The two retained composite sources, cleared + refilled per recomposite (never re-allocated). */
   private readonly blockedG = new Graphics();
   private readonly buildableG = new Graphics();
-  /** Signature of the frame last composited; skips the rebuild when nothing changed frame-to-frame. */
+  /** Signature of the frame last composited - an unchanged signature skips the rebuild. */
   private key = '';
 
   constructor(renderer: Renderer) {
@@ -115,10 +107,8 @@ export class PlacementOverlayLayer {
     this.container.addChild(this.dim, this.bright);
   }
 
-  /**
-   * Recomposite the wash for a build-mode frame; `null` clears it (build mode ended). Diamonds are
-   * lifted onto the terrain like every projected item.
-   */
+  /** Recomposite the wash for a build-mode frame; `null` clears it. Diamonds are lifted onto the terrain
+   *  like every projected item. */
   set(frame: PlacementOverlayFrame | null, elevation: ElevationField): void {
     if (frame === null || frame.minCol > frame.maxCol || frame.minRow > frame.maxRow) {
       if (this.key !== '') {
@@ -140,15 +130,13 @@ export class PlacementOverlayLayer {
     const brightTexture = this.brightTexture;
     if (dimTexture === null || brightTexture === null) return; // ensureTextures always sets them
 
-    // Split the band into its two cell sets and build each side's fused-diamond surface, opaque white
-    // in composite-texture space.
+    // Each side's fused-diamond surface, opaque white in composite-texture space.
     const blocked = new Set<string>();
     for (const c of frame.blocked) blocked.add(`${c.col},${c.row}`);
     const blockedG = this.blockedG.clear();
     const buildableG = this.buildableG.clear();
-    // Per-node diamonds: the node lattice is a (HALF_W, HALF_H/2)-pitch rectangle, and a diamond of
-    // half-extents (HALF_W, HALF_H/2) centred on every node covers the plane with overlap (the worst
-    // gap point between four nodes lands exactly on four diamond edges).
+    // The node lattice is a (HALF_W, HALF_H/2)-pitch rectangle, so a diamond of those half-extents on
+    // every node covers the plane: the worst gap point between four nodes lands on four diamond edges.
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
@@ -164,9 +152,8 @@ export class PlacementOverlayLayer {
     blockedG.fill(0xffffff);
     buildableG.fill(0xffffff);
 
-    // One render per side; the scene-side sprites apply the tint/alpha/blend. The textures may be
-    // quantized larger than the band, so clear:true blanks the margin and the sprites show
-    // transparent slack past the band's edge.
+    // The textures may be quantized larger than the band, so `clear: true` blanks the margin and the
+    // slack past the band's edge stays transparent.
     this.renderer.render({ container: blockedG, target: dimTexture, clear: true });
     this.renderer.render({ container: buildableG, target: brightTexture, clear: true });
 
@@ -177,17 +164,14 @@ export class PlacementOverlayLayer {
     }
     this.dim.texture = dimTexture;
     this.bright.texture = brightTexture;
-    // Mark the frame composited only now - an exception above (lost GL context, a failed alloc)
-    // leaves the key unset, so the next frame retries instead of skipping on a stale signature.
+    // Marked only now: a failed alloc or lost context above retries next frame instead of skipping on a
+    // stale signature.
     this.key = key;
   }
 
-  /**
-   * (Re)allocate the two composite textures - grow-only, in {@link TEXTURE_QUANT} steps. The visible
-   * col/row count flaps N↔N+1 as a smooth pan crosses tile phase (`visibleTileRange` floors/ceils),
-   * so exact-size allocation would destroy + recreate GPU textures every half tile of travel;
-   * quantized grow-only allocation makes a steady pan allocation-free after the first composite.
-   */
+  /** Grow-only quantized (re)allocation of the two composite textures. The visible col/row count flaps
+   *  N↔N+1 as a smooth pan crosses tile phase, so exact-size allocation would recreate GPU textures
+   *  every half tile of travel. */
   private ensureTextures(w: number, h: number): void {
     const quantW = Math.ceil(w / TEXTURE_QUANT) * TEXTURE_QUANT;
     const quantH = Math.ceil(h / TEXTURE_QUANT) * TEXTURE_QUANT;
@@ -211,11 +195,8 @@ export class PlacementOverlayLayer {
   }
 }
 
-/** A cheap order-sensitive signature of a frame (band + a rolling mix of the blocked cells) so an
- *  unchanged frame skips the recomposite. The caller emits blocked cells in a fixed tile-scan order,
- *  so equal frames hash equal; a collision between two different same-length sets is tolerated (a
- *  stale cosmetic wash for one frame, self-correcting on the next change) - this only gates a redraw,
- *  never correctness. */
+/** Order-sensitive signature of a frame, so an unchanged frame skips the recomposite. The caller emits
+ *  blocked cells in a fixed tile-scan order, which is what makes equal frames hash equal. */
 function signatureOf(frame: PlacementOverlayFrame): string {
   const h = hashCells(frame.blocked, frame.blocked.length);
   return `${frame.minCol},${frame.maxCol},${frame.minRow},${frame.maxRow}:${frame.blocked.length}:${h}`;

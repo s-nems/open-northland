@@ -2,57 +2,49 @@ import type { Graphics } from 'pixi.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 
 /**
- * The placeholder markers a pooled entity draws when no atlas frame binds it (or no sheet is loaded) -
- * flat, depth-sortable geometry coloured by kind, built once per entity.
+ * The markers a pooled entity draws when no atlas frame binds it: flat, depth-sortable geometry
+ * coloured by kind.
  */
 
-/** Every kind drawn as the generic box marker - all but the projectile, which draws {@link ARROW}. */
 type BoxKind = Exclude<SpriteKind, 'projectile'>;
 
 /**
- * The in-flight munition marker's authored parts, in feet-local px pointing screen-east (+x) so the
- * pool can rotate the whole graphic to the flight heading; `halfSpan` is a part's half-height off the
- * shaft line. Which end a player reads as the point IS the direction they see the shot travel, so the
- * head alone reaches the forward extreme and is the brightest part, and the feathers sweep back from
- * their apex. User-tuned proportions: 32 px tip to tail, long and thin beside a 24 px settler body.
- * Data, not literals inside {@link drawArrow}, so those rules are testable without a GPU.
+ * The in-flight munition marker's authored parts, in feet-local px pointing screen-east (+x) so the pool
+ * can rotate the whole graphic to the flight heading; `halfSpan` is a part's half-height off the shaft
+ * line. Only the head reaches the forward extreme and it is the brightest part, so a player reads which
+ * way the shot travels. Authored proportions: 32 px tip to tail beside a 24 px settler body.
  */
 export const ARROW = {
-  /** Wood: the dullest part, running from the tail to where the head begins. */
   shaft: { colour: 0x7a4a24, tailX: -16, width: 2 },
-  /** Steel: the brightest part and the only one at the forward extreme. */
   head: { colour: 0xd6dee8, tipX: 16, baseX: 8, halfSpan: 2 },
-  /** Feathers: swept back from `apexX` to the tail. */
   fletching: { colour: 0x9c3b2e, apexX: -8, endX: -16, halfSpan: 2, width: 2 },
 } as const;
 
-/** Placeholder BOX colour per kind (drawn when no atlas frame binds the entity). */
+/** Placeholder box colour per kind. */
 const KIND_COLOURS: Record<BoxKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
-  berrybush: 0xb03050, // a red-berry marker (a fruited bush), distinct from the green resource node
-  stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
-  stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
-  grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
-  signpost: 0xdeb060, // a pale-wood post marker (the scout's guidepost), distinct from the darker trunk
+  berrybush: 0xb03050, // red berries on a fruited bush
+  stockpile: 0xb08040, // a sandy heap or delivery flag
+  stump: 0x6b4a2a, // brown felled-tree debris
+  grounddrop: 0x8a5a2a, // a log-brown trunk on the ground
+  signpost: 0xdeb060, // a pale-wood guidepost
 };
 
-/** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn diamond
- *  ({@link drawPlaceholder}) and the box the pool stamps for it ({@link placeholderBounds}) read the same
- *  two numbers, so the hit box cannot drift from the graphic. */
+/** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn
+ *  diamond and the stamped hit box read the same two numbers, so they cannot drift apart. */
 const FOOTPRINT_HALF_W = 9;
 const FOOTPRINT_HALF_H = 5;
 
 /** How high (world px) above its ground anchor the arrow flies - roughly a settler's torso, so a shot
- *  crosses between fighters instead of skimming their feet. A drawn-look choice, tunable by eye. */
+ *  crosses between fighters instead of skimming their feet. A drawn-look approximation. */
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
 
 /**
- * Paint {@link ARROW}, rotated by the pool to the
- * {@link import('../../data/scene/draw-item.js').DrawItem.rotation} flight heading.
- * A drawn-shape approximation: no decoded arrow bob exists in the extracted `[bobseq]` lanes (only
- * character bodies), so this minimal sprite is the named fallback until the effects bmds are decoded.
+ * Paint {@link ARROW}, rotated by the pool to the flight heading. A drawn-shape approximation: no arrow
+ * bob exists in the extracted `[bobseq]` lanes, so this is the named fallback until the effects bmds are
+ * decoded.
  */
 function drawArrow(g: Graphics): Graphics {
   const { shaft, head, fletching } = ARROW;
@@ -70,10 +62,10 @@ function drawArrow(g: Graphics): Graphics {
   return g;
 }
 
-/** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
+/** Feet-local body dimensions of the placeholder marker, by kind. */
 function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
   if (kind === 'building') return { bodyW: 28, bodyH: 40 };
-  if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
+  if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap or flag base
   // The arrow's own extent, tip to tail and across the head.
   if (kind === 'projectile') {
     return { bodyW: ARROW.head.tipX - ARROW.shaft.tailX, bodyH: 2 * ARROW.head.halfSpan };
@@ -88,13 +80,12 @@ export interface PlaceholderBounds {
   readonly maxY: number;
 }
 
-/** Cached per kind: the pool asks every frame it draws a placeholder, and the box depends only on `kind`. */
+/** Cached per kind: the pool asks every frame it draws a placeholder. */
 const boundsByKind = new Map<SpriteKind, PlaceholderBounds>();
 
 /**
- * The feet-local box a placeholder marker occupies: its body box widened to at least the ground footprint
- * diamond it stands on, and floored at the diamond's lower tip - so an unbound entity is clickable over
- * the marker {@link drawPlaceholder} actually draws.
+ * The feet-local box a placeholder occupies: its body box widened to at least the ground footprint
+ * diamond and floored at the diamond's lower tip, so the whole drawn marker is clickable.
  */
 export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
   let box = boundsByKind.get(kind);
@@ -108,13 +99,12 @@ export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
 }
 
 /**
- * Draw a feet-anchored sprite placeholder into `g`, relative to its container origin `(0,0)`: a small
- * footprint diamond on the ground + a body box rising from it, coloured by kind - so an unbound entity
- * (or the no-atlas default) still shows depth-sortable geometry. Built once per entity (kind is stable);
- * only its visibility toggles per frame.
+ * Draw a feet-anchored placeholder into `g` about its container origin `(0,0)`: a small footprint
+ * diamond on the ground and a body box rising from it, coloured by kind. Built once per entity, since
+ * kind is stable; only its visibility toggles per frame.
  */
 export function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {
-  if (kind === 'projectile') return drawArrow(g); // an arrow, not a box - rotated to its flight heading
+  if (kind === 'projectile') return drawArrow(g); // an arrow, not a box
   const colour = KIND_COLOURS[kind];
   const { bodyW, bodyH } = placeholderBody(kind);
   g.moveTo(0, -FOOTPRINT_HALF_H)
