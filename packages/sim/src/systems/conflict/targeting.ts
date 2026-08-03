@@ -9,6 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { isManningShelter } from '../defence/index.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
 import { standsAtPost } from './tower-post.js';
 
@@ -60,11 +61,15 @@ export function isValidTarget(
     return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
   }
   if (!world.has(t, Settler)) return false;
-  // A garrison shoots from inside its tower: nothing can reach it there, so the attackers must raze the
-  // tower to get at it. Keyed on where it actually STANDS, not on the marker - a garrison another drive
+  // Anyone shooting from inside a building is out of reach - a posted garrison on its tower, a civilian
+  // sheltering under an alarm - so the attackers must batter the structure to get at them; razing it puts
+  // both back on the map. Keyed on where a settler actually STANDS, not on the marker: one another drive
   // walked out into the open is a target like anyone else (`conflict/tower-post.ts`).
   if (standsAtPost(world, t) !== null) return false;
-  return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, world.get(t, Settler).tribe);
+  if (!mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, world.get(t, Settler).tribe)) {
+    return false;
+  }
+  return !isManningShelter(world, t);
 }
 
 /** Whether `t` is huntable **prey** a hunter of `hunterJob` may strike - the predation-only target filter

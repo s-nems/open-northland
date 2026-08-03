@@ -9,6 +9,7 @@ import {
   Position,
   Settler,
   type SettlerIdentity,
+  Sheltering,
   Wedding,
 } from '../../../components/index.js';
 import { type Fixed, fx, ONE } from '../../../core/fixed.js';
@@ -110,7 +111,8 @@ function chatOutranked(world: World, e: Entity, s: { hunger: Fixed; fatigue: Fix
     world.has(e, Fleeing) ||
     world.has(e, PlayerOrder) ||
     world.has(e, Wedding) ||
-    world.has(e, FamilyDuty)
+    world.has(e, FamilyDuty) ||
+    world.has(e, Sheltering) // the alarm: nobody stands around chatting through it
   );
 }
 

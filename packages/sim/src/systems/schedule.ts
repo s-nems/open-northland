@@ -5,6 +5,7 @@ import { combatSystem } from './conflict/combat.js';
 import { animalFrightSystem } from './conflict/fright.js';
 import { projectileSystem } from './conflict/projectile.js';
 import type { System } from './context.js';
+import { defenceSystem } from './defence/index.js';
 import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { fieldReclaimSystem } from './economy/field-reclaim.js';
@@ -40,6 +41,10 @@ interface ScheduledSystem {
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'command', system: commandSystem },
+  // Straight after the orders that raise and lower alarms, and before the planner: a shelter that stopped
+  // qualifying this tick has released its civilians in time for them to claim another one on this same
+  // pass (see systems/defence/).
+  { name: 'defence', system: defenceSystem },
   { name: 'needs', system: needsSystem },
   // Before herding, so a fresh scatter outranks the cohesion recall (a frightened follower runs first,
   // the herd pulls it home only once the scare lapses).

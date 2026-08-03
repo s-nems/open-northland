@@ -26,6 +26,7 @@ import {
   setAssistantCounter,
   setAssistantGrant,
   setCraftGoods,
+  setDefenceMode,
   setGatherGood,
   setJob,
   setStance,
@@ -124,6 +125,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);
+      return;
+    case 'setDefenceMode':
+      setDefenceMode(world, ctx, command);
       return;
     case 'marry':
       marry(world, ctx, command);

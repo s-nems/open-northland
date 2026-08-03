@@ -20,9 +20,11 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { drawsHouseBow, isManningShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { withFightDamageBonus } from '../progression/index.js';
 import {
+  houseBow,
   isAnimalTribe,
   isHunterJob,
   MILITARY_MODE,
@@ -90,6 +92,7 @@ export function engageCombatant(
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
     post: manning ? posted : null,
+    manningShelter: isManningShelter(world, e),
   };
 
   // The two PASSIVE stances are overridden by the post, not applied under it: a manned tower IS the order
@@ -113,7 +116,12 @@ export function engageCombatant(
     return;
   }
 
-  const held = attackerWeapon(ctx, attacker.tribe, attacker.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  const held = attackerWeapon(
+    ctx,
+    attacker.tribe,
+    attacker.jobType,
+    wieldedWeaponTypeId(world, ctx, e, stance, attacker),
+  );
   if (held === null) {
     disengage(world, e);
     return;
@@ -157,6 +165,21 @@ export function engageCombatant(
     body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target, bodyNodes) : null,
   };
   chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
+}
+
+/** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house
+ *  bow while it mans a shelter (a farmer takes the wall bow, not its own nothing - but a child hides
+ *  without one, {@link drawsHouseBow}), else the {@link Weapon} it carries. `undefined` falls back to the
+ *  class binding, which leaves an unarmed civilian unarmed. */
+function wieldedWeaponTypeId(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  stance: CombatantStance,
+  attacker: SettlerIdentity,
+): number | undefined {
+  if (!stance.manningShelter) return world.tryGet(e, Weapon)?.weaponTypeId;
+  return drawsHouseBow(world, e) ? houseBow(ctx.content, attacker.tribe)?.typeId : undefined;
 }
 
 /** Mid-atomic (a swing or a need plays out), or felled and not yet reaped: no swing from beyond the grave. */
@@ -207,7 +230,9 @@ function resolveFleeState(
   attacker: SettlerIdentity,
   stance: CombatantStance,
 ): boolean {
-  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered) {
+  // A settler manning a shelter never flees: it is already behind the walls, and running would take it
+  // straight back out into the open (the shelter drive would then walk it in again).
+  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || stance.manningShelter) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
       clearNavState(world, e); // drop the run route with the marker
@@ -333,13 +358,14 @@ function swingAt(
   startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
 }
 
-/** Who never walks toward a target out of reach: a GARRISON (a wall may not be abandoned to chase) and an
- *  unowned scenario CIV. For a garrison this is where the player's attack order onto something past the
- *  tower's reach dies: {@link resolveTarget} hands a focus back at its REAL distance, uncapped by the search
- *  band, so the order arrives here and {@link disengage} lets it go instead of marching the man out. An
- *  owned combatant advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked bear's
- *  charge - {@link resolveTarget} only admits a victim inside its aggro radius). */
+/** Who never walks toward a target out of reach: anyone shooting from inside a building - a GARRISON on its
+ *  tower, a civilian sheltering under an alarm (a wall may not be abandoned to chase) - and an unowned
+ *  scenario CIV. For the men indoors this is where the player's attack order onto something past their reach
+ *  dies: {@link resolveTarget} hands a focus back at its REAL distance, uncapped by the search band, so the
+ *  order arrives here and {@link disengage} lets it go instead of marching the man out. An owned combatant
+ *  advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked bear's charge -
+ *  {@link resolveTarget} only admits a victim inside its aggro radius). */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
-  if (stance.post !== null) return true;
+  if (stance.post !== null || stance.manningShelter) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
 }

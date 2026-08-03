@@ -23,6 +23,7 @@ describe('extractBuildings', () => {
         produces: [],
         recipes: [],
         construction: [], // build cost is overlaid from the graphics table, not the logic table
+        shelterCapacity: 0, // the defence-mode garrison is authored balance, overlaid at the app boundary
         source: src,
       },
       {
@@ -35,6 +36,7 @@ describe('extractBuildings', () => {
         produces: [],
         recipes: [],
         construction: [],
+        shelterCapacity: 0,
         source: src,
       },
       {
@@ -47,6 +49,7 @@ describe('extractBuildings', () => {
         produces: [22, 20], // logicproduction output good ids, in file order
         recipes: [],
         construction: [],
+        shelterCapacity: 0,
         source: src,
       },
     ]);

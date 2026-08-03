@@ -13,7 +13,11 @@ import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 const panelButtons = (view: PanelView): readonly ButtonHit[] => {
   switch (view.kind) {
     case 'building':
-      return view.layout.buttons;
+      // The defence toggle is not in the general section's button column - it lives inside the defence
+      // window - so it carries its own layout slot and joins the routing list here.
+      return view.layout.defenceToggle === null
+        ? view.layout.buttons
+        : [...view.layout.buttons, view.layout.defenceToggle];
     case 'settler':
       return [view.layout.assignButton, view.layout.homeButton, view.layout.unassignButton];
     case 'signpost':
@@ -129,6 +133,15 @@ const assignButtonHint = (view: PanelView, x: number, y: number): string | null 
   return null;
 };
 
+/** The alarm toggle's tooltip - it carries no drawn label either, and it names what the CLICK does, so
+ *  the wording flips with the building's current mode. */
+const defenceToggleHint = (view: PanelView, x: number, y: number): string | null => {
+  if (view.kind !== 'building') return null;
+  const toggle = view.layout.defenceToggle;
+  if (toggle === null || !contains(toggle.rect, x, y)) return null;
+  return view.model.defenseEnabled ? messages().hud.lowerAlarmHint : messages().hud.raiseAlarmHint;
+};
+
 /** The hovered choice round button's good name ("Wszystko" for gather-all), or null - the icon buttons
  *  carry no drawn label. A craft button also spells out the click semantics (plain = pick one, Ctrl/Cmd
  *  = toggle), the only affordance for the modifier. Gather and craft blocks never coexist. */
@@ -225,6 +238,7 @@ export const tooltipTextAt = (
     equipActionHint(view, x, y) ??
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
+    defenceToggleHint(view, x, y) ??
     assignButtonHint(view, x, y)
   );
 };

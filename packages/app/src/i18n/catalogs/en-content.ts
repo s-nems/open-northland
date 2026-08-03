@@ -160,6 +160,11 @@ export const enContent = {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
     },
+    'tower-defence': {
+      title: 'Tower defence',
+      summary:
+        'The alarm goes up: civilians hide in the watchtowers and shoot the house bow at the raiders from cover.',
+    },
     'attack-move': {
       title: 'Attack-move',
       summary:

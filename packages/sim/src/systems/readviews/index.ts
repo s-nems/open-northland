@@ -12,6 +12,7 @@
 //  - ./food.ts     - the data-defined edible-good (eat-slot) classification and the dish→edible
 //                    conversion a good undergoes when it leaves the kitchen that made it.
 //  - ./combat.ts   - the static weapon-vs-armor damage lookup table.
+//  - ./defence.ts  - the defence-mode tables: garrison capacity, the house bow, who runs for cover.
 //  - ./classes/    - the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
 //  - ./tribes/     - the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
 //  - ./vehicles.ts - the data-defined ship/boat classification (the Sea/Northland slice's seed).
@@ -69,6 +70,7 @@ export {
   weaponDamageVsMaterial,
   weaponKey,
 } from './combat.js';
+export { houseBow, shelterCapacityOf, sheltersOnAlarm } from './defence.js';
 export { type EquipPickEntry, equipPickList } from './equip-pick.js';
 export { edibleGoodFormOf, exportedGoodForm, isFood } from './food.js';
 export {

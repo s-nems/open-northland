@@ -169,6 +169,28 @@ describe('details panel click intents', () => {
     expect(panelClickAt(sign, sp.x, sp.y, NO_TOGGLE)).toEqual({ kind: 'demolishSignpost', entityId: 7 });
   });
 
+  it('resolves the defence toggle into the order that flips the alarm the other way', () => {
+    const down = viewOfKind(panelModelOf(buildingEntity(5, BUILDING_HEADQUARTERS)), 'building');
+    const toggle = down.layout.defenceToggle;
+    if (toggle === null) throw new Error('expected a defence toggle on the headquarters');
+    const p = center(toggle.rect);
+    expect(panelClickAt(down, p.x, p.y, NO_TOGGLE)).toEqual({
+      kind: 'setDefenceMode',
+      entityId: 5,
+      enabled: true,
+    });
+
+    const up = viewOfKind(
+      panelModelOf(buildingEntity(5, BUILDING_HEADQUARTERS, { components: { DefenceMode: {} } })),
+      'building',
+    );
+    expect(panelClickAt(up, p.x, p.y, NO_TOGGLE)).toEqual({
+      kind: 'setDefenceMode',
+      entityId: 5,
+      enabled: false,
+    });
+  });
+
   it('resolves nothing for a disabled button or a point on inert chrome', () => {
     const view = viewOfKind(panelModelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), 'building');
     const help = view.layout.buttons.find((b) => b.action === 'help');

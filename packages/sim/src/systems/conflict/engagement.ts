@@ -58,6 +58,10 @@ export interface CombatantStance {
   /** The tower the unit is manning ({@link import('./tower-post.js').towerPostFor}), or null. A garrison
    *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
+  /** Whether the unit is instead a civilian inside a defence-mode building it claimed
+   *  ({@link import('../defence/index.js').isManningShelter}): it shoots the house bow from cover within
+   *  the weapon's own band, and neither flees nor steps out to chase, whatever its stance says. */
+  readonly manningShelter: boolean;
 }
 
 /**
@@ -66,6 +70,8 @@ export interface CombatantStance {
  * post, a hunter's ground).
  *  - **GARRISON** (manning a tower, whatever the stance) → general hostility inside the tower-boosted reach,
  *    and no advance at all.
+ *  - **manning a shelter** (a civilian under an alarm) → the same, within the house bow's own reach: it
+ *    shoots from inside and never steps out, whatever its stance or a live attack order would say.
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
  *  - **IGNORE hunter** → the hunting policy ({@link hunterEngageSpec}, ./hunting/):
@@ -110,8 +116,10 @@ export function engageSpec(
 
   // A GARRISON outranks every stance: it shoots whatever hostile comes inside the tower's reach and never
   // steps out after one, so its search band IS that reach (`weapon` already carries the tower bonus - see
-  // ./tower-post.ts) rather than the advance sight radius.
-  if (stance.post !== null) {
+  // ./tower-post.ts) rather than the advance sight radius. A sheltering civilian reads the same way, on
+  // the house bow's own band: capped at reach because it never advances, and anchor-less because a DEFEND
+  // post's walk-back would march it out of the building it is holding.
+  if (stance.post !== null || stance.manningShelter) {
     return {
       accept: generalAccept,
       minDist,

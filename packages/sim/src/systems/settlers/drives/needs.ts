@@ -17,7 +17,7 @@ import {
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { draughtSlotFor, startDrink } from './drink.js';
+import { type DraughtNeed, draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
@@ -91,6 +91,30 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
     needs.fatigue >= FATIGUE_SLEEP_THRESHOLD ||
     needs.piety >= PIETY_PRAY_THRESHOLD
   );
+}
+
+/**
+ * The in-place half of the needs ladder: sip a carried draught for a pressing need, hunger before
+ * fatigue (the ladder's own order below). Nothing here walks, so it is the one need rung a settler that
+ * must not move can still run (`./shelter.ts`). Each pressing need falls through to the next when no
+ * bottle covers it, exactly as the full ladder falls from its hunger branch into its sleep branch.
+ */
+export function drinkForPressingNeed(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
+): boolean {
+  const pressing: DraughtNeed[] = [];
+  if (settler.hunger >= HUNGER_EAT_THRESHOLD) pressing.push('hunger');
+  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) pressing.push('fatigue');
+  for (const need of pressing) {
+    const draught = draughtSlotFor(world, ctx, e, need);
+    if (draught === null) continue;
+    startDrink(world, ctx, e, settler, draught);
+    return true;
+  }
+  return false;
 }
 
 /**

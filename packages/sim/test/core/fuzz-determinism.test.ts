@@ -204,7 +204,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(43);
+  const roll = rng.int(44);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -568,6 +568,15 @@ function nextCommand(rng: Rng): Command {
       // keeps the combat drives live, so a fuzzed stream interleaves it with engagement, chases and deaths
       // (the resume-after-the-fight state must hash and replay identically).
       return { kind: 'attackMoveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 43:
+      // An alarm flip at a random id: the handler's skip paths (dead/stale/non-building/unowned, a type
+      // with no garrison, a site) plus defence mode itself - so the claim/release protocol interleaves
+      // with demolish, upgrade, job changes and kills under a fuzzed stream.
+      return {
+        kind: 'setDefenceMode',
+        building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        enabled: rng.int(2) === 0,
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

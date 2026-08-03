@@ -1,5 +1,6 @@
 import { type BuildingFootprint, DEFAULT_RECIPE_TICKS } from '@open-northland/data';
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
+import { shelterCapacityById } from '../../catalog/defence.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import { JOB_COLLECTOR } from '../../catalog/jobs.js';
@@ -154,6 +155,9 @@ export interface SandboxBuildingRow {
   /** The next level's typeId in this building's upgrade chain (the `upgradeTarget` join); absent on a
    *  chain's top level and unchained buildings. */
   upgradeTarget?: number;
+  /** How many civilians this building shelters in defence mode ({@link shelterCapacityById}); absent on
+   *  a type that takes no garrison. */
+  shelterCapacity?: number;
 }
 
 /** The watchtower larder's per-good capacity - the extracted `logicstock 16 25` / `43 25` on both tiers. */
@@ -332,6 +336,7 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
   const slots = workerSlotsFor(b.typeId);
   const upgradeTarget = buildingUpgradeTarget(b.typeId);
+  const shelterCapacity = shelterCapacityById(b.id);
   return {
     typeId: b.typeId,
     id: b.id,
@@ -339,6 +344,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     construction: buildingConstructionCost(b), // a deliverable bill so it raises as a construction site
     hitpoints: buildingHitpoints(b.kind), // the Health pool the ramp fills as it rises
     ...(upgradeTarget !== undefined ? { upgradeTarget } : {}), // the level chain (the Upgrade button)
+    ...(shelterCapacity > 0 ? { shelterCapacity } : {}), // the defence-mode garrison it takes
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),
     ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default

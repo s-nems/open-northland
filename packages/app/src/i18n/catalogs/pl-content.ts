@@ -161,6 +161,11 @@ export const plContent = {
       summary:
         'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
+    'tower-defence': {
+      title: 'Obrona wieży',
+      summary:
+        'Alarm: cywile chowają się w wieżach i ostrzeliwują najeźdźców z łuku, nie wychodząc z ukrycia.',
+    },
     'attack-move': {
       title: 'Atak w marszu',
       summary:

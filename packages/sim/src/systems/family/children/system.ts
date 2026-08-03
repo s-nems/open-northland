@@ -7,6 +7,7 @@ import {
   Position,
   Residence,
   Settler,
+  Sheltering,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
@@ -32,6 +33,10 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
   };
   for (const e of canonicalById(world.query(ChildOrder, Settler, Position))) {
+    // A mother running for cover keeps her standing order but not her errand: the order resumes when
+    // the alarm drops, and until then nothing walks her out of the shelter (its duty hold is dropped
+    // with every other unclaimed one below).
+    if (world.has(e, Sheltering)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
   for (const home of canonicalById(world.query(FoodReserve))) {

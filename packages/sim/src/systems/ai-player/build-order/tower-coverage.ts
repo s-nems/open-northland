@@ -12,14 +12,13 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 import { buildingSpotAccept } from './placement.js';
 
 // TOWER COVERAGE - the `towerCoverage` entry's shared reading and spot search. The AI keeps every
-// owned building inside some tower's (or its own base's) assumed defence circle; no defence mechanic
-// exists yet (docs/tickets/features/tower-defence-mode.md), so the circle is purely a planning
-// heuristic the future garrison fire will inherit.
+// owned building inside some tower's (or its own base's) assumed defence circle; the circle is a
+// planning heuristic only - what a tower actually does under an alarm is `systems/defence/`.
 
 /** The planning radius of a tower's and the base's assumed defence circle, in world-metric nodes. Under
- *  the house bow's own range 0–29 (weapons.ini type 20, recorded in the tower-defence-mode ticket):
- *  towers ringed at full bow range stood too far out to read as part of the settlement, so the
- *  planning circle is tightened (user decision 2026-07-26). */
+ *  the house bow's own range 0–29 (`weapons.ini` type 20, what a sheltering civilian shoots): towers
+ *  ringed at full bow range stood too far out to read as part of the settlement, so the planning circle
+ *  is tightened (user decision 2026-07-26). */
 export const TOWER_DEFENCE_RADIUS_NODES = 22;
 
 /** The content ids that count as covering towers - an id allowlist, deliberately NOT

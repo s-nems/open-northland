@@ -66,6 +66,9 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       buttons: layout.buttons.map((b) => ({ ...b, rect: fn(b.rect) })),
       construction: layout.construction ? sec(layout.construction) : null,
       defence: layout.defence ? sec(layout.defence) : null,
+      defenceToggle: layout.defenceToggle
+        ? { ...layout.defenceToggle, rect: fn(layout.defenceToggle.rect) }
+        : null,
       production: layout.production ? sec(layout.production) : null,
       productionRowRects: layout.productionRowRects.map(fn),
       stock: layout.stock ? sec(layout.stock) : null,

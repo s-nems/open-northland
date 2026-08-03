@@ -38,8 +38,12 @@ export interface BuildingPanelModel {
   /** Non-null for a `home`-kind building: the workers window becomes the residents window
    *  ("Mieszkańcy" + "Rodziny 1/3" + the family-grouped sprite field). */
   readonly home: HomeResidentsModel | null;
+  /** Whether this building offers the Obrona window - a type the content gives a `shelterCapacity`
+   *  (the headquarters and the watchtowers). */
   readonly showDefense: boolean;
-  /** Approximation until a real building-defense mode component exists. */
+  /** Whether the alarm is currently up (the sim's `DefenceMode` marker). */
+  readonly defenseEnabled: boolean;
+  /** The status line: which way the mode stands, and how full the garrison is while it is up. */
   readonly defenseLabel: string;
   readonly production: ProductionModel | null;
   /** Non-null while the building is a construction site - the panel then swaps its production/stock/

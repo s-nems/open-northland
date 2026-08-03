@@ -22,7 +22,7 @@ export function drawBuilding(
 ): void {
   drawGeneralSection(chrome, layout, model, ui, hover, s);
   drawConstructionSection(chrome, layout, model, s);
-  drawDefenceSection(chrome, layout, model, ui, s);
+  drawDefenceSection(chrome, layout, model, ui, hover, s);
   drawProductionSection(chrome, layout, model, s);
   drawStockSection(chrome, layout, model, ui, activeTab, s);
   drawWorkersSection(chrome, layout, model, ui, s);
