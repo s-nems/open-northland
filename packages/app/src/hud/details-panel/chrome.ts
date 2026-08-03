@@ -23,7 +23,7 @@ import { createTextKit, type TextKit } from './text.js';
  * root each rebuild (see `bake.ts` / `supersample.ts`).
  */
 
-/** The selected-name underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
+/** The selected-row underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
 const SELECTED_LIME = 0xd8fb55;
 /** Inner content-box bevel lines - eyeballed against the original's preview framing, not sampled. */
 const INNER_BOX_DARK = 0x1c130b;
@@ -66,7 +66,7 @@ export interface Chrome extends TextKit, GlyphKit {
   slotSocket(r: Rect, filled: boolean): void;
   /** The rust headline strip with centered light title-size text. */
   headline(r: Rect, title: string): void;
-  /** The yellow-green selected-strip under the building name line. */
+  /** The original's yellow-green strip marking a selected row. */
   selectedUnderline(r: Rect): void;
   /** A translucent dark overlay over `r` - used to recede an inactive/greyed element (e.g. an unselected tab). */
   scrim(r: Rect, alpha: number): void;

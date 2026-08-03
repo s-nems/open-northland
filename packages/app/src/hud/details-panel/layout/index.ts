@@ -62,7 +62,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       general: sec(layout.general),
       preview: fn(layout.preview),
       name: fn(layout.name),
-      underline: fn(layout.underline),
+      health: fn(layout.health),
       buttons: layout.buttons.map((b) => ({ ...b, rect: fn(b.rect) })),
       construction: layout.construction ? sec(layout.construction) : null,
       defence: layout.defence ? sec(layout.defence) : null,

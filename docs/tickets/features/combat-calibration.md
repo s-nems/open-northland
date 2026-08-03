@@ -11,8 +11,9 @@ side by side and answers probes.
 
 **The unreadable set (why observation is the only source):** human base HP / stamina pool / sight
 radius; the child-to-adult HP ratio; the XP→level curve and per-level bonuses; the exact role of
-`blockingValue` and hit-vs-miss; heal/potion/amulet magnitudes; building hit-points; projectile and
-blood sprites; the projectile `speed` unit (eye-tuned twice now, see
+`blockingValue` and hit-vs-miss; heal/potion/amulet magnitudes; damage dealt TO a building (its pool
+is readable - `logichitpoints`, extracted for 54 of 55 types - but swings-to-raze is not); projectile
+and blood sprites; the projectile `speed` unit (eye-tuned twice now, see
 [projectile flight metric](../sim/projectile-flight-screen-metric.md)); and defence-mode cadence.
 
 The child ratio has a readable neighbour worth probing against: `animaltypes.ini` pairs

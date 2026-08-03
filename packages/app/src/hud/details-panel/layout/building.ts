@@ -20,11 +20,13 @@ const PREVIEW_W = 183;
 const PREVIEW_H = 183;
 /** The building-name line at the top of the right column. */
 const NAME_H = 14;
-/** The yellow-green selected strip under the name (≈5 px in the original). */
-const UNDERLINE_H = 5;
+/** The health gauge's top, under the name line - our own placement inside the room {@link BUTTONS_TOP}
+ *  reserves, not a metric measured off the original. It takes the panel's shared {@link BAR_H}. */
+const HEALTH_BAR_TOP = 22;
 /**
- * Buttons start this far below the general body's top - the original puts the name, its underline, and a
- * capacity line ("Pojemność: 100", not yet extracted) above them; the offset reserves that room.
+ * Buttons start this far below the general body's top - the original puts the name and a capacity line
+ * (`housewindow` 21 "Ładowność", not yet extracted) above them; the offset reserves that room, which
+ * also holds the health gauge.
  */
 const BUTTONS_TOP = 60;
 /** Need/progress bar height. */
@@ -67,8 +69,9 @@ export interface BuildingLayout {
   readonly preview: Rect;
   /** The building-name line at the top of the right column. */
   readonly name: Rect;
-  /** The selected strip directly under the name line. */
-  readonly underline: Rect;
+  /** The health gauge under the name line, and the hover target its hitpoints tooltip probes. Laid out
+   *  for every building; `model.health` alone decides whether anything is drawn there. */
+  readonly health: Rect;
   readonly buttons: readonly ButtonHit[];
   /** The Construction section - replaces defence/production/stock/workers while the building is a
    *  site (those windows mean nothing before completion). Null once built. */
@@ -217,11 +220,11 @@ export function layoutBuilding(
   const columnX = preview.x + preview.w + pad;
   const columnW = general.frame.x + general.frame.w - pad - columnX;
   const name: Rect = { x: columnX, y: general.body.y, w: columnW, h: Math.round(NAME_H * s) };
-  const underline: Rect = {
+  const health: Rect = {
     x: columnX,
-    y: name.y + name.h,
+    y: general.body.y + Math.round(HEALTH_BAR_TOP * s),
     w: columnW,
-    h: Math.round(UNDERLINE_H * s),
+    h: Math.round(BAR_H * s),
   };
   const buttons: ButtonHit[] = buildingButtons(model).map((b, i) => ({
     action: b.action,
@@ -266,7 +269,7 @@ export function layoutBuilding(
     general,
     preview,
     name,
-    underline,
+    health,
     buttons,
     construction,
     defence,

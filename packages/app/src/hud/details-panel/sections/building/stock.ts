@@ -93,8 +93,8 @@ const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
  * alongside the per-tab categories, pending a human pass). Each tab bob carries its own plate plus a
  * glyph, drawn through the `bg_invert` palette as bright cream line-art on a recessed plate (a named
  * legibility choice, not verified to be the original's tab palette). Clicking a tab filters the stock
- * list (see `stock-tabs.ts` and `panel.ts`); the active tab carries a lime underline (the name row's
- * selected-strip look) so the current view reads at a glance.
+ * list (see `stock-tabs.ts` and `panel.ts`); the active tab carries the original's lime selected-row
+ * underline so the current view reads at a glance.
  */
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
   rects.forEach((r, i) => {

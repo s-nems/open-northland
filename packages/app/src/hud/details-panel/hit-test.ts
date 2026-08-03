@@ -109,6 +109,15 @@ const hitBarValue = (view: PanelView, x: number, y: number): string | null => {
   return i < 0 ? null : (view.model.bars[i]?.hover ?? null);
 };
 
+/** The hovered building health gauge ("Zdrowie: 300/1000"), or null. Unlike {@link hitBarValue} the
+ *  tooltip carries the caption, since the drawn gauge has none. */
+const buildingHealthValue = (view: PanelView, x: number, y: number): string | null => {
+  if (view.kind !== 'building') return null;
+  const health = view.model.health;
+  if (health === null || !contains(view.layout.health, x, y)) return null;
+  return `${health.label}: ${health.hover}`;
+};
+
 /** The Praca control buttons' tooltips (assign-workplace / assign-home / remove-from-home) - the round
  *  glyph buttons carry no drawn label, so the tooltip is what names them. */
 const assignButtonHint = (view: PanelView, x: number, y: number): string | null => {
@@ -210,6 +219,7 @@ export const tooltipTextAt = (
     rowName ??
     tabLabel ??
     hitBarValue(view, x, y) ??
+    buildingHealthValue(view, x, y) ??
     gatherChoiceHint(view, x, y) ??
     equipSocketHint(view, x, y) ??
     equipActionHint(view, x, y) ??

@@ -1,7 +1,6 @@
 import { constructionBillForType, type Fixed, fx } from '@open-northland/sim';
-import { healthOf, num, type SnapshotEntity } from '../../../game/snapshot.js';
+import { num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
-import { pctRatio } from './bars.js';
 import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 
 // The building's goods model: the Magazyn stock rows plus the construction-site / upgrade material bills.
@@ -41,9 +40,6 @@ export interface UpgradeCostRow {
 
 /** The Construction section's content - present only while the building carries `UnderConstruction`. */
 export interface ConstructionModel {
-  /** The health ramp 0..100 (the sim raises `Health` in step with `built`), or null when the type
-   *  declares no hitpoints pool - the gauge then falls back to `builtPct`. */
-  readonly hpPct: number | null;
   readonly rows: readonly ConstructionRow[];
 }
 
@@ -143,8 +139,8 @@ function upgradeTargetBill(
  * The Construction-window model of a site: one row per line of the site's bill - the type's
  * FROM-SCRATCH cumulative bill ({@link constructionBillForType}), or for an UPGRADING building
  * (`Upgrading` beside the marker) the target tier's own cost (the level difference - exactly what the
- * sim demands, mirroring `constructionBillOf`) - with how much of it the site's hold already has, plus
- * the health ramp. Null for a finished building (no `UnderConstruction` marker).
+ * sim demands, mirroring `constructionBillOf`) - with how much of it the site's hold already has. Null
+ * for a finished building (no `UnderConstruction` marker).
  */
 export function constructionModel(
   ctx: UnitPanelModelContext,
@@ -153,7 +149,6 @@ export function constructionModel(
 ): ConstructionModel | null {
   if (ent.components.UnderConstruction === undefined) return null;
   const live = liveAmounts(ent.components.Stockpile);
-  const health = healthOf(ent);
   const upgrading = ent.components.Upgrading !== undefined;
   const bill =
     def === undefined
@@ -171,10 +166,7 @@ export function constructionModel(
       ...(goodId !== undefined ? { goodId } : {}),
     };
   });
-  return {
-    hpPct: health !== undefined && health.max > 0 ? pctRatio(health.hitpoints, health.max) : null,
-    rows,
-  };
+  return { rows };
 }
 
 /**

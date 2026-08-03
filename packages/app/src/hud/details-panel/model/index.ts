@@ -16,7 +16,7 @@ import {
   surnameSourceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { pct } from './bars.js';
+import { healthBar, pct } from './bars.js';
 import {
   type BuildingPanelModel,
   constructionModel,
@@ -155,6 +155,7 @@ export function buildUnitPanelModel(
       tribe: `${num(b.tribe) ?? '-'}`,
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
+      health: healthBar(ent),
       stock: stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
       workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
       // A home shows its residents (family-grouped) where a workshop shows workers.
@@ -236,7 +237,7 @@ export function buildUnitPanelModel(
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(snapshot, comps),
-      bars: satisfactionBars(comps),
+      bars: satisfactionBars(ent),
       work: settlerWork(ctx, snapshot, comps, progressionGated),
       experience: experienceRows(ctx, comps),
       upcomingUnlocks: unlockProgressRows(ctx, comps, progressionGated),

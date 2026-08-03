@@ -1,3 +1,4 @@
+import type { PanelBar } from './bars.js';
 import type { ConstructionModel, StockRow, UpgradeCostRow } from './building-materials.js';
 import type { ProductionModel } from './building-production.js';
 import type { WorkerSlotRow } from './building-workers.js';
@@ -27,6 +28,9 @@ export interface BuildingPanelModel {
   readonly tribe: string;
   readonly level: number;
   readonly builtPct: number;
+  /** The general section's health gauge, for every building state. Null only for a type declaring no
+   *  hitpoints (`work_murek`), whose slot under the name then stays empty. */
+  readonly health: PanelBar | null;
   readonly stock: readonly StockRow[];
   /** One row per worker slot (trade), each with its filled/capacity - the per-trade limits the panel
    *  lists. See {@link workerSlotsFor}. */

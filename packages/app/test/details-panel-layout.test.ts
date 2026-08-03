@@ -283,6 +283,7 @@ describe('details panel layout', () => {
             components: {
               Building: { buildingType: BUILDING_FARM, tribe: 1, built: 0, level: 0 },
               UnderConstruction: { labor: 0 },
+              Health: { hitpoints: 1, max: 100 },
               Stockpile: { amounts: [] },
             },
           },
@@ -298,6 +299,37 @@ describe('details panel layout', () => {
     expect(site.stockTabHits).toHaveLength(0);
     // The workers window STAYS - it shows the live building crew during construction.
     expect(site.workers).not.toBeNull();
+  });
+
+  it('spans the building health gauge across the whole right column, at every uiscale', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        buildingEntity(1, BUILDING_FARM, { components: { Health: { hitpoints: 300, max: 1000 } } }),
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    // Each metric rounds independently per scale, so a row that clears its neighbours at 1× can still
+    // collide at another step - the sweep is what proves the gap, not the design-px constants.
+    for (const s of MENU_UISCALE_VALUES) {
+      const layout = viewOfKind(model, 'building', s).layout;
+      const health = layout.health;
+      const firstButton = layout.buttons[0];
+      if (firstButton === undefined) throw new Error('expected the general-section buttons');
+
+      // Full column width: the gauge spans exactly the name line above and the buttons below, edge to
+      // edge - it carries no label column, so any narrower rect is a regression.
+      expect(health.x, `uiscale ${s}`).toBe(layout.name.x);
+      expect(health.w, `uiscale ${s}`).toBe(layout.name.w);
+      expect(health.w, `uiscale ${s}`).toBe(firstButton.rect.w);
+      // Clear of both neighbours - below the name, and never swallowing a button click.
+      expect(health.y, `uiscale ${s}`).toBeGreaterThanOrEqual(layout.name.y + layout.name.h);
+      expect(health.y + health.h, `uiscale ${s}`).toBeLessThanOrEqual(firstButton.rect.y);
+      // And inside the general window it is drawn into.
+      expect(health.y + health.h, `uiscale ${s}`).toBeLessThanOrEqual(
+        layout.general.body.y + layout.general.body.h,
+      );
+    }
   });
 
   /** The rect every mapped field must have become - no real layout rect can carry these coords. */
@@ -325,10 +357,16 @@ describe('details panel layout', () => {
   it('mapLayout transforms EVERY rect in a layout (an unmapped new field fails here)', () => {
     const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
       buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
-    // The HQ (tabbed store + buttons), a farm site (the Construction branch) and a gatherer settler -
-    // between them every optional section a layout can carry is present.
+    // The HQ (tabbed store + buttons + the Zdrowie row), a farm site (the Construction branch) and a
+    // gatherer settler - between them every optional section a layout can carry is present.
     const layouts: readonly DetailsLayout[] = [
-      buildingLayoutOf(modelOf(buildingEntity(1, BUILDING_HEADQUARTERS))),
+      buildingLayoutOf(
+        modelOf(
+          buildingEntity(1, BUILDING_HEADQUARTERS, {
+            components: { Health: { hitpoints: 300, max: 1000 } },
+          }),
+        ),
+      ),
       buildingLayoutOf(
         modelOf(
           buildingEntity(1, BUILDING_FARM, {
