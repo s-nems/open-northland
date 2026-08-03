@@ -2,9 +2,12 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  AttackOrder,
   Building,
+  Carrying,
   CurrentAtomic,
   DefenceMode,
+  Fleeing,
   Health,
   Owner,
   Position,
@@ -23,6 +26,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import { garrisonSeats } from '../../src/systems/defence/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 
@@ -46,6 +50,8 @@ const TOWER_CAPACITY = 2;
 const HOUSE_BOW_DAMAGE = 30;
 const HOUSE_BOW_RANGE = 6;
 const RAIDER_HP = 500;
+/** A food good, so a settler under cover can answer hunger from what it carries. */
+const RATION = 1;
 
 /** One tribe fought across two players, a tower that shelters {@link TOWER_CAPACITY} civilians and a hut
  *  that shelters nobody, the civilian house bow (bound by id, no jobType - a sheltering settler keeps its
@@ -53,7 +59,10 @@ const RAIDER_HP = 500;
 function defenceContent(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
-    goods: [{ typeId: 0, id: 'none' }],
+    goods: [
+      { typeId: 0, id: 'none' },
+      { typeId: RATION, id: 'food_simple', weight: 1 },
+    ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CHILD, id: 'child_male' },
@@ -347,6 +356,91 @@ describe('defence mode', () => {
     expect(split).toBe(true); // both shooters drew on DIFFERENT raiders in the same tick
   });
 
+  it('seats only the settlers that have arrived, so the spread never doubles up on one raider', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(20, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const inside = settlerAt(sim, 4, 1, P1, FARMER);
+    const runner = settlerAt(sim, 15, 1, P1, FARMER); // still crossing the field when the seats are read
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, inside) === tower && shelterOf(sim, runner) === tower);
+
+    // Seats number the ARRIVED. Counting the runner would leave the seats in play {0, 2, ...} - a sparse
+    // set that collides again the moment the spread takes them modulo the band.
+    const seats = garrisonSeats(sim.world);
+    expect(seats.get(inside)).toBe(0);
+    expect(seats.has(runner)).toBe(false);
+  });
+
+  it('never lets a claimant flee - the run for cover is its flight', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(14, 4) });
+    const tower = buildingAt(sim, 3, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 8, 1, P1, FARMER);
+    // A raider in sight from the first tick. A claimant that took the flee drive instead would be steered
+    // by the threat rather than by its claim, and it holds a seat the whole time it runs: the tower would
+    // report itself full while standing empty.
+    settlerAt(sim, 12, 1, P2, SOLDIER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    let fledWhileClaiming = false;
+    for (let i = 0; i < 600 && insideOf(sim, farmer) !== tower; i++) {
+      sim.step();
+      if (sim.world.has(farmer, Sheltering) && sim.world.has(farmer, Fleeing)) fledWhileClaiming = true;
+    }
+
+    expect(fledWhileClaiming).toBe(false);
+    expect(insideOf(sim, farmer)).toBe(tower);
+  });
+
+  it('drops an attack order its garrison cannot walk to instead of staring past the wall', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(14, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+    const raider = settlerAt(sim, 12, 1, P2, SOLDIER); // past the house bow's band, and never chased
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    sim.world.add(farmer, AttackOrder, { target: raider });
+    sim.step();
+
+    // An order is read straight off the entity by `resolveTarget`, ahead of the shelter's own band. Left
+    // standing, it would aim the shooter at a target it can neither reach nor step out to.
+    expect(sim.world.has(farmer, AttackOrder)).toBe(false);
+    expect(insideOf(sim, farmer)).toBe(tower);
+  });
+
+  it('puts a garrison back on the map when its tower is razed under it, without dropping the tick', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    sim.world.destroy(tower);
+    sim.step();
+
+    expect(sim.world.has(farmer, Sheltering)).toBe(false);
+    expect(sim.world.has(farmer, Resting)).toBe(false);
+  });
+
+  it('hands a released civilian to the other tower within the same tick the alarm drops', () => {
+    // The DefenceSystem sits ahead of the planner for exactly this: the claim is gone before the pass that
+    // hands out seats, so the freed settler re-claims on that pass instead of standing idle for a tick.
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(20, 4) });
+    const west = buildingAt(sim, 2, 1, TOWER, P1);
+    const east = buildingAt(sim, 17, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: true });
+    sim.enqueue({ kind: 'setDefenceMode', building: east, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === west);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: false });
+    sim.step(); // ONE tick: the order, the release, and the re-claim
+
+    expect(shelterOf(sim, farmer)).toBe(east);
+  });
+
   it('leaves a civilian outside its work area at work - the alarm does not suspend the signpost rule', () => {
     // Wide enough that the far tower sits past the settler's own reach and past any signpost group it
     // could get to (there are none), so the run for cover is illegal exactly as an errand there would be.
@@ -395,6 +489,26 @@ describe('defence mode', () => {
 
     for (let i = 0; i < 200; i++) sim.step();
 
+    expect(insideOf(sim, farmer)).toBe(tower);
+  });
+
+  it('lets a sheltering settler eat the food it carries rather than starve holding it', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 1, 1, P1, FARMER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    sim.world.add(farmer, Carrying, { goodType: RATION, amount: 1 });
+    sim.world.write(farmer, Settler, (s) => {
+      s.hunger = ONE;
+    });
+
+    // Eating takes it nowhere, so it is an answer a settler under cover may give - the alarm only bars
+    // the walk to a larder.
+    stepUntil(sim, 200, () => sim.world.get(farmer, Settler).hunger < ONE);
+
+    expect(sim.world.get(farmer, Settler).hunger).toBeLessThan(ONE);
     expect(insideOf(sim, farmer)).toBe(tower);
   });
 });

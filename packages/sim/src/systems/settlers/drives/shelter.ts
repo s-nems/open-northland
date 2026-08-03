@@ -10,7 +10,7 @@ import type { NavigationLimit } from '../../signposts/index.js';
 import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
-import { drinkForPressingNeed } from './needs.js';
+import { answerNeedInPlace } from './needs.js';
 
 /**
  * THE RUN FOR COVER - the top rung of the drive ladder while its owner has a building on alarm: a
@@ -27,8 +27,8 @@ import { drinkForPressingNeed } from './needs.js';
  * A settler that already holds a claim keeps it - the pick is made once, and the DefenceSystem is what
  * breaks it.
  *
- * Source basis: the mode is extracted (`houses.ini` `logicCanEnableDefenceMode`); that civilians shelter
- * in it, who counts as a civilian, and how many fit are named approximations (user rules).
+ * Source basis: the mode is extracted; that civilians shelter in it, who counts as a civilian, and how
+ * many fit are named approximations (user rules).
  */
 export function planShelter(
   world: World,
@@ -74,8 +74,9 @@ function nearestShelterWithRoom(
   let bestDistance = 0;
   for (const site of shelters.get(player) ?? []) {
     if (site.free <= 0) continue;
-    // Rank on the straight-line node distance to the building, then verify the one winner's door: the
-    // door resolve walks the footprint's approach cells, too much to pay for every candidate.
+    // Rank on the straight-line node distance to the building, and resolve a door only for a candidate
+    // that beats the running best: the door resolve walks the footprint's approach cells, too much to
+    // pay for every site on the list.
     const distance = Math.abs(site.hx - from.hx) + Math.abs(site.hy - from.hy);
     if (best !== null && distance >= bestDistance) continue;
     if (!doorIsWalkable(interactionCell(world, ctx, terrain, site.entity, here), limit, failed)) continue;
@@ -98,12 +99,13 @@ function doorIsWalkable(
 }
 
 /**
- * Walk `e` to its shelter's door and step it inside on arrival, then hold it there. A carried draught is
- * the one need it can still answer under cover, since drinking takes it nowhere.
+ * Walk `e` to its shelter's door and step it inside on arrival, then hold it there. What it carries is
+ * all it can answer a need with under cover ({@link answerNeedInPlace}) - eating and drinking take it
+ * nowhere; a walk to a larder or a bed would take it back out.
  *
  * Returns false only when the door has stopped being walkable ({@link doorIsWalkable}) - the claim is
- * given up rather than held, so the seat goes back to a settler that can actually take it and this one
- * falls through to its trade instead of standing outside a door forever.
+ * given up rather than held, so this settler falls through to its trade instead of standing outside a
+ * door forever. The freed seat reappears on the next tick's ledger, not on this pass's copy of it.
  */
 function walkInto(
   world: World,
@@ -116,7 +118,7 @@ function walkInto(
   limit: NavigationLimit | null,
 ): boolean {
   if (isInside(world, e, shelter)) {
-    drinkForPressingNeed(world, ctx, e, settler);
+    answerNeedInPlace(world, ctx, e, settler);
     return true;
   }
   const door = interactionCell(world, ctx, terrain, shelter, here);

@@ -8,9 +8,9 @@ import { HOUSEWINDOW } from './shared.js';
 /**
  * Defence window: the round alarm toggle that raises and lowers defence mode, with the original's status
  * line beside it. The button is the equip window's round control with a shield face - filled while the
- * alarm is up, hollow while it is down. An original glyph: the source's own toggle is a labelled button
- * (`housewindow` 140/141, "Rozpocznij/Zatrzymaj Tryb Obrony") that this one-line window has no room for,
- * so its name lives in the cursor tooltip like the equip controls' do.
+ * alarm is up, hollow while it is down. The source's own toggle is a labelled button (`housewindow`
+ * 140/141, "Rozpocznij/Zatrzymaj Tryb Obrony") that this one-line window has no room for, so what it does
+ * is said in the cursor tooltip, in our own words like the equip controls' hints.
  */
 export function drawDefenceSection(
   chrome: Chrome,

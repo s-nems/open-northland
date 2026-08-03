@@ -43,6 +43,9 @@ export interface BuildingPanelModel {
   readonly showDefense: boolean;
   /** Whether the alarm is currently up (the sim's `DefenceMode` marker). */
   readonly defenseEnabled: boolean;
+  /** Non-null while civilians hold a seat here: the workers window becomes the garrison window
+   *  ("Schronieni 15/15" over the sheltering settlers the field draws instead of the staff). */
+  readonly garrison: { readonly sheltered: number; readonly capacity: number } | null;
   /** The status line: which way the mode stands, and how full the garrison is while it is up. */
   readonly defenseLabel: string;
   readonly production: ProductionModel | null;

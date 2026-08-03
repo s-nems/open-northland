@@ -150,7 +150,7 @@ describe('NodeBuckets.nearestFew - the nearest several', () => {
     const wall = world.create();
     world.add(wall, Position, positionOfNode(3, 0));
     const other = world.create();
-    world.add(other, Position, positionOfNode(6, 0));
+    world.add(other, Position, positionOfNode(0, 4));
     const nodesOf = (e: Entity): { x: number; y: number }[] =>
       e === wall
         ? [
@@ -158,12 +158,25 @@ describe('NodeBuckets.nearestFew - the nearest several', () => {
             { x: 4, y: 0 },
             { x: 5, y: 0 },
           ]
-        : [{ x: 6, y: 0 }];
+        : [{ x: 0, y: 4 }];
     const buckets = new NodeBuckets(world, [wall, other], undefined, nodesOf);
     expect(buckets.nearestFew(0, 0, 0, 10, ALL, 4)).toEqual([
       { entity: wall, distance: 3 },
-      { entity: other, distance: 6 },
+      { entity: other, distance: 4 },
     ]);
+  });
+
+  it('stops a few rings past the first hit instead of walking the whole band for alternatives', () => {
+    // The bound that keeps a garrison's fan cheap: one raider at the door and one straggler far behind it
+    // cost the near rings, not the house bow's whole 29-node reach.
+    const { world, ids } = place([
+      { x: 1, y: 0 },
+      { x: 12, y: 0 },
+    ]);
+    const buckets = new NodeBuckets(world, ids);
+    expect(buckets.nearestFew(0, 0, 0, 29, ALL, 4)).toEqual([{ entity: ids[0], distance: 1 }]);
+    // The straggler is still findable - it is the tail bound, not the band, that dropped it.
+    expect(buckets.nearest(0, 0, 2, 29, ALL)).toEqual({ entity: ids[1], distance: 12 });
   });
 
   it('returns everything the band holds when that is fewer than `limit`, and empty when it holds none', () => {

@@ -10,6 +10,7 @@ export const enGame = {
     stock: 'Stock',
     workers: 'Workers',
     residents: 'Residents',
+    sheltered: 'Sheltered',
     families: 'Number of Families',
     work: 'Work',
     experience: 'Experience',

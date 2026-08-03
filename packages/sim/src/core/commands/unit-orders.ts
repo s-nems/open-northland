@@ -277,8 +277,7 @@ export type UnitOrderCommand =
   | {
       /**
        * Raise or lower the alarm on one owned building that can hold a garrison - the original's defence
-       * mode (`houses.ini` `logicCanEnableDefenceMode`, set on the headquarters and both watchtowers).
-       * While it is up, the owner's civilians run to the building and shoot the house bow from inside it
+       * mode. While it is up, the owner's civilians run to the building and shoot the house bow from inside it
        * (see `systems/defence/`), up to the type's `shelterCapacity`. Lowering it releases everyone
        * sheltering there - they re-claim another building still on alarm, or go back to work.
        * Recoverable bad input (skipped, still logged): a dead/stale/non-building/neutral target, one whose

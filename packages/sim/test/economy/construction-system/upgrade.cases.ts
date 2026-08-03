@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { Residence } from '../../../src/components/family.js';
-import { Building, Stockpile, UnderConstruction, Upgrading } from '../../../src/components/index.js';
+import {
+  Building,
+  DefenceMode,
+  Owner,
+  Stockpile,
+  UnderConstruction,
+  Upgrading,
+} from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { housingCapacity } from '../../../src/simulation/hud.js';
 import { constructionSystem, stockCapacity } from '../../../src/systems/index.js';
@@ -28,6 +35,23 @@ import {
  * toward the upgrade is a named approximation.
  */
 describe('constructionSystem - manual upgrade lifecycle', () => {
+  it('takes a raised alarm down with the roof', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+    sim.world.add(e, Owner, { player: 1 }); // only an owned building takes the order
+    sim.enqueue({ kind: 'setDefenceMode', building: e, enabled: true });
+    sim.step();
+    expect(sim.world.has(e, DefenceMode)).toBe(true);
+
+    sim.enqueue({ kind: 'upgradeBuilding', building: e });
+    sim.step();
+
+    // A site shelters nobody, and the panel drops the defence window for one: an alarm left standing
+    // could be neither seen nor lowered, and would call the garrison back when the upgrade finished.
+    expect(sim.world.has(e, UnderConstruction)).toBe(true);
+    expect(sim.world.has(e, DefenceMode)).toBe(false);
+  });
+
   it('re-opens a built home as a site, seeding held bill goods into the hold and stashing the rest', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     // 3 stone + 1 wood of household inventory; the L0->L1 bill is 2 stone.

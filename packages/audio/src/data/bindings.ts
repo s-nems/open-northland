@@ -9,13 +9,13 @@ import type { EventSound, SoundBindings } from './types.js';
 // --- Jingle MusicType ids, straight from soundfx.cif's SoundFXJingle records ---
 /** `MusicType` of the birth jingle (`jingles_birth.wav`). */
 export const JINGLE_BIRTH = 23;
+/** `MusicType` of the civil-defence jingle (`jingles_civildefense.wav`) - the alarm bells a player rings
+ *  by putting a building into defence mode. */
+export const JINGLE_CIVIL_DEFENSE = 24;
 /** `MusicType` of the death jingle (`jingles_death.wav`). */
 export const JINGLE_DEATH = 25;
 /** `MusicType` of the house-built jingle (`jingles_housebuilt.wav`). */
 export const JINGLE_HOUSE_BUILT = 26;
-/** `MusicType` of the civil-defence jingle (`jingles_civildefense.wav`) - the alarm bells a player rings
- *  by putting a building into defence mode. */
-export const JINGLE_CIVIL_DEFENSE = 24;
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering - placed at a newly-sited building/boat. */

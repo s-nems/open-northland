@@ -1,11 +1,12 @@
 /**
  * The defence-mode balance: how many civilians each garrison building shelters while its alarm is up.
  *
- * AUTHORED (user decision) - `houses.ini` marks the headquarters (logictype 1), barracks (39) and both
- * watchtowers (40/41) `logicCanEnableDefenceMode 1`, but no readable record carries a garrison SIZE, so
- * the numbers are ours: the headquarters holds the town, a watchtower a squad, and its upgraded tier a
- * larger one. The barracks is deliberately absent - it trains soldiers rather than hiding civilians, so
- * it takes no garrison here even though the source lets it raise the mode.
+ * AUTHORED (user decision): the source flags which buildings may raise the mode
+ * (`BuildingType.shelterCapacity`) but carries no garrison SIZE, so the numbers are ours - the
+ * headquarters holds the town, a watchtower a squad, its upgraded tier a larger one. The barracks is
+ * deliberately absent: it trains soldiers rather than hiding civilians, so it takes no garrison here even
+ * though the source lets it raise the mode. Until that flag is extracted, this table doubles as the
+ * eligibility set (`docs/tickets/features/defence-mode-eligibility-from-source.md`).
  *
  * Separate seats from the tower's employed posts (`logicworker` slots, `conflict/tower-post.ts`): an
  * archer holds a job, a sheltering civilian holds a shelter seat, and a full garrison of archers takes
@@ -33,11 +34,9 @@ export function shelterCapacityById(id: string): number {
  * hold that - against wool/chain/plate the extracted wall bow beats the short bow (240/150/150 against
  * 128/100/100).
  *
- * The rule is one line: no column above A THIRD of the short bow's (user decision, after watching a full
- * tower cut a warband down). A column already under that keeps its extracted value (wood 11). The band and
- * munition are NOT overridden - a wall bow outranging a hand bow is the source's choice and the point of a
- * tower, and it is what makes a garrison strong: fifteen of these outshoot anything that walks up, one
- * peasant with one is a nuisance.
+ * The rule: each column ROUNDED to a third of the short bow's (user decision), which is why column 0 reads
+ * 167 rather than 166. A column already under that keeps its extracted value (wood 11). Band and munition
+ * are NOT overridden - a wall bow outranging a hand bow is the source's choice and the point of a tower.
  */
 export const HOUSE_BOW_DAMAGE: Readonly<Record<string, number>> = {
   '0': 167,

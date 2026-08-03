@@ -67,6 +67,15 @@ export function forEachIndexNode(
 }
 
 /**
+ * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking for alternatives. It is
+ * what bounds that walk: a band holding fewer acceptors than the caller asked for would otherwise cost
+ * every ring out to `maxDist` - a house bow's 29 - which is exactly the case of a few raiders closing on a
+ * full tower. Three rings is the huddle around the nearest man, so a garrison still fans onto the enemies
+ * beside its closest target rather than onto stragglers half a map behind them.
+ */
+const NEAREST_FEW_TAIL_RINGS = 3;
+
+/**
  * A per-tick spatial bucket: `entities` grouped by their integer node, each bucket preserving the input
  * order. Feed it a {@link canonicalById} list - the ring search's first-accepted-per-node shortcut
  * ({@link NodeBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw `world.query`
@@ -199,8 +208,9 @@ export class NodeBuckets {
    * `nearest` returns. Every ring is finished before the walk stops, keeping the result independent of
    * node-iteration order; an entity bucketed at several nodes is listed once, at its nearest.
    *
-   * Costs more than {@link nearest}: it does not stop at the first ring that hits, so a band holding
-   * fewer than `limit` acceptors is walked to `maxDist`. Only for a seeker that needs alternatives.
+   * Costs more than {@link nearest}, which returns at the first ring that hits. The walk stops at the
+   * first of `limit` acceptors, `maxDist`, or {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit
+   * - that last bound is what keeps a band holding one or two acceptors from costing the whole radius.
    */
   nearestFew(
     fromX: number,
@@ -212,7 +222,9 @@ export class NodeBuckets {
   ): readonly { entity: Entity; distance: number }[] {
     const found: { entity: Entity; distance: number }[] = [];
     const taken = new Set<Entity>();
-    for (let d = minDist; d <= maxDist && found.length < limit; d++) {
+    // Pulled in to the tail bound by the first ring that hits, and never pushed back out by a later one.
+    let lastRing = maxDist;
+    for (let d = minDist; d <= lastRing && found.length < limit; d++) {
       const ring: Entity[] = [];
       forEachRingOffset(d, (dx, dy) => {
         for (const e of this.at(fromX + dx, fromY + dy)) {
@@ -224,6 +236,7 @@ export class NodeBuckets {
       });
       ring.sort((a, b) => a - b);
       for (const entity of ring) found.push({ entity, distance: d });
+      if (found.length > 0) lastRing = Math.min(lastRing, d + NEAREST_FEW_TAIL_RINGS);
     }
     return found.length > limit ? found.slice(0, limit) : found;
   }

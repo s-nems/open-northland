@@ -113,8 +113,9 @@ function withWoolCarcassHarvest(good: GoodType): GoodType {
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Overlay the authored defence-mode garrison size ({@link shelterCapacityById}) - the extracted table
- *  carries the `logicCanEnableDefenceMode` flag but no capacity. A type with no garrison keeps its 0. */
+/** Overlay the authored defence-mode garrison size ({@link shelterCapacityById}). It doubles as the
+ *  eligibility set until the source's own `logicCanEnableDefenceMode` is extracted
+ *  (`docs/tickets/features/defence-mode-eligibility-from-source.md`). A type with none keeps its 0. */
 function withShelterCapacity(building: BuildingType): BuildingType {
   const shelterCapacity = shelterCapacityById(building.id);
   return shelterCapacity === 0 ? building : { ...building, shelterCapacity };

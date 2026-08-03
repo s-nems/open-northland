@@ -148,6 +148,8 @@ export function levelChainContent(): ContentSet {
         homeSize: 1,
         construction: [{ goodType: STONE, amount: 1 }],
         upgradeTarget: HOME_L1,
+        // Takes a garrison too, so the chain covers what an upgrade does to a raised alarm.
+        shelterCapacity: 1,
       },
       {
         typeId: HOME_L1,

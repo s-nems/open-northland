@@ -276,9 +276,9 @@ export function sandboxWeapons() {
       maxRange: HUNTER_BOW_BALANCE.maxRange,
       damage: { ...HUNTER_BOW_BALANCE.damage },
     },
-    // The house bow a civilian shoots from a defence-mode building, transcribed verbatim from the mod
-    // row (`weapons.ini` type 20, `jobtype 6` = civilist): weaker than the soldier's short bow and far
-    // longer-ranged, the wall-shooting trade-off the source already makes. Bound by typeId, not by job -
+    // The house bow a civilian shoots from a defence-mode building, transcribed from the mod row above:
+    // weaker than the soldier's short bow and far longer-ranged, the wall-shooting trade-off the source
+    // already makes. Bound by typeId, not by job -
     // a sheltering farmer keeps its own trade and takes the wall bow up as a worn weapon - so the row
     // carries no `jobType`, and no `goodType`: the bow belongs to the building, not the equipment economy.
     {

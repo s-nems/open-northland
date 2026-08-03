@@ -1,4 +1,4 @@
-import { Age, Sheltering } from '../../components/index.js';
+import { Age, Position, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { isInside } from '../settlers/indoors.js';
 import { canonicalById } from '../spatial/nodes.js';
@@ -12,21 +12,28 @@ import { canonicalById } from '../spatial/nodes.js';
 export function mannedShelter(world: World, e: Entity): Entity | null {
   const claim = world.tryGet(e, Sheltering);
   if (claim === undefined || !isInside(world, e, claim.shelter)) return null;
-  return claim.shelter;
+  // Every reading of a manned post - the acquisition node, the launch point - wants the building's
+  // Position, and a claim outlives a razed building until the DefenceSystem sheds it. Reading a gone
+  // shelter as unmanned keeps those readers off that ordering, like the tolerant reads around them
+  // (`launchProjectile`, `shelterStillHolds`); today the DefenceSystem's slot already shields them.
+  return world.has(claim.shelter, Position) ? claim.shelter : null;
 }
 
 export function isManningShelter(world: World, e: Entity): boolean {
   return mannedShelter(world, e) !== null;
 }
 
-/** Every claimant's SEAT - its place `0..n-1` in the garrison of the building it claimed, numbered in
- *  canonical (ascending-id) order so the same settler holds the same seat on every machine. Built once per
- *  combat tick rather than derived per shooter, which would cost a pass over the claims each time. */
+/** Every SHOOTER's seat - its place `0..n-1` among the settlers manning one building, numbered in canonical
+ *  (ascending-id) order so the same settler holds the same seat on every machine. Numbered over the ARRIVED
+ *  only: a claimant still crossing the field takes no shot, and counting it would leave the seats in play a
+ *  sparse subset of `0..n-1`, which collides again under the spread's modulo. Built once per combat tick
+ *  rather than derived per shooter, which would cost a pass over the claims each time. */
 export function garrisonSeats(world: World): ReadonlyMap<Entity, number> {
   const seats = new Map<Entity, number>();
   const taken = new Map<Entity, number>();
   for (const e of canonicalById(world.query(Sheltering))) {
-    const shelter = world.get(e, Sheltering).shelter;
+    const shelter = mannedShelter(world, e);
+    if (shelter === null) continue;
     const seat = taken.get(shelter) ?? 0;
     taken.set(shelter, seat + 1);
     seats.set(e, seat);

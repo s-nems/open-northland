@@ -7,10 +7,10 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  * the two watchtowers), and only while the building stands finished; the `setDefenceMode` command adds
  * and removes it.
  *
- * Source basis: the mode itself is extracted - `houses.ini` marks the headquarters (logictype 1),
- * barracks (39) and towers (40/41) `logicCanEnableDefenceMode 1`. What the mode DOES (shelter the
- * civilians, and put the house bow in the grown ones' hands - `systems/defence/manning.ts`) is our named
- * approximation: no readable record carries the garrison semantics.
+ * Source basis: the mode itself is extracted (the source basis lives with the schema field). What the
+ * mode DOES - shelter the civilians, and put the house bow in the grown ones' hands
+ * (`systems/defence/manning.ts`) - is our named approximation: no readable record carries the garrison
+ * semantics.
  */
 export const DefenceMode = defineComponent<Record<string, never>>('DefenceMode');
 

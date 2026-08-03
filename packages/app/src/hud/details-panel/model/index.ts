@@ -146,9 +146,13 @@ export function buildUnitPanelModel(
       pct(num(b.built)) >= 100;
     // The defence window belongs to a type that takes a garrison at all (`shelterCapacity`), which is
     // also what the sim's `setDefenceMode` gate reads - so the panel can never offer an order the sim
-    // refuses.
+    // refuses. Not gated on ownership, like Demolish and Upgrade beside it: selecting an enemy garrison
+    // building offers its alarm too, and the sim honours it.
     const shelterCapacity = def?.shelterCapacity ?? 0;
     const defenseEnabled = ent.components.DefenceMode !== undefined;
+    // The claimants also decide the workers window: while any of them holds a seat the field draws the
+    // garrison instead of the staff (`worker-selection.ts`), so the window is titled for them.
+    const sheltered = shelterClaimCount(snapshot, entityId);
     return {
       kind: 'building',
       entityId,
@@ -175,6 +179,7 @@ export function buildUnitPanelModel(
       // the posts live on (the headquarters and both towers).
       showDefense: shelterCapacity > 0,
       defenseEnabled,
+      garrison: sheltered > 0 ? { sheltered, capacity: shelterCapacity } : null,
       // The alarm's own state wins the line; a tower with archers posted but no alarm reports them
       // instead. Two separate mechanics, as in the original: a tower's archers shoot whether or not the
       // alarm is up.
@@ -182,7 +187,7 @@ export function buildUnitPanelModel(
         snapshot,
         def,
         entityId,
-        defenseEnabled ? { sheltered: shelterClaimCount(snapshot, entityId), capacity: shelterCapacity } : null,
+        defenseEnabled ? { sheltered, capacity: shelterCapacity } : null,
       ),
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
