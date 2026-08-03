@@ -1,7 +1,7 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
 
 /**
- * Pure state for the map-select screen (design frame 4a): the row items the list renders, the
+ * Pure state for the map-select screen: the row items the list renders, the
  * segmented filter, and the search predicate. DOM and fetches live in map-select.ts.
  */
 
@@ -40,7 +40,7 @@ export interface MapSelectItem {
   readonly seats: readonly MapSeat[];
   /** The full authored roster the lobby negotiates (hidden slots included); scenes carry none. */
   readonly players: readonly MapsIndexPlayerSlot[];
-  /** `[multiplayer]` `playerfixcolors` — the lobby locks its team-colour pickers. */
+  /** `[multiplayer]` `playerfixcolors` - the lobby locks its team-colour pickers. */
   readonly fixedColors: boolean;
   readonly description?: string;
   /** `/maps/<id>.png` exists, so rows and the preview can use the decoded minimap. */
@@ -117,9 +117,17 @@ export interface PluralForms {
   readonly many: string;
 }
 
+const pluralRulesByTag = new Map<string, Intl.PluralRules>();
+
 /** Picks the CLDR plural form for `count`; categories beyond one/few (`many`, `other`) fall to
- *  `many`, which is also English's plural. */
+ *  `many`, which is also English's plural. One `Intl.PluralRules` per locale - the list calls
+ *  this per rendered row on every keystroke. */
 export function pluralForm(count: number, forms: PluralForms, localeTag: string): string {
-  const category = new Intl.PluralRules(localeTag).select(count);
+  let rules = pluralRulesByTag.get(localeTag);
+  if (rules === undefined) {
+    rules = new Intl.PluralRules(localeTag);
+    pluralRulesByTag.set(localeTag, rules);
+  }
+  const category = rules.select(count);
   return category === 'one' ? forms.one : category === 'few' ? forms.few : forms.many;
 }

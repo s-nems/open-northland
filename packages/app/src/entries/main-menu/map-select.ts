@@ -18,7 +18,7 @@ import { screenHead } from './screen-head.js';
 import { targetSearch } from './target-search.js';
 
 /**
- * The map-select screen (design frame 4a): searchable, filterable list of decoded maps plus the
+ * The map-select screen: searchable, filterable list of decoded maps plus the
  * registered test scenes, a large preview, and the primary action. Maps continue to the lobby;
  * a test scene starts directly (scenes have no roster to negotiate).
  */
@@ -55,6 +55,7 @@ export function mapSelectScreen(
   search.type = 'search';
   search.className = 'main-menu__map-search';
   search.placeholder = select.searchPlaceholder;
+  search.setAttribute('aria-label', select.searchPlaceholder);
   const seg = document.createElement('div');
   seg.className = 'main-menu__seg';
   const segButtons = new Map<MapFilter, HTMLButtonElement>();
@@ -75,12 +76,18 @@ export function mapSelectScreen(
     button.textContent = select.filters[tab.filter];
     button.addEventListener('click', () => {
       memory.filter = tab.filter;
-      for (const [key, b] of segButtons) b.classList.toggle('is-active', key === memory.filter);
+      paintTabs();
       renderList();
     });
     segButtons.set(tab.filter, button);
     seg.append(button);
   }
+  const paintTabs = (): void => {
+    for (const [key, b] of segButtons) {
+      b.classList.toggle('is-active', key === memory.filter);
+      b.setAttribute('aria-pressed', String(key === memory.filter));
+    }
+  };
   tools.append(seg);
   head.append(tools);
 
@@ -151,11 +158,26 @@ export function mapSelectScreen(
     memory.selectedId = item.id;
     for (const [rowItem, button] of rowButtons) {
       button.classList.toggle('is-selected', rowItem === item);
+      button.setAttribute('aria-pressed', String(rowItem === item));
+      // Roving tabindex: the selected row is the list's only tab stop; arrows walk the rest.
+      button.tabIndex = rowItem === item ? 0 : -1;
     }
     card.show(item);
     primary.disabled = false;
     primary.textContent = item.kind === 'map' ? select.next : select.run;
   };
+
+  list.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const entries = [...rowButtons.entries()];
+    const index = entries.findIndex(([item]) => item === selected);
+    const next = entries[index + (event.key === 'ArrowDown' ? 1 : -1)];
+    if (next !== undefined) {
+      selectItem(next[0]);
+      next[1].focus();
+    }
+  });
 
   const rowButton = (item: MapSelectItem): HTMLButtonElement => {
     const button = document.createElement('button');
@@ -193,6 +215,12 @@ export function mapSelectScreen(
     return button;
   };
 
+  const paintFade = (): void => {
+    fade.hidden = listScroll.scrollHeight <= listScroll.clientHeight;
+  };
+  // A detached first render measures 0/0; the observer fires once the column gets real layout.
+  new ResizeObserver(paintFade).observe(listScroll);
+
   const renderList = (): void => {
     const rows = filterItems(items, memory.filter, search.value);
     // The scenes filter counts scenes; every other filter counts maps.
@@ -210,12 +238,13 @@ export function mapSelectScreen(
       // empty result earns the "no decoded maps" explanation, and the wait states its purpose.
       const notice = document.createElement('p');
       notice.className = 'main-menu__map-empty';
-      notice.textContent = mapsLoaded ? select.empty : select.loading;
+      notice.textContent = mapsLoaded ? (items.length > 0 ? select.noMatch : select.empty) : select.loading;
       list.replaceChildren(notice);
       if (!mapsLoaded) count.textContent = '';
       selected = null;
       card.hide();
       primary.disabled = true;
+      paintFade();
       return;
     }
     for (const item of rows) rowButtons.set(item, rowButton(item));
@@ -226,6 +255,7 @@ export function mapSelectScreen(
         ? selected
         : (rows.find((row) => row.id === memory.selectedId) ?? rows[0]);
     if (current !== undefined) selectItem(current);
+    paintFade();
   };
 
   search.value = memory.query;
@@ -233,7 +263,7 @@ export function mapSelectScreen(
     memory.query = search.value;
     renderList();
   });
-  segButtons.get(memory.filter)?.classList.add('is-active');
+  paintTabs();
   renderList();
   void loadMapList().then((maps) => {
     // A navigation away detaches the screen; a late response must not rasterize previews for it.

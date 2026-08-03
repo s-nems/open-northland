@@ -30,8 +30,6 @@ export {
   averagePatternColour,
   cellColourResolver,
   cellColoursFromGround,
-  MAP_PREVIEW_MAX_HEIGHT,
-  MAP_PREVIEW_MAX_WIDTH,
   MINIMAP_CELL_UNRESOLVED,
   mapPreviewSize,
   rasterizeTerrain,

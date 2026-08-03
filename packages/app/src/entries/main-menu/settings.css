@@ -1,4 +1,4 @@
-/* Settings (design frame 3c): category nav on the left, rows panel on the right, autosave note and
+/* Settings: category nav on the left, rows panel on the right, autosave note and
    restore in the footer. Scaffold, header, seg/toggle/ghost/badge live in menu.css. */
 
 .main-menu__settings-body {
@@ -175,5 +175,5 @@
     400 calc(var(--u) * 21) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
-  color: rgba(180, 205, 200, 0.45);
+  color: rgba(180, 205, 200, 0.6);
 }

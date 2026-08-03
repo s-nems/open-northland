@@ -1,7 +1,7 @@
 import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
 
 /**
- * Pure roster state shared by the lobby screen and the legacy map-select player panel: seats,
+ * Pure roster state behind the lobby screen: seats,
  * colours and vacant modes over the slots `/maps-index` serves. No DOM - everything here is
  * headlessly unit-tested.
  */

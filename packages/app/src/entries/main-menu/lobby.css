@@ -1,4 +1,4 @@
-/* Lobby (design frame 4b). Shared tokens and controls live in menu.css; the map details card in
+/* Lobby. Shared tokens and controls live in menu.css; the map details card in
    the side column is styled in map-select.css (its shared-component home). */
 
 .main-menu__kicker {
@@ -252,7 +252,15 @@
 
 .main-menu__lobby-swatch:disabled {
   cursor: default;
-  opacity: 0.25;
+  opacity: 0.4;
+  /* Dimming alone hides on the dark swatches (black, indigo); the slash says "taken". */
+  background-image: linear-gradient(
+    135deg,
+    transparent 44%,
+    rgba(232, 240, 238, 0.9) 44%,
+    rgba(232, 240, 238, 0.9) 56%,
+    transparent 56%
+  );
 }
 
 .main-menu__lobby-swatch:focus-visible {
@@ -265,7 +273,7 @@
     400 calc(var(--u) * 20) / 1.5 "Alegreya Sans",
     system-ui,
     sans-serif;
-  color: rgba(180, 205, 200, 0.45);
+  color: rgba(180, 205, 200, 0.6);
   padding-top: calc(var(--u) * 6);
 }
 
@@ -390,7 +398,7 @@
 .main-menu__lobby-fog .main-menu__seg-btn {
   flex: 1;
   text-align: center;
-  padding: calc(var(--u) * 12) 0;
+  padding: calc(var(--u) * 12) calc(var(--u) * 10);
 }
 
 .main-menu__lobby-option-row {

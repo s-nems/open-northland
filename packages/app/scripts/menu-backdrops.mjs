@@ -76,7 +76,7 @@ async function main() {
       if (m.type() === 'error') errors.push(m.text());
     });
 
-    for (const [index, shot] of shots.entries()) {
+    for (const shot of shots) {
       const extras = [
         shot.zoom !== undefined ? `&zoom=${shot.zoom}` : '',
         shot.ticks !== undefined ? `&ticks=${shot.ticks}` : '',
@@ -94,7 +94,9 @@ async function main() {
           failures += 1;
           continue;
         }
-        const file = join(outDir, `${String(index + 1).padStart(2, '0')}-${shot.map}.jpg`);
+        // Number by the shot's place in SHOTS, not the filtered list: an `--only` re-capture must
+        // overwrite its full-run file instead of minting a second copy under a new index.
+        const file = join(outDir, `${String(SHOTS.indexOf(shot) + 1).padStart(2, '0')}-${shot.map}.jpg`);
         await page.locator('#game').screenshot({ path: file, type: 'jpeg', quality: JPEG_QUALITY });
         console.log(`menu-backdrops: wrote ${file}`);
       } catch (e) {

@@ -62,7 +62,7 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
 }
 
 /**
- * The full-page (scrollable) entry shell - the dark-parchment page behind the main menu and the sound
+ * The full-page (scrollable) entry shell - the dark-parchment page behind the sound and icon
  * gallery. Each page passes only its own density knobs (top padding / body font / content width).
  */
 export function pageRootStyle(paddingTopPx: number, fontPx: number): string {

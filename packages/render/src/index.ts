@@ -67,8 +67,6 @@ export {
   cellColourResolver,
   cellColoursFromGround,
   type ElevationField,
-  MAP_PREVIEW_MAX_HEIGHT,
-  MAP_PREVIEW_MAX_WIDTH,
   MINIMAP_CELL_UNRESOLVED,
   makeElevationField,
   mapPreviewSize,

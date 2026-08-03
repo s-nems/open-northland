@@ -2,7 +2,6 @@
 
 **Area:** sim · **Focus:** data swaps · **Priority:** P2
 **Needs user:** a live comparison with the running original, so this is not autonomously runnable.
-**Blocked by:** [tower defence](tower-defence-mode.md)
 
 Every approximated combat constant is greppable in code (`calibration`/`APPROXIMAT` across
 `components/combat.ts`, `core/commands.ts`, `systems/conflict/*`, `systems/progression/`). This

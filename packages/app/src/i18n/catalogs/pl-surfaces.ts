@@ -50,6 +50,7 @@ export const plSurfaces = {
       countLine: '{maps} · przewijaj lub szukaj',
       loading: 'Wczytywanie map…',
       empty: 'Brak zdekodowanych map. Wygeneruj content/ albo przejrzyj sceny testowe.',
+      noMatch: 'Nic nie pasuje do tego wyszukiwania ani filtra.',
       noPreview: 'scena testowa · bez podglądu mapy',
       next: 'Dalej',
       run: 'Uruchom',

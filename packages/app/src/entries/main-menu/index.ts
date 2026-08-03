@@ -144,8 +144,15 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       // Esc inside a non-empty text field is the field's own clear (native for type=search);
-      // only an empty field lets it bubble up into back-navigation.
-      if (event.target instanceof HTMLInputElement && event.target.value !== '') return;
+      // only an empty field lets it bubble up into back-navigation. Other input kinds (a range
+      // slider always reports a value) never swallow it.
+      const field = event.target;
+      if (
+        field instanceof HTMLInputElement &&
+        (field.type === 'search' || field.type === 'text') &&
+        field.value !== ''
+      )
+        return;
       const target = backTarget(screen);
       if (target !== null) show(target);
       return;
@@ -154,7 +161,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     event.preventDefault();
     const buttons = [...content.querySelectorAll<HTMLButtonElement>('.main-menu__nav-item')];
     const delta = event.key === 'ArrowDown' ? 1 : -1;
-    const focused = buttons.findIndex((button) => button === document.activeElement);
+    const active = document.activeElement;
+    const focused = active instanceof HTMLButtonElement ? buttons.indexOf(active) : -1;
     // With nothing focused yet, Down enters at the first interactive item, Up at the last.
     const from = focused >= 0 ? focused : delta === 1 ? -1 : 0;
     buttons[moveFocus(MAIN_NAV, from, delta)]?.focus();

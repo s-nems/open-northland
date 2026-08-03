@@ -34,7 +34,10 @@ export function segControl<T extends string>(
     root.append(button);
   }
   const setActive = (id: T): void => {
-    for (const [key, button] of buttons) button.classList.toggle('is-active', key === id);
+    for (const [key, button] of buttons) {
+      button.classList.toggle('is-active', key === id);
+      button.setAttribute('aria-pressed', String(key === id));
+    }
   };
   setActive(active);
   return { root, setActive };

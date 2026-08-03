@@ -51,6 +51,7 @@ export const enSurfaces = {
       countLine: '{maps} · scroll or search',
       loading: 'Loading maps…',
       empty: 'No decoded maps. Generate content/ or browse the test scenes.',
+      noMatch: 'Nothing matches this search or filter.',
       noPreview: 'test scene · no map preview',
       next: 'Next',
       run: 'Run',

@@ -80,10 +80,14 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
     (loaded.entities !== undefined
       ? runAuthoredMap(BACKDROP_SEED, 1, simMap, loaded.entities, ir, contentOptions)
       : null) ?? runBareMap(BACKDROP_SEED, simMap, contentOptions);
-  // Needs off before any extra ticks, like scene worlds: a foodless ambient world would otherwise
-  // starve its cast during a long pre-roll.
-  sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
-  for (let tick = intParam(params, 'ticks', 1); tick > 1; tick -= 1) sim.step();
+  // A pre-roll first turns needs off, like scene worlds: a foodless ambient world would
+  // otherwise starve its cast while the extra ticks run. The default single tick was already
+  // consumed by the authored placements, so it needs no command.
+  const ticks = intParam(params, 'ticks', 1);
+  if (ticks > 1) {
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    for (let tick = ticks; tick > 1; tick -= 1) sim.step();
+  }
 
   const focus = focusParam(params) ?? mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height);
   const zoom = floatParam(params, 'zoom', BACKDROP_ZOOM);

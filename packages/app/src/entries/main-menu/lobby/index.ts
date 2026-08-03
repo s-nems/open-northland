@@ -28,7 +28,7 @@ import {
 } from './roster-state.js';
 
 /**
- * The lobby screen (design frame 4b): the map's fixed slot list on the left (sit, recolour,
+ * The lobby screen: the map's fixed slot list on the left (sit, recolour,
  * pre-set what a vacant seat does), the spectator modes below it, and the map card plus game
  * options and Start on the right. Slots come from the map; none can be added or removed.
  */
@@ -143,6 +143,8 @@ export function lobbyScreen(
   rosters.set(item.id, state);
   /** The slot whose colour picker strip is open, or null. */
   let pickerSlot: number | null = null;
+  /** Focus key to restore after the next re-render when the focused control itself goes away. */
+  let refocus: string | null = null;
 
   const gateStart = (): void => {
     const gated = hasClaimableSeat(item.players) && state.seat === null;
@@ -168,6 +170,7 @@ export function lobbyScreen(
       : `${lobby.teamColour}: ${colourName}`;
     chip.setAttribute('aria-label', chip.title);
     chip.disabled = item.fixedColors;
+    chip.dataset.focus = `chip:${row.slot.player}`;
     chip.setAttribute('aria-expanded', String(pickerSlot === row.slot.player));
     chip.addEventListener('click', () => {
       pickerSlot = pickerSlot === row.slot.player ? null : row.slot.player;
@@ -187,10 +190,12 @@ export function lobbyScreen(
       const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
       option.title = `${lobby.teamColour}: ${colourName}`;
       option.disabled = colorId !== row.colorId && wornByAnother(state, row.slot.player, colorId);
+      option.dataset.focus = `swatch:${row.slot.player}:${colorId}`;
       option.classList.toggle('is-current', colorId === row.colorId);
       option.addEventListener('click', () => {
         const next = setSlotColor(state, row.slot.player, colorId);
         pickerSlot = null;
+        refocus = `chip:${row.slot.player}`; // the strip closes with the pick
         if (next !== null) update(next);
         else renderSeats();
       });
@@ -231,7 +236,9 @@ export function lobbyScreen(
       button.type = 'button';
       button.className = 'main-menu__seg-btn';
       button.textContent = label;
+      button.dataset.focus = `vacant:${row.slot.player}:${mode}`;
       button.classList.toggle('is-active', row.vacantMode === mode);
+      button.setAttribute('aria-pressed', String(row.vacantMode === mode));
       button.addEventListener('click', () => {
         if (row.vacantMode !== mode) update(toggleVacantMode(state, row.slot.player));
       });
@@ -276,8 +283,10 @@ export function lobbyScreen(
       sit.type = 'button';
       sit.className = 'main-menu__lobby-sit';
       sit.textContent = lobby.sit;
+      sit.dataset.focus = `sit:${row.slot.player}`;
       sit.addEventListener('click', () => {
         pickerSlot = null;
+        refocus = `chip:${row.slot.player}`; // the claimed row loses its sit button
         update(claimSeat(state, row.slot.player));
       });
       action.append(sit);
@@ -305,6 +314,7 @@ export function lobbyScreen(
     pick.type = 'button';
     pick.className = 'main-menu__lobby-sit is-watch';
     pick.textContent = active ? taken : lobby.choose;
+    pick.dataset.focus = `watch:${seat}`;
     pick.disabled = active;
     pick.addEventListener('click', () => {
       pickerSlot = null;
@@ -315,6 +325,11 @@ export function lobbyScreen(
   };
 
   const renderSeats = (): void => {
+    // replaceChildren drops keyboard focus to <body>; remember which control held it (by its
+    // data-focus key) and hand focus back to the rebuilt equivalent.
+    const active = document.activeElement;
+    const key = refocus ?? (active instanceof HTMLElement ? (active.dataset.focus ?? null) : null);
+    refocus = null;
     const rows: HTMLElement[] = [];
     for (const row of lobbySlotRows(item.players, state)) {
       rows.push(slotRow(row));
@@ -325,6 +340,10 @@ export function lobbyScreen(
       watchRow(OBSERVER_SEAT, lobby.observerName, lobby.observerDetail, lobby.observerTaken),
       watchRow(OVERSEER_SEAT, lobby.overseerName, lobby.overseerDetail, lobby.overseerTaken),
     );
+    if (key !== null) {
+      const again = section.querySelector<HTMLElement>(`[data-focus="${key}"]`);
+      if (again !== null && !(again instanceof HTMLButtonElement && again.disabled)) again.focus();
+    }
   };
   renderSeats();
   gateStart();
@@ -339,6 +358,7 @@ export function lobbyScreen(
     }
     if (event.key === 'Escape' && pickerSlot !== null) {
       event.stopPropagation();
+      refocus = `chip:${pickerSlot}`;
       pickerSlot = null;
       renderSeats();
     }

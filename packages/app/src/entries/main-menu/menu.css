@@ -110,7 +110,7 @@
   --text-primary: #e9f1ee;
   --text-body: #dbe8e3;
   --text-label: #8fb8ad;
-  --text-muted: rgba(180, 205, 200, 0.55);
+  --text-muted: rgba(180, 205, 200, 0.7);
   --danger-border: #c96a4a;
   --danger-text: #e8a58a;
   position: fixed;
@@ -247,7 +247,7 @@
   }
 }
 
-/* ---- Main screen (frame 2a) ---- */
+/* ---- Main screen ---- */
 
 .main-menu__home {
   position: absolute;
@@ -491,6 +491,11 @@
 .main-menu__seg-btn:hover,
 .main-menu__seg-btn:focus-visible {
   color: var(--accent-bright);
+}
+
+.main-menu__seg-btn:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
 }
 
 .main-menu__seg-btn.is-active {

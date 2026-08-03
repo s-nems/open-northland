@@ -1,6 +1,6 @@
 # Un-shadow the fuzz harness's own building types
 
-**Area:** sim (tests) · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 `packages/sim/test/core/fuzz-determinism.test.ts` appends two building types to the shared fixture and
 reserves their ids in a comment: `FOOTPRINTED_TYPE = 5` and `HOME_TYPE = 9`. Both ids have since been
