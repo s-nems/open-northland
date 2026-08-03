@@ -27,10 +27,13 @@ describe('mapItem', () => {
     const story = mapItem({ id: 'cn_1', name: 'Prolog', minimap: false, players: [slot(0), slot(1, true)] });
     expect(story.category).toBe('story');
     expect(story.seats).toEqual([{ tribeId: 1, colorId: 0 }]); // the hidden slot is never listed
-    const arena = mapItem({ id: 'arena', minimap: true, multiplayer: true });
+    expect(story.players).toHaveLength(2); // …but the lobby still negotiates the full roster
+    const arena = mapItem({ id: 'arena', minimap: true, multiplayer: true, fixedColors: true });
     expect(arena.category).toBe('multiplayer');
     expect(arena.seats).toEqual([]);
     expect(arena.minimap).toBe(true);
+    expect(arena.fixedColors).toBe(true);
+    expect(mapItem({ id: 'arena', minimap: false }).fixedColors).toBe(false);
   });
 
   it('falls back to the id stem when the map ships no display name', () => {

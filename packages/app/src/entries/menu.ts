@@ -147,7 +147,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
   const gateStart = (): void => {
     const gated = !players.seatClaimed;
     start.disabled = gated;
-    start.title = gated ? copy.startNeedsSeat : '';
+    start.title = gated ? messages().mainMenu.lobby.startNeedsSeat : '';
   };
   const players: PlayersPanel = mountPlayersPanel(
     htmlIn(root, '[data-menu-players]'),

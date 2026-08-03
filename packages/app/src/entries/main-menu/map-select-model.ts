@@ -1,4 +1,4 @@
-import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
+import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
 
 /**
  * Pure state for the map-select screen (design frame 4a): the row items the list renders, the
@@ -38,6 +38,10 @@ export interface MapSelectItem {
   readonly category: Exclude<MapFilter, 'all'>;
   /** Listed (non-hidden) roster slots in authored order; empty when the map ships no roster. */
   readonly seats: readonly MapSeat[];
+  /** The full authored roster the lobby negotiates (hidden slots included); scenes carry none. */
+  readonly players: readonly MapsIndexPlayerSlot[];
+  /** `[multiplayer]` `playerfixcolors` — the lobby locks its team-colour pickers. */
+  readonly fixedColors: boolean;
   readonly description?: string;
   /** `/maps/<id>.png` exists, so rows and the preview can use the decoded minimap. */
   readonly minimap: boolean;
@@ -53,6 +57,8 @@ export function mapItem(entry: MapsIndexEntry): MapSelectItem {
     title: entry.name ?? entry.id,
     category: entry.multiplayer === true ? 'multiplayer' : 'story',
     seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
+    players: entry.players ?? [],
+    fixedColors: entry.fixedColors === true,
     ...(entry.description !== undefined ? { description: entry.description } : {}),
     minimap: entry.minimap,
   };
@@ -66,9 +72,25 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     title,
     category: 'scenes',
     seats: [],
+    players: [],
+    fixedColors: false,
     description: summary,
     minimap: false,
   };
+}
+
+/**
+ * The map-select UI state that survives leaving the screen (a lobby round trip re-enters with the
+ * same filter, query and selection). Owned by the menu shell, mutated by the screen.
+ */
+export interface MapSelectMemory {
+  filter: MapFilter;
+  query: string;
+  selectedId: string | null;
+}
+
+export function initialMapSelectMemory(): MapSelectMemory {
+  return { filter: 'all', query: '', selectedId: null };
 }
 
 /**

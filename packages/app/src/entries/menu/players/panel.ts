@@ -15,10 +15,11 @@ import {
   setSlotColor,
   toggleVacantMode,
   wornByAnother,
-} from './state.js';
+} from '../../main-menu/lobby/roster-state.js';
 
 /**
- * The map-select player roster panel (DOM half over `state.ts`): one row per listed map player
+ * The map-select player roster panel (DOM half over the shared `main-menu/lobby/roster-state.ts`
+ * module): one row per listed map player
  * slot, where the person takes a claimable seat, recolours slots (unique picks, unless the map
  * fixes its colours), and pre-sets what an unclaimed claimable seat will do (Idle/AI - shown only
  * where the lobby offers AI). Lobby-hidden slots are not listed.
@@ -74,6 +75,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
 
   const slotRow = (slot: MapPlayerSlot): HTMLElement => {
     const copy = messages().menu;
+    const lobbyCopy = messages().mainMenu.lobby;
     const s = state();
     const isSeat = s.seat === slot.player;
     const row = document.createElement('div');
@@ -90,8 +92,8 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
     const fixed = shown?.fixedColors === true;
     swatch.title = fixed
-      ? `${copy.teamColour}: ${colourName} - ${copy.teamColourLocked}`
-      : `${copy.teamColour}: ${colourName}`;
+      ? `${lobbyCopy.teamColour}: ${colourName} — ${lobbyCopy.teamColourLocked}`
+      : `${lobbyCopy.teamColour}: ${colourName}`;
     swatch.setAttribute('aria-label', swatch.title);
     swatch.disabled = fixed;
     swatch.setAttribute('aria-expanded', String(pickerSlot === slot.player));
@@ -105,7 +107,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     label.className = 'game-menu__player-label';
     const name = document.createElement('span');
     name.className = 'game-menu__player-name';
-    name.textContent = slot.name ?? formatMessage(copy.playerSlotLabel, { n: slot.player + 1 });
+    name.textContent = slot.name ?? formatMessage(lobbyCopy.playerSlotLabel, { n: slot.player + 1 });
     const detail = document.createElement('span');
     detail.className = 'game-menu__player-detail';
     const tribe = messages().mainMenu.tribeNames[slot.tribeId] ?? `#${slot.tribeId}`;
@@ -137,7 +139,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
         vacant.className = 'game-menu__player-vacant';
         const mode = s.vacantModes.get(slot.player) ?? authoredVacantMode(slot);
         vacant.textContent = mode === 'ai' ? copy.vacantAi : copy.vacantIdle;
-        vacant.title = copy.vacantToggleTitle;
+        vacant.title = lobbyCopy.vacantToggleTitle;
         vacant.addEventListener('click', (ev) => {
           ev.stopPropagation();
           update(toggleVacantMode(state(), slot.player));
@@ -154,7 +156,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
   };
 
   const pickerStrip = (slot: MapPlayerSlot): HTMLElement => {
-    const copy = messages().menu;
+    const lobbyCopy = messages().mainMenu.lobby;
     const s = state();
     const own = s.colors.get(slot.player);
     const strip = document.createElement('div');
@@ -165,7 +167,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       option.className = 'game-menu__player-swatch is-option';
       option.style.background = playerSwatchHex(colorId);
       const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
-      option.title = `${copy.teamColour}: ${colourName}`;
+      option.title = `${lobbyCopy.teamColour}: ${colourName}`;
       // The slot's own colour stays enabled and outlined even when an authored duplicate also
       // wears it; only colours OTHER slots wear are blocked.
       option.disabled = colorId !== own && wornByAnother(s, slot.player, colorId);
@@ -228,7 +230,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       list.append(slotRow(slot));
       if (pickerSlot === slot.player) list.append(pickerStrip(slot));
     }
-    const copy = messages().menu;
+    const copy = messages().mainMenu.lobby;
     list.append(spectatorRow(OBSERVER_SEAT, copy.observerName, copy.observerDetail, copy.observerTaken));
     list.append(spectatorRow(OVERSEER_SEAT, copy.overseerName, copy.overseerDetail, copy.overseerTaken));
   };

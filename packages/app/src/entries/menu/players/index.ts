@@ -1,4 +1,3 @@
-export { mountPlayersPanel, type PlayersPanel } from './panel.js';
 export {
   aiSeats,
   authoredVacantMode,
@@ -15,4 +14,5 @@ export {
   toggleVacantMode,
   type VacantMode,
   wornByAnother,
-} from './state.js';
+} from '../../main-menu/lobby/roster-state.js';
+export { mountPlayersPanel, type PlayersPanel } from './panel.js';

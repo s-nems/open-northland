@@ -25,6 +25,7 @@ interface MenuSetting {
 
 function settingModel(): readonly MenuSetting[] {
   const copy = messages().menu;
+  const lobbyCopy = messages().mainMenu.lobby;
   return [
     {
       param: 'uiscale',
@@ -42,12 +43,15 @@ function settingModel(): readonly MenuSetting[] {
     {
       param: 'fog',
       fallback: 'reveal',
-      options: MENU_FOG_MODES.map((value) => ({ value, ...copy.fogModes[value] })),
+      options: MENU_FOG_MODES.map((value) => ({ value, ...lobbyCopy.fogModes[value] })),
     },
     {
       param: 'progression',
       fallback: 'on',
-      options: MENU_PROGRESSION_MODES.map((value) => ({ value, label: copy.progressionModes[value] })),
+      options: MENU_PROGRESSION_MODES.map((value) => ({
+        value,
+        label: lobbyCopy.progressionModes[value],
+      })),
     },
     {
       param: 'debug',

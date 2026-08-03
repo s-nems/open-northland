@@ -1,0 +1,469 @@
+/* Lobby (design frame 4b). Shared tokens and controls live in menu.css; the map details card in
+   the side column is styled in map-select.css (its shared-component home). */
+
+.main-menu__kicker {
+  margin-left: auto;
+  align-self: center;
+  font:
+    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-label);
+}
+
+.main-menu__lobby-body {
+  flex: 1;
+  display: flex;
+  gap: calc(var(--u) * 56);
+  min-height: 0;
+}
+
+.main-menu__lobby-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 16);
+  padding-right: calc(var(--u) * 12);
+}
+
+/* The same always-visible rail as the map list (see map-select.css for the Chromium/Firefox
+ * split rationale); big rosters plus the spectator section overflow at the design height. */
+@supports (-moz-appearance: none) {
+  .main-menu__lobby-main {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 196, 160, 0.65) rgba(99, 196, 160, 0.18);
+  }
+}
+
+.main-menu__lobby-main::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-menu__lobby-main::-webkit-scrollbar-track {
+  border-radius: 4px;
+  background: rgba(99, 196, 160, 0.18);
+}
+
+.main-menu__lobby-main::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(99, 196, 160, 0.65);
+}
+
+/* Header row and slot rows share one grid: chip | name | control | action. */
+.main-menu__lobby-cols,
+.main-menu__lobby-row {
+  display: grid;
+  grid-template-columns:
+    calc(var(--u) * 56)
+    1fr
+    calc(var(--u) * 280)
+    calc(var(--u) * 240);
+  gap: calc(var(--u) * 24);
+  align-items: center;
+}
+
+.main-menu__lobby-cols {
+  padding: 0 calc(var(--u) * 26);
+  font:
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(143, 184, 173, 0.7);
+}
+
+.main-menu__lobby-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 16);
+}
+
+.main-menu__lobby-row {
+  padding: calc(var(--u) * 20) calc(var(--u) * 26);
+  border: 2px solid rgba(99, 196, 160, 0.2);
+  border-radius: 8px;
+  background: rgba(16, 29, 44, 0.4);
+}
+
+.main-menu__lobby-row.is-yours {
+  border-color: rgba(99, 196, 160, 0.4);
+  background: rgba(20, 38, 54, 0.75);
+}
+
+.main-menu__lobby-row.is-scenario {
+  border-color: rgba(99, 196, 160, 0.12);
+  opacity: 0.75;
+}
+
+/* The team-colour chip doubles as the picker trigger; the number keeps slots addressable. */
+.main-menu__lobby-chip {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 44);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.main-menu__lobby-chip:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.main-menu__lobby-chip:disabled {
+  cursor: default;
+}
+
+.main-menu__lobby-row.is-yours .main-menu__lobby-chip {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.main-menu__lobby-label {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 6);
+  min-width: 0;
+}
+
+.main-menu__lobby-name {
+  font:
+    700 calc(var(--u) * 27) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-menu__lobby-row.is-yours .main-menu__lobby-name {
+  color: var(--text-primary);
+}
+
+.main-menu__lobby-sub {
+  font:
+    400 calc(var(--u) * 20) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(143, 184, 173, 0.75);
+}
+
+/* Control cell states: your static "Human", a locked scenario seat, or the vacant-mode segment. */
+.main-menu__lobby-human,
+.main-menu__lobby-locked {
+  box-sizing: border-box;
+  text-align: center;
+  padding: calc(var(--u) * 12) 0;
+  border: 2px solid rgba(99, 196, 160, 0.5);
+  border-radius: 6px;
+  font:
+    500 calc(var(--u) * 23) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--accent-bright);
+}
+
+.main-menu__lobby-locked {
+  border-color: rgba(99, 196, 160, 0.15);
+  color: rgba(143, 184, 173, 0.6);
+}
+
+.main-menu__lobby-vacant .main-menu__seg-btn {
+  flex: 1;
+  text-align: center;
+  padding: calc(var(--u) * 12) 0;
+  font-size: calc(var(--u) * 22);
+}
+
+.main-menu__lobby-sit {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  padding: calc(var(--u) * 12) 0;
+  border: 2px dashed rgba(99, 196, 160, 0.35);
+  border-radius: 6px;
+  font:
+    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+  transition:
+    color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.main-menu__lobby-sit:hover:not(:disabled),
+.main-menu__lobby-sit:focus-visible:not(:disabled) {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+.main-menu__lobby-sit.is-watch {
+  width: auto;
+  flex: none;
+  padding: calc(var(--u) * 12) calc(var(--u) * 28);
+}
+
+.main-menu__lobby-sit:disabled {
+  cursor: default;
+  border-style: solid;
+  border-color: rgba(99, 196, 160, 0.5);
+  color: var(--accent-bright);
+}
+
+.main-menu__lobby-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 10);
+  padding: calc(var(--u) * 4) calc(var(--u) * 26) calc(var(--u) * 8);
+}
+
+.main-menu__lobby-swatch {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 36);
+  border-radius: 8px;
+  border: 2px solid transparent;
+}
+
+.main-menu__lobby-swatch.is-current {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.main-menu__lobby-swatch:disabled {
+  cursor: default;
+  opacity: 0.25;
+}
+
+.main-menu__lobby-swatch:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.main-menu__lobby-footnote {
+  font:
+    400 calc(var(--u) * 20) / 1.5 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(180, 205, 200, 0.45);
+  padding-top: calc(var(--u) * 6);
+}
+
+/* Spectator modes: session kinds, not map slots, so they sit apart under their own eyebrow. */
+.main-menu__lobby-watch {
+  margin-top: calc(var(--u) * 18);
+  padding-top: calc(var(--u) * 22);
+  border-top: 1px solid rgba(99, 196, 160, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 12);
+}
+
+.main-menu__lobby-watch-title {
+  font:
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(143, 184, 173, 0.7);
+}
+
+.main-menu__lobby-watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 12);
+}
+
+.main-menu__watch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 24);
+  padding: calc(var(--u) * 14) calc(var(--u) * 26);
+  border: 1px dashed rgba(99, 196, 160, 0.25);
+  border-radius: 8px;
+  background: rgba(16, 29, 44, 0.25);
+}
+
+.main-menu__watch-row.is-active {
+  border-style: solid;
+  border-color: rgba(99, 196, 160, 0.5);
+  background: rgba(20, 38, 54, 0.6);
+}
+
+.main-menu__watch-name {
+  font:
+    700 calc(var(--u) * 23) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+/* ---- Side column: the shared map card, then game options and Start pinned to the bottom ---- */
+
+.main-menu__lobby-side {
+  width: calc(var(--u) * 420);
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 22);
+}
+
+/* The card centers itself in map select's tall column; here it hugs the top and goes compact
+ * (design 4b: preview, name, meta, change link), or the options card below would not fit the
+ * design height - the slot list already shows every seat and tribe. */
+.main-menu__lobby-side .main-menu__map-card {
+  margin: 0;
+  flex: none;
+}
+
+.main-menu__lobby-side .main-menu__map-seats,
+.main-menu__lobby-side .main-menu__map-desc {
+  display: none;
+}
+
+.main-menu__lobby-side .main-menu__map-preview {
+  min-height: calc(var(--u) * 160);
+}
+
+.main-menu__lobby-side .main-menu__map-preview img {
+  height: calc(var(--u) * 260);
+}
+
+.main-menu__lobby-launch {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 20);
+}
+
+.main-menu__lobby-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 16);
+  padding: calc(var(--u) * 20) calc(var(--u) * 24);
+  border: 2px solid rgba(99, 196, 160, 0.2);
+  border-radius: 8px;
+  background: rgba(16, 29, 44, 0.5);
+}
+
+.main-menu__lobby-card-title {
+  font:
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(143, 184, 173, 0.7);
+}
+
+.main-menu__lobby-option-label {
+  font:
+    500 calc(var(--u) * 24) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+.main-menu__lobby-fog .main-menu__seg-btn {
+  flex: 1;
+  text-align: center;
+  padding: calc(var(--u) * 12) 0;
+}
+
+.main-menu__lobby-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 20);
+  font:
+    500 calc(var(--u) * 24) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+/* The 66x34 design pill; the knob slides right when on. */
+.main-menu__toggle {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * 66);
+  height: calc(var(--u) * 34);
+  border-radius: calc(var(--u) * 17);
+  background: rgba(99, 196, 160, 0.2);
+  transition: background-color 150ms ease-out;
+}
+
+.main-menu__toggle::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--u) * 4);
+  top: calc(var(--u) * 4);
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 26);
+  border-radius: 50%;
+  background: var(--bg-base);
+  transition: left 150ms ease-out;
+}
+
+.main-menu__toggle.is-on {
+  background: var(--accent);
+}
+
+.main-menu__toggle.is-on::after {
+  left: calc(var(--u) * 36);
+}
+
+.main-menu__toggle:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.main-menu__link {
+  all: unset;
+  cursor: pointer;
+  font:
+    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-label);
+  text-decoration: underline;
+  text-underline-offset: calc(var(--u) * 5);
+  transition: color 150ms ease-out;
+}
+
+.main-menu__link:hover,
+.main-menu__link:focus-visible {
+  color: var(--accent-bright);
+}
+
+.main-menu__lobby-start {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}

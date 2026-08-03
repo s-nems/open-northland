@@ -1,7 +1,10 @@
 import { messages } from '../../i18n/index.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
 import { startMenuScene } from './live-scene.js';
+import { lobbyScreen } from './lobby/index.js';
+import type { RosterState } from './lobby/roster-state.js';
 import { mapSelectScreen } from './map-select.js';
+import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus } from './model.js';
 
 /** Shown verbatim under the logo, per the accepted design frame. */
@@ -114,9 +117,19 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   void startMenuScene(sceneLayer, canvas, params);
 
   let screen: MenuScreen = 'main';
+  // Screen state that outlives the screens themselves: the map-select filter/query/selection, the
+  // map the lobby negotiates, and each map's roster choices (a round trip keeps the seats).
+  const mapSelectMemory = initialMapSelectMemory();
+  const rosters = new Map<string, RosterState>();
+  let lobbyMap: MapSelectItem | null = null;
+  const openLobby = (item: MapSelectItem): void => {
+    lobbyMap = item;
+    show('lobby');
+  };
   const screenFor = (next: MenuScreen): HTMLElement => {
     if (next === 'main') return mainScreen(show);
-    if (next === 'newGame') return mapSelectScreen(show);
+    if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby);
+    if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters);
     return placeholderScreen(next, show);
   };
   const show = (next: MenuScreen): void => {
