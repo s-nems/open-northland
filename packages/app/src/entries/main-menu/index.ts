@@ -1,7 +1,7 @@
 import { messages } from '../../i18n/index.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
+import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
-import { startMenuScene } from './live-scene.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
 import { mapSelectScreen } from './map-select.js';
@@ -14,7 +14,7 @@ import { adoptStoredSettings, initialSettingsMemory } from './settings-state.js'
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
 /** The grade layers above the scene, bottom to top (docs/design/main-menu/README.md
- *  "Background stack"); the scene layer itself is built separately as the canvas host. */
+ *  "Background stack"); the scene layer itself is built separately as the backdrop host. */
 const OVERLAY_LAYERS = ['tint', 'shade', 'aurora-green', 'aurora-blue'] as const;
 
 function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLButtonElement {
@@ -92,12 +92,11 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   const root = document.createElement('main');
   root.className = 'main-menu';
   root.style.setProperty('--menu-scene-art', `url("${BRAND_BACKDROP}")`);
-  // The scene layer hosts the static art and, over it, the live-scene canvas (transparent until
-  // startMenuScene crossfades it in).
+  // The scene layer hosts the static art and, over it, the rotating captured stills (transparent
+  // until the first one loads). The menu draws no GL, so the shared canvas stays hidden.
   const sceneLayer = document.createElement('div');
   sceneLayer.className = 'main-menu__scene';
-  canvas.hidden = false;
-  sceneLayer.append(canvas);
+  canvas.hidden = true;
   root.append(sceneLayer);
   for (const layer of OVERLAY_LAYERS) {
     const element = document.createElement('div');
@@ -108,7 +107,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   content.className = 'main-menu__content';
   root.append(content);
   document.body.append(root);
-  void startMenuScene(sceneLayer, canvas, params);
+  void startBackdropRotation(sceneLayer);
 
   let screen: MenuScreen = 'main';
   // Screen state that outlives the screens themselves: the map-select filter/query/selection, the

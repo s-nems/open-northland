@@ -39,6 +39,7 @@ describe('resolveContentRequest', () => {
     const cursor = await put('gui/cursors/normal.cur');
     const bitmap = await put('Data/gui/bitmaps/bg01.png');
     const goods = await put('goods/manifest.json');
+    const backdrop = await put('backdrops/01-demo.jpg');
 
     expect(resolveContentRequest('/maps/campaign01.json', contentRoot)).toEqual({
       kind: 'file',
@@ -63,6 +64,10 @@ describe('resolveContentRequest', () => {
     });
     expect(resolveContentRequest('/gui-bitmaps/bg01.png', contentRoot)).toMatchObject({ path: bitmap });
     expect(resolveContentRequest('/goods/manifest.json', contentRoot)).toMatchObject({ path: goods });
+    expect(resolveContentRequest('/backdrops/01-demo.jpg', contentRoot)).toMatchObject({
+      path: backdrop,
+      contentType: 'image/jpeg',
+    });
   });
 
   it('serves /ir.json as the one whole file and nothing else at the top level', async () => {
@@ -75,10 +80,14 @@ describe('resolveContentRequest', () => {
   it('builds the index payloads only when their roots exist', async () => {
     expect(resolveContentRequest('/maps-index', contentRoot)).toBeUndefined();
     expect(resolveContentRequest('/bobs-index', contentRoot)).toBeUndefined();
+    expect(resolveContentRequest('/backdrops-index', contentRoot)).toBeUndefined();
 
     await put('maps/campaign01.json');
     await put('Data/engine2d/bin/bobs/ls_trees.tree01.atlas.json');
     await put('Data/engine2d/bin/bobs/ls_trees.tree01.png');
+    await put('backdrops/02-second.jpg');
+    await put('backdrops/01-first.jpg');
+    await put('backdrops/notes.txt');
 
     const maps = resolveContentRequest('/maps-index', contentRoot);
     expect(maps?.kind).toBe('json');
@@ -86,6 +95,11 @@ describe('resolveContentRequest', () => {
     const bobs = resolveContentRequest('/bobs-index', contentRoot);
     expect(bobs?.kind === 'json' ? bobs.body() : undefined).toEqual([
       { stem: 'ls_trees.tree01', base: 'ls_trees', variant: 'tree01' },
+    ]);
+    const backdrops = resolveContentRequest('/backdrops-index', contentRoot);
+    expect(backdrops?.kind === 'json' ? backdrops.body() : undefined).toEqual([
+      '01-first.jpg',
+      '02-second.jpg',
     ]);
   });
 
@@ -166,6 +180,8 @@ describe('isContentRoute', () => {
     expect(isContentRoute('/ir.json')).toBe(true);
     expect(isContentRoute('/maps-index')).toBe(true);
     expect(isContentRoute('/bobs-index')).toBe(true);
+    expect(isContentRoute('/backdrops-index')).toBe(true);
+    expect(isContentRoute('/backdrops/01-demo.jpg')).toBe(true);
     expect(isContentRoute('/bobs/cr_hum_body_00.atlas.json')).toBe(true);
     expect(isContentRoute('/textures/text_001.png')).toBe(true);
     expect(isContentRoute('/maps/missing.json')).toBe(true);
