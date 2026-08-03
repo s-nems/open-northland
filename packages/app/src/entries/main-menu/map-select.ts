@@ -96,7 +96,7 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     segButtons.set(tab.filter, button);
     seg.append(button);
   }
-  tools.append(search, seg);
+  tools.append(seg);
   head.append(back, title, tools);
 
   // Body: the scrollable list column and the preview column.
@@ -113,7 +113,7 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   listScroll.append(list, fade);
   const count = document.createElement('div');
   count.className = 'main-menu__map-count';
-  listCol.append(listScroll, count);
+  listCol.append(search, listScroll, count);
 
   // The details card: preview section on top, then name, meta, roster seat chips, description and
   // the primary action. One bordered object, so the column reads as content rather than dead space.
