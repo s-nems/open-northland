@@ -3,9 +3,8 @@ import { dirname, isAbsolute, join, normalize, sep } from 'node:path';
 import type { ModEvent } from '../ipc.js';
 import { readZipEntries, readZipEntryData } from './zip.js';
 
-/** Unpacks the downloaded mod archive, refusing any member that would write outside the target dir. */
-
-/** A zip member name (forward-slash separated) as a safe extraction-relative path, or undefined to skip. */
+/** A zip member name as an extraction-relative path that cannot escape the target dir (zip slip),
+ *  or undefined when it would. */
 export function zipMemberRelPath(name: string): string | undefined {
   // A Windows drive-relative name (`C:evil`) is not absolute, so guard it explicitly.
   if (/^[A-Za-z]:/.test(name)) return undefined;
@@ -16,8 +15,8 @@ export function zipMemberRelPath(name: string): string | undefined {
   return norm;
 }
 
-/** Extracts every file member of `zipPath` under `destDir`; returns the number of files written.
- * An aborted `signal` stops between entries (the wizard's Cancel stays live while unpacking). */
+/** Extracts every file member of `zipPath` under `destDir` and returns the number written. An
+ *  aborted `signal` stops between entries. */
 export async function extractModZip(
   zipPath: string,
   destDir: string,
