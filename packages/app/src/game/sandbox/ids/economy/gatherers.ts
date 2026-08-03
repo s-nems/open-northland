@@ -18,13 +18,13 @@ import {
 } from '../../../../catalog/mining.js';
 import { GOOD_GOLD, GOOD_IRON, GOOD_MUD, GOOD_MUSHROOM, GOOD_STONE, GOOD_WOOD } from './goods.js';
 
-/** How a good leaves the landscape: chop a tree down, dig a finite deposit, or pluck a small node. */
+/** How a good leaves the landscape; only `mine` draws down a finite deposit. */
 export type GatherMode = 'fell' | 'mine' | 'pick';
 
 export interface GathererSpec {
   readonly good: number;
   readonly id: string;
-  /** The gatherer trade - always {@link JOB_COLLECTOR}: the original's one collector does every harvest. */
+  /** Always the collector: the original gives that one trade every harvest. */
   readonly job: number;
   readonly atomic: number;
   readonly animation: string;
@@ -35,7 +35,6 @@ export interface GathererSpec {
   readonly strikesPerUnit?: number;
 }
 
-/** One row per gatherable good: its job, harvest atomic + clip, and how its nodes deplete. */
 export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_WOOD,

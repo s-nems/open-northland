@@ -1,5 +1,5 @@
 export const BUILDING_HEADQUARTERS = 1;
-/** The base-tier residence (`home_level_00`) raised from a foundation. */
+/** The base-tier residence (`home_level_00`). */
 export const BUILDING_HOME_00 = 2;
 /** The higher home tiers (`home_level_01..03`); `home_level_04` (6) is the chain's top. */
 export const BUILDING_HOME_01 = 3;
@@ -9,15 +9,15 @@ export const BUILDING_HOME_03 = 5;
 export const BUILDING_WAREHOUSE_00 = 7;
 export const BUILDING_WAREHOUSE_01 = 8;
 export const BUILDING_WAREHOUSE_02 = 9;
-/** The well (`houses.ini` logictype 10 - `work well 00`): draws water. */
+/** The well (`houses.ini` logictype 10 - `work well 00`). */
 export const BUILDING_WELL = 10;
 /** The grain farm (`houses.ini` logictype 12 - `work farm 00`). */
 export const BUILDING_FARM = 12;
 /** The mill (`houses.ini` logictype 13 - `work mill 00`). */
 export const BUILDING_MILL = 13;
-/** The bakery (`houses.ini` logictype 14 - `work bakery 00`): water + flour → bread. */
+/** The bakery (`houses.ini` logictype 14 - `work bakery 00`). */
 export const BUILDING_BAKERY = 14;
-/** The animal farm (`work_animal_farm`, "Hodowla"): the breeders' livestock workplace. */
+/** The animal farm (`work_animal_farm`). */
 export const BUILDING_ANIMAL_FARM = 17;
 /** The tailor / clothier (`work_sewery_00`). */
 export const BUILDING_TAILOR = 18;
@@ -35,7 +35,7 @@ export const BUILDING_MASON_HUT = 29;
 export const BUILDING_SMITHY = 31;
 /** The druid's hut (`work_druid_00`). */
 export const BUILDING_DRUID_HUT = 35;
-/** The barracks (`houses.ini` logictype 39): where a colonist drills into a soldier. */
+/** The barracks (`houses.ini` logictype 39). */
 export const BUILDING_BARRACKS = 39;
 /** The watchtower (`tower_00`); `tower_01` (41) is the chain's top. */
 export const BUILDING_WATCHTOWER = 40;

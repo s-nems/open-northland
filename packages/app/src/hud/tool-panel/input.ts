@@ -6,8 +6,7 @@ import type { ToolWindows } from './windows.js';
 
 /** Every branch here that consumes a press stops it reaching world picking behind the panel. */
 
-/** A mode the panel holds until the player commits or cancels it (build placement, the good drop). It
- *  claims the whole canvas, so the cancels, Escape and the pointer claim all treat the set as one. */
+/** A mode the panel holds until the player commits or cancels it; while active it claims the whole canvas. */
 export interface HeldMode {
   isActive(): boolean;
   cancel(): void;
@@ -25,7 +24,6 @@ export interface ToolPanelInputDeps {
   readonly held: readonly HeldMode[];
   readonly activateButton: (id: ToolButtonId) => void;
   readonly togglePause: () => void;
-  /** See {@link import('./index.js').ToolPanelOptions.deferToOverlay}. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
 }
 
@@ -42,24 +40,22 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   const onMouseDown = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
 
-    // Right button cancels an active placement / good-drop; otherwise it's a world order (left to the
-    // unit controls).
+    // Right button cancels an active placement or good drop; otherwise it is a world order for unit controls.
     if (e.button === 2) {
       if (anyHeld()) {
         e.preventDefault();
-        // Stop the same event reaching unit-controls' mousedown (it re-checks claimPointer after this
-        // handler runs - cancel clears the claim, so without this the right-click would also issue a
-        // world move order). We register first (mounted before unit-controls), so this wins.
+        // Cancelling clears the pointer claim, so unit-controls' later mousedown would read the press as a
+        // world move order. This handler is registered first, so stopping the event here wins.
         e.stopImmediatePropagation();
         for (const mode of held) mode.cancel();
         return;
       }
-      // macOS delivers Ctrl+left-click as button 2 (the OS right-click convention): with Ctrl down
-      // and nothing to cancel, fall through as the primary press so the Ctrl coarse step works.
+      // macOS delivers Ctrl+left-click as button 2, so with nothing to cancel it falls through as the
+      // primary press and the Ctrl coarse step still works.
       if (!e.ctrlKey) return;
     } else if (e.button !== 0) return;
-    // A higher overlay covers this point: whatever sits under it is invisible, so the panel must not
-    // consume the press - the overlay's own handler acts on it instead (see the option's doc).
+    // A higher overlay covers this point, so the panel must not consume the press; the overlay's own
+    // handler acts on it instead.
     if (deps.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
     // Priority: strip button > open pop-up > a held mode.
@@ -89,8 +85,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     }
   };
 
-  // A wheel over an open pop-up belongs to that window, and the browser's default must not page the
-  // document behind the canvas. The camera's pointer guard already skips zoom over these same windows.
+  // A wheel over an open pop-up belongs to that window, and its default must not scroll the page behind
+  // the canvas.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
     if (windows.handleWheel(x, y, e.deltaY)) e.preventDefault();
@@ -102,7 +98,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
         if (mode.isActive()) mode.cancel();
       }
     }
-    // Each pause toggle re-rasterizes the strip, so a held key must not flicker it - hence the plain-press guard.
+    // Each pause toggle re-rasterizes the strip, so key repeat must not flicker it.
     if (isPlainHotkey(e, 'KeyP')) deps.togglePause();
   };
 

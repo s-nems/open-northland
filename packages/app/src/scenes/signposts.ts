@@ -6,36 +6,20 @@ import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { GATHERERS, placeResourceNode, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The signposts scene: prove the scout-erected guidepost network end to end. A scout is ordered to
- * erect a signpost (walk → one build-guide hammer swing → the post rises, free and instant), signpost
- * navigation is ON, and a collector proves the confinement rule: the near tree sits beyond its local
- * circle but inside a reachable signpost chain (harvested), the far tree is outside every circle (never
- * touched). The browser half is where a human judges: the hatted scout skin, the hammer swing, the
- * wooden guidepost sprite, and the direction boards pointing between the two chained posts (none toward
- * the lone far post - a disconnected group).
- */
-
 const MAP_W = 64;
 const MAP_H = 16;
-/** The scout and its commanded signpost spot (tiles). */
+/** Tiles, not half-cell nodes. */
 const SCOUT = { x: 5, y: 8 } as const;
-/** One tile east of the scout - and just past CHAIN_A's 18-node spacing circle (a spot at tile 7 would
- *  sit exactly ON the circle and be rejected). */
+/** Just past CHAIN_A's spacing circle; tile 7 would sit exactly on it and be rejected. */
 const ERECT_AT = { x: 6, y: 8 } as const;
-/** The pre-stamped chain (small circles so the scene fits disconnection on one screen) + a lone far
- *  post whose circle overlaps neither - the "two groups act separately" case. Radii are scene data.
- *  CHAIN_B sits on an ODD row so the pair straddles the half-cell stagger: its node is `2x + 1`, and a
- *  board drawn from an unstaggered node would be visibly off. */
+/** CHAIN_B sits on an ODD row so the pair straddles the half-cell stagger; a board drawn from an
+ *  unstaggered node would be visibly off. */
 const CHAIN_RADIUS_NODES = 12;
 const CHAIN_A = { x: 16, y: 8 } as const;
 const CHAIN_B = { x: 26, y: 7 } as const;
 const LONE_POST = { x: 44, y: 8 } as const;
-/** A rival's post beside ours: signposts are per player (networks, spacing, selection, and the board
- *  lettering colour - red for the enemy slot vs the human's blue). */
 const ENEMY_POST = { x: 52, y: 4 } as const;
-/** The collector and its two trees: NEAR is beyond the 12-tile local circle but inside CHAIN_B's
- *  circle (reachable through the chain); FAR is outside every circle and must stay untouched. */
+/** NEAR sits beyond the collector's own circle but inside CHAIN_B's; FAR is outside every circle. */
 const COLLECTOR = { x: 4, y: 4 } as const;
 const NEAR_TREE = { x: 30, y: 6 } as const;
 const FAR_TREE = { x: 60, y: 2 } as const;
@@ -45,7 +29,7 @@ const INITIAL_ZOOM = 1.1;
 
 const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled } = components;
 
-/** Stamp a standing signpost directly (pre-tick-0) - the scene's pre-existing network fixture. */
+/** Stands a post directly, without the scout's erect command. */
 function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = HUMAN_PLAYER): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -56,7 +40,6 @@ function stampPost(sim: Simulation, x: number, y: number, navRadius: number, pla
   });
 }
 
-/** The Resource entity standing on tile (x,y), or null. */
 function treeAt(sim: Simulation, x: number, y: number): Entity | null {
   for (const e of sim.world.query(Resource, Position)) {
     const p = sim.world.get(e, Position);
@@ -71,13 +54,11 @@ function build(sim: Simulation): void {
   if (wood === undefined) throw new Error('signposts scene: no wood gatherer spec');
   placeResourceNode(sim, wood, NEAR_TREE.x, NEAR_TREE.y);
   placeResourceNode(sim, wood, FAR_TREE.x, FAR_TREE.y);
-  // The pre-existing network: two chained posts (overlapping circles) + a lone disconnected one.
   stampPost(sim, CHAIN_A.x, CHAIN_A.y, CHAIN_RADIUS_NODES);
   stampPost(sim, CHAIN_B.x, CHAIN_B.y, CHAIN_RADIUS_NODES);
   stampPost(sim, LONE_POST.x, LONE_POST.y, CHAIN_RADIUS_NODES);
   stampPost(sim, ENEMY_POST.x, ENEMY_POST.y, CHAIN_RADIUS_NODES, ENEMY_PLAYER);
   spawnSettlerDirect(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y);
-  // The scout erects the fourth post on command: walk two tiles, one hammer swing, the post rises.
   const scout = spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
   const erectNode = cellAnchorNode(ERECT_AT.x, ERECT_AT.y);
   sim.enqueue({ kind: 'placeSignpost', entity: scout, x: erectNode.hx, y: erectNode.hy });

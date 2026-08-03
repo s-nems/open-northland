@@ -2,7 +2,6 @@ import { messages } from '../../i18n/index.js';
 import { type MenuScreen, VERSION_LINE } from './model.js';
 import { screenHead } from './screen-head.js';
 
-/** Outbound targets of the credits screen's project links. */
 const REPO_URL = 'https://github.com/s-nems/open-northland';
 const ISSUES_URL = `${REPO_URL}/issues`;
 const CULTURES_NATION_URL = 'https://culturesnation.pl';
@@ -38,7 +37,6 @@ function thanksEntry(name: string, detail: string, href?: string): HTMLParagraph
   return entry;
 }
 
-/** Credits / about: one centered column - intro, repo links, the team and thanks cards, legal. */
 export function creditsScreen(open: (screen: MenuScreen) => void): HTMLElement {
   const copy = messages().mainMenu;
   const section = document.createElement('section');

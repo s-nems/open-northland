@@ -1,9 +1,6 @@
 import type { Entity, SimEvent } from '@open-northland/sim';
 
-/**
- * The renderer side of the static→dynamic draw split: the set of entities the built-once static object
- * layer draws (the sim pool skips them), and the two calls that retire one static quad.
- */
+/** The renderer side of the static-to-dynamic draw split: the sim draw pool skips statically drawn refs. */
 export interface StaticDrawSurface<Sprite> {
   /** Held and read per frame by the renderer, so the handover mutates it in place. */
   setStaticallyDrawnRefs(refs: ReadonlySet<number>): void;
@@ -13,8 +10,7 @@ export interface StaticDrawSurface<Sprite> {
 
 interface Retirement {
   readonly entity: number;
-  /** The static quad was this node's fog ghost (a virgin object is its own last-seen state), so a worked
-   *  node adopts it to keep its remembered look on explored ground. A razed bush is gone instead. */
+  /** A worked node adopts the retired quad as its fog ghost; a razed bush leaves none. */
   readonly keepsFogGhost: boolean;
 }
 
@@ -35,10 +31,9 @@ function retirement(event: SimEvent): Retirement | null {
 }
 
 /**
- * Bind spawned harvestables to the static quads already drawing them, and return the per-frame event hook
- * that hands one over to the live sim pool the first time it is worked. A virgin node costs nothing per
- * frame (a far zoom-out shows thousands at once); from the handover on, the pool draws the same graphic
- * shrinking with its levels. Null when no placement resolved to a sprite, so the pool draws every node.
+ * Bind spawned harvestables to the static quads already drawing them, and return the per-frame event
+ * hook that hands one over to the live sim pool the first time it is worked. Null when no placement
+ * resolved to a sprite, leaving every node pool-drawn.
  */
 export function bindHarvestableHandover<Sprite>(
   surface: StaticDrawSurface<Sprite>,

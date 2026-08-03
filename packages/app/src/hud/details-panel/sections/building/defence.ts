@@ -6,11 +6,8 @@ import type { BuildingPanelModel } from '../../model/index.js';
 import { HOUSEWINDOW } from './shared.js';
 
 /**
- * Defence window: the round alarm toggle that raises and lowers defence mode, with the original's status
- * line beside it. The button is the equip window's round control with a shield face - filled while the
- * alarm is up, hollow while it is down. The source's own toggle is a labelled button (`housewindow`
- * 140/141, "Rozpocznij/Zatrzymaj Tryb Obrony") that this one-line window has no room for, so what it does
- * is said in the cursor tooltip, in our own words like the equip controls' hints.
+ * Defence window. The original's own toggle is a labelled button (`housewindow` 140/141) that this
+ * one-line window has no room for, so a round shield control carries the label in its cursor tooltip.
  */
 export function drawDefenceSection(
   chrome: Chrome,
@@ -26,8 +23,7 @@ export function drawDefenceSection(
   chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, messages().hud.defence));
   chrome.roundButton(toggle.rect, true, hover === 'toggle-defence');
   chrome.glyphShield(toggle.rect, model.defenseEnabled);
-  // Light body text like the original's defence status line (screenshot-observed), set on the button's
-  // centre line so the pair reads as one row, and shrunk to what the toggle leaves of it.
+  // Light body text on the toggle's centre line, matching the original's defence status line (observed).
   const textX = toggle.rect.x + toggle.rect.w + Math.round(DEFENCE_LABEL_GAP * s);
   chrome.textLeftMiddle(
     model.defenseLabel,

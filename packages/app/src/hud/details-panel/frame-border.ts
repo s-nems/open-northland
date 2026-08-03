@@ -6,41 +6,29 @@ import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 
 /**
- * The details panel's rope-and-knot window border - the {@link import('./chrome.js')} drawing kit's
- * self-contained border sub-concern. Edge strips are tiled along their length (stretching smears the rope
- * pattern) and the knot corners drawn at native size, all through the `frame` palette. No-op when
- * `content/` is absent (`art === null`); the caller then strokes a flat window outline instead.
+ * The details panel's rope-and-knot window border, drawn through the `frame` palette. A no-op without
+ * `content/` (`art === null`); the caller then strokes a flat window outline instead.
  */
 
 /** The window-border rope strips' decoded native thickness (128×3 / 3×128 atlas rects). */
 const FRAME_EDGE = 3;
-/**
- * The knot corners' decoded native size - must track atlas frames 0–3 (7×7 bottom pair / 10×10 top
- * pair); if the step-3 pass reassigns those frames, update these with them.
- */
+/** The knot corners' decoded native size, tracking atlas frames 0-3 (10×10 top pair, 7×7 bottom pair). */
 const CORNER_TOP = 10;
 const CORNER_BOTTOM = 7;
 
-/** What the frame-border kit draws over (see {@link createFrameBorderKit}). */
 interface FrameBorderDeps {
   readonly art: DetailsPanelAssets['art'];
   readonly front: Container;
   readonly scale: number;
-  /** The off-screen texture's size, which the pieces project into; each renders upright for it (`chrome.ts`). */
+  /** The off-screen texture's size in px, which every piece projects into and renders upright for. */
   readonly resolution: { readonly w: number; readonly h: number };
 }
 
-/**
- * Build the rope-and-knot border drawer over the panel's `front` sprite layer. Returns `frameBorder(r)` -
- * the only piece the window fill needs; the strip-tiling and per-piece placement stay private to this kit.
- */
 export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: Rect) => void } {
   const { art, front, scale, resolution } = deps;
 
-  /**
-   * A border piece placed at an exact screen rect through the `frame` palette. Corners draw at native
-   * size; edge strips pass a clipped sub-frame so the rope pattern tiles instead of stretching.
-   */
+  /** A border piece at an exact screen rect; `clipNative` passes a sub-frame so a strip can tile
+   *  instead of stretching. */
   const framePiece = (gfx: number, r: Rect, clipNative?: { w: number; h: number }): void => {
     if (art === null) return;
     const frame = art.layer.atlas.frames.get(gfx);
@@ -88,11 +76,8 @@ export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: 
     }
   };
 
-  /**
-   * The rope-and-knot window border. Frame ids: rope strips 5–8, knot corners 0–3 (10×10 top pair,
-   * 7×7 bottom pair) - corner placement and strip orientation are montage-calibrated guesses pending
-   * the plan's step-3 human pass over the sheet.
-   */
+  /** The rope-and-knot window border; corner placement and strip orientation are montage-calibrated
+   *  approximations. */
   const frameBorder = (r: Rect): void => {
     const e = Math.max(1, Math.round(FRAME_EDGE * scale));
     const ct = Math.round(CORNER_TOP * scale);

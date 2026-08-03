@@ -18,9 +18,8 @@ import type {
 } from './model/index.js';
 
 /**
- * A selection's model paired with the geometry laid out for that exact model, so consumers narrow once
- * instead of re-proving the pairing. Discriminated by the layout's kind, not the model's: one `compact`
- * strip serves both multi-select model kinds.
+ * A selection's model paired with the geometry laid out for it, discriminated by the layout's kind rather
+ * than the model's: one `compact` strip serves both multi-select model kinds.
  */
 export type PanelView =
   | { readonly kind: 'empty' }

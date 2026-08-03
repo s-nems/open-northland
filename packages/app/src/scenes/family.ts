@@ -5,43 +5,22 @@ import { JOB_CIVILIST, JOB_WOMAN } from '../catalog/jobs.js';
 import { placeSandboxBuilding, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The family scene: prove the marriage → household → child loop end to end, in two vignettes.
- *
- *  - **The wedding** (left): an unmarried woman is ordered to `marry` - she and the free man walk
- *    together, kiss (atomics 20/21), and stay spouses for life.
- *  - **The child** (right): an already-married couple assigned to the level-2 home is ordered to
- *    `makeChild`: the wife hauls the ground food into the home larder (3 units, reserved from
- *    eating), waits inside for her husband, hearts show over the house while they make love, and the
- *    family steps out with a newborn daughter who joins the household.
- *
- * The browser half is where a human judges the pixels: the kiss clip, the wife carrying food home,
- * the couple disappearing into the house, the hearts, the baby at the door, and the home's gold
- * family dot. The headless half asserts the mechanics below.
- */
-
 const MAP_W = 26;
 const MAP_H = 12;
 
-/** The child couple's home - level 2 (`home_level_02`, `logichomesize` 3): the smallest tier with
- *  room for the couple plus their newborn. */
+/** The smallest home tier (`logichomesize` 3) with room for the couple plus their newborn. */
 const HOME_REF = 'home_level_02';
 const HOME = { x: 18, y: 5 } as const;
-/**
- * The home's entity id, PREDICTED: the four settlers are created directly in `build` (ids 1..4) and
- * the enqueued `placeBuilding` creates exactly one entity on tick 0 - id 5. The `assignHouse` order
- * must name the home at build time, before tick 0 runs; the first check below asserts the prediction
- * so a placement-path change fails loudly instead of silently mis-assigning.
- */
+/** A predicted id: `build` creates settlers 1..4 directly and the enqueued `placeBuilding` adds entity
+ *  5 on tick 0, while `assignHouse` must name the home before tick 0 runs. */
 const HOME_ENTITY = 5 as Entity;
 
-/** The married couple (the child vignette) starts here, beside the home. */
 const WIFE = { x: 14, y: 5 } as const;
 const HUSBAND = { x: 15, y: 7 } as const;
-/** The single pair (the wedding vignette), far enough apart that the walk-together reads on screen. */
+/** Far enough apart that the walk-together reads on screen. */
 const BRIDE = { x: 3, y: 3 } as const;
 const GROOM = { x: 9, y: 3 } as const;
-/** The loose food the wife hauls into the larder - exactly the sim's 3-unit child fund. */
+/** Exactly the sim's 3-unit child fund. */
 const FOOD_PILE = { x: 11, y: 8, amount: 3 } as const;
 
 /** Walks + 3 food round-trips + the 200-tick hearts phase all finish well inside this. */
@@ -61,18 +40,14 @@ const {
   Stockpile,
 } = components;
 
-/**
- * The simple-food good, resolved BY SLUG: the browser scene runs on merged real content (typeId 16,
- * the original id) while the headless twin runs on the sandbox catalog (typeId 116, the +100 rebase),
- * so a hardcoded id would silently no-op one of the two.
- */
+/** Resolved by slug: real content and the sandbox catalog give `food_simple` different typeIds (16 and
+ *  116), so a hardcoded id would silently no-op one of the two. */
 function foodGoodType(sim: Simulation): number {
   const good = sim.content.goods.find((g) => g.id === 'food_simple');
   if (good === undefined) throw new Error('family scene: content has no food_simple good');
   return good.typeId;
 }
 
-/** The home larder's total stocked food (both food goods), for the fund-consumed check. */
 function homeFoodUnits(sim: Simulation): number {
   const stock = sim.world.get(HOME_ENTITY, Stockpile).amounts;
   let total = 0;
@@ -83,14 +58,12 @@ function homeFoodUnits(sim: Simulation): number {
 }
 
 function build(sim: Simulation): void {
-  // The child vignette's couple - pre-married (the wedding vignette shows the ceremony itself), so
-  // the `makeChild` order below validates on tick 0.
+  // Pre-married, so the `makeChild` order below validates on tick 0.
   const wife = spawnSettlerDirect(sim, JOB_WOMAN, WIFE.x, WIFE.y);
   const husband = spawnSettlerDirect(sim, JOB_CIVILIST, HUSBAND.x, HUSBAND.y);
   sim.world.add(wife, Marriage, { spouse: husband, child: null });
   sim.world.add(husband, Marriage, { spouse: wife, child: null });
 
-  // The wedding vignette's singles - the `marry` order pairs them and they walk together and kiss.
   const bride = spawnSettlerDirect(sim, JOB_WOMAN, BRIDE.x, BRIDE.y);
   spawnSettlerDirect(sim, JOB_CIVILIST, GROOM.x, GROOM.y);
 
@@ -140,14 +113,13 @@ export const familyScene: SceneDefinition = {
       label: 'a daughter was born and grew to a child by the end of the run, living in the home',
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
-          // She is born around tick 1205 and the run ends at 2500, so she is deterministically past
-          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880) - asserting the child stage keeps
-          // this an integration check that growth actually fired.
+          // She is born around tick 1205, so by tick 2500 she is deterministically past
+          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880).
           if (!systems.isChild(sim.world.get(e, Settler).jobType)) return false;
           if (!sim.world.has(e, Female)) return false;
           return sim.world.tryGet(e, Residence)?.home === HOME_ENTITY;
         }
-        return false; // no daughter at all
+        return false;
       },
     },
     {
@@ -155,7 +127,7 @@ export const familyScene: SceneDefinition = {
       predicate: (sim) => {
         if (homeFoodUnits(sim) !== 0) return false;
         if (sim.world.has(HOME_ENTITY, FoodReserve) || sim.world.has(HOME_ENTITY, MakingLove)) return false;
-        for (const _e of sim.world.query(ChildOrder)) return false; // the order must be gone
+        for (const _e of sim.world.query(ChildOrder)) return false;
         return true;
       },
     },

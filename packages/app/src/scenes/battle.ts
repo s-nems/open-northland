@@ -13,26 +13,10 @@ import {
 import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The mass-battle feel scene - 100 fighters a side in mirrored four-rank armies (swords front, then
- * spears, broadswords, archers), auto-engaging on owner hostility. The crowd-scale sign-off for the
- * body-collision work: the failure mode it judges is a converging army collapsing into one vibrating
- * pile on the closest few contact cells. With melee slots (`approachCell` deals free band cells; a full
- * band makes the chaser stand as a second rank) and body separation, the expected picture is a battle
- * line: first ranks fighting along the whole front, second ranks standing behind, units stepping into
- * gaps as front-liners fall.
- *
- * Both sides get the settler HP from the loaded content's tribe (`settlerHitpoints`, one value for every
- * adult spawn - no per-scene override), and the sandbox weapon damages are transcribed on the real scale
- * (`game/sandbox/combat.ts`), so the headless twin resolves combat like the browser on real content. The
- * outcome is deterministic from the seed but not scripted, so the headless checks assert crowd-shape
- * properties (the battle really runs at scale; nobody stacks), not a winner.
- */
-
 const MAP_W = 34;
 const MAP_H = 42;
 
-/** Rank depth (cell column per weapon class) and the shared front width, in cells. */
+/** The shared front, in cell rows; each rank is one cell column per weapon class. */
 const RANK_ROWS_FIRST = 8;
 const RANK_ROWS_LAST = 32; // 25 units per rank × 4 ranks = 100 a side
 const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
@@ -48,13 +32,10 @@ const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
   { job: JOB_ARCHER, weapon: WEAPON_SHORT_BOW, x: 23 },
 ];
 
-/** The mechanic checks below: how many fighters (of 200) must have fallen for "the battle really
- *  happened at scale", and the most living fighters ever tolerated on one node at the end (transient
- *  soft overlap allows 2; 3+ standing on a node is the stacking the collision work forbids). */
+/** Casualties out of 200 fighters. Soft overlap tolerates two bodies on a node; three is stacking. */
 const MIN_CASUALTIES = 60;
 const MAX_FIGHTERS_PER_NODE = 2;
 
-/** One army's muster, derived from the rank layout (both sides field the same count). */
 const SPAWNED_PER_SIDE = (RANK_ROWS_LAST - RANK_ROWS_FIRST + 1) * BLUE_RANKS.length;
 
 const { Owner, Position, Settler } = components;
@@ -74,7 +55,6 @@ function casualties(sim: Simulation): number {
   return 2 * SPAWNED_PER_SIDE - blueLivingSettlers(sim) - enemyLivingSettlers(sim);
 }
 
-/** No node holds a stack of living fighters - the crowd stays bodies, not a pile of sprites. */
 function nobodyStacks(sim: Simulation): boolean {
   const perNode = new Map<string, number>();
   for (const e of sim.world.query(Settler, Owner, Position)) {

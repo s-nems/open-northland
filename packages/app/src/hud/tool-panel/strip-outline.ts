@@ -4,24 +4,14 @@ import type { PlacedButton } from './layout.js';
 import type { StripSpriteSpec } from './strip-texture.js';
 
 /**
- * The tool-strip button composition - keyed glyphs plus a contrast outline (the policy half; the bake
- * itself is `strip-texture.ts`).
- *
- * The GUI palettes reserve index 0 (magenta) + a near-black band as each element's backdrop, written opaque
- * by a bob - the original blits the buttons whole, dark socket backdrop included. Over our full-screen world
- * that opaque socket read as a heavy black slab (user-rejected), so this is a deliberate deviation: the
- * backdrop is keyed transparent (the carved strip shows through) and each glyph instead gets a 1-design-px
- * rim in the socket's own colour - eight offset silhouette stamps behind the real sprite
- * ({@link PalettedSprite.silhouette}) - keeping the original's glyph/backdrop contrast (thin glyphs like the
- * ×1 speed digit frayed against bare stone) without its full socket.
+ * Deliberate deviation from the original, which blits each button whole including its opaque dark socket
+ * backdrop: the backdrop is keyed transparent so the carved strip shows through, and glyph contrast comes
+ * from a 1-design-px silhouette rim in the socket's own colour instead.
  */
 
-/**
- * The outline stamp geometry + colour: silhouette copies of each glyph offset 1 design px out in all
- * eight directions, in the sampled backdrop colour of the original button sockets (`ls_gui_window`
- * frame 0x31 at (2,2) → rgb(0,8,0)).
- */
+/** Socket backdrop colour sampled from `ls_gui_window` frame 0x31 at (2,2). */
 const BUTTON_OUTLINE_COLOR = 0x000800;
+/** Silhouette stamp offsets: 1 design px out in all eight directions. */
 const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
   [-1, -1],
   [0, -1],
@@ -34,14 +24,13 @@ const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
 ];
 
 export interface OutlinedButtonSprites {
-  /** Bake-ready specs: all outline stamps first, then every real glyph, so a button's rim can never
-   *  stamp over a touching neighbour's art (adjacent button rects share an edge). */
+  /** All outline stamps first, then every real glyph, so a button's rim cannot stamp over a touching
+   *  neighbour's art. */
   readonly specs: readonly StripSpriteSpec[];
-  /** The speed button's outline stamps + real glyph - a speed change re-frames all of them (one shape). */
+  /** The speed button's outline stamps and real glyph; a speed change re-frames all of them together. */
   readonly speedSprites: readonly PalettedSprite[];
 }
 
-/** Build the outlined-button sprite specs for the strip bake (see the module note for the why). */
 export function buildOutlinedButtonSpecs(
   art: GuiArt,
   buttons: readonly PlacedButton[],

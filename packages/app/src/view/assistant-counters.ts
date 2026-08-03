@@ -4,11 +4,8 @@ import { type AssistantCounterFace, SIM_KIND_BY_COUNTER_ID } from '../hud/tool-p
 import type { ExtrasCountersSeam } from '../hud/tool-panel/extras-window.js';
 
 /**
- * The chest window's live counter seam for `player`: reads the sim's per-player counter block,
- * writes one absolute `setAssistantCounter` per click through the session's command seam. The UI
- * row → sim kind join is the window model's own `SIM_KIND_BY_COUNTER_ID`. `writable: false` (a
- * read-only spectator session) rejects every write, so the window never echoes a dropped command
- * (the grant seam's rule).
+ * Live chest-window counter seam for `player`. A read-only spectator session (`writable: false`)
+ * rejects every write, so the window never echoes a command the sim would drop.
  */
 export function assistantCountersSeam(
   sim: Pick<Simulation, 'assistantCounters'>,

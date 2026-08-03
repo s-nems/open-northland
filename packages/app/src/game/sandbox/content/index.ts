@@ -22,12 +22,9 @@ import type { SandboxContentExtras, WorldContentOptions } from './types.js';
 export type { SandboxContentExtras, WorldContentOptions } from './types.js';
 
 /**
- * The sandbox farmer-wheat track: the extracted `baserepeatcounter 2` (`humanjobexperiencetypes.ini`
- * type 46) against the sandbox's own ids (the farm employs the SLOT job, not the plain farmer id), so
- * `workRepeatsFor` paces a sandbox field action like a real-content one. `experienceFactor` is 0 HERE,
- * not the extracted 100: the sandbox farm is the calibration target of `farm-pacing.test.ts` (a flat
- * ~10 grain per farmer per 10 min, measured without training), and an accruing track would master the
- * crew mid-measurement. Real content indexes the extracted row, training included.
+ * Source basis: extracted `humanjobexperiencetypes.ini` type 46, rebound to the sandbox's farm slot job.
+ * `experienceFactor` is 0 rather than the extracted 100 so training cannot shift the flat grain rate
+ * `farm-pacing.test.ts` calibrates; real content indexes the extracted row instead.
  */
 const FARMER_WHEAT_XP_TRACK = {
   typeId: 46,
@@ -39,7 +36,6 @@ const FARMER_WHEAT_XP_TRACK = {
   baseRepeatCounter: WHEAT_WORK_REPEATS,
 } as const;
 
-/** The complete validated hand-authored content set shared by scenes and the playable demo world. */
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);
@@ -56,9 +52,6 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     armor: sandboxArmor(),
     tribes: [...tribes.values()],
     animals: buildSandboxAnimals(),
-    // The hunter's prey/yield table and XP track (`catalog/hunting.ts`), resolved against the stable
-    // sandbox id tables - the same authored balance the real-content merge applies. The farmer track
-    // carries the extracted stroke count the field loop reads (`catalog/farming.ts`).
     huntPrey: huntPreyRows(EXTENDED_GOODS, SANDBOX_ANIMAL_TRIBES),
     jobExperience: [HUNTER_GENERAL_XP_TRACK, FARMER_WHEAT_XP_TRACK],
     atomicAnimations: buildSandboxAtomicAnimations(),
@@ -66,10 +59,8 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
 }
 
 /**
- * The content a world runs on: the real-content override when present, otherwise the sandbox catalog
- * for `map` with the options' footprint/name overlays (plus any extra catalog rows). Real content
- * already ships footprints and names, so an override ignores the overlays entirely. This is the one
- * place that resolution rule lives.
+ * A real-content override wins whole: it already ships footprints and names, so the overlays apply only
+ * to the sandbox catalog.
  */
 export function resolveWorldContent(
   map: TerrainTypeIds | undefined,
@@ -86,7 +77,6 @@ export function resolveWorldContent(
   );
 }
 
-/** The good identity view consumed by settler graphics bindings. */
 export function sandboxGoods(): readonly GoodRef[] {
   return sandboxContent().goods.map((good) => ({ typeId: good.typeId, id: good.id }));
 }

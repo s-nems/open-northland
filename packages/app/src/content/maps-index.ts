@@ -1,12 +1,7 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
 import { fetchJsonOrNull } from './net.js';
 
-/** The `/maps-index` fetch + narrowing both menus share: the served payload is untrusted at the
- *  route boundary, so every row is structurally re-validated before a menu renders it. */
-
-/** Narrows one `/maps-index` roster row, mirroring the emit-side shape (wrong-typed rows drop).
- *  The lobby fields default to the no-`[multiplayer]`-table reading (claimable follows the
- *  authored type, nothing hidden, AI allowed) for a sidecar predating them. */
+/** Lobby fields fall back to the no-`[multiplayer]`-table reading for sidecars predating them. */
 function parsePlayerSlot(raw: unknown): MapsIndexPlayerSlot | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { player, type, tribeId, colorId, name, claimable, hidden, aiAllowed } = raw as Record<

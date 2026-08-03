@@ -1,27 +1,23 @@
 /**
- * A cursor-following text tooltip - a small dark chip that names what's under the pointer (a ground pile's
- * good + count, a warehouse row's good). It is DOM, not Pixi: the chip must float above the WebGL canvas and
- * a per-hover text element has no place in the retained sprite batcher. One instance per hover surface (the
- * world, the warehouse panel); they are mutually exclusive by cursor position, so each surface owning its
- * own element needs no cross-surface coordination.
+ * A cursor-following text chip. It is DOM, not Pixi, so it floats above the WebGL canvas. One instance
+ * per hover surface; surfaces are mutually exclusive by cursor position and need no coordination.
  */
 
 /** How far below-right of the cursor the chip sits, so it never hides the pixel being pointed at. */
 const CURSOR_OFFSET = 14;
-/** The chip wraps to at most this wide (CSS px) - a long recipe-inputs line breaks downward instead of
- *  running as one endless row. */
+/** The chip wraps at this width (CSS px) instead of running as one endless row. */
 const MAX_WIDTH = 300;
 /** Minimum gap kept between the chip and the viewport edges when clamping (CSS px). */
 const EDGE_MARGIN = 6;
 
 export interface Tooltip {
-  /** Show `text` anchored just below-right of the client (CSS) point; a no-op reposition when already shown. */
+  /** Anchors `text` below-right of a client (CSS) point. */
   show(clientX: number, clientY: number, text: string): void;
   hide(): void;
   destroy(): void;
 }
 
-/** Create a tooltip chip attached to `document.body` (hidden until first {@link Tooltip.show}). */
+/** The chip is attached to `document.body` and stays hidden until the first `show`. */
 export function createTooltip(): Tooltip {
   const el = document.createElement('div');
   el.style.cssText = [
@@ -34,9 +30,7 @@ export function createTooltip(): Tooltip {
     'background:rgba(20,16,10,0.92)',
     'color:#f0e0c0',
     'font:13px/1.4 system-ui,-apple-system,sans-serif',
-    // Wrap long lines (a multi-input recipe) instead of running one endless row; width hugs the content
-    // up to the cap so short chips stay tight. pre-line keeps authored newlines (a recipe's per-input
-    // lines) while still wrapping an over-long single line.
+    // `pre-line` keeps authored newlines while still wrapping an over-long single line.
     `max-width:${MAX_WIDTH}px`,
     'width:max-content',
     'white-space:pre-line',
@@ -56,9 +50,7 @@ export function createTooltip(): Tooltip {
         el.style.display = 'block';
         visible = true;
       }
-      // Clamp to the viewport (measured AFTER the text is set and the chip shown): a chip near the right
-      // edge slides left instead of overflowing off-screen; it always stays below the cursor (wrapping
-      // grows it downward).
+      // Clamped after the text is set and the chip shown, so the measured width is the final one.
       const left = Math.min(clientX + CURSOR_OFFSET, window.innerWidth - el.offsetWidth - EDGE_MARGIN);
       el.style.left = `${Math.max(EDGE_MARGIN, left)}px`;
       el.style.top = `${clientY + CURSOR_OFFSET}px`;

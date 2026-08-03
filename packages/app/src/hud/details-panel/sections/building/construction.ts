@@ -4,16 +4,12 @@ import { BAR_H, type BuildingLayout, ROW_TEXT_PAD, STOCK_PLATE_H, STOCK_ROW_H } 
 import type { BuildingPanelModel } from '../../model/index.js';
 import { STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 
-/** Where the construction gauge starts (design px) - a narrow label column that fits the "100%" text. */
+/** Left edge of the construction gauge (design px); the column before it fits the "100%" text. */
 const CONSTRUCTION_BAR_LEFT = 40;
 
 /**
- * Construction window (a site only): the build-progress bar beside its numeric %, then one stock-style
- * row per material line reading "delivered / needed". The building's hitpoints are the general section's
- * gauge, never this one - an upgrade site is 0% built while its old tier still stands at full health, and
- * progress takes the neutral bar rather than the health ramp so a young site does not read "critical". No
- * extracted title exists for a site window - 'Construction' is a named approximation (English pending the
- * i18n pass), like 'Produkcja'.
+ * Construction-site window: build progress on the neutral bar, never the general section's health ramp.
+ * No extracted title exists for it, so 'Construction' is a named approximation.
  */
 export function drawConstructionSection(
   chrome: Chrome,

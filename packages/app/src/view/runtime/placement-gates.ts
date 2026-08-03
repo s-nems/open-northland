@@ -3,19 +3,14 @@ import type { FogGates } from '../projections/index.js';
 
 /** The live placement rules the click gates and the cursor ghosts share. */
 export interface PlacementGates {
-  /** The one live building-placement rule the click gate and the cursor ghost share. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
-  /** The erect-signpost twin of {@link canPlaceAt} - gates the signpost cursor ghost. */
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
 }
 
 /**
- * The placement gates for a game view. Click gate and cursor ghost must never drift - the ghost previews
- * exactly what a click will do - so both read these. A mapless sim (no probe) places buildings freely,
- * matching the command gate's stance, and shows no signpost ghost (the erect would be a no-op there).
- * Under fog, ground the player does not currently see rejects the anchor - our modern gate (genre
- * convention: no founding into the fog), applied app-side only: the sim command stays ungated so
- * admin/scenario spawns bypass the UI rule.
+ * Click gate and cursor ghost both read these, so a ghost cannot preview what a click would refuse.
+ * A mapless sim has no probe: buildings place freely, signposts never do. The fog rule is app-side
+ * only (genre convention, not the original), so the ungated sim command still serves admin spawns.
  */
 export function createPlacementGates(
   sim: Simulation,

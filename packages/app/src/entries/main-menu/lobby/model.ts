@@ -9,17 +9,10 @@ import {
   type VacantMode,
 } from './roster-state.js';
 
-/**
- * Pure state for the lobby screen over the shared roster state: the slot rows
- * the list renders and the start-URL entry. DOM lives in `index.ts`.
- */
-
-/** The engine's fog modes ({@link FogModeName} owns the vocabulary), in the segment's display
- *  order (labels in `mainMenu.lobby.fogModes`). */
+/** The fog modes in the segment's display order. */
 export const LOBBY_FOG_MODES: readonly FogModeName[] = ['off', 'reveal', 'recon'];
 
-/** Sticky-fog is the classic default a `?map=` launch without an explicit pick also falls back to
- *  (`targetSearch` reuses it). */
+/** Fallback fog mode for a `?map=` launch that carries no explicit pick. */
 export const DEFAULT_FOG_MODE: FogModeName = 'reveal';
 
 export interface LobbyOptions {
@@ -27,8 +20,6 @@ export interface LobbyOptions {
   professionProgression: boolean;
 }
 
-/** Reads the lobby's game options from the menu URL, so a `?fog=`/`?progression=` launch or an
- *  earlier game's carried params pre-set the toggles. */
 export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
   const fog = params.get('fog');
   return {
@@ -37,10 +28,7 @@ export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
   };
 }
 
-/**
- * The design pre-seats the person, so a fresh lobby claims the
- * first claimable listed slot; sitting elsewhere stays one click. All-AI maps stay seatless.
- */
+/** A fresh lobby pre-seats the player in the first claimable listed slot; all-AI maps stay seatless. */
 export function initialLobbyState(players: readonly MapPlayerSlot[]): RosterState {
   const state = initialRosterState(players);
   const first = players.find((slot) => slot.claimable && !slot.hidden);
@@ -53,7 +41,7 @@ export interface LobbySlotRow {
   readonly colorId: number;
   /** `yours` = the claimed seat, `scenario` = script-driven and locked, `open` = claimable. */
   readonly kind: 'yours' | 'scenario' | 'open';
-  /** What the seat does at start while vacant (drives the open row's sub and segment). */
+  /** What the seat does at start while vacant. */
   readonly vacantMode: VacantMode;
 }
 
@@ -72,11 +60,8 @@ export function lobbySlotRows(
     }));
 }
 
-/**
- * The `?map=` entry the Start button navigates to: the map id, the roster choices
- * ({@link rosterStartParams}) and the explicit game options - explicit so they override any
- * stale carried `fog`/`progression` the menu URL still holds.
- */
+/** The `?map=` entry Start navigates to; fog and progression are always explicit so they override
+ *  stale carried params. */
 export function lobbyStartEntry(
   mapId: string,
   state: RosterState,

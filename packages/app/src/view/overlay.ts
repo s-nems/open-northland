@@ -1,8 +1,4 @@
-/**
- * Shared DOM chrome for the app's on-canvas panels - the scene routing error
- * ({@link import('./scene-overlay.js')}) and the gallery entries (anim, icons, sounds).
- * Plain DOM + floats, app-layer only (never in `sim`).
- */
+/** Shared plain-DOM chrome for the app's on-canvas panels and gallery entries. */
 
 /** The right-docked panel look (dark parchment card) every overlay shares. */
 export const PANEL_STYLE = [
@@ -32,7 +28,6 @@ export const BUTTON_STYLE = [
   'font:12px ui-monospace,monospace',
 ].join(';');
 
-/** Create an element with an inline `cssText` style and optional text - the terse DOM builder the panels use. */
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   style: string,
@@ -44,11 +39,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-/**
- * A button that navigates the page (reloads with a new `?…` search string) - used by the gallery's
- * character/view selectors and the menu, where changing the selection means loading different atlases /
- * a different entry. `active` highlights the current choice.
- */
+/** A button that navigates by reloading the page with a new `?…` search string. */
 export function navButton(label: string, active: boolean, href: string): HTMLButtonElement {
   const b = el('button', BUTTON_STYLE, label);
   if (active) {
@@ -61,10 +52,7 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
   return b;
 }
 
-/**
- * The full-page (scrollable) entry shell - the dark-parchment page behind the sound and icon
- * gallery. Each page passes only its own density knobs (top padding / body font / content width).
- */
+/** The scrollable full-page entry shell; each page passes only its own density knobs. */
 export function pageRootStyle(paddingTopPx: number, fontPx: number): string {
   return [
     'position:fixed',
@@ -96,7 +84,6 @@ export const PAGE_SECTION_TITLE_STYLE = [
   'padding-bottom:6px',
 ].join(';');
 
-/** A titled full-page section wrapping `children` (a card grid, a list of rows, …). */
 export function pageSection(title: string, children: readonly HTMLElement[]): HTMLElement {
   const wrap = el('div', '');
   wrap.append(el('div', PAGE_SECTION_TITLE_STYLE, title));
@@ -104,8 +91,7 @@ export function pageSection(title: string, children: readonly HTMLElement[]): HT
   return wrap;
 }
 
-/** Mount a small message panel (missing `content/`, an empty filter, …) instead of a blank canvas.
- *  Optional `actions` (buttons/links) mount under the detail so the panel is never a dead-end. */
+/** Mount a small message panel instead of leaving a blank canvas; `actions` mount under the detail. */
 export function mountMessage(title: string, detail: string, actions?: readonly HTMLElement[]): void {
   const panel = el('div', PANEL_STYLE);
   panel.append(

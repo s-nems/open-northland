@@ -3,11 +3,9 @@ import { messages } from '../../../i18n/index.js';
 import type { Chrome } from '../chrome.js';
 import type { ButtonAction, SignpostLayout } from '../layout/index.js';
 
-// The signpost window's decoded strings (`miscwindow`): 270 "Signpost" / "Drogowskaz",
-// 273 "Tear down this signpost" / "Wyburz ten drogowskaz".
+// Decoded `miscwindow` string ids: 270 "Drogowskaz", 273 "Wyburz ten drogowskaz".
 const MISCWINDOW = { signpost: 270, tearDown: 273 } as const;
 
-/** The selected-signpost panel: the original's title + its one action, the tear-down button. */
 export function drawSignpost(
   chrome: Chrome,
   layout: SignpostLayout,

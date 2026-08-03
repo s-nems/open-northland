@@ -1,4 +1,4 @@
-/** The bottom-right selection details panel; `panel.ts` names who does what inside the folder. */
+/** The bottom-right selection details panel. */
 
 export type { EquipSlotRef } from './layout/index.js';
 export type {

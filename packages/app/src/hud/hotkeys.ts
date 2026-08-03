@@ -5,9 +5,8 @@ const isTypingTarget = (target: EventTarget | null): boolean =>
   (target instanceof HTMLElement && target.isContentEditable);
 
 /**
- * Whether `e` is a plain press of `code` that a game hotkey should act on: a modifier combo stays the
- * browser's (Cmd/Ctrl+A is select-all, Cmd/Ctrl+P is print), a held key must not repeat the action, and
- * typing into a field must never issue an order.
+ * Whether `e` is a plain, non-repeating press of `code` outside a text field: modifier combos stay with
+ * the browser, and a held key must not repeat the action.
  */
 export function isPlainHotkey(e: KeyboardEvent, code: string): boolean {
   return e.code === code && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target);

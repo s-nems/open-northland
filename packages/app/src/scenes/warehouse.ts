@@ -22,45 +22,26 @@ import {
 import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The warehouse-hauling scene: a carrier ("Tragarz") ferries loose ground goods into the warehouse it
- * staffs, stops at the store's per-good limit, and moves on to the next good instead of jamming.
- *
- * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
- * piles. Three carriers are posted to it at build, filling its three carrier slots. Bound to a recipe-less
- * store, each becomes a porter: it collects the nearest loose pile whose good the store can still take and
- * carries it home one unit per foot-trip.
- *
- * Wood is over-supplied (1.5× its cap, read from content) nearest the door, so the store fills to 100/100 and
- * the cap bites: the carriers stop hauling wood (the ~50 surplus rests on the ground) and switch to the goods
- * farther out - no pick-up/put-down loop, no carrier stuck holding a unit it can't deposit. A porter never
- * lifts a good the store is full of and sheds any surplus it is already carrying.
- *
- * Headless proves the mechanic; the browser is where a human watches the wood counter stop at 100 and the
- * carriers walk off to the rest of the field.
- */
-
 const MAP_W = 40;
 const MAP_H = 34;
 const INITIAL_ZOOM = 0.7;
-/** Long enough for the wood to top out (~tick 4000, one foot-carried unit at a time) and for the carriers to
- *  then land a chunk of the other goods - headless gate only; the browser view runs continuously. */
+/** Long enough for the wood to top out (~tick 4000, one foot-carried unit at a time) and for the
+ *  carriers to then land a chunk of the other goods. */
 const RUN_TICKS = 6000;
 
 const WAREHOUSE_X = 20;
 const WAREHOUSE_Y = 6;
-/** The tech enabler's corner - far from the store, goods and carriers so it just idles (no gathering: the loose
- *  piles are ground drops, not resource nodes a collector harvests). */
+/** The tech-enabling collector's corner, far from the store and the piles so it just idles. */
 const ENABLER = { x: 2, y: MAP_H - 2 } as const;
-/** Three carriers - the warehouse's carrier-slot count, all posted to it at build. */
+/** The warehouse's carrier-slot count. */
 const CARRIERS = 3;
 
-/** The loose-good field: wood hugging the store (short trips, worked first, fills the store to its cap with a
- *  surplus left over), a scatter of other goods farther out (well under the cap, worked once wood tops out). */
-const WOOD_OVERSUPPLY = 1.5; // 1.5× the cap, so the store fills to 100 and ~50 wood is left resting on the ground
-const WOOD_ROW_Y = 9; // the wood field starts right below the store - a short carry so the fill reads quickly
-const WOOD_ROW_W = 12; // wood tiles per row (a compact block tight around the door)
-const SCATTER_ROW_Y = 20; // the varied goods farther out, worked once the wood is in
+/** Wood hugs the store, so it is worked first and fills the store to its cap with a surplus left over;
+ *  the other goods sit farther out, well under the cap. */
+const WOOD_OVERSUPPLY = 1.5;
+const WOOD_ROW_Y = 9;
+const WOOD_ROW_W = 12; // tiles per row
+const SCATTER_ROW_Y = 20;
 const SCATTER_PILES_PER_GOOD = 3;
 const SCATTER_GOODS = [
   GOOD_STONE,
@@ -72,10 +53,9 @@ const SCATTER_GOODS = [
   GOOD_COIN,
 ] as const;
 
-const STACK = systems.MAX_GROUND_STACK; // the most one tile's pile holds - every drop fills a tile to this
+const STACK = systems.MAX_GROUND_STACK;
 
-/** The warehouse type's per-good stock capacity for `goodType`, read from content so the scene stays tied to
- *  the real cap (no hardcoded limit). */
+/** Read from content, so the scene stays tied to the real cap instead of a hardcoded limit. */
 function warehouseCapacity(sim: Simulation, goodType: number): number {
   const def = buildingDef(sim, BUILDING_WAREHOUSE_00);
   return def?.stock?.find((s) => s.goodType === goodType)?.capacity ?? 0;
@@ -83,14 +63,11 @@ function warehouseCapacity(sim: Simulation, goodType: number): number {
 
 function build(sim: Simulation): void {
   const store = placeBuiltSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
-  // Its three carrier slots, staffed - nobody employs themselves, so the scene posts the crew.
+  // Nobody employs themselves, so the scene posts the crew.
   staffBuildingFully(sim, store, HUMAN_PLAYER);
 
-  // A lone collector off in a corner, where it idles: the gatherer a real game's HQ seeds.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y, HUMAN_PLAYER);
 
-  // Wood over-supplied (1.5× cap), in full-stack tiles in rows near the store (worked first): the store
-  // fills and the surplus stays on the ground.
   const woodTiles = Math.ceil((warehouseCapacity(sim, GOOD_WOOD) * WOOD_OVERSUPPLY) / STACK);
   for (let i = 0; i < woodTiles; i++) {
     const x = WAREHOUSE_X - WOOD_ROW_W / 2 + (i % WOOD_ROW_W);
@@ -98,7 +75,6 @@ function build(sim: Simulation): void {
     dropSandboxGood(sim, GOOD_WOOD, x, y, STACK);
   }
 
-  // A scatter of other goods farther out - full-stack tiles, kept well under the cap so they all land.
   SCATTER_GOODS.forEach((good, g) => {
     for (let p = 0; p < SCATTER_PILES_PER_GOOD; p++) {
       const x = WAREHOUSE_X - SCATTER_GOODS.length + g * 2;
@@ -110,12 +86,10 @@ function build(sim: Simulation): void {
 
 const { Building, Carrying, JobAssignment, Position, Settler, Stockpile } = components;
 
-/** The one warehouse entity, or null before its placement command ran. */
 function warehouse(sim: Simulation): Entity | null {
   return buildingOfType(sim, BUILDING_WAREHOUSE_00);
 }
 
-/** How many carriers ({@link JOB_CARRIER}) are employed by the warehouse (bound via JobAssignment). */
 function carriersEmployedByWarehouse(sim: Simulation): number {
   const store = warehouse(sim);
   if (store === null) return 0;
@@ -127,14 +101,13 @@ function carriersEmployedByWarehouse(sim: Simulation): number {
   return bound;
 }
 
-/** The warehouse's current holding of `goodType`. */
 function warehouseHolding(sim: Simulation, goodType: number): number {
   const store = warehouse(sim);
   if (store === null) return 0;
   return sim.world.get(store, Stockpile).amounts.get(goodType) ?? 0;
 }
 
-/** Whether any loose ground pile (a positioned Stockpile that is not a building store) still holds `goodType`. */
+/** A loose ground pile is a positioned Stockpile without a Building. */
 function groundHolds(sim: Simulation, goodType: number): boolean {
   for (const e of sim.world.query(Stockpile, Position)) {
     if (sim.world.has(e, Building)) continue;
@@ -143,8 +116,6 @@ function groundHolds(sim: Simulation, goodType: number): boolean {
   return false;
 }
 
-/** How many carriers are still holding wood - should be 0 after the cap: a porter sheds any surplus it was
- *  already carrying. */
 function carriersHoldingWood(sim: Simulation): number {
   let holding = 0;
   for (const e of sim.world.query(Settler, Carrying)) {
@@ -153,8 +124,6 @@ function carriersHoldingWood(sim: Simulation): number {
   return holding;
 }
 
-/** Total units of goods other than wood the warehouse holds - proof the carriers moved on from the capped
- *  wood to the rest of the field. */
 function warehouseOtherGoodsTotal(sim: Simulation): number {
   const store = warehouse(sim);
   if (store === null) return 0;

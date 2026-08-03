@@ -3,55 +3,49 @@ import { type ActionRingLayout, hitTestActionRing } from '../../../hud/action-ri
 import { type Messages, messages } from '../../../i18n/index.js';
 import type { MenuMode } from './types.js';
 
-/** Hover highlight over the button under the cursor. */
 const HOVER_TINT = 0xffffff;
 const HOVER_ALPHA = 0.28;
 
 /**
- * The live menu state + seams the pointer/keyboard controller reads and drives. The controller owns no
- * state of its own: `getMode`/`isRingVisible`/`getLayout`/`getTargets` read the mount's closure each event,
- * and the order/mode callbacks are the mount's command + state-machine seams. `hoverG`/`tooltip` are the
- * mount-owned hover visuals this controller clears via `hideTransient` and paints in the move handler.
+ * The controller owns no state: every getter reads the mount's live closure, the order and mode
+ * callbacks are the mount's seams, and `hoverG`/`tooltip` are mount-owned visuals it paints.
  */
 export interface ActionRingInputContext {
   readonly canvas: HTMLCanvasElement;
-  /** The ring's effective scale (shared with layout); sizes the hover highlight's corner radius. */
+  /** Effective ring scale, shared with the layout. */
   readonly scale: number;
   readonly hoverG: Graphics;
   readonly tooltip: HTMLElement;
-  /** Client (CSS) point → canvas px - the space the layout and every hit-test work in. */
+  /** Client (CSS) point to canvas px, the space the layout and every hit-test work in. */
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   readonly getMode: () => MenuMode;
-  /** Whether the ring container is currently visible (menu shown, not the DOM list). */
+  /** True for the ring face, false for the DOM list. */
   readonly isRingVisible: () => boolean;
   readonly getLayout: () => ActionRingLayout;
-  /** The settler ids a click's command applies to (the selected settlers, refreshed each frame). */
   readonly getTargets: () => readonly number[];
-  /** Clear the hover highlight + tooltip. */
+  /** Clear the hover highlight and tooltip. */
   readonly hideTransient: () => void;
   readonly onErectSignpost: (ids: readonly number[]) => void;
   readonly onAttackMove: () => void;
   readonly onMarry: (id: number) => void;
   readonly onAssignHouse: (id: number) => void;
   readonly onMakeChild: (id: number, sex: 'male' | 'female') => void;
-  /** Swap the ring for the scrollable profession list window. */
   readonly openJobWindow: () => void;
-  /** Fully close the whole menu (list + ring). */
+  /** Close both faces, list and ring. */
   readonly closeMenu: () => void;
   /** Step back from the list to the ring. */
   readonly closeJobWindow: () => void;
 }
 
 export interface ActionRingInput {
-  /** True when a client point is over a visible menu button - the input router asks before world picking. */
+  /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }
 
 /**
- * Mount the settler ring's own pointer + keyboard listeners (registered before unit-controls' so a menu
- * click wins). Pure event → command/mode glue over {@link ActionRingInputContext}: it never touches sim
- * state or the menu's own mode/anchor storage, only reads them through the context and drives the seams.
+ * Mount the settler ring's pointer and keyboard listeners, registered before unit-controls' so a menu
+ * click wins.
  */
 export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingInput => {
   const { canvas, scale, hoverG, tooltip, toCanvas } = ctx;
@@ -59,8 +53,8 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (ctx.getMode() === 'closed' || !ctx.isRingVisible()) return false;
     const { x, y } = toCanvas(clientX, clientY);
-    // Claim only actual button squares - a click in the gap between buttons (over the unit itself) still
-    // reaches world picking, so the settler stays selectable/orderable through the open menu.
+    // Only button squares are claimed, so a click in the gap between them still reaches world picking
+    // and the settler stays selectable through the open menu.
     return hitTestActionRing(ctx.getLayout(), x, y) !== null;
   };
 
@@ -69,16 +63,14 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const hit = hitTestActionRing(ctx.getLayout(), x, y);
     if (hit === null) return;
-    // A menu click is the menu's - stop it reaching world picking (we register before unit-controls). This
-    // consumes a placeholder click too, so an inert button never falls through to a move/attack order.
+    // Stop the click reaching world picking, including on an inert placeholder button.
     e.stopImmediatePropagation();
     const targets = ctx.getTargets();
     const single = targets.length === 1 ? targets[0] : undefined;
     if (hit.kind === 'open-jobs') {
-      ctx.openJobWindow(); // swap the ring for the scrollable profession list window
+      ctx.openJobWindow();
     } else if (hit.kind === 'erect-signpost') {
-      // Arm the click-to-place mode for the selected scout(s) and close the ring - the next world click
-      // places the signpost (the "Select place for signpost" flow of the original).
+      // The next world click places the signpost (the original's "Select place for signpost" flow).
       const scouts = [...targets];
       ctx.closeMenu();
       ctx.onErectSignpost(scouts);
@@ -87,15 +79,15 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       ctx.onAttackMove();
     } else if (hit.kind === 'marry' && single !== undefined) {
       ctx.onMarry(single);
-      ctx.closeMenu(); // the order is issued - nothing left to do in the menu
+      ctx.closeMenu();
     } else if (hit.kind === 'assign-house' && single !== undefined) {
       ctx.onAssignHouse(single);
-      ctx.closeMenu(); // hands off to the click-a-house pick mode
+      ctx.closeMenu();
     } else if (hit.kind === 'make-child' && single !== undefined) {
       ctx.onMakeChild(single, hit.sex);
       ctx.closeMenu();
     }
-    // kind 'placeholder' - consumed above, but its action is not yet implemented (inert on this slice).
+    // The 'placeholder' kind is consumed above and carries no action.
   };
 
   const onMouseMove = (e: MouseEvent): void => {
@@ -124,10 +116,8 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     tooltip.style.display = 'block';
   };
 
-  // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must stop here:
-  // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first - so
-  // without stopImmediatePropagation an Escape over the list would also deselect the unit and close the whole
-  // menu, when it should only step back to the ring with the unit still selected.
+  // unit-controls also listens for Escape on `window` to clear the selection, and this listener is
+  // registered first, so stopping propagation keeps the unit selected while stepping back to the ring.
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' && ctx.getMode() === 'jobs') {
       e.stopImmediatePropagation();
@@ -135,9 +125,8 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     }
   };
 
-  // These listeners register before unit-controls' (this controller is mounted first). The `mouseleave`
-  // clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the canvas while
-  // still over a button (no further `mousemove` fires to clear it).
+  // `mouseleave` clears a highlight the cursor would otherwise strand: leaving the canvas over a button
+  // fires no further `mousemove`.
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('mouseleave', ctx.hideTransient);

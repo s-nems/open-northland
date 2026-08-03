@@ -1,14 +1,7 @@
-/**
- * The environment header - the boot-time facts that make a tester's log actionable. Logged once
- * into the ring on channel `boot`; browser-only, so it lives apart from the DOM-free logger core.
- */
+/** Boot-time environment facts for the log ring; browser-only, so they sit apart from the logger core. */
 import { type DiagLog, diag } from './log.js';
 
-/**
- * The GPU the page actually got - the first question for any rendering report. Uses a throwaway
- * WebGL context (released via `WEBGL_lose_context`); `null` when the renderer string is masked or
- * WebGL is unavailable.
- */
+/** The unmasked GPU renderer string, or `null` when it is masked or WebGL is unavailable. */
 function webglRenderer(): string | null {
   try {
     const canvas = document.createElement('canvas');
@@ -23,7 +16,7 @@ function webglRenderer(): string | null {
   }
 }
 
-/** Write the one-time boot header into the log ring. Call once from `main.ts` before routing. */
+/** Call once at boot, before routing. */
 export function logBootHeader(target: DiagLog = diag): void {
   target.info('boot', 'environment', {
     href: window.location.href,

@@ -5,11 +5,9 @@ import { doorNode } from './building-points.js';
 import type { BuildingDoorInfo } from './door-badges.js';
 
 /**
- * The construction-sign projection: one player-coloured `ls_temp` construction stand per building
- * carrying `UnderConstruction` - the one component both a fresh build and a running upgrade carry (the
- * upgrade command re-opens the building as a site), planted at the type's `GfxFlagPoint` sign post
- * (the door node when the content has none). Pure over the snapshot + the building-type table; called
- * once per tick via the shared snapshot memo.
+ * One player-coloured construction stand per building carrying `UnderConstruction`, planted at the
+ * type's `GfxFlagPoint` sign post or the door node when the content has none. An in-place upgrade
+ * re-opens the building as a site, so it signs too.
  */
 export function computeConstructionSigns(
   snapshot: WorldSnapshot,

@@ -1,31 +1,25 @@
 /**
- * The app-wide diagnostics logger - one backbone with named channels and severity levels, two sinks:
- * the browser console (dev-readable, level-filtered) and a bounded in-memory ring of plain
- * JSON-serializable entries. The diagnostics bundle serializes the ring so a tester report includes
- * everything logged before a failure.
- *
- * App-local by design: `packages/sim` stays log-free (purity - sim facts enter the log at the app
- * boundary), and render/audio get access only when a real second caller appears. The core is
- * DOM-free so headless tests and node imports work; browser-only facts live in `env-header.ts`.
+ * The app-wide diagnostics logger: named channels and levels over a level-filtered console sink and a
+ * bounded ring the diagnostics bundle serializes. The core stays DOM-free so headless tests and node
+ * imports work; browser-only facts live in `env-header.ts`.
  */
 
 export type DiagLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/** Severity order for level filtering - a sink at level L passes entries ranked >= L. */
+/** Severity order; a sink at level L passes entries ranked >= L. */
 const LEVEL_RANK: Readonly<Record<DiagLevel, number>> = { debug: 0, info: 1, warn: 2, error: 3 };
 
-/** One logged fact - plain data, JSON-serializable (data is normalized at log time). */
+/** One logged fact, JSON-serializable. */
 export interface DiagEntry {
-  /** Milliseconds since page/process start (the injected `now` clock; `performance.now()` by default). */
+  /** Milliseconds from the injected clock, `performance.now()` by default. */
   readonly timeMs: number;
   readonly channel: string;
   readonly level: DiagLevel;
   readonly message: string;
-  /** Extra structured context, normalized to a JSON-safe value at log time (Errors → plain objects). */
+  /** Extra structured context; an `Error` becomes a plain object at log time. */
   readonly data?: unknown;
 }
 
-/** The four console methods the console sink dispatches to - injectable so tests capture output. */
 export type ConsoleSink = Pick<Console, 'debug' | 'info' | 'warn' | 'error'>;
 
 export interface DiagLogOptions {
@@ -41,11 +35,7 @@ export interface DiagLogOptions {
 const DEFAULT_RING_CAPACITY = 4000;
 const DEFAULT_CONSOLE_LEVEL: DiagLevel = 'info';
 
-/**
- * Normalize log data to a JSON-safe value: an `Error` (the common `catch` payload) becomes a plain
- * `{name, message, stack}` object so `JSON.stringify` keeps it; everything else passes through -
- * callers pass plain data, and the bundle serializer owns any last-resort fallback.
- */
+/** `JSON.stringify` drops an `Error`'s fields, so it becomes a plain object; everything else passes through. */
 function toJsonSafe(data: unknown): unknown {
   if (data instanceof Error) {
     return {
@@ -64,7 +54,7 @@ export class DiagLog {
   /** Console echo threshold; per-channel overrides win over the global level. */
   private consoleLevel: DiagLevel | 'silent';
   private readonly channelConsoleLevels = new Map<string, DiagLevel | 'silent'>();
-  /** The ring: entries in log order, oldest first. Length <= ringCapacity. */
+  /** Entries oldest first; length <= ringCapacity. */
   private readonly ring: DiagEntry[] = [];
 
   constructor(opts: DiagLogOptions = {}) {
@@ -110,17 +100,16 @@ export class DiagLog {
     this.log(channel, 'error', message, data);
   }
 
-  /** Set the console echo threshold - globally, or for one channel (overriding the global level). */
   setConsoleLevel(level: DiagLevel | 'silent', channel?: string): void {
     if (channel !== undefined) this.channelConsoleLevels.set(channel, level);
     else this.consoleLevel = level;
   }
 
-  /** All retained entries, oldest first (a defensive copy - the ring stays private). */
+  /** All retained entries, oldest first; a copy, so the ring stays private. */
   entries(): readonly DiagEntry[] {
     return [...this.ring];
   }
 }
 
-/** The one app-wide logger instance - import this, not a per-module `new DiagLog()`. */
+/** The one app-wide logger instance; do not construct a per-module `DiagLog`. */
 export const diag = new DiagLog();

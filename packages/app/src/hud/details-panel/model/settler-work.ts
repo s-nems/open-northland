@@ -22,31 +22,25 @@ export interface SettlerWorkModel {
   readonly gatherChoices: readonly {
     readonly goodType: number | null;
     readonly label: string;
-    /** The good's string id - the key the round button draws its icon by; absent for the "Wszystko"
-     *  (gather-everything) choice, which has no single good and draws the generic pile instead. */
+    /** The good's string id, the key the round button draws its icon by; absent for the "Wszystko"
+     *  choice, which has no single good and draws the generic pile instead. */
     readonly goodId?: string;
   }[];
   readonly selectedGood: number | null;
-  /** A craft operator's product toggles - one per product its workplace's recipes make (in recipe
-   *  order), multi-selectable (the crafting twin of {@link gatherChoices}; the two never coexist).
-   *  Empty for a non-craft settler. */
+  /** A craft operator's product toggles, in recipe order, multi-selectable. Never non-empty together
+   *  with `gatherChoices`. */
   readonly craftChoices: readonly {
     readonly goodType: number;
     readonly label: string;
     readonly goodId?: string;
   }[];
-  /** The EFFECTIVE craft selection: the settler's `CraftSelection` goods, or every product when it
-   *  has none (the all-products default reads as everything selected). */
+  /** The settler's `CraftSelection` goods, or every product when it has none. */
   readonly selectedCraftGoods: readonly number[];
 }
 
 /**
- * The Praca section: the settler's workplace name and the good it makes. The workplace is the building
- * its `JobAssignment` points at; the product is that building's first recipe output (or `produces`
- * entry), falling back to what the settler is carrying. A settler with no `JobAssignment` reads
- * "brak miejsca pracy" - a pinned Polish fallback (the model returns the string directly; it matches
- * the original's `humanwindow` 41 wording but isn't resolved from the decoded table like the section
- * titles are).
+ * The Praca section: the settler's workplace and the good it makes. The no-workplace text is a pinned
+ * fallback matching the original's `humanwindow` 41 wording, not a lookup into the decoded table.
  */
 export function settlerWork(
   ctx: UnitPanelModelContext,
@@ -61,8 +55,8 @@ export function settlerWork(
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
   const settlerComp = comps.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
   const jobType = num(settlerComp?.jobType);
-  // The settler's earned-goods filter (`needforgood`, mirrored sim-side by the rotation/harvest gates):
-  // both product menus offer only what this settler may actually make or dig right now.
+  // The `needforgood` filter, mirrored sim-side by the rotation and harvest gates: both product menus
+  // offer only what this settler may actually make or dig right now.
   const experience = settlerExperienceOf(comps);
   const earned = (goodType: number): boolean =>
     goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType);
@@ -87,13 +81,10 @@ export function settlerWork(
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
-  // A building-employed GATHERER (a harvest-capable trade, no flag) forages only what its workplace
-  // stockpiles - its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
-  // GatherSelection (absent = every stored good). "Stocked" counts the good's EDIBLE form too, matching
-  // the sim's forage filter (`drives/economy/gatherer.ts`): the HQ has no meat slot, but its hunter's
-  // kill banks there as food, so the menu must still offer him meat. The gather menu WINS over the craft
-  // menu for a job that is both harvest-capable and an operator slot (such a job runs the gather drive
-  // in the sim's planner ladder, never the craft loop), so the two menus can't coexist.
+  // A building-employed gatherer forages only what its workplace stockpiles, counting a good's edible
+  // form too, matching the sim's forage filter: the HQ has no meat slot, but its hunter's kill banks
+  // there as food. The gather menu wins over the craft menu, because such a job runs the gather drive in
+  // the sim's planner ladder and never the craft loop.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
@@ -112,8 +103,7 @@ export function settlerWork(
       .filter((choice) => craft.selected.includes(choice.goodType))
       .map((choice) => choice.label);
     const allSelected = selectedLabels.length === craft.choices.length;
-    // A long multi-selection is summarized as a count ("Wybrano: 3") - the highlighted product buttons
-    // below already name the picks, and four joined labels overflow the panel column.
+    // A long multi-selection is summarized as a count, because four joined labels overflow the column.
     const product = allSelected
       ? messages().hud.gatherAll
       : selectedLabels.length > 2
@@ -140,12 +130,10 @@ export function settlerWork(
   };
 }
 
-/** A goods-catalog entry the gather menus filter over. */
 type GoodEntry = UnitPanelModelContext['goods'][number];
 
-/** The non-farmed goods `jobType` may harvest (its gather-menu vocabulary), in goods-catalog order -
- *  the job's resolved atomics matched against each good's harvest atomic. Shares `resolveJobAtomics`
- *  with the sim's permission gate so the menu cannot offer a good the planner would refuse. */
+/** The non-farmed goods `jobType` may harvest, in goods-catalog order. Shares `resolveJobAtomics` with
+ *  the sim's permission gate, so the menu cannot offer a good the planner would refuse. */
 function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
   if (jobType === undefined) return [];
   const allowed = resolveJobAtomics(ctx.jobs).get(jobType);
@@ -156,9 +144,7 @@ function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undef
   );
 }
 
-/** Assemble a gatherer's Praca model: the "Wszystko" choice plus one per allowed good, with the
- *  selected pick (or the all-mode) named in the product line. Shared by the flag-bound and the
- *  building-employed gather menus. */
+/** A gatherer's Praca model: the "Wszystko" choice plus one per allowed good. */
 function gatherWork(
   ctx: UnitPanelModelContext,
   place: string,
@@ -175,13 +161,9 @@ function gatherWork(
 }
 
 /**
- * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing
- * to choose: the workplace has fewer than one product, or the settler's job is not one of the type's
- * OPERATOR slots (mirrors the sim's `operatorJobsOf`: worker slots minus the carrier transport slot -
- * a carrier ferries goods, it never picks what the smiths forge; when every slot is carrier the
- * building is carrier-operated and the carrier does choose, like the well). The effective selection
- * comes from the snapshot's `CraftSelection` goods; absent/empty reads as every product selected (the
- * sim's all-products default). `earned` narrows the toggles to this operator's unlocked products.
+ * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing to
+ * choose. Operator slots mirror the sim's `operatorJobsOf`: worker slots minus the carrier transport
+ * slot, unless every slot is a carrier one (the well), when the carrier does choose.
  */
 function craftChoicesFor(
   ctx: UnitPanelModelContext,
@@ -195,8 +177,8 @@ function craftChoicesFor(
   const operatorSlots = def.workers.filter((slot) => !isCarrierJob(ctx, slot.jobType));
   const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
   if (!operators.some((slot) => slot.jobType === jobType)) return null;
-  // The visible recipes minus the fed-animal tokens: a breeder toggles the chain's real wares
-  // (wool/leather); the sim's rotation pulls the implied feed stage in itself (`craftablePool`).
+  // Fed-animal tokens are excluded: a breeder toggles the chain's real wares, and the sim's rotation
+  // pulls the implied feed stage in itself (`craftablePool`).
   const choices = visibleRecipes(ctx, def).flatMap((recipe) => {
     const goodType = recipe.outputs[0]?.goodType;
     if (goodType === undefined || !earned(goodType)) return [];

@@ -15,28 +15,18 @@ import {
 } from '../game/sandbox/content/catalog/animals.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The wildlife sign-off scene: three species herds spawned on open grass via `spawnAnimalHerd`, so a
- * human can judge the animal render binding (species bodies, facings, shadows, the walk and idle
- * loops) against the original. Headless, it proves the sandbox animal catalog actually places
- * wildlife: full herd counts, jobless and unowned members, the wolf's data-pinned pace, and the
- * grazing drive: the herds roam off their birth points, and no need bar rises on a creature. In the
- * browser an admin-spawned soldier beside the wolves starts a fight; an unowned animal swings in
- * place, so the bite plays its facing-remapped attack cycle at the attacker.
- */
-
 const MAP_W = 26;
 const MAP_H = 20;
 
-/** Herd birth points (cells), spread so the packs read as separate groups on screen. */
+/** Birth points in cells, spread so the packs read as separate groups on screen. */
 const HERDS: readonly { tribe: number; x: number; y: number }[] = [
   { tribe: ANIMAL_TRIBE_BEARS, x: 6, y: 5 },
   { tribe: ANIMAL_TRIBE_STAGS, x: 18, y: 7 },
   { tribe: ANIMAL_TRIBE_WOLVES, x: 11, y: 14 },
 ];
 
-/** The spawn-count floor per herd this scene places (the catalog carries more species - the hunter
- *  and livestock scenes' game and stock), read off the records so the check cannot drift. */
+/** Read off the catalog records, which carry more species than this scene places, so the check cannot
+ *  drift. */
 const EXPECTED_COUNTS: readonly { tribe: number; count: number }[] = buildSandboxAnimals()
   .filter((a) => HERDS.some((h) => h.tribe === a.tribeType))
   .map((a) => ({ tribe: a.tribeType, count: a.maximumGroupSize }));
@@ -58,8 +48,7 @@ function membersOf(sim: Simulation, tribe: number): Entity[] {
   return members;
 }
 
-/** How much of the wildlife must stand off its birth node for the grazing check to pass: a margin under
- *  what this scene reaches, so an unrelated shift in the rng stream cannot flip it. */
+/** A margin under what this scene reaches, so a shift in the rng stream cannot flip the check. */
 const MIN_GRAZED_PERCENT = 50;
 
 const NEED_EMPTY = fx.fromInt(0);
@@ -83,8 +72,7 @@ export const wildlifeScene: SceneDefinition = {
   seed: 31,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  // Needs ON, against the scene default: the wildlife freeze is half of what this scene signs off, and
-  // with the rule disabled no bar could rise here whatever needsSystem did.
+  // Needs ON against the scene default: with the rule disabled, no bar could rise whatever needsSystem did.
   needs: true,
   runTicks: 300,
   initialZoom: 0.8,
@@ -117,8 +105,8 @@ export const wildlifeScene: SceneDefinition = {
       },
     },
     {
-      // A momentary count, not a cumulative one: grazing steps are undirected, so a creature can be
-      // standing back on its anchor when the run ends, hence the share rather than "every".
+      // Grazing steps are undirected, so a creature can stand back on its anchor when the run ends;
+      // hence a share rather than every animal.
       label: 'the herds grazed off their birth points (nothing stands frozen)',
       predicate: (sim) => {
         const animals = allAnimals(sim);

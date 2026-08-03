@@ -1,6 +1,5 @@
 import type { PlacementGhost, PlacementOverlayFrame } from '@open-northland/render';
 
-/** What the held placement paints this frame: the ground wash, and the cursor ghost over a legal tile. */
 export interface PlacementCursor {
   readonly overlay: PlacementOverlayFrame | null;
   readonly ghost: PlacementGhost | null;
@@ -9,14 +8,12 @@ export interface PlacementCursor {
 export interface PlacementCursorInput {
   /** The building the tool panel holds, or null outside build mode. */
   readonly placementType: number | null;
-  /** The scout's erect-signpost click is pending. */
   readonly signpostActive: boolean;
-  /** This frame's band probes, viewport-memoized: each is called only when its own mode wins, so a
-   *  frame never walks a band it would then discard. */
+  /** Viewport-memoized band probes; each runs only when its own mode wins, so a frame never walks a
+   *  band it would discard. */
   readonly buildingOverlay: (buildingType: number) => PlacementOverlayFrame | null;
   readonly signpostOverlay: () => PlacementOverlayFrame | null;
-  /** The tile under the cursor, or null off the map / off the canvas. Consulted only once something is
-   *  actually drawn to place: a held building, or a signpost whose band probe produced a wash. */
+  /** The tile under the cursor, or null off the map or off the canvas. */
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
@@ -25,9 +22,8 @@ export interface PlacementCursorInput {
 }
 
 /**
- * What the cursor holds this frame. Build mode and the pending signpost share one wash (dim exactly where
- * the thing would be refused) and one ghost, which stays hidden over rejecting ground - the original's
- * vanishing house cursor. A held building wins over a pending signpost: it is the more specific intent.
+ * The ghost stays hidden over ground that rejects it, matching the original's vanishing house cursor.
+ * A held building takes precedence over a pending signpost.
  */
 export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   const { placementType } = input;

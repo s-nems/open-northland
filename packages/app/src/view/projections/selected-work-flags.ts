@@ -2,9 +2,8 @@ import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { workFlagOf } from '../../game/snapshot.js';
 
 /**
- * The work flags planted by the selected gatherers (each settler's `WorkFlag.flag`), so the renderer can
- * highlight a selected gatherer's own flag. Resolved through the selection rather than the world: a
- * decoded map holds tens of thousands of entities and a selection is a handful.
+ * The work flags planted by the selected gatherers. Resolved through the selection rather than the
+ * world: a decoded map holds tens of thousands of entities and a selection is a handful.
  */
 export function selectedWorkFlags(
   snapshot: WorldSnapshot,

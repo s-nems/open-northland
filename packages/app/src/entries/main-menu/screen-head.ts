@@ -1,10 +1,7 @@
 import { messages } from '../../i18n/index.js';
 import { backTarget, type MenuScreen } from './model.js';
 
-/**
- * The back+title header every sub-screen opens with; screens append their own tools after.
- * The back link names and opens the screen's {@link backTarget}.
- */
+/** The back+title header every sub-screen opens with; screens append their own tools after. */
 export function screenHead(
   screen: Exclude<MenuScreen, 'main'>,
   open: (screen: MenuScreen) => void,

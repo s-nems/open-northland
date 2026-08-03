@@ -4,39 +4,33 @@ import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../../content/ui-font.js';
 import type { Rect } from '../geometry.js';
 
 /**
- * The details panel's vector-text primitives - the placement half of the drawing kit
- * ({@link import('./chrome.js')}). Text draws in the bundled vector serif (`content/ui-font.ts`, always
- * present), not the original bitmap `.fnt`: a larger `title` size for headlines/buttons/the building name,
- * a `body` size for the rest. Lines are placed by Pixi `Text` anchors (top-left / centred / right) rather
- * than the bitmap face's baseline metrics. Each `Text` is Pixi-native, so it bakes upright with no `flipY`
- * and is disposed with the offscreen root each rebuild.
+ * The details panel's vector-text primitives: text draws in the bundled serif (`content/ui-font.ts`), not
+ * the original bitmap `.fnt`, and is placed by Pixi `Text` anchors rather than baseline metrics.
  */
 
 /** Which of the two panel text sizes a call draws at. */
 export type FontVariant = 'body' | 'title';
 
 /**
- * The vector text sizes in native (pre-scale) px, multiplied by the chrome scale (the bake oversample) at
- * draw time. Calibrated against the original's font-10 body / font-12 title cap heights, then nudged for
- * the serif's smaller x-height.
+ * The vector text sizes in native (pre-scale) px, multiplied by the chrome scale at draw time.
+ * Approximated from the original's font-10 body / font-12 title cap heights, adjusted for the serif's
+ * smaller x-height.
  */
 const FONT_PX: Readonly<Record<FontVariant, number>> = { body: 11, title: 13 };
 /**
- * A tiny vertical nudge (native px) added when centring a line in a rect: Pixi measures a `Text` by its
- * full ascent+descent line box, so the visible caps sit a hair high - this drops them to the optical centre.
+ * A vertical nudge in native px when centring a line in a rect: Pixi measures a `Text` by its full
+ * ascent+descent line box, so the visible caps otherwise sit a hair high.
  */
 const CENTER_BIAS = 0.5;
 
-/** The panel's text placement primitives (see {@link createTextKit}). */
 export interface TextKit {
   /** Draw a line of text with its top-left at `(x, y)`. */
   textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
-  /** Center a line of text in `r` (both axes). `maxWidth` (in `r`'s px) shrinks an over-long line to fit
-   *  the box instead of overflowing it - the seam for long personalized names in the section headline. */
+  /** Center a line of text in `r` on both axes; `maxWidth` (in `r`'s px) shrinks an over-long line to fit
+   *  the box instead of overflowing it. */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
-  /** Left-anchor a line of text at `x`, vertically centred on `centerY` - a left-aligned value that must
-   *  still sit on a field's centre line (the stock amount in its plate). `maxWidth` shrinks an over-long
-   *  line to fit instead of overflowing (a production row's label column before its bar). */
+  /** Left-anchor a line of text at `x`, vertically centred on `centerY`; `maxWidth` shrinks an over-long
+   *  line to fit instead of overflowing. */
   textLeftMiddle(
     text: string,
     x: number,
@@ -51,8 +45,7 @@ export interface TextKit {
 
 /**
  * Build the text-placement kit over the panel's `text` layer container. Each `Text` renders at
- * `FONT_PX * scale` (so the bake's oversample keeps it sharp) and is anchored per call - Pixi
- * centres/right-aligns by its own measured bounds, so no bitmap-baseline math is needed.
+ * `FONT_PX * scale`, so the bake's oversample keeps it sharp.
  */
 export function createTextKit(textLayer: Container, fontFamily: string, scale: number): TextKit {
   const makeText = (text: string, color: FontColorName, variant: FontVariant): Text => {
@@ -89,8 +82,6 @@ export function createTextKit(textLayer: Container, fontFamily: string, scale: n
   ): void => {
     const t = makeText(text, color, variant);
     t.anchor.set(0.5, 0.5);
-    // Shrink a line that would overflow (a long patronymic name in the headline). Scaling the whole node
-    // around its centre anchor keeps it centred; short lines are left at their native size.
     if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
     t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
   };
@@ -105,8 +96,6 @@ export function createTextKit(textLayer: Container, fontFamily: string, scale: n
   ): void => {
     const t = makeText(text, color, variant);
     t.anchor.set(0, 0.5);
-    // Shrink an over-long line to its column (like textCentered's headline seam); the left-middle anchor
-    // keeps it pinned to the label column while it scales.
     if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
     t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
   };

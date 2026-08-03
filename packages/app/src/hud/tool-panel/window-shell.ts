@@ -2,14 +2,14 @@ import { Container, Graphics } from 'pixi.js';
 import { contains, type Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 
-/** The modifier keys a click carried, for controls with a modified step (the counter steppers). */
+/** The modifier keys a click carried. */
 export interface ClickModifiers {
-  /** Ctrl (or Cmd) was held - step coarse controls by their big increment. */
+  /** Ctrl or Cmd was held. */
   readonly bigStep: boolean;
 }
 
-/** What every tool-panel pop-up presents to the panel, whatever it draws inside: a strip button toggles it,
- *  and the panel probes it for pointer input. */
+/** What every tool-panel pop-up presents to the panel: a strip button toggles it, and the panel probes
+ *  it for pointer input. */
 export interface ToolWindow {
   isOpen(): boolean;
   toggle(): void;
@@ -21,28 +21,23 @@ export interface ToolWindow {
 }
 
 /**
- * The open/close plumbing every tool-panel pop-up window repeats: an open flag, the vector text runs, and
- * one `Graphics` buffer, all inside one container of the window's own. Each window keeps its own layout,
- * rebuild, and hit-test; the shell owns only what they all share, so a new window inherits the
- * lifecycle instead of re-implementing it.
- *
- * A window with extra draw layers (the tabbed lists' tiled `back` + hover `Graphics`) creates them itself
- * inside `container` - the shell's `graphics`/`runs` are the shared frame + labels, not the whole window.
+ * The open/close plumbing shared by every tool-panel pop-up: an open flag, the text runs, and one
+ * `Graphics` buffer inside a container of the window's own. Each window keeps its own layout, rebuild,
+ * hit-test, and any extra draw layers it parents inside `container`.
  */
 export interface WindowShell {
-  /** Everything this window draws, frame and labels alike: the panel mounts these in draw order, so a
-   *  rebuild's re-appended runs cannot outrank a later window's frame. */
+  /** The panel mounts these in draw order, so a rebuild's re-appended runs cannot outrank a later
+   *  window's frame. */
   readonly container: Container;
-  /** The shared frame/chrome buffer, and `container`'s first child - a window's extra layers order
-   *  themselves around it. */
+  /** The shared frame buffer and `container`'s first child; extra layers order themselves around it. */
   readonly graphics: Graphics;
-  /** The window's vector text runs - the controller pushes what it builds; `clear()` destroys them. */
+  /** The controller pushes the runs it builds; `clear()` destroys them. */
   readonly runs: TextRun[];
   isOpen(): boolean;
   setOpen(open: boolean): void;
-  /** Destroy the text runs and clear the shared graphics buffer (leaves the open flag untouched). */
+  /** Destroy the text runs and clear the shared graphics buffer; the open flag is untouched. */
   clear(): void;
-  /** Open and the point is inside the window's current rect (a null rect ⇒ not drawn ⇒ no claim). */
+  /** True when open and the point is inside the current rect; a null rect means nothing drawn. */
   claims(rect: Rect | null, x: number, y: number): boolean;
 }
 

@@ -9,8 +9,7 @@ import { drawProductionSection } from './production.js';
 import { drawStockSection } from './stock.js';
 import { drawWorkersSection } from './workers.js';
 
-/** Draw the building details panel, window by window (each section no-ops when its layout slot is absent).
- *  Split per section to match the sibling `settler.ts`; each block is behaviour-preserving. */
+/** Each section no-ops when its layout slot is absent. */
 export function drawBuilding(
   chrome: Chrome,
   layout: BuildingLayout,

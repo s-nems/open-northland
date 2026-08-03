@@ -3,10 +3,8 @@ import type { AssistantGrantId } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 
 /**
- * Which goods each chest-window grant switch flips, by catalog SLUG - resolved against the live
- * content at mount, never by type id: the sandbox catalog and real content number the same goods
- * differently (sandbox 130-155 vs the original ids), while the slug is the shared key the equip
- * overlay itself joins on (`real-content.ts` `EQUIP_CLASS_BY_SLUG`).
+ * Which goods each chest-window grant switch flips, keyed by catalog slug because the sandbox
+ * catalog and real content number the same goods differently.
  */
 const GRANT_GOOD_SLUGS: Readonly<Record<AssistantGrantId, readonly string[]>> = {
   giveBoots: ['shoes'],
@@ -17,13 +15,11 @@ const GRANT_GOOD_SLUGS: Readonly<Record<AssistantGrantId, readonly string[]>> = 
 
 const GRANT_IDS = Object.keys(GRANT_GOOD_SLUGS) as readonly AssistantGrantId[];
 
-/** The slice of a content set the grant join needs (structural, so tests stay tiny). */
 interface GrantContent {
   readonly goods: ReadonlyArray<{ readonly typeId: number; readonly id: string }>;
 }
 
-/** Resolve each switch's slugs to the content's good type ids (a slug the content lacks resolves
- *  to nothing - that switch then reads OFF and writes nothing). */
+/** A slug the content lacks resolves to nothing, so that switch reads OFF and writes nothing. */
 function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, readonly number[]> {
   const byId = new Map(content.goods.map((g) => [g.id, g.typeId]));
   const resolve = (id: AssistantGrantId): readonly number[] =>
@@ -37,9 +33,8 @@ function resolveGrantGoods(content: GrantContent): Record<AssistantGrantId, read
   >;
 }
 
-/** The chest window's live grant seam for `player`: reads the sim's grant list, writes one
- *  `setAssistantGrant` per mapped good through the session's command seam. `writable: false` (a
- *  read-only spectator session) rejects every write, so the window never echoes a dropped command. */
+/** Live chest-window grant seam for `player`. A read-only spectator session (`writable: false`)
+ *  rejects every write, so the window never echoes a command the sim would drop. */
 export function assistantGrantsSeam(
   sim: Pick<Simulation, 'assistantGrants'>,
   content: GrantContent,
@@ -68,10 +63,7 @@ export function assistantGrantsSeam(
   };
 }
 
-/** Switch every grant ON for each of `players` at world start - all four chest-window switches
- *  default to enabled in a playable map (which seats get them is the caller's policy). A repeated
- *  seat is enqueued once; scenes stay neutral fixtures and start with the sim default (nothing
- *  granted), like the needs toggle. */
+/** Grants start enabled in a playable map only; scenes keep the sim default of nothing granted. */
 export function grantAssistantDefaults(
   sim: Pick<Simulation, 'enqueue'>,
   content: GrantContent,

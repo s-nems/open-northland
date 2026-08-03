@@ -19,80 +19,56 @@ import {
 import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The production-chain scene: the original's grain economy end-to-end in one place - farm → mill → bakery,
- * fed by the well. A grain farm field-farms wheat on the grass around it; the mill's millers fetch that
- * wheat and grind it to flour; the well draws water; the bakery's baker fetches flour + water and bakes
- * bread. Every link is the generic producer/haul AI - no chain-specific code - the goods flowing
- * building-to-building because a workshop fetches each input from the nearest store that holds it, so the
- * mill pulls the farm's wheat and the bakery pulls the mill's flour and the well's water without a depot in
- * between (the warehouse is the overflow sink, and it takes the bread as the `food_simple` a lift out of
- * the bakery converts it to). The headless half asserts the whole chain closes (fields sown, flour ground,
- * water drawn, bread baked); the browser half is where a human watches the four workshops and the goods
- * ferried between them.
- */
-
 const MAP_W = 46;
 const MAP_H = 28;
-// The chain laid left→right so each workshop sits beside its input's producer: farm (wheat) → mill (flour)
-// → bakery (bread), the well (water) just above the bakery, and a warehouse past the bakery as the bread
-// sink + overflow. Gaps leave the farm a grass ring to sow and keep every footprint clear.
+// Laid left to right so each workshop sits beside its input's producer, with gaps that leave the farm a
+// grass ring to sow and keep every footprint clear.
 const FARM = { x: 10, y: 15 } as const;
 const MILL = { x: 19, y: 15 } as const;
 const BAKERY = { x: 28, y: 15 } as const;
 const WELL = { x: 28, y: 8 } as const;
 const WAREHOUSE = { x: 37, y: 15 } as const;
 
-/** Crew per workshop, from the extracted worker slots: farm `logicworker 18 4` (two read clearly), mill
- *  `logicworker 19 2` (both), bakery `logicworker 20 1`; the well's lone `logicworker 24 1` carrier draws
- *  and hauls its water (a carrier-only workplace - see spawnWorkersAtDoor / primaryWorkerJob). */
+/** Crew from the extracted `logicworker` slots; the farm's row lists four but only two read clearly. */
 const FARMERS = 2;
 const MILLERS = 2;
 const BAKERS = 1;
 const WELL_CARRIERS = 1;
 
-/** Long enough for the serial chain to close: the farm ploughs its plot, its first fields ripen (a sowing
- *  plus one watering per stage) and feed the mill, then flour and water reach the bakery; 12000 covers that
- *  cold start plus margin for the calibrated 18-tick-per-cell walks between workshops. */
+/** Covers the serial cold start plus margin for the 18-tick-per-cell walks between workshops. */
 const RUN_TICKS = 12000;
 
-/** Extra ticks the sown-fields check may step a fresh run past {@link RUN_TICKS}. The plot no longer empties
- *  in a mass harvest (fields grow at spread paces - `catalog/farming.ts`), so this is slack, not a
- *  trough-recovery budget. */
+/** Slack the sown-fields check may step past `RUN_TICKS`, since fields ripen at spread paces. */
 const RESOW_WINDOW_TICKS = 1600;
-/** Frames the whole cluster; ≠ 1 so `cameraFor` centres on the settlers (a non-1 zoom). */
+/** Not 1, so `cameraFor` centres on the settlers. */
 const INITIAL_ZOOM = 0.7;
 
 const { Crop, Stockpile } = components;
 
-/** The tech enabler's corner - clear of the chain so the lone collector just idles (no resource nodes to
- *  harvest; the farm's wheat is a Crop, not a collector's gatherable). */
+/** Clear of the chain and of any gatherable, so the enabling collector just idles. */
 const ENABLER = { x: 2, y: 2 } as const;
 
 function build(sim: Simulation): void {
-  // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so the scene
-  // keeps one standing - the gatherer a real game's HQ seeds - even though the gate is currently a no-op.
+  // The workshops are `jobEnablesHouse`-gated on a collector, so the scene keeps one standing.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
   const farm = placeBuiltSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
   const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);
   const bakery = placeBuiltSandboxBuilding(sim, BUILDING_BAKERY, BAKERY.x, BAKERY.y);
   const well = placeBuiltSandboxBuilding(sim, BUILDING_WELL, WELL.x, WELL.y);
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y);
-  // Each crew spawns bound to its building, standing at the door (see spawnWorkersAtDoor).
   spawnWorkersAtDoor(sim, farm, FARMERS);
   spawnWorkersAtDoor(sim, mill, MILLERS);
   spawnWorkersAtDoor(sim, bakery, BAKERS);
   spawnWorkersAtDoor(sim, well, WELL_CARRIERS);
 }
 
-/** Total units of one good across every stockpile in the world (building stores + loose piles). */
+/** Counts building stores and loose piles alike. */
 function totalOf(sim: Simulation, goodType: number): number {
   let total = 0;
   for (const e of sim.world.query(Stockpile)) total += sim.world.get(e, Stockpile).amounts.get(goodType) ?? 0;
   return total;
 }
 
-/** Standing wheat fields (Crop entities) the farmers have sown. */
 function cropFields(sim: Simulation): number {
   let fields = 0;
   for (const _e of sim.world.query(Crop)) fields++;
@@ -109,9 +85,8 @@ export const chainScene: SceneDefinition = {
   checks: [
     {
       label: 'the farm field-farms wheat (fields sown on the grass)',
-      // A bare end-tick sample is luck: fields ripen at spread paces, so the count dips whenever several
-      // land together. When it reads empty, a fresh run gets a bounded window past the scene's own length
-      // (see {@link RESOW_WINDOW_TICKS} - slack, not a trough-recovery budget).
+      // A bare end-tick sample is luck: fields ripen at spread paces, so the count dips when several
+      // land together.
       predicate: (sim) =>
         cropFields(sim) > 0 ||
         holdsSometimeDuring(chainScene, RUN_TICKS + RESOW_WINDOW_TICKS, (s) => cropFields(s) > 0),

@@ -4,19 +4,8 @@ import { nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { buildingTypeOf, isBuilding, positionOf } from '../../game/snapshot.js';
 import { workerIconNode } from './building-points.js';
 
-/**
- * The `?debug=geometry` projection turns the read-only snapshot into the per-building
- * {@link GeometryDebugItem} list the render overlay draws (the `computeDoorBadges` pattern: pure over
- * the snapshot + the building-type table, unit-tested headless; the app calls it only when the
- * building set changed). The worker-icon anchor comes from the same {@link workerIconNode} helper the
- * door badges use - including its doorless fallback (beside the building's anchor node) - so the blue
- * diagram dot and the live badge stack can never disagree.
- */
+/** The per-building footprint diagram behind the `?debug=geometry` flag. */
 
-/** The slice of a building type the projection needs: the full footprint (the overlay draws every
- *  channel, where the door-badge path needs only the door) plus the stable `id` - the worker-icon
- *  override key and the diagram label. game-view passes the one `lastByTypeId(sim.content.buildings)`
- *  map to this and the badge projection alike. */
 export interface GeometryBuildingInfo {
   readonly id?: string | undefined;
   readonly footprint?: BuildingFootprint | undefined;
@@ -40,8 +29,7 @@ export function computeGeometryDebugItems(
       blocked: fp?.blocked ?? [],
       reserved: fp?.reserved ?? [],
       door: fp?.door,
-      // Passed as an ABSOLUTE node - already door-resolved (parity shift included), so the overlay's
-      // authored-frame shift must not touch it (GeometryDebugItem's channel contract).
+      // An absolute node, already door-resolved: the overlay's authored-frame shift must not touch it.
       iconAnchor: workerIconNode(fp, anchor, info?.id),
       label: info?.id ?? (typeId !== undefined ? `#${typeId}` : undefined),
     });
@@ -50,19 +38,15 @@ export function computeGeometryDebugItems(
 }
 
 /**
- * A change-detection fingerprint over the snapshot's buildings - their ids, types, and positions - so the
- * overlay rebuilds exactly when a building appears, disappears, moves, or upgrades in place (a home
- * level-up mutates `buildingType` without an add/remove, which the placement-blocker version ignores) and
- * not when unrelated blockers churn (every felled tree bumps that version, re-rasterizing every building's
- * label map-wide per harvest). An order-sensitive 32-bit accumulate is enough for a view memo - snapshot
- * entity order is stable between identical building sets, and a stale-on-collision frame heals on the next
- * real change.
+ * A change key over building ids, types, and positions: an in-place upgrade mutates `buildingType`
+ * without an add or remove. Order-sensitive 32-bit accumulate, so a collision costs one stale frame
+ * and heals on the next real change.
  */
 export function buildingSetFingerprint(
   snapshot: WorldSnapshot,
   buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
 ): number {
-  // Fold the table identity in via its size so a content swap (new footprints) also invalidates.
+  // Seeded with the table size so a content swap invalidates too.
   let h = buildingsByType.size | 0;
   for (const e of snapshot.entities) {
     if (!isBuilding(e)) continue;
@@ -75,18 +59,12 @@ export function buildingSetFingerprint(
 }
 
 export interface GeometryDebugOverlay {
-  /** Per-frame: rebuild + push the overlay items, but only when the building set actually changed. */
   update(snapshot: WorldSnapshot): void;
   enabled(): boolean;
   setEnabled(enabled: boolean): void;
 }
 
-/**
- * The stateful driver for the `?debug=geometry` overlay - the per-frame memo game-view runs. It holds the
- * last {@link buildingSetFingerprint} and pushes a fresh {@link computeGeometryDebugItems} projection to
- * `setItems` only when the building set changes (an add/remove/move/in-place upgrade), never per frame and
- * never on unrelated blocker churn. A no-op when `enabled` is false (the flag is absent).
- */
+/** Pushes a fresh projection to `setItems` only when the building set changes, never per frame. */
 export function createGeometryDebugOverlay(opts: {
   readonly enabled: boolean;
   readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;

@@ -7,35 +7,20 @@ import { buildSandboxAnimals } from '../game/sandbox/content/catalog/animals.js'
 import { spawnSandboxSettler } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The hunter sign-off scene: TWO flag-bound hunters on open grass between a hare herd (small game) and
- * a sheep herd (last-resort livestock). Headless, it proves the full loop - the auto-planted work
- * flags, the paced shot (misses included), one kill carried home at a time, the carcass, and the
- * `hunter_general` XP accrual - plus the tiering: the hares are taken while the sheep herd outlives
- * the run. Two hunters make it a deadlock tripwire for the colleague rules (one hunter per animal, one
- * hunter per kill): if either claim wedged a hunter, the bag would not come in.
- *
- * In the browser a human judges the bow-in-hand draw, the missed arrows, the herd bolting off each
- * release, the carcass decals vanishing once a kill is picked clean (animals leave no bones - only
- * humans do), the meat heaping up around each hunter's flag, and - the thing only a human can call -
- * whether the two hunters read as splitting the herd rather than one shadowing the other's kill.
- */
-
 const MAP_W = 26;
 const MAP_H = 20;
 
-/** Two hunters, a few tiles apart so each auto-plants its own flag and both herds sit in both grounds. */
+/** Spaced so each hunter auto-plants its own flag and both herds sit in both grounds. */
 const HUNTER_CELLS = [
   { x: 8, y: 8 },
   { x: 8, y: 6 },
 ];
-/** Both herds sit in the auto-planted ground, which at `HUNTER_WORK_FLAG_RADIUS` covers this whole map:
- *  what the scene proves is the tiering, not the ground bound (that one is pinned in sim unit tests). */
+/** Both herds sit in the auto-planted ground, which at `HUNTER_WORK_FLAG_RADIUS` covers this whole map. */
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
 
-/** Every hare's meat banked - herd size x per-hare yield, read off the catalogs so the floor the
- *  yard check waits for cannot drift from what the scene actually spawns. */
+/** Herd size times per-hare yield, read off the catalogs so the check's floor cannot drift from what
+ *  the scene spawns. */
 const HARE_MEAT_TOTAL =
   (buildSandboxAnimals().find((a) => a.tribeType === ANIMAL_TRIBE_HARES)?.maximumGroupSize ?? 0) *
   (HUNT_PREY_BALANCE.find((s) => s.tribeType === ANIMAL_TRIBE_HARES)?.yields.meat ?? 0);
@@ -65,8 +50,7 @@ function hunters(sim: Simulation): Entity[] {
   return [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === JOB_HUNTER);
 }
 
-/** Total banked meat across every stockpile - hunting is this scene's only goods source, so the sum
- *  reads the yard heaps around the hunter's flag. */
+/** Hunting is this scene's only goods source, so summing every stockpile reads the flag yards. */
 function bankedMeat(sim: Simulation): number {
   const meatType = sim.content.goods.find((g) => g.id === 'meat')?.typeId;
   if (meatType === undefined) return 0;
@@ -82,9 +66,8 @@ export const huntingScene: SceneDefinition = {
   seed: 43,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  // Sized for the paced hunt: the 25-tick draw, the ~40% fresh hit rate, the herd scattering off every
-  // release, the 5-stroke pluck (the extracted `baserepeatcounter`), and the one-kill-at-a-time carry
-  // all stretch the four-hare bag far past the raw kill time.
+  // The 25-tick draw, the ~40% fresh hit rate, the herd scattering off every release, the 5-stroke
+  // pluck (`baserepeatcounter`), and the one-kill-at-a-time carry stretch the bag past the kill time.
   runTicks: 2600,
   initialZoom: 0.8,
   checks: [

@@ -1,17 +1,7 @@
 /**
- * The sandbox world-population helpers scenes and the demo world share. Buildings, settlers and
- * resource nodes all go through the one command seam at runtime (`placeBuilding` / `spawnSettler` /
- * `placeResource`) - the admin/debug palette and a future scenario editor spawn through them so a mid-run
- * placement stays replay-faithful. The `place*` helpers instead build a node directly (the sanctioned
- * `sim.world` exception): they run as scene setup, before tick 0, where the command log is empty and
- * determinism is unaffected - the same "authored fixture state" stance as a decoded map's
- * `sethouse`/landscape records. Do not copy the direct-store pattern into render glue or a mid-run path
- * (packages/app/AGENTS.md, one-way flow) - use {@link resourceCommand} there instead.
- *
- * Split by concern: buildings + their staffing ({@link import('./buildings.js')}), settler spawns
- * ({@link import('./settlers.js')}), resource nodes / bushes / drops / gathering camps
- * ({@link import('./resources.js')}), and the scene-only gather-mastery XP stamp
- * ({@link import('./mastery.js')}).
+ * The `place*` helpers build nodes directly in `sim.world`, the sanctioned exception for scene setup
+ * before tick 0, where the command log is empty. A mid-run placement must go through the command seam
+ * (`placeBuilding`, `spawnSettler`, `resourceCommand`) instead, to stay replay-faithful.
  */
 export {
   buildingDef,

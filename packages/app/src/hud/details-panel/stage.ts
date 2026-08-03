@@ -7,24 +7,20 @@ import type { PanelHover } from './pointer-intent.js';
 import type { PanelView } from './selection-view.js';
 
 /**
- * The panel's Pixi layer. Its PalettedSprite chrome (indexed atlas, nearest-sampled) cannot be linearly
- * filtered, so a fractional display scale would double texel columns unevenly ("pixeloza") - it bakes at
- * an integer oversample and linear-downscales to the display scale instead.
+ * The panel's PalettedSprite chrome is nearest-sampled, so a fractional display scale would double texel
+ * columns unevenly; the layer bakes at an integer oversample and linear-downscales instead.
  */
 
-/** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
+/** The outermost HUD layer, above the world and the left tool panel. */
 const PANEL_Z = 1002;
 
 /** The animated worker sprites draw live, one z above the baked panel they sit on. */
 export const WORKER_OVERLAY_Z = PANEL_Z + 1;
 
 /**
- * The panel carries the finest text in the HUD (a native-11px body font at a fractional scale). Unlike
- * the tool-panel strip (icons - a device-aware `oversampleFor` is enough), a 2x bake linear-downscaled to
- * a fractional scale still hazes small glyph edges, so text legibility wins: at a fractional scale bake at
- * the max oversample (crispest downscale). An integer scale needs no supersample at all - nearest is
- * already exact, so keep it 1:1 rather than needlessly softening a pixel-perfect render. (This panel's
- * policy differs from the shared `oversampleFor` - which always targets >=2x for AA - so it decides here.)
+ * Bake oversample cap, decided here rather than by the shared `oversampleFor`: a fractional display scale
+ * bakes at the max for the crispest downscale of native-11px text, an integer scale bakes 1:1 because
+ * nearest sampling is already exact.
  */
 const PANEL_MAX_SUPERSAMPLE = 4;
 
@@ -49,11 +45,9 @@ export function createPanelStage(opts: PanelStageOptions): PanelStage {
   root.zIndex = PANEL_Z;
   root.visible = false;
   app.stage.addChild(root);
-  /** The current repaint's baked texture; disposed and replaced on the next one. */
   let baked: SupersampledTexture | null = null;
-  // One shared bake target for every repaint: a fresh render texture per repaint would blank the
-  // portrait inset's world cutout for a frame - the preview blinking at every construction hammer
-  // hit (see createReusableBaker).
+  // One shared bake target: a fresh render texture per repaint blanks the portrait inset's world cutout
+  // for a frame.
   const baker = createReusableBaker(app.renderer);
 
   return {

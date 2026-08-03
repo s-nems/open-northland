@@ -45,15 +45,6 @@ import { equipmentRows } from './settler-equipment.js';
 import { unlockProgressRows } from './settler-unlocks.js';
 import { settlerWork } from './settler-work.js';
 
-/**
- * The pure selection→panel-model half of the details panel: what the bottom-right panel shows for the
- * current selection, with no Pixi/DOM in sight (the headless tests exercise exactly this seam). The
- * rendering half lives in `sections.ts`/`panel.ts`. The per-selection model builders are split by domain:
- * shared context/lookups in `context.ts`, gauge primitives in `bars.ts`, the settler half in `settler.ts`
- * (its work menus in `settler-work.ts`), the building half in `building.ts`; this module is the barrel +
- * the top-level {@link buildUnitPanelModel} classifier that dispatches a selection to one of the model shapes.
- */
-
 export { type BarTone, barTone, type PanelBar, remainingPct } from './bars.js';
 export type {
   BuildingPanelModel,
@@ -106,9 +97,9 @@ export function buildUnitPanelModel(
 ): UnitPanelModel {
   if (selected.size === 0) return { kind: 'empty' };
 
-  // Resolved through the snapshot's own id index, so classifying a selection costs O(selected · log
-  // entities): a decoded map's scenery must not be walked once a tick just because something is picked.
-  // The sorts below, not the iteration order, keep the single-pick branches' winner deterministic.
+  // Classifying goes through the snapshot's id index, so it costs O(selected · log entities) rather
+  // than a walk over a decoded map's scenery. The sorts below, not the selection's iteration order,
+  // keep the single-pick branches' winner deterministic.
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];
   const signpostIds: number[] = [];
@@ -138,20 +129,16 @@ export function buildUnitPanelModel(
     const def = buildingDef(ctx, rawType);
     const catalog = rawType === undefined ? undefined : vikingBuildingByTypeId(rawType);
     const category = def?.kind ?? catalog?.kind ?? 'unknown';
-    // Built + a chained type = the Upgrade button; computed once so the button's presence and its
-    // cost-preview tooltip can never disagree.
+    // Computed once, so the Upgrade button's presence and its cost-preview tooltip cannot disagree.
     const upgradable =
       def?.upgradeTarget !== undefined &&
       ent.components.UnderConstruction === undefined &&
       pct(num(b.built)) >= 100;
-    // The defence window belongs to a type that takes a garrison at all (`shelterCapacity`), which is
-    // also what the sim's `setDefenceMode` gate reads - so the panel can never offer an order the sim
-    // refuses. Not gated on ownership, like Demolish and Upgrade beside it: selecting an enemy garrison
-    // building offers its alarm too, and the sim honours it.
+    // `shelterCapacity` is also the gate the sim's `setDefenceMode` reads, so the panel can never offer
+    // an order the sim refuses. Neither side gates on ownership: an enemy garrison offers its alarm too.
     const shelterCapacity = def?.shelterCapacity ?? 0;
     const defenseEnabled = ent.components.DefenceMode !== undefined;
-    // The claimants also decide the workers window: while any of them holds a seat the field draws the
-    // garrison instead of the staff (`worker-selection.ts`), so the window is titled for them.
+    // While anyone holds a seat, the workers field draws the garrison instead of the staff.
     const sheltered = shelterClaimCount(snapshot, entityId);
     return {
       kind: 'building',
@@ -166,7 +153,6 @@ export function buildUnitPanelModel(
       health: healthBar(ent),
       stock: stockRows(ctx, def, ent.components.Stockpile, ent.components.ProductionBonus),
       workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
-      // A home shows its residents (family-grouped) where a workshop shows workers.
       home:
         def?.kind === 'home'
           ? {
@@ -174,15 +160,9 @@ export function buildUnitPanelModel(
               capacity: def.homeSize,
             }
           : null,
-      // The window belongs to a type the content gives a `shelterCapacity` - the same gate the sim's
-      // `setDefenceMode` reads, so the panel can never offer an order the sim refuses. It is the same set
-      // the posts live on (the headquarters and both towers).
       showDefense: shelterCapacity > 0,
       defenseEnabled,
       garrison: sheltered > 0 ? { sheltered, capacity: shelterCapacity } : null,
-      // The alarm's own state wins the line; a tower with archers posted but no alarm reports them
-      // instead. Two separate mechanics, as in the original: a tower's archers shoot whether or not the
-      // alarm is up.
       defenseLabel: defenseLine(
         snapshot,
         def,
@@ -191,7 +171,6 @@ export function buildUnitPanelModel(
       ),
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
-      // A running upgrade site offers Cancel instead of Upgrade.
       upgradable,
       cancelable: ent.components.Upgrading !== undefined,
       upgradeCost: upgradable ? upgradeCostRows(ctx, def) : [],
@@ -205,7 +184,6 @@ export function buildUnitPanelModel(
     const comps = ent.components as Comp;
     const s = (ent.components.Settler ?? {}) as Comp;
     const stance = ent.components.Stance as { mode?: unknown } | undefined;
-    // Meta line: owner + tribe, with the military stance appended only for a unit that has one (a soldier).
     const stanceMode = num(stance?.mode);
     const stanceSuffix =
       stanceMode !== undefined
@@ -216,14 +194,11 @@ export function buildUnitPanelModel(
       tribe: num(s.tribe) ?? '-',
       stance: stanceSuffix,
     });
-    // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
-    // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
+    // Only a born-young (baby or child) settler carries `Age`.
     const young = comps.Age !== undefined;
-    // Whether the experience tree gates THIS settler (an AI-owned unit is never gated) - read once for
-    // the work menus and the unlock forecast.
+    // Whether the experience tree gates this settler; an AI-owned unit never is.
     const progressionGated = progressionGatesSettler(snapshot, ent);
-    // A child's age in years, read off the sim's measured tick↔year rate (adulthood at 12 years ends the
-    // Age component, so this only ever renders 0..11). Appended to the meta.
+    // Adulthood at 12 years ends the `Age` component, so the rendered age is only ever 0..11.
     const ageTicks = num((comps.Age as { ticks?: unknown } | undefined)?.ticks);
     const ageSuffix =
       young && ageTicks !== undefined
@@ -234,7 +209,6 @@ export function buildUnitPanelModel(
     return {
       kind: 'settler',
       entityId,
-      // The family surname: a wife shows her husband's, a child its father's (see surnameSourceOf).
       name: characterName(
         num(s.tribe) ?? PRIMARY_TRIBE,
         num(s.jobType),
@@ -243,16 +217,12 @@ export function buildUnitPanelModel(
         surnameSourceOf(snapshot, ent),
         isFemale(ent),
       ),
-      // The profession name resolves through the shared catalog + i18n (and, for a building-bound settler,
-      // its rebased slot job's content name) so a bound druid reads "Druid", not "Cywil".
       profession: jobDisplayName(ctx, num(s.jobType)),
-      // The assign-workplace button is active only for a settler with a real trade (jobType not idle/absent):
-      // an idle settler has no trade to place, and a woman takes no trade at all (her work is the household).
+      // A woman takes no trade at all, and an idle settler has no trade to place.
       canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE && !isFemale(ent),
-      // Any adult may pick a home; a growing child (`Age`) moves with its parents instead.
+      // A growing child moves with its parents instead of picking a home.
       canAssignHome: !young,
-      // Remove-from-home is offered only to an adult who currently has a home (a `Residence`): its
-      // family moves out and frees the slot. Homeless settlers and children have nothing to remove.
+      // Removing a home moves the settler's whole family out and frees the slot.
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(snapshot, comps),

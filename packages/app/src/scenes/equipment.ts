@@ -12,29 +12,18 @@ import {
 import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * Three settlers exercising every Ekwipunek slot state: a civilian with worn boots/tool/consumables
- * (mixed condition levels, a permanent amulet, one empty misc slot), a soldier adding the Broń/Zbroja
- * rows, and a bare settler with no Equipment component. Ground piles of spare gear (swords, bows,
- * shoes, tools, armour, consumables) lie by the HQ so the per-slot order buttons have something for
- * their pick menus and the equip/swap/take-off errands can be exercised by hand.
- */
-
 const { Equipment, Settler } = components;
 
-/** The worn "degree of use" inputs - the panel shows the remaining condition, `100 -` these (see the
- *  details-panel model tests). */
+/** Degree-of-use inputs; the panel shows the remaining condition, `100 -` these. */
 const BOOTS_USE_PCT = 70;
 const TOOL_USE_PCT = 40;
 const MEAD_USE_PCT = 50;
 const FOOD_POTION_USE_PCT = 25;
-/** Fully spent - the condition gauge under its socket draws empty and the tooltip reads "(0%)". */
+/** Fully spent, so its condition gauge draws empty. */
 const STAMINA_POTION_USE_PCT = 100;
 
-/** The spare gear lying west of the settlers: slug, cell, and stack size (packed two per row). Kept
- *  well clear of the HQ at (9,12) - real content's extracted footprint is larger than the sandbox
- *  approximation, and a pile inside a building's walls is unreachable to the fetch (its stand is
- *  buried; see `buriedUnderBuilding`). */
+/** Kept well clear of the HQ: real content's extracted footprint is larger than the sandbox
+ *  approximation, and a pile buried under a building is unreachable to the fetch. */
 const YARD_PILES: readonly { slug: string; x: number; y: number; amount: number }[] = [
   { slug: 'sword_shord', x: 4, y: 8, amount: 1 },
   { slug: 'bow_long', x: 5, y: 8, amount: 1 },
@@ -86,7 +75,6 @@ function build(sim: Simulation): void {
   spawnSandboxSettler(sim, JOB_COLLECTOR, 15, 8, HUMAN_PLAYER);
 }
 
-/** Every Equipment component's data in the world, in world query order. */
 function equipmentOf(sim: Simulation) {
   return [...sim.world.query(Equipment)].map((e) => sim.world.get(e, Equipment));
 }

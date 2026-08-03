@@ -20,32 +20,18 @@ import {
 import { countGroundPiles } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The global goods-catalog scene: proves the whole original goods catalog is available in every scene -
- * droppable on the ground and, bar the {@link DISHES_KEPT_OUT_OF_STORES}, storable in a warehouse (with its HUD
- * icon, across the eight category tabs).
- *
- * It places one warehouse and drops one loose pile of every storable
- * good on a grid, via the `dropGood` command. There are no settlers, so the piles simply rest where they
- * land - a static field of the full catalog for the human to eyeball. The headless half asserts the
- * catalog is wired, every good rests as its own pile, and the warehouse's stock set is exactly the
- * storable catalog minus the dishes their own producing house keeps.
- */
-
 const MAP_W = 44;
 const MAP_H = 40;
 const INITIAL_ZOOM = 0.6;
-/** No hauling happens (no settlers), so a short run is enough - the piles are static from tick 1. */
+/** No settlers, so nothing hauls and the piles are static from tick 1. */
 const RUN_TICKS = 60;
 
-/** Lower bound on the goods catalog size that proves the full original catalog (core + extended) is wired,
- *  not just the sandbox core - the extended families push the count well past this. */
+/** A lower bound only the full original catalog clears, not the sandbox core alone. */
 const MIN_CATALOG_GOODS = 60;
 
-/** The warehouse to inspect - a level-2 store, which accepts the general-goods set (all storable goods). */
+/** A level-2 store, which accepts every storable good. */
 const WAREHOUSE_TILE = { x: 6, y: 5 };
 
-/** Every storable good, core economy first then the extended catalog - one pile each on the drop grid. */
 const CORE_STORABLE_GOODS = [
   GOOD_WOOD,
   GOOD_PLANK,
@@ -61,12 +47,10 @@ const DROP_GOODS: readonly number[] = [
   ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
 ];
 
-// The drop grid: a pile every 3 tiles, 8 across, below the warehouse.
 const GRID_ORIGIN = { x: 4, y: 12 };
 const GRID_COLUMNS = 8;
 const GRID_STEP = 3;
-/** A varied per-pile amount (1..5) so adjacent heaps stand at different heights - the pile graphic grows
- *  with its fill, so this shows the full range of growth states across the grid. */
+/** Varies the per-pile amount 1..5, since the pile graphic grows with its fill. */
 const AMOUNT_CYCLE = 5;
 
 function dropTile(index: number): { x: number; y: number } {
@@ -84,13 +68,11 @@ function build(sim: Simulation): void {
   });
 }
 
-/** The good typeIds the warehouse type advertises a stock slot for (its `stock` slots). */
 function warehouseStockGoods(sim: Simulation): Set<number> {
   const def = buildingDef(sim, BUILDING_WAREHOUSE_02);
   return new Set((def?.stock ?? []).map((s) => s.goodType));
 }
 
-/** Ids that must exist in the catalog - a spread across the extended families. */
 const REPRESENTATIVE_EXTENDED_IDS = ['leather', 'bread', 'mead', 'armor_plate', 'sword_long'] as const;
 
 export const goodsCatalogScene: SceneDefinition = {

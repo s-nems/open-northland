@@ -14,40 +14,28 @@ import {
 import { buildingOfType, goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The equipment-EFFECTS scene: worn gear actually working, with needs on. Two collectors trek to a far
- * forest - the booted one pulls ahead (+40% gait) and its boots wear per step; a lone miller with an
- * iron tool grinds an exactly-5-wheat pile into flour, banking the additive tool credit as bonus
- * units while the tool wears per cycle; every settler carries draughts and drinks them by itself when
- * hunger/fatigue press (nobody may starve during the run). The browser half is where a human watches
- * the race open up and the condition percents drain on the Ekwipunek panel.
- */
-
 const MAP_W = 40;
 const MAP_H = 16;
-/** The racers' start column and their forest: a ~9-cell trek, the longest that still sits inside the
- *  spawn-stamped work-flag radius (24 nodes) so the collectors actually claim the trees; they shuttle
- *  chop-and-haul laps, so the booted one's lead compounds on screen anyway. */
+/** The trek spans ~9 cells, which keeps the forest inside the spawn-stamped work-flag radius (24
+ *  nodes) so the collectors claim the trees. */
 const RACER_BARE = { x: 3, y: 8 } as const;
 const RACER_BOOTED = { x: 3, y: 10 } as const;
 const FOREST = [
   { x: 12, y: 8 },
   { x: 12, y: 10 },
 ] as const;
-/** The mill and its wheat pile - clear of the footprint so the pile's stand stays reachable. */
+/** The wheat pile sits clear of the mill footprint so its stand stays reachable. */
 const MILL = { x: 16, y: 12 } as const;
 const WHEAT_PILE = { x: 12, y: 14 } as const;
-/** Exactly this much wheat: 5 one-to-one cycles. The iron tool's 0.6/cycle mints as trunc(0.6·ONE),
- *  one ulp shy, so 5 credits total 2.99995 - two GUARANTEED whole bonus flour (the third whole unit
- *  needs the miller's own experience credit, which the sandbox slot-job lacks a track for). */
+/** Five one-to-one cycles. The iron tool's 0.6 per cycle mints as trunc(0.6·ONE), one ulp shy, so five
+ *  credits total 2.99995: two whole bonus flour are guaranteed, the third is not. */
 const WHEAT_UNITS = 5;
 const GUARANTEED_BONUS_FLOUR = 2;
 const MILLERS = 1;
-/** The mead drinker - parked out of work-flag range of the forest, so it stays put and its sip is
- *  easy to catch on the Ekwipunek panel. */
+/** Parked out of work-flag range of the forest so the drinker stays put. */
 const DRINKER = { x: 3, y: 2 } as const;
-/** Needs on, from the spawn-rolled levels: the ¾ pressing threshold falls at most ~6000 ticks out
- *  (a bar fills in ~8000), so every carried draught provably gets sipped inside the run. */
+/** From the spawn-rolled need levels the ¾ pressing threshold falls at most ~6000 ticks out, so every
+ *  carried draught is sipped inside the run. */
 const RUN_TICKS = 7500;
 const INITIAL_ZOOM = 0.8;
 
@@ -58,8 +46,7 @@ function build(sim: Simulation): void {
   if (wood === undefined) throw new Error('equipment-effects scene: no wood gatherer spec');
   for (const tree of FOREST) placeResourceNode(sim, wood, tree.x, tree.y);
 
-  // The racers: collectors (they double as the mill's tech enabler), each with a food draught so the
-  // trek never ends in starvation. Only one wears shoes - the pace gap is the point.
+  // The racers are collectors because the mill's tech unlock needs one alive.
   spawnSandboxSettler(sim, JOB_COLLECTOR, RACER_BARE.x, RACER_BARE.y, HUMAN_PLAYER, {
     equipment: { misc: [{ goodType: goodBySlug(sim, 'potion_food_big') }, null, null, null] },
   });
@@ -79,7 +66,6 @@ function build(sim: Simulation): void {
     y: pile.hy,
     amount: WHEAT_UNITS,
   });
-  // The tooled miller, with draughts for both bars so a pressing need is a sip, not a work stoppage.
   spawnWorkersAtDoor(sim, mill, MILLERS, {
     owner: HUMAN_PLAYER,
     equipment: {
@@ -98,7 +84,6 @@ function build(sim: Simulation): void {
   });
 }
 
-/** Every settler's Equipment, keyed by which slot identifies it in the checks below. */
 function equipments(sim: Simulation) {
   return [...sim.world.query(Equipment)].map((e) => sim.world.get(e, Equipment));
 }
@@ -137,8 +122,7 @@ export const equipmentEffectsScene: SceneDefinition = {
         equipments(sim).some((eq) =>
           eq.misc.some((slot) => slot !== null && slot.degreeOfUse > fx.fromInt(0) && slot.degreeOfUse < ONE),
         ) ||
-        // ... or every sip already emptied its bottle: an emptied slot reads as a null among misc rows
-        // that started stocked - the drinker's mead is the guaranteed candidate.
+        // An emptied bottle leaves a null slot, so an all-null misc row is also proof of a sip.
         equipments(sim).some((eq) => eq.misc.every((slot) => slot === null)),
     },
     {

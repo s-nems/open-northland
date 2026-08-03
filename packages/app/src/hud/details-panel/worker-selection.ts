@@ -2,16 +2,13 @@ import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { actorsOf, isSettler, num, shelterOf } from '../../game/snapshot.js';
 
-/** At most this many WORKER sprites in the field (a store dispatches up to ~12; keep the row readable).
- *  A garrison is drawn whole instead - the field squeezes its cells to fit the crowd. */
+/** Cap on the settler sprites drawn in one field; the field squeezes its cells to fit them. */
 export const MAX_WORKERS = 8;
-/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell -
- *  members of one family stand close, the next family starts after this breather. */
+/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell. */
 export const FAMILY_GAP_FRAC = 0.45;
 
-/** The settler ids of a grouped id list (a home's residents), flattened in group order and capped like
- *  the worker scan, plus each drawn slot's leading gap ({@link FAMILY_GAP_FRAC} where a new family
- *  starts). A listed id that is gone or was never a settler is skipped. */
+/** The settler ids of a grouped id list (a home's residents), flattened in group order and capped, plus
+ *  each drawn slot's leading gap. A listed id that is gone or was never a settler is skipped. */
 export function groupedWorkers(
   snapshot: WorldSnapshot,
   groups: readonly (readonly number[])[],
@@ -38,10 +35,8 @@ export function groupedWorkers(
   return { ids, gaps };
 }
 
-/** Who the flat field draws for `buildingId`: everyone the building holds. Its posted staff and crew
- *  ({@link boundWorkers}) first, then the crowd that ran in under an alarm ({@link shelteringIn}) - the
- *  posted men keep their places because this strip is their only click target, and the townspeople follow
- *  them into a field that squeezes to fit. */
+/** Everyone `buildingId` holds: its posted staff and crew first, then the crowd that ran in under an
+ *  alarm, so the posted men keep their places in a squeezed field. */
 export function fieldWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
   const sheltering = shelteringIn(snapshot, buildingId);
   if (sheltering.length === 0) return boundWorkers(snapshot, buildingId, siteCrew);
@@ -51,8 +46,7 @@ export function fieldWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
 }
 
 /** The settlers sheltering in `buildingId`, those already inside (`Resting` there) before the ones still
- *  running to it, so a squeezed field keeps the men under cover. Uncapped: the sim admits no more claims
- *  than the building's own `shelterCapacity`, and it grants none at all until defence mode is raised. */
+ *  running to it. Uncapped: the sim admits no more claims than the building's own `shelterCapacity`. */
 function shelteringIn(snapshot: WorldSnapshot, buildingId: number): number[] {
   const inside: number[] = [];
   const running: number[] = [];
@@ -64,30 +58,16 @@ function shelteringIn(snapshot: WorldSnapshot, buildingId: number): number[] {
   return [...inside, ...running];
 }
 
-/** The (capped) settler ids to draw for `buildingId`, most-belonging first: its GARRISON, then the rest of
- *  its POSTED staff (bound by `JobAssignment`), then - with `siteCrew` (a construction site - builders are
- *  never JobAssignment-bound to it) - the crew raising it, counted by persistent crew membership
- *  (`SiteAssignment` - hammering, waiting for material, or detoured, it stays listed) plus a plain hauler
- *  showing transiently while depositing there (`CurrentAtomic.targetEntity`) or on a supply errand for it
- *  (`SupplyRun`). Posted first because a site's build crew is usually older than the posting and would
- *  otherwise fill the cap with the very settlers the strip above is NOT counting. Within each group,
- *  snapshot order - a view read, so ascending id is fine.
- *
- *  The garrison leads because this strip is its ONLY click target: a man holding a tower is `Resting`, so
- *  the map neither draws nor picks him, and the projection gives him no badge row either. A full big tower
- *  posts 12 (`logicworker` 4/4/4) against a field that fits {@link MAX_WORKERS}, so without the split the
- *  men past the cap would be unselectable - and a walk order is how a posting is cancelled.
- *
- *  A recruit on a barracks drill (`TrainingOrder`) is listed last, from the order to the last repetition,
- *  so a crowded field drops a visitor rather than a working post. It is the only
- *  sight of him for the half of that the map hides him, standing frozen inside the house. */
+/** The capped settler ids to draw for `buildingId`, most-belonging first: garrison, the rest of its posted
+ *  staff, the crew raising a construction site (`siteCrew`), then a recruit on a barracks drill. The
+ *  garrison leads because a man holding a tower is `Resting`, so the map neither draws nor picks him and
+ *  this strip is the only way to select him. */
 export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
   const garrison: number[] = [];
   const posted: number[] = [];
   const crew: number[] = [];
   const drilling: number[] = [];
-  // Each bucket stops at the field's capacity, and the whole scan stops once the garrison alone fills it:
-  // nothing below it could be drawn. This runs per sim tick while a building panel is open.
+  // The scan stops once the garrison alone fills the field: nothing below it could be drawn.
   const push = (into: number[], id: number): void => {
     if (into.length < MAX_WORKERS) into.push(id);
   };

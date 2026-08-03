@@ -28,23 +28,19 @@ export interface UnitOrderDeps {
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: Command) => void;
   readonly selectOwnSettler: (id: number) => void;
-  /** Bring up the settler action menu, pinned on the click's client point (the original stores the cursor). */
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
 }
 
 export interface UnitOrderController {
-  /** `onBuilding` names a building the caller resolved from a marker rather than from the world pixel
-   *  under the cursor (a garrison flag, which hangs far above the tower it stands for). */
+  /** `onBuilding` is a building resolved from a marker rather than the world pixel under the cursor
+   *  (a garrison flag hangs far above the tower it stands for). */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
   issueSetWorkFlag(event: MouseEvent): void;
-  /** Send the selection to the clicked spot fighting everything on the way (the armed attack-move click). */
   issueAttackMove(event: MouseEvent): void;
 }
 
-/** The two walk orders a formation click can issue: go there, or fight your way there. */
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
 
-/** Route right-click RTS intent into the one-way sim command seam. */
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
 
@@ -61,8 +57,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     return (col, row) => occupied.has(`${col},${row}`);
   };
 
-  // A carrying settler is ordered like any other - the sim makes it set its load down first, then walk
-  // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
+  // A carrying settler stays in the formation: the sim makes it set its load down before walking, so
+  // there is no client-side filtering.
   const issueWalkOrder = (event: MouseEvent, movers: readonly FormationUnit[], kind: WalkOrderKind): void => {
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
@@ -102,15 +98,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const employsTrade = (jobType: number | undefined): boolean =>
         jobType !== undefined &&
         (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
-      // One ladder for every own building. A foundation leads with its own rung (a trade that can raise it
-      // joins the crew - the original's "put a builder on a foundation"), then follows the rules of the
-      // building it will become.
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-        // The exception is a site that employs this very trade (real content lets the joiner and armorer
-        // build): posting wins there, because the sim sends a posted builder to raise its OWN site anyway
-        // and it keeps the seat when the workshop stands, where a bare crew pin would leave it unposted.
+        // A site that employs this very trade posts instead of pinning a builder: the sim sends a posted
+        // builder to raise its own site, and it keeps the seat once the workshop stands.
         const joinsCrew =
           currentJob !== undefined &&
           systems.jobCanBuild(deps.content, currentJob) &&
@@ -119,12 +111,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
           deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
           continue;
         }
-        // Moving in and drilling need the building STANDING (assignHouse takes a built home, mayDrillAt no
-        // barracks under construction), so a foundation drops past them to employment, whose slots are open
-        // from the moment it is placed.
+        // Moving in and drilling need the building standing, so a foundation falls through to employment,
+        // whose slots are open from the moment it is placed.
         if (!underConstruction) {
-          // A home takes the move-in path: right-click = "live here" (the family moves as one - the sim's
-          // assignHouse validates the free family slot and no-ops otherwise).
           if (def?.kind === 'home') {
             deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
             continue;
@@ -134,11 +123,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
             continue;
           }
         }
-        // The employment priority is computed from the settler's CURRENT trade: keep it where the building
-        // offers that slot (a miller stays a miller at the mill; a hunter stays a gatherer at a warehouse's
-        // gatherer slot), else the building's default order (craftsman → carrier, gatherers excluded for a
-        // non-gatherer - so a plain settler on a warehouse becomes a carrier). The sim gates every
-        // candidate, so an unoffered/full trade just falls through.
+        // The sim gates every candidate in the priority list, so an unoffered or full trade falls through.
         const jobPriority = assignmentPriorityFor(currentJob, slots);
         if (jobPriority.length === 0) continue;
         deps.enqueue({

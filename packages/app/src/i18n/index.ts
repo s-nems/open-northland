@@ -15,7 +15,6 @@ export function localeParam(params: URLSearchParams): Locale {
   return DEFAULT_LOCALE;
 }
 
-/** The locale's BCP-47 tag, for `document.lang` and `Intl` consumers. */
 export function bcp47Tag(locale: Locale = activeLocale): string {
   return locale === 'pol' ? 'pl' : 'en';
 }

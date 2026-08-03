@@ -3,22 +3,19 @@ import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { actorsOf, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
 
-/** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
+/** Dot sizes in minimap px: a settler is a 2x2 dot, a building a 3x3 block. */
 const SETTLER_DOT_PX = 2;
 const BUILDING_DOT_PX = 3;
-/** Dot colour for a player outside the swatch table - unreachable today (the index is taken modulo
- *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
+/** Fallback dot colour for a player outside the swatch table. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 
-/** A plotted dot: raster-px centre `(bx, by)`, half-extent `half`, packed `0xRRGGBB` `colour`. Passed
- *  as loose primitives, never a per-dot object, so the sink adds no per-dot allocation of its own and
- *  the caller stamps straight into its retained buffer (see `stampDot`). */
+/** A plotted dot: raster-px centre `(bx, by)`, half-extent `half`, packed `0xRRGGBB` `colour`. Loose
+ *  primitives keep the per-dot path free of allocation. */
 export type MinimapDotSink = (bx: number, by: number, half: number, colour: number) => void;
 
 /**
- * Project every owned settler and building in `snapshot` to a dot for the minimap, handing each to
- * `sink` in the ground raster's px (1:1 with the map picture: `scale` minimap-px per world-px, offset
- * by `bounds`) and coloured by owning player.
+ * Project every owned settler and building in `snapshot` to a minimap dot, in the ground raster's px
+ * (`scale` minimap-px per world-px, offset by `bounds`) and coloured by owning player.
  */
 export function forEachMinimapDot(
   snapshot: WorldSnapshot,
@@ -30,15 +27,13 @@ export function forEachMinimapDot(
 ): void {
   for (const e of actorsOf(snapshot)) {
     const player = ownerPlayerOf(e);
-    if (player === undefined) continue; // unowned (wildlife, a neutral building): the minimap shows forces
+    if (player === undefined) continue; // wildlife and neutral buildings never plot
     const settler = isSettler(e);
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    // Fog: a dot only on currently-visible ground (the viewer's own forces always are - they see
-    // their own cell; an enemy in unexplored/grey ground stays off the minimap).
+    // Only currently-visible ground plots; the viewer's own forces always see their own cell.
     if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
     const s = tileToScreen(pos.x / ONE, pos.y / ONE);
-    // Raster px coords - the buffer is 1:1 with the map picture's logical px.
     const bx = (s.x - bounds.minX) * scale;
     const by = (s.y - bounds.minY) * scale;
     const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;

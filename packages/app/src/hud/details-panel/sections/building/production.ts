@@ -5,22 +5,15 @@ import { BAR_H, type BuildingLayout, STOCK_ROW_H } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
 import { STOCK_AMOUNT_INSET, STOCK_ICON_W } from './shared.js';
 
-/** Where a production row's long progress bar starts (design px) - a fixed label column on the LEFT of
- *  every row that fits the product's icon + a localized name like "Zbroja płytowa"; the bar fills the
- *  rest of the row's width. A name still wider than the column shrinks to fit (textLeftMiddle maxWidth)
- *  rather than running under the bar. */
+/** Left edge of a production row's progress bar (design px); the icon and product name share the column
+ *  before it. */
 const PRODUCTION_BAR_LEFT = 150;
 /** Breathing room between the end of a row's label column and its bar (design px). */
 const PRODUCTION_LABEL_GAP = 6;
-/** Gap between a row's stacked product icons (design px) - a livestock chain row draws one per ware. */
+/** Gap between a row's stacked product icons (design px). */
 const EXTRA_ICON_GAP = 2;
 
-/**
- * Production window ('Produkcja' is a named approximation - no extracted title): a farm shows its live
- * field counters (sown/growing/ripe, no recipe to bar); a workshop shows one row PER PRODUCIBLE GOOD -
- * the product's icon + name on the left, its front-runner batch's progress bar on the right (a smithy 2
- * lists all five wares; the recipe-inputs tooltip lives in the panel's cursor probe, not here).
- */
+/** Production window; no extracted title exists, so 'Produkcja' is a named approximation. */
 export function drawProductionSection(
   chrome: Chrome,
   layout: BuildingLayout,
@@ -65,8 +58,7 @@ export function drawProductionSection(
         chrome.goodIcon(extra, next);
         iconEnd = next.x + next.w;
       }
-      // Icons, label, and bar all centre on the same row midline; the label shrinks to its column so a
-      // long product name ("Duża mikstura leczenia") never runs under the bar.
+      // The label shrinks to its column so a long product name never runs under the bar.
       const labelX = iconEnd + Math.round(STOCK_AMOUNT_INSET * s);
       chrome.textLeftMiddle(
         row.label,

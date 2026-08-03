@@ -17,17 +17,11 @@ import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { targetSearch } from './target-search.js';
 
-/**
- * The map-select screen: searchable, filterable list of decoded maps plus the
- * registered test scenes, a large preview, and the primary action. Maps continue to the lobby;
- * a test scene starts directly (scenes have no roster to negotiate).
- */
+/** Maps continue to the lobby; a test scene starts directly, having no roster to negotiate. */
 
-/** Rows rasterize their thumb this far before entering the viewport, so scrolling meets a ready
- *  image instead of a placeholder swap. */
+/** Rows rasterize their thumb this far before entering the viewport. */
 const THUMB_PRELOAD_MARGIN = '200px';
 
-/** The registered test scenes as list rows, titled from the active locale's scene metadata. */
 function sceneRows(): readonly MapSelectItem[] {
   const sceneCopy = messages().scene;
   return SCENES.flatMap((scene) => {
@@ -47,7 +41,6 @@ export function mapSelectScreen(
   const section = document.createElement('section');
   section.className = 'main-menu__screen main-menu__map-select';
 
-  // Header row: back + title on the left baseline, search + segmented filter on the right.
   const head = screenHead('newGame', open);
   const tools = document.createElement('div');
   tools.className = 'main-menu__head-tools';
@@ -64,8 +57,8 @@ export function mapSelectScreen(
     button.type = 'button';
     button.className = 'main-menu__seg-btn';
     if (tab.kind === 'comingSoon') {
-      // aria-disabled instead of `disabled`: a truly disabled button swallows hover, which kills
-      // the native coming-soon tooltip in some engines.
+      // aria-disabled instead of `disabled`: a disabled button swallows hover, which kills the
+      // native tooltip in some engines.
       button.textContent = select.filters[tab.id];
       button.classList.add('is-coming-soon');
       button.title = copy.comingSoonTip;
@@ -91,7 +84,6 @@ export function mapSelectScreen(
   tools.append(seg);
   head.append(tools);
 
-  // Body: the scrollable list column and the preview column.
   const body = document.createElement('div');
   body.className = 'main-menu__map-body';
   const listCol = document.createElement('div');
@@ -107,7 +99,7 @@ export function mapSelectScreen(
   count.className = 'main-menu__map-count';
   listCol.append(search, listScroll, count);
 
-  // The details card (shared with the lobby): this screen contributes the primary action button.
+  // The details card is shared with the lobby; this screen contributes the primary action button.
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
   const card = createMapDetailsCard();
@@ -127,9 +119,8 @@ export function mapSelectScreen(
   let mapsLoaded = false;
   const rowButtons = new Map<MapSelectItem, HTMLButtonElement>();
 
-  // Maps without a decoded PNG rasterize a thumb from map data, but only once their row nears the
-  // viewport: each preview needs the full terrain JSON, so an eager pass over the list would pull
-  // tens of megabytes. generatedMapPreview memoises, so the large preview reuses the same blob.
+  // Maps without a decoded PNG rasterize a thumb only once their row nears the viewport: each
+  // preview needs the full terrain JSON, so an eager pass would pull tens of megabytes.
   const pendingThumbs = new Map<Element, string>();
   const fillThumb = (thumb: Element, mapId: string): void => {
     void generatedMapPreview(mapId).then((source) => {
@@ -190,8 +181,8 @@ export function mapSelectScreen(
       img.src = `/maps/${encodeURIComponent(item.id)}.png`;
       img.alt = '';
       img.loading = 'lazy';
-      // A stale minimap flag falls back to the rasterized thumb; img.remove() keeps the gradient
-      // placeholder (not a broken-image glyph) while that generates.
+      // A stale minimap flag falls back to the rasterized thumb; removing the img shows the
+      // gradient placeholder instead of a broken-image glyph.
       img.addEventListener('error', () => {
         img.remove();
         fillThumb(thumb, item.id);
@@ -223,19 +214,17 @@ export function mapSelectScreen(
 
   const renderList = (): void => {
     const rows = filterItems(items, memory.filter, search.value);
-    // The scenes filter counts scenes; every other filter counts maps.
     const countForms = memory.filter === 'scenes' ? select.scenes : select.maps;
     const mapsText = formatMessage(pluralForm(rows.length, countForms, bcp47Tag()), {
       count: rows.length,
     });
     count.textContent = formatMessage(select.countLine, { maps: mapsText });
     rowButtons.clear();
-    // The old rows leave the DOM with replaceChildren below; stop watching their thumbs.
+    // The old rows leave the DOM below, so stop watching their thumbs.
     thumbObserver.disconnect();
     pendingThumbs.clear();
     if (rows.length === 0) {
-      // Before /maps-index settles the list is merely not-yet-loaded, not absent; only a settled
-      // empty result earns the "no decoded maps" explanation, and the wait states its purpose.
+      // Only a settled empty result means "no decoded maps"; before that the list is still loading.
       const notice = document.createElement('p');
       notice.className = 'main-menu__map-empty';
       notice.textContent = mapsLoaded ? (items.length > 0 ? select.noMatch : select.empty) : select.loading;
@@ -276,7 +265,7 @@ export function mapSelectScreen(
   primary.addEventListener('click', () => {
     if (selected === null) return;
     if (selected.kind === 'scene') {
-      // Scenes start directly; targetSearch carries the sticky menu params (lang, sound, …).
+      // targetSearch carries the sticky menu params (lang, sound, ...).
       window.location.search = targetSearch(`?scene=${encodeURIComponent(selected.id)}`);
       return;
     }

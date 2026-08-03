@@ -6,27 +6,23 @@ import { spawnSandboxSettler, WEAPON_SWORD } from '../game/sandbox/index.js';
 import { blueLivingSettlers, enemyLivingSettlers, goodBySlug, yardGood } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * Two files of sword soldiers cut each other down in the open. Each man wears a short sword, chain
- * armor, a full mead and half-walked shoes, so one run shows both halves of the drop rule: unused gear
- * lands beside his bones, part-used gear is lost with him. The mead count is exact because scene worlds
- * run with needs off and mead restores only hunger/fatigue, so nobody sips.
- */
+/** The mead count is exact: scene worlds run with needs off and mead restores only hunger and fatigue,
+ *  so nobody sips. */
 
 const MAP_W = 20;
 const MAP_H = 16;
 
-/** The two facing files, in cells: rank columns and the rows they hold. */
+/** The facing rank columns and the rows they hold, in cells. */
 const BLUE_X = 8;
 const RED_X = 11;
 const ROW_FIRST = 5;
 const ROW_LAST = 9;
 const PER_SIDE = ROW_LAST - ROW_FIRST + 1;
 
-/** How far the shoes are walked down when the wearer spawns - a part-used item, so the fall destroys it. */
+/** Part-used gear, which the drop rule destroys with its wearer. */
 const SHOES_USED_PCT = 50;
 
-/** A floor for the loot checks, not the expected count: this seed settles at 8 of the 10 by tick 300. */
+/** A floor for the loot checks, not the expected casualty count. */
 const MIN_CASUALTIES = 4;
 
 function build(sim: Simulation): void {
@@ -59,7 +55,7 @@ export const deathLootScene: SceneDefinition = {
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 400,
-  initialZoom: 2.5, // the fight fills a few cells; at the default zoom a heap is a few pixels
+  initialZoom: 2.5, // a dropped heap is only a few pixels at the default zoom
   checks: [
     {
       label: 'the two files really fought (enough men fell to loot)',
