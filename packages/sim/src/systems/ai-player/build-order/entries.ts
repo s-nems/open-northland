@@ -47,24 +47,19 @@ export type BuildOrderEntry =
   | { readonly kind: 'towerCoverage'; readonly building: string };
 
 /**
- * The opening list (source: the user's authored plan, 2026-07-17, extended and revised
- * 2026-07-18). The affinities encode the plan's adjacency rules: the mason leans toward the stone
- * deposit and the pottery toward the clay pit (both still near the HQ), the farm→mill→bakery/well
- * chain clusters, and the hive/brewery/animal-farm cluster hangs off the well. Level-2 workshops
- * (sewery, joinery, smithy) are built directly at their level-2 tier with no level-0 intermediate
- * (user decision 2026-07-18; source-backed - the extracted `jobEnablesHouse` rows enable the `_01`
- * tiers as separately placeable house types, each charging its own non-cumulative construction
- * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is hired
- * only when the list reaches it, and the order is material-ordered throughout: the pottery/mason
- * upgrades unlock the tile and ornament the home upgrades then consume.
+ * The authored opening list, ordered so each entry's materials already exist when it is reached: one
+ * unbuildable bill stalls every entry behind it, because the executor issues nothing while a site is
+ * open. A placement charges the merged bill of its whole tier chain, so the armory cannot precede the
+ * level-2 pottery and mason that make its tile and ornament.
  *
- * The late-game tail (user plan 2026-07-25, revised 2026-07-26) opens with the perpetual
- * tower-coverage entry, then doubles the food/tool economy at the level-2 tiers on the same
- * `jobEnablesHouse` evidence (which also covers `home_level_04`, the player's "level 5" home, whose
- * own bill is two ornaments - so the fourth home onward is placed at the top tier rather than
- * grown). It ends with two outskirts warehouses spread `apart`, a warehouse being a goods-collection
- * point like the HQ. The tower entry interleaves by design: a warehouse landing uncovered re-arms
- * it, a tower goes up, the list resumes.
+ * Level-2 workshops are placed directly, with no level-0 intermediate: the extracted `jobEnablesHouse`
+ * rows enable the `_01` tiers as separately placeable house types, each charging its own
+ * non-cumulative bill, and `home_level_04` the same way (its own bill is two ornaments, so the fourth
+ * home onward is placed at the top tier rather than grown).
+ *
+ * Weapon shops belong to the opening rather than the tail: the garrison rung publishes only the
+ * classes it can arm right now (`workforce/garrison.ts`), so a deferred shop leaves the seat drilling
+ * one class until it stands.
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
@@ -114,17 +109,12 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
   { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
   { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'mapCentre' }] },
+  { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'building', id: 'work_smithy_01' }] },
   { kind: 'upgrade', building: 'home_level_03', count: 3 },
   { kind: 'upgrade', building: 'home_level_04', count: 3 },
   { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
   { kind: 'towerCoverage', building: 'tower_01' },
   { kind: 'place', building: 'work_bakery_01', count: 2, near: [{ kind: 'building', id: 'work_mill_00' }] },
-  {
-    kind: 'place',
-    building: 'work_armory_01',
-    count: 1,
-    near: [{ kind: 'building', id: 'work_smithy_01' }],
-  },
   {
     kind: 'place',
     building: 'work_brewery',
@@ -137,6 +127,7 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_smithy_01', count: 2, near: [{ kind: 'resource', good: 'iron' }] },
   { kind: 'place', building: 'home_level_04', count: 5 },
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
+  { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
 ];
 
 /** What a seat with no base puts up (user rule): the headquarters declares an explicitly EMPTY

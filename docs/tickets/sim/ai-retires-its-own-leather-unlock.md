@@ -24,8 +24,8 @@ prey, meat and leather. Wool (good 10) carries no enabling edge at all, so it st
 - the feed cycle's meat byproduct is dropped at the deposit gate (`economy/production/cycles.ts`), so
   the farm's only output is wool.
 
-The build order places `work_animal_farm` (`build-order/entries.ts:98`) well before the
-`work_bakery_01` upgrade (`:119`), so this is the steady state of every AI game, not an edge case.
+The build order (`build-order/entries.ts`) places `work_animal_farm` well before the `work_bakery_01`
+upgrade, so this is the steady state of every AI game, not an edge case.
 
 Leather is the reachable half of a wider branch: the same block carries `jobEnablesJob 15 16/17`
 (breeder, sewer) and `jobEnablesHouse 15 17/18/44/45` (animal farm, level-0 sewery, both ships). Only

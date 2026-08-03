@@ -253,16 +253,18 @@ export function husbandryContent(): ContentSet {
 }
 
 /** The armed soldier classes {@link armedContent} binds, and the goods that arm them (real bands).
- *  The base fixture's weapon rows carry no `goodtype`, so only these two classes can be equipped -
+ *  The base fixture's weapon rows carry no `goodtype`, so only these three classes can be equipped -
  *  and only while the seat has the good in store (`workforce/garrison.ts`). */
 export const SWORDSMAN = 34;
+export const SPEARMAN = 32;
 export const BOWMAN = 40;
 export const SWORD = 41;
+export const SPEAR = 39;
 export const BOW = 37;
 
-/** Content whose short sword and short bow are craftable goods a recruit can be armed with: the base
- *  fixture binds the bow class already, but weaponless (no `goodtype`), so no seat can field either
- *  class on it. */
+/** Content whose short sword, wooden spear and short bow are craftable goods a recruit can be armed
+ *  with: the base fixture binds the spear and bow classes already, but weaponless (no `goodtype`), so
+ *  no seat can field any of the three on it. */
 export function armedContent(): ContentSet {
   const base = aiContent();
   return parseContentSet({
@@ -270,13 +272,15 @@ export function armedContent(): ContentSet {
     goods: [
       ...base.goods,
       { typeId: SWORD, id: 'sword_short', weight: 1 },
+      { typeId: SPEAR, id: 'spear_wooden', weight: 1 },
       { typeId: BOW, id: 'bow_short', weight: 1 },
     ],
     jobs: [...base.jobs, { typeId: SWORDSMAN, id: 'soldier_sword_short' }],
     weapons: [
-      ...base.weapons.map((w) =>
-        w.jobType === BOWMAN ? { ...w, mainType: WEAPON_MAIN_TYPE.BOW, goodType: BOW } : w,
-      ),
+      ...base.weapons.map((w) => {
+        if (w.jobType === BOWMAN) return { ...w, mainType: WEAPON_MAIN_TYPE.BOW, goodType: BOW };
+        return w.jobType === SPEARMAN ? { ...w, goodType: SPEAR } : w;
+      }),
       {
         typeId: 7,
         id: 'viking_sword_short',

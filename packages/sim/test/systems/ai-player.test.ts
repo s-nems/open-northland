@@ -68,23 +68,21 @@ describe('setPlayerAi - the AI seat flag', () => {
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(false);
   });
 
-  it('withdraws the AI-published counters on disable, sparing the rows it never publishes', () => {
+  it('withdraws every AI-published counter on disable', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    // The standing state the modules publish - the garrison rung's whole weapon mix among it - plus
-    // the spear row, which no AI hand ever sets.
-    for (const counter of ['extraMen', 'trainSoldiers', 'trainSword', 'trainBow', 'trainSpear'] as const) {
+    // The standing state the modules publish: the births, and the garrison rung's whole weapon mix.
+    const published = ['extraMen', 'trainSoldiers', 'trainSword', 'trainSpear', 'trainBow'] as const;
+    for (const counter of published) {
       sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter, value: 3, infinite: false });
     }
     sim.step();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     const counters = sim.assistantCounters(AI_SEAT);
-    expect(counters.extraMen).toEqual({ value: 0, infinite: false });
-    expect(counters.trainSoldiers).toEqual({ value: 0, infinite: false });
-    expect(counters.trainSword).toEqual({ value: 0, infinite: false });
-    expect(counters.trainBow).toEqual({ value: 0, infinite: false });
-    expect(counters.trainSpear).toEqual({ value: 3, infinite: false });
+    for (const counter of published) {
+      expect(counters[counter], counter).toEqual({ value: 0, infinite: false });
+    }
   });
 
   it("withdraws a module's counters when its publishing gate flips off, keeping the rest", () => {

@@ -114,31 +114,45 @@ export function armingGoodPreference(
 }
 
 /**
- * Whether the seat could arm a `tribe` recruit of this `intent` right now: some store inside `reach` holds
- * a good {@link armingGoodPreference} would shop for. The prediction the garrison rung sizes its standing
- * order with, kept beside the pass that has to fulfil it so the two cannot drift - same goods, same store
- * rule ({@link storeYieldsGood}), same reach {@link fetchRouteFor} searches under. Existence only: which
- * recruit walks there is the dispatch's problem. Ownership follows the pass's rule ({@link
- * ownersCompatible}), so a neutral ground heap of swords counts like a stocked warehouse.
+ * Which of `intents` the seat could arm a `tribe` recruit for right now: those some store inside
+ * `reach` holds a good {@link armingGoodPreference} would shop for, returned in the caller's order.
+ * The prediction the garrison rung sizes its standing order with, kept beside the pass that has to
+ * fulfil it so the two cannot drift - same goods, same store rule ({@link storeYieldsGood}), same
+ * reach {@link fetchRouteFor} searches under. Existence only: which recruit walks there is the
+ * dispatch's problem. Ownership follows the pass's rule ({@link ownersCompatible}), so a neutral
+ * ground heap of swords counts like a stocked warehouse.
+ *
+ * Answers every intent in ONE walk of the stores, so the cost is the world's stores rather than the
+ * stores times the armed classes.
  */
-export function canArmRecruit(
+export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   tribe: number,
-  intent: keyof typeof INTENT_WEAPON_CLASS,
+  intents: readonly Intent[],
   reach: NavigationLimit | null,
-): boolean {
-  const goods = armingGoodPreference(ctx.content, tribe, intent);
-  if (goods.length === 0) return false; // the tribe's data binds no such class
+): readonly Intent[] {
+  // An intent whose tribe data binds no craftable class row can never be armed and is dropped here.
+  const wanted = intents
+    .map((intent) => ({ intent, goods: armingGoodPreference(ctx.content, tribe, intent) }))
+    .filter((w) => w.goods.length > 0);
+  if (wanted.length === 0) return [];
+  const armable = new Set<Intent>();
   const walls = buildingBlockedCells(world, ctx, terrain);
   for (const store of world.query(Stockpile)) {
+    if (armable.size === wanted.length) break;
     if (!ownersCompatible(player, ownerOf(world, store))) continue;
-    if (!goods.some((good) => storeYieldsGood(world, ctx, terrain, walls, store, good))) continue;
-    if (reach === null || reach.allowsNode(approachNode(world, ctx, terrain, store))) return true;
+    let approach: NodeId | undefined;
+    for (const { intent, goods } of wanted) {
+      if (armable.has(intent)) continue;
+      if (!goods.some((good) => storeYieldsGood(world, ctx, terrain, walls, store, good))) continue;
+      approach ??= approachNode(world, ctx, terrain, store);
+      if (reach === null || reach.allowsNode(approach)) armable.add(intent);
+    }
   }
-  return false;
+  return intents.filter((intent) => armable.has(intent));
 }
 
 /** Where a fetcher stands to draw on a store - a building at its door, a ground pile at its own node. */

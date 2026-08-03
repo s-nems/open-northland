@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ASSISTANT_RECRUIT_INTENTS,
   type AssistantCounterKind,
   AssistantRecruit,
   type AssistantRecruitIntent,
@@ -34,6 +35,7 @@ import {
   makeAiSeat,
   placeHq,
   SEAT,
+  SPEAR,
   SWORD,
   spawnMen,
   TOOL_IRON,
@@ -73,8 +75,8 @@ const FAR_BARRACKS = { x: 58, y: 16 };
 const BRIDGE_POST = { x: 22, y: 8 };
 const POST_NAV_RADIUS_NODES = 24;
 
-/** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword
- *  and bow classes are equippable ({@link armedContent}). */
+/** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword,
+ *  spear and bow classes are equippable ({@link armedContent}). */
 function armedSeat(arms: readonly { good: number; amount: number }[], options: SeatOptions = {}): ArmedSeat {
   const content = armedContent();
   const men = options.men ?? SPARE_MEN;
@@ -135,8 +137,7 @@ function draftHeadroom(seat: ArmedSeat): number {
     const booking = seat.sim.world.get(e, AssistantRecruit);
     if (!booking.armed) booked.set(booking.intent, (booked.get(booking.intent) ?? 0) + 1);
   }
-  const owned: readonly AssistantRecruitIntent[] = ['trainSoldiers', 'trainSword', 'trainBow'];
-  return owned.reduce(
+  return ASSISTANT_RECRUIT_INTENTS.reduce(
     (slots, intent) => slots + Math.max(0, (wants[intent] ?? live[intent].value) - (booked.get(intent) ?? 0)),
     0,
   );
@@ -338,6 +339,30 @@ describe('workforce module - the barracks and craft selections', () => {
     });
   });
 
+  it('splits the standing order three ways once every arm is in store', () => {
+    const arms = [
+      { good: SWORD, amount: 1 },
+      { good: SPEAR, amount: 1 },
+      { good: BOW, amount: 1 },
+    ];
+    // Equal thirds, the publication order taking the men a third does not divide - so both remainder
+    // sizes must land in reach: one over goes to swords, two to swords and spears, never to bows.
+    const overs = new Set<number>();
+    for (const men of [SPARE_MEN, SPARE_MEN + 1]) {
+      const seat = armedSeat(arms, { men });
+      const total = sparePool(seat);
+      const share = Math.floor(total / 3);
+      const over = total % 3;
+      overs.add(over);
+      expect(counterWants(seat.sim, seat.ctx)).toEqual({
+        trainSword: share + (over > 0 ? 1 : 0),
+        trainSpear: share + (over > 1 ? 1 : 0),
+        trainBow: share,
+      });
+    }
+    expect([...overs].sort()).toEqual([1, 2]); // both arms of the tie-break were exercised
+  });
+
   it('puts the whole order on the one class it can arm, never on fists', () => {
     const seat = armedSeat([{ good: BOW, amount: 1 }]);
     // Swords unmade: a swordsman would stand around weaponless, so every recruit becomes an archer
@@ -416,6 +441,7 @@ describe('workforce module - the barracks and craft selections', () => {
       [{ good: SWORD, amount: 1 }],
       [
         { good: SWORD, amount: 1 },
+        { good: SPEAR, amount: 1 },
         { good: BOW, amount: 1 },
       ],
     ]) {
@@ -423,7 +449,7 @@ describe('workforce module - the barracks and craft selections', () => {
       for (const kind of Object.keys(counterWants(seat.sim, seat.ctx))) published.add(kind);
     }
     expect([...published].filter((kind) => !withdrawable.has(kind))).toEqual([]);
-    expect(published.size).toBe(3); // all three reached: the fallback and both armed classes
+    expect(published.size).toBe(4); // all four reached: the fallback and every armed class
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {
