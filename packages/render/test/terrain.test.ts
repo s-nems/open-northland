@@ -15,12 +15,8 @@ import {
 import { DEFAULT_TILE_COLOUR, dominantGroundColour, flatTileColour } from '../src/gpu/terrain/geometry.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src/index.js';
 
-/**
- * The PURE, self-verifiable half of textured terrain: the node-lattice tessellation + UV folds the
- * GPU mesh build consumes (source basis: the original engine's ground mesh - docs/SOURCES.md
- * "terrain tessellation"). Pixels stay human-gated, but the vertex/UV math is unit-tested here so a
- * regression in the triangle node picks / UV folds / lift rule is caught headless.
- */
+/** Tessellation source basis: the original engine's ground mesh, per docs/SOURCES.md "terrain
+ *  tessellation". */
 
 describe('cellNode / nodeCell - the cell-centre lattice', () => {
   it('places even-row centres at (2c, 2r) and odd-row centres staggered half a cell right', () => {
@@ -83,8 +79,7 @@ describe('triangle node picks - two triangles per cell, BETWEEN cell centres', (
   });
 
   it('every triangle vertex IS a neighbouring cell centre (the per-cell lane join)', () => {
-    // The cell-index arithmetic of the original tessellation: for cell (c, r) with s = r&1,
-    // A = centres of cells [(c,r), (c+s, r+1), (c+s−1, r+1)], B = [(c,r), (c+1, r), (c+s, r+1)].
+    // The original tessellation's cell-index arithmetic, with s = r&1.
     for (const [c, r] of [
       [2, 2],
       [2, 3],
@@ -233,7 +228,7 @@ describe('patternSrcRect', () => {
   });
 
   it('handles a tile offset within the page (a lower sub-rect)', () => {
-    // "sand 01" sat at y=128 in its page (coords [0,128,63,191,0,191] / [0,128,63,128,63,191]).
+    // `sand 01` sits at y=128 in its page: coords [0,128,63,191,0,191] / [0,128,63,128,63,191].
     const rect = patternSrcRect([0, 128, 63, 191, 0, 191], [0, 128, 63, 128, 63, 191]);
     expect(rect).toEqual({ x: 0, y: 128, w: 63, h: 63 });
   });

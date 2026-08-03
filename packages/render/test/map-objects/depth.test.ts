@@ -7,9 +7,8 @@ import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { FRAME_0, tallSprites, WIDE } from './support.js';
 
 /**
- * The tall map-object sort row: an object normally sorts at its feet anchor, but one settlers stand ON
- * (a bridge deck) carries a `depthY` override so everything on the span paints in front of it. Its
- * shadow follows the same row, so no sprite can slip between the pair.
+ * A tall map object sorts at its feet anchor, except one settlers stand on: a bridge deck carries a
+ * `depthY` override so everything on the span paints in front of it, and its shadow follows the same row.
  */
 
 const SHADOW_0: AtlasFrame = { x: 16, y: 0, width: 8, height: 4, offsetX: -2, offsetY: -4 };
@@ -51,15 +50,14 @@ describe('MapObjectLayer sort row (tall objects)', () => {
     const { body, shadow } = sortedPair(tallObject(farRowY));
     expect(body).toBe(depthKey(ANCHOR.x, farRowY));
     expect(shadow).toBeLessThan(body);
-    // Under the body but well inside its own row: the pair still cannot interleave with a sprite
-    // a genuine row apart.
+    // Under the body but inside its own row, so no sprite a genuine row apart can slip between them.
     expect(shadow).toBeGreaterThan(depthKey(ANCHOR.x, farRowY - 1));
   });
 
   it('draws a hill object at its scaled, offset, lifted feet but sorts it at the pre-lift row', () => {
     const LIFT = 24;
     const SCALE = 2;
-    // Offsets and a scale that are all distinguishable, so every term of the placement is pinned.
+    // Distinguishable offsets and scale, so every term of the placement is pinned.
     const OFFSET_FRAME: AtlasFrame = { x: 0, y: 0, width: 8, height: 8, offsetX: 3, offsetY: -7 };
     const spriteLayer = new Container();
     const layer = new MapObjectLayer(spriteLayer, new TextureCache());
@@ -71,8 +69,8 @@ describe('MapObjectLayer sort row (tall objects)', () => {
     expect(body?.y).toBe(ANCHOR.y - LIFT + OFFSET_FRAME.offsetY * SCALE);
     expect(shadow?.x).toBe(ANCHOR.x + SHADOW_0.offsetX * SCALE);
     expect(shadow?.y).toBe(ANCHOR.y - LIFT + SHADOW_0.offsetY * SCALE);
-    // The lift is a draw offset only, so a tree baked up a hill still occludes by its map row rather
-    // than jumping in front of the settler standing beside it.
+    // The lift is a draw offset only, so a tree up a hill still occludes by its map row rather than
+    // jumping in front of the settler beside it.
     expect(body?.zIndex).toBe(depthKey(ANCHOR.x, ANCHOR.y));
   });
 });

@@ -4,13 +4,9 @@ import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';
 
 /**
- * INTEGRATION smoke for the scene layer - `render` reading a REAL `Simulation.snapshot()`, not a
- * hand-built one (the unit tests in scene/build-scene.test.ts cover the projection/sort logic on synthetic
- * snapshots). This is the hands-on entry point the screenshot harness will sit on: run the real
- * vertical-slice sim a few ticks, snapshot it, and assert the draw list it produces is sane -
- * the building, the woodcutter, the carrier, and the resource nodes all appear and are correctly
- * ordered behind/above the terrain. It proves the snapshot→scene seam against real component data
- * (Maps cloned to arrays, Fixed positions, the actual entity set) rather than a fixture.
+ * Integration smoke over a real `Simulation.snapshot()` rather than a hand-built one, so the
+ * snapshot-to-scene seam meets real component data: Maps cloned to arrays, Fixed positions, the actual
+ * entity set. `scene/build-scene.test.ts` owns the projection and sort logic on synthetic snapshots.
  */
 
 const GRASS = 0;
@@ -55,12 +51,11 @@ describe('buildScene over a real Simulation snapshot', () => {
     expect(counts.settler).toBe(2);
     expect(counts.resource).toBe(2);
 
-    // All terrain strictly precedes all sprites in draw order.
     const lastTile = scene.map((d) => d.kind).lastIndexOf('tile');
     const firstSprite = scene.findIndex((d) => d.kind !== 'tile');
     expect(lastTile).toBeLessThan(firstSprite);
 
-    // The draw list is deterministic: a second snapshot of the same state yields the same scene.
+    // A second snapshot of the same state yields the same scene.
     const again = buildScene(sim.snapshot(), terrain);
     expect(JSON.stringify(again)).toBe(JSON.stringify(scene));
   });

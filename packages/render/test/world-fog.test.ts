@@ -4,13 +4,8 @@ import { ONE } from '../src/data/projection/index.js';
 import { WorldFog } from '../src/gpu/world-renderer/world-fog.js';
 import { entity, fogViewOf, snapshotOf } from './support/fixtures.js';
 
-/**
- * The renderer's fog collaborator: what one frame hands the sprite pool. Pixi `Container`/`Texture`
- * build without a GL context, so the real wash runs here too.
- */
-
 const VIEWPORT = { minX: -1000, minY: -1000, maxX: 1000, maxY: 1000 };
-// Both fixtures sit on EVEN rows, where the stagger is 0 and cell (cx, cy) = (⌊tileX⌋, tileY).
+// Both fixtures sit on even rows, where the stagger is 0 and cell (cx, cy) = (⌊tileX⌋, tileY).
 const HOUSE = entity(1, 5, 4, { Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 } });
 const TREE = entity(2, 9, 4, { Resource: { goodType: 3 } });
 const HOUSE_CELL = '5,4';

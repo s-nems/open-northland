@@ -3,14 +3,7 @@ import { collectSpriteScene, SpriteSpatialIndex } from '../../src/data/scene/ind
 import { ONE, tileToScreen, type Viewport } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
-/**
- * The retained {@link SpriteSpatialIndex} and the indexed scene build. The contract under test: with
- * an index, `collectSpriteScene` walks only the buckets under the viewport yet emits EXACTLY the items
- * of the full walk (the golden-visuals guarantee), while `liveRefs` keeps answering map-wide liveness
- * as a membership view. The index survives across snapshots: moves re-bucket, deaths stop answering.
- */
-
-/** A viewport framing just the anchor of tile `(x, y)` - the same ±10 px box the culling specs use. */
+/** A viewport framing just the anchor of tile `(x, y)`, the same ±10 px box the culling specs use. */
 function viewportAt(x: number, y: number): Viewport {
   const anchor = tileToScreen(x, y);
   return { minX: anchor.x - 10, maxX: anchor.x + 10, minY: anchor.y - 10, maxY: anchor.y + 10 };
@@ -27,7 +20,7 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
       entity(6, 1, 1, {}), // not drawable
     ]);
     const opts = {
-      // Frame tiles (1..2, 1..2): rows 1 and 2, columns 1 and 2 - everything but the far settler.
+      // Frames tiles (1..2, 1..2), which is everything but the far settler.
       viewport: { ...viewportAt(1, 1), maxX: viewportAt(2, 1).maxX, maxY: viewportAt(1, 2).maxY },
       staticRefs: new Set([3]),
       fogVisible: (_x: number, tileY: number) => tileY < 2,
@@ -37,8 +30,8 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
     const walked = collectSpriteScene(snapshot, opts);
     expect(indexed.items).toEqual(walked.items);
     expect(indexed.items.map((d) => d.ref)).toContain(4);
-    // Map-wide liveness holds without the walk: culled (2), fogged (5) and ghost (9) refs live; the
-    // statically drawn (3), the non-drawable (6) and the never-alive (7) do not.
+    // The culled (2), fogged (5) and ghost (9) refs stay live; the statically drawn (3), the
+    // non-drawable (6) and the never-alive (7) do not.
     for (const scene of [indexed, walked]) {
       expect([1, 2, 3, 4, 5, 6, 7, 9].filter((ref) => scene.liveRefs.has(ref))).toEqual([1, 2, 4, 5, 9]);
     }
@@ -63,19 +56,19 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
     expect(collectSpriteScene(before, { viewport: viewportAt(1, 1), index }).items.map((d) => d.ref)).toEqual(
       [1, 2],
     );
-    // Next tick: 1 walked far away, 2 died. The stale bucket entries must neither draw nor stay live.
+    // Next tick 1 walked far away and 2 died, leaving stale bucket entries at the old spot.
     const after = snapshotOf([entity(1, 40, 40, { Settler: { tribe: 0 } })], 2);
     const oldSpot = collectSpriteScene(after, { viewport: viewportAt(1, 1), index });
     expect(oldSpot.items).toEqual([]);
     expect(oldSpot.liveRefs.has(1)).toBe(true); // alive, merely elsewhere
-    expect(oldSpot.liveRefs.has(2)).toBe(false); // dead - the pool may reap its sprite
+    expect(oldSpot.liveRefs.has(2)).toBe(false); // dead, so the pool may reap its sprite
     const newSpot = collectSpriteScene(after, { viewport: viewportAt(40, 40), index });
     expect(newSpot.items.map((d) => d.ref)).toEqual([1]);
   });
 
   it('picks up an entity that became drawable after the index first saw it', () => {
     const index = new SpriteSpatialIndex();
-    // A bare mover: Position but no drawable marker - indexed as nothing.
+    // A bare mover: Position but no drawable marker, so nothing is indexed.
     collectSpriteScene(snapshotOf([entity(1, 1, 1, {})]), { viewport: viewportAt(1, 1), index });
     const grown = collectSpriteScene(snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } })], 2), {
       viewport: viewportAt(1, 1),
@@ -89,7 +82,7 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
     const index = new SpriteSpatialIndex();
     const tree = entity(1, 1, 1, { Resource: { goodType: 1 } });
     collectSpriteScene(snapshotOf([tree]), { viewport: viewportAt(1, 1), index });
-    // The same OBJECT in the next snapshot - the sim's scenery clone cache hands these out verbatim.
+    // The same object in the next snapshot: the sim's scenery clone cache hands these out verbatim.
     const again = collectSpriteScene(snapshotOf([tree], 2), { viewport: viewportAt(1, 1), index });
     expect(again.items.map((d) => d.ref)).toEqual([1]);
     expect(again.liveRefs.has(1)).toBe(true);
@@ -123,8 +116,8 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
       expect(indexed.liveRefs.has(ref)).toBe(true);
       expect(walked.liveRefs.has(ref)).toBe(true);
     }
-    // Panned away, the posts stop drawing, so their boards stop being live (walk parity: the board
-    // push runs after the post's cull) while the posts stay live through the index.
+    // Panned away the posts stop drawing, and the board push runs after the post's cull, so the boards
+    // stop being live while the posts stay live through the index.
     const away = collectSpriteScene(snapshot, { viewport: viewportAt(40, 40), index });
     for (const ref of boardRefs) expect(away.liveRefs.has(ref)).toBe(false);
     expect(away.liveRefs.has(1)).toBe(true);
@@ -147,7 +140,7 @@ describe('collectSpriteScene with a SpriteSpatialIndex', () => {
 describe('SpriteSpatialIndex directly', () => {
   it('query is a viewport superset: every anchor inside the box is returned', () => {
     const index = new SpriteSpatialIndex();
-    // A diagonal band of settlers; the viewport frames a middle slice exactly.
+    // A diagonal band of settlers, of which the viewport frames a middle slice.
     const entities = Array.from({ length: 20 }, (_, i) =>
       entity(i + 1, 2 * (i + 1), 2 * (i + 1), { Settler: { tribe: 0 } }),
     );
@@ -169,8 +162,8 @@ describe('SpriteSpatialIndex directly', () => {
     index.update(
       snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } }), entity(2, 40, 40, { Settler: { tribe: 0 } })]),
     );
-    // ±1e6 px spans ~61M bucket cells; scanning them (instead of the 2 populated buckets) hangs the
-    // pool tests that frame everything - this must return promptly with the full population.
+    // ±1e6 px spans ~61M bucket cells, so scanning the box instead of the 2 populated buckets hangs the
+    // pool tests that frame everything.
     const all = index.query({ minX: -1e6, maxX: 1e6, minY: -1e6, maxY: 1e6 });
     expect(all.map((e) => e.id).sort((a, b) => a - b)).toEqual([1, 2]);
   });

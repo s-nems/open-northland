@@ -15,9 +15,8 @@ import { DamageSmokeLayer } from '../src/gpu/overlays/damage-smoke-layer.js';
 import type { DrawnGeometry } from '../src/gpu/sprite-pool/index.js';
 
 /**
- * Damage smoke is a pure function of a building's CURRENT HP fraction: each fifth of the pool lost adds a
- * seeded roof plume, and an HP rise (repair, an upgrade refill) sheds them again with no event wiring.
- * The puff motion is tick-driven and seeded - reproducible for a `?shot`, distinct across emitters.
+ * Damage smoke is a pure function of a building's current HP fraction: each fifth of the pool lost adds a
+ * seeded roof plume, and an HP rise sheds them again with no event wiring.
  */
 
 describe('damageSmokeEmitters - one plume per damage step, shed on repair', () => {
@@ -27,7 +26,7 @@ describe('damageSmokeEmitters - one plume per damage step, shed on repair', () =
     expect(damageSmokeEmitters(1 - DAMAGE_SMOKE_STEP)).toBe(1); // first threshold crossed
     expect(damageSmokeEmitters(0.5)).toBe(2); // half the pool gone
     expect(damageSmokeEmitters(0)).toBe(MAX_SMOKE_EMITTERS); // rubble-to-be, capped
-    // The "repair removes the puffs" rule IS this purity: a higher fraction simply maps to fewer plumes.
+    // Repair sheds puffs by this purity alone: a higher fraction maps to fewer plumes.
     expect(damageSmokeEmitters(0.9)).toBeLessThan(damageSmokeEmitters(0.3));
   });
 });
@@ -39,7 +38,7 @@ describe('readHpFraction - the snapshot read driving the smoke', () => {
     expect(readHpFraction({ Health: { hitpoints: 1000, max: 1000 } })).toBeUndefined(); // undamaged
     expect(
       readHpFraction({ Health: { hitpoints: 250, max: 1000 }, Building: { built: ONE / 2 } }),
-    ).toBeUndefined(); // a site's pool ramps with the build - it must not smoke
+    ).toBeUndefined(); // a site's pool ramps with the build, so it must not smoke
     expect(readHpFraction({})).toBeUndefined();
     expect(readHpFraction({ Health: { hitpoints: 1, max: 0 } })).toBeUndefined(); // malformed
   });
@@ -52,8 +51,7 @@ describe('smokePuff - deterministic rising, swelling, thinning loop', () => {
   });
 
   it('rises and swells over its loop, staying between the emitter and the rise top', () => {
-    // Walk one full period: y stays within [−RISE, 0], the radius tracks the rise (bigger higher up),
-    // and the loop wraps exactly once (a fresh puff re-born at the emitter).
+    // One full period, over which a puff is re-born at the emitter exactly once.
     let wraps = 0;
     let prev = smokePuff(0, 0, 0, 0);
     for (let t = 1; t <= SMOKE_PUFF_PERIOD_TICKS; t++) {
@@ -83,8 +81,8 @@ describe('smokePuff - deterministic rising, swelling, thinning loop', () => {
   });
 
   it("spreads each building's emitters across distinct roof bands, so every step reads as a new spot", () => {
-    // Stratified placement: emitters own disjoint horizontal bands, so the worst-case pair still has a
-    // visible gap - the plume count works as a damage gauge instead of clumping into one cloud.
+    // Emitters own disjoint horizontal bands, so the plume count reads as a damage gauge instead of
+    // clumping into one cloud.
     for (const seed of [1, 42, 1337, 65535]) {
       const us = Array.from({ length: MAX_SMOKE_EMITTERS }, (_, e) => emitterSpot(seed, e).u).sort(
         (a, b) => a - b,
@@ -98,8 +96,8 @@ describe('smokePuff - deterministic rising, swelling, thinning loop', () => {
   });
 
   it('pins every spot to the centered roof wedge, never in an empty bounds-box corner', () => {
-    // Off-center spots must sit at or below the wedge's roof line - a sprite narrows toward its top,
-    // so a high spot far from the center line would smoke from the air beside the roof.
+    // A sprite narrows toward its top, so a high spot far from the centre line would smoke from the air
+    // beside the roof.
     for (const seed of [1, 42, 1337, 65535]) {
       for (let e = 0; e < MAX_SMOKE_EMITTERS; e++) {
         const { u, v } = emitterSpot(seed, e);
@@ -120,13 +118,13 @@ describe('DamageSmokeLayer', () => {
     expect(layer.container.children).toHaveLength(1);
     const node = layer.container.children[0] as Container;
     const visiblePlumes = () => (node.children as Container[]).filter((c) => c.visible).length;
-    expect(visiblePlumes()).toBe(2); // half the pool gone → two plumes
+    expect(visiblePlumes()).toBe(2); // half the pool gone
 
     layer.draw([{ ref: 5, hpFrac: 0.1 }], drawn, 1);
-    expect(visiblePlumes()).toBe(MAX_SMOKE_EMITTERS); // battered → full smoke
+    expect(visiblePlumes()).toBe(MAX_SMOKE_EMITTERS); // battered
 
     layer.draw([{ ref: 5, hpFrac: 0.9 }], drawn, 2);
-    expect(layer.container.children).toHaveLength(0); // repaired above the first threshold - retired
+    expect(layer.container.children).toHaveLength(0); // repaired above the first threshold
   });
 
   it('retires the node when the building leaves the damaged list (razed or scrolled out)', () => {

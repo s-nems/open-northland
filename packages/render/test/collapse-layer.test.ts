@@ -18,11 +18,9 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../src/index.js';
 
 /**
- * The building-collapse transient: `buildingDestroyed` (combat raze and player demolish alike) folds into
- * a short sink window during which the body is drawn with its lowest pixel rows clipped at the ground line
- * and the graphic shifted down by the same amount - the mirror of the construction rise (the original's
- * `PrintBob_UsingCollapseTimeMask`). The fixture sheet's fake TextureSource is never sampled, so the layer
- * runs headless; what these pin is the fold lifecycle and the crop/sink arithmetic.
+ * A razed building sinks over a short window: the body's lowest pixel rows are clipped at the ground line
+ * and the graphic shifts down by the same amount, mirroring the construction rise (the original's
+ * `PrintBob_UsingCollapseTimeMask`). The fixture sheet's fake TextureSource is never sampled.
  */
 
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
@@ -107,7 +105,7 @@ describe('collapseDustPuff', () => {
   it('is deterministic, billows in at the crash, and settles to nothing by the end of the tail', () => {
     expect(collapseDustPuff(9, 3, 7, 20)).toEqual(collapseDustPuff(9, 3, 7, 20));
     expect(collapseDustPuff(9, 3, 0, 20).alpha).toBeLessThanOrEqual(
-      // The cloud-wide envelope is still ramping at age 0 - never denser than mid-sink.
+      // The cloud-wide envelope is still ramping at age 0, so it is never denser than mid-sink.
       Math.max(...Array.from({ length: COLLAPSE_TICKS }, (_, a) => collapseDustPuff(9, 3, a, 20).alpha)),
     );
     for (let i = 0; i < DUST_PUFFS; i++) {
@@ -128,7 +126,7 @@ describe('collapseDustPuff', () => {
   });
 
   it('holds the cloud dense through the whole sink window before the settle fade', () => {
-    // At every tick of the sink at least one puff is well past its birth fade - no gap in the mask.
+    // At every tick of the sink at least one puff is past its birth fade, so the mask has no gap.
     for (let age = DUST_SETTLE_TICKS / 2; age <= COLLAPSE_TICKS; age++) {
       const best = Math.max(
         ...Array.from({ length: DUST_PUFFS }, (_, i) => collapseDustPuff(9, i, age, 20).alpha),
@@ -149,29 +147,27 @@ describe('CollapseLayer', () => {
     const node = spriteLayer.children[0] as Container;
     const spr = node.children[0] as Sprite;
     expect(spr.texture.frame.height).toBe(BODY_H); // intact at progress 0
-    expect(spr.position.y).toBe(-BODY_H); // the frame's own draw offset (feet-anchored)
+    expect(spr.position.y).toBe(-BODY_H); // the frame's own feet-anchored draw offset
 
-    // The dust cloud is minted last (drawn over the sprites' crop edge), centered on the body's base
-    // line, one unit circle per puff - churning from the first tick.
+    // The dust cloud is minted last, so it draws over the sprites' crop edge.
     const dust = node.children[node.children.length - 1] as Container;
     expect(dust.children).toHaveLength(DUST_PUFFS);
     expect(dust.position.y).toBe(0); // the fixture frame's bottom edge (offsetY + height) is the ground
 
-    // Halfway: the bottom half of the body is clipped and the remainder shifted down by the same rows,
-    // so the visible bottom edge stays pinned at the ground line while the roof sinks.
+    // Halfway the bottom half is clipped and the remainder shifts down by the same rows, so the visible
+    // bottom edge stays pinned at the ground line while the roof sinks.
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
     expect(spr.texture.frame.height).toBe(BODY_H / 2);
     expect(spr.position.y).toBe(-BODY_H + BODY_H / 2);
     expect(dust.children.some((p) => p.alpha > 0)).toBe(true); // the cloud masks the cut
 
-    // Fully sunk: the body is hidden but the node stays - the dust settles over the empty plot.
+    // Fully sunk, the body is hidden but the node stays while the dust settles over the empty plot.
     layer.ingest([], COLLAPSE_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS);
     expect(spriteLayer.children).toHaveLength(1);
     expect(spr.visible).toBe(false);
     expect(dust.children.some((p) => p.alpha > 0)).toBe(true);
 
-    // Settled (and folded out): the node is destroyed, the layer is empty again.
     layer.ingest([], COLLAPSE_LIFETIME_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
     expect(spriteLayer.children).toHaveLength(0);

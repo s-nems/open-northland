@@ -7,10 +7,8 @@ import { cameraViewport, makeElevationField } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
- * The marks group: which painter slot each layer's container lands in, and that every frame field still
- * reaches the layer it feeds. `mountPainterOrder` pins which slot draws over which; the risks left here
- * are a slot handed the wrong container (z-order kept, contents swapped) and a draw the group forgets to
- * make, neither of which any other test observes.
+ * `mountPainterOrder` owns which slot draws over which. What is left here is a slot handed the wrong
+ * container, and a draw the group forgets to make.
  */
 
 const VIEWPORT = cameraViewport({ offsetX: 0, offsetY: 0 }, 800, 600, 0);
@@ -49,8 +47,8 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
   };
 }
 
-/** The marks group over a stand-in for the renderer's depth-sorted sprite layer - the marks that must
- *  occlude like sprites (collapses, door badges) draw into it instead of into a slot. */
+/** `sprites` stands in for the renderer's depth-sorted sprite layer, where the marks that must occlude
+ *  like sprites draw instead of into a slot. */
 function marksIn(): { marks: WorldMarks; sprites: Container } {
   const sprites = new Container();
   return { marks: new WorldMarks(sprites, new TextureCache(), undefined), sprites };
@@ -85,7 +83,7 @@ describe('WorldMarks', () => {
     const atTick = blood?.alpha;
     expect(atTick).toBeLessThan(1); // past BLOOD_FADE_HOLD, so the fade is running
 
-    // Half a tick later: only the interpolated clock can move a fade between two integer ticks.
+    // Only the interpolated clock can move a fade between two integer ticks.
     marks.draw(frameOf({ renderTime: 30.5 }));
     expect(blood?.alpha).toBeLessThan(atTick ?? 0);
     marks.destroy();
@@ -100,8 +98,8 @@ describe('WorldMarks', () => {
       }),
     );
     expect(marks.slots.selection.children).toHaveLength(1);
-    // No decoded sign art in a headless test - the badge layer draws its placeholder squares, into the
-    // depth-sorted sprite layer rather than a slot of its own.
+    // Without decoded sign art the badge layer draws placeholder squares, into the depth-sorted sprite
+    // layer rather than a slot of its own.
     expect(sprites.children).toHaveLength(1);
     marks.destroy();
   });

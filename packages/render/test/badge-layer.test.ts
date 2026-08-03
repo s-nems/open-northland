@@ -9,15 +9,6 @@ import { type BuildingSignSheet, CONSTRUCTION_SIGN_DX, signRowAt } from '../src/
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
-/**
- * The door-badge layer is a projection consumer like the selection ring: it draws the app-computed
- * bottom-to-top row list at a building's sign-post anchor and rides the SAME terrain lift the sprite
- * pool applies. Pixi `Container`/`Graphics`/`Sprite` build without a GL context (geometry + transform
- * only), so the stack's child count, world-space position and `zIndex` are agent-checkable here.
- * Without decoded sign art the layer draws the placeholder squares; with it, one player-coloured sign
- * sprite per row - chained rows base-cropped so no rock clump lands on the emblem below.
- */
-
 const workers = (craftsmen: number, carriers: number, gatherers = 0): DoorBadgeRow[] => [
   ...Array.from({ length: craftsmen }, (): DoorBadgeRow => ({ role: 'craftsman' })),
   ...Array.from({ length: gatherers }, (): DoorBadgeRow => ({ role: 'gatherer' })),
@@ -31,20 +22,17 @@ const badge = (id: number, tileX: number, tileY: number, rows: readonly DoorBadg
   rows,
 });
 
-/** The placeholder stack starts LOW, just below its anchor (badge-layer's STACK_BASE_DROP). Horizontal
- *  placement is the anchor's own - the app resolves the anchor, this layer adds no x offset. */
+/** Mirrors badge-layer's `STACK_BASE_DROP`: the placeholder stack sits just below its anchor. */
 const DOOR_LIFT = -6;
 
-/** A layer over its own stand-in for the renderer's depth-sorted sprite layer: badge stacks are children
- *  of that shared layer, so `root` is where the drawn stacks show up. */
+/** `root` stands in for the renderer's shared depth-sorted sprite layer, where drawn stacks land. */
 function layerIn(colourOf?: (player: number) => number): { layer: BadgeLayer; root: Container } {
   const root = new Container();
   return { layer: new BadgeLayer(root, colourOf), root };
 }
 
-/** A fake decoded sign sheet: one atlas page, distinct frame objects per kind (the texture cache keys
- *  by frame object, so kinds must not share). Frame geometry mirrors the real `ls_temp` bobs
- *  (h 33, offsetY -26), so the chain-crop cuts land inside it. */
+/** A fake decoded sign sheet. The texture cache keys by frame object, so kinds must not share one, and
+ *  the geometry mirrors the real `ls_temp` bobs (h 33, offsetY -26) so the chain-crop cuts land inside it. */
 function sheet(garrison?: readonly (readonly AtlasFrame[])[]): BuildingSignSheet {
   const frame = (x: number): AtlasFrame => ({ x, y: 0, width: 25, height: 33, offsetX: -13, offsetY: -26 });
   return {
@@ -61,9 +49,8 @@ function sheet(garrison?: readonly (readonly AtlasFrame[])[]): BuildingSignSheet
   };
 }
 
-/** The flag's star ladder as the app resolves it: five wave loops, `WAVE` frames each, every frame a
- *  distinct object with a distinct width so a test can name the frame drawn. Geometry mirrors the real
- *  `soldier` bobs (46x43 at offset -4,-38). */
+/** Five wave loops of `WAVE` frames, each frame a distinct object with a distinct width so a test can
+ *  name the frame drawn. Geometry mirrors the real `soldier` bobs (46x43 at offset -4,-38). */
 const WAVE = 8;
 function garrisonSheet(): { sheet: BuildingSignSheet; frames: readonly (readonly AtlasFrame[])[] } {
   const frames = Array.from({ length: 5 }, (_, star) =>
@@ -82,23 +69,20 @@ function garrisonSheet(): { sheet: BuildingSignSheet; frames: readonly (readonly
   return { sheet: sheet(frames), frames };
 }
 
-/** The mast the fixture towers fly from - the committed viking small-tower offset. */
+/** The committed viking small-tower flag offset. */
 const MAST = { dx: -4, dy: -228 };
 
-/** A badge whose building flies a flag from {@link MAST}. */
 const manned = (id: number, tileX: number, tileY: number, stars: number): DoorBadge => ({
   ...badge(id, tileX, tileY, []),
   garrison: { stars, ...MAST },
 });
 
-/** A building's flag among its marks: the mark standing at the mast rather than the post. Picked by
- *  position, not child order, so the test does not pin which mark the layer attaches first. */
+/** The mark standing at the mast, picked by position so the test does not pin the layer's attach order. */
 function flagOf(root: Container, tileX: number, tileY: number): Container | undefined {
   const mast = tileToScreen(tileX, tileY).y + MAST.dy;
   return root.children.find((c) => c.position.y === mast) as Container | undefined;
 }
 
-/** The atlas frame the flag draws right now. */
 function flownFrame(root: Container, tileX: number, tileY: number): Sprite['texture']['frame'] {
   const sprite = flagOf(root, tileX, tileY)?.children[0] as Sprite | undefined;
   if (sprite === undefined) throw new Error('no flag flying at the mast');
@@ -110,8 +94,8 @@ describe('BadgeLayer (placeholder squares)', () => {
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(2, 1, 1))]);
     const stack = root.children[0];
-    expect(root.children).toHaveLength(1); // one stack for the one building
-    expect(stack?.children).toHaveLength(4); // 2 craftsmen + 1 gatherer + 1 carrier = 4 squares
+    expect(root.children).toHaveLength(1);
+    expect(stack?.children).toHaveLength(4);
     const anchor = tileToScreen(3, 5);
     expect(stack?.position.x).toBe(anchor.x);
     expect(stack?.position.y).toBe(anchor.y - DOOR_LIFT);
@@ -121,10 +105,10 @@ describe('BadgeLayer (placeholder squares)', () => {
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(1, 0))]);
     expect(root.children[0]?.children).toHaveLength(1);
-    layer.draw([badge(1, 3, 5, workers(3, 0))]); // gained two workers
+    layer.draw([badge(1, 3, 5, workers(3, 0))]);
     expect(root.children).toHaveLength(1);
     expect(root.children[0]?.children).toHaveLength(3);
-    layer.draw([]); // building unstaffed / gone
+    layer.draw([]);
     expect(root.children).toHaveLength(0);
   });
 
@@ -136,42 +120,35 @@ describe('BadgeLayer (placeholder squares)', () => {
 
   it('culls off-screen badges: detaches the pooled stack, skips reposition, re-attaches on scroll-in', () => {
     const { layer, root } = layerIn();
-    // A viewport framing a small world box; the badge at tile (3,5) projects inside it.
     const onScreen = tileToScreen(3, 5);
     const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };
     layer.draw([badge(1, 3, 5, workers(1, 0))], undefined, vp);
     const stack = root.children[0];
-    expect(stack?.visible).toBe(true); // in view → drawn
+    expect(stack?.visible).toBe(true);
     const shownX = stack?.position.x;
 
-    // Same building, now far outside the framed box: the stack stays POOLED but leaves the sprite layer
-    // (whose depth sort walks its children every frame) unmoved and undestroyed - not retired the way an
-    // unstaffed building is.
+    // Off-screen it leaves the sprite layer, whose depth sort walks its children every frame.
     layer.draw([badge(1, 900, 900, workers(1, 0))], undefined, vp);
-    expect(root.children).toHaveLength(0); // out of the sorted layer while off-screen
-    expect(stack?.destroyed).toBe(false); // still pooled, ready to scroll back
-    expect(stack?.position.x).toBe(shownX); // not repositioned off-screen
+    expect(root.children).toHaveLength(0);
+    expect(stack?.destroyed).toBe(false);
+    expect(stack?.position.x).toBe(shownX);
 
-    // Scrolls back into view → the same node re-attaches, shown and repositioned again.
     layer.draw([badge(1, 3, 5, workers(1, 0))], undefined, vp);
     expect(root.children[0]).toBe(stack);
     expect(stack?.visible).toBe(true);
   });
 
   it('retires an on-screen stack even with an off-screen never-built staffed building present', () => {
-    // Regression: `drawn` must stay a subset of the pooled stacks. An off-screen building that never built
-    // a stack must NOT be marked drawn, or retireUndrawn's `pool.size <= drawn.size` fast-path would skip a
-    // genuinely-orphaned on-screen stack - leaving a ghost badge that never gets destroyed.
+    // `drawn` must stay a subset of the pooled stacks: marking a never-built off-screen building drawn
+    // would let retireUndrawn's `pool.size <= drawn.size` fast-path skip a genuinely orphaned stack.
     const { layer, root } = layerIn();
     const onScreen = tileToScreen(3, 5);
     const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };
-    // Building 1 on-screen (builds a stack); building 2 staffed but off-screen and never builds one.
     layer.draw([badge(1, 3, 5, workers(1, 0)), badge(2, 900, 900, workers(1, 0))], undefined, vp);
-    expect(root.children).toHaveLength(1); // only building 1 has a stack
+    expect(root.children).toHaveLength(1);
 
-    // Building 1 leaves the list (demolished / unstaffed); building 2 is still off-screen and stackless.
     layer.draw([badge(2, 900, 900, workers(1, 0))], undefined, vp);
-    expect(root.children).toHaveLength(0); // building 1's stack retired, no ghost
+    expect(root.children).toHaveLength(0);
   });
 
   it('lifts the stack by the terrain height at the anchor', () => {
@@ -186,40 +163,35 @@ describe('BadgeLayer (placeholder squares)', () => {
     const y = root.children[0]?.position.y ?? 0;
     expect(y).toBeCloseTo(door.y - field.liftAt(1, 6) - DOOR_LIFT, 6);
     expect(y).toBeLessThan(door.y - 100); // the hill lift is real, not a rounding wobble
-    // …while the depth stays keyed to the PRE-lift anchor, like the sprite pool keys the building, so
-    // occlusion still sorts by map row while the chain rides the hill.
+    // The depth stays keyed to the pre-lift anchor, so occlusion sorts by map row while the chain rides
+    // the hill.
     expect(root.children[0]?.zIndex).toBe(screenDepth(door.x, door.y, 'building') + SIGN_DEPTH_EPS);
   });
 
   it('sorts a stack just over its own building and under a settler in front of it', () => {
-    // The chain lives in the depth-sorted sprite layer, not a slot floating above it: it must clear the
-    // house it is planted on, and lose to a sprite the player sees in front of it - a settler walking
-    // past a staffed building must not disappear behind the icons.
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(1, 0))]);
     const anchor = tileToScreen(3, 5);
     const depth = root.children[0]?.zIndex ?? 0;
-    expect(depth).toBeGreaterThan(screenDepth(anchor.x, anchor.y, 'building')); // over its own house
-    expect(depth).toBeLessThan(screenDepth(anchor.x, anchor.y, 'settler')); // under a settler at the door
+    expect(depth).toBeGreaterThan(screenDepth(anchor.x, anchor.y, 'building'));
+    expect(depth).toBeLessThan(screenDepth(anchor.x, anchor.y, 'settler'));
     const nearerRow = tileToScreen(3, 6);
-    expect(depth).toBeLessThan(screenDepth(nearerRow.x, nearerRow.y, 'settler')); // and one walking past
+    expect(depth).toBeLessThan(screenDepth(nearerRow.x, nearerRow.y, 'settler'));
   });
 
   it('keys the depth off the building even when the post is planted rows away', () => {
-    // The real posts stand rows off the house: viking flag points run dy -23 (the smithy, planted
-    // behind its anchor) to +130 (the mod's wall record), and against the shipped footprints 45 of the
-    // 46 types land within 16 px of their own blocked front edge - under one half-cell row. So the band
-    // where this rule inverts is doorstep-deep: a settler can be in it, but never a whole visual row
-    // out of order. A chain keyed at the POST would instead drop behind its own smithy at one end, and
-    // at the other let a settler on the house's own doorstep vanish.
+    // The `dy` cases are the shipped viking flag-point range: -23 (the smithy, planted behind its
+    // anchor) to +130 (the mod's wall record). Against the shipped footprints 45 of the 46 types land
+    // within 16 px of their own blocked front edge, so the band where keying at the post would invert
+    // the order is doorstep-deep, never a whole visual row.
     const { layer, root } = layerIn();
     const anchor = tileToScreen(3, 5);
     const keyed = screenDepth(anchor.x, anchor.y, 'building') + SIGN_DEPTH_EPS;
     for (const dy of [-23, 67, 130]) {
       layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), dy }]);
       const stack = root.children[0];
-      expect(stack?.position.y).toBe(anchor.y + dy - DOOR_LIFT); // drawn at the post…
-      expect(stack?.zIndex).toBe(keyed); // …sorted with the house
+      expect(stack?.position.y).toBe(anchor.y + dy - DOOR_LIFT);
+      expect(stack?.zIndex).toBe(keyed);
     }
   });
 });
@@ -231,18 +203,17 @@ describe('BadgeLayer (decoded sign art)', () => {
     layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
     layer.draw([badge(1, 3, 5, [{ role: 'single' }, { role: 'family' }, ...workers(2, 1, 1)])]);
     const stack = root.children[0] as Container;
-    expect(stack.children).toHaveLength(6); // 2 banners + 3 discs + 1 pennant
-    // Chained upward: each row's sprite sits SIGN_STEP above the previous (same frame offsets here).
+    expect(stack.children).toHaveLength(6);
+    // One SIGN_STEP per row, exact here because the fixture frames share offsets.
     const ys = stack.children.map((c) => c.position.y);
     for (let i = 1; i < ys.length; i++) expect((ys[i - 1] ?? 0) - (ys[i] ?? 0)).toBe(20);
-    // The base row keeps its full frame (rock clump and all)…
     expect((stack.children[0] as Sprite).texture.frame.height).toBe(33);
-    // …and every chained row draws its base-cropped variant (fixture offsetY -26: banner cut -5 → 22,
-    // disc cut -2 → 25, pennant cut -3 → 24).
-    expect((stack.children[1] as Sprite).texture.frame.height).toBe(22); // family banner
-    expect((stack.children[2] as Sprite).texture.frame.height).toBe(25); // craftsman disc
-    expect((stack.children[5] as Sprite).texture.frame.height).toBe(24); // carrier pennant on top
-    // The sign stack anchors AT the node (no placeholder base drop).
+    // Cropped heights follow the fixture's offsetY -26: banner cut -5 → 22, disc cut -2 → 25, pennant
+    // cut -3 → 24.
+    expect((stack.children[1] as Sprite).texture.frame.height).toBe(22);
+    expect((stack.children[2] as Sprite).texture.frame.height).toBe(25);
+    expect((stack.children[5] as Sprite).texture.frame.height).toBe(24);
+    // The sign stack anchors at the node, with no placeholder base drop.
     const anchor = tileToScreen(3, 5);
     expect(stack.position.y).toBe(anchor.y);
   });
@@ -261,11 +232,11 @@ describe('BadgeLayer (decoded sign art)', () => {
     const { layer, root } = layerIn();
     const p0 = sheet();
     layer.setGfx({ byPlayer: [p0], textures: new TextureCache() });
-    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 7 }]); // slot 7 has no bake → p0's sheet
+    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 7 }]); // slot 7 has no bake
     const first = root.children[0] as Container;
     expect((first.children[0] as Sprite).texture.source).toBe(p0.source);
 
-    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 0 }]); // owner changed → stack rebuilt (same art)
+    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 0 }]);
     expect(root.children).toHaveLength(1);
   });
 
@@ -278,12 +249,11 @@ describe('BadgeLayer (decoded sign art)', () => {
     expect(root.children).toHaveLength(0);
     layer.draw([badge(1, 3, 5, workers(1, 0))]);
     const anchor = tileToScreen(3, 5);
-    expect(root.children[0]?.position.y).toBe(anchor.y - DOOR_LIFT); // placeholder base drop
+    expect(root.children[0]?.position.y).toBe(anchor.y - DOOR_LIFT);
   });
 
   it('leaves the borrowed sprite layer empty on destroy', () => {
-    // The stacks are children of a layer this one does not own, so teardown has to reach them itself -
-    // the renderer's own destroy walk would otherwise leave them behind.
+    // The stacks live on a layer this one does not own, so teardown has to reach them itself.
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(1, 0)), badge(2, 4, 5, workers(1, 0))]);
     expect(root.children).toHaveLength(2);
@@ -292,13 +262,13 @@ describe('BadgeLayer (decoded sign art)', () => {
   });
 
   it('applies the session owner→colour mapping when picking the sign sheet', () => {
-    // A rostered map recolours owners away from slot ids; the sheet pick must follow the same map the
-    // pooled sprites draw through, or a building's signs mismatch its settlers' clothing band.
+    // A rostered map recolours owners away from slot ids; a sheet picked by slot id would mismatch the
+    // clothing band its settlers draw through.
     const p0 = sheet();
     const p2 = sheet();
     const { layer, root } = layerIn((player) => (player === 1 ? 2 : player));
     layer.setGfx({ byPlayer: [p0, undefined, p2], textures: new TextureCache() });
-    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 1 }]); // owner 1 → colour slot 2
+    layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 1 }]);
     const stack = root.children[0] as Container;
     expect((stack.children[0] as Sprite).texture.source).toBe(p2.source);
   });
@@ -309,7 +279,7 @@ describe('BadgeLayer (garrison flag)', () => {
     const { layer, root } = layerIn();
     const { sheet: s } = garrisonSheet();
     layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
-    // A manned tower that also employs a hauler: one pennant row at the post, one flag on the roof.
+    // A manned tower that also employs a hauler: one chain at the post, one flag on the roof.
     layer.draw([{ ...manned(1, 3, 5, 2), rows: workers(0, 1), dx: -6, dy: 29 }]);
 
     expect(root.children).toHaveLength(2);
@@ -333,7 +303,7 @@ describe('BadgeLayer (garrison flag)', () => {
     expect(flownAt(1)).toBe(frames[0]?.[0]?.y);
     expect(flownAt(3)).toBe(frames[2]?.[0]?.y);
     expect(flownAt(5)).toBe(frames[4]?.[0]?.y);
-    // The big tower employs eight bows; the art stops at five, and a fuller post keeps that record.
+    // The big tower employs eight bows; the art stops at five.
     expect(flownAt(8)).toBe(frames[4]?.[0]?.y);
   });
 
@@ -348,28 +318,27 @@ describe('BadgeLayer (garrison flag)', () => {
     const loop = frames[1] ?? [];
     const step = GARRISON_TICKS_PER_FRAME;
     expect(drawnAt(0)).toBe(loop[0]?.width);
-    expect(drawnAt(step - 1)).toBe(loop[0]?.width); // held for the whole cadence
+    expect(drawnAt(step - 1)).toBe(loop[0]?.width);
     expect(drawnAt(step)).toBe(loop[1]?.width);
-    expect(drawnAt(step * WAVE)).toBe(loop[0]?.width); // wrapped back round the loop
+    expect(drawnAt(step * WAVE)).toBe(loop[0]?.width);
 
-    // A man arriving swaps the record; a sixth one onto a five-star post is not a visual change at all.
     const two = flagOf(root, 3, 5);
     expect(drawnAt(0, 3)).toBe((frames[2] ?? [])[0]?.width);
-    expect(flagOf(root, 3, 5)).not.toBe(two); // rebuilt for the new star count
+    expect(flagOf(root, 3, 5)).not.toBe(two);
     expect(drawnAt(0, 5)).toBe((frames[4] ?? [])[0]?.width);
     const five = flagOf(root, 3, 5);
     drawnAt(0, 6);
-    expect(flagOf(root, 3, 5)).toBe(five); // …but the capped count keeps the same node
+    expect(flagOf(root, 3, 5)).toBe(five); // the star count is capped, so a sixth man draws no change
   });
 
   it('draws a placeholder mast without decoded art, and retires the flag with its building', () => {
     const { layer, root } = layerIn();
     layer.draw([manned(1, 3, 5, 2)]);
-    // No sheet: the flag still marks the post (the chain node is the empty row list beside it).
+    // Two marks: the empty row list's chain node, and the flag.
     expect(root.children).toHaveLength(2);
-    expect(flagOf(root, 3, 5)?.getLocalBounds().height).toBeGreaterThan(0); // a drawn mast, not nothing
+    expect(flagOf(root, 3, 5)?.getLocalBounds().height).toBeGreaterThan(0);
 
-    layer.draw([]); // the post falls / is abandoned
+    layer.draw([]);
     expect(root.children).toHaveLength(0);
   });
 
@@ -378,8 +347,7 @@ describe('BadgeLayer (garrison flag)', () => {
     layer.setGfx({ byPlayer: [garrisonSheet().sheet], textures: new TextureCache() });
     layer.draw([manned(1, 3, 5, 2)]);
     expect(root.children).toHaveLength(2);
-    // Every mark is built against one art basis, so swapping it must take the flag too - a flag left
-    // behind here would fly forever, drawn from an atlas nothing points at any more.
+    // A flag left behind would keep drawing from an atlas nothing points at any more.
     layer.setGfx(undefined);
     expect(root.children).toHaveLength(0);
   });
@@ -392,8 +360,8 @@ describe('BadgeLayer (garrison flag)', () => {
     layer.draw([manned(1, 3, 5, 2)], undefined, vp);
     expect(root.children).toHaveLength(2);
 
-    layer.draw([manned(1, 900, 900, 2)], undefined, vp); // scrolled out
-    expect(root.children).toHaveLength(0); // both marks leave the sorted layer, neither is destroyed
+    layer.draw([manned(1, 900, 900, 2)], undefined, vp);
+    expect(root.children).toHaveLength(0);
     layer.draw([manned(1, 3, 5, 2)], undefined, vp);
     expect(root.children).toHaveLength(2);
   });
@@ -404,7 +372,7 @@ describe('garrisonFlagLoop', () => {
     const { sheet: s, frames } = garrisonSheet();
     expect(garrisonFlagLoop(s, 1)).toEqual(frames[0]);
     expect(garrisonFlagLoop(s, 5)).toEqual(frames[4]);
-    expect(garrisonFlagLoop(s, 9)).toEqual(frames[4]); // the ceiling is the art's, wherever asked from
+    expect(garrisonFlagLoop(s, 9)).toEqual(frames[4]);
     expect(garrisonFlagLoop(s, 0)).toBeUndefined();
     expect(garrisonFlagLoop(sheet(), 2)).toBeUndefined(); // a slot whose `soldier` records never resolved
     expect(garrisonFlagLoop(undefined, 2)).toBeUndefined();
@@ -439,7 +407,7 @@ describe('ConstructionSignLayer', () => {
     // The authored offset plus the step that keeps the stand clear of the door badges sharing this post.
     expect(node.position.x).toBe(p.x + 17 + CONSTRUCTION_SIGN_DX);
     expect(node.position.y).toBe(p.y + 70);
-    layer.draw([]); // site completed
+    layer.draw([]);
     expect(layer.container.children).toHaveLength(0);
   });
 

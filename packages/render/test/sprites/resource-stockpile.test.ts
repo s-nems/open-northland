@@ -3,18 +3,13 @@ import { resolveSpriteBobId, resolveStockpileDraw } from '../../src/data/sprites
 import { type DrawItem, resolveResourceDraw } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
-/**
- * Unit tests for the per-good resource / stockpile resolvers - a node's species+level frame, a ground
- * pile's per-fill heap vs the delivery flag, and a freshly-felled trunk (grounddrop) via its own binding.
- */
-
 describe('resolveResourceDraw - per-good resource node binding', () => {
   function resource(goodType?: number): DrawItem {
     return { ...drawItem('resource'), ...(goodType !== undefined ? { goodType } : {}) };
   }
 
-  // Each good's per-level frame list (empty→full). Wood draws a bare bob from the default resource (tree)
-  // layer; stone + iron draw from their own named `.bmd` families. A single-frame list is a non-mined node.
+  // Each good's per-level frame list runs empty to full. Wood is a bare bob on the default resource
+  // layer; stone and iron live in their own named `.bmd` families. A single-frame list is a plain node.
   const binding = {
     byGood: {
       5: [60],
@@ -39,13 +34,13 @@ describe('resolveResourceDraw - per-good resource node binding', () => {
   });
 
   it('indexes a mined deposit by its level (empty→full); no level / over-range → the full frame', () => {
-    // A 3-level deposit - the shrink-by-level frames run empty (index 0) → full (last).
+    // A 3-level deposit, whose shrink-by-level frames run from dregs at index 0 to full at the last.
     const deposit = {
       byGood: {
         3: [
-          { layer: 'ls_ground.clay01', bob: 60 }, // level 1 - dregs
+          { layer: 'ls_ground.clay01', bob: 60 }, // level 1
           { layer: 'ls_ground.clay01', bob: 62 }, // level 2
-          { layer: 'ls_ground.clay01', bob: 64 }, // level 3 - full
+          { layer: 'ls_ground.clay01', bob: 64 }, // level 3
         ],
       },
       default: 0,
@@ -55,7 +50,7 @@ describe('resolveResourceDraw - per-good resource node binding', () => {
     expect(at(3)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // full
     expect(at(2)).toEqual({ bob: 62, layer: 'ls_ground.clay01' });
     expect(at(1)).toEqual({ bob: 60, layer: 'ls_ground.clay01' }); // dregs
-    expect(at()).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // no level → full (a plain node)
+    expect(at()).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // a level-less plain node reads full
     expect(at(99)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // over-range clamps to full
   });
 
@@ -65,8 +60,7 @@ describe('resolveResourceDraw - per-good resource node binding', () => {
   });
 
   it('RESCALES the level ladder onto a record with a different authored state count', () => {
-    // A catalog-sized (record-less) deposit carries 5 levels, but this record authors only 4 states
-    // (the real "stones 01" rock). Full (5/5) must draw the fullest frame, dregs (1/5) the first.
+    // A catalog-sized deposit carries 5 levels while the real "stones 01" rock authors only 4 states.
     const rock = {
       byGood: { 3: [10, 11, 12, 13].map((bob) => ({ layer: 'ls_ground.rock03', bob })) },
       default: 0,
@@ -84,8 +78,7 @@ describe('resolveResourceDraw - per-good resource node binding', () => {
   });
 
   it('indexes a GROUND DROP by its fill (unit count) - one dug ore draws the single-piece frame', () => {
-    // The trunk binding routes grounddrop items through this resolver; the ore pickup records author a
-    // 5-state fewest→most ladder (state ≡ units), so fill 1 → first frame, a stacked drop grows.
+    // The ore pickup records author a 5-state fewest-to-most ladder where a state is one unit.
     const ore = {
       byGood: { 4: [30, 31, 32, 33, 34].map((bob) => ({ layer: 'ls_goods.iron', bob })) },
       default: 0,
@@ -111,7 +104,7 @@ describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
     };
   }
 
-  // Wood pile: 5 fill frames (fewest→most) from the ls_goods.goods_wood atlas; the flag from ls_temp.
+  // A wood pile's 5 fill frames run fewest to most; the flag comes from a different atlas.
   const binding = {
     byGood: {
       5: [
@@ -152,8 +145,8 @@ describe('resolveStockpileDraw - per-good ground piles + delivery flag', () => {
   });
 
   it('draws a delivery flag as the flag marker alone (it holds no goods - its heaps are separate entities)', () => {
-    // A flag is a pure marker (no goodType): it resolves to the flag graphic. The goods it collects are
-    // SEPARATE loose piles the scene depth-sorts a hair behind it (FLAG_PAINT_STEP), never layers of one draw.
+    // The goods a flag collects are separate loose piles the scene depth-sorts a hair behind it, never
+    // layers of one draw.
     expect(resolveStockpileDraw(binding, { ...pile(), isFlag: true })).toEqual({
       bob: 33,
       layer: 'ls_temp.human_player01',

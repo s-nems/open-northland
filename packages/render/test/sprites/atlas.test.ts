@@ -8,11 +8,6 @@ import {
 } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
-/**
- * Unit tests for the atlas layer - indexing decoded frames by bob id and resolving a draw item to its
- * atlas frame. The self-verifiable (data-lookup) half; binding the rect to a GPU texture stays a human's.
- */
-
 /** A tiny atlas: a settler frame (bob 10), a building frame (bob 20), and an empty 0×0 bob (30). */
 function atlas(): SpriteAtlas {
   return indexAtlasFrames(64, 64, [
@@ -61,8 +56,7 @@ describe('resolveSpriteFrame', () => {
   });
 
   it('resolves a resource to its own (tree) atlas frame - the ls_trees per-kind bind', () => {
-    // Mirrors the real resource bind: resource -> a non-empty bob in its OWN atlas (the per-kind tree
-    // layer the GPU blits from). Geometry like ls_trees frame 60: a 101×111 tree anchored at its base.
+    // The geometry mirrors ls_trees frame 60: a 101×111 tree anchored at its base.
     const treeAtlas = indexAtlasFrames(1024, 4914, [
       { bobId: 60, rect: { x: 1, y: 1, width: 101, height: 111 }, offsetX: -54, offsetY: -100 },
     ]);

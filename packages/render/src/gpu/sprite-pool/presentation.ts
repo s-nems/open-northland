@@ -4,9 +4,9 @@ import type { SpriteKind } from '../../data/sprites/index.js';
 import { isStalled, type MotionTrack } from './motion.js';
 
 /**
- * Per-frame easing factor for the construction bottom-up reveal - the displayed reveal moves this fraction
+ * Per-frame easing factor for the construction bottom-up reveal: the displayed reveal moves this fraction
  * of the remaining distance toward the sim's reported progress each frame. Tuned so the rise glides across
- * the sim's per-swing `built` steps (~15 ticks / swing) without a catch-up snap.
+ * the sim's per-swing `built` steps (~15 ticks per swing) without a catch-up snap.
  */
 const CONSTRUCTION_REVEAL_EASE = 0.06;
 
@@ -15,20 +15,18 @@ const CONSTRUCTION_REVEAL_EASE = 0.06;
 const MAX_IN_PROGRESS_PCT = 99;
 
 /**
- * The animation clock a drawn item runs on. A frozen `0` holds a still frame for two cases: a fog ghost
- * (an animating mill's sails would leak that the building is still manned) and a portrait subject inside a
- * building (a motionless standing pose, not the breathing idle loop).
+ * The animation clock a drawn item runs on. A frozen `0` holds a still frame: an animating fog ghost would
+ * leak that a building is still manned, and an indoor portrait subject must stand motionless.
  */
 export function animationClock(item: DrawItem, tick: number): number {
   return item.ghost === true || item.frozen === true ? 0 : tick;
 }
 
 /**
- * The pose a settler presents this frame, covering two gaps the raw sim state leaves in a walk cycle: an
- * anchor that has sat still while state still reads `moving` (an unserviced route, a stalled chase), and
- * the one-tick heading gap a re-pathing walker shows (state stays `moving` via MoveGoal/PathRequest with
- * no heading to read). Every other kind and state passes through untouched - an idle settler also has no
- * facing, but must draw the default idle facing.
+ * The pose a settler presents this frame, covering two gaps a raw `moving` state leaves: an anchor that
+ * has sat still (an unserviced route, a stalled chase) and the one-tick heading gap a re-pathing walker
+ * shows. Every other kind and state passes through untouched, so an idle settler keeps the default idle
+ * facing.
  */
 export function walkPose(
   item: DrawItem,
@@ -58,8 +56,7 @@ export function easeReveal(
 
 /**
  * Write the eased reveal back over whichever field carried the progress, as the whole percent the stage
- * windows are keyed by - so stage selection and the per-pixel reveal ride one value and cannot disagree.
- * The scaffold flicker that invariant prevents is pinned by `construction-reveal.test.ts`.
+ * windows are keyed by, so stage selection and the per-pixel reveal ride one value and cannot disagree.
  */
 export function revealedItem(item: DrawItem, reveal: number | undefined): DrawItem {
   if (reveal === undefined) return item;

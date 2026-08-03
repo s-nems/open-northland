@@ -3,12 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { ChunkBatcher } from '../src/gpu/terrain/chunk-batcher.js';
 
 /**
- * Pins the chunk batcher's PAINT ORDER - the compositing half of the transition overlays that no
- * pure test covers: overlays alpha-blend over whatever drew before them, so `children()` MUST
- * return fallback → base → overlay2 → overlay1 regardless of push order, or layer-1 seams would
- * render UNDER layer 2 (or under the ground) and the whole organic-transition look silently breaks
- * while every other test stays green. Display objects construct fine without a GL context (the
- * placement-overlay tests rely on the same), so the ordering is pinnable headlessly.
+ * Overlays alpha-blend over whatever drew before them, so `children()` must return fallback, base,
+ * overlay2, overlay1 whatever the push order, or layer-1 seams render under layer 2.
  */
 
 /** One triangle whose first x coordinate tags which batch it came from. */
@@ -24,7 +20,6 @@ function pushTagged(
   batch.indices.push(0, 1, 2);
 }
 
-/** The batch tag (first x coordinate) back out of an emitted mesh. */
 function tagOf(child: unknown): number {
   if (!(child instanceof Mesh)) throw new Error('expected a Mesh');
   return (child.geometry.positions as Float32Array)[0] as number;
@@ -33,7 +28,7 @@ function tagOf(child: unknown): number {
 describe('ChunkBatcher paint order', () => {
   it('emits fallback → base pages → overlay2 → overlay1 regardless of push order', () => {
     const batcher = new ChunkBatcher();
-    // Push in the WORST order: top layer first, base last, fallback in the middle.
+    // The worst push order: top layer first, base last, fallback in the middle.
     pushTagged(batcher, 'tran_meadow.masked', 'overlay1', 300);
     pushTagged(batcher, 'tran_sand.masked', 'overlay2', 200);
     batcher.drawFallbackTriangle([0, 0, 1, 0, 0, 1], 0x123456);

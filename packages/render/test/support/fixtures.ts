@@ -4,22 +4,19 @@ import type { SpriteState } from '../../src/data/scene/index.js';
 import type { DrawItem, SceneTerrain } from '../../src/index.js';
 
 /**
- * Shared snapshot fixtures for the render tests - a `WorldSnapshot` is plain data (no class
- * instances / live Maps), so the tests hand-build one instead of spinning up a Simulation; these
- * helpers are the one home for that shape (they were copy-pasted into five test files before).
+ * Shared snapshot fixtures for the render tests. A `WorldSnapshot` is plain data with no class
+ * instances or live Maps, so the tests hand-build one instead of spinning up a Simulation.
  */
 
-/** A minimal {@link DrawItem} of the given kind at the origin (`ref 1`, depth 0), plus any extra
- *  fields a resolver test reads. The one home for the base draw-item shape the sprite-resolver specs
- *  build on - before, a `{ kind, ref: 1, x: 0, y: 0, depth: 0 }` literal was re-hand-rolled per file. */
+/** A {@link DrawItem} of the given kind at the origin (`ref 1`, depth 0), plus any extra fields a
+ *  resolver test reads. */
 export function drawItem(kind: DrawItem['kind'], fields: Partial<DrawItem> = {}): DrawItem {
   return { kind, ref: 1, x: 0, y: 0, depth: 0, ...fields };
 }
 
-/** The optional {@link DrawItem} fields a settler sprite-resolver spec varies. Each takes `| undefined`
- *  so a caller can forward its own optional argument through (`exactOptionalPropertyTypes` rejects an
- *  explicit `undefined` against a bare `?:`); an absent or `undefined` field is left off the item, since
- *  the resolvers distinguish an absent field from a falsy one. */
+/** Each field takes `| undefined` so a caller can forward its own optional argument through;
+ *  `exactOptionalPropertyTypes` rejects an explicit `undefined` against a bare `?:`. An absent or
+ *  `undefined` field is left off the item, because the resolvers distinguish absent from falsy. */
 export interface SettlerItemFields {
   readonly facing?: number | undefined;
   readonly atomicId?: number | undefined;
@@ -29,8 +26,7 @@ export interface SettlerItemFields {
   readonly engaged?: boolean | undefined;
 }
 
-/** A settler {@link DrawItem} in the given state (omitted entirely for the stateless back-compat case)
- *  carrying whichever resolver inputs the spec sets. */
+/** A settler {@link DrawItem}; omitting `state` gives the stateless back-compat item. */
 export function settlerItem(state?: SpriteState, fields: SettlerItemFields = {}): DrawItem {
   return drawItem('settler', {
     ...(state !== undefined ? { state } : {}),
@@ -43,12 +39,11 @@ export function settlerItem(state?: SpriteState, fields: SettlerItemFields = {})
   });
 }
 
-/** A flat 3×2 landscape - the smallest grid with both row parities, so a spec can place an entity on an
- *  odd (half-shifted) row without hand-rolling a terrain per file. */
+/** The smallest flat grid with both row parities, so a spec can place an entity on an odd
+ *  (half-shifted) row. */
 export const FLAT_3x2: SceneTerrain = { width: 3, height: 2, typeIds: [1, 1, 2, 2, 1, 1] };
 
-/** A snapshot entity at a fractional tile position (Fixed is a scaled integer - fractions are exact),
- *  carrying the given marker components on top of its Position. */
+/** A snapshot entity at a fractional tile position; Fixed is a scaled integer, so fractions are exact. */
 export function entity(
   id: number,
   tileX: number,
@@ -58,14 +53,14 @@ export function entity(
   return { id, components: { Position: { x: tileX * ONE, y: tileY * ONE }, ...marker } };
 }
 
-/** A minimal snapshot around hand-built entities, canonicalized to the ascending-id order `takeSnapshot`
- *  guarantees, so a fixture cannot hand a reader a shape the sim never produces. */
+/** Canonicalized to the ascending-id order `takeSnapshot` guarantees, so a fixture cannot hand a reader
+ *  a shape the sim never produces. */
 export function snapshotOf(entities: WorldSnapshot['entities'], tick = 1): WorldSnapshot {
   return { tick, entities: [...entities].sort((a, b) => a.id - b.id), events: [] };
 }
 
-/** A hand-driven {@link FogView} over a sparse `"cx,cy"` → state map (missing = UNEXPLORED, like the
- *  sim), mirroring the sim's RECON rule so a recon spec reads the same mapping the app does. */
+/** A {@link FogView} over a sparse `"cx,cy"` map where a missing cell is UNEXPLORED, mirroring the sim's
+ *  RECON rule so a recon spec reads the same mapping the app does. */
 export function fogViewOf(
   states: ReadonlyMap<string, number>,
   generation: number,

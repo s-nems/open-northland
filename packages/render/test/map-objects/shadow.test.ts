@@ -6,10 +6,8 @@ import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { FRAME_0, FRAME_1, tallSprites, WIDE } from './support.js';
 
 /**
- * The tall map-object cast shadow: a tall object whose sprite carries a shadow twin attaches a second
- * sprite sorted just under the body (the original blits a shadow immediately before its caster), binds
- * the shadow at the SAME pose index as the body, and hides it for a pose without a silhouette.
- * Headless like the fog tests - display objects construct without a GL context.
+ * A tall object carrying a shadow twin attaches a second sprite sorted just under the body, because the
+ * original blits a shadow immediately before its caster, and binds it at the body's own pose index.
  */
 
 const SHADOW_0: AtlasFrame = { x: 16, y: 0, width: 8, height: 4, offsetX: -2, offsetY: -4 };

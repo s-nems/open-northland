@@ -4,14 +4,8 @@ import { SYNTHETIC_ATLAS_HEIGHT, SYNTHETIC_ATLAS_WIDTH } from '../src/gpu/synthe
 import { type DrawItem, SYNTHETIC_BINDINGS, syntheticAtlasFrames } from '../src/index.js';
 import { drawItem } from './support/fixtures.js';
 
-/**
- * Unit tests for the PURE half of the free synthetic atlas - its frame geometry + bindings. This is
- * the self-verifiable part (a data lookup, no screen): every bound sprite kind must resolve to an
- * in-bounds, non-empty frame, so the textured branch of `renderScene` actually draws something. The
- * pixel half (drawing the canvas) stays deferred to a human eye (see synthetic-atlas.ts).
- */
-
-/** The settler's three per-state markers + the building/resource frames - every frame the atlas draws. */
+/** The settler's three per-state markers plus the building and resource frames: every frame the atlas
+ *  draws. */
 const ALL_ITEMS: readonly DrawItem[] = [
   drawItem('settler', { state: 'idle' }),
   drawItem('settler', { state: 'moving' }),

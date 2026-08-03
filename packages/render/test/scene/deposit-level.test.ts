@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { depositVisualLevel } from '../../src/data/scene/index.js';
 
-/** Unit tests for {@link depositVisualLevel} - the shrink-by-level fill bucket a mined node draws by. */
-
 describe('depositVisualLevel - the shrink-by-level fill bucket', () => {
   it('buckets remaining/initial into [1, levels]: full → levels, dregs → 1, exhausted → 0', () => {
     // initial 10 over 5 levels - ~2 units per level (ceil rounds a partial level UP).
