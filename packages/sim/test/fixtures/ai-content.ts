@@ -105,6 +105,19 @@ export function aiContent(): ContentSet {
         minRange: 3,
         maxRange: 17,
       },
+      // The wall bow, bound by id (`house_bow`) rather than by class - the reach a sheltering civilian
+      // answers with, and the band the seat watches for raiders in (`military/defence/threat.ts`).
+      {
+        typeId: 20,
+        id: 'house_bow',
+        tribeType: 1,
+        jobType: 6,
+        mainType: WEAPON_MAIN_TYPE.BOW,
+        munitionType: 1,
+        speed: 8,
+        minRange: 0,
+        maxRange: 29,
+      },
     ],
     buildings: [
       {
@@ -113,6 +126,8 @@ export function aiContent(): ContentSet {
         kind: 'storage',
         // A life pool, so a placed HQ carries Health and can be marched on (the army's objective).
         hitpoints: 500,
+        // Room to hide the town: the seat's own alarm rings over this and the tower below.
+        shelterCapacity: 20,
         // A real BODY, with the door on one side of it - the seat's army stages off the wall it would
         // reach, so a doorless point building could not tell that rule from staging off the door.
         footprint: {
@@ -303,7 +318,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 120, initial: 0 }],
       },
-      // The level-2 tower (garrison slots are fighter-band - never staffed) and the defence WALL,
+      // The level-2 tower (its fighter-band slots are the seat's garrison posts) and the defence WALL,
       // which shares kind 'tower' but must never count as a covering tower (the id allowlist).
       {
         typeId: 15,
@@ -311,6 +326,7 @@ export function aiContent(): ContentSet {
         kind: 'tower',
         // A life pool like the HQ's: the campaign's middle siege tier is a standing tower.
         hitpoints: 300,
+        shelterCapacity: 10,
         workers: [
           { jobType: 40, count: 4 },
           { jobType: 24, count: 4 },

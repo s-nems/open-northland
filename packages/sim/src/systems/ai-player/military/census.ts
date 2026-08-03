@@ -9,6 +9,7 @@ import {
   Weapon,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
@@ -39,6 +40,11 @@ export interface WeaponMix {
  * Sort the seat's fighters. A man chasing an {@link AttackOrder} focus, or trading blows right now
  * ({@link Engagement}), lands in neither list and is only counted: re-ordering him would cancel the swing
  * he is halfway through - which is also why no march order needs a "same focus already" check.
+ *
+ * A man holding a tower post leaves the army altogether - he is neither ordered nor counted
+ * ({@link import('./defence/index.js').TOWER_GARRISON_ARCHERS}). {@link towerPostFor}'s entitlement is the
+ * test rather than the garrison marker, so an archer still walking to his tower is already gone from the
+ * muster.
  */
 export function takeCensus(world: World, ctx: SystemContext, player: number): ArmyCensus {
   const ready: Entity[] = [];
@@ -46,7 +52,9 @@ export function takeCensus(world: World, ctx: SystemContext, player: number): Ar
   let committed = 0;
   for (const e of ownedSettlers(world, player)) {
     const settler = world.get(e, Settler);
-    if (!isFighterJob(ctx.content, settler.jobType)) continue;
+    const jobType = settler.jobType;
+    if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
+    if (towerPostFor(world, ctx, e, jobType) !== null) continue;
     if (world.has(e, AttackOrder) || world.has(e, Engagement)) {
       committed++;
       continue;

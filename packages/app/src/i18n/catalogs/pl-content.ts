@@ -249,6 +249,11 @@ export const plContent = {
       summary:
         'Parada mieczników: po kolumnie na każdy stan zbroi (bez, wełniana, skórzana, kolczuga, płytowa) i po wierszu na kolor gracza, wszyscy w postawie ignorowania, więc wrogie frakcje nie walczą. Do oceny przebarwień zbroi na tle kolorów drużyn.',
     },
+    'ai-defence': {
+      title: 'Obrona AI',
+      summary:
+        'Czerwoną osadą kieruje strategiczne AI z włączonym samym planem wojskowym. Podnosi alarm nad kwaterą, gdy niebieska drużyna podchodzi, obsadza wieżę trzema z czterech łuczników - czwarty zostaje w armii polowej - i rzuca wszystkich wolnych żołnierzy na najeźdźców. Obie drużyny są przesadnie wytrzymałe, więc scena kończy się trwającą bitwą, a nie liczeniem trupów.',
+    },
     'tower-garrison': {
       title: 'Załoga wieży',
       summary:
