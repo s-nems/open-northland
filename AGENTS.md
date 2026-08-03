@@ -39,13 +39,23 @@ legal wording is in `docs/LEGAL.md`.
 ## Code quality
 
 - Prefer names and structure that explain the code without PR context.
-- Comments state units, invariants, ownership, or source basis. Do not narrate obvious control flow or
-  preserve development history.
+- Prefer no comment when names, types, and tests already state the contract. A useful comment records
+  one otherwise-hidden fact: a unit, invariant, ownership boundary, non-obvious constraint, or source
+  basis. Do not narrate control flow or restate the implementation.
+- Comments describe the current contract, never its history. Never put calendar dates, user/author
+  attribution, conversation, plan, ticket, or PR references, or labels such as "user decision",
+  "feedback", or "revised" in code comments. State source basis impersonally (`manual`, `.ini` key,
+  byte evidence, observation, or approximation); keep decision history in the ticket or commit.
 - JSDoc is not required for every export, interface member, or local helper. Do not document a symbol
   when its name and type already state the contract.
-- Keep comments tight. Most comments fit in one to three physical lines. Treat a block longer than five
-  lines as a structural warning; retain it only when a protocol, security boundary, source basis, or
-  indivisible invariant genuinely needs the space.
+- Write one direct sentence about one fact. Most comments fit in one to three physical lines; treat
+  anything longer as a structural problem and shorten the comment, improve the code, or move the detail
+  to a test, ticket, or focused document. Only indivisible protocol layouts, security/legal boundaries,
+  and byte-level format evidence justify a longer block.
+- Do not write mini design documents above modules or exports. Avoid phase and caller inventories,
+  repeated examples, rhetorical asides, emphasis through capitals, and chains of parenthetical remarks.
+- When behavior changes, rewrite or delete its comment so only the new invariant remains. Never append
+  a dated correction or revision note. Compress historical or narrative comments in code you touch.
 - Give each fact one durable home. Investigation, benchmarks, caller inventories, and decision history
   belong in tests, tickets, or the completing commit, not repeated in production JSDoc.
 - When extracting or moving code, review comments across the old and new modules as one budget. Moving
