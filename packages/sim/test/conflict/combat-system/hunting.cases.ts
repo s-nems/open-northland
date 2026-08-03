@@ -16,7 +16,10 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { checkInvariants, halfCellMapFromCells, positionOfNode, Simulation } from '../../../src/index.js';
-import { HUNT_SEARCH_REST_TICKS } from '../../../src/systems/conflict/hunting/index.js';
+import {
+  HUNT_LAST_RESORT_SCAN_FACTOR,
+  HUNT_SEARCH_REST_TICKS,
+} from '../../../src/systems/conflict/hunting/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
@@ -30,8 +33,9 @@ import { COW, ctxOf, DEER, fighterAtNode, HUNTER } from './support.js';
  * acquires prey only within its work-flag circle (the flag anchors the chase leash), takes no new
  * target while a harvestable carcass lies in the ground (one kill at a time), and last-resort
  * livestock (huntPrey `lastResort` - the fixture cow) is taken only when no normal game (the deer) is
- * in the ground. Once it has drawn on an animal it stays on THAT one (the `HuntFocus` lock) out to the
- * leash, so a bolting kill is run down instead of traded for whatever grazes nearest.
+ * in the ground NOR in the wider probe around it. Once it has drawn on an animal it stays on THAT one
+ * (the `HuntFocus` lock) out to the leash, so a bolting kill is run down instead of traded for whatever
+ * grazes nearest.
  * The fixture hunter weapon `test_spear` (tribe 1, job 15) has band [3, 17].
  */
 /** The fixture meat good and its harvest_cadaver atomic - the hunter's own trade (granted to job 15). */
@@ -91,7 +95,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: deer });
   });
 
-  it('falls back to last-resort livestock when NO normal game is in the ground', () => {
+  it('falls back to last-resort livestock when NO normal game is left anywhere around', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
     const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
     bindFlagAtNode(sim, hunter, 40, 40, 12);
@@ -100,6 +104,48 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
+  it('leaves the herd alone while normal game stands BEYOND the ground - the complete last resort', () => {
+    const RADIUS = 12;
+    const PROBE = RADIUS * HUNT_LAST_RESORT_SCAN_FACTOR;
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, RADIUS);
+    const cow = fighterAtNode(sim, 43, 40, COW, null); // the only prey IN the ground
+    const deer = fighterAtNode(sim, 40 + PROBE - 4, 40, DEER, null); // past the ground, inside the probe
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // Real game is still around, so the settlement's herd is not the last resort yet: the hunter waits
+    // to be re-posted rather than shooting stock a shrunken ground happens to sit on (user report
+    // 2026-08-03). The empty search rests, so the second pass runs once the breather has lapsed.
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+    expect(sim.world.has(hunter, HuntRest)).toBe(true);
+
+    moveToNode(sim, deer, 40 + PROBE + 6, 40); // the last real game leaves the probe
+    combatSystem(sim.world, { ...ctxOf(sim), tick: HUNT_SEARCH_REST_TICKS });
+
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
+  it("counts a COLLEAGUE's committed animal as game around - one hunter's hold spares the herd", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const first = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const second = combatantAtNode(sim, 40, 42, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, first, 40, 40, 12);
+    bindFlagAtNode(sim, second, 40, 42, 12);
+    const deer = fighterAtNode(sim, 45, 40, DEER, null); // the only normal game, and both can reach it
+    fighterAtNode(sim, 43, 42, COW, null); // in the second hunter's ground, and no colleague wants it
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The colleague's hold takes the deer off the second hunter's candidates (one hunter per animal),
+    // but it is still game standing in its probe - so the cow stays livestock, not the next-best meat.
+    expect(sim.world.get(first, HuntFocus).target).toBe(deer);
+    expect(sim.world.has(second, HuntFocus)).toBe(false);
+    expect(sim.world.has(second, CurrentAtomic)).toBe(false);
   });
 
   it('takes NO new target while a harvestable carcass still lies in the ground', () => {

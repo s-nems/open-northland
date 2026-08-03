@@ -71,10 +71,9 @@ export const DEFAULT_WORK_FLAG_RADIUS = 24;
  * The hunter's work radius (same integer node-distance): wider than the gatherer default, because a
  * hunter is not a stationary digger - it ranges after mobile game that scatters on every shot (user
  * rule; hunter-only, every other gatherer keeps the default). A named approximation - the original's
- * hunter range is not decoded - but sized by a measured sweep on a real map (the run is in the commit
- * that set it): at twice this radius hunters spend the run WALKING, a mean 12-17 tiles out and peaks
- * past 30, because last-resort livestock yields to normal game anywhere in the ground (`lowPriority`),
- * so one distant deer outranks the herd underfoot. Bought with reach: a ground's area falls with the
- * SQUARE of this, and nothing respawns game, so it is hunted out sooner and wants re-posting.
+ * hunter range is not decoded - sized between two reported failures by one sweep (one map, one seed,
+ * 12000 ticks, last-resort gate on, recorded in the commit that set this): 4 kills at 32 nodes against 6
+ * here and 9 at 64, but at 64 the crew stands a mean 14-15 tiles from its flag against 1-9 here. Nothing
+ * respawns game, so even this ground is shot out in the end and then wants re-posting.
  */
-export const HUNTER_WORK_FLAG_RADIUS = 32;
+export const HUNTER_WORK_FLAG_RADIUS = 48;

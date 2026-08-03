@@ -16,6 +16,15 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 export const HUNT_CHASE_SLACK_NODES = 4;
 
 /**
+ * How much wider than its hunting ground a hunter probes for real game before it will draw on
+ * last-resort livestock (user rule: the herd is the COMPLETE last resort). A multiple of the ground
+ * radius rather than its own length, so the probe stays proportional to the area the hunter was posted
+ * over. Chosen, not calibrated: no source describes what a hunter does with an empty ground, and no
+ * other value was measured.
+ */
+export const HUNT_LAST_RESORT_SCAN_FACTOR = 2;
+
+/**
  * How far (Manhattan nodes) past the ground's radius a hunter's carcass may lie and still be its work:
  * the chase overshoot ({@link HUNT_CHASE_SLACK_NODES}) plus a drift margin for prey that keeps fleeing
  * between the release and the arrow's contact. The carcass-gate probe and the hunter's harvest reach
