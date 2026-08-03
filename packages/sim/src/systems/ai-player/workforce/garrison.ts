@@ -5,7 +5,6 @@ import {
   Building,
   Equipment,
   Female,
-  Owner,
   ownerOf,
   ownersCompatible,
   Settler,
@@ -18,12 +17,13 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { draftableTrade } from '../../assistant/index.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
-import { baseSoldierJobType, isBarracks, isSoldierJob } from '../../readviews/index.js';
+import { baseSoldierJobType, isSoldierJob } from '../../readviews/index.js';
 import { armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
-import { canonicalById, entityNode } from '../../spatial/nodes.js';
+import { entityNode } from '../../spatial/nodes.js';
 import { mayFetchGoodFrom } from '../../stores/index.js';
+import { seatBarracksOf } from '../base.js';
 import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
@@ -94,7 +94,7 @@ function standingOrder(
   const wants = new Map<AssistantRecruitIntent, number>();
   if (!aiModuleRuns(world, player, 'military')) return wants;
   if (baseSoldierJobType(ctx.content) === null) return wants;
-  const barracks = barracksOf(world, ctx, player);
+  const barracks = seatBarracksOf(world, ctx, player);
   if (barracks === null) return wants;
 
   const booked = bookedByIntent(world, ctx, player);
@@ -124,16 +124,6 @@ function draftAllowance(world: World, ctx: SystemContext, player: number, force:
     return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
   }).length;
   return Math.min(free, surplus);
-}
-
-/** The seat's canonical barracks: its lowest-id owned standing one, or null when it has none. It
- *  carries the tribe whose weapon rows the drill can arm - the seat's own base may be a captured
- *  house of another tribe. */
-function barracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
-  for (const e of canonicalById(world.query(Building, Owner))) {
-    if (ownerOf(world, e) === player && isBarracks(world, ctx, e)) return e;
-  }
-  return null;
 }
 
 /**

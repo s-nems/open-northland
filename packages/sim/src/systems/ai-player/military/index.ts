@@ -3,11 +3,10 @@ import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { isBarracks } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode, manhattan } from '../../spatial/nodes.js';
+import { seatBarracksOf } from '../base.js';
 import type { AiPlayerModule } from '../index.js';
-import { ownedBuildings } from '../shared.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
 import { takeCensus, weaponMix } from './census.js';
 import {
@@ -49,7 +48,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
   if (terrain === undefined) return []; // mapless sim: no ground to march over
   // The barracks is the seat's military seat: with none there is no rally point - and no army either,
   // since its drill is the seat's only route to a soldier (workforce/garrison.ts).
-  const barracks = barracksOf(world, ctx, player);
+  const barracks = seatBarracksOf(world, ctx, player);
   if (barracks === null) return [];
   const home = interactionCell(world, ctx, terrain, barracks);
   const army = takeCensus(world, ctx, player);
@@ -99,15 +98,6 @@ function chargePoint(
   const objective = objectiveNode(world, ctx, terrain, target);
   if (!world.has(target, Building)) return objective;
   return stagingNode(terrain, home, objective) ?? home;
-}
-
-/** The seat's canonical barracks: its lowest-id owned STANDING one, or null when it has none. A
- *  canonical pick, not the nearest, so every wave forms up at one house. */
-function barracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
-  for (const e of ownedBuildings(world, player)) {
-    if (isBarracks(world, ctx, e)) return e;
-  }
-  return null;
 }
 
 export const militaryModule: AiPlayerModule = {
