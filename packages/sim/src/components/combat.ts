@@ -62,6 +62,14 @@ export const Frightened = defineComponent<{ until: number; repathAt: number; fro
 export const HuntRest = defineComponent<{ until: number }>('HuntRest');
 
 /**
+ * A hunter's committed prey: the animal it stays on until the kill, rather than re-picking the nearest
+ * one each tick. `hunterEngageSpec` (conflict/hunting-ground.ts) owns what keeps a hold alive and reaps
+ * a lapsed one as it reads it. Never outlives the carrier's {@link Engagement} - an invariant, since
+ * only that one branch reaps it (`preyHoldWithinEngagement`).
+ */
+export const HuntFocus = defineComponent<{ target: Entity }>('HuntFocus');
+
+/**
  * A combat-engagement marker, present while a unit is swinging at or chasing an enemy and removed once no
  * valid enemy is in reach/sight. The PlannerSystem skips economy planning for an engaged unit but sits below
  * the needs drives, so hunger/fatigue/piety still pull it away. `repathAt` throttles the chase: a chaser

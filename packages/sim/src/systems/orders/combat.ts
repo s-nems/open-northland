@@ -7,6 +7,7 @@ import {
   Engagement,
   Fleeing,
   Health,
+  HuntFocus,
   Owner,
   PlayerOrder,
   Position,
@@ -116,6 +117,7 @@ export function attackUnit(
   clearNavState(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode - stop running, fight
+  world.remove(e, HuntFocus); // and supersedes a hunter's self-committed prey, like a move order does
   world.add(e, AttackOrder, { target });
   // Stamp Engagement up front so plannerSystem skips economy for this unit on the same tick the order lands;
   // repathAt = tick means the CombatSystem re-paths the chase on its first pass.

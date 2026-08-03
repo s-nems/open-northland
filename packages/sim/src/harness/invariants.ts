@@ -1,4 +1,11 @@
-import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
+import {
+  Building,
+  Engagement,
+  HuntFocus,
+  Settler,
+  Stockpile,
+  stockpileEntries,
+} from '../components/index.js';
 import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
 
@@ -72,10 +79,25 @@ const buildingSane: Invariant = (world) => {
   return out;
 };
 
+/**
+ * A hunter's prey hold never outlives its {@link Engagement}. The hold is only reaped by the branch that
+ * consumes it (the IGNORE-hunter spec), so any seam that sheds the engagement without shedding the hold
+ * would strand a dead entity id in the state hash and resume a half-forgotten animal later. Structural,
+ * because the removal sites are spread across combat, orders and the trade change.
+ */
+const preyHoldWithinEngagement: Invariant = (world) => {
+  const out: string[] = [];
+  for (const e of world.query(HuntFocus)) {
+    if (!world.has(e, Engagement)) out.push(`entity ${e}: HuntFocus without an Engagement`);
+  }
+  return out;
+};
+
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
   needsInRange,
   buildingSane,
+  preyHoldWithinEngagement,
   cachesCoherent,
 ];
 

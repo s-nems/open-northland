@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Engagement,
   EquipOrder,
+  HuntFocus,
   MoveGoal,
   PathRequest,
   PlayerOrder,
@@ -48,6 +49,7 @@ export const REPATH_CADENCE = 8;
  *  nav state mid-fetch would tug the guard off it; the errand's end re-holds the unchanged anchor. */
 function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
+  world.remove(e, HuntFocus); // a post-holder holds no prey (see disengage - the hold never outlives it)
   if (world.has(e, EquipOrder)) return;
   clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
@@ -225,12 +227,14 @@ function approachCell(
 }
 
 /** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and the
- *  chase movement it drove, and any {@link AttackOrder} (a dead/invalid focus). Only touches a unit that was
- *  engaged - a peaceful/economy unit with no marker keeps its own movement untouched. */
+ *  chase movement it drove, plus both target commitments - an {@link AttackOrder} (a dead/invalid focus) and a
+ *  hunter's self-committed {@link HuntFocus} prey. Only touches a unit that was engaged - a peaceful/economy
+ *  unit with no marker keeps its own movement untouched. */
 export function disengage(world: World, e: Entity): void {
   if (world.has(e, Engagement)) {
     world.remove(e, Engagement);
     clearNavState(world, e);
   }
   world.remove(e, AttackOrder);
+  world.remove(e, HuntFocus);
 }
