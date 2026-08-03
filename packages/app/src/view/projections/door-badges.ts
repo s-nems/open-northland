@@ -120,9 +120,8 @@ export function computeDoorBadges(
   return out;
 }
 
-/** Both anchors reach the layer as the BUILDING's position plus a screen-px offset, the derived node
- *  included: that is what lets the layer depth-sort the chain with its house, where a node anchor
- *  behind the house (a north-facing door) would sort the chain into the house body. */
+/** Both anchors reach the layer as the building's position plus a screen-px offset, so the layer
+ *  depth-sorts the chain with its house; a node anchor behind the house would sort it into the body. */
 function anchorOf(
   pos: { readonly x: Fixed; readonly y: Fixed },
   info: BuildingDoorInfo | undefined,
@@ -137,8 +136,7 @@ function anchorOf(
   return { x: pos.x, y: pos.y, dx: to.x - from.x, dy: to.y - from.y };
 }
 
-/** Where this type's garrison flag is planted: its authored mast point (a roof), else the sign post the
- *  badges already stand on - a garrison building nobody measured a roof for still shows it is manned. */
+/** Where the garrison flag is planted: the authored mast point, else the sign post the badges stand on. */
 function mastOf(
   info: BuildingDoorInfo | undefined,
   post: Pick<DoorBadge, 'dx' | 'dy'>,
@@ -147,16 +145,14 @@ function mastOf(
   return mast !== undefined ? { dx: mast.x, dy: mast.y } : { dx: post.dx ?? 0, dy: post.dy ?? 0 };
 }
 
-/** Classify one resident family into its door banner: parents raising a child read 'family', a
- *  childless pair 'couple', anyone alone (including an orphaned minor) 'single'. */
+/** Parents raising a child read 'family', a childless pair 'couple', anyone alone 'single'. */
 function householdKindOf(family: HomeFamily): HouseholdKind {
   if (family.adults > 0 && family.minors > 0) return 'family';
   if (family.adults >= 2) return 'couple';
   return 'single';
 }
 
-/** The settler a click on this family's banner selects: the wife (the adult female) of a couple, else
- *  the lone resident (a single adult or an orphaned minor). */
+/** A click on the banner selects the adult female of a couple, else the lone resident. */
 function selectableResident(snapshot: WorldSnapshot, family: HomeFamily): number | undefined {
   if (family.adults >= 2) {
     for (const id of family.members) {

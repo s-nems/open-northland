@@ -169,13 +169,12 @@ export const enGame = {
     build: 'Build',
     alert: 'Alert',
     query: 'Information',
-    erectSignpost: 'Erect Signpost', // the original's scout action string (gui strings misclogic)
-    attack: 'Attack Position', // the original's own name for this order (gui strings misclogic 48)
+    erectSignpost: 'Erect Signpost', // decoded original: gui strings misclogic
+    attack: 'Attack Position', // decoded original: gui strings misclogic 48
     assign_house: 'Assign home',
     animal: 'Animal',
     vehicle: 'Vehicle',
-    // The family action labels are the decoded originals (`content/gui/strings/eng.json` humanwindow
-    // 21/23/24/28), not invented phrasing.
+    // Family labels: decoded originals from `content/gui/strings/eng.json` humanwindow 21/23/24/28.
     marry: 'Marry',
     make_son: 'Have a Boy',
     make_daughter: 'Have a Girl',
@@ -189,8 +188,7 @@ export const enGame = {
     house_c: 'Home assignment',
     house_d: 'Home assignment',
   },
-  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG - the details
-  // panel resolves these before falling back to the raw content name (which is the untranslated slug).
+  // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Baby (girl)',
     baby_male: 'Baby (boy)',

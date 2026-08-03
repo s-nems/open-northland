@@ -13,24 +13,13 @@ import {
   type SnapshotEntity,
 } from '../../../game/snapshot.js';
 
-/**
- * The "przypisz dom" (assign a home) highlight - the pure snapshot projection behind the action-ring
- * button + the green/red house tint, the residential twin of `assign-highlight.ts`. Green = an own,
- * built `home` with a free family slot for this settler's family (`homeSize` - the original
- * `logichomesize` 1..5 by level - counts FAMILIES, see {@link familiesByHome}). The sim's `assignHouse`
- * command re-validates on click; this is the at-a-glance candidacy the player reads. Known gap:
- * signpost confinement is not mirrored, so an out-of-area home may wash green before the sim refuses
- * the click.
- */
-
-/** The slice of a building type this projection needs: the residence discriminant + its capacity. */
+/** `homeSize` (the original `logichomesize`, 1..5 by level) counts FAMILIES, not settlers. */
 export interface HouseInfo {
   readonly kind?: string | undefined;
   readonly homeSize?: number | undefined;
 }
 
-/** The settler's household - itself, its living spouse, their still-growing child (the sim `familyOf`
- *  mirrored over the snapshot). */
+/** Mirrors the sim's `familyOf` over the snapshot: self, living spouse, still-growing child. */
 export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[] {
   const e = entityById(snapshot, settlerId);
   if (e === undefined || !isSettler(e)) return [];
@@ -45,7 +34,6 @@ export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[
   return family;
 }
 
-/** True when the building is a completed residence (`built` at ONE and a `home`-kind type). */
 function isBuiltHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
   if (!isBuilding(e) || e.components.UnderConstruction !== undefined) return false;
   const built = builtFractionOf(e);
@@ -54,8 +42,7 @@ function isBuiltHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseI
   return typeId !== undefined && housesByType.get(typeId)?.kind === 'home';
 }
 
-/** Whether `house` may take this settler's family: a free family slot beside the OTHER households
- *  already living there (the mover's own family keeps its slot on a same-home re-assign). */
+/** The mover's own family keeps its slot on a same-home re-assign, so only OTHER households count. */
 function houseFitsFamily(
   house: SnapshotEntity,
   family: readonly number[],
@@ -69,10 +56,7 @@ function houseFitsFamily(
   return others + 1 <= size;
 }
 
-/**
- * The house-assignment verdicts for a selected settler over every own built home: green when the
- * family fits, red otherwise. Non-home buildings (and other owners') are skipped, never tinted.
- */
+/** Known gap: signpost confinement is not mirrored, so an out-of-area home can still wash green. */
 export function computeHouseHighlight(
   snapshot: WorldSnapshot,
   settlerId: number,
@@ -85,16 +69,12 @@ export function computeHouseHighlight(
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
     if (!isBuiltHome(e, housesByType)) continue;
-    if (ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue; // only the settler's own homes
+    if (ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue;
     items.push({ id: e.id, ok: houseFitsFamily(e, family, families.get(e.id), housesByType) });
   }
   return items;
 }
 
-/**
- * The click-resolution twin of {@link computeHouseHighlight} for ONE building: true when the click
- * should issue `assignHouse` (a green home), false when it cancels (red / not a home at all).
- */
 export function houseAssignableAt(
   snapshot: WorldSnapshot,
   buildingId: number,

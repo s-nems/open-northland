@@ -2,11 +2,8 @@ import type { UiFont } from '../../content/ui-font.js';
 import { el } from '../overlay.js';
 
 /**
- * The shared centred pick-window chrome: a DOM window approximating the original's parchment/rope
- * selection windows (a deliberately lighter DOM take, not the true original-art details panel) - kept
- * DOM so a long list scrolls with no Pixi masking work. Palette matches the HUD's warm-wood windows
- * (hud/chrome.ts). A full-screen backdrop makes it modal (it eats canvas clicks; clicking it, or the ✕
- * box, dismisses). The profession picker and the equipment pick-menu both build on this.
+ * An approximation of the original's parchment/rope selection windows, kept in DOM so a long list
+ * scrolls with no Pixi masking work.
  */
 
 const WOOD_DARK = '#211812';
@@ -17,10 +14,9 @@ const ROPE_DARK = '#4a3a22';
 const TEXT = '#e8dcc8';
 const TEXT_DIM = '#b8a684';
 const ROW_HILITE = '#5a4a30';
-/** The bundled UI serif family (loaded at mount); this stack is the fallback until it resolves. */
+/** The stack used until the bundled UI serif, loaded at mount, resolves. */
 const SERIF_FALLBACK = "'Times New Roman', Georgia, serif";
 
-/** Full-screen click-catcher + subtle dim behind the window: a click off the window closes it (modal). */
 const BACKDROP_STYLE = [
   'position:fixed',
   'inset:0',
@@ -28,7 +24,6 @@ const BACKDROP_STYLE = [
   'z-index:80',
   'display:none',
 ].join(';');
-/** The centred wood window: title bar + scrollable list, framed by a double rope-tan border. */
 const WINDOW_STYLE = [
   'position:fixed',
   'top:50%',
@@ -39,7 +34,6 @@ const WINDOW_STYLE = [
   'box-sizing:border-box',
   `background:linear-gradient(${WOOD_LIGHT},${WOOD} 55%,${WOOD_DARK})`,
   `color:${TEXT}`,
-  // Double frame: a raised rope-tan ridge outside, a dark bevel line inside (the rope-and-knot look, flat).
   `border:2px solid ${ROPE}`,
   `box-shadow:inset 0 0 0 1px ${ROPE_DARK},inset 0 0 22px rgba(0,0,0,0.55),0 10px 30px rgba(0,0,0,0.6)`,
   'border-radius:4px',
@@ -47,7 +41,7 @@ const WINDOW_STYLE = [
   'display:none',
   'overflow:hidden',
 ].join(';');
-/** The engraved headline bar (the original's `bg_headline`): centred title + a close box on the right. */
+/** Approximates the original's `bg_headline` bar. */
 const HEADER_STYLE = [
   'display:flex',
   'align-items:center',
@@ -65,7 +59,6 @@ const TITLE_STYLE = [
   `color:${TEXT}`,
   'text-shadow:0 1px 2px rgba(0,0,0,0.7)',
 ].join(';');
-/** The top-right close box (an X), the original window-close affordance. */
 const CLOSE_STYLE = [
   'position:absolute',
   'top:50%',
@@ -82,7 +75,6 @@ const CLOSE_STYLE = [
   `border:1px solid ${ROPE_DARK}`,
   'border-radius:3px',
 ].join(';');
-/** The scrollable list: caps its height so a long set scrolls instead of overflowing the screen. */
 const LIST_STYLE = [
   'display:flex',
   'flex-direction:column',
@@ -91,7 +83,6 @@ const LIST_STYLE = [
   'max-height:52vh',
   'overflow-y:auto',
 ].join(';');
-/** A category separator row (group headers) - small, dim, letter-spaced, with a hairline rule. */
 const GROUP_STYLE = [
   'margin:6px 2px 1px',
   'padding-bottom:3px',
@@ -113,18 +104,15 @@ const ROW_STYLE = [
   'font-size:13.5px',
   'box-shadow:inset 0 1px 0 rgba(255,240,210,0.06)',
 ].join(';');
-/** A non-clickable info line (the equip menu's "nothing available" state). */
 const NOTE_STYLE = ['padding:6px 11px', 'font-size:13px', `color:${TEXT_DIM}`, 'text-align:center'].join(';');
 const ROW_HOVER = `linear-gradient(${ROW_HILITE},${WOOD_LIGHT})`;
 const ROW_BG = `linear-gradient(${WOOD_LIGHT},${WOOD})`;
-/** One-shot stylesheet id for the list's scrollbar skin (rules that inline cssText can't express). */
 const STYLE_ID = 'opennorthland-picker-style';
 const LIST_CLASS = 'opennorthland-picker-list';
 
 /**
- * Inject the list's scrollbar skin once (a wood track + rope-tan thumb, matching the window), guarded
- * by {@link STYLE_ID} so remounts don't stack duplicate sheets. Scrollbar pseudo-elements can't be set
- * through inline `style`, so this is the one rule set that needs a real stylesheet.
+ * Scrollbar pseudo-elements cannot be set through inline `style`, so this is the one rule set that
+ * needs a real stylesheet; the id guard keeps remounts from stacking duplicate sheets.
  */
 function installPickerScrollbarStyle(): void {
   if (document.getElementById(STYLE_ID) !== null) return;
@@ -141,25 +129,17 @@ function installPickerScrollbarStyle(): void {
 
 export interface PickerWindow {
   setTitle(text: string): void;
-  /** Empty the list body (a dynamic picker rebuilds its rows per open). */
   clearList(): void;
-  /** Append a dim group-separator header. */
   addGroup(label: string): void;
-  /** Append a clickable row; hovering brightens it, clicking fires `onPick`. */
   addRow(label: string, onPick: () => void): void;
-  /** Append a dim non-clickable info line. */
   addNote(label: string): void;
   show(): void;
   hide(): void;
   isOpen(): boolean;
-  /** Remove the backdrop + window from the DOM. */
   dispose(): void;
 }
 
-/**
- * Build one centred pick window (appended to `document.body` hidden) and return its handle. The ✕ box
- * and a backdrop click fire `onDismiss` - the owner decides whether that hides the window.
- */
+/** The ✕ box and a backdrop click fire `onDismiss`; the owner decides whether that hides the window. */
 export function createPickerWindow(opts: {
   readonly uiFont: UiFont;
   readonly title: string;
@@ -185,7 +165,6 @@ export function createPickerWindow(opts: {
   window_.append(list);
   document.body.append(backdrop, window_);
 
-  // A click on the backdrop (anywhere off the window) dismisses it - the standard modal behaviour.
   backdrop.addEventListener('mousedown', () => opts.onDismiss());
 
   let open = false;

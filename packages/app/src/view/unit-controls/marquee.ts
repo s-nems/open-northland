@@ -16,7 +16,6 @@ export interface MarqueeRelease {
   readonly moved: boolean;
 }
 
-/** Own the DOM rectangle and drag threshold for box-selection. */
 export function createSelectionMarquee(): {
   readonly begin: (clientX: number, clientY: number) => void;
   readonly update: (clientX: number, clientY: number) => void;

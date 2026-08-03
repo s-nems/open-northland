@@ -3,12 +3,8 @@ import { HUMAN_PLAYER } from '../game/rules.js';
 
 const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
 
-/**
- * Read-only world queries the sandbox scene's machine checks assert on. These read a scene-owned sim
- * after its headless run (never live render glue), so the direct `sim.world` reads are the sanctioned
- * check-side counterpart of the command-side placement helpers (`game/sandbox/place/`). They live
- * beside the scenes so `game/` carries content + rules, not test predicates.
- */
+/** Read-only queries for scene checks: they read a scene-owned sim after its headless run, never live
+ *  render glue. */
 
 /** The one placed building of `typeId`, or null before its placement command ran. */
 export function buildingOfType(sim: Simulation, typeId: number): Entity | null {
@@ -18,22 +14,16 @@ export function buildingOfType(sim: Simulation, typeId: number): Entity | null {
   return null;
 }
 
-/** A good slug's typeId in the RUNNING content - the sandbox fallback carries the equippables at +100
- *  while real content keeps the `goodtypes.ini` ids, so a scene resolves slugs like every other spawn
- *  path (see `weaponEquipmentFor`) instead of stamping one id space. */
+/** Resolved against the running content: the sandbox fallback carries the equippables at +100 while
+ *  real content keeps the `goodtypes.ini` ids. */
 export function goodBySlug(sim: Simulation, slug: string): number {
   const good = sim.content.goods.find((g) => g.id === slug);
   if (good === undefined) throw new Error(`scene content has no '${slug}' good`);
   return good.typeId;
 }
 
-/**
- * Total `good` banked in the goods yard - summed across every loose ground heap holding it. A flag-bound
- * gatherer spreads its harvest onto separate ground heaps around the flag, capped per tile, so a good's
- * yield lives across several pinned heaps. Each gatherable good is unique to its lane, so summing all heaps
- * of `good` gives that lane's banked total. A heap is a bare loose pile ({@link systems.isYardHeap}) - the
- * shared "settled ground heap" predicate.
- */
+/** Total `good` across every settled ground heap: a flag-bound gatherer spreads its harvest onto
+ *  separate per-tile-capped heaps around the flag. */
 export function yardGood(sim: Simulation, good: number): number {
   let total = 0;
   for (const e of sim.world.query(Stockpile, Position)) {
@@ -43,8 +33,7 @@ export function yardGood(sim: Simulation, good: number): number {
   return total;
 }
 
-/** Loose player-dropped ground piles: a bare {@link Stockpile}+{@link Position} with no building store or
- *  felled-trunk marker - the entity `dropGood` creates, a growing heap that rests in place. */
+/** The loose piles `dropGood` creates: a bare stockpile with no building store or felled-trunk marker. */
 export function countGroundPiles(sim: Simulation): number {
   let n = 0;
   for (const e of sim.world.query(Stockpile, Position)) {
@@ -53,8 +42,7 @@ export function countGroundPiles(sim: Simulation): number {
   return n;
 }
 
-/** Living settlers owned by the human (blue) player - the symmetric twin of
- *  {@link enemyLivingSettlers} for both-sides casualty checks. */
+/** Living settlers owned by the human (blue) player. */
 export function blueLivingSettlers(sim: Simulation): number {
   let n = 0;
   for (const e of sim.world.query(Settler, Owner, Health)) {
@@ -73,8 +61,7 @@ export function enemyLivingSettlers(sim: Simulation): number {
   return n;
 }
 
-/** Enemy (non-human) buildings still standing - a live {@link components.Building} carrying a Health
- *  pool above 0. The siege-scene checks measure attrition and priority over this set. */
+/** Enemy (non-human) buildings still standing, with a Health pool above 0. */
 export function enemyBuildings(sim: Simulation): Entity[] {
   const out: Entity[] = [];
   for (const e of sim.world.query(Building, Owner, Health)) {

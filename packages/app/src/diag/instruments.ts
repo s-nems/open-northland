@@ -1,7 +1,6 @@
 /**
- * One installer for the session's sim instrumentation. `Simulation.setInstrument` has a single slot,
- * so every consumer of the per-system seam has to be fanned out from one hook or the last one
- * installed silently wins.
+ * `Simulation.setInstrument` has a single slot, so every consumer of the per-system seam is fanned
+ * out from this one installer.
  */
 import type { Simulation } from '@open-northland/sim';
 import { hasDebugFlag } from './debug-flags.js';
@@ -12,11 +11,7 @@ import { recordTraceEvent, startTraceRecording, TRACE_DEBUG_FLAG } from './trace
 /** Emits one named interval to every consumer the active flags asked for. */
 export type PhaseEmitter = (name: string, startMs: number, endMs: number) => void;
 
-/**
- * Install the sim instrument for the active `?debug=` flags and return the running profile when one
- * was asked for. With no flag set nothing is installed, so an ordinary session keeps the sim's
- * uninstrumented direct call.
- */
+/** With no `?debug=` flag set nothing is installed, so an ordinary session keeps the sim's direct call. */
 export function installSessionInstruments(sim: Simulation, params: URLSearchParams): SystemProfile | null {
   const profile = hasDebugFlag(params, PROFILE_DEBUG_FLAG) ? new SystemProfile() : null;
   const emit = framePhaseEmitter(params);
@@ -34,10 +29,7 @@ export function installSessionInstruments(sim: Simulation, params: URLSearchPara
   return profile;
 }
 
-/**
- * The emitter for the loop's `frame/*` phase slices, or null when no flag consumes them. The running
- * profile is per-system only, so it does not appear here.
- */
+/** The emitter for the loop's `frame/*` phase slices, or `null` when no active flag consumes them. */
 export function framePhaseEmitter(params: URLSearchParams): PhaseEmitter | null {
   const marks = hasDebugFlag(params, PERF_MARKS_DEBUG_FLAG);
   const trace = hasDebugFlag(params, TRACE_DEBUG_FLAG);

@@ -6,43 +6,34 @@ import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import { createWindowShell, type ToolWindow } from './window-shell.js';
 
-/** Stats window width (design px) - sized to the read-view's longest tally rows. */
+/** Stats window width (design px). */
 const STATS_WIDTH = 150;
-/** Horizontal gap between the strip and the window (design px): past the menu column + breathing room. */
+/** Horizontal gap between the strip and the window (design px). */
 const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
 /** Vertical drop below the strip top (design px). */
 const STATS_OFFSET_Y = 15;
 /** Title text inset (design px). */
 const TITLE_INSET_Y = 2;
-/** The index of `layoutHud`'s volatile `Tribe N · tick T` row - excluded from the change key. */
+/** Index of `layoutHud`'s volatile tick row, excluded from the change key. */
 const TICK_ROW = 0;
 
 export interface StatsWindowDeps {
   readonly ctx: PanelContext;
-  /** The panel's window container the stats mounts its own container under. */
   readonly container: Container;
 }
 
-/** The pop-up statistics window: toggled by the strip button, refreshed each frame from the HUD read-view.
- *  A click strictly inside it closes it (v1 has no window chrome controls). */
+/** The pop-up statistics window; a click anywhere inside it closes it. */
 export interface StatsWindow extends ToolWindow {
-  /** Per-frame while open: rebuild only when a tally row actually changed (see the change key). `hudFor`
-   *  is pulled only while the window is open, because building it is an O(entities) scan. */
+  /** `hudFor` is pulled only while the window is open, because building it is an O(entities) scan. */
   refresh(hudFor: () => HudLayout): void;
 }
 
-/**
- * Build the statistics-window controller on the shared {@link createWindowShell} lifecycle. The per-frame
- * `refresh` is allocation-light: it derives a change key in one pass over the HUD rows and returns early
- * when nothing but the tick moved - the glyph meshes rebuild only on a real tally change.
- */
 export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   const { ctx } = deps;
   const { scale } = ctx;
   const shell = createWindowShell(deps.container);
 
   let key = '';
-  /** The window's actual drawn rect - the single source of truth for its hit region + close-on-inside. */
   let rect: Rect | null = null;
 
   const origin = (): { x: number; y: number } => ({
@@ -91,7 +82,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     isOpen: shell.isOpen,
     toggle: () => {
       if (shell.isOpen()) close();
-      else shell.setOpen(true); // built on the next refresh (the frame's HUD read-view supplies the rows)
+      else shell.setOpen(true); // built on the next refresh, which supplies the rows
     },
     close,
     claims: (x, y) => shell.claims(rect, x, y),
@@ -103,11 +94,8 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     refresh: (hudFor): void => {
       if (!shell.isOpen()) return;
       const hud = hudFor();
-      // Change-detection key excludes the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
-      // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
-      // meshes each frame. Keyed by row index (0 is the tick row), not a substring match, so a future tally
-      // row containing "tick" can't silently drop out of change detection. One string-building pass, no
-      // intermediate arrays (this runs every frame).
+      // The key skips the tick row by index: the tick advances every frame, so keying on it would rebuild
+      // every glyph mesh each frame.
       let next = '';
       for (let i = TICK_ROW + 1; i < hud.rows.length; i++) {
         next += `${hud.rows[i]?.text}|`;

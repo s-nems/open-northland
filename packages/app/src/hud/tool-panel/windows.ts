@@ -8,13 +8,7 @@ import { createStatsWindow } from './stats-window.js';
 import { createTabbedListWindow, type TabbedListWindow } from './tabbed-list/index.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
-/**
- * The tool panel's pop-up window layer: one owned set, so what a press hits, what claims the wheel and
- * what a frame refreshes are answered from the same windows the strip buttons toggle by id.
- */
-
-/** The pop-ups in mount order, which is their draw order: each parents one container of its own under the
- *  panel's window container in turn, so a rebuild re-appends text runs inside its own window only. */
+/** The pop-ups in mount order, which is their draw order. */
 const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
@@ -26,7 +20,7 @@ interface ToolWindowEntry {
 
 export interface ToolWindowsDeps {
   readonly ctx: PanelContext;
-  /** The panel's window container every pop-up mounts its own container under (child order = draw order). */
+  /** Every pop-up mounts its own container under this one; child order is draw order. */
   readonly container: Container;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly goods: readonly MenuGoodEntry[];
@@ -37,13 +31,13 @@ export interface ToolWindowsDeps {
 }
 
 export interface ToolWindows {
-  /** Each pop-up by id, as a strip button toggles and closes them (see `button-effects.ts`). */
+  /** Each pop-up by id, as the strip buttons toggle them. */
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
   claims(x: number, y: number): boolean;
   /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
   handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
-  /** Scroll a list the point is over, and report whether an open pop-up owns the wheel there (a window
-   *  with nothing to scroll still owns it). */
+  /** Scroll a list under the point; true when an open pop-up owns the wheel there, even with nothing
+   *  to scroll. */
   handleWheel(x: number, y: number, deltaY: number): boolean;
   handleHover(x: number, y: number): void;
   refresh(hudFor: () => HudLayout): void;
@@ -66,7 +60,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
   const stats = createStatsWindow({ ctx, container });
 
-  /** The pop-ups that own a scrollable, hoverable list - the wheel and hover routes. */
+  /** The pop-ups that own a scrollable, hoverable list. */
   const lists: readonly TabbedListWindow[] = [menu, goods];
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
@@ -81,8 +75,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
-  // Reverse mount order is top-drawn first: where two open pop-ups overlap, pointer input goes to the one
-  // the player can see, not to the window drawn underneath it.
+  // Reverse mount order is top-drawn first, so overlapping pop-ups route pointer input to the visible one.
   const probed = [...mounted].reverse();
 
   const topAt = (x: number, y: number): ToolWindow | null =>
@@ -95,7 +88,6 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     handleWheel: (x, y, deltaY): boolean => {
       const top = topAt(x, y);
       if (top === null) return false;
-      // Only a tabbed list scrolls, and only while it is the window the player can see at the point.
       for (const list of lists) {
         if (list === top) list.handleWheel(x, y, deltaY);
       }
@@ -105,7 +97,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       const top = topAt(x, y);
       for (const list of lists) {
         if (list === top) list.handleHover(x, y);
-        else list.clearHover(); // no row highlight under a window that would take the press
+        else list.clearHover(); // no row highlight under a window that would take the press instead
       }
     },
     refresh: (hudFor): void => {

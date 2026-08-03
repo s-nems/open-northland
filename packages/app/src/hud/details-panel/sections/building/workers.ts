@@ -5,19 +5,7 @@ import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
 import { HOUSEWINDOW } from './shared.js';
 
-/** Workers window: a compact per-trade limits strip ("Kowal 1/3 · Tragarz 1/1"), leaving the field below
- *  free for the animated worker sprites (drawn by the panel's own pass - see panel.ts). A home shows its
- *  residents instead - the "Mieszkańcy" headline and a "Rodziny 1/3" family-slot line over the
- *  family-grouped sprite field. A workplace still going up lists the same worker strip - it takes its staff
- *  while it is raised - and its field adds the build crew beside them.
- *
- *  A building on alarm takes the same swap: the field draws its garrison rather than its staff
- *  (`worker-selection.ts`), so the window is headlined and counted for the garrison, not for trades whose
- *  slots stand empty under it. */
-
-/** Whether the window draws a limits strip at all. False only for a home still going up: it houses nobody
- *  until it stands (`assignHouse` refuses an unfinished home), so the row goes to its build crew instead.
- *  The panel insets the sprite field by exactly this row - one owner for the two decisions. */
+/** Whether the window draws a limits strip; the panel insets the sprite field by exactly this row. */
 export function hasWorkerLimitsRow(model: BuildingPanelModel): boolean {
   return model.home === null || model.construction === null;
 }
@@ -37,8 +25,7 @@ export function drawWorkersSection(
   if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
 }
 
-/** Whose window this is: the garrison's while one holds the building, else its residents' (a home) or its
- *  workers'. The garrison headline is ours - the original has no string for a sheltering crowd. */
+/** The garrison headline is ours; the original has no string for a sheltering crowd. */
 function windowTitle(model: BuildingPanelModel, ui: UiString): string {
   if (model.garrison !== null) return messages().hud.sheltered;
   return model.home !== null
@@ -46,12 +33,11 @@ function windowTitle(model: BuildingPanelModel, ui: UiString): string {
     : ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers);
 }
 
-/** The count line under the headline: the garrison's fill, a home's family slots, or the per-trade limits. */
 function limitsStrip(model: BuildingPanelModel, ui: UiString): string {
   const garrison = model.garrison;
   if (garrison !== null) return `${garrison.sheltered}/${garrison.capacity}`;
   const home = model.home;
-  // The decoded original label ("Liczba Rodzin", trailing-space in the data) + the slot count.
+  // The decoded label "Liczba Rodzin" carries a trailing space in the data.
   if (home !== null) {
     const label = ui('housewindow', HOUSEWINDOW.families, messages().hud.families).trim();
     return `${label} ${home.families.length}/${home.capacity}`;

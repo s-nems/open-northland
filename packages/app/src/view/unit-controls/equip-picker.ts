@@ -5,28 +5,18 @@ import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
-/**
- * The equipment pick-menu: the centred window the equipment panel's plus/swap buttons open, listing
- * every good wearable in the clicked slot that the settler can reach right now (the sim's
- * `equipPickList` read seam), each with the reachable unit count. A row click issues the `equipGood`
- * order; an empty settlement shows a dim "nothing available" line instead of rows.
- */
-
 export interface EquipPickControllerOptions {
   /** The sim's pick-list read seam (`Simulation.equipPickList`), bound by the shell. */
   readonly pickList: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
-  /** The running content's goods - the row labels (localized `name`, id fallback, like the panel). */
   readonly goods: ContentSet['goods'];
   readonly enqueue: (command: Command) => void;
 }
 
 export interface EquipPickController {
-  /** Open the menu for one settler's slot: rebuild the rows from the live pick list and show. */
   open(settlerId: number, ref: EquipSlotRef): void;
   dispose(): void;
 }
 
-/** The window title per slot group - the panel's own row labels (`hud.equipmentSlots`). */
 function slotTitle(group: EquipCategory): string {
   const slots = messages().hud.equipmentSlots;
   if (group === 'tool') return slots.tools;

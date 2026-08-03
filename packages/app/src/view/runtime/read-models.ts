@@ -19,19 +19,16 @@ export interface ViewReadModelDeps {
   readonly fogGates: FogGates;
   /** Owner slot → team-colour slot for the life hearts; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** The unit controls' selection, which the life-heart projection reads; absent = nothing selected. */
+  /** The selection the life-heart projection reads; absent = nothing selected. */
   readonly selection?: HeartSelection | undefined;
 }
 
-/** What both readers of the index need: the geometry overlay's slice plus the sign chain's anchors.
- *  Neither consumer's own type covers the other, so the index publishes their union. */
+/** The union both index readers need: the geometry overlay's slice plus the sign chain's anchors. */
 export interface ViewBuildingInfo
   extends GeometryBuildingInfo,
     Pick<BuildingDoorInfo, 'flagPoint' | 'mastPoint'> {}
 
-/** One shared index for the door badges and the geometry overlay, each type carrying the extracted
- *  anchors the content has for it: the sign post its chain plants on, and the mast a garrison flies its
- *  flag from. */
+/** One index per building type, carrying the extracted sign-post and garrison-mast anchors. */
 export function buildingIndex(
   buildings: Simulation['content']['buildings'],
   flagPoints: ReadonlyMap<number, { readonly x: number; readonly y: number }>,
@@ -51,12 +48,10 @@ export function buildingIndex(
 }
 
 export interface ViewReadModels extends ReturnType<typeof createSnapshotProjections> {
-  /** A good's display name by sim goodType, falling back to its id. The one localized name source, so
-   *  the ground-pile tooltip and the admin spawn palette cannot drift apart. */
+  /** A good's display name by sim goodType, falling back to its id. */
   readonly goodLabel: (typeId: number) => string | undefined;
   readonly buildingDoors: ReadonlyMap<number, ViewBuildingInfo>;
-  /** The memoized build-mode band probe and its erect-signpost twin (shown while the scout's placement
-   *  click is pending). */
+  /** The memoized build-mode band probe and its erect-signpost twin. */
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
 }
@@ -72,7 +67,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(buildingDoors, workerRoleOf, fogGates, {
-      // The catchable-species classification - the same content read the sim's capture drive keys on.
+      // The same content read the sim's capture drive keys on.
       isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
       playerColourOf: deps.playerColourOf,
       selection: deps.selection,

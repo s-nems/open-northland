@@ -20,7 +20,7 @@ export const enSurfaces = {
     },
     comingSoon: 'coming soon',
     comingSoonTip: 'Coming soon',
-    // The sub-screen back link names the screen it returns to (screen-head.ts).
+    // A back link names the screen it returns to, not "Back".
     backLabels: { main: 'Menu', newGame: 'Map selection' },
     underConstruction: 'This screen is under construction.',
     screenTitles: {
@@ -126,7 +126,7 @@ export const enSurfaces = {
       musicVolume: 'Music volume',
       sfxVolume: 'Effects volume',
       language: 'Language',
-      // Endonyms on purpose: each language names itself, so a stranded player can find theirs.
+      // Endonyms: each language names itself and is not translated per locale.
       languageNames: { pol: 'Polski', eng: 'English' },
       scrollSpeed: 'Map scroll speed',
       edgeScroll: 'Edge scrolling',
@@ -150,7 +150,7 @@ export const enSurfaces = {
       legal: 'a non-commercial project, unaffiliated with the series rights holders',
     },
   },
-  // One label per `view/boot-progress.ts` BootPhase - the card's only text.
+  // One label per `BootPhase`.
   loading: {
     graphics: 'Starting the graphics…',
     map: 'Reading the map…',

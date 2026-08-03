@@ -1,17 +1,12 @@
 /**
- * URL query-param helpers shared by the app entries (`?zoom` / `?speed` / `?cols` / `?seed` / `?ticks`)
- * and the menu↔game navigation. The one home for `window.location.search` handling, so an entry never
- * re-declares its own copy (the parsers used to drift - `?cols` demanded `> 0`, `?seed`/`?ticks` allowed
- * `>= 0`; that split is now the `min` argument of {@link intParam}).
+ * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
+ * navigation, so no entry re-declares its own parser.
  */
 
-/** The player-facing settings that carry between the menu and a running game - kept across a scene/map
- *  switch (menu → game, {@link import('../entries/main-menu/target-search.js').targetSearch}) and a quit back to
- *  the menu ({@link menuSearch}). Everything else (the entry selector `scene`/`map`/…) is dropped. */
+/** The player-facing settings that survive a menu/game switch; every other param is dropped. */
 export const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'progression', 'sound', 'debug'] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
-/** Copy just the {@link CARRIED_PARAMS} settings out of a search into a fresh params bag. */
 export function carriedParams(current = new URLSearchParams(window.location.search)): URLSearchParams {
   const target = new URLSearchParams();
   for (const key of CARRIED_PARAMS) {
@@ -21,20 +16,17 @@ export function carriedParams(current = new URLSearchParams(window.location.sear
   return target;
 }
 
-/** Render a params bag as a `?…` search string, or `''` when empty (a bare navigation). */
 export function formatSearch(params: URLSearchParams): string {
   const search = params.toString();
   return search === '' ? '' : `?${search}`;
 }
 
-/** The search for returning to the main menu from a running game: the carried settings kept, the
- *  entry-selecting flags (`scene`/`map`/…) dropped, so quit-to-menu lands on the default menu entry with
- *  the player's settings intact. The inverse of the menu's `targetSearch`. */
+/** The search for quitting to the main menu: carried settings kept, entry-selecting flags dropped. */
 export function menuSearch(current = new URLSearchParams(window.location.search)): string {
   return formatSearch(carriedParams(current));
 }
 
-/** Parse a positive-float URL param (e.g. `?zoom=4`), falling back when absent or invalid (`<= 0` / NaN). */
+/** Parse a positive-float URL param, falling back when it is absent or invalid. */
 export function floatParam(params: URLSearchParams, name: string, fallback: number): number {
   const raw = params.get(name);
   if (raw === null) return fallback;
@@ -42,7 +34,7 @@ export function floatParam(params: URLSearchParams, name: string, fallback: numb
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-/** Parse an integer URL param (e.g. `?cols=6`) clamped to `>= min` (default 0); falls back when absent or invalid. */
+/** Parse an integer URL param, falling back when it is absent or below `min`. */
 export function intParam(params: URLSearchParams, name: string, fallback: number, min = 0): number {
   const raw = params.get(name);
   if (raw === null) return fallback;
@@ -51,10 +43,8 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
 }
 
 /**
- * Parse `?ai=<seat>[,<seat>...]` - the seats to hand to the strategic AI player (`setPlayerAi`) when a
- * map starts. A verification-oriented hook for watching the AI play on a real map; the durable
- * flag-vacant-seats flow is docs/tickets/features/vacant-seat-ai-player.md. Malformed entries are
- * dropped; an absent param means no AI seats.
+ * Parse `?ai=<seat>[,<seat>...]`, the seats handed to the strategic AI player when a map starts.
+ * Malformed entries are dropped.
  */
 export function aiSeatsParam(params: URLSearchParams): number[] {
   const raw = params.get('ai');

@@ -1,7 +1,5 @@
 /**
- * Snapshot projections - the pure reads that turn a frozen `WorldSnapshot` into the per-frame data
- * the renderer and HUD consume (worker door badges, building anchor points, the fog gate, geometry
- * debug items, localized HUD labels). No DOM, no Pixi; the interactive glue lives one level up.
+ * Pure reads over a frozen `WorldSnapshot`: no DOM and no Pixi, the interactive glue lives one level up.
  */
 export * from './building-points.js';
 export * from './construction-signs.js';

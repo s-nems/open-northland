@@ -10,9 +10,8 @@ import { loadTerrainMap } from '../../content/map-loader.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
 
-/** mapId → generated preview URL, memoised so each map rasterises at most once. The blob URLs are
- *  never revoked - fine because the menu reloads on Start (a full navigation), so this cache and its
- *  object URLs live for the menu-page lifetime and die with the page rather than accumulating. */
+/** mapId → generated preview URL, so each map rasterises at most once. The blob URLs are never
+ *  revoked: Start is a full navigation, so the cache dies with the menu page. */
 const previews = new Map<string, Promise<string | null>>();
 
 function imageUrl(rgba: Uint8Array, width: number, height: number): Promise<string | null> {

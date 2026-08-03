@@ -5,12 +5,8 @@ import { WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { staffableCrewFor } from '../../game/sandbox/index.js';
 import { GATHERER_BY_GOOD, type GatherCamp, MINE_DEPOSIT_SCALE, WAREHOUSE_IDS } from './placements.js';
 
-/** The world queries the sandbox scene's checks are stated in - staffing counts, camp depletion, and
- *  the seeded warehouse stores. */
-
 const { Building, JobAssignment, Resource, Settler, Stockpile } = components;
 
-/** Bound settlers per (building, jobType). */
 function boundCrewCount(sim: Simulation, building: Entity, jobType: number): number {
   let n = 0;
   for (const e of sim.world.query(Settler, JobAssignment)) {
@@ -20,8 +16,7 @@ function boundCrewCount(sim: Simulation, building: Entity, jobType: number): num
   return n;
 }
 
-/** Every placed building's staffable slots hold exactly their own crew - carriers included, since a
- *  fixture posts each one to the building it works rather than letting it find a post. */
+/** Carriers count as crew here, because the fixture posts each one to the building it works. */
 export function producingCrewsComplete(sim: Simulation): boolean {
   for (const e of sim.world.query(Building)) {
     const type = sim.world.get(e, Building).buildingType;
@@ -32,8 +27,7 @@ export function producingCrewsComplete(sim: Simulation): boolean {
   return true;
 }
 
-/** Total staffable slots across the placed settlement vs total bound settlers - the settlement-wide twin of
- *  {@link producingCrewsComplete}, which catches a settler bound to a building that has no slot for it. */
+/** Compares settlement-wide totals, so it also catches a settler bound to a building with no slot for it. */
 export function settlementFullyStaffed(sim: Simulation): boolean {
   let expected = 0;
   for (const e of sim.world.query(Building)) {
@@ -45,7 +39,6 @@ export function settlementFullyStaffed(sim: Simulation): boolean {
   return expected > 0 && bound === expected;
 }
 
-/** The units a camp's authored nodes start with, from the gatherer catalog (per-mode node yield). */
 export function initialUnits(camp: GatherCamp): number {
   const g = GATHERER_BY_GOOD.get(camp.good);
   if (g === undefined) return 0;
@@ -58,7 +51,7 @@ export function initialUnits(camp: GatherCamp): number {
   return camp.nodes.length * perNode;
 }
 
-/** The units still sitting in `good`'s live resource nodes (a fully consumed node is gone entirely). */
+/** Counts live nodes only; a fully consumed node is despawned. */
 export function remainingUnits(sim: Simulation, good: number): number {
   let total = 0;
   for (const e of sim.world.query(Resource)) {
@@ -68,7 +61,6 @@ export function remainingUnits(sim: Simulation, good: number): number {
   return total;
 }
 
-/** Every placed warehouse tier holds every one of its stock slots at its capacity. */
 export function warehousesFull(sim: Simulation): boolean {
   let seen = 0;
   for (const id of WAREHOUSE_IDS) {

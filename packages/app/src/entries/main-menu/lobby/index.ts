@@ -27,11 +27,7 @@ import {
   wornByAnother,
 } from './roster-state.js';
 
-/**
- * The lobby screen: the map's fixed slot list on the left (sit, recolour,
- * pre-set what a vacant seat does), the spectator modes below it, and the map card plus game
- * options and Start on the right. Slots come from the map; none can be added or removed.
- */
+/** Slots come from the map; none can be added or removed. */
 
 export function lobbyScreen(
   item: MapSelectItem,
@@ -53,7 +49,6 @@ export function lobbyScreen(
   const body = document.createElement('div');
   body.className = 'main-menu__lobby-body';
 
-  // Left column: the slot table, its footnote, and the spectator modes.
   const main = document.createElement('div');
   main.className = 'main-menu__lobby-main';
   const cols = document.createElement('div');
@@ -78,8 +73,7 @@ export function lobbyScreen(
   watch.append(watchTitle, watchList);
   main.append(cols, list, footnote, watch);
 
-  // Right column: the shared map card, then options and Start. Swapping the map goes through the
-  // header back button (or Esc), so the card carries no actions here.
+  // Swapping the map goes through the header back button or Esc, so the card carries no actions here.
   const side = document.createElement('aside');
   side.className = 'main-menu__lobby-side';
   const card = createMapDetailsCard();
@@ -138,12 +132,11 @@ export function lobbyScreen(
   body.append(main, side);
   section.append(head, body);
 
-  // Session roster state per map: a lobby round trip (or a map switch and back) keeps the seats.
+  // Roster state is kept per map, so a map switch and back keeps the seats.
   let state = rosters.get(item.id) ?? initialLobbyState(item.players);
   rosters.set(item.id, state);
-  /** The slot whose colour picker strip is open, or null. */
   let pickerSlot: number | null = null;
-  /** Focus key to restore after the next re-render when the focused control itself goes away. */
+  /** Focus key restored after the next re-render when the focused control goes away. */
   let refocus: string | null = null;
 
   const gateStart = (): void => {
@@ -325,8 +318,8 @@ export function lobbyScreen(
   };
 
   const renderSeats = (): void => {
-    // replaceChildren drops keyboard focus to <body>; remember which control held it (by its
-    // data-focus key) and hand focus back to the rebuilt equivalent.
+    // replaceChildren drops keyboard focus to <body>, so focus returns to the rebuilt control
+    // carrying the same data-focus key.
     const active = document.activeElement;
     const key = refocus ?? (active instanceof HTMLElement ? (active.dataset.focus ?? null) : null);
     refocus = null;
@@ -348,9 +341,8 @@ export function lobbyScreen(
   renderSeats();
   gateStart();
 
-  // Esc closes an open colour picker before the menu shell's bubble-phase handler reads it as
-  // back-navigation. The button exits below unhook the capture listener deterministically; a
-  // shell-driven exit (Esc back-navigation) is caught by the isConnected self-cleanup instead.
+  // Capture phase: Esc closes an open colour picker before the menu shell reads it as
+  // back-navigation.
   const onKeydown = (event: KeyboardEvent): void => {
     if (!section.isConnected) {
       unhookKeys();

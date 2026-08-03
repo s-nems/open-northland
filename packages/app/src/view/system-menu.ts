@@ -2,9 +2,7 @@ import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '
 import { messages } from '../i18n/index.js';
 
 export interface SystemMenu {
-  /** Show the menu if hidden, hide it if shown - the tool panel's `options` button drives this. */
   toggle(): void;
-  /** Remove the overlay from the DOM (the owning game session's teardown). */
   dispose(): void;
 }
 
@@ -38,27 +36,22 @@ const MODAL_BUTTON_STYLE = [
 ].join(';');
 
 /**
- * The in-game system menu behind the tool panel's `options` button: a small centred DOM overlay using
- * the same DOM-over-canvas pattern as the perf and admin panels. It returns to the main menu and
- * exposes diagnostic downloads; it does not implement the original settings and help window.
- * Localized through `messages().hud`.
+ * The in-game system menu: a centred DOM overlay for returning to the main menu and downloading
+ * diagnostics. It does not implement the original's settings and help window.
  */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const copy = messages().hud;
 
   const backdrop = document.createElement('div');
-  // Visibility is driven through `display` (not the `hidden` attribute): the centring `display:grid`
-  // below is an inline style, which outranks the UA `[hidden]{display:none}` rule - so `hidden` alone
-  // would never take. `none` ⇄ `grid` is the real toggle.
+  // Visibility toggles `display`, not the `hidden` attribute: the inline `grid` below outranks the UA
+  // `[hidden]{display:none}` rule.
   Object.assign(backdrop.style, {
     position: 'fixed',
     inset: '0',
     display: 'none',
     placeItems: 'center',
     background: 'rgba(0,0,0,0.45)',
-    // Above the Pixi canvas and the DOM perf/admin overlays (z 50/150/160); a peer of the hover
-    // tooltips (also 2000), which is moot while open - the full-viewport backdrop eats canvas pointer
-    // events, so no canvas-driven tooltip fires behind it.
+    // Above the Pixi canvas and the DOM perf/admin overlays (z 50/150/160).
     zIndex: '2000',
   });
 
@@ -85,7 +78,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   diagnostics.style.cssText = MODAL_BUTTON_STYLE;
   diagnostics.addEventListener('click', () => downloadDiagnosticsBundle());
 
-  // Present only while a `?debug=trace` recording is live (started before this menu mounts).
+  // Present only while a `?debug=trace` recording is live.
   let trace: HTMLButtonElement | null = null;
   if (isTraceRecording()) {
     trace = document.createElement('button');
@@ -104,7 +97,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     backdrop.style.display = 'none';
   };
   close.addEventListener('click', hide);
-  // A click on the dimmed backdrop (outside the panel) also closes - standard dismissable-overlay feel.
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) hide();
   });

@@ -1,9 +1,6 @@
 /**
- * Chrome Trace Event recording (`?debug=trace`) - the offline profiling path. The live DevTools
- * marks (`?debug=perf`) need DevTools open at the moment of the problem; this instead keeps a
- * bounded in-memory ring of complete-duration events a tester exports after the fact, and a dev
- * opens in Perfetto (ui.perfetto.dev) or DevTools. Same instrumentation points as the marks - the
- * sim's per-system seam plus the frame phases - just a different consumer.
+ * Chrome Trace Event recording (`?debug=trace`): a bounded in-memory ring of complete-duration events
+ * a tester exports after the fact and a dev opens in Perfetto or DevTools.
  *
  * Format: Trace Event JSON `ph:"X"` (complete) events, `ts`/`dur` in microseconds, wrapped as
  * `{traceEvents: [...]}` (source basis: the Trace Event format as documented by Perfetto,
@@ -11,14 +8,14 @@
  */
 import { downloadJsonFile } from './download.js';
 
-/** The `?debug=` value that turns trace recording on (read at game mount). */
+/** The `?debug=` value that turns trace recording on. */
 export const TRACE_DEBUG_FLAG = 'trace';
 
-/** One complete-duration slice. `pid`/`tid` are required by viewers; one process/thread is honest. */
+/** One complete-duration slice; `pid`/`tid` are required by viewers. */
 export interface TraceEvent {
   readonly name: string;
   readonly ph: 'X';
-  /** Event start in MICROseconds (the format's unit; recorded from the `performance.now()` clock). */
+  /** Event start in microseconds, the format's unit, taken from the `performance.now()` clock. */
   readonly ts: number;
   /** Duration in microseconds. */
   readonly dur: number;
@@ -26,14 +23,11 @@ export interface TraceEvent {
   readonly tid: 0;
 }
 
-/**
- * Ring capacity ≈ 30 s of gameplay: ~20 per-system events × 12 ticks + 3 frame phases × 60 fps
- * ≈ 420 events/s → ~12.6k; the next power of two leaves headroom for speed ×3.
- */
+/** Ring capacity for roughly 30 s of gameplay at about 420 events/s, rounded up to a power of two. */
 export const TRACE_CAPACITY = 16384;
 const MICROS_PER_MS = 1000;
 
-/** A fixed circular buffer - O(1) push at recording rates where an array-shift ring would churn. */
+/** A fixed circular buffer; O(1) push where an array-shift ring would churn at recording rates. */
 class TraceRing {
   private readonly slots: (TraceEvent | undefined)[] = new Array(TRACE_CAPACITY);
   private next = 0;
@@ -52,7 +46,6 @@ class TraceRing {
   }
 }
 
-/** The active recording, or `null` - recording costs nothing while off. */
 let active: TraceRing | null = null;
 
 export function startTraceRecording(): void {
@@ -67,7 +60,7 @@ export function isTraceRecording(): boolean {
   return active !== null;
 }
 
-/** Record one slice (no-op while recording is off). Times are `performance.now()` milliseconds. */
+/** Record one slice; `startMs` and `endMs` are `performance.now()` milliseconds. */
 export function recordTraceEvent(name: string, startMs: number, endMs: number): void {
   if (active === null) return;
   active.push({
@@ -80,17 +73,16 @@ export function recordTraceEvent(name: string, startMs: number, endMs: number): 
   });
 }
 
-/** Retained events (oldest first), or `null` while recording is off - the bundle's optional field. */
+/** Retained events oldest first, or `null` while recording is off. */
 export function recordedTraceEvents(): TraceEvent[] | null {
   return active?.list() ?? null;
 }
 
-/** Serialize the recording as a Perfetto/DevTools-loadable Trace Event JSON file body. */
 export function traceFileJson(events: readonly TraceEvent[]): string {
   return JSON.stringify({ traceEvents: events, displayTimeUnit: 'ms' });
 }
 
-/** Download the current recording as a `.json` trace file (no-op while recording is off). */
+/** No-op while recording is off. */
 export function downloadTraceFile(): void {
   const events = recordedTraceEvents();
   if (events === null) return;

@@ -160,15 +160,13 @@ export const plGame = {
     build: 'Budowa',
     alert: 'Alarm',
     query: 'Informacja',
-    // The mod's Polish gui strings mistranslate this slot ("Wyburz drogowskaz"); the natural imperative
-    // of the English original "Erect Signpost" is used instead (named deviation).
+    // Named deviation: the mod's Polish gui string mistranslates this slot ("Wyburz drogowskaz").
     erectSignpost: 'Postaw drogowskaz',
-    attack: 'Zaatakuj pozycję', // the decoded original (misclogic 48), not a coined label
-    // The family action labels are the decoded originals (`content/gui/strings/pol.json` humanwindow
-    // 21/23/24/28), not invented phrasing.
+    attack: 'Zaatakuj pozycję', // decoded original: gui strings misclogic 48
     assign_house: 'Przydziel dom',
     animal: 'Zwierzę',
     vehicle: 'Pojazd',
+    // Family labels: decoded originals from `content/gui/strings/pol.json` humanwindow 21/23/24/28.
     marry: 'Ożeń',
     make_son: 'Niech ma Chłopca',
     make_daughter: 'Niech ma Dziewczynkę',
@@ -182,8 +180,7 @@ export const plGame = {
     house_c: 'Przydział domu',
     house_d: 'Przydział domu',
   },
-  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG - the details
-  // panel resolves these before falling back to the raw content name (which is the untranslated slug).
+  // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Niemowlę (dziewczynka)',
     baby_male: 'Niemowlę (chłopiec)',

@@ -1,11 +1,4 @@
-/**
- * The machine-readable debug seam both playable entries expose. An automated probe reads one
- * JSON-serialisable object out of `window.__opennorthland.perf()` instead of screenshotting the
- * on-canvas readout and parsing pixels, and can put the session into a state worth measuring
- * (`setSpeed(1)` for a cap-free baseline, `setPaused(true)` to isolate the render half).
- *
- * Installed by `startGameView`, so both entries get it and neither declares the global itself.
- */
+/** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
 import { type FixedTimestep, type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
 import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
@@ -17,17 +10,13 @@ import type { LoopSpeedControl } from '../game-tool-panel.js';
 
 declare global {
   interface Window {
-    /** The playable entries' debug seam, installed by `startGameView`. */
     __opennorthland?: OpenNorthlandDebug;
   }
 }
 
-/** Facts about how the sample was taken. Read these before trusting any millisecond above them. */
+/** How the sample was taken; read these before trusting any millisecond above them. */
 export interface PerfSampling {
-  /**
-   * True while the tab is not visible. Browsers throttle rAF to about 1 Hz in a background tab, so
-   * every timing in the report becomes fiction; an automated driver hits this constantly.
-   */
+  /** True while the tab is hidden, where rAF throttles to about 1 Hz and every timing below is fiction. */
   readonly hidden: boolean;
   readonly hardwareConcurrency: number;
   readonly devicePixelRatio: number;
@@ -47,8 +36,7 @@ export interface PerfReport {
   readonly throughput: {
     /** What `?speed=` or the speed button asked for. */
     readonly requestedSpeed: number;
-    /** What the loop delivered over the window, and over the last rolling window. Below the request
-     *  once the per-frame step cap bites. */
+    /** What the loop actually delivered; below the request once the per-frame step cap bites. */
     readonly deliveredSpeed: number;
     readonly recentDeliveredSpeed: number;
     readonly ticksPerSecond: number;
@@ -66,8 +54,7 @@ export interface PerfReport {
     /** Frame budget the loop could not time: GPU and compositor. */
     readonly gpuMs: number;
     readonly recentWorstMs: number;
-    /** Bucket upper edges, so read them as +/- 15%. A p99 far above p50 is a loaded machine or GC,
-     *  not a uniformly slow scene. */
+    /** Bucket upper edges, so read them as +/- 15%. */
     readonly p50Ms: number;
     readonly p95Ms: number;
     readonly p99Ms: number;
@@ -82,12 +69,8 @@ export interface PerfReport {
 }
 
 export interface OpenNorthlandDebug {
-  /**
-   * The live instances, reachable from the browser console (`__opennorthland.sim` …) so a human or an
-   * automated probe can inspect the running session without rebuilding it. Read-only: a console
-   * mutation bypasses the command pipeline and silently voids determinism (state hashes and golden
-   * comparability no longer mean anything for that session).
-   */
+  /** The live instances, read-only: a console mutation bypasses the command pipeline and voids that
+   *  session's determinism. */
   readonly sim: Simulation;
   readonly renderer: WorldRenderer;
   readonly sheet: SpriteSheet | undefined;
@@ -95,8 +78,8 @@ export interface OpenNorthlandDebug {
   perf(): PerfReport;
   /** Open a fresh measurement window for {@link perf}. */
   resetPerf(): void;
-  /** Writes the loop's speed control directly, so it reaches multipliers the tool panel's discrete
-   *  button cannot. The panel's glyph does not follow; the readout's delivered speed is the instrument. */
+  /** Writes the loop's speed control directly, reaching multipliers the tool panel's button cannot;
+   *  the panel glyph does not follow. */
   setSpeed(multiplier: number): void;
   setPaused(paused: boolean): void;
   /** The `?debug=trace` ring (a bounded tail), or null when not recording. */
@@ -114,8 +97,8 @@ export interface PerfReportInputs {
   readonly sampling: PerfSampling;
 }
 
-/** Pure so the report shape is testable without a browser: `page.evaluate` throws on anything that
- *  does not survive structured cloning, which is the one property this whole seam rests on. */
+/** Pure so the report shape is testable without a browser; `page.evaluate` throws on anything that
+ *  does not survive structured cloning. */
 export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
   const { frame, sampling } = inputs;
   const last = frame.last;

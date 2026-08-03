@@ -34,28 +34,14 @@ import {
 
 const { Chat, Owner, Settler } = components;
 
-/**
- * The main sandbox scene: a compact, fully staffed viking settlement over a resource-gathering base - the
- * production inspection world. The village carries the FULL viking catalog (all 41 building types, every
- * level of every chain) packed to the placement rule's limits, every building staffed to its worker
- * capacity, and all three warehouse tiers pre-filled to their limits; gathering camps hug the village
- * (a forest, a quarry, a clay pit, iron and gold outcrops, a mushroom grove), each with per-gatherer
- * delivery flags and good-pinned bindings. The scene defines only placement - content, rules, and
- * controls stay in `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
- */
-
 const MAP_W = 96;
 const MAP_H = 96;
-/**
- * The pitch a caller tiling {@link buildSandboxSettlement} must keep between copies: the scene map's
- * extent, not the settlement's own (the authored content reaches ~(72,68), so a tile carries slack).
- * Both axes take this one value, so a tiling stays square even if the scene map stops being.
- */
+/** The pitch between tiled settlement copies, on both axes: the scene map's extent, not the smaller
+ *  extent of the authored content. */
 export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
-/** Enough for the slowest first delivery - a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
- *  carried to its flag, and banked. Measured: every headless check passes by tick 825 (deterministic,
- *  seed 41); 1200 keeps ~1.45× headroom. */
+/** Every headless check passes by tick 825, the slowest being a mined unit dug, carried and banked;
+ *  this keeps ~1.45x headroom. */
 const RUN_TICKS = 1200;
 
 function buildVillage(sim: Simulation, ox: number, oy: number): void {
@@ -76,9 +62,7 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
         unitsScale: g.mode === 'mine' ? MINE_DEPOSIT_SCALE : 1,
       });
     }
-    // One flag per gatherer (the flag-click selection inverse is 1:1 - a flag resolves to its one
-    // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
-    // (radius + good filter) and banks its harvest at its own flag (see spawnBoundGatherer).
+    // One flag per gatherer, so a flag click resolves to exactly one gatherer.
     for (let i = 0; i < camp.gatherers; i++) {
       const flag = placeFlag(sim, ox + camp.flag.x + i, oy + camp.flag.y);
       spawnBoundGatherer(sim, g.job, ox + camp.flag.x + i, oy + camp.flag.y + 1, flag, {
@@ -91,11 +75,8 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
   }
 }
 
-/**
- * The authored settlement - village + gathering camps - placed with its top-left tile at (`ox`,`oy`).
- * The scene builds one at the origin; the sim benchmark tiles several ({@link SANDBOX_SETTLEMENT_PITCH}
- * apart) to reach RTS-scale population off this one authored layout. ~72 settlers, 41 buildings.
- */
+/** `ox`/`oy` place the settlement's top-left tile; tiled copies must sit
+ *  {@link SANDBOX_SETTLEMENT_PITCH} apart. */
 export function buildSandboxSettlement(sim: Simulation, ox = 0, oy = 0): void {
   buildVillage(sim, ox, oy);
   buildResourceBase(sim, ox, oy);
@@ -127,9 +108,7 @@ export const sandboxScene: SceneDefinition = {
     {
       label: 'every warehouse tier is seeded full at placement (fresh 2-tick run of the same build)',
       predicate: () => {
-        // The end-of-run world is the wrong witness (production legitimately consumes the stores), so the
-        // full-at-start claim is proven on a fresh sim of the same scene advanced just past its placement
-        // commands. Deterministic and sandbox-content only, like the whole headless twin.
+        // The end-of-run world is the wrong witness, because production legitimately consumes the stores.
         const fresh = createSceneSim(sandboxScene);
         fresh.run(2);
         return warehousesFull(fresh);
@@ -145,8 +124,7 @@ export const sandboxScene: SceneDefinition = {
     },
     {
       label: 'every gathering camp is being worked (its nodes are partly consumed)',
-      // Node depletion is the harvest witness - the banked heaps are the wrong one, because the village
-      // carriers legitimately haul them off to the stores as part of the living economy.
+      // Banked heaps are the wrong witness, because carriers legitimately haul them off to the stores.
       predicate: (sim) => CAMPS.every((camp) => remainingUnits(sim, camp.good) < initialUnits(camp)),
     },
     {

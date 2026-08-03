@@ -12,14 +12,8 @@ import {
 import type { UnitTargets } from './unit-targets.js';
 
 /**
- * The armed click-to-pick mode, or null when none is. The four are mutually exclusive by construction -
- * arming one replaces whatever was armed:
- *  - `workplace` ("przydziel miejsce pracy") - candidate buildings wash green/red and the next left-click
- *    on a green one binds the settler to its matching slot.
- *  - `home` ("przypisz dom") - the residential twin: homes wash green/red and a green one takes the family.
- *  - `signpost` ("Erect Signpost") - the next left-click on the world orders the first scout to erect there.
- *  - `attack-move` ("Atak", or the A key) - the next left-click sends the whole selection there fighting.
- * A click on a red building / terrain, a right-click, Esc, or a selection change cancels any of them.
+ * Arming one mode replaces whatever was armed; a red-building or terrain click, a right-click, Esc, or
+ * a selection change cancels the armed one.
  */
 type PickMode =
   | { readonly kind: 'workplace' | 'home'; readonly settler: number }
@@ -34,12 +28,11 @@ export interface PickModeDeps {
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: Command) => void;
-  /** Issue the attack-move at the clicked spot; the order controller owns it so both walks fan a group out
-   *  through the same formation spread. */
+  /** The order controller owns the attack-move so both walks fan a group out through the same formation
+   *  spread. */
   readonly issueAttackMove: (event: MouseEvent) => void;
-  /** Show/clear the armed crosshair. Only attack-move uses it: it can be armed from the keyboard, with no
-   *  button pressed and no ground wash to show for it. A named addition - the original signals an armed
-   *  mode with prompt text ("Select attack position", `misc/31`), not a cursor. */
+  /** Only attack-move uses the armed crosshair. Named addition: the original signals an armed mode with
+   *  prompt text (`misc/31`), not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
 }
 
@@ -51,14 +44,12 @@ export interface PickModeController {
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
-  /** Consume a mousedown while a mode is armed. Returns true when one was armed - the caller must then
-   *  stop, because the press resolved or cancelled the mode and must not fall through to selection / an
-   *  order. Left resolves a mode, any other button cancels it. */
+  /** True when a mode was armed: the press resolved or cancelled it, so the caller must not fall through
+   *  to selection or an order. */
   handleMouseDown(event: MouseEvent): boolean;
   highlight(): readonly BuildingHighlightItem[] | null;
 }
 
-/** Own the armed click-to-pick modes and resolve their world click. */
 export function createPickModeController(deps: PickModeDeps): PickModeController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
   let pickMode: PickMode | null = null;
@@ -70,19 +61,15 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   };
   const cancel = (): void => setMode(null);
 
-  /** Resolve a world click while in "przydziel miejsce pracy" mode: bind the settler to the building under
-   *  the cursor when it offers an open slot (a green building), else cancel. Any resolving click exits the
-   *  mode (the chosen UX: assign-and-leave; a red building / terrain click just leaves). */
   const resolveAssign = (event: MouseEvent, settlerId: number): void => {
     cancel();
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit - cancel
+    if (building === null) return;
     const snapshot = deps.snapshot();
-    // The button places the settler's CURRENT trade only (it never re-trades): bind exactly the building's
-    // matching slot, or cancel when the building doesn't offer it (a red building).
+    // This mode places the settler's current trade only; it never re-trades.
     const job = assignableJobForBuilding(snapshot, building, settlerId, buildingsByType);
-    if (job === null) return; // red - cancel
+    if (job === null) return;
     deps.enqueue({
       kind: 'assignWorker',
       entity: settlerId as Entity,
@@ -91,14 +78,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     });
   };
 
-  /** Resolve a world click in "przypisz dom" mode: assign the family to the home under the cursor when
-   *  it fits (a green home), else cancel. Any resolving click exits the mode (assign-and-leave). */
   const resolveHouseAssign = (event: MouseEvent, settlerId: number): void => {
     cancel();
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return; // clicked terrain / a unit - cancel
-    if (!houseAssignableAt(deps.snapshot(), building, settlerId, buildingsByType)) return; // red - cancel
+    if (building === null) return;
+    if (!houseAssignableAt(deps.snapshot(), building, settlerId, buildingsByType)) return;
     deps.enqueue({ kind: 'assignHouse', entity: settlerId as Entity, house: building as Entity });
   };
 
@@ -114,11 +99,8 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         if (event.button === 0) resolveHouseAssign(event, mode.settler);
         else cancel();
         return true;
-      // A left click orders the scout to erect on the clicked node. Legality is the sim command's gate
-      // (an illegal spot is a logged no-op), so a bad click simply leaves the scout unmoved.
-      // Named deviation (observed original, tutorial_001 briefing): the original erects with RIGHT-click
-      // on ground that is "lit up"; we place with LEFT-click and dim blocked ground instead - the same
-      // convention as our build placement, so the two placement modes read identically.
+      // Named deviation from the observed original, which erects with a right-click on lit ground: this
+      // places with a left-click and dims blocked ground, matching build placement.
       case 'signpost': {
         const scout = mode.scouts[0];
         cancel();
@@ -130,22 +112,21 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         }
         return true;
       }
-      // The selection is read at click time; it cannot have changed meanwhile, because a selection change
-      // cancels any armed mode.
+      // A selection change cancels any armed mode, so the selection read at click time is still the one
+      // this mode was armed for.
       case 'attack-move':
         cancel();
         if (event.button === 0) deps.issueAttackMove(event);
         return true;
       default: {
-        const unreachable: never = mode; // exhaustive: a new PickMode kind fails to compile here
+        const unreachable: never = mode;
         throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
       }
     }
   };
 
-  /** The green/red building wash for the render layer - the workplace-assign or home-assign candidates,
-   *  else null. The frame loop reads it every frame, so the O(entities) pass is memoized on everything it
-   *  reads: the snapshot instance plus `pickVersion` (bumped by every arm and cancel). */
+  /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance
+   *  plus `pickVersion`, which every arm and cancel bumps. */
   const highlightFor = memoBySnapshot(
     (snapshot: WorldSnapshot) => {
       if (pickMode === null) return null;
@@ -155,7 +136,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         case 'home':
           return computeHouseHighlight(snapshot, pickMode.settler, buildingsByType);
         case 'signpost':
-          return null; // the erect mode washes the ground (placement overlay), not the buildings
+          return null; // the erect mode washes the ground, not the buildings
         case 'attack-move':
           return null; // the attack-move mode shows on the cursor, not on the buildings
         default: {

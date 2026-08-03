@@ -2,9 +2,8 @@ import type { ToolButtonId } from './layout.js';
 import type { ToolWindowId } from './windows.js';
 
 /**
- * What pressing a strip button does, or null for a button v1 draws but does not wire. A window button
- * closes its {@link ToolButtonEffect.closes} list before toggling its own: the three picking windows
- * are mutually exclusive, and the chest and statistics close each other because their rects collide.
+ * What pressing a strip button does, or null for a button that is drawn but not wired. A window button
+ * closes its `closes` list before toggling its own.
  */
 export type ToolButtonEffect =
   | {
@@ -41,7 +40,6 @@ const EFFECTS: Readonly<Record<ToolButtonId, ToolButtonEffect | null>> = {
 
 export const toolButtonEffect = (id: ToolButtonId): ToolButtonEffect | null => EFFECTS[id];
 
-/** The surfaces a strip button press acts on, as the mount wires them. */
 export interface ToolButtonSurfaces {
   readonly windows: Readonly<Record<ToolWindowId, { toggle(): void; close(): void }>>;
   readonly cancelHeld: () => void;
@@ -66,7 +64,7 @@ export function applyToolButtonEffect(surfaces: ToolButtonSurfaces, id: ToolButt
       return;
     }
     default: {
-      const unreachable: never = effect; // exhaustive: a new effect kind fails to compile here
+      const unreachable: never = effect;
       throw new Error(`unhandled tool button effect: ${JSON.stringify(unreachable)}`);
     }
   }

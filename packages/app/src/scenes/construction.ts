@@ -15,58 +15,32 @@ import {
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The construction-rise scene: buildings placed as foundations and raised the normal way (carriers
- * haul wood + stone from a stocked depot, builders hammer the site up - the ConstructionSystem). Its
- * point is the visual reveal, not a new mechanic: a site draws its stacked construction-stage bobs
- * (foundation → scaffold → roof scaffold → body), each revealing per-pixel in its own `[fromPct,toPct]`
- * window, and a scaffold now stays drawn under the body that covers it instead of vanishing the instant
- * its own window ends (so the bakery's roof grows on the roof scaffold rather than the scaffold blinking
- * out at ~64%). Sites rise in parallel around a central depot so a human can catch the roof phase.
- *
- * Each bakery foundation is also STAFFED, which a building takes from the moment it is placed: its baker
- * waits at the site until the oven stands (the trade needs its finished workhouse), while its posted
- * carrier hauls the site's own construction bill from the depot alongside the builders. Both keep their
- * posting through the build, so the bakery opens already crewed.
- *
- * Headless proves the sites finish (the crew loop converges) and that the posted staff is still on the
- * finished buildings; the browser is where a human watches each site rise, confirms the scaffold hands
- * off to the body smoothly (root AGENTS.md: pixels need a human), and checks that a site's construction
- * stand does not sit over its worker badges. The depot is seeded with wood + stone only (no production
- * goods exist in the world), so a finished bakery has nothing to pull and the whole crew stays on
- * construction hauling.
- */
-
 const MAP_W = 30;
 const MAP_H = 22;
-/** The material depot at map centre, seeded with plenty of wood + stone (nothing else). */
 const DEPOT = { x: 15, y: 11 } as const;
 const DEPOT_WOOD = 400;
 const DEPOT_STONE = 400;
-/** Foundations at equal distance from the depot so no site is perpetually out-prioritised. Bakeries
- *  foreground the reported roof-scaffold case; homes add another roof shape. */
+/** Equal distance from the depot, so no site is perpetually out-prioritised. */
 const SITES: readonly { ref: number; x: number; y: number }[] = [
   { ref: BUILDING_BAKERY, x: 9, y: 7 },
   { ref: BUILDING_BAKERY, x: 21, y: 7 },
   { ref: BUILDING_HOME_00, x: 9, y: 15 },
   { ref: BUILDING_HOME_00, x: 21, y: 15 },
 ];
-/** Spare crew beside the depot: builders hammer whichever site is nearest. */
+/** Loose crew beside the depot; each builder hammers whichever site is nearest. */
 const BUILDERS = 8;
 const CREW = { x: 15, y: 13 } as const;
-/** The staff posted to each BAKERY foundation - the bakery's own slots, filled before it stands. A home
- *  employs nobody, so the two home sites are raised by the loose builders alone. */
+/** Posted to each bakery foundation before it stands; a home employs nobody. */
 const SITE_BAKERS = 1;
 const SITE_CARRIERS = 1;
-/** Headroom over the measured full-rise run - the crew raises all four foundations by tick 3409
- *  (deterministic, seed 7); 8000 keeps ~2.3× slack. */
+/** Headroom over the measured rise: seed 7 raises all four foundations by tick 3409. */
 const RUN_TICKS = 8_000;
 
 const { Building, JobAssignment, Settler, UnderConstruction } = components;
 
 function build(sim: Simulation): void {
-  // A built warehouse seeded with construction material only - raw command so `initialGoods` seeds
-  // exactly wood + stone (fillStock would also stock production goods a finished bakery would then pull).
+  // Raw command so `initialGoods` seeds exactly wood + stone; `fillStock` would also stock production
+  // goods that a finished bakery would then pull.
   const depot = cellAnchorNode(DEPOT.x, DEPOT.y);
   sim.enqueue({
     kind: 'placeBuilding',
@@ -92,8 +66,7 @@ function build(sim: Simulation): void {
   }
 }
 
-/** How many settlers are posted to a building that has finished rising - the staff its site kept through
- *  the build (a posting survives the rise, and nothing re-employs anyone). */
+/** A posting survives the rise, and nothing in the scene re-employs anyone. */
 function staffOnFinished(sim: Simulation): number {
   let posted = 0;
   for (const e of sim.world.query(Settler, JobAssignment)) {
@@ -104,7 +77,6 @@ function staffOnFinished(sim: Simulation): number {
   return posted;
 }
 
-/** Every construction site that has not yet finished (still carries the builder-work marker). */
 function unfinishedSites(sim: Simulation): number {
   let n = 0;
   for (const e of sim.world.query(Building, UnderConstruction)) {

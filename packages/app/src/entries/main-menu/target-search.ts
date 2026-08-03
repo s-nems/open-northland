@@ -2,12 +2,9 @@ import { carriedParams, formatSearch } from '../../view/params.js';
 import { DEFAULT_FOG_MODE, LOBBY_FOG_MODES } from './lobby/model.js';
 
 /**
- * Build a launch URL's search: the chosen entry's params layered over the menu's carried settings
- * (`lang`, `uiscale`, ...). Maps default to classic sticky fog when the player picked no mode;
- * scenes keep their own authored fog and progression (a static showcase must stay fully visible,
- * not hide behind reveal fog carried over from an earlier game), so those two never carry into a
- * scene - only the entry's own explicit values reach it (a hand-typed `?scene=…&fog=` bypasses the
- * menu and still wins).
+ * Builds a launch URL's search: the entry's params layered over the menu's carried settings.
+ * Maps fall back to the default fog mode; scenes drop carried `fog` and `progression` so a
+ * showcase keeps its own authored values.
  */
 export function targetSearch(entry: string, current = new URLSearchParams(window.location.search)): string {
   const target = carriedParams(current);

@@ -11,29 +11,13 @@ import {
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The strategic AI defending its own town. The red seat is handed to the AI with only its military module
- * running, so everything a watcher sees is the defence plan and not a build order: it rings the alarm over
- * its headquarters, walls three of its four archers into the watchtower, and throws everyone still free at
- * the warband standing in its fields.
- *
- * Layout: the red town on the left - tower above the headquarters, archers beside the tower, swordsmen and
- * a crowd of colonists below it - and a blue warband within reach of the headquarters from the start, so
- * the first AI decision (tick 1) already sees the raid and a human watching from tick 0 sees the whole
- * reaction play out.
- *
- * Both warbands are over-tough on purpose: the point is the reaction and the end state it settles into, not
- * who wins, and a raid that got cut down would have the AI stand its town back up mid-scene.
- */
-
 const MAP_W = 26;
 const MAP_H = 14;
 
 const TOWER = { x: 7, y: 4 } as const;
 const HEADQUARTERS = { x: 7, y: 9 } as const;
 
-/** One more archer than the tower takes, so the cap is visible: three go up, the fourth stays in the field
- *  army and answers the raid with the swordsmen. */
+/** One more archer than `TOWER_GARRISON_ARCHERS`, so the garrison cap is visible. */
 const ARCHER_STARTS: readonly (readonly [number, number])[] = [
   [4, 3],
   [4, 5],
@@ -45,8 +29,7 @@ const SWORD_STARTS: readonly (readonly [number, number])[] = [
   [5, 11],
   [6, 11],
 ];
-/** The town's colonists - on the headquarters' doorstep, so the alarm has them all inside well before the
- *  warband is anywhere near them. */
+/** On the headquarters' doorstep, so the alarm shelters them all before the warband gets near. */
 const COLONIST_JOBS: readonly number[] = [JOB_COLLECTOR, JOB_FARMER];
 const COLONIST_STARTS: readonly (readonly [number, number])[] = [
   [9, 8],
@@ -54,8 +37,8 @@ const COLONIST_STARTS: readonly (readonly [number, number])[] = [
   [9, 10],
   [10, 9],
 ];
-/** The warband, inside the headquarters' watch band from tick 0 (`military/defence/threat.ts` measures the
- *  house bow's `maximumrange 29` in half-cell nodes - 24 from these tiles to that anchor). */
+/** Inside the headquarters' watch band from tick 0: 24 half-cell nodes to the anchor, under the house
+ *  bow's `maximumrange 29`. */
 const RAIDER_STARTS: readonly (readonly [number, number])[] = [
   [18, 8],
   [18, 9],
@@ -64,7 +47,7 @@ const RAIDER_STARTS: readonly (readonly [number, number])[] = [
 /** Over-tough on both sides: nothing falls, so the scene settles into a readable standing fight. */
 const FIGHTER_HITPOINTS = 200_000;
 
-/** Past the walk to the wall, the run for cover and the charge out - the state every check reads. */
+/** Long enough for the garrison walk, the run for cover, and the charge out. */
 const RUN_TICKS = 300;
 
 const { Building, DefenceMode, Garrison, JobAssignment, Owner, Position, Resting, Settler, Sheltering } =
@@ -91,8 +74,7 @@ function build(sim: Simulation): void {
       hitpoints: FIGHTER_HITPOINTS,
     });
   }
-  // Military alone: with the build order and the workforce running too, the seat would spend the scene
-  // re-staffing its own town and the defence would be the smaller half of what a watcher sees.
+  // Only the military module: a full AI seat would spend the scene re-staffing its town instead.
   sim.enqueue({
     kind: 'setPlayerAi',
     player: ENEMY_PLAYER,
@@ -115,7 +97,7 @@ function townsfolk(sim: Simulation, of: (jobType: number | null) => boolean): En
   );
 }
 
-/** The AI's building of `buildingType` - the scene places exactly one watchtower and one headquarters. */
+/** The scene places exactly one watchtower and one headquarters, so the first match is the one. */
 function ownBuilding(sim: Simulation, buildingType: number): Entity | undefined {
   return [...sim.world.query(Building, Owner)].find(
     (e) =>
@@ -163,8 +145,8 @@ export const aiDefenceScene: SceneDefinition = {
         ARCHER_STARTS.length - systems.TOWER_GARRISON_ARCHERS,
     },
     {
-      // They start WEST of the headquarters and the warband stands east of it, so a swordsman past that
-      // anchor can only have marched out - no coordinate arithmetic, just two live positions.
+      // Swordsmen start west of the headquarters and the warband stands east of it, so passing that
+      // anchor can only mean they marched out.
       label: 'every soldier it did not wall in went out at the warband',
       predicate: (sim) => {
         const hq = ownBuilding(sim, BUILDING_HEADQUARTERS);

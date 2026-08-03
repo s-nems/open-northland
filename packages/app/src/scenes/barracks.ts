@@ -15,24 +15,14 @@ import {
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * Barracks training: a colonist right-clicked onto the barracks walks in, drills, and comes back out a
- * soldier (see the sim's `schoolingMet` for why that is the only route). Three settlers hold the
- * contrast: the recruit, a serving soldier sent in after him (who only drills - his trade is already
- * his), and a bystander who stays a colonist and stays refused. A fourth, free colonist proves the
- * assistant's class queue: a `trainSword` counter drafts him, drills him, and arms him with the
- * strongest sword in store plus the stocked armor (the chest window's "Trenuj Mieczników" row).
- */
-
 const { Equipment, Settler } = components;
 
-/** The TRAINING bucket nothing may accrue - the checks prove the drill banked no experience stat
- *  (the rule the sim's `progression/experience.ts` states on this bucket). */
+/** The drill banks nothing in this bucket, the rule `progression/experience.ts` states on it. */
 const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
 
 const HEADQUARTERS = { x: 6, y: 12 } as const;
 const BARRACKS = { x: 14, y: 10 } as const;
-/** The settlers' start row, clear of both footprints under the approximate and real geometries. */
+/** Clear of both building footprints under the approximate and the real geometries. */
 const START_ROW_Y = 6;
 const RECRUIT_X = 10;
 const VETERAN_X = 12;
@@ -49,14 +39,12 @@ function build(sim: Simulation): void {
   const barracks = placeBuiltSandboxBuilding(sim, BUILDING_BARRACKS, BARRACKS.x, BARRACKS.y);
   const recruit = spawnSettlerDirect(sim, JOB_CIVILIST, RECRUIT_X, START_ROW_Y);
   const veteran = spawnSettlerDirect(sim, JOB_SOLDIER, VETERAN_X, START_ROW_Y);
-  // The draftee spawns BEFORE the bystander: the assistant drafts the lowest-id free colonist, so
-  // this order is what keeps the bystander's stays-refused contrast alive.
+  // Spawn order matters: the assistant drafts the lowest-id free colonist, so the bystander comes after.
   spawnSettlerDirect(sim, JOB_CIVILIST, DRAFTEE_X, START_ROW_Y);
   spawnSettlerDirect(sim, JOB_CIVILIST, BYSTANDER_X, START_ROW_Y);
   sim.enqueue({ kind: 'trainSoldier', entity: recruit, house: barracks });
   sim.enqueue({ kind: 'trainSoldier', entity: veteran, house: barracks });
-  // The armory: both swords in store, so the arming pass provably takes the stronger one; one chain
-  // armor for the dressing leg. One `trainSword` on the queue drafts exactly one man.
+  // Both swords in store, so the arming pass has to pick the stronger one.
   sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_SHORT, x: ARMORY.x, y: ARMORY.y, amount: 1 });
   sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_LONG, x: ARMORY.x, y: ARMORY.y, amount: 1 });
   sim.enqueue({ kind: 'dropGood', good: GOOD_ARMOR_CHAIN, x: ARMORY.x, y: ARMORY.y, amount: 1 });
@@ -69,8 +57,7 @@ function build(sim: Simulation): void {
   });
 }
 
-/** The four settlers by role. Query order is spawn order, which {@link build} fixes just above - the one
- *  place the mapping lives, so a reordered build changes it here rather than silently in each check. */
+/** Query order is spawn order, so the roles follow the sequence `build` spawns them in. */
 function cast(sim: Simulation): {
   recruit: Entity | undefined;
   veteran: Entity | undefined;
@@ -81,8 +68,7 @@ function cast(sim: Simulation): {
   return { recruit, veteran, draftee, bystander };
 }
 
-/** Whether the settler would now be accepted for the soldier trade - the picker's filter, which mirrors
- *  the `setJob` gate, so a passing check means the row really is offered. */
+/** The job picker's filter, which mirrors the `setJob` gate. */
 function soldierOffered(sim: Simulation, e: Entity): boolean {
   const settler = sim.world.get(e, Settler);
   return jobUnlockedFor(sim.content, true, settler.tribe, settler.experience, JOB_SOLDIER);

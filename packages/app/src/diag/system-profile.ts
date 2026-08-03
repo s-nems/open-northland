@@ -1,12 +1,9 @@
 /**
- * A running per-system cost accumulator (`?debug=profile`) over the sim's instrument seam. The trace
- * ring (trace.ts) holds a bounded tail of individual slices, which answers "what happened just now";
- * this answers "what has this session been spending its time on" for a session of any length, because
- * one accumulator per system name is constant memory no matter how many ticks run.
+ * A running per-system cost accumulator (`?debug=profile`) over the sim's instrument seam: one
+ * accumulator per system name, so memory stays constant for a session of any length.
  *
- * Share of total is the number to trust. An instrumented run's absolute milliseconds read high (a
- * closure and two clock reads per system per tick), and that overhead is roughly uniform, so the
- * proportions survive it while the totals do not.
+ * Share of total is the number to trust. Instrumentation inflates absolute milliseconds roughly
+ * uniformly, so the proportions survive it while the totals do not.
  */
 
 /** The `?debug=` value that turns the running profile on. */

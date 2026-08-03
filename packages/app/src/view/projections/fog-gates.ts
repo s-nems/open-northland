@@ -2,23 +2,18 @@ import { fogTileVisible } from '@open-northland/render';
 import { FOG_STATE, type FogView, systems } from '@open-northland/sim';
 
 /**
- * The frame's fog-of-war gate for the human player - one mutable slot refreshed at the top of every
- * frame ({@link FogGates.setFrame}), so long-lived consumers (the placement gate, the construction-plot
- * wash, voice chatter) close over stable predicates instead of being re-wired per frame.
- * Null = fog off (everything shows).
+ * The frame's fog-of-war gate for the human player: one mutable slot, so long-lived consumers close
+ * over stable predicates instead of being re-wired per frame. A null fog view means fog off.
  */
 export interface FogGates {
-  /** Refresh the frame's fog view. Call once at the top of each frame before any consumer reads a gate. */
+  /** Call once at the top of each frame, before any consumer reads a gate. */
   setFrame(fog: FogView | null): void;
-  /** The current frame's fog view (null = fog off) - for consumers that need the raw view, not a predicate. */
   current(): FogView | null;
-  /** Whether the viewer currently sees a fractional tile - the positional-audio gate. */
   visibleTile(tileX: number, tileY: number): boolean;
-  /** Whether the viewer currently sees a half-cell node's cell - the placement gate's coordinate space. */
+  /** Whether the viewer sees the cell of a half-cell node. */
   seesNode(col: number, row: number): boolean;
 }
 
-/** Create the per-frame fog gate. See {@link FogGates}. */
 export function createFogGates(): FogGates {
   let frameFog: FogView | null = null;
   return {

@@ -21,9 +21,7 @@ type DisplayMode = MenuSettings['displayMode'];
 /** In-menu language choices, in display order. */
 const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
 
-/** Resting position of the not-yet-wired scroll-speed slider: the camera tuning's current 1x.
- *  Like the volume sliders (parked at the engine's master gain), it is a disabled "coming soon"
- *  placeholder until an engine seam exists to drive it. */
+/** Resting position of the disabled scroll-speed slider: the camera tuning's current 1x. */
 const PLACEHOLDER_SCROLL_SPEED = 1;
 const PLACEHOLDER_STEP = 0.05;
 const VOLUME_MIN = 0;
@@ -92,11 +90,8 @@ function settingRow(
   return row;
 }
 
-/**
- * Settings: category nav on the left, the active category's rows on the right. Every live control
- * applies and persists immediately (no Save button, by decision); controls without an engine seam
- * yet sit disabled behind "coming soon" badges so the missing backends stay visible.
- */
+/** Every live control applies and persists immediately; controls without an engine seam sit
+ *  disabled behind "coming soon" badges. */
 export function settingsScreen(open: (screen: MenuScreen) => void, memory: SettingsMemory): HTMLElement {
   const copy = messages().mainMenu;
   const text = copy.settings;
@@ -123,7 +118,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     button.className = 'main-menu__settings-tab';
     button.append(text.tabs[tab.id]);
     if (tab.kind === 'comingSoon') {
-      // aria-disabled instead of `disabled`, like the map-select tabs: hover must survive for the tooltip.
+      // aria-disabled instead of `disabled`: hover must survive for the tooltip.
       button.classList.add('is-coming-soon');
       button.setAttribute('aria-disabled', 'true');
       button.title = copy.comingSoonTip;
@@ -142,9 +137,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     nav.append(button);
   }
 
-  // Rebuilt on every graphics render; the document-level fullscreenchange listener below repaints
-  // the current one (fullscreen also leaves via Esc, outside any control of ours). The back click
-  // unhooks deterministically; a shell-driven exit falls back to the isConnected self-cleanup.
+  // Fullscreen also leaves via Esc, outside any control of ours, so the document event repaints
+  // whichever segment the current graphics render built.
   let displaySeg: SegHandle<DisplayMode> | null = null;
   const liveDisplayMode = (): DisplayMode => (document.fullscreenElement !== null ? 'fullscreen' : 'window');
   const onFullscreenChange = (): void => {
@@ -168,8 +162,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       liveDisplayMode(),
       (mode) => {
         updateSettings({ displayMode: mode });
-        // The segment repaints from the fullscreenchange event, not optimistically; a denied
-        // request would otherwise leave it showing a fullscreen that never happened.
+        // The repaint waits for fullscreenchange; a denied request must not leave the segment
+        // showing a fullscreen that never happened.
         if (mode === 'fullscreen') {
           document.documentElement.requestFullscreen().catch(() => displaySeg?.setActive(liveDisplayMode()));
         } else if (document.fullscreenElement !== null) {
@@ -177,8 +171,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
         }
       },
     );
-    // Honest placeholder: the canvas already follows the window, so the future dropdown's slot
-    // shows the live size.
+    // Placeholder for the resolution control: the canvas follows the window, so show the live size.
     const resolutionChip = document.createElement('span');
     resolutionChip.className = 'main-menu__settings-chip';
     resolutionChip.textContent = `${window.innerWidth} × ${window.innerHeight}`;
@@ -221,7 +214,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       (locale) => {
         if (locale === currentLocale()) return;
         updateSettings({ language: locale }); // activates the locale too
-        open('settings'); // rebuild this screen (and the menu chrome) in the new language
+        open('settings'); // rebuild the screen in the new language
       },
     );
     const scrollSpeed = sliderControl(text.scrollSpeed, {

@@ -4,36 +4,25 @@ import { isHitTarget, type Pickable, pickTopAt, screenToWorld } from './picking.
 import { createTooltip } from './tooltip.js';
 
 /**
- * The ground-pile name-on-hover tooltip: a cursor label naming the loose good pile (with its count) under
- * the pointer, so a dropped heap the eye can't always tell apart reads its good + how many units. Keyed
- * by the sim goodType the pile's `DrawItem` carries.
- *
- * Screen-bounded (golden rule 6): its hit-target set is filtered from the renderer's already-culled
- * `drawnItems` list (the frame's own scene - never a second scene build from the snapshot), and it
- * re-picks a cached set while the tick and camera hold still. Owns its own {@link createTooltip} element
- * (distinct from the details panel's Magazyn stock-row tooltip - the two hover surfaces are mutually
- * exclusive by cursor and must not share one DOM node). The impure game-view runtime drives
- * {@link GroundPileTooltip.update} once per frame, after the renderer's update drew the frame it reads.
+ * Cursor tooltip naming the loose good pile under the pointer. Hit targets are filtered from the
+ * renderer's already-culled `drawnItems`, so the work follows the screen, not the map. Owns its own
+ * tooltip element; the details panel's stock-row tooltip must not share that DOM node.
  */
 
 export interface GroundPileTooltipOptions {
   readonly renderer: WorldRenderer;
   readonly camera: () => Camera;
-  /** client (CSS) px → screen px - the shared camera-space conversion the world pickers use. */
+  /** client (CSS) px to screen px. */
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
-  /** The good's localized display name; a `#id` fallback is used when this returns undefined. */
+  /** The good's localized display name. */
   readonly goodLabel: (goodType: number) => string | undefined;
-  /** The current cursor position (client coords), or null when the pointer left the canvas. */
+  /** Cursor position in client coords, or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
-  /**
-   * Whether the world tooltip must yield the pointer this frame - build placement is active, or the HUD
-   * (a tool-panel window, the details panel) owns the cursor. The tooltip names world piles, not chrome.
-   */
+  /** Whether the world tooltip must yield the pointer this frame, because placement or HUD chrome owns it. */
   readonly suppressed: (clientX: number, clientY: number) => boolean;
 }
 
 export interface GroundPileTooltip {
-  /** Per-frame: show/hide the tooltip for the good pile under the cursor, using this frame's snapshot. */
   update(snapshot: WorldSnapshot): void;
 }
 
@@ -45,10 +34,8 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     return screenToWorld(opts.camera(), p.x, p.y);
   };
 
-  // Pile hit-targets, refiltered only when the sim tick or the camera moves - the drawn list is
-  // camera-dependent (culled to the viewport), so the cache keys on the camera too; a still cursor
-  // over a still frame re-picks the cached set. The renderer's frame cull and fog gate already
-  // dropped off-screen and fogged piles, so filtering its drawn list inherits both.
+  // The drawn list is culled to the viewport, so the hit-target cache keys on the camera as well as
+  // the tick.
   let hoverKey = '';
   let hoverTargets: Pickable[] = [];
   const hoverInfo = new Map<number, { goodType: number; amount: number }>();
@@ -71,7 +58,6 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
 
   return {
     update(snap: WorldSnapshot): void {
-      // Suppress while placing a building or when the HUD owns the pointer (see `suppressed`).
       const p = opts.pointer();
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {
         tooltip.hide();

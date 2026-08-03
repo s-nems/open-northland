@@ -9,14 +9,11 @@ export interface FogMaskLayer {
 }
 
 /**
- * The fog mask over the minimap ground: one cell-resolution alpha raster stretched over `mapRect` (the
- * map picture in panel-local coords, constant for the session) with linear filtering - the same soft
- * edge the world wash shows. The sprite is parented here, so the caller must create the layer in draw
- * order: child order is draw order, and the mask belongs under the dots. Its buffer and texture live
- * for the session and are rewritten in place, only when the fog generation moves.
+ * The fog mask over the minimap ground: one cell-resolution alpha raster stretched over `mapRect` with
+ * linear filtering, rewritten in place only when the fog generation moves. The sprite is parented on
+ * creation, so the caller must create this layer under the dots in draw order.
  *
- * NAMED APPROXIMATION: the stretch ignores the odd-row half-cell stagger the ground raster samples (a
- * half-cell skew on a soft mask, invisible at minimap scale).
+ * Named approximation: the stretch ignores the odd-row half-cell stagger of the ground raster.
  */
 export function createFogMaskLayer(container: Container, mapRect: Rect): FogMaskLayer {
   const sprite = new Sprite();

@@ -20,10 +20,7 @@ export interface AdminEntityPickerDeps {
   readonly elevation?: ElevationField;
 }
 
-/**
- * Build the admin palette's rare click-time entity picker. It projects only the current camera viewport,
- * includes every owner, and refines building boxes through the renderer's solid-pixel hit test.
- */
+/** Unlike gameplay picking, this picker matches entities of every owner. */
 export function createAdminEntityPicker(
   deps: AdminEntityPickerDeps,
 ): (clientX: number, clientY: number, kind: DebugTargetKind) => number | null {

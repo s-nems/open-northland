@@ -62,8 +62,7 @@ export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuild
   return {
     decide(snapshot, screen, force): PanelRebuild | null {
       const { model, json } = modelFor(snapshot, force);
-      // A whole-model value key (plus the screen size, so a resize re-anchors the panel): the panel is
-      // small, so stringify-compare beats hand-written dirty flags.
+      // The screen size joins the value key so a resize re-anchors the panel.
       const key = `${json}|${screen.width}x${screen.height}`;
       if (!force && key === lastModelKey) return null;
       const structureKey = structureKeyOf(model);

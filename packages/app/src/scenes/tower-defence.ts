@@ -7,20 +7,8 @@ import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import { placeBuiltSandboxBuilding, spawnSandboxSettler, WEAPON_SWORD } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
-/**
- * The tower-defence scene - a village raises the alarm as raiders close in. It signs off defence mode:
- * the player's civilians drop their work, split between the two watchtowers by distance and capacity, hide
- * inside them, and shoot the house bow at whatever comes into reach, while the soldiers stay out in the
- * field. The raiders can hit the towers but never the people behind their walls.
- *
- * Layout: two watchtowers with a crowd of civilians between them - more civilians than the pair can hold,
- * so the overflow visibly keeps working - a couple of home guards, and a red warband walking in from the
- * east. The alarm is raised at build, so a human watching from tick 0 sees the whole run: the scatter to
- * cover, the doors swallowing them, arrows leaving the towers, and the raiders falling short.
- *
- * Named divergence (like every scene): the headless twin runs the hand-authored sandbox weapon/footprint
- * approximations, the browser the real extracted ones. Both keep the mechanic identical.
- */
+/** The headless twin runs the hand-authored sandbox weapon and footprint approximations; the browser
+ *  runs the extracted ones. */
 
 const MAP_W = 34;
 const MAP_H = 20;
@@ -28,20 +16,20 @@ const MAP_H = 20;
 const WEST_TOWER: readonly [string, number, number] = ['tower_00', 8, 10];
 const EAST_TOWER: readonly [string, number, number] = ['tower_00', 20, 10];
 
-/** Civilians of two trades spread between the towers - deliberately more than the pair shelters, so the
- *  overflow is visible outside. Split west/east of the midpoint so the nearest-tower rule is observable. */
+/** Deliberately more civilians than the pair shelters, split either side of the midpoint so the
+ *  nearest-tower rule is observable. */
 const CIVILIAN_JOBS = [JOB_COLLECTOR, JOB_FARMER] as const;
 const CIVILIAN_COLUMNS = [6, 7, 9, 10, 12, 14, 18, 19, 21, 22, 23, 24];
 const CIVILIAN_ROW_FIRST = 7;
 const CIVILIAN_ROW_LAST = 9;
 
-/** Home guards: fighters never shelter, so these stay in the open whatever the alarm says. */
+/** Fighters never shelter, so these stay in the open whatever the alarm says. */
 const GUARDS: readonly (readonly [number, number])[] = [
   [14, 12],
   [15, 13],
 ];
 
-/** The raiders - a warband deep enough that the volley from the towers takes a while to cut it down. */
+/** Deep enough that the volley from the towers takes a while to cut it down. */
 const RAIDER_COLUMNS = [29, 30, 31, 32];
 const RAIDER_ROW_FIRST = 8;
 const RAIDER_ROW_LAST = 12;
@@ -71,7 +59,6 @@ function build(sim: Simulation): void {
   for (const tower of towers) sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
 }
 
-/** The player's towers standing on alarm, in placement order (west, then east). */
 function alarmedTowers(sim: Simulation): Entity[] {
   const towers: Entity[] = [];
   for (const e of sim.world.query(Building, DefenceMode)) {
@@ -80,7 +67,7 @@ function alarmedTowers(sim: Simulation): Entity[] {
   return towers;
 }
 
-/** The player's settlers sheltering INSIDE `tower` (claimed and arrived). */
+/** Counts a settler only once it has arrived, not while it still walks to its claimed shelter. */
 function garrisonOf(sim: Simulation, tower: Entity): Entity[] {
   const inside: Entity[] = [];
   for (const e of sim.world.query(Settler, Sheltering)) {
@@ -99,10 +86,8 @@ function playerSettlers(sim: Simulation): Entity[] {
   return own;
 }
 
-// runTicks sits past the walk to cover and the whole exchange of fire, so the end state shows both halves
-// of the mechanic: full towers and a spent warband. The garrison's arrow is a third of a soldier's
-// (`catalog/defence.ts`) and its fire fans across the nearest few raiders rather than stacking on one, so
-// the warband falls man by man rather than in one volley - the margin here is for reading room, not slack.
+// runTicks covers the walk to cover plus the whole exchange of fire, which is slow because a garrison
+// arrow is a third of a soldier's and the fire fans across the nearest few raiders.
 export const towerDefenceScene: SceneDefinition = {
   id: 'tower-defence',
   seed: 7,
@@ -131,8 +116,7 @@ export const towerDefenceScene: SceneDefinition = {
         ),
     },
     {
-      // Both halves of the fire: the warband is shot down from cover, and nothing shot back at the
-      // people behind the walls (a sheltering settler is not a target - `isValidTarget`).
+      // A sheltering settler is not a valid target (`isValidTarget`), so the garrison ends untouched.
       label: 'the raiders are cut down from cover while the garrison stays untouched',
       predicate: (sim) => {
         const raidersLeft = [...sim.world.query(Settler, Owner, Health)].filter(

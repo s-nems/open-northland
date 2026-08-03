@@ -28,10 +28,6 @@ function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<numb
   return counts;
 }
 
-/**
- * The per-trade worker rows: one per declared `workers` slot (in declared order), each with its
- * filled/capacity. A building that employs nobody (a home) yields no rows.
- */
 export function workerSlotsFor(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
@@ -48,10 +44,8 @@ export function workerSlotsFor(
 }
 
 /**
- * The defence window's status line: how full the shelter is while the ALARM stands, else a count of the
- * posts manned, else the alarm's own stopped state. The two are separate mechanics in the original - a
- * tower's archers shoot whether or not the alarm is up - and the alarm leads because it is the one the
- * toggle beside the line controls.
+ * The defence window's status line. The alarm leads because the toggle beside the line controls it;
+ * posted archers are a separate mechanic and shoot whether or not the alarm is up.
  */
 export function defenseLine(
   snapshot: WorldSnapshot,

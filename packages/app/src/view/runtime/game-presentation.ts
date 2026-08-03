@@ -6,9 +6,8 @@ import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadCombatBones } from '../../content/objects.js';
 
-/** Load optional decoded presentation assets shared by the game view's sound and combat rendering.
- *  `hasSignArt` reports whether the `ls_temp` sign sheets resolved - the gate for door-badge click
- *  picking, whose hit geometry is the sign chain's. */
+/** Load the optional decoded assets the game view's sound and combat rendering share. `hasSignArt`
+ *  gates door-badge click picking, whose hit geometry comes from the sign chain. */
 export async function mountGamePresentation(
   params: URLSearchParams,
   renderer: WorldRenderer,
@@ -22,11 +21,8 @@ export async function mountGamePresentation(
           buildAtomicId: BUILD_HOUSE_ATOMIC,
         });
   if (sound !== null) {
-    // The engine starts enabled; opting out is the menu's "Dźwięk w grze" setting (`?sound=off`
-    // skips the driver above). Browsers keep the AudioContext suspended until a gesture that
-    // grants user activation - pointerdown does only for mice, so pointerup covers touch and
-    // keydown covers the keyboard. Frames before the resume drop unheard, and the listeners stay
-    // hooked until a resume actually starts the context (a non-activating gesture just retries).
+    // Browsers keep the AudioContext suspended until a gesture grants user activation: pointerdown
+    // does so only for mice, so pointerup covers touch and keydown covers the keyboard.
     const GESTURE_EVENTS = ['pointerdown', 'pointerup', 'keydown'] as const;
     const resume = (): void => {
       void sound
@@ -35,7 +31,7 @@ export async function mountGamePresentation(
           if (!sound.started) return;
           for (const event of GESTURE_EVENTS) window.removeEventListener(event, resume);
         })
-        // Constructing/resuming the context can throw (e.g. a context-count cap) - stay silent, not crash.
+        // Resuming can throw (e.g. a context-count cap); staying silent beats crashing the view.
         .catch(() => undefined);
     };
     for (const event of GESTURE_EVENTS) window.addEventListener(event, resume);

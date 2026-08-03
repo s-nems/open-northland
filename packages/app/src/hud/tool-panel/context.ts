@@ -5,8 +5,8 @@ import type { Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 import type { ToolPanelLayout } from './layout.js';
 
-/** The original window/button bitmap fills the pop-up windows tile for the in-game wood look (or `undefined`
- *  when `content/` is absent → the windows fall back to flat parchment Graphics). */
+/** The original bitmap fills the pop-up windows tile for the wood look; `undefined` when `content/` is
+ *  absent, and the windows fall back to flat parchment Graphics. */
 export interface PanelBitmaps {
   readonly bg: Texture | undefined;
   readonly button: Texture | undefined;
@@ -14,27 +14,19 @@ export interface PanelBitmaps {
   readonly headline: Texture | undefined;
 }
 
-/**
- * What every tool-panel window controller (building menu / statistics / placement) needs from the
- * mounted panel: the resolved strip layout + scale, the shared vector-font text factory, the decoded-UI
- * bitmap fills, the decoded-UI-string lookup, and the live canvas size (read when a controller lays out,
- * so it tracks window resizes).
- */
+/** What a tool-panel window controller needs from the mounted panel. */
 export interface PanelContext {
   readonly layout: ToolPanelLayout;
-  /** The uiscale (`layout.scale`), the multiplier for every design-px metric. May be fractional. */
+  /** The uiscale multiplier for every design-px metric. May be fractional. */
   readonly scale: number;
-  /** Build a retained vector-font text run (see `makeUiTextRun`); the caller owns placement + destruction.
-   *  `px` overrides the default body size (design px) for headings. */
+  /** The caller owns placement and destruction; `px` overrides the default body size in design px. */
   readonly makeText: (text: string, color: FontColorName, px?: number) => TextRun;
-  /** The decoded window/button bitmap fills for the wood look (empty set → flat-Graphics fallback). */
   readonly bitmaps: PanelBitmaps;
   /** Prefer the decoded UI string for `(table, id)`, else the pinned fallback label. */
   readonly uiString: UiString;
-  /** The live renderer size (tracks window resizes) - read at each placement, never cached. */
+  /** The live renderer size, read at each placement and never cached. */
   readonly screen: () => { readonly width: number; readonly height: number };
-  /** The screen-px box of the bottom-corner overlay drawn over this panel (the minimap window), read
-   *  live. A pop-up list that spans it shortens toward clearing it: the panel defers presses under the
-   *  overlay to it, so a covered row would be dead, not merely hidden. Absent → nothing is reserved. */
+  /** The screen-px box of the bottom-corner overlay drawn over this panel. A pop-up list that spans it
+   *  shortens toward clearing it: presses under the overlay are deferred to it, so a covered row is dead. */
   readonly overlayReserve?: () => Rect | null;
 }

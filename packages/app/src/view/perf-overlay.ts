@@ -3,20 +3,12 @@ import { heapMb } from '../diag/heap.js';
 import { messages } from '../i18n/index.js';
 
 /**
- * The on-canvas debug readout - the human-facing instrument for render-scale + sim work. Pinned top-left
- * (beside the tool-panel strip; the build menu drops below it so the two never collide), lightly
- * translucent. Two lines: sim state (tick / speed / steps / dropped ticks / entity·drawn·pooled counts -
- * a spiking `steps` means the sim is falling behind wall-clock, `drawn ≪ entities` means culling is
- * biting) and perf (smoothed FPS, the CPU `sim`/`snap`/`draw` split, GPU/compositor remainder, worst
- * recent frame, Chrome-only JS heap).
- *
- * Formatting only: the fold lives in `diag/frame-stats.ts`, which is where it can be tested. The
- * `sim`/`snap`/`draw` split is the breakdown `packages/render/AGENTS.md` says to measure before blaming
- * the GPU - a slow scene is usually the sim, not the draw.
+ * The on-canvas debug readout: one line of sim state, one of frame timing. Formatting only, the fold
+ * lives in `diag/frame-stats.ts` where it can be tested.
  */
 
 export interface PerfOverlayHandle {
-  /** Refresh the readout from the frame fold. Call once per frame. */
+  /** Call once per frame. */
   update(report: FrameStatsReport): void;
 }
 
@@ -25,7 +17,7 @@ const PANEL_STYLE = [
   'top:12px',
   'box-sizing:border-box',
   'padding:6px 12px',
-  // Lightly translucent so the tool-panel strip / map read through the debug bar underneath it.
+  // Lightly translucent so the tool-panel strip and map read through the bar.
   'background:rgba(20,16,12,0.55)',
   'color:#b7f0a0',
   'font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace',
@@ -36,7 +28,6 @@ const PANEL_STYLE = [
   'pointer-events:none',
 ].join(';');
 
-/** `×2`, `×0.50`, … - integer speeds stay terse; a fractional `?speed=` shows two decimals. */
 function formatSpeed(speed: number): string {
   return Number.isInteger(speed) ? `×${speed}` : `×${speed.toFixed(2)}`;
 }
@@ -47,10 +38,8 @@ function formatDelivered(speed: number): string {
 }
 
 /**
- * `×2` while the loop keeps up, `×10→×4.2` once it cannot. Gated on a sustained shortfall, because
- * discarded ticks are the only thing that can make delivered fall short - without a drop the
- * accumulator carries every fraction into the next frame and delivered converges on requested exactly.
- * A healthy session reads exactly as it did before this split existed.
+ * Shows the delivered speed only on a sustained shortfall: without discarded ticks the accumulator
+ * carries every fraction into the next frame and delivered converges on requested exactly.
  */
 function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   const label = formatSpeed(requested);
@@ -60,10 +49,7 @@ function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   return delivered === formatDelivered(requested) ? label : `${label}→${delivered}`;
 }
 
-/**
- * Mount the debug readout, pinned top-left with its left edge at `leftPx` (the caller passes the
- * tool-panel strip's right edge so the bar clears the strip). Returns a live handle to refresh each frame.
- */
+/** Mount the debug readout pinned top-left, with its left edge at `leftPx` to clear the tool-panel strip. */
 export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
@@ -79,8 +65,7 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
       const { ema, recent } = report;
 
       const rate = last.paused ? copy.paused : formatDeliveredSpeed(last.speed, recent);
-      // The rolling window's count, not the session total: a stall the machine has recovered from must
-      // leave the readout again rather than pinning a number there for the rest of the session.
+      // The rolling window's count, not the session total, so a recovered stall leaves the readout.
       const dropped = recent.sustainedShortfall ? `  ${copy.dropped} ${recent.droppedTicks}` : '';
       const simState = `${copy.tick} ${last.tick}  ${rate}  ${copy.steps} ${last.steps}${dropped}   ${copy.entities} ${last.entities}  ${copy.drawn} ${last.drawn}  ${copy.pooled} ${last.pooled}`;
 

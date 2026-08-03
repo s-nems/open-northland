@@ -1,41 +1,36 @@
 import type { Graphics } from 'pixi.js';
 import type { Rect } from '../geometry.js';
 
-/** The details panel's flat vector glyph faces: no atlas art backs them, each is a pure `Graphics` shape. */
+/** The details panel's glyph faces: no atlas art backs them, each is a pure `Graphics` shape. */
 
-/** Cream tones of a glyph stroke, lit vs. dimmed, matching the button label's gold-cream / grey pair. */
+/** Lit and dimmed glyph strokes, matching the button label's gold-cream / grey pair. */
 const GLYPH_LIGHT = 0xead9a0;
 const GLYPH_DIM = 0x8b7a55;
-/** The four good tones of the "Wszystko" (gather-everything) tile - stone / wood / gold / herb - so it
- *  reads as a mix, distinct from any single good's pile. */
+/** The gather-everything tile's four good tones (stone, wood, gold, herb), so it reads as a mix
+ *  rather than as one specific good's pile. */
 const ALL_GLYPH_TILES = [0xb8b0a0, 0x9a6a34, 0xe0b455, 0x7f9a2a] as const;
 
 interface GlyphDeps {
   readonly g: Graphics;
   readonly scale: number;
-  /** The panel's inner-box dark bevel tone, passed in from the {@link import('./chrome.js').Chrome} kit
-   *  so a glyph's outlines and punched holes match the rest of the panel framing. */
+  /** The panel's inner-box dark bevel tone, so glyph outlines and punched holes match the framing. */
   readonly bevelDark: number;
 }
 
-/** The panel's glyph faces. Each is centered in the caller's rect and stays inside it: that rect is a
- *  button plate the caller already drew, so overflow bleeds onto the panel behind the button. */
+/** Each glyph is centred in the caller's rect and stays inside it: that rect is a button plate, so
+ *  overflow bleeds onto the panel behind the button. */
 export interface GlyphKit {
-  /** A 2×2 grid of mixed-good tiles: the "gather everything" round button's face, drawn distinct from
-   *  any single good's pile so it never reads as one specific good. */
+  /** A 2×2 grid of mixed-good tiles: the gather-everything button's face. */
   glyphAll(r: Rect): void;
-  /** A small house, the assign-workplace round button's face (assign this settler to a building);
-   *  `enabled` picks the lit vs. dimmed cream. */
+  /** A house: the assign-workplace button's face. */
   glyphHouse(r: Rect, enabled: boolean): void;
-  /** A plus - an empty equip slot's "put an item on" button face. Always lit: the per-slot order
-   *  buttons are never disabled (see `EquipActionHit`). */
+  /** A plus: an empty equip slot's "put an item on" button face. */
   glyphPlus(r: Rect): void;
-  /** A shield - the defence-mode toggle's face. `raised` (the alarm is up) fills it solid; lowered it
-   *  is the same outline unfilled, so on/off reads at a glance without a second button. */
+  /** A shield: the defence-mode toggle's face, solid while the alarm is raised and outlined while not. */
   glyphShield(r: Rect, raised: boolean): void;
-  /** Two opposing horizontal arrows - a worn equip slot's "swap the item" button face. */
+  /** Two opposing horizontal arrows: a worn equip slot's "swap the item" button face. */
   glyphSwap(r: Rect): void;
-  /** A diagonal cross - a worn equip slot's "take the item off" button face. */
+  /** A diagonal cross: a worn equip slot's "take the item off" button face. */
   glyphCross(r: Rect): void;
 }
 
@@ -65,7 +60,6 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     const y1 = r.y + r.h - pad;
     const eaveY = y0 + (y1 - y0) * 0.42;
     const wallW = x1 - x0;
-    // Roof gable, then the wall box, then a punched door in the plate's dark tone.
     g.moveTo(x0, eaveY).lineTo(cx, y0).lineTo(x1, eaveY).closePath().fill(color);
     g.rect(x0 + wallW * 0.12, eaveY, wallW * 0.76, y1 - eaveY).fill(color);
     g.rect(cx - wallW * 0.11, y1 - (y1 - eaveY) * 0.55, wallW * 0.22, (y1 - eaveY) * 0.55).fill({
@@ -83,9 +77,7 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(GLYPH_LIGHT);
   };
 
-  // A heater shield: square shoulders, straight flanks, then the two curves meeting at the point. Filled
-  // while the alarm is up, hollow while it is down - both in the LIT tone, because the toggle is always
-  // pressable and {@link GLYPH_DIM} is this panel's "you cannot press this".
+  // Both states draw in the lit tone: the toggle is always pressable, and GLYPH_DIM means unpressable.
   const glyphShield = (r: Rect, raised: boolean): void => {
     const pad = r.w * 0.24;
     const x0 = r.x + pad;
@@ -109,7 +101,6 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     const x0 = r.x + r.w * 0.22;
     const x1 = r.x + r.w * 0.78;
     const cy = r.y + r.h / 2;
-    // Two opposed arrow lanes around the centre line: top shaft points right, bottom shaft points left.
     const lane = r.h * 0.14;
     const th = Math.max(1, Math.round(r.w * 0.1));
     const head = r.w * 0.16;

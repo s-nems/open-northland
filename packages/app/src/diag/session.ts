@@ -1,35 +1,31 @@
 /**
- * The current game's diagnostics identity - the facts a bundle needs that only the running session
- * knows (which sim, which world, which seed). A playable entry registers it when its sim exists;
- * quit-to-menu is a full page navigation (see game-view.ts), so module state resets with the page
- * and no explicit clearing is needed.
+ * The running game's diagnostics identity. Quit to menu is a full page navigation, so this module
+ * state resets with the page and never needs explicit clearing.
  */
 import { HashTrace, type Simulation } from '@open-northland/sim';
 import { hasDebugFlag } from './debug-flags.js';
 
 export interface DiagGameSession {
   readonly entry: 'map' | 'scene';
-  /** The map/scene id - enough for a dev to reload the same world; decoded map bytes never ship. */
+  /** The map/scene id; decoded map bytes never ship in a bundle. */
   readonly worldId: string | null;
   readonly seed: number;
   readonly sim: Simulation;
-  /** Per-tick state-hash ring when `?debug=diag` recording is on; `null` otherwise. */
+  /** State-hash ring when `?debug=diag` recording is on; `null` otherwise. */
   readonly hashTrace: HashTrace | null;
 }
 
 /**
- * Hash-recording cadence in ticks. `hashState()` walks the whole world, so per-tick recording is not
- * scale-free even behind the debug flag; a fixed cadence keeps the cost bounded and still lets two
- * runs' traces align (0 A.D. full-hashes every 20 turns - the same tradeoff).
+ * Hash-recording cadence in ticks. `hashState()` walks the whole world, so a fixed cadence keeps the
+ * cost bounded and still lets two runs' traces align (0 A.D. full-hashes every 20 turns).
  */
 export const HASH_TRACE_EVERY_TICKS = 20;
 
-/** The `?debug=` value that turns hash recording on (read at game start). */
+/** The `?debug=` value that turns hash recording on. */
 export const HASH_TRACE_DEBUG_FLAG = 'diag';
 
 let current: DiagGameSession | null = null;
 
-/** Register the running game (a playable entry calls this once its sim exists). */
 export function setDiagGameSession(session: DiagGameSession | null): void {
   current = session;
 }
@@ -39,9 +35,8 @@ export function currentDiagGameSession(): DiagGameSession | null {
 }
 
 /**
- * Record the stepped sim's state hash into the session's trace on the {@link HASH_TRACE_EVERY_TICKS}
- * cadence - the frame loop calls this after each `step()`. No-op when recording is off or `sim` is
- * not the registered session's sim (a stale registration must never taint another sim's trace).
+ * Record the stepped sim's state hash on the HASH_TRACE_EVERY_TICKS cadence. No-op when `sim` is not
+ * the registered session's sim, so a stale registration cannot taint another sim's trace.
  */
 export function recordDiagHash(sim: Simulation): void {
   const trace = current !== null && current.sim === sim ? current.hashTrace : null;
@@ -49,7 +44,6 @@ export function recordDiagHash(sim: Simulation): void {
   trace.record(sim.tick, sim.hashState());
 }
 
-/** Build the session's `HashTrace` when the `?debug=diag` flag asks for hash recording. */
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {
   return hasDebugFlag(params, HASH_TRACE_DEBUG_FLAG) ? new HashTrace() : null;
 }
