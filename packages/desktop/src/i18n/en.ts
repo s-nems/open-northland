@@ -1,13 +1,4 @@
-/**
- * The installer's English catalog - the source of truth for the message shape (`pl.ts` is checked
- * against the derived {@link Messages} type). Kept to the game's i18n conventions
- * (`packages/app/src/i18n`) deliberately, though the two catalogs stay separate: the installer is a
- * Node + own-renderer surface that runs before any game content exists, so it cannot reuse the
- * browser-only game catalog behind the `app://` boundary.
- *
- * The three `*Html` entries carry trusted developer markup (`<em>`/`<code>`/`<strong>`) and are set
- * as innerHTML; they never interpolate user input.
- */
+/** The `*Html` entries are assigned to innerHTML: trusted markup only, never interpolated input. */
 export const en = {
   setup: {
     title: 'Open Northland - first-run setup',

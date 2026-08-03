@@ -1,16 +1,9 @@
 import { en, type Messages } from './en.js';
 import { pl } from './pl.js';
 
-/**
- * The installer's i18n API - its own small catalog shared by the main process and the setup
- * renderer (both import this module; each process holds its own {@link activeLocale}). DOM access is
- * guarded so the Node main process can import it too. Mirrors the game's `packages/app/src/i18n`
- * conventions without sharing its browser-only runtime.
- */
-
 interface LocaleEntry {
   readonly messages: Messages;
-  /** BCP-47 tag for `toLocaleString` number formatting and the document `lang` attribute. */
+  /** BCP-47 language tag. */
   readonly tag: string;
   /** Lowercased OS-locale prefix this language claims; the first entry whose prefix matches wins. */
   readonly osPrefix: string;
@@ -18,7 +11,7 @@ interface LocaleEntry {
   readonly labelKey: keyof Messages['setup']['language'];
 }
 
-/** Every shipped installer language, in flag-button order. */
+/** In flag-button order. */
 export const LOCALES = {
   pol: { messages: pl as Messages, tag: 'pl', osPrefix: 'pl', flag: '🇵🇱', labelKey: 'polish' },
   eng: { messages: en as Messages, tag: 'en', osPrefix: 'en', flag: '🇬🇧', labelKey: 'english' },
@@ -28,16 +21,16 @@ export type Locale = keyof typeof LOCALES;
 export type LocaleTag = (typeof LOCALES)[Locale]['tag'];
 
 const DEFAULT_LOCALE: Locale = 'eng';
+/** The main process and the setup renderer each hold their own copy, synced over IPC. */
 let activeLocale: Locale = DEFAULT_LOCALE;
 
-/** Every accepted locale, for validating a persisted or IPC-supplied value. */
 export const LOCALE_CODES = Object.keys(LOCALES) as readonly Locale[];
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && Object.hasOwn(LOCALES, value);
 }
 
-/** Map an OS/BCP-47 locale (Electron `app.getLocale()`, e.g. `"pl-PL"`) onto the shipped languages. */
+/** Maps an OS locale tag such as `"pl-PL"` onto a shipped language. */
 export function resolveLocale(raw: string | undefined): Locale {
   const lower = raw?.toLowerCase();
   if (lower === undefined) return DEFAULT_LOCALE;

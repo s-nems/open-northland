@@ -1,11 +1,5 @@
 import type { Messages } from './en.js';
 
-/**
- * The installer's Polish catalog, structurally checked against {@link Messages}. Unlike the game's
- * app catalog - where a later i18n pass owns Polish and new strings ship in English - the installer's
- * Polish is authored here directly, since this surface targets the (Polish-community) CulturesNation
- * mod and the EN/PL pair was requested up front.
- */
 export const pl = {
   setup: {
     title: 'Open Northland - pierwsze uruchomienie',
@@ -44,8 +38,7 @@ export const pl = {
     },
     run: {
       starting: 'Rozpoczynanie…',
-      // Genitive plural "plików" for the running counter - a named approximation over Polish's full
-      // plural rules (1 plik / 2 pliki / 5 plików), adequate for a progress line.
+      // Approximation: a fixed genitive plural instead of Polish's 1 plik / 2 pliki / 5 plików rule.
       files: '{done} plików',
       failed: 'Instalacja zawartości gry nie powiodła się.',
     },
