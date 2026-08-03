@@ -4,11 +4,12 @@ import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
-import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings } from '../shared.js';
+import { seatBaseOf } from '../base.js';
+import { anchorNodeOf, firstRingNode, ownedBuildings } from '../shared.js';
 
 /**
  * The signpost lattice the scout tiles the settlement with (user plan): one post beside the
- * headquarters, six around it at near-minimal spacing, and outer lattice spots only once owned
+ * seat's base, six around it at near-minimal spacing, and outer lattice spots only once owned
  * buildings stand near them, so the covered field grows with the settlement.
  */
 
@@ -37,10 +38,10 @@ export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: n
 }
 
 /** The innermost hex ring - the centre post plus this ring are always wanted (the user's "one beside
- *  the HQ, then six around it"); outer rings need a building nearby. */
-const HQ_RING = 1;
+ *  the base, then six around it"); outer rings need a building nearby. */
+const BASE_RING = 1;
 
-/** The centre post aims one cell WEST of the HQ door rather than at the HQ anchor, which sits inside
+/** The centre post aims one cell WEST of the base's door rather than at its anchor, which sits inside
  *  the blocked body and lets the legal-spot search settle on the doorway itself. One cell is two
  *  nodes on the half-cell lattice (`nav/halfcell.ts`). */
 const CENTRE_DOOR_CLEARANCE_NODES = 2;
@@ -50,7 +51,7 @@ const CENTRE_DOOR_CLEARANCE_NODES = 2;
 const RING_MIN_STEP_NODES = 19;
 
 /** Hard ring budget per decision (~217 targets scanned at worst). A settlement past it is the
- *  expansion module's concern, not lattice growth around the first headquarters. */
+ *  expansion module's concern, not lattice growth around the seat's base. */
 const MAX_LATTICE_RING = 8;
 
 /** The axial walk tracing hex ring k counter-clockwise from its east corner (k, 0). */
@@ -88,23 +89,23 @@ function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode
     if (d > extent) extent = d;
   }
   const rings = Math.ceil((extent + SIGNPOST_LATTICE_SPACING_NODES) / RING_MIN_STEP_NODES);
-  return Math.min(MAX_LATTICE_RING, Math.max(HQ_RING, rings));
+  return Math.min(MAX_LATTICE_RING, Math.max(BASE_RING, rings));
 }
 
 /**
  * The next erectable lattice target for the seat: the first spot (rings inside-out, walk order) that
- * is wanted (ring ≤ {@link HQ_RING}, or an owned building within one lattice spacing), has no own
+ * is wanted (ring ≤ {@link BASE_RING}, or an owned building within one lattice spacing), has no own
  * post within the tolerance, AND a legal node to erect on. Null when the wanted lattice stands
  * complete or every remaining target is unbuildable (off-map, water, blocked).
  */
 export function nextSignpostTarget(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null;
-  const hq = headquartersOf(world, ctx, player);
-  if (hq === null) return null;
-  const anchor = anchorNodeOf(world, hq);
+  const base = seatBaseOf(world, ctx, player);
+  if (base === null) return null;
+  const anchor = anchorNodeOf(world, base);
   if (anchor === null) return null;
-  const door = interactionNode(world, ctx, hq);
+  const door = interactionNode(world, ctx, base);
   const posts = signpostNetwork(world).get(player) ?? [];
   // Any construction state: coverage should arrive with a site, not after it finishes.
   const buildings: HalfCellNode[] = [];
@@ -114,7 +115,7 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
   }
   let probe: ReturnType<typeof signpostProbe> | null = null;
   // The sealed-pocket veto (routeRegions): without it a provably sealed spot wins the search and the
-  // module re-aims at it every decision. Judged from the HQ door; the scout's own cell is unknowable
+  // module re-aims at it every decision. Judged from the base's door; the scout's own cell is unknowable
   // in a per-seat pick (named approximation). A pocketed reference would invert the veto (every open
   // spot reads unroutable), so the pick fails open to the unvetoed search instead.
   let veto: ReturnType<typeof routeRegions> | null = null;
@@ -130,7 +131,7 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
       const tx = centre.hx + offset.dx;
       const ty = centre.hy + offset.dy;
       const wanted =
-        ring <= HQ_RING ||
+        ring <= BASE_RING ||
         buildings.some((b) => withinNodeRadius(b.hx, b.hy, tx, ty, SIGNPOST_LATTICE_SPACING_NODES));
       if (!wanted) continue;
       const satisfied = posts.some((s) =>
@@ -144,7 +145,7 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
       }
       const p = probe;
       const v = veto;
-      // Never the doorway itself: a post there stands where the HQ's settlers enter and leave. The
+      // Never the doorway itself: a post there stands where the base's settlers enter and leave. The
       // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
       const spot = firstRingNode(
         tx,

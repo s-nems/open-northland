@@ -5,6 +5,7 @@ export { withinNodeRadius } from '../nav/node-circle.js';
 // The AI opening plan's content bindings - exported so the real-content suite can pin every id in
 // the plan against the served IR (an unknown id silently skips its entry in the sim).
 export {
+  BASE_REPLACEMENT_ENTRY,
   type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
   TOWER_CONTENT_IDS,

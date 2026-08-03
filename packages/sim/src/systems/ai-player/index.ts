@@ -9,6 +9,7 @@ import { scoutModule } from './scout/index.js';
 import { AI_DECISION_INTERVAL_TICKS } from './shared.js';
 import { workforceModule } from './workforce/index.js';
 
+export * from './base.js';
 export * from './build-order/index.js';
 export * from './military/index.js';
 export * from './population.js';

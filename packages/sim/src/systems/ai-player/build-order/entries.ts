@@ -5,7 +5,7 @@
  * buildings toward a tier, or wait for a flag collector the workforce module hires.
  */
 
-/** Where a placement should gravitate, on top of the always-on near-HQ rule: toward the seat's
+/** Where a placement should gravitate, on top of the always-on near-base rule: toward the seat's
  *  first building of a stable content id, toward the nearest live resource of a good, toward
  *  the map's centre (the barracks rule - face the contested middle, not the town's back), or
  *  toward the settlement's outskirts (past a frontier building - the warehouse rule, user plan
@@ -139,11 +139,22 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'stock_02', count: 2, near: [{ kind: 'outskirts' }], apart: true },
 ];
 
+/** What a seat with no base puts up (user rule): the headquarters declares an explicitly EMPTY
+ *  construction bill, which would raise for free, so a level-1 warehouse takes the goods hub over
+ *  instead - same kind, same worker slots down to the opening hunt's seat. It is a permanent
+ *  downgrade: 45 units per good against the headquarters' 150, and no entry upgrades the stock chain.
+ *  Only `building` and the placement modifiers are read; `count` is structural. */
+export const BASE_REPLACEMENT_ENTRY: Extract<BuildOrderEntry, { kind: 'place' }> = {
+  kind: 'place',
+  building: 'stock_00',
+  count: 1,
+};
+
 /** Concurrent construction sites per seat - upgrades included (user rule, 2026-07-18: exactly one
  *  site at a time). */
 export const MAX_ACTIVE_CONSTRUCTION_SITES = 1;
 
-/** How far from the headquarters a placement may land, in half-cell Manhattan nodes - the bounded
+/** How far from the seat's base a placement may land, in half-cell Manhattan nodes - the bounded
  *  neighbourhood every affinity pull stays inside. Beyond it the executor stalls (expansion's
  *  concern). */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;

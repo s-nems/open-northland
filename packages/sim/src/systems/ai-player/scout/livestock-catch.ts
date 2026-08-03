@@ -3,16 +3,17 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
-import { anchorNodeOf, headquartersOf } from '../shared.js';
+import { seatBaseOf } from '../base.js';
+import { anchorNodeOf } from '../shared.js';
 
 /**
- * How far (half-cell node Manhattan) from the headquarters an animal is still the settlement's to
+ * How far (half-cell node Manhattan) from the seat's base an animal is still the settlement's to
  * round up. It bounds the WALK, not the catch's worth: claimed stock herds itself home from anywhere
  * (`livestock/assignment.ts`). Calibrated, not guessed: across the 193 authored headquarters in the
  * mod map corpus (`CnModMaps/<map>/staticobjects.inc`), the nearest cattle or sheep is a median 13 cells
  * out, and 140 seats have stock within the 32 cells this radius covers.
  *
- * KNOWN COLLISION, accepted: this is the same circle around the same anchor as an HQ-employed
+ * KNOWN COLLISION, accepted: this is the same circle around the same anchor as a base-employed
  * hunter's ground (`HUNTER_WORK_FLAG_RADIUS`, also 64), and an unclaimed animal is nobody's property,
  * so it is valid last-resort prey (`isHuntTarget`) once no normal game is left in range - true from
  * the start at 12 of those 140 seats. Both behaviours are what their own rules ask for and the two
@@ -30,14 +31,14 @@ export const SCOUT_CATCH_RADIUS_NODES = 64;
  * An animal inside a workplace ({@link Resting}) is out of contact reach until its batch releases
  * it, and one sealed away from the settlement would otherwise win the pick every decision and pin a
  * man as a scout for good, so the candidates run the same sealed-pocket veto `nextSignpostTarget`
- * does, judged from the same headquarters door.
+ * does, judged from the same base door.
  */
 export function nextLivestockCatch(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null; // mapless sim: no ground to walk into an animal over
-  const hq = headquartersOf(world, ctx, player);
-  if (hq === null) return null;
-  const from = anchorNodeOf(world, hq);
+  const base = seatBaseOf(world, ctx, player);
+  if (base === null) return null;
+  const from = anchorNodeOf(world, base);
   if (from === null) return null;
 
   const candidates: { entity: Entity; node: HalfCellNode; distance: number }[] = [];
@@ -52,7 +53,7 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => a.distance - b.distance || a.entity - b.entity);
 
-  const door = interactionNode(world, ctx, hq);
+  const door = interactionNode(world, ctx, base);
   const reference =
     door !== null ? terrain.nodeAtClamped(door.x, door.y) : terrain.nodeAtClamped(from.hx, from.hy);
   // Resolved once the cheap gates have already thinned the herd, and disabled outright on a pocketed

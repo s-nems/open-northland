@@ -12,7 +12,7 @@ import {
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { headquartersOf } from '../ai-player/shared.js';
+import { seatBaseOf } from '../ai-player/base.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import { isLivestockWorkplaceType, stayPointRangeOf } from '../readviews/index.js';
@@ -65,10 +65,10 @@ export function grazeLeashOf(content: SystemContext['content'], tribe: number): 
  * {@link Livestock} creatures re-anchor their {@link StayPoint} leash onto grazing spots ringing the
  * player's built livestock workplaces - split round-robin across the farm doors in canonical id order
  * (so a two-farm player's stock spreads evenly), each member on its own {@link GRAZE_OFFSETS} spot -
- * or ringing the headquarters door while no farm stands. An idle animal beyond the grazing leash
+ * or ringing the seat's base door while no farm stands. An idle animal beyond the grazing leash
  * ({@link LIVESTOCK_GRAZE_LEASH_NODES}) walks straight home (a {@link MoveGoal} on the anchor - the
  * original's claimed stock marches to the HQ/farm rather than drifting); inside the leash the grazing
- * drive (`animalWanderSystem`) takes over. No farm and no HQ leaves the current territory untouched.
+ * drive (`animalWanderSystem`) takes over. No farm and no base leaves the current territory untouched.
  * Species are not matched to farms (the extracted animal farm feeds both; even split is a named
  * approximation).
  *
@@ -132,7 +132,7 @@ function grazeAnchor(terrain: TerrainGraph, door: NodeId, k: number): NodeId {
   return door;
 }
 
-/** The player's leash anchors: its built livestock-workplace doors (canonical id order), else its HQ
+/** The player's leash anchors: its built livestock-workplace doors (canonical id order), else its base
  *  door, else none. */
 function anchorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph, player: number): NodeId[] {
   const doors: NodeId[] = [];
@@ -144,8 +144,8 @@ function anchorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph, pl
     if (door !== null) doors.push(door);
   }
   if (doors.length > 0) return doors;
-  const hq = headquartersOf(world, ctx, player);
-  if (hq === null) return [];
-  const door = interactionNodeId(world, ctx, terrain, hq);
+  const base = seatBaseOf(world, ctx, player);
+  if (base === null) return [];
+  const door = interactionNodeId(world, ctx, terrain, base);
   return door === null ? [] : [door];
 }

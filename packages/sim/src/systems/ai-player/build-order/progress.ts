@@ -5,12 +5,12 @@ import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
+import { seatBaseOf } from '../base.js';
 import {
   anchorNodeOf,
   anyLiveResource,
   buildingTypeByContentId,
   goodTypeByContentId,
-  headquartersOf,
   ownedBuildings,
   ownedSettlers,
   tiersAtOrAbove,
@@ -82,15 +82,15 @@ export function entryStatus(
         if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
       }
       // Nothing left to collect anywhere - treat as done so the list never stalls on a dry map.
-      // The seat's HQ seeds the expanding-box existence probe (collector goods gather around it).
-      const hq = headquartersOf(world, ctx, player);
-      const near = hq === null ? null : anchorNodeOf(world, hq);
+      // The seat's base seeds the expanding-box existence probe (collector goods gather around it).
+      const base = seatBaseOf(world, ctx, player);
+      const near = base === null ? null : anchorNodeOf(world, base);
       return anyLiveResource(world, good.typeId, near) ? 'unmet' : 'skip';
     }
     case 'towerCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      return firstUncoveredBuilding(world, ctx, owned) === null ? 'satisfied' : 'unmet';
+      return firstUncoveredBuilding(world, ctx, player, owned) === null ? 'satisfied' : 'unmet';
     }
   }
 }

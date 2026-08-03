@@ -36,6 +36,17 @@ export function builderJobOf(ctx: SystemContext): number | null {
   return best;
 }
 
+/** Whether the settler is labour the allocator may move: an adult man of a real tribe, neither a
+ *  fighter nor committed to a drill. Captured livestock (an animal tribe, trade-less, owner-stamped)
+ *  would otherwise land in the pool and inflate every count downstream - posts, drafts, weddings. */
+export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (world.has(e, Female) || !isAdultSettler(world, e)) return false;
+  const settler = world.get(e, Settler);
+  if (isAnimalTribe(ctx.content, settler.tribe)) return false;
+  if (isFighterJob(ctx.content, settler.jobType)) return false;
+  return !world.has(e, TrainingOrder);
+}
+
 /**
  * Classify the seat's adult men: employed workers keep their post, the collectors of each wanted
  * good - up to its target - the generic collectors, and the scouts are recognized in place, and
@@ -54,14 +65,8 @@ export function classifyWorkforce(
   const genericCollectors: Entity[] = [];
   const scouts: Entity[] = [];
   for (const e of ownedSettlers(world, player)) {
-    if (world.has(e, Female) || !isAdultSettler(world, e)) continue;
-    const settler = world.get(e, Settler);
-    // Captured livestock (an animal tribe, trade-less, owner-stamped) is stock, not labour - without
-    // this it would land in the pool and inflate every count downstream (posts, drafts, weddings).
-    if (isAnimalTribe(ctx.content, settler.tribe)) continue;
-    const job = settler.jobType;
-    if (isFighterJob(ctx.content, job)) continue;
-    if (world.has(e, TrainingOrder)) continue; // committed to a barracks drill - no longer spare
+    if (!isAllocatableMan(world, ctx, e)) continue;
+    const job = world.get(e, Settler).jobType;
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post
     if (isScoutJob(ctx.content, job)) {
       scouts.push(e);

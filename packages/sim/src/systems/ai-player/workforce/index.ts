@@ -1,13 +1,20 @@
-import { CurrentAtomic, ErectSignpostOrder, PlayerOrder } from '../../../components/index.js';
+import {
+  CurrentAtomic,
+  ErectSignpostOrder,
+  JobAssignment,
+  PlayerOrder,
+  UnderConstruction,
+} from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
+import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
-import { headquartersOf } from '../shared.js';
+import { ownedBuildings, ownedSettlers } from '../shared.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
@@ -18,7 +25,7 @@ import { tuneCraftSelections } from './craft.js';
 import type { TakenFlagNodes } from './flag-spots.js';
 import { trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
-import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
+import { builderJobOf, classifyWorkforce, isAllocatableMan, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
 import { buildStaffingTally } from './tally.js';
 
@@ -46,9 +53,9 @@ function runWorkforce(
   player: number,
   order: readonly BuildOrderEntry[],
 ): readonly Command[] {
-  const hq = headquartersOf(world, ctx, player);
-  if (hq === null) return [];
   const builderJob = builderJobOf(ctx);
+  const base = seatBaseOf(world, ctx, player);
+  if (base === null) return rebuildCrew(world, ctx, player, builderJob);
   const statuses = entryStatuses(world, ctx, player, order);
   const wanted = wantedCollectorGoods(ctx, order, statuses);
   const { pool, collectorsByGood, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, wanted);
@@ -56,18 +63,59 @@ function runWorkforce(
   const tally = buildStaffingTally(world);
   const taken: TakenFlagNodes = new Set();
   return [
-    ...allocateCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken, builderJob),
-    ...allocateOpeningHunter(world, ctx, player, hq, force, builderJob),
+    ...allocateCollectors(world, ctx, base, wanted, collectorsByGood, force, taken, builderJob),
+    ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
     ...allocateScout(world, ctx, player, scouts, force, builderJob),
     ...staffBuildings(world, ctx, player, force, tally, 'min'),
     ...reserveBuilders(world, force, builderJob), // construction never starves
     ...staffBuildings(world, ctx, player, force, tally, 'target'),
-    ...topUpCollectors(world, ctx, hq, wanted, collectorsByGood, force, taken),
+    ...topUpCollectors(world, ctx, base, wanted, collectorsByGood, force, taken),
     ...staffBuildings(world, ctx, player, force, tally, 'surplus'),
-    ...allocateGenericCollectors(world, ctx, hq, genericCollectors, force, taken, builderJob),
+    ...allocateGenericCollectors(world, ctx, base, genericCollectors, force, taken, builderJob),
     ...trainGarrison(world, ctx, player, force),
     ...tuneCraftSelections(world, ctx, player),
   ];
+}
+
+/**
+ * What a BASELESS seat runs instead of the ladder: the builder reserve, then minimum staffing. The
+ * ladder's order is deliberately INVERTED here - a based seat fills its minimums before reserving
+ * builders, but with no hub the site is existential and a post is not, and this allocator is the only
+ * thing that turns a man into a builder, so covering a vacancy first could leave a one-man seat with
+ * nobody to raise the very site that gives it a base back. Minimums still follow, so a raid that
+ * takes the hub and the baker together does not freeze the bakery for the whole rebuild.
+ */
+function rebuildCrew(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  builderJob: number | null,
+): readonly Command[] {
+  if (!ownedBuildings(world, player).some((e) => world.has(e, UnderConstruction))) return [];
+  const force = new SpareForce(rebuildHands(world, ctx, player));
+  return [
+    ...reserveBuilders(world, force, builderJob),
+    ...staffBuildings(world, ctx, player, force, buildStaffingTally(world), 'min'),
+  ];
+}
+
+/**
+ * Every man a baseless seat may put on that site, spare first. Beyond the pool it takes the two
+ * classes the based branch would have recycled - a scout has no duty left (both its probes gate on
+ * the base) and a generic gatherer is not worth protecting here - and finally men standing at a post,
+ * whose binding `setJob` drops. Without those two groups a seat whose few survivors were all
+ * classified or employed mints no builder at all and never regains a base.
+ *
+ * The seat pays for this: converting a gatherer drops its flag (`syncWorkFlagToJob`), so a rebuild
+ * that outlives the goods its razed base spilled can idle its own crew for want of materials. A man
+ * mid-action is left alone, the scout retire rule.
+ */
+function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[] {
+  const { pool, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, []);
+  const posted = ownedSettlers(world, player).filter(
+    (e) => world.has(e, JobAssignment) && !world.has(e, CurrentAtomic) && isAllocatableMan(world, ctx, e),
+  );
+  return [...pool, ...scouts, ...genericCollectors, ...posted];
 }
 
 /** The scout hire and retire: the scout exists exactly while either of its duties has work, a missing
