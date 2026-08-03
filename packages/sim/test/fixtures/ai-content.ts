@@ -128,8 +128,8 @@ export function aiContent(): ContentSet {
         hitpoints: 500,
         // Room to hide the town: the seat's own alarm rings over this and the tower below.
         shelterCapacity: 20,
-        // A real BODY, with the door on one side of it - the seat's army stages off the wall it would
-        // reach, so a doorless point building could not tell that rule from staging off the door.
+        // A real body with the door on one side: a point building would put every approach node, siege
+        // reach and shelter radius on the same tile and hide the difference.
         footprint: {
           blocked: [
             { dx: -2, dy: -2 },

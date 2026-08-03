@@ -3,9 +3,8 @@ import type { Command } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { MILITARY_MODE } from '../../../readviews/index.js';
-import { anotherSystemOwns } from '../../../settlers/planner/replan.js';
 import { entityNode } from '../../../spatial/nodes.js';
-import { onAnErrand } from '../errand.js';
+import { spokenFor } from '../errand.js';
 import type { Raider } from './threat.js';
 
 /**
@@ -27,7 +26,7 @@ export function sortieOrders(
   const reachable = terrain.componentOf(goal);
   for (const e of free) {
     if (terrain.componentOf(entityNode(world, terrain, e)) !== reachable) continue;
-    if (anotherSystemOwns(world, e) || onAnErrand(world, e)) continue;
+    if (spokenFor(world, e)) continue;
     // ATTACK before the walk, like a march order: a man sent home on DEFEND would blinker himself down to
     // the hold radius of wherever the run ended.
     if (world.tryGet(e, Stance)?.mode !== MILITARY_MODE.ATTACK) {

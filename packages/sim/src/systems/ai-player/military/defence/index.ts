@@ -1,4 +1,5 @@
-// The seat defending itself. Every rule here is a user rule: the original carries no readable defence plan.
+// The seat defending itself. The original carries no readable defence plan, so every rule here is an
+// approximation.
 
 export { alarmOrders } from './alarm.js';
 export { TOWER_GARRISON_ARCHERS, towerPostOrders } from './posts.js';
