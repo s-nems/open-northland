@@ -55,7 +55,6 @@ async function readAt(fh: FileHandle, offset: number, length: number): Promise<B
   return buffer;
 }
 
-/** Reads the central directory of the archive behind `fh`. */
 export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<ZipEntry[]> {
   const span = Math.min(fileSize, EOCD_SEARCH_SPAN);
   const tail = await readAt(fh, fileSize - span, span);

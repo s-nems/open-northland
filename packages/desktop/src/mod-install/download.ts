@@ -23,10 +23,6 @@ export function parseDriveFileId(url: string): string | undefined {
   return /\/file\/d\/([\w-]+)/.exec(url)?.[1];
 }
 
-/**
- * Drive's confirm-form action with the form's hidden fields replayed as query params, or undefined
- * when the HTML carries no such form.
- */
 export function parseDriveConfirmUrl(html: string): string | undefined {
   const action = /<form[^>]+action="([^"]+)"/.exec(html)?.[1];
   if (action === undefined) return undefined;

@@ -63,7 +63,6 @@ const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/backdrops/', root: BACKDROPS_ROOT, extensions: ['.jpg'] },
 ];
 
-/** One exact pathname → a JSON payload built by scanning a subtree of `content/`. */
 interface IndexRoute {
   readonly pathname: string;
   readonly root: string;

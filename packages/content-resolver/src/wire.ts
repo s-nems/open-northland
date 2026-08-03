@@ -39,7 +39,7 @@ export interface MapsIndexEntry {
   readonly multiplayer?: boolean;
 }
 
-/** One `/bobs-index` entry: a viewable atlas stem and its base-set / palette-variant split. */
+/** One `/bobs-index` entry: a viewable atlas stem. */
 export interface BobsIndexEntry {
   /** Names the `/bobs/<stem>.png` + `/bobs/<stem>.atlas.json` pair. */
   readonly stem: string;
