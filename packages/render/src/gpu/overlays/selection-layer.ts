@@ -8,27 +8,20 @@ import { feetAnchor } from './feet-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The selection layer - a feet-anchored ring under each currently-selected entity, drawn in world
- * space (a child of the camera's `worldLayer`, below the sprite layer) so a ring pans/zooms with the
- * unit and reads as a marker on the ground. Selection is a client-side view concern, not sim state
- * (the app owns the selected-id set); this layer just projects those ids to rings, exactly as the
- * sprite pool projects the snapshot to bobs as a pure consumer of the read-only snapshot + camera.
+ * The selection layer - a feet-anchored ring under each selected entity, drawn in world space below the
+ * sprite layer so it reads as a marker on the ground. Selection is a client-side view concern, not sim
+ * state: the app owns the selected-id set and this layer only projects it.
  *
- * Retained, like the sprite pool: a ring's ellipse geometry is built once per entity and only its
- * container position is moved each frame - steady-state work is a handful of transform writes, no
- * geometry churn. A ring pool keyed by entity id (ids are monotonic, a stable key); a
- * deselected/departed id's ring is destroyed. Per-frame cost follows the selection, not the map: each id
- * is resolved through `entityById` rather than by scanning the snapshot.
+ * Retained per entity id: a ring's ellipse geometry is built once and only its position moves each
+ * frame. Cost follows the selection, not the map - each id is resolved through `entityById` rather than
+ * by scanning the snapshot.
  *
- * A ring is sized to its target: a settler gets a small feet ellipse; a building gets a ground ellipse
- * sized to its actual sprite footprint (the pool's per-entity {@link EntityBounds}, passed in) so a big
- * headquarters gets a big marker and a small hut a small one - a fixed size can't fit both. The ring sits
- * below the sprites, so a unit in front occludes it; a building's ring is wide enough that its front arc
- * still reads clearly under the house.
+ * A ring is sized to its target: a settler gets a small feet ellipse, a building a ground ellipse sized
+ * to its actual sprite footprint, so a headquarters and a hut each get a fitting marker.
  */
 
-/** Settler feet ring half-extents (px) - a small ground ellipse under a settler's ~40px-wide body
- *  (deliberately much smaller than the 68×76 cell diamond, which would swallow the sprite). */
+/** Settler feet ring half-extents (px) - fitted to the ~40 px body, not the 68×76 cell diamond, which
+ *  would swallow the sprite. */
 const SETTLER_RING = { rx: 20, ry: 11 };
 /** Fallback building ring when the sprite's real bounds aren't known yet (no sheet / just appeared). */
 const BUILDING_RING = { rx: 54, ry: 30 };
@@ -37,11 +30,11 @@ const MIN_BUILDING_RX = 28;
 /** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
  *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
-/** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
+/** The selection ring: bright green, plus its line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
-/** The work-flag highlight colour (a bright amber) - the flag of a currently-selected gatherer, distinct
- *  from the green unit-selection ring, drawn a touch heavier so it reads under the flag's own sprite. */
+/** The work-flag highlight: amber, distinct from the green selection ring, drawn heavier so it reads
+ *  under the flag's own sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
 
@@ -69,21 +62,16 @@ export interface SelectionFrame {
 
 export class SelectionLayer {
   readonly container = new Container();
-  /** One persistent ring Graphics per selected entity id (green); geometry drawn once, repositioned after. */
+  /** One persistent ring per selected entity id (green). */
   private readonly rings = new Map<number, Graphics>();
-  /** One persistent ring per selected gatherer's flag entity id (amber) - the same pooling, a second cue. */
+  /** One persistent ring per selected gatherer's flag entity id (amber). */
   private readonly flagRings = new Map<number, Graphics>();
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly seenFlags = new Set<number>();
 
-  /**
-   * Reconcile both marker pools from the read-only snapshot's positions ({@link SelectionFrame}): a green ring
-   * under every `selected` entity, and an amber ring under every `flagged` id (the work flags of the
-   * selected gatherers). Each pool get-or-creates a ring per id (sized from {@link EntityBounds} via
-   * `frame.drawn` for buildings) and moves it to the entity's feet, then retires rings for ids no longer
-   * present. An emptied set retires its pool and does nothing else.
-   */
+  /** Reconcile both pools: a green ring under every `selected` entity, an amber one under every
+   *  `flagged` id (the work flags of the selected gatherers). */
   draw(frame: SelectionFrame, selected: ReadonlySet<number>, flagged: ReadonlySet<number> = NO_IDS): void {
     this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame);
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
@@ -131,12 +119,8 @@ export class SelectionLayer {
   }
 }
 
-/**
- * The ring geometry for a target: a settler's small fixed feet ellipse, or a building's ground ellipse
- * sized to its actual sprite footprint (`bounds`) - half its sprite width, floored so a small building
- * still reads, squashed to the iso ground ratio, and offset when the sprite isn't centred on the feet.
- * Falls back to a fixed building ellipse when the real bounds aren't available yet.
- */
+/** The ring geometry for a target: a settler's fixed feet ellipse, or a building's ellipse fitted to its
+ *  sprite footprint and offset when the sprite isn't centred on the feet. */
 function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: number): RingSpec {
   if (!isBuilding) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0 };
   if (bounds !== undefined) {
@@ -146,7 +130,7 @@ function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: 
   return { rx: BUILDING_RING.rx, ry: BUILDING_RING.ry, cx: 0 };
 }
 
-/** A single marker ring in `color`, its ellipse geometry authored once at the (feet-relative) centre `spec.cx`. */
+/** One marker ring, its ellipse authored once at the feet-relative centre `spec.cx`. */
 function makeRing(spec: RingSpec, color: number, width: number): Graphics {
   const g = new Graphics();
   g.ellipse(spec.cx, 0, spec.rx, spec.ry).fill({ color, alpha: 0.12 }).stroke({ width, color, alpha: 0.9 });

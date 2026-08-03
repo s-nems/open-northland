@@ -11,14 +11,12 @@ import {
 } from './sign-gfx.js';
 
 /**
- * What one building's sign chain looks like - the drawn half of the door-badge marker, split from the
- * layer that decides which chains exist and where they stand. Two shapes of the same bottom-to-top row
- * list: the decoded `ls_temp` signs, and the placeholder squares a checkout without `content/` gets.
- * Both grow upward from the chain's own anchor (the planted base row sits at y 0).
+ * The drawn half of the door-badge marker: one building's sign chain, in two shapes of the same
+ * bottom-to-top row list - the decoded `ls_temp` signs, and the placeholder squares a checkout without
+ * `content/` gets. Both grow upward from the chain's own anchor (the planted base row sits at y 0).
  */
 
-/** px the placeholder stack's base sits below its anchor node, so the squares stack up the wall from
- *  ground level. */
+/** px the placeholder stack's base sits below its anchor node. */
 export const STACK_BASE_DROP = 6;
 
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
@@ -26,29 +24,27 @@ const SIZE = 9;
 const GAP = 3;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>> = {
-  craftsman: 0x5ab6ff, // blue - a workshop tradesman
-  carrier: 0xffbb33, // amber - a hauler (tragarz)
-  gatherer: 0x7ed957, // green - a raw-good gatherer
+  craftsman: 0x5ab6ff, // blue
+  carrier: 0xffbb33, // amber
+  gatherer: 0x7ed957, // green
 };
 const BORDER_COLOR = 0x1a1206;
-/** Placeholder household dot colours - one per family shape ({@link HouseholdKind}). */
+/** Placeholder household dot colours, one per family shape. */
 const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
-  single: 0xd9d9d9, // grey - one settler lives here
-  couple: 0xff7a9c, // pink - a married couple
-  family: 0xffd24d, // gold - a couple raising a child
+  single: 0xd9d9d9, // grey
+  couple: 0xff7a9c, // pink
+  family: 0xffd24d, // gold
 };
-/** Hearts (make-love) drawing: colour, per-heart radius and the column they float in above the stack. */
+/** The make-love hearts floating above a stack. */
 const HEART_COLOR = 0xff4d78;
 const HEART_RADIUS = 3.5;
 const HEART_GAP = 12;
-const HEART_LIFT = 26; // px above the stack's top - "hearts over the house"
-const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising, not stacked
+const HEART_LIFT = 26; // px above the stack's top
+const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising
 const HEART_COUNT = 3;
 
-/** A door badge stack drawn from the decoded sign art: one player-coloured sign sprite per row,
- *  chained upward from the anchor ({@link SIGN_STEP}) - rows above the base draw their base-cropped
- *  variant ({@link chainedFrame}) so no rock clump lands on the emblem below - with the make-love
- *  hearts floating above. */
+/** A door badge stack from the decoded sign art: one player-coloured sign sprite per row, chained
+ *  upward from the anchor, with the make-love hearts floating above. */
 export function makeSignStack(
   rows: readonly DoorBadgeRow[],
   hearts: boolean,
@@ -75,10 +71,8 @@ export function makeSignStack(
   return c;
 }
 
-/** The placeholder stack (no decoded art): the same bottom-to-top rows as the sign chain, drawn as a
- *  coloured square per worker ({@link ROLE_COLOR}) and a round dot per resident family (round, so they
- *  read apart from the squares), growing up from the anchor, with the make-love hearts in a short
- *  column above it all. */
+/** The placeholder stack when no art is decoded: the same rows as the sign chain, a coloured square per
+ *  worker and a round dot per resident family, so the two read apart. */
 export function makeSquareStack(rows: readonly DoorBadgeRow[], hearts: boolean): Container {
   const c = new Container();
   let drawn = 0;
@@ -107,7 +101,6 @@ export function makeSquareStack(rows: readonly DoorBadgeRow[], hearts: boolean):
   return c;
 }
 
-/** One small heart at (`x`, `y`): two lobes + a point, in {@link HEART_COLOR}. */
 function makeHeart(x: number, y: number): Graphics {
   const g = new Graphics();
   const r = HEART_RADIUS;

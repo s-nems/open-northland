@@ -5,44 +5,39 @@ import type { BuildingSignSheet } from './sign-gfx.js';
 
 /**
  * The garrison flag - the marker a manned post flies from its roof instead of one worker sign per
- * soldier. The art is the original's player-coloured `ls_temp` `soldier 01`..`05` records: a starred
- * banner on a mast, each an eight-frame wave loop ({@link BuildingSignSheet.garrison}). The tower
- * records' own `gfxsoldierflagpoint` says where it is planted, which is what ties these five to a
- * manned tower rather than to any other sign.
+ * soldier. The art is the original's player-coloured `ls_temp` `soldier 01`..`05` records, each an
+ * eight-frame wave loop; the tower records' own `gfxsoldierflagpoint` says where it is planted, which is
+ * what ties these five to a manned tower rather than to any other sign.
  *
- * The badge layer owns where it flies (the building's mast point) and when it is rebuilt; this module
- * owns what it looks like - the star cap, the wave cadence, and the placeholder for a checkout with no
- * decoded art.
+ * The badge layer owns where it flies and when it is rebuilt; this module owns what it looks like.
  */
 
 /**
- * The most stars a flag flies. EXTRACTED: the ladder is exactly five records per player slot, and the
- * decoded bobs draw 1..5 stars in that order (`soldier 01` = bob 36 = one star … `soldier 05` = 68).
- * APPROXIMATION: that one star means one man, and that a bigger post (the big tower employs eight bows)
- * saturates here rather than gauging its capacity across the same five steps - the project owner's
- * recalled original behaviour, not something the data states.
+ * The most stars a flag flies. EXTRACTED: exactly five records per player slot, drawing 1..5 stars in
+ * that order (`soldier 01` = bob 36 … `soldier 05` = bob 68). APPROXIMATION, from observation: one star
+ * means one man, and a bigger post (the big tower employs eight bows) saturates here rather than gauging
+ * its capacity across the same five steps.
  */
 export const GARRISON_STAR_MAX = 5;
 
 /**
- * Sim ticks per wave frame. The record only says the frames loop (`GfxLoopAnimation`), never how fast,
- * so this is a NAMED APPROXIMATION: the mill rotor's cadence, which puts a full 8-frame wave at 16 ticks
- * (~1.3 s at x1, `TICKS_PER_SECOND` 12). A human validates it in the tower scene.
+ * Sim ticks per wave frame. `GfxLoopAnimation` says the frames loop, never how fast, so this is an
+ * APPROXIMATION: the mill rotor's cadence, which puts a full 8-frame wave at 16 ticks (~1.3 s at x1,
+ * `TICKS_PER_SECOND` 12).
  */
 export const GARRISON_TICKS_PER_FRAME = 2;
 
 /**
- * The flag's clickable band, world px from its mast anchor (+y down) - the drawn `soldier` frame's own
+ * The flag's clickable band, world px from its mast anchor (+y down): the drawn `soldier` frame's own
  * extent (46x43 at offset -4,-38; the wave frames vary by up to 2 px, so the box is the authored one).
- * Owned here with the drawing, like {@link signRowAt} owns the chain's, so a click lands on the cloth
- * the player aimed at. The banner hangs ~230 px above the tower's own pick box and would otherwise be a
- * hole in the map: a click through it clears the selection or walks the garrison past its own tower.
+ * Owned here with the drawing, so a click lands on the cloth the player aimed at rather than falling
+ * through to the ground ~230 px below the banner.
  */
 export function hitsGarrisonFlag(dx: number, dy: number): boolean {
   return dx >= -4 && dx <= 42 && dy >= -38 && dy <= 5;
 }
 
-/** A wave loop whose type carries its first frame, so the drawing below never re-proves it is non-empty. */
+/** A wave loop whose type carries its first frame, so callers never re-prove it is non-empty. */
 export type WaveLoop = readonly [AtlasFrame, ...AtlasFrame[]];
 
 /** A built flag: the node to mount at the mast point, plus the per-frame wave step when it draws real
@@ -52,8 +47,8 @@ export interface GarrisonFlagMark {
   readonly advance?: (clock: number) => void;
 }
 
-/** The wave loop a `stars`-strong post flies, or `undefined` when the sheet carries no flag art (or the
- *  count is no post at all). Stars beyond {@link GARRISON_STAR_MAX} fly the top record. */
+/** The wave loop a `stars`-strong post flies; undefined with no flag art or no post at all. Stars beyond
+ *  {@link GARRISON_STAR_MAX} fly the top record. */
 export function garrisonFlagLoop(sheet: BuildingSignSheet | undefined, stars: number): WaveLoop | undefined {
   if (stars < 1) return undefined;
   const [first, ...rest] = sheet?.garrison?.[Math.min(stars, GARRISON_STAR_MAX) - 1] ?? [];
@@ -94,11 +89,10 @@ const PENNANT_HEIGHT = 20;
 const PENNANT_COLOR = 0x3b6fd4;
 const STAR_RADIUS = 2.5;
 const STAR_COLOR = 0xffcc33;
-/** Placeholder stars per row - three, then the rest below, so five fit the pennant. */
+/** Placeholder stars per row, so five fit the pennant. */
 const STAR_COLUMNS = 3;
 
-/** The no-art flag: a mast flying a plain pennant with one dot per star, in roughly the band the real
- *  art occupies, so a checkout without `content/` still reads "manned, by this many". */
+/** The no-art flag, drawn in roughly the band the real art occupies. */
 function makePlaceholderFlag(stars: number): Graphics {
   const g = new Graphics();
   const top = -MAST_HEIGHT;

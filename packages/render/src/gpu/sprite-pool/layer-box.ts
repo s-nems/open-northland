@@ -1,8 +1,8 @@
 import type { ResolvedLayer } from './resolved-layer.js';
 
 /**
- * Where one resolved layer draws and the box its layers union into, in feet-local px about the container
- * origin. Filled in place: this runs per drawn layer per visible entity per frame.
+ * Layer geometry in feet-local px about the container origin, filled in place: this runs per drawn layer
+ * per visible entity per frame.
  */
 
 /** `ox`/`oy` are the layer's uncropped rect, `drawnOy` where the (possibly cropped) texture lands.
@@ -22,11 +22,9 @@ export function createLayerDrawBox(): LayerDrawBox {
 
 /**
  * A reveal layer without per-pixel time data falls back to the bottom-up crop: only its bottom
- * `displayReveal` fraction draws, shifted down so its base stays put - the building rising out of the
- * ground. `perPixelReveal` says the caller bound a baked TimeMask instead, which crops nothing.
- *
- * The uncropped rect is what bounds are stamped from: a construction site is picked over the final
- * building's whole box, so a barely-started foundation stays clickable over its plot.
+ * `displayReveal` fraction draws, shifted down so its base stays put. `perPixelReveal` says the caller
+ * bound a baked TimeMask instead, which crops nothing. Bounds stamp from the uncropped rect, so a
+ * barely-started foundation stays clickable over the finished building's whole plot.
  */
 export function layerDrawBox(
   out: LayerDrawBox,
@@ -45,8 +43,8 @@ export function layerDrawBox(
   out.height = layer.frame.height * layer.scale;
 }
 
-/** A reusable AABB accumulator - one instance per pool, {@link reset} per entity. Empty until first
- *  {@link add}, which the inverted initial extents encode. */
+/** A reusable AABB accumulator, empty until the first {@link add} - which the inverted initial extents
+ *  encode. */
 export class BoundsUnion {
   minX = Number.POSITIVE_INFINITY;
   minY = Number.POSITIVE_INFINITY;
