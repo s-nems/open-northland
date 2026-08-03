@@ -1,4 +1,5 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { workerRoleOf } from '../../game/sandbox/index.js';
 import { actorsOf, isSettler, num } from '../../game/snapshot.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
@@ -36,29 +37,35 @@ export function groupedWorkers(
   return { ids, gaps };
 }
 
-/** The (capped) settler ids to draw for `buildingId`, most-belonging first: its POSTED staff (bound by
- *  `JobAssignment`), then - with `siteCrew` (a construction site - builders are never JobAssignment-bound
- *  to it) - the crew raising it, counted by persistent crew membership (`SiteAssignment` - hammering,
- *  waiting for material, or detoured, it stays listed) plus a plain hauler showing transiently while
- *  depositing there (`CurrentAtomic.targetEntity`) or on a supply errand for it (`SupplyRun`). Posted
- *  first because a site's build crew is usually older than the posting and would otherwise fill the cap
- *  with the very settlers the strip above is NOT counting. Within each group, snapshot order - a view
- *  read, so ascending id is fine.
+/** The (capped) settler ids to draw for `buildingId`, most-belonging first: its GARRISON, then the rest of
+ *  its POSTED staff (bound by `JobAssignment`), then - with `siteCrew` (a construction site - builders are
+ *  never JobAssignment-bound to it) - the crew raising it, counted by persistent crew membership
+ *  (`SiteAssignment` - hammering, waiting for material, or detoured, it stays listed) plus a plain hauler
+ *  showing transiently while depositing there (`CurrentAtomic.targetEntity`) or on a supply errand for it
+ *  (`SupplyRun`). Posted first because a site's build crew is usually older than the posting and would
+ *  otherwise fill the cap with the very settlers the strip above is NOT counting. Within each group,
+ *  snapshot order - a view read, so ascending id is fine.
+ *
+ *  The garrison leads because this strip is its ONLY click target: a man holding a tower is `Resting`, so
+ *  the map neither draws nor picks him, and the projection gives him no badge row either. A full big tower
+ *  posts 12 (`logicworker` 4/4/4) against a field that fits {@link MAX_WORKERS}, so without the split the
+ *  men past the cap would be unselectable - and a walk order is how a posting is cancelled.
  *
  *  A recruit on a barracks drill (`TrainingOrder`) is listed last, from the order to the last repetition,
  *  so a crowded field drops a visitor rather than a working post. It is the only
  *  sight of him for the half of that the map hides him, standing frozen inside the house. */
 export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
+  const garrison: number[] = [];
   const posted: number[] = [];
   const crew: number[] = [];
   const drilling: number[] = [];
-  // Each bucket stops at the field's capacity, and the whole scan stops once the posted staff alone fills
-  // it: nothing below them could be drawn. This runs per sim tick while a building panel is open.
+  // Each bucket stops at the field's capacity, and the whole scan stops once the garrison alone fills it:
+  // nothing below it could be drawn. This runs per sim tick while a building panel is open.
   const push = (into: number[], id: number): void => {
     if (into.length < MAX_WORKERS) into.push(id);
   };
   for (const e of actorsOf(snapshot)) {
-    if (posted.length >= MAX_WORKERS) break;
+    if (garrison.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
@@ -70,9 +77,15 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
       (num(site?.site) === buildingId ||
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
-    if (num(assignment?.workplace) === buildingId) posted.push(e.id);
+    if (num(assignment?.workplace) === buildingId) push(mansAPost(e) ? garrison : posted, e.id);
     else if (raising) push(crew, e.id);
     else if (num(drill?.house) === buildingId) push(drilling, e.id);
   }
-  return [...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
+  return [...garrison, ...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
+}
+
+/** Whether this settler's trade is a tower post rather than ordinary work at its building. */
+function mansAPost(e: { components: Record<string, unknown> }): boolean {
+  const jobType = num((e.components.Settler as { jobType?: unknown } | undefined)?.jobType);
+  return jobType !== undefined && workerRoleOf(jobType) === 'garrison';
 }

@@ -62,9 +62,10 @@ export interface DoorBadge {
   readonly rows: readonly DoorBadgeRow[];
   /** True while the resident couple makes love here - draws the hearts over the house. */
   readonly hearts?: boolean;
-  /** The garrison this building's roof flies a flag for. Its soldiers are deliberately absent from
-   *  {@link rows}: the flag stands for the whole post, one star per man (the art caps the count), at
-   *  its own screen-px offset from the projected anchor (the mast point, +y down). */
+  /** The garrison this building's roof flies a flag for - the men POSTED to it, not the ones currently
+   *  up there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers are
+   *  deliberately absent from {@link rows}: the flag stands for the whole post, one star per man (the art
+   *  caps the count), at its own screen-px offset from the projected anchor (the mast point, +y down). */
   readonly garrison?: {
     readonly stars: number;
     readonly dx: number;
@@ -82,8 +83,8 @@ interface BadgeStack {
   /** The drawn rows joined into a change-detection key ('' = none). */
   readonly rows: string;
   readonly hearts: boolean;
-  /** Stars flown this build (0 = no garrison) - part of the key, so a man arriving at or leaving the
-   *  post swaps the flag. */
+  /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
+   *  swaps the flag. */
   readonly stars: number;
   /** The player recolour the stack was built with (0 when drawing the player-agnostic placeholder
    *  squares, so an owner change never rebuilds a visually identical square stack). The art basis

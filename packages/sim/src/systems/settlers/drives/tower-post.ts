@@ -11,7 +11,7 @@ import { standsAtPost, towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { needAtomicDuration } from '../../readviews/animations.js';
 import { EAT_ATOMIC_ID, eatDuration, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
-import { enterBuilding, takePost } from '../indoors.js';
+import { enterBuilding, stepOut, takePost } from '../indoors.js';
 import { interactionCell, storedFoodGood } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
@@ -45,19 +45,21 @@ export function planTowerPost(
 }
 
 /**
- * Give the post up: drop the workplace binding, so {@link planTowerPost} stops claiming this settler.
- * Standing the watch has no completion, so nothing else ends it - a garrison walked off its tower with the
- * binding intact climbs straight back on the next re-plan. Stepping off the tile is not done here: the
- * re-plan's garrison stand-down owns that exit and runs the same tick (`planner/replan.ts`). No-op for
- * anyone who is not a posted fighter, so a shared order handler leaves every other worker employed.
+ * Give the post up: step off the tower and drop the workplace binding, so {@link planTowerPost} stops
+ * claiming this settler. Standing the watch has no completion, so nothing else ends it - a garrison walked
+ * off his tower with the binding intact climbs back on the next re-plan. The exit is taken here rather than
+ * left to the re-plan's stand-down because a DEFERRED order re-dispatches AFTER the planner has run
+ * (`schedule.ts`), and that tick's combat pass would read a man standing on a post he no longer holds -
+ * untargetable out in the open. A no-op for anyone who is not a posted fighter.
  *
- * Source basis: user rule 2026-08-03. The original exposes no readable "leave the tower" primitive; the
- * decision is that the player's next order for that man IS the cancellation.
+ * Source basis: user rule 2026-08-03 - the original has no readable "leave the tower" primitive, so the
+ * player's next order for that man IS the cancellation.
  */
 export function releaseTowerPost(world: World, ctx: SystemContext, e: Entity): void {
   const jobType = world.tryGet(e, Settler)?.jobType;
   if (jobType == null || towerPostFor(world, ctx, e, jobType) === null) return;
   world.remove(e, JobAssignment);
+  stepOut(world, e);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { CurrentAtomic, EquipOrder, Stance, TrainingOrder } from '../../../components/index.js';
+import { CurrentAtomic, EquipOrder, Garrison, Stance, TrainingOrder } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -204,12 +204,15 @@ function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeI
   return manhattan(terrain, entityNode(world, terrain, e), rally) <= RALLY_HOLD_RADIUS_NODES;
 }
 
-/** Errands a recall would silently throw away: `moveUnit` strips the drill and equip orders and cancels
- *  a running action, and a fighter already walking is on his way somewhere for a reason. */
+/** Errands a recall would silently throw away: `moveUnit` strips the drill and equip orders, un-posts a
+ *  tower garrison, and cancels a running action, and a fighter already walking is on his way somewhere for
+ *  a reason. The garrison clause is insurance, not a live path - the AI staffs no towers today - but a seat
+ *  handed to the AI (`?ai=`) would otherwise walk the human's archers off their walls for good. */
 function isBusy(world: World, e: Entity): boolean {
   return (
     world.has(e, TrainingOrder) ||
     world.has(e, EquipOrder) ||
+    world.has(e, Garrison) ||
     world.has(e, CurrentAtomic) ||
     isTravelling(world, e)
   );

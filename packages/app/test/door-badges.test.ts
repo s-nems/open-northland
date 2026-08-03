@@ -218,6 +218,17 @@ describe('computeDoorBadges', () => {
     expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison?.stars).toBe(8);
   });
 
+  it('flies no flag over a tower still going up - the mast point is the finished tower’s', () => {
+    const types = new Map<number, BuildingDoorInfo>([[7, { mastPoint: { x: -6, y: -239 } }]]);
+    const site = building(1, 7, 4, 4);
+    site.components.UnderConstruction = { progress: 0 };
+    const snap = snapshotOf([site, settler(2, ARCHER, 1)]);
+
+    // An archer can be posted to a foundation, but the sim refuses him the post until it stands, so a
+    // banner 239 px up would hang over scaffolding for a garrison that cannot exist yet.
+    expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison).toBeUndefined();
+  });
+
   it('flies the flag from the sign post when nobody authored the building a mast', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { flagPoint: { x: -6, y: 29 } }]]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, ARCHER, 1)]);

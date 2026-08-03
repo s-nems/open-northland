@@ -21,6 +21,10 @@ building.
 Out of scope: any automatic re-employment. A released settler stays trade-ful and unposted until the
 player says otherwise.
 
+One class already has an implicit release: a walk order un-posts a tower garrison, because standing
+the watch has no other end (`systems/settlers/drives/tower-post.ts`). The explicit control must land on
+the same semantics - drop the binding, keep the trade - so the two do not diverge.
+
 Related gap worth folding in: there is no settlement-wide view of trade-ful but unposted settlers, and
 a razed workplace now releases its crew into exactly that state. Today they can only be found by
 clicking each one, so the release control and a way to see who is waiting for work belong together.

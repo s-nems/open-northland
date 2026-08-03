@@ -2,6 +2,9 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  CurrentAtomic,
+  DeferredOrder,
+  EquipOrder,
   Garrison,
   Health,
   JobAssignment,
@@ -14,7 +17,8 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
+import type { NodeId } from '../../src/nav/terrain/index.js';
 import { TOWER_RANGE_BONUS_NODES } from '../../src/systems/conflict/tower-post.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -156,6 +160,14 @@ function manTheTower(sim: Simulation, soldier: Entity, tower: Entity): void {
   run(sim, WALK_TICKS);
 }
 
+/** The terrain node id under tile `(x, y)` - the id space an order's `returnTo` is compared in. */
+function terrainNodeAt(sim: Simulation, x: number, y: number): NodeId {
+  const n = nodeOfPosition(fx.fromInt(x), fx.fromInt(y));
+  const terrain = sim.terrain;
+  if (terrain === undefined) throw new Error('mapped sim expected');
+  return terrain.nodeAtClamped(n.hx, n.hy);
+}
+
 function tileOf(sim: Simulation, e: Entity): { x: number; y: number } {
   const p = sim.world.get(e, Position);
   return { x: fx.toInt(p.x), y: fx.toInt(p.y) };
@@ -263,6 +275,71 @@ describe('the tower garrison - calling the posting off', () => {
     run(sim, 40);
 
     expect(sim.world.tryGet(hauler, JobAssignment)).toEqual({ workplace: tower });
+  });
+
+  it('an order parked behind a meal takes him off the tile the tick it finally fires', () => {
+    // A deferred order re-dispatches AFTER the planner has run, so a release that left the tile to the
+    // re-plan would leave a man standing on a post he no longer holds - and that same tick's combat pass
+    // would still read him as sheltered, untargetable out in the open.
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 5]]) });
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    sim.world.get(soldier, Settler).hunger = STARVING;
+    for (let i = 0; i < WALK_TICKS && !sim.world.has(soldier, CurrentAtomic); i++) sim.step();
+    expect(sim.world.has(soldier, CurrentAtomic)).toBe(true); // eating at his post
+
+    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    sim.step();
+    expect(sim.world.has(soldier, DeferredOrder)).toBe(true); // parked behind the meal, not discarded
+    for (let i = 0; i < WALK_TICKS && sim.world.has(soldier, DeferredOrder); i++) sim.step();
+
+    expect(sim.world.has(soldier, DeferredOrder)).toBe(false); // it fired this tick
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false);
+    expect(sim.world.has(soldier, Garrison)).toBe(false);
+    expect(tileOf(sim, soldier)).not.toEqual(tileOf(sim, tower));
+  });
+});
+
+describe('the tower garrison - where the watch sits in the drive ladder', () => {
+  it('climbs the tower even under a DEFEND stance - the post is the more specific standing order', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    run(sim, 2); // after the posting: it re-idles him, which re-stamps his stance to the class default
+    sim.enqueue({ kind: 'setStance', entity: soldier, mode: MILITARY_MODE.DEFEND });
+
+    run(sim, WALK_TICKS);
+
+    // Below the watch, the DEFEND rung would return and freeze him on the tile the stance was set on.
+    expect(sim.world.get(soldier, Stance).mode).toBe(MILITARY_MODE.DEFEND);
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
+    expect(tileOf(sim, soldier)).toEqual(tileOf(sim, tower));
+  });
+
+  it('runs a player equip errand first - the watch waits for the man to come back with his gear', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    run(sim, 2);
+    // The errand outranks the watch, so it holds him off the tower for as long as it lasts. Stamped
+    // rather than ordered: what is under test is the rung order, not where the gear comes from.
+    sim.world.add(soldier, EquipOrder, {
+      group: 'weapon',
+      slot: 0,
+      goodType: null,
+      returnTo: terrainNodeAt(sim, 2, 3),
+      stage: 'acquire',
+      issuer: 'player',
+    });
+
+    run(sim, WALK_TICKS);
+
+    expect(sim.world.has(soldier, Garrison)).toBe(false);
+    expect(sim.world.tryGet(soldier, JobAssignment)).toEqual({ workplace: tower }); // still posted
   });
 });
 

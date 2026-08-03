@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { JOB_ARCHER } from '../src/catalog/jobs.js';
 import { actorsOf } from '../src/game/snapshot.js';
 import {
   boundWorkers,
@@ -58,6 +59,20 @@ describe('boundWorkers', () => {
     );
     const kept = boundWorkers(snapshotOf(many), BUILDING, false);
     expect(kept).toEqual(Array.from({ length: MAX_WORKERS }, (_, i) => i + 1));
+  });
+
+  it('lists the garrison before the rest of the staff, so a full tower never hides an archer', () => {
+    // A big tower posts 12 (`logicworker` 4/4/4) into a field that fits MAX_WORKERS, and a man holding a
+    // tower is `Resting` - the map neither draws nor picks him - so this strip is his only click target,
+    // and clicking him is how the player cancels the posting. The haulers can always be clicked outside.
+    const haulers = Array.from({ length: MAX_WORKERS }, (_, i) =>
+      sett(i + 1, { JobAssignment: { workplace: BUILDING } }),
+    );
+    const archer = sett(99, {
+      Settler: { jobType: JOB_ARCHER },
+      JobAssignment: { workplace: BUILDING },
+    });
+    expect(boundWorkers(snapshotOf([...haulers, archer]), BUILDING, false)[0]).toBe(99);
   });
 
   it('lists a recruit drilling here after the staff, and not one drilling elsewhere', () => {

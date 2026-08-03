@@ -334,10 +334,11 @@ function swingAt(
 }
 
 /** Who never walks toward a target out of reach: a GARRISON (a wall may not be abandoned to chase) and an
- *  unowned scenario CIV. Both search bands are capped at `maxRange`, so neither case can actually reach
- *  here - kept explicit rather than assumed away. An owned combatant advances, and so does a hostile wild
- *  animal (the wolf's ambush lunge, the provoked bear's charge - {@link resolveTarget} only admits a victim
- *  inside its aggro radius). */
+ *  unowned scenario CIV. For a garrison this is where the player's attack order onto something past the
+ *  tower's reach dies: {@link resolveTarget} hands a focus back at its REAL distance, uncapped by the search
+ *  band, so the order arrives here and {@link disengage} lets it go instead of marching the man out. An
+ *  owned combatant advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked bear's
+ *  charge - {@link resolveTarget} only admits a victim inside its aggro radius). */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   if (stance.post !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
