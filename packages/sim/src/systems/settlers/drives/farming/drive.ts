@@ -28,24 +28,17 @@ import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
 
-// The farmer drive - the field-cultivation rung of the planner ladder: a worker bound to a farm (a workplace
-// producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing, watering and reaping
-// wheat fields and carries each cut sheaf home. The field lifecycle itself (growth, the sow/water/reap effects)
-// lives in ../../../economy/fields.ts; this module decides what the farmer does next. Source basis: the
-// actions and their animations are the original's own farmer vocabulary (atomics 34/35/29); the loop's
-// ordering is engine-side and not decoded, so the priority below (reap > carry > sow > water > wait) is a
-// named approximation of the observed original.
+// The field lifecycle itself (growth, the sow/water/reap effects) lives in ../../../economy/fields.ts; this
+// module decides what a farmer does next. The actions and their animations are the original's own farmer
+// atomics; approximation: their ordering is engine-side and not decoded.
 
 import type { FarmClaims } from './claims.js';
 import { nearestFarmSheaf, nextSowNode } from './targets.js';
 
 /**
- * The farm a bound settler should work as a field-farmer, with the farmed good's resolved spec - or null when
- * the settler isn't a field-farmer here (it then falls through to the producer/gatherer rungs). The farm twin
- * of `boundWorkplaceTarget`, differing in the workplace test: a producing workplace carries a `recipe`, a farm
- * produces a `farming` good ({@link farmWorkGood}); the settler must also be permitted the good's plant atomic
- * (the data-driven "is the field trade" gate - the farm's carrier slot shares the building but may not sow, so
- * it falls through to the porter rung).
+ * The farm a bound settler should work as a field-farmer, with the farmed good's resolved spec, or null when
+ * the settler is not the field trade here. The plant atomic is the gate: a farm's carrier slot shares the
+ * building but may not sow, so it falls through to the porter rung.
  */
 function boundFarmTarget(
   world: World,
@@ -55,55 +48,28 @@ function boundFarmTarget(
   tribe: number,
 ): { farm: Entity; spec: FarmingSpec } | null {
   const binding = world.tryGet(settler, JobAssignment);
-  if (binding === undefined) return null; // unassigned - no farm to work
+  if (binding === undefined) return null;
   const b = binding.workplace;
   const building = world.tryGet(b, Building);
-  if (building === undefined || building.tribe !== tribe) return null; // gone / wrong tribe
-  // A foundation fields no crew - the readable original gates the farmer trade on a finished house
-  // (`jobtypes.ini` farmer `mustHaveFinishedWorkHouseFlag 1`), so a farm still being raised neither sows its
-  // ring nor shelters a Resting worker inside its skeleton.
+  if (building === undefined || building.tribe !== tribe) return null;
+  // `jobtypes.ini` farmer `mustHaveFinishedWorkHouseFlag 1`: a farm still being raised fields no crew.
   if (world.has(b, UnderConstruction)) return null;
   const spec = farmWorkGood(world, ctx, b);
-  if (spec === null) return null; // not a farm
+  if (spec === null) return null;
   if (!jobAtomics(ctx, jobType).has(spec.plantAtomic)) return null; // not the field trade (a carrier)
-  if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null; // doesn't employ this job
-  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null; // building-unlock gate (disabled - see buildingEnabled)
-  if (!world.has(b, Position)) return null; // a position-less farm has no fields to ring
+  if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null;
+  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null;
+  if (!world.has(b, Position)) return null;
   return { farm: b, spec };
 }
 
 /**
- * FARMER - the field-cultivation loop for a settler bound to a farm, in priority order (each step targets
- * the nearest candidate, Manhattan + ascending-cell-id tie-break over the canonical lists):
+ * The field-cultivation loop for a settler bound to a farm: reap, carry a sheaf home, sow, water, else wait
+ * inside the farm. Returns false only for a settler that is not a field-farmer here.
  *
- *  a. **Reap** a ripe field of this farm (the scythe swing - the good's harvest atomic; the cut wheat drops as
- *     a ground sheaf where the field stood).
- *  b. **Carry a sheaf home** - pick up a cut-wheat
- *     {@link import('../../../../components/index.js').GroundDrop} lying within the farm's field radius (the
- *     delivery rung then routes the load into the farm's own store - the bound storage sink).
- *  c. **Sow** a new field while the farm holds fewer than `maxFields` - a flat per-farm plot size, unchanged
- *     by crew size (observed) - walk to the next free node of the jittered field lattice around the farm and
- *     run the plant atomic. Sowing beats
- *     the can: with per-stage watering some field is almost always thirsty, so a water-first farmer would tend
- *     two seedlings forever and never expand the plot; a sown-but-dry field loses nothing by standing a moment.
- *  d. **Water** a thirsty field (the cultivate atomic) - every stage consumes one watering, so between sowings
- *     the farmer circles its growing fields with the can (see the farming module note).
- *  e. **Rest inside the farm** - nothing to reap, carry, water or sow this tick: walk to the farm and step
- *     inside (the render hides a settler that has gone in), back out the moment a field needs the
- *     can. The original's off-duty workers wait in the house, not lined at the door.
- *
- * Always returns true once bound to a farm (a farmer is spoken for, like the flag-bound gatherer); returns
- * false only for a settler that isn't a field-farmer here. The ordering is a named approximation (the
- * original's engine-side loop has no oracle); sow-before-water is load-bearing under per-stage watering (step c).
- *
- * Work division: every candidate scan skips nodes in `claims` (a colleague is en route - its live
- * {@link FarmTask}, or planned earlier this tick), and every issued action claims its node + stamps this
- * settler's own FarmTask - so N farmers spread over N different fields instead of walking in lockstep to one.
- *
- * Store-full pause: reap + sheaf-carry only run while some store can still take the crop (the farm's own wheat
- * slot, or any warehouse - {@link nearestStoreFor}); with every sink full, ripe fields stand and sheaves lie
- * until space frees, then the loop resumes by itself. Sowing/watering continue meanwhile (bounded by the field
- * cap), so a paused farm keeps a ripe buffer ready - a named approximation (no readable oracle).
+ * Approximation: the priority order has no decoded oracle. Sowing before watering is load-bearing, since
+ * per-stage watering leaves something thirsty almost always and a water-first farmer would never expand the
+ * plot. Reap and sheaf-carry pause while no store can take the crop; sowing and watering continue.
  */
 export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
@@ -115,40 +81,34 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
-  // The crop's extracted stroke count ({@link workRepeatsFor} - `baserepeatcounter`, farmer wheat 2);
-  // experience on its track cuts the strokes per spot ({@link scaledWorkRepeats}), so the whole
-  // labor-gated farm loop, and with it the farm's output, approaches 2x at mastery (approximation).
+  // Strokes per spot: the crop's `baserepeatcounter`, cut by experience on its track. Approximation: the
+  // labor-gated farm loop, and with it the farm's output, approaches 2x at mastery.
   const strokes = scaledWorkRepeats(
     workRepeatsFor(ctx, settler.jobType, spec.goodType),
     workSpeedBonus(world, ctx, e, spec.goodType),
   );
 
-  /** How long one field action takes: the atomic's animation length replayed `strokes` times - the
-   *  farmer scythes/sows/waters several strokes per spot, not one. */
+  /** One field action: the atomic's animation length replayed `strokes` times. */
   const swingTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic) * strokes;
 
-  /** Claim `node` for this settler's next action and record the in-flight intent (see FarmTask). */
+  /** Claim `node` for this settler's next action, so colleagues planned later this tick skip it. */
   const take = (node: NodeId, sow: boolean): void => {
     claims.nodes.add(node);
     if (sow) claims.byFarm.set(farm, (claims.byFarm.get(farm) ?? 0) + 1);
     world.add(e, FarmTask, { farm, node, sow });
   };
 
-  // The reachability layers every field/sheaf pick is filtered through. A field sits on open ground a
-  // building can later cover, and it is worked from its own node (`ANCHOR_ONLY_FOOTPRINT`), so a walled-in field is
-  // a goal `findPath` always rejects. Without this the nearest-first pick re-chooses that same doomed field
-  // every replan and the farmer never advances past it. The static component check catches the far bank of a
-  // river; walls are a DYNAMIC overlay and never split a component, so a field ringed by buildings is caught
-  // by the overlay or failed-route memo instead; the FieldReclaimSystem (../../../economy/field-reclaim.ts)
-  // reclaims the plot slot a field that stays sealed would otherwise hold.
+  // The reachability layers every field and sheaf pick is filtered through. A field is worked from its own
+  // node, so a walled-in one is a goal `findPath` always rejects and the nearest-first pick would re-choose
+  // that same doomed field every replan.
   const gates: WorkCellGates = {
     terrain,
     blocked: dynamicBlockOverlay(world, ctx, terrain),
     memo: unreachableGoals(world, ctx, e),
   };
 
-  // One pass over this farm's own fields: count them (the max-fields gate) and pick the nearest unclaimed
-  // ripe one (to reap) + unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
+  // One pass over this farm's fields serves both the plot cap and the nearest unclaimed ripe and thirsty
+  // pick, by (distance, cell) over the canonical list.
   let fields = 0;
   let ripe: Entity | null = null;
   let ripeCell = 0 as NodeId;
@@ -158,12 +118,12 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   let thirstyDist = Number.POSITIVE_INFINITY;
   for (const c of targets.cropsByFarm.get(farm) ?? []) {
     const crop = world.get(c, Crop);
-    // Counted before the reachability gate: a standing plant holds its slot whoever can reach it, so the
-    // plot cap stays a fact about the farm rather than about which farmer is asking.
+    // Counted before the reachability gate: the plot cap is a fact about the farm, not about which farmer
+    // is asking.
     fields++;
     const cell = interactionCell(world, ctx, terrain, c, here);
-    if (claims.nodes.has(cell)) continue; // a colleague is already on this field
-    if (unreachableWorkCell(gates, here, cell)) continue; // walled in - the walk there would fail
+    if (claims.nodes.has(cell)) continue;
+    if (unreachableWorkCell(gates, here, cell)) continue;
     const dist = manhattan(terrain, here, cell);
     if (crop.stage >= crop.stages) {
       if (closer(dist, cell, ripeDist, ripeCell)) {
@@ -180,12 +140,10 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     }
   }
 
-  // The store-full gate for the crop-moving steps (reap/carry): some store can still take the good - the farm's
-  // own slot, or any warehouse (then the delivery rung overflows the load there). Checked lazily, only when a
-  // ripe field or sheaf actually exists this tick.
+  // Any store that could take the crop: the farm's own slot, or a warehouse the delivery rung overflows to.
   const cropSinkExists = (): boolean => targets.sinks.has(spec.goodType);
 
-  // a. Reap the nearest ripe field (the scythe swing; the yield drops as a sheaf where it stood).
+  // Reap the nearest ripe field; the yield drops as a sheaf where it stood.
   if (ripe !== null && cropSinkExists()) {
     const node = ripe;
     take(ripeCell, false);
@@ -202,8 +160,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // b. Carry a sheaf home - the delivery rung then routes the load into the farm's own store (or, with
-  // the farm full, overflows it to the nearest warehouse that still has room).
+  // Carry a sheaf home; the delivery rung routes the load into the farm's own store, or overflows it to
+  // the nearest warehouse with room.
   const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims, gates });
   if (sheaf !== null && cropSinkExists()) {
     const cell = interactionCell(world, ctx, terrain, sheaf, here);
@@ -214,11 +172,9 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // c. Sow the next field while the farm is under its plot cap (in-flight sow-walks counted in). The cap
-  // belongs to the FARM, not its crew - measured in the original, a farm holds the same ~24 plants whether
-  // one farmer or four work it; extra farmers make the plot turn over faster, they do not enlarge it.
-  // Before the can: with per-stage watering something is almost always thirsty, so a water-first farmer
-  // would never expand.
+  // Sow the next field while the farm is under its plot cap, in-flight sow-walks counted in. Observation:
+  // the cap belongs to the farm, not its crew - extra farmers turn the plot over faster without enlarging
+  // it.
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(plan, { anchor, spec, claims, gates });
     if (node !== null) {
@@ -238,8 +194,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     }
   }
 
-  // d. Water the nearest thirsty field - each stage step consumes a watering, so the farmer circles its plot
-  // with the can between sowings.
+  // Water the nearest thirsty field; every growth stage consumes one watering.
   if (thirsty !== null) {
     const crop = thirsty;
     take(thirstyCell, false);
@@ -256,8 +211,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // e. Nothing to tend this tick - walk home and wait inside the farm (re-stamped every idle tick, so the
-  // marker holds without flicker; the replan sweep (planner/replan.ts) clears it the moment work appears).
+  // Nothing to tend this tick: wait inside the farm.
   enterBuilding(world, e, farm, here, interactionCell(world, ctx, terrain, farm, here));
   return true;
 }

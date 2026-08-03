@@ -7,15 +7,15 @@ import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/inde
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
- * The 4-connected radius of a completed workplace's loiter yard (4 half-cell steps ≈ two visual tiles).
- * This is a presentation tuning value, not extracted data.
+ * The 4-connected radius of a completed workplace's loiter yard, in half-cell steps, about two visual
+ * tiles. Approximation: a presentation tuning value, not extracted data.
  */
 const WORKPLACE_YARD_RADIUS_NODES = 4;
 
 /**
- * The spacing state shared by every drive that parks a settler on a node, for the span of one planner
- * tick. `occupancy` is built up front; the derived views below it are built on first use and reused for
- * the rest of the pass, so a tick whose settlers never reach a spacing drive pays for none of them.
+ * The spacing state shared by every drive that parks a settler on a node, for one planner tick.
+ * `occupancy` is built up front; the derived views are built on first use, so a tick whose settlers
+ * never reach a spacing drive pays for none of them.
  */
 export class PlannerSpacing {
   private readonly claims = new Set<NodeId>();
@@ -32,8 +32,7 @@ export class PlannerSpacing {
     private readonly buildBlockedCells: () => BlockOverlay,
   ) {}
 
-  /** Gated on {@link Owner}: the unowned golden/economy fixtures bucket nothing, so their planner
-   *  output stays byte-identical. */
+  /** Gated on {@link Owner}, so an unowned fixture buckets nothing. */
   static forTick(world: World, ctx: SystemContext, terrain: TerrainGraph): PlannerSpacing {
     const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
       (e) => !isTravelling(world, e),
@@ -44,7 +43,7 @@ export class PlannerSpacing {
   }
 
   /** Spacing over an occupancy and a walk-block overlay the caller already holds, for a fixture that
-   *  pins both rather than deriving them from the world. */
+   *  pins both instead of deriving them from the world. */
   static overExplicit(
     world: World,
     ctx: SystemContext,
@@ -81,11 +80,10 @@ export class PlannerSpacing {
   }
 
   /**
-   * A workplace anchor's loiter yard: every walkable, unblocked node reachable from `anchor` within
-   * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order - Set insertion order
-   * is the claim priority, anchor first when it qualifies. Blocked cells are neither entered nor
-   * traversed, mirroring the pathfinder, so a yard never spans a wall or a stream the walk couldn't
-   * cross. Bounded: ≤ ~2·R² nodes visited.
+   * A workplace anchor's loiter yard: every walkable, unblocked node within
+   * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps of `anchor`, in canonical ring order, where
+   * insertion order is the claim priority. Blocked cells are neither entered nor traversed, mirroring
+   * the pathfinder, so a yard never spans a wall the walk could not cross.
    */
   yard(anchor: NodeId): ReadonlySet<NodeId> {
     this.yardByAnchor ??= new Map();

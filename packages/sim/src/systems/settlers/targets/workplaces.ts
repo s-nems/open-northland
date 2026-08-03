@@ -10,10 +10,8 @@ import { buildingWorkerJobs, mergedRecipeOf } from '../../stores/index.js';
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
 /**
- * The set of atomic ids a job may run (`resolveJobAtomics`). An unknown jobType yields an empty set
- * (no permissions), so a settler with a job absent from content harvests nothing rather than
- * everything. This is the data-driven permission gate from `jobtypes` - the planner picks atomics the
- * job is allowed, never a hardcoded per-job list.
+ * The atomic ids a job may run, from `jobtypes`. An unknown jobType yields an empty set, so a settler
+ * whose job is absent from content harvests nothing rather than everything.
  */
 export function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
   return contentIndex(ctx.content).atomicsByJob.get(jobType) ?? EMPTY_ATOMICS;
@@ -32,11 +30,9 @@ export function boundWorkplaceTarget(
   const workplace = binding.workplace;
   const building = world.tryGet(workplace, Building);
   if (building === undefined || building.tribe !== tribe) return null;
-  // A trade needs its workhouse finished (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`,
-  // per-job data - 1 for the craft trades; applied as a blanket because the flag is not extracted, see
-  // docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md; the same gate the farm twin applies) - in practice
-  // a running upgrade: its stashed stock reads as empty input slots, so an ungated producer would shuttle
-  // inputs store-to-store (the site refuses the drop).
+  // A trade needs its workhouse finished (`jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data,
+  // applied as a blanket because the flag is not extracted). An upgrading workplace stashes its stock,
+  // which reads as empty input slots, so an ungated producer would shuttle inputs store to store.
   if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;

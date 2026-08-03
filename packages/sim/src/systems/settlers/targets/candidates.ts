@@ -21,8 +21,8 @@ import { SinkAvailability } from './stores/sinks.js';
 
 export interface YardTargets {
   readonly blocked: BlockOverlay;
-  /** Per yard-heap node: the good it holds and how full it is - what the yard steering needs to tell a
-   *  tile that still takes a unit from one `stackOntoTile` would refuse. */
+  /** Per yard-heap node: the good it holds and how full it is, so the yard steering can tell a tile that
+   *  still takes a unit from one `stackOntoTile` would refuse. */
   readonly occupied: ReadonlyMap<NodeId, { readonly good: number; readonly fill: number }>;
 }
 
@@ -32,23 +32,20 @@ export interface TargetCandidates {
   readonly resources: readonly Entity[];
   /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
   readonly stockpiles: readonly Entity[];
-  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks.
-   *  Built lazily by the first accessor (see {@link collectTargets}). */
+  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. */
   readonly stockpileCells: InteractionCellIndex;
   /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
-  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick.
-   *  Built lazily by the first accessor (see {@link collectTargets}). */
+  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick. */
   readonly buildingCells: InteractionCellIndex;
   /** Construction sites, kept separate so an idle world scans an empty list. */
   readonly constructionSites: readonly Entity[];
-  /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks.
-   *  Built lazily by the first accessor (see {@link collectTargets}). */
+  /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
   readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
-  /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id - so a farmer
-   *  reads only its own farm's fields instead of filtering the settlement's whole crop list per tick. */
+  /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id, so a farmer
+   *  reads only its own farm's fields instead of the settlement's whole crop list. */
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
   /** Good type to its content-authored harvesting atomic. */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
@@ -60,12 +57,9 @@ export interface TargetCandidates {
 
 /** Snapshot the planner's canonical target categories once for the tick.
  *
- *  The three {@link InteractionCellIndex}es are lazy getters memoized for the tick, so a tick where no
- *  settler asks for a nearest store / temple / site
- *  never constructs that index. Deferring the build cannot move a pick: each index is built from the
- *  eager candidate list here, and its constructor reads only `Building` + `Position` + the content
- *  footprint - none of which the planner pass mutates - so the first-access build is byte-identical
- *  to a tick-start build. */
+ *  The {@link InteractionCellIndex} getters are memoized for the tick, so an index no settler asks for
+ *  is never built. Deferring cannot move a pick: an index reads only the eager candidate list and state
+ *  the planner pass does not mutate, so a first-access build matches a tick-start one. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
   const harvestAtomicByGood = new Map<number, number>();
   for (const good of ctx.content.goods) {
@@ -88,7 +82,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   const buildings = canonicalById(world.query(Building, Position));
   const constructionSites = canonicalById(world.query(UnderConstruction, Building, Position));
   // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
-  // (distance, cell-id) tie-break picks the same field it did over the whole-world scan.
+  // tie-break picks the same field a whole-world scan would.
   const cropsByFarm = new Map<Entity, Entity[]>();
   for (const crop of canonicalById(world.query(Crop, Position))) {
     const farm = world.get(crop, Crop).farm;

@@ -7,13 +7,10 @@ import { mergedRecipeOf } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
- * Whether ANY workplace holds a haulable output this tick - a producing {@link Building} ({@link mergedRecipeOf}
- * defined) whose {@link Stockpile} holds ≥1 unit of one of its recipe outputs. The population-level gate
- * for {@link nearestWorkplaceOutput}: if this is false no carrier can haul, so idle settlers skip the
- * per-settler scan entirely (the same "holds an output" test the scan's inner loop applies, so a false
- * here means every scan would return null - identical behavior, done once instead of per settler). It is
- * deliberately WEAKER than the full scan (no "a store can take it" check): a true still runs the real
- * scan, which returns null if delivery is impossible - the gate only ever elides a provably-empty scan.
+ * Whether any workplace holds a haulable output this tick, the population-level dormancy gate for
+ * {@link nearestWorkplaceOutput}. It applies the same "holds an output" test as that scan's inner loop,
+ * so a false here means every per-settler scan would return null. It is deliberately weaker (no "a store
+ * can take it" check), so a true still runs the real scan and only a provably empty scan is elided.
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
   for (const e of stockpiles) {
@@ -29,17 +26,10 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
 }
 
 /**
- * The nearest workplace with a finished output good a carrier should haul away to a store. A
- * candidate is a {@link Building} with a {@link Stockpile} whose building type carries a `recipe`
- * (it is a workplace, so a stocked good is finished output, not a passive store's reserve), holding
- * at least one unit of one of its recipe's output goods that a *different* store can stock. Returns
- * the workplace and the specific good to haul, or null if nothing needs hauling.
- *
- * Determinism: workplaces are scanned in canonical entity-id order with a Manhattan-distance +
- * ascending-cell-id tie-break; within a workplace the good is chosen by canonical (ascending
- * goodType) order via {@link stockpileEntries} - never raw Map insertion order. The "some other
- * store can take it" check ({@link nearestStoreFor}) keeps the carrier from picking up a good it
- * could never deliver (which would just shuttle it back and forth).
+ * The nearest workplace with a finished output good a carrier should haul away, with the good to haul,
+ * or null when nothing needs hauling. A candidate is a building whose type carries a recipe, so a
+ * stocked good is finished output rather than a passive store's reserve. The `deliverable` check keeps
+ * the carrier from picking up a good it could never deliver and would shuttle back and forth.
  */
 export function nearestWorkplaceOutput(
   index: InteractionCellIndex,
@@ -47,15 +37,14 @@ export function nearestWorkplaceOutput(
   world: World,
   ctx: SystemContext,
   here: NodeId,
-  /** The carrier's owning player - never hauls another player's workplace output ({@link sameSideAs}). */
+  /** The carrier's owning player. It never hauls another player's workplace output. */
   owner: number | undefined,
-  /** The carrier's signpost confinement - an out-of-area workplace is not one it fetches from. */
+  /** The carrier's signpost confinement: an out-of-area workplace is not one it fetches from. */
   gate?: SpatialGate,
-  /** The carrier's failed-goal veto ({@link unreachableGoalVeto}). */
+  /** The carrier's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): { workplace: Entity; goodType: number } | null {
-  // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
-  // qualify, and the good that qualified the winner is the good it hauls.
+  // The good that qualified the winner is the good it hauls.
   const winner = index.nearest(
     here,
     (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
@@ -66,27 +55,23 @@ export function nearestWorkplaceOutput(
   return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }
 
-/** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and the seeking
- *  carrier could actually deliver (`deliverable` - its {@link deliverableGoodProbe}) - or null when the
- *  entity is not a workplace holding a deliverable output. Canonical (ascending goodType via
- *  {@link stockpileEntries}) so the chosen good never depends on Map insertion history; side-effect-free,
- *  so the ring may re-evaluate it on the fallback scan. */
+/** The lowest-goodType output a workplace stocks that its recipe produces and the carrier could deliver,
+ *  or null. Canonical order, and side-effect-free so the ring may re-evaluate it on the fallback scan. */
 function haulableOutputGood(
   world: World,
   ctx: SystemContext,
   deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
-  // A construction site's stock is its delivered materials, never finished output - an upgrading
-  // stonecutter/sawmill would otherwise offer its own construction stone/wood as a "recipe output"
-  // and a carrier would strip the site.
+  // A construction site's stock is its delivered materials, never finished output: an upgrading sawmill
+  // would otherwise offer its own construction wood as a recipe output and a carrier would strip it.
   if (world.has(entity, UnderConstruction)) return null;
   const recipe = mergedRecipeOf(world, ctx, entity);
-  if (recipe === undefined) return null; // not a workplace - passive stores aren't hauled FROM
+  if (recipe === undefined) return null; // not a workplace - passive stores aren't hauled from
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
     if (amount <= 0) continue;
     if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
-    if (!deliverable(goodType)) continue; // no reachable sink - never pick a good it couldn't deliver
+    if (!deliverable(goodType)) continue; // no reachable sink
     return goodType;
   }
   return null;

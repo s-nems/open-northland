@@ -7,30 +7,20 @@ import { closer, forEachRingOffset, manhattan } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
 
 /**
- * The greatest Manhattan ring radius (in half-cell NODES) the interaction-cell ring search expands to
- * before falling back to a full linear scan. The bound only stops a settler far from every building
- * from walking the whole map in empty rings; it never changes WHICH target wins (the fallback
- * reproduces the exact linear winner), so it is a pure performance knob, not a decoded distance
- * (named approximation).
+ * Greatest Manhattan ring radius (half-cell nodes) the interaction-cell ring search expands to before
+ * falling back to a full linear scan. Performance bound only: the fallback picks the same winner.
+ * Approximation, not a decoded distance.
  */
 const NEAREST_RING_MAX_RADIUS = 48;
 
 /**
- * Bucket count at or below which `nearest` skips the ring sweep for the exact linear scan. A ring sweep
- * pays off only when buckets are dense enough that a hit ends it early; a MISS costs the full diamond -
- * O(maxRadius²) ≈ 4600 node probes - regardless of how few buckets exist, and a confined (gated) search
- * misses often (every sink out of the settler's area). With ≤ this many buckets the linear scan's
- * `accept` calls are provably cheaper than the empty sweep; the winner is identical (the ring is only an
- * accelerator over the linear reference). Performance knob, not behavior (named approximation).
+ * Bucket count at or below which `nearest` skips the ring sweep for the linear scan: a ring miss costs
+ * the whole O(maxRadius²) diamond however few buckets exist, and a confined search misses often.
+ * Performance knob with an identical winner. Approximation.
  */
 const RING_MIN_BUCKETS = 64;
 
-/**
- * A candidate's interaction cell, the distance a scan measured to it, and the `payload` the scan's
- * qualification derived on the way (the good the winning pile stocks). Carrying it through means the caller
- * never re-derives what already qualified the winner - the two could silently disagree (a returned good the
- * accept never approved).
- */
+/** A scan winner, carrying whatever its `accept` derived on the way so the caller never re-derives it. */
 export interface NearestByCell<P = null> {
   readonly entity: Entity;
   readonly cell: NodeId;
@@ -38,27 +28,19 @@ export interface NearestByCell<P = null> {
   readonly payload: P;
 }
 
-/**
- * A qualifying candidate, as an {@link InteractionCellIndex.nearest} `accept` reports it: the value the
- * qualification derived, carried through to the winner. Scans that derive nothing qualify with
- * `payload: null`. Wrapping the verdict (rather than returning a bare value) keeps the reject case the one
- * unambiguous `null` - a bare `false` would otherwise read as a qualified candidate.
- */
+/** An accept verdict carrying the value the qualification derived. A `null` in place of it is the only
+ *  reject, so a derived falsy value can never read as a rejection. */
 export interface Qualified<P> {
   readonly payload: P;
 }
 
-/** The {@link Qualified} verdict of a scan that derives nothing - "this candidate passes, with no value to
- *  carry". Shared, so a plain accept allocates nothing per candidate. */
+/** The verdict of a scan that derives nothing. Shared, so a plain accept allocates nothing per candidate. */
 export const QUALIFIES: Qualified<null> = { payload: null };
 
-/** A {@link Qualified} wrapper for the "derive the good, or reject" accepts - `null` in stays a reject. */
 export function qualifiedGood(goodType: number | null): Qualified<number> | null {
   return goodType === null ? null : { payload: goodType };
 }
 
-/** What a {@link nearestByCell} `resolve` returns for a qualifying candidate: the interaction cell to rank it
- *  by, plus whatever the qualification derived. */
 export interface CellMatch<P> extends Qualified<P> {
   readonly cell: NodeId;
 }
@@ -71,30 +53,21 @@ interface CellBucket {
 
 /**
  * A per-tick spatial index over an economy candidate list, answering "nearest candidate to `here`
- * passing `accept`" with the {@link closer} `(distance, cell-id, entity-id)` winner the linear scans
- * pick - but as an expanding node-ring search instead of an O(candidates) walk per seeker.
+ * passing `accept`" by the `(distance, cell-id, entity-id)` order as a bounded node-ring search.
  *
- * A candidate is bucketed by its interaction cell only when that cell is SEEKER-INDEPENDENT - a
- * {@link interactionNode building door / anchor} node, which does not depend on where the seeker
- * stands. Candidates whose cell IS seeker-dependent (a boat hull, a loose ground pile, a resource
- * work cell - resolved through `from` by {@link interactionCell}) cannot be pre-bucketed, so they stay
- * in a small `dynamic` tail scanned linearly. `nearest` combines the ring winner with the tail winner,
- * so the result is byte-identical to a full linear scan for any candidate mix (the boat-store and
- * flag-pile cases included), while the common building-dominated scan pays a bounded ring, not a walk.
- *
- * This is the economy counterpart of {@link import('../../spatial/nodes.js').NodeBuckets NodeBuckets}, which
- * cannot serve here: it tie-breaks by `(distance, entity-id)` off a candidate's own tile, whereas these
- * scans measure to the interaction cell and tie-break by `cell-id` first.
+ * Only a seeker-independent interaction cell (a building door) can be bucketed; a seeker-dependent one
+ * (a boat hull, a loose ground pile, a resource work cell) stays in a linearly scanned `dynamic` tail,
+ * and `nearest` merges both winners, so the result matches a full linear scan for any candidate mix.
+ * `NodeBuckets` cannot serve here: it ranks off a candidate's own tile and tie-breaks by entity id.
  */
 export class InteractionCellIndex {
   private readonly byX = new Map<number, Map<number, CellBucket>>();
   private readonly dynamic: Entity[] = [];
   private bucketCount = 0;
-  // Seeker-independent interaction cells resolved once at construction, so the linear scans don't
-  // re-derive a building's door footprint per candidate per query (only the dynamic tail stays per-query).
+  // Interaction cells resolved once at construction, so no scan re-derives a building's door per query.
   private readonly staticCell = new Map<Entity, NodeId>();
   // Bounding box of the bucketed cells (empty ⟹ minX > maxX), so a ring search never expands past the
-  // farthest bucket - an index with no buckets (a store-less / site-less tick) costs no ring probes.
+  // farthest bucket.
   private minX = Number.POSITIVE_INFINITY;
   private maxX = Number.NEGATIVE_INFINITY;
   private minY = Number.POSITIVE_INFINITY;
@@ -133,41 +106,21 @@ export class InteractionCellIndex {
   }
 
   /**
-   * The nearest candidate to `here` that `accept` qualifies, by the shared `(distance, cell-id, entity-id)`
-   * order, or null when none does. `accept` returns a {@link Qualified} carrying whatever the qualification
-   * derived - handed on as the winner's {@link NearestByCell.payload} so the caller never re-derives it -
-   * or null to reject.
-   *
-   * Falls back to a full linear scan when no bucketed candidate lies within the ring bound (identical
-   * result). `accept` must be side-effect-free - a ring miss re-runs it on the fallback scan, so it may be
-   * evaluated more than once per candidate. `gate` (the settler's confinement, a {@link SpatialGate})
-   * rejects whole interaction CELLS before any entity is consulted - a gated cell's bucket is skipped in
-   * O(1), and the linear fallback applies the same gate, so both paths agree on the winner - and BOUNDS the
-   * sweep: every gate-passing cell provably lies inside `gate.bounds`, so the ring sweep stops at the box's
-   * reach, and a sweep that covered that whole reach PROVES no bucketed candidate passes, eliding the full
-   * linear fallback.
-   *
-   * `avoid` rejects cells the seeker should not walk to - its failed-goal memo, a cross-component
-   * bank - exactly like a gate rejection, in both paths, so a re-plan moves on to the next candidate
-   * instead of re-choosing the goal it just failed on. The seeker's own stand (`here`) is exempt:
-   * standing there needs no walk. Unlike `gate` it never bounds the sweep.
-   *
-   * `onSide` ({@link import('../../../components/ownership.js').sameSideAs}) rejects a candidate ENTITY owned
-   * by a different player than the seeker - the economy same-side gate, checked per entity (not per cell) so
-   * a bucket may still yield a same-side neighbour. Unlike `gate` it does not bound the sweep. Both the ring
-   * and the linear fallback apply it, so they agree on the winner.
+   * The nearest candidate to `here` that `accept` qualifies, by the `(distance, cell-id, entity-id)` order,
+   * or null when none does. `accept` must be side-effect-free: a ring miss re-runs it on the linear
+   * fallback, which picks the identical winner.
    */
   nearest<P>(
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
+    /** Rejects whole interaction cells and bounds the sweep: every gate-passing cell lies in `gate.bounds`. */
     gate?: SpatialGate,
+    /** Rejects cells this seeker's own routes just failed on. `here` is exempt; never bounds the sweep. */
     avoid?: (cell: NodeId) => boolean,
+    /** Rejects a candidate owned by another player, per entity rather than per cell. */
     onSide?: (e: Entity) => boolean,
   ): NearestByCell<P> | null {
     const veto = avoid === undefined ? undefined : (cell: NodeId): boolean => cell !== here && avoid(cell);
-    // A sparse index skips the ring for the exact linear reference scan ({@link RING_MIN_BUCKETS}):
-    // a ring MISS costs the whole O(maxRadius²) diamond however few buckets exist, and confined
-    // searches miss constantly.
     if (this.bucketCount <= RING_MIN_BUCKETS) {
       return this.linearNearest(this.candidates, here, accept, gate, veto, onSide);
     }
@@ -175,19 +128,15 @@ export class InteractionCellIndex {
     if (ring.best !== null) {
       return combine(ring.best, this.linearNearest(this.dynamic, here, accept, gate, veto, onSide));
     }
-    // An exhaustive sweep (the rings covered every bucket that could pass) proves the bucketed side empty
-    // - only the seeker-dependent tail remains. Otherwise the ring cap stopped short: fall back to the
-    // exact full linear scan (identical winner).
+    // An exhaustive sweep proves the bucketed side empty, so only the seeker-dependent tail remains;
+    // otherwise the ring cap stopped short and the full linear scan decides.
     if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, gate, veto, onSide);
     return this.linearNearest(this.candidates, here, accept, gate, veto, onSide);
   }
 
   /** The nearest bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first non-empty
-   *  ring holds the minimum distance, so its `(cell-id, entity-id)` winner is the global bucketed winner.
-   *  The ring stops at the farthest bucket's Manhattan reach - clamped further to `gate.bounds`'s reach
-   *  when the search is confined - so a sparse/empty index or a small confined area rings no wider.
-   *  `exhaustive` reports whether the sweep covered that whole reach (a null `best` is then a proof, not a
-   *  cap). */
+   *  ring holds the minimum distance, so its winner is the global bucketed winner. `exhaustive` reports
+   *  whether the sweep covered the whole reach, making a null `best` a proof rather than a cap. */
   private ringNearest<P>(
     here: NodeId,
     accept: (e: Entity) => Qualified<P> | null,
@@ -205,8 +154,6 @@ export class InteractionCellIndex {
     }
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
     const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
-    // One visitor for the whole sweep (not one per ring): `best` and `ringDist` reset per ring, so the
-    // first ring with a hit still returns before any farther ring is probed.
     let best: NearestByCell<P> | null = null;
     let ringDist = 0;
     const visit = (dx: number, dy: number): void => {
@@ -222,8 +169,7 @@ export class InteractionCellIndex {
   }
 
   /** Fold node `(x,y)`'s bucket into the running ring `best`. Distinct nodes carry distinct cell ids, so a
-   *  lower cell wins outright; the entity-id tie-break only decides within one bucket, where the ascending
-   *  order makes the first accepted entity the lowest id. */
+   *  lower cell wins outright and the entity-id tie-break only decides within one ascending-id bucket. */
   private pickInRing<P>(
     x: number,
     y: number,
@@ -247,9 +193,8 @@ export class InteractionCellIndex {
     return best;
   }
 
-  /** The `closer` winner over `list`, measuring each candidate's `interactionCell` from `here` - the exact
-   *  linear scan the ring accelerates, used for the seeker-dependent tail and the out-of-range fallback.
-   *  Shares the standalone {@link nearestByCell} loop (ranked from `here`), so the tie-break lives in one place. */
+  /** The exact linear scan the ring accelerates, used for the seeker-dependent tail and the out-of-range
+   *  fallback. Shares the standalone {@link nearestByCell} loop, so the tie-break lives in one place. */
   private linearNearest<P>(
     list: readonly Entity[],
     here: NodeId,
@@ -276,23 +221,18 @@ export class InteractionCellIndex {
 }
 
 /**
- * The `closer` `(distance, cell-id, entity-id)` winner over `list`, where `resolve` maps a candidate to its
- * interaction cell - or null to skip it (a failed gate) - and distance is Manhattan from `rank`. The
- * seeker-dependent linear scans (ground piles, resource work cells, farm sheaves) share this one loop so
- * none re-open the `best / bestDist / bestCell` skeleton {@link InteractionCellIndex} already owns. `rank` is
- * the ranking origin: usually the seeker, but a flag centre when a bound gatherer works outward from its flag
- * (so the interaction cell may resolve from a different node than the one it is ranked by).
- *
- * `onSide` ({@link import('../../../components/ownership.js').sameSideAs}) rejects a candidate owned by a
- * different player than the seeker BEFORE `resolve` runs - the economy same-side gate applied at the shared
- * seam. The store scans pass it; a scan over map features (standing resources, ground heaps - neither is
- * owner-stamped) omits it.
+ * The `(distance, cell-id, entity-id)` winner over `list`, where `resolve` maps a candidate to its
+ * interaction cell or to null to skip it. `rank` is the ranking origin, usually the seeker but a flag
+ * centre when a bound gatherer works outward from its flag, so a candidate may be ranked from a
+ * different node than the one its interaction cell resolves against.
  */
 export function nearestByCell<P = null>(
   terrain: TerrainGraph,
   list: readonly Entity[],
   rank: NodeId,
   resolve: (entity: Entity) => CellMatch<P> | null,
+  /** Rejects a candidate owned by another player before `resolve` runs. Scans over unowned map features
+   *  (standing resources, ground heaps) omit it. */
   onSide?: (e: Entity) => boolean,
 ): NearestByCell<P> | null {
   let best: NearestByCell<P> | null = null;
@@ -313,8 +253,8 @@ export function nearestByCell<P = null>(
   return best;
 }
 
-/** The lower of two winners by `(distance, cell-id, entity-id)` - the same total order the linear scans
- *  produce, so merging the bucketed and seeker-dependent winners can never pick a different candidate. */
+/** The lower of two winners by `(distance, cell-id, entity-id)`, the same total order the linear scans
+ *  produce, so merging the bucketed and seeker-dependent winners cannot pick a different candidate. */
 function combine<P>(a: NearestByCell<P> | null, b: NearestByCell<P> | null): NearestByCell<P> | null {
   if (a === null) return b;
   if (b === null) return a;

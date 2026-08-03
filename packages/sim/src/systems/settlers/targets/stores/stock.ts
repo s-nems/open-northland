@@ -24,22 +24,13 @@ import {
 import type { YardTargets } from '../candidates.js';
 import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
-// The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X" / "may
-// this settler staff that workplace" query the atomic planner asks. Split out of the planner
-// (planner/system.ts keeps the sweep, drives/ladder.ts the drives) so each file is one job. Determinism:
-// every scan walks the candidate lists in canonical (ascending entity-id) order with a Manhattan-distance +
-// ascending-cell-id tie-break, so the winner never depends on store insertion history (goldens hold).
-
 /**
- * The nearest store (typically a {@link Building} with a {@link Stockpile}, but a boat hull counts too)
- * that can stock `goodType` - i.e. its type declares a stock slot for that good and the slot is not
- * already full - by Manhattan distance from `here` with the shared ascending-cell-id tie-break. Returns
- * the store entity or null if none can take the good.
+ * The nearest store that can stock `goodType`, by Manhattan distance from `here` with the shared
+ * ascending-cell-id tie-break, or null when none can take it. A boat hull counts as a store.
  *
- * A workplace that PRODUCES `goodType` (a recipe output) is never a delivery target for it - goods
- * are hauled *out* of a producer to a store, never back into it (otherwise a carrier would deposit
- * its load straight back where it picked it up and livelock). A workplace consuming the good as an
- * input, or a passive store, is a valid sink.
+ * A workplace that produces `goodType` is never a delivery target for it: goods are hauled out of a
+ * producer to a store, never back into it, or a carrier would deposit its load where it picked it up
+ * and livelock. A workplace consuming the good as an input, or a passive store, is a valid sink.
  */
 export function nearestStoreFor(
   index: InteractionCellIndex,
@@ -47,18 +38,15 @@ export function nearestStoreFor(
   ctx: SystemContext,
   here: NodeId,
   goodType: number,
-  /** The hauler's owning player - never delivers into another player's store ({@link sameSideAs}). */
+  /** The hauler's owning player. It never delivers into another player's store. */
   owner: number | undefined,
-  /** Skip EVERY store whose building type PRODUCES `goodType` - the haul-OUT mode. A carrier
-   *  clearing a producer's output must deliver to STORAGE, never to another producer of the same
-   *  good: with two farms and no nearer warehouse, per-entity exclusion of only the carrier's own
-   *  farm made the sibling farm the "nearest store" and the wheat ping-ponged farm↔farm forever.
-   *  Omit (false) for the ordinary "nearest capable store" pick - the farmer's reap gate counts its
-   *  own farm's slot as a sink, and generic hauls may still top up a producer that CONSUMES the good. */
+  /** Skip every store whose building type produces `goodType`, the haul-out mode: a carrier clearing a
+   *  producer's output must deliver to storage, or two producers of the same good ping-pong it between
+   *  them. Omitted, a producer that consumes the good is still a valid sink. */
   excludeProducers = false,
-  /** The hauler's signpost confinement - an out-of-area store is not a sink it knows the way to. */
+  /** The hauler's signpost confinement: an out-of-area store is not a sink it knows the way to. */
   gate?: SpatialGate,
-  /** The hauler's failed-goal veto ({@link unreachableGoalVeto}). */
+  /** The hauler's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   return (
@@ -72,13 +60,11 @@ export function nearestStoreFor(
   );
 }
 
-/** Position-independent acceptance half of {@link nearestStoreFor}. Shared with the tick-local sink
- * memo so null probes do not repeat the full stockpile scan.
+/** Position-independent acceptance half of {@link nearestStoreFor}, shared with the tick-local sink memo.
  *
- * The good gates judge the {@link bankedSlot} - the slot the deposit would land in - so a store that
- * banks a raw dish as its edible is a sink the routing can see, and the producer rules still hold
- * against the form that lands. The structural rejects come first because they are plain membership
- * tests, where resolving the slot costs a capacity lookup and this scan runs per candidate per query. */
+ * The good gates judge the {@link bankedSlot}, the slot the deposit would land in, so a store that banks
+ * a raw dish as its edible is a sink the routing can see and the producer rules hold against the form
+ * that lands. The structural rejects come first because resolving the slot costs a capacity lookup. */
 export function canStoreGood(
   world: World,
   ctx: SystemContext,
@@ -102,27 +88,19 @@ export function canStoreGood(
 }
 
 /**
- * The greatest Manhattan ring radius (in half-cell NODES) {@link nearestFreeYardNode} searches out from a
- * flag before giving up. A ring at half-cell distance `r` holds O(r) nodes; radius 32 (~16 tiles across) is
- * far more room than any single gatherer's yard needs - the bound only stops a pathological unbounded
- * search. Named approximation (the original's goods-yard extent is not decoded).
+ * Greatest Manhattan ring radius (half-cell nodes) {@link nearestFreeYardNode} searches out from a flag
+ * before giving up, about 16 visual tiles across. Approximation: the original's goods-yard extent is not
+ * decoded, and the bound only stops a pathological unbounded search.
  */
 const GOODS_YARD_MAX_RADIUS = 32;
 
 /**
- * The nearest HALF-CELL node around a gatherer's `flag` whose yard tile still has room for another unit of
- * `good` - the tile a flag-bound gatherer physically WALKS to and sets its load down on, so the goods land
- * where its feet are (never teleporting to a distant tile) and heaps pack TILE-TO-TILE on the half-cell
- * lattice. Spirals out from the flag's node in Manhattan rings; a tile has room when it holds no heap, or a
- * heap of `good` below {@link MAX_GROUND_STACK} (a tile holding a DIFFERENT good, or a full one, is skipped),
- * and it must be walkable, outside dynamic building/resource blocks, and in the gatherer's static connected
- * component. Within each ring candidates are ordered by node id. `after` resumes strictly after a failed
- * route, so dynamically enclosed candidates are rejected one at a time through the ordinary budgeted
- * pathfinder instead of freezing the gatherer or running an unbudgeted search here.
- *
- * Determinism: the tick-shared occupancy/block views are membership-only and each pick uses `(ring,nodeId)`.
- * Cost is one bounded ring walk per active delivery; the O(stockpiles + buildings) views are built once for
- * the whole planner tick in `collectTargets`.
+ * The nearest half-cell node around a gatherer's `flag` with room for another unit of `good`, so a
+ * delivered load lands where the gatherer's feet are and heaps pack tile to tile. A tile has room when
+ * it holds no heap or a heap of `good` below {@link MAX_GROUND_STACK}, and it must be walkable, outside
+ * dynamic blocks, and in the gatherer's static component. Candidates are ordered by `(ring, node id)`.
+ * `after` resumes strictly after a failed route, so an enclosed candidate is rejected one at a time
+ * through the budgeted pathfinder rather than by an unbudgeted search here.
  */
 export function nearestFreeYardNode(
   yard: YardTargets,
@@ -132,8 +110,7 @@ export function nearestFreeYardNode(
   good: number,
   here: NodeId,
   after?: NodeId,
-  /** The gatherer's signpost confinement - a yard tile outside its allowed area is never a drop spot
-   *  (the flag itself was placed inside the area, so in practice this trims only the yard's far fringe). */
+  /** The gatherer's signpost confinement: a yard tile outside its allowed area is never a drop spot. */
   gate?: SpatialGate,
 ): NodeId | null {
   const fp = world.get(flag, Position);
@@ -152,8 +129,6 @@ export function nearestFreeYardNode(
   const { x: cx, y: cy } = terrain.coordsOf(flagNode);
   const afterRank = after === undefined ? null : terrain.coordsOf(after);
   const afterRadius = afterRank === null ? -1 : Math.abs(afterRank.x - cx) + Math.abs(afterRank.y - cy);
-  // One visitor for the whole spiral (not one per ring): `best` resets per ring, so the first ring
-  // with a usable tile still wins before a farther ring is probed.
   let best: NodeId | null = null;
   let ring = 0;
   const visit = (dx: number, dy: number): void => {
@@ -172,14 +147,10 @@ export function nearestFreeYardNode(
 }
 
 /**
- * Whether a loose pile lies on a cell standing buildings make unwalkable - an unreachable SOURCE no
- * fetcher should commit to: its stand is inside the walls, so the walk path-fails, the settler strands,
- * re-picks the same geometrically-nearest pile, and loops. The footprint goods eviction keeps this rare
- * (a placement displaces the piles it covers), so the filter is the safety net for the leftovers (a
- * boxed-in pile the eviction could not land). Scoped to building walls only: a trunk under a
- * still-STANDING resource is legitimate - its interaction cell resolves to the resource's work cell -
- * and a {@link Building} store is never buried by its own walls (its stand is the door). `walls` is the
- * memoized {@link buildingBlockedCells} set, resolved once per scan by the callers.
+ * Whether a loose pile lies on a cell standing buildings make unwalkable, making it a source no fetcher
+ * can reach: the walk path-fails, the settler strands and re-picks the same nearest pile. Scoped to
+ * building walls only, since a trunk under a standing resource resolves to that resource's work cell and
+ * a {@link Building} store is never buried by its own walls. `walls` is resolved once per scan.
  */
 export function buriedUnderBuilding(
   world: World,
@@ -193,16 +164,10 @@ export function buriedUnderBuilding(
 }
 
 /**
- * The nearest store (a {@link Stockpile} on a positioned entity) that HOLDS at least one unit of
- * `goodType` and may be stripped of it - a SOURCE to fetch from, by Manhattan distance from `here`,
- * ascending-cell-id tie-break, scanned in canonical entity-id order. Excluded: a construction site (a
- * delivery sink, not a source - a builder never strips the material it just delivered), a loose pile
- * buried under a building's walls ({@link buriedUnderBuilding} - an unreachable stand would strand the
- * fetcher), and a workshop's own input reserve ({@link mayFetchGoodFrom}). A warehouse, a reachable
- * ground pile, and a producer's finished shelf are fair game. Returns the source store or null if none
- * yields the good. The counter to
- * {@link nearestStoreFor} (which finds a store that can TAKE a good); the builder drive uses it to fetch
- * a construction material its site is short on, and the equip/grant errands to fetch a wearable.
+ * The nearest store that holds at least one unit of `goodType` and may be stripped of it, by Manhattan
+ * distance from `here` with an ascending-cell-id tie-break, or null. The counter to
+ * {@link nearestStoreFor}, which finds a store that can take a good. A construction site (a sink, never
+ * a source), a pile buried under a building's walls, and a workshop's own input reserve are excluded.
  */
 export function nearestStoreHolding(
   index: InteractionCellIndex,
@@ -211,16 +176,13 @@ export function nearestStoreHolding(
   terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
-  /** The fetcher's owning player - never fetches from another player's store ({@link sameSideAs}). */
+  /** The fetcher's owning player. It never fetches from another player's store. */
   owner: number | undefined,
+  /** The fetcher's signpost confinement: an out-of-area store is not a source it knows the way to. */
   gate?: SpatialGate,
-  /** The fetcher's failed-goal veto ({@link unreachableGoalVeto}). */
+  /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
-  // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
-  // accept just excludes sites, stores that don't hold the good or may not yield it, and buried piles.
-  // `gate` is the fetcher's signpost confinement: a store standing outside its allowed area is not a
-  // source it knows the way to.
   const walls = buildingBlockedCells(world, ctx, terrain);
   return (
     index.nearest(
@@ -234,9 +196,9 @@ export function nearestStoreHolding(
 }
 
 /**
- * Whether `store` is a SOURCE this good can be fetched from - {@link nearestStoreHolding}'s accept minus
- * the spatial gate and the owner axis, so a caller that only needs "does such a source exist" asks the
- * same question the walk will. Cheapest test first: most stores hold none of the good.
+ * Whether `store` is a source this good can be fetched from: {@link nearestStoreHolding}'s accept minus
+ * the spatial gate and the owner axis, so a caller asking only whether such a source exists asks the
+ * same question the walk will. Cheapest test first, since most stores hold none of the good.
  */
 export function storeYieldsGood(
   world: World,

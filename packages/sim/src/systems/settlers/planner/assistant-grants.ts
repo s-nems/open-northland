@@ -31,45 +31,33 @@ import type { PlannerPass } from './pass.js';
 import { anotherSystemOwns } from './replan.js';
 
 /**
- * The assistant's auto-equip pass: for every player with {@link AssistantGrants}, send settlers with
- * a matching free slot to fetch the granted goods (the ordinary {@link EquipOrder} errand, stamped
- * WITHOUT the manual order's interrupts - the settler finishes its current step first). Two brakes
- * keep a big settlement from mobbing two pairs of boots (user rule 2026-07-25):
+ * The assistant's auto-equip pass: for every player with {@link AssistantGrants}, send settlers with a
+ * matching free slot to fetch the granted goods, as an ordinary {@link EquipOrder} errand stamped
+ * without the manual order's interrupts. Two brakes keep a big settlement from mobbing one pair of
+ * boots: a demand-side reservation that stops dispatching once errands underway match the player's
+ * store stock, and a trickle that caps concurrent errands and staggers each settler's beat.
  *
- *  - demand-side reservation: per player and good, the assistant stops dispatching once fetch
- *    errands underway (`acquire` stage, manual orders counted too) match the player's store stock,
- *    so no one is sent after a unit someone else is already walking to;
- *  - a trickle: at most {@link ASSISTANT_MAX_IN_FLIGHT} of a player's settlers fetch at once, and
- *    each settler is considered only on its {@link ASSISTANT_SCAN_PERIOD_TICKS} stride beat, so the
- *    hand-out paces itself to errand completion instead of dispatching a whole village on one tick.
- *
- * Only empty slots are filled (no swaps/upgrades), and a misc grant is one unit per settler. The
- * original's extras window ships per-good hoard commands (decoded `miscwindow` 503-509 "Zgromadź
- * Buty!" etc.); the manual describes the intent ("you want to have shoes given out to all civilians -
- * if there are shoes available in your village"), which the stock reservation matches, but not the
- * engine's pacing, so the trickle and the caps are ours (named approximation). Deviation from that
- * line: only the TOOL grant is trade-scoped ({@link toolHelpsJob}); boots and misc go to fighters too,
- * because nothing about a soldier makes a pair of shoes useless.
+ * Only empty slots are filled and a misc grant is one unit per settler. The manual states the intent
+ * ("you want to have shoes given out to all civilians - if there are shoes available in your
+ * village"), which the stock reservation matches, and the extras window ships per-good hoard commands
+ * (decoded `miscwindow` 503-509). Approximation: the pacing and the caps are not decoded. Only the
+ * tool grant is trade-scoped; boots and misc go to fighters too.
  */
 
-/** One settler's grant consideration beat, staggered by entity id (the field-reclaim idiom), so the
- *  per-tick scan cost is `settlers / period` and a freshly-freed slot is re-dressed within seconds.
- *  Our pacing (nothing decodable to match); shared with the recruit-arming pass. */
+/** One settler's grant consideration beat, staggered by entity id, so the per-tick scan costs
+ *  `settlers / period` and a freshly-freed slot is re-dressed within seconds. Approximation, shared
+ *  with the recruit-arming pass. */
 export const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
 
-/** The per-player cap on concurrent assistant fetch errands - the incremental-rollout brake. Small
- *  enough that switching a grant on in a living settlement reads as a steady trickle, large enough
- *  that the queue drains across a few storehouses at once. Our balance. */
+/** Per-player cap on concurrent assistant fetch errands, small enough that switching a grant on reads
+ *  as a steady trickle and large enough to drain across a few storehouses at once. Approximation. */
 export const ASSISTANT_MAX_IN_FLIGHT = 4;
 
 /**
- * Whether the assistant hands `jobType` a tool at all: every working trade takes one (gatherer, porter,
- * farmer, baker...), but a fighter keeps none (`shedToolOnEnlist`, orders/work/employment.ts), and the
- * scout, the civilist and the woman are passed over so scarce tools go to the trades that work with
- * them (user rule 2026-07-26). The civilist ({@link CIVILIST_JOB}) is the trade-less settler the "Cywil"
- * row seats and a grown boy defaults to; the woman ({@link WOMAN_JOB}) keeps the household larder rather
- * than a trade, and neither ever operates a workplace, so a tool would only idle in the slot. Only the
- * assistant's hand-out is bound by this - the player may still equip a scout by hand.
+ * Whether the assistant hands `jobType` a tool. Authored: a working trade takes one, a fighter sheds it
+ * on enlisting, and the scout, the civilist and the woman are passed over so scarce tools go to the
+ * trades that work with them, neither of the latter two ever operating a workplace. It binds only the
+ * assistant; the player may still equip a scout by hand.
  */
 function toolHelpsJob(content: ContentSet, jobType: number): boolean {
   return (
@@ -86,9 +74,8 @@ interface GrantSpec {
   readonly category: EquipCategory;
 }
 
-/** A player's fetch errands underway: `acquire`-stage {@link EquipOrder}s with a wanted good, total
- *  and per good - manual orders included, so the assistant also respects a unit the player already
- *  sent someone after. */
+/** A player's fetch errands underway, total and per good. Manual orders are included, so the assistant
+ *  also respects a unit the player already sent someone after. */
 interface FetchTally {
   total: number;
   readonly byGood: Map<number, number>;
@@ -112,19 +99,16 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     if (world.has(e, EquipOrder) || world.has(e, Age) || anotherSystemOwns(world, e)) continue;
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
-    // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would
-    // dump the carried load where the settler stands (a manual order may do that - the assistant
-    // has no such urgency). A later beat catches the settler with free hands; a load picked up after
-    // the dispatch drops the errand outright, so it holds nothing (settlers/drives/equip-order.ts).
+    // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would dump
+    // the carried load where the settler stands, which only a manual order is urgent enough to do.
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
-    // A guard holds its post: the equip rung outranks the DEFEND hold so the PLAYER can send a guard
-    // for gear, which is no reason for the assistant to walk one off its anchor unasked.
+    // The equip rung outranks the DEFEND hold so the player can send a guard for gear, which is no
+    // reason for the assistant to walk one off its anchor unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
 
     const eq = world.tryGet(e, Equipment);
-    // The settler's confinement/veto are computed once, and only when a grant actually has a free
-    // slot and spare stock - a fully dressed settler's beat stays a few map reads.
+    // Resolved once, and only when a grant has both a free slot and spare stock.
     let limit: NavigationLimit | null | undefined;
     for (const spec of wanted) {
       if (toolless && spec.category === 'tool') continue; // its boots and misc grants still apply
@@ -164,9 +148,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   }
 }
 
-/** Each granting player's specs, strongest gear first (iron tools over wooden - the content bonus
- *  decides, never a good id), ascending good id as the tie-break. A granted id whose content lost
- *  its `equip` class is dropped here (stale save data is recoverable input). */
+/** Each granting player's specs, strongest gear first by content bonus rather than good id, with
+ *  ascending good id as the tie-break. A granted id whose content lost its `equip` class is dropped. */
 function collectGrantSpecs(pass: PlannerPass): Map<number, readonly GrantSpec[]> {
   const { world, ctx } = pass;
   const byPlayer = new Map<number, readonly GrantSpec[]>();
@@ -198,8 +181,8 @@ function collectInFlightFetches(world: World): Map<number, FetchTally> {
   for (const e of world.query(EquipOrder)) {
     const order = world.get(e, EquipOrder);
     if (order.stage !== 'acquire' || order.goodType === null) continue;
-    // A jobless settler's errand is frozen (the ladder never plans one - e.g. its workplace was
-    // demolished mid-fetch): it must not hold a reservation or a cap slot while it cannot advance.
+    // A jobless settler's errand is frozen, since the ladder never plans one, so it must not hold a
+    // reservation or a cap slot while it cannot advance.
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || settler.jobType === null) continue;
     const owner = ownerOf(world, e);
@@ -222,9 +205,8 @@ function tallyFor(byPlayer: Map<number, FetchTally>, player: number): FetchTally
 
 /**
  * The slot a grant of `spec` would fill, or null when the settler is already covered: a named group
- * takes slot 0 when empty; a misc grant takes the first empty row unless some row already holds the
- * same good ("give everyone mead" is one bottle each, not four). Empty slots only - a worn item is
- * never swapped out by the assistant.
+ * takes slot 0 when empty, a misc grant the first empty row unless some row already holds the same
+ * good, so a mead grant is one bottle each. Empty slots only, since the assistant never swaps gear out.
  */
 function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | null {
   if (spec.category !== 'misc') {
@@ -240,15 +222,12 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
 type GrantedStock = ReadonlyMap<number, ReadonlyMap<number, number>>;
 
 /**
- * Total store/pile stock of every granted good, per granting player (a construction site and a
- * workshop's own input reserve excluded - neither is a source, matching {@link nearestStoreHolding}),
- * in ONE walk of the candidate stores rather than one per player and good: the owner test is the
- * expensive part and it resolves once per store. An unowned pile counts for every player
- * ({@link ownersCompatible}), as it did per-player before.
+ * Total store and pile stock of every granted good, per granting player, in one walk of the candidate
+ * stores. A construction site and a workshop's own input reserve are excluded, matching
+ * {@link nearestStoreHolding}; an unowned pile counts for every player.
  *
- * The reservation bound, not a reachability promise: it counts stock in other signpost networks and
- * buried piles too (approximation), so it can run loose by a few unreachable units - the per-settler
- * {@link nearestStoreHolding} scan still gates every dispatch.
+ * This bounds the reservation, it does not promise reachability: stock in other signpost networks and
+ * buried piles is counted too (approximation), and the per-settler scan still gates every dispatch.
  */
 function collectGrantedStock(
   pass: PlannerPass,
@@ -263,8 +242,8 @@ function collectGrantedStock(
     if (world.has(store, UnderConstruction)) continue;
     const owner = ownerOf(world, store);
     const amounts = world.get(store, Stockpile).amounts;
-    // The reserve rule keyed by store, hoisted beside the owner: it cannot vary by player, and the
-    // inner walk is stores × players × goods. `mayFetchGoodFrom` is the same test one lookup down.
+    // The reserve rule is keyed by store and cannot vary by player, so it is hoisted out of the
+    // stores × players × goods walk below.
     const reserved = mergedRecipeOf(world, ctx, store)?.inputs;
     for (const [player, totals] of byPlayer) {
       if (!ownersCompatible(player, owner)) continue;

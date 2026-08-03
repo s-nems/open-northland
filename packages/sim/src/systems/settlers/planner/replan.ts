@@ -24,22 +24,15 @@ import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { stepOut } from '../indoors.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
-// The planner's per-settler availability checks: decide whether a settler is idle enough to re-plan
-// this tick and, when it is, shed every intent a previous tick left on it, so the drive ladder
-// (../drives/ladder.ts) sees a clean settler and never re-chooses against its own stale claims. Also
-// home to the economy's ownership gate (anotherSystemOwns).
-
-/** How long a stranded walker parks before shedding its failed route and re-planning - long enough that
- *  a permanently blocked target costs one path query per episode, short enough that a transient blockage
- *  (a footprint stamped mid-walk, a crowd) heals within seconds. Our recovery pacing (the original's
- *  retry cadence is not readable). */
+/** How long a stranded walker parks before shedding its failed route and re-planning: long enough that
+ *  a permanently blocked target costs one path query per episode, short enough that a transient
+ *  blockage heals within seconds. Approximation, the original's retry cadence is not readable. */
 const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
 
-/** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
- *  flee, wedding, and gossip systems each read the `failed` flag and clear/cancel it themselves - the
- *  planner's stranded recovery must not eat their signal. A narrower set than
- *  {@link anotherSystemOwns}: a guard's post and family duty hold a settler off the economy but do not
- *  own a route's failure signal. */
+/** Whether a drive that runs its own failed-route protocol owns `e`'s walk, since it reads and clears
+ *  the `failed` flag itself and the planner's stranded recovery must not eat that signal. Narrower than
+ *  {@link anotherSystemOwns}: a guard's post and family duty hold a settler off the economy without
+ *  owning a route's failure signal. */
 function ownsFailedRoute(world: World, e: Entity): boolean {
   return (
     world.has(e, PlayerOrder) ||
@@ -53,19 +46,10 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
 
 /**
  * Whether a system outside the planner currently owns `e`'s actions, so the economy ladder must not
- * re-task it:
- *  - Engagement: fighting/advancing - the CombatSystem owns its movement (the chase) and its atomic
- *    (the swing); it clears the marker when the fight ends.
- *  - Fleeing: running from danger (the FLEE stance's active drive) - matters while it stands (boxed in,
- *    or in the flee cool-down); while running it carries a MoveGoal and the ladder's busy check
- *    ({@link releaseStaleIntent}) already skipped it.
- *  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
- *    on arrival, and the economy re-tasks it the same tick.
- *  - Wedding / FamilyDuty: the FamilySystem drives a settler mid-wedding or on family duty.
- *  - Chat: a settler mid-chat is the GossipSystem's.
+ * re-task it. Each marker's owner clears it when its episode ends.
  *
- * The DEFEND-stance hold is deliberately NOT here: it lives in the drive ladder below the equip
- * errand (the one player order a guard walks without dropping its post, see planAdult).
+ * The DEFEND-stance hold is deliberately not here: it lives in the drive ladder below the equip errand,
+ * the one player order a guard walks without dropping its post.
  */
 export function anotherSystemOwns(world: World, e: Entity): boolean {
   return (
@@ -81,22 +65,15 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
 /**
  * Reconcile `e`'s leftover intent and report whether the drive ladder should run for it this tick.
  *
- * Returns false while the settler is spoken for: an atomic is running, it is walking a live route, or it
- * is parking a failed one. A FAILED route is not travel - nothing on the nav side retries it
- * (navigationPlanner skips any entity with a live request; routing skips failed ones), so a settler left in
- * that state stands forever. Drives with their own failure protocol keep the signal
- * ({@link ownsFailedRoute}); for everyone else the planner parks the dead route ({@link Stranded}), then
- * sheds it and re-plans - the pacing costs one path query per retry instead of per tick when the target
- * stays blocked, and a transient blockage heals on its own.
+ * Returns false while the settler is spoken for: an atomic is running, it walks a live route, or it
+ * parks a failed one. A failed route is not travel and nothing on the nav side retries it, so a settler
+ * left in that state stands forever; drives with their own failure protocol keep the signal, and for
+ * everyone else the planner parks the dead route, then sheds it and re-plans.
  *
- * Returns true once the settler is genuinely re-planning, having first released what the previous intent
- * held: its {@link YardDeliveryRoute} (reconciled against the live load/flag - see
- * {@link reconcileYardRoute}), its farm claim (so it never blocks ITSELF from re-choosing the field it was
- * walking to), its rest-inside marker, its supply errand, and its expired failed-goal memo
- * ({@link pruneUnreachableGoals}, run before any drive reads it). Each is re-stamped by the drive that still
- * wants it within this same tick, so the render never sees a gap: a settler mid-park keeps its SupplyRun
- * (released only at the re-plan) because the errand may resume after a transient blockage, and a settler
- * on family duty keeps its rest-inside marker (the FamilySystem owns that one).
+ * Returns true once the settler is genuinely re-planning, having released what the previous intent held:
+ * its yard route, its farm claim (so it never blocks itself from re-choosing the field it walked to),
+ * its rest-inside marker, its supply errand, and its expired failed-goal memo. Each is re-stamped within
+ * the same tick by the drive that still wants it, so the render never sees a gap.
  */
 export function releaseStaleIntent(
   world: World,
@@ -107,10 +84,9 @@ export function releaseStaleIntent(
 ): boolean {
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
-  // A garrison that is no longer holding its tower gives the post up HERE, above the busy/travel
-  // early-outs: it is usually a walk that took it off the post (a player order, an equip errand, a
-  // drill), and the marker also hides it from the render, so waiting for it to fall idle would march an
-  // invisible settler across the map. Garrison-scoped, so no other rest-inside marker is touched.
+  // A garrison that no longer mans its tower gives the post up above the busy and travel early-outs:
+  // the marker hides it from the render, so waiting for it to fall idle would march an invisible
+  // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (world.has(e, CurrentAtomic)) return false;
   // Fresh read - reconcileYardRoute may have cleared the request.
@@ -122,20 +98,17 @@ export function releaseStaleIntent(
       return false;
     }
     if (ctx.tick < stranded.retryAt) return false;
-    // Remember what failed BEFORE shedding the route: the re-plan below runs the same deterministic
-    // nearest-first target pick, so without the memo it re-chooses this very goal and the settler
-    // loops park→re-pick→fail forever beside reachable work (see {@link noteUnreachableGoal}).
+    // Remember what failed before shedding the route: the re-plan runs the same deterministic
+    // nearest-first pick, so without the memo it re-chooses this very goal and loops forever.
     noteUnreachableGoal(world, ctx, e, request.goal);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
-  // The FamilyDuty, LivestockVisit and Sheltering holds keep their Resting through a re-plan: the family
-  // drive, the feed batch's release and the DefenceSystem own those exits (the indoors contract,
-  // settlers/indoors.ts) - shedding a sheltering settler's marker would pop it out of cover and back in
-  // every tick the alarm stands. A garrison still on its tower keeps it too: anything else already gave
-  // the post up at the top.
+  // These holds keep their Resting through a re-plan because other systems own those exits: shedding a
+  // sheltering settler's marker would pop it out of cover and back in every tick the alarm stands. A
+  // garrison still on its tower keeps it too; anything else already gave the post up above.
   if (
     !world.has(e, FamilyDuty) &&
     !world.has(e, LivestockVisit) &&

@@ -14,65 +14,30 @@ import { unreachableWorkCell, type WorkCellGates } from './reachability.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
 /**
- * The nearest harvestable {@link Resource} `plan`'s settler is allowed to harvest, by fixed-point Manhattan
- * distance from where it stands, with ascending-cell-id as the deterministic tie-break. A resource is eligible only if
- * it has units remaining, is reachable (same static component as the settler - see the `componentOf` gate
- * below), and its harvest passes both data-driven gates:
+ * The nearest {@link Resource} this settler may harvest, by Manhattan distance with an ascending-cell-id
+ * tie-break, or null when none qualifies. Two data-driven gates decide eligibility: the job's resolved
+ * atomics must permit the resource good's harvest atomic, and the settler's accrued XP must clear that
+ * good's `needforgood` thresholds for its tribe. A good with no `needforgood` row is open to anyone.
  *
- *  - the job's resolved atomics permit the resource good's harvest atomic (a woodcutter harvests trees, not
- *    ore - {@link jobAtomics});
- *  - the settler's accrued XP clears the harvested good's `needforgood` thresholds for its tribe
- *    ({@link settlerMeetsNeed}) - the who-may-do-it progression gate, the per-settler sibling of the
- *    production-side `jobEnablesGood` gate. A settler trains a good's track by harvesting it
- *    (`grantWorkExperience`), so a low-XP settler is held out of goods whose threshold it hasn't reached; an
- *    unthresholded good (no `needforgood`) is harvestable by any settler.
- *
- * Returns the winning resource with its interaction `cell` and `dist` (from the flag when bound, else from
- * the settler), or null if none qualifies. Scanned in canonical entity-id order so the result never depends
- * on store insertion history.
- *
- * `opts.area` bounds the scan to a gatherer's flag work-area ({@link WorkFlag}): only nodes whose work cell is
- * within `radius` (integer node-distance) of `center` qualify, and the winner is the one nearest the flag (so
- * a bound gatherer works outward from its flag, not wherever it stands). `opts.within` bounds the same way but
- * leaves the ranking on the settler, for a bound that is a work AREA rather than a sweep origin (a hunter's
- * hunting ground). Neither - the default for an unbound roaming collector - measures from the settler with no
- * radius. Under either bound the canonical candidate list is superseded by the resource region index
- * (`resourcesNearNode` - a provable superset of the in-radius nodes).
- * `opts.goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only
- * what its workplace stores); omitted = every good the job may harvest.
- *
- * The reachability gate below rejects both a target in a different static component (the far bank of a river)
- * and one whose resolved work cell is a dynamically blocked goal - buried under a building, or a hemmed-in
- * deposit's stance falling back to its own resource-blocked anchor - since `findPath` rejects a blocked
- * goal. This is what stops a gatherer stranding on a footprint-empty clay/mud deposit a
- * house was legally placed over (those deposits reserve no build-block). What then happens to the deposit
- * depends on how its work cell resolves ({@link resourceWorkCell}): when a work cell lands ON the buried
- * anchor (the sandbox's anchor-inclusive clay areas) the deposit is skipped and left un-mined; a real
- * extracted record whose full-state work areas sit beside the anchor resolves to an adjacent cell instead, so
- * an edge-exposed deposit stays mineable from its open side. The strand is prevented either way; the
- * un-mined-vs-side-mined split is a named approximation tracked in
- * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. A work cell that is itself clear yet
- * sealed inside blocker walls is vetoed by the route-region memo ({@link routeRegions}), whole pocket
- * at a time, however many nodes it holds. {@link unreachableGoals} stays as the time-bounded blunting
- * for the cases that memo's `unroutable` contract declines to prove (unit-body walls, over-cap
- * pockets, split open regions).
+ * A target in another static component, on a dynamically blocked work cell, or inside a sealed route
+ * region is rejected: `findPath` refuses such a goal, so a gatherer that latched onto one would loop
+ * park-repick-fail beside reachable work. Approximation: a deposit a building was legally placed over is
+ * left un-mined when its work cell lands on the buried anchor, and mined from the side when it does not.
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
   opts: {
-    /** Bound the scan to this circle AND rank from its centre - the flag-bound gatherer's outward
-     *  sweep, which clears its yard from the flag rather than from wherever it happens to stand. */
+    /** Bound the scan to this circle and rank from its centre, so a flag-bound gatherer sweeps outward
+     *  from its flag rather than from wherever it stands. */
     readonly area?: { center: NodeId; radius: number; goodType?: number };
-    /** Bound the scan to this circle but keep the ranking on the SETTLER - a hunter's hunting ground,
-     *  where the nearest body to the hunter is the one to walk to, not the nearest to its hut. Pass
-     *  this or {@link area}, never both. */
+    /** Bound the scan to this circle but keep the ranking on the settler, for a bound that is a work
+     *  area rather than a sweep origin. Pass this or {@link area}, never both. */
     readonly within?: { center: NodeId; radius: number };
     readonly goodFilter?: ReadonlySet<number>;
-    /** Resource nodes already claimed this tick (a colleague's live harvest or an earlier pick) -
-     *  skipped, so one node is dug by one settler at a time (see economy/harvest-claims.ts). */
+    /** Resource nodes already claimed this tick, so one node is dug by one settler at a time. */
     readonly exclude?: ReadonlySet<Entity>;
-    /** A node standing RESERVED to another settler across ticks, rejected even though this settler's
-     *  trade could work it (a colleague hunter's kill). Only a caller carrying such a rule passes one. */
+    /** A node reserved to another settler across ticks, rejected even though this settler's trade
+     *  could work it. */
     readonly reserved?: (node: Entity) => boolean;
   } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
@@ -80,19 +45,11 @@ export function nearestHarvestableFor(
   const settler = plan;
   const candidates = targets.resources;
   const { area, within, goodFilter, exclude, reserved } = opts;
-  // The settler's signpost confinement ({@link SpatialGate}): membership rejects out-of-area work cells,
-  // and its bounds let a roaming scan read only the resources near the allowed box instead of the full
-  // canonical list - every gate-passing work cell provably lies inside the box (+ work-offset slack), so
-  // the winner is identical to the full scan.
-  const gate = plan.limit ?? undefined;
+  const gate = plan.limit ?? undefined; // the settler's signpost confinement
   const allowed = jobAtomics(ctx, settler.jobType);
-  // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
-  // every candidate fails the `allowed.has` check below - the whole scan is provably null. Skip it in
-  // O(distinct present atomics ≈ goods) instead of walking the entire resource list per such settler per tick
-  // (with thousands of map-spawned nodes that per-settler full scan is the dominant sim cost). This covers
-  // every non-harvest trade that still carries atomics (an idle builder with only the build atomic). The probe
-  // set is derived from the actual resources (the region index), so a fixture node carrying an out-of-content
-  // atomic still gates exactly.
+  // Dormancy gate: when the job's atomics intersect no harvest atomic present on any standing resource,
+  // every candidate would fail the `allowed.has` check below, so the whole scan is provably null. The
+  // probe set comes from the actual resources, so a node carrying an out-of-content atomic still gates.
   const present = resourceHarvestAtomics(world);
   let anyHarvestable = false;
   for (const atomic of present) {
@@ -102,16 +59,11 @@ export function nearestHarvestableFor(
     }
   }
   if (!anyHarvestable) return null;
-  // Ranked from the flag when the caller bound the scan to it, else from the settler - so a `within`
-  // bound (the hunter's ground) narrows what counts without moving which candidate wins.
   const origin = area?.center ?? here;
-  // The circle candidates must lie in, whichever option set it; absent, the scan is map-wide.
   const bound = area ?? within;
-  // A radius-bounded scan reads only the resources whose anchor lies within the bound's box - widened
-  // by the content's max work-cell offset, so every node whose work cell could pass the radius test below is
-  // provably included (`resourcesNearNode`). Same filter/rank loop over an ascending-id superset ⇒ the
-  // identical winner as the full scan, at O(nearby) instead of O(all resources) per gatherer per tick (a
-  // decoded map holds ~17k standing nodes). A roaming (unbound) scan keeps the full canonical list.
+  // A bounded scan reads only the resources whose anchor lies in the bound's box, widened by the
+  // content's max work-cell offset so every node whose work cell could pass the radius test is included.
+  // The same filter/rank loop over an ascending-id superset picks the identical winner.
   let scanned = candidates;
   if (bound !== undefined) {
     scanned = resourcesNearNode(
@@ -121,12 +73,9 @@ export function nearestHarvestableFor(
       bound.radius + contentIndex(ctx.content).maxResourceWorkOffset,
     );
   } else if (gate !== undefined) {
-    // A confined roaming scan: the region box centred on the allowed area covers every anchor whose work
-    // cell (≤ maxResourceWorkOffset off the anchor) could pass the gate - the same provable-superset
-    // argument as the flag path, so the filter/rank loop below picks the identical winner at O(nearby).
-    // Guarded: when the allowed box spans most of the map (a map-wide signpost network), the region query
-    // would collect nearly every resource AND re-sort it per gatherer per tick - the pre-sorted canonical
-    // list is then the cheaper identical superset, so keep it.
+    // A confined roaming scan: the region box around the allowed area covers every anchor whose work
+    // cell could pass the gate, the same superset argument as the bounded path. Guarded, because an
+    // allowed box spanning most of the map makes the pre-sorted canonical list the cheaper superset.
     const b = gate.bounds;
     const boxW = Math.min(b.maxX, terrain.width - 1) - Math.max(b.minX, 0) + 1;
     const boxH = Math.min(b.maxY, terrain.height - 1) - Math.max(b.minY, 0) + 1;
@@ -137,22 +86,14 @@ export function nearestHarvestableFor(
       scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
     }
   }
-  // The composed walk-block view the goal gate probes below - resolved once per scan (after the
-  // dormancy early-return, so a settler with no harvestable atomic never pays for it). Both layers
-  // are needed: buildings can bury a deposit's work cell, and a deposit hemmed in by its neighbours'
-  // footprints resolves its stance to its own resource-blocked anchor (resourceStanceCells' last
-  // fallback).
+  // Resolved once per scan, behind the dormancy early-return. Both block layers matter: a building can
+  // bury a deposit's work cell, and a hemmed-in deposit falls back to its own resource-blocked anchor.
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  // Cells this settler's own routes just failed to reach - skipped so the re-plan moves on to the next
-  // node instead of re-choosing the doomed one it parked on ({@link unreachableGoals}).
   const unreachable = unreachableGoals(world, ctx, plan.entity);
-  // The sealed-pocket veto ({@link routeRegions}) - probed last in the accept, so a candidate rejected
-  // by the cheap gates never costs a region flood.
+  // Probed last in the accept, so a candidate rejected by the cheap gates never costs a region flood.
   const regions = routeRegions(world, ctx, terrain);
-  // Who the `needforgood` gate below judges - resolved once per scan, not per candidate node.
   const subject = needSubjectOf(world, plan.entity);
-  // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
-  // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
+  // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
     const res = world.tryGet(e, Resource);
@@ -166,40 +107,27 @@ export function nearestHarvestableFor(
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     if (!settlerMeetsNeed(world, ctx, subject, 'good', res.goodType)) return null;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
-    // Reachability gate: a resource walled off from the settler by static terrain - the far bank of a river
-    // with no land crossing - sits in a different connected component, so `findPath` would reject the route
-    // (nav/pathfinding.ts answers "no route" from the same `componentOf` verdict). Without this the
-    // nearest-by-Manhattan pick can latch onto such a tree and the flag-bound gatherer stalls forever trying
-    // to path to it, never falling through to a reachable tree slightly farther. `componentOf` is an O(1)
-    // array read (a build-time flood-fill). Measured from `here`, the settler's actual route start (bridges
-    // are not yet walkable, so the two banks are genuinely separate components - a named limitation).
+    // A resource across static terrain sits in a different connected component, and `findPath` answers
+    // "no route" from the same `componentOf` verdict. Limitation: bridges are not walkable yet, so the
+    // two banks of a river are genuinely separate components.
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
-    // Dynamic reachability: an overlay-blocked work cell is a blocked goal `findPath` rejects, so skip
-    // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups).
-    // The settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
+    // An overlay-blocked work cell is a goal `findPath` rejects. The settler's own cell is never
+    // blocked for itself, so a deposit it already stands on still qualifies.
     if (cell !== here && blocked.has(cell)) return null;
-    // Same self-exemption: a deposit under the settler's own feet needs no walk, so a stale memo entry
-    // for that cell must not veto it.
     if (cell !== here && isUnreachableGoal(unreachable, cell)) return null;
-    // Outside the bound circle (the flag's work radius, the hunter's ground) - leave it be.
     if (bound !== undefined && manhattan(terrain, bound.center, cell) > bound.radius) return null;
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
-    // A clear cell sealed off from the settler - provably no route, so fall through to reachable work.
-    if (regions.unroutable(here, cell)) return null;
+    if (regions.unroutable(here, cell)) return null; // a clear cell sealed off from the settler
     return { cell, payload: null };
   });
-  // No same-side onSide arg: a standing Resource (tree/deposit/clay) is never Owner-stamped - forests are
-  // shared map features, as are the ground drops they fall as. Gating here would add an always-true owner
-  // lookup over the map-sized resource list per gatherer per tick.
+  // No same-side gate: a standing Resource is never Owner-stamped, so the test would always pass.
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
 
 /**
- * The nearest {@link GroundDrop} pile whose good `pick` selects (the good to collect, or null to skip the
- * pile), with its Manhattan distance. Every `targets.groundDrops` entry already carries
- * GroundDrop+Stockpile+Position (built by collectTargets), so the scan needs no per-pile marker re-check
- * and is O(drops), ~0 when none exist. The good `pick` returns then faces the work-cell reachability and
- * signpost gates both drop drives share.
+ * The nearest {@link GroundDrop} pile whose good `pick` selects, with its Manhattan distance. Every
+ * `targets.groundDrops` entry already carries GroundDrop+Stockpile+Position, so the scan re-checks no
+ * markers. The good `pick` returns then faces the work-cell reachability and signpost gates.
  */
 function nearestDropFor(
   plan: PlannerContext,
@@ -216,7 +144,7 @@ function nearestDropFor(
     const cell = interactionCell(world, ctx, terrain, e, here);
     // Cheapest first: an out-of-area pile never pays the reachability probe below.
     if (within !== undefined && manhattan(terrain, within.center, cell) > within.radius) return null;
-    if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail - leave the pile for later
+    if (unreachableWorkCell(gates, here, cell)) return null; // the walk there would fail
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });
@@ -224,20 +152,11 @@ function nearestDropFor(
 }
 
 /**
- * The nearest collectable ground drop a felling collector should carry off - a bare {@link GroundDrop} trunk
- * pile (a felled tree's dropped wood) whose good this settler's job may harvest - with its Manhattan distance,
- * or null if none is in reach. Scoped two ways so it stays the collector's own-trade loop, not a general
- * porter drive: (1) to `GroundDrop` piles only (a felled trunk / dropped good), never a designated delivery
- * flag or a boat hull - both equally-bare `Stockpile`s; (2) to a good the settler harvests, via the same
- * {@link jobAtomics} gate {@link nearestHarvestableFor} uses (a woodcutter collects wood, not stone).
- *
- * Nearest by Manhattan + ascending-cell-id (canonical scan); the pile's good is its lowest-id stocked good
- * ({@link stockpileEntries}, never raw Map order). The planner weighs the returned `dist` against
- * {@link nearestHarvestableFor}'s node so, standing on its fresh trunk (distance 0), the collector picks the
- * wood up before wandering to the next tree - the original's fell-then-carry cadence. Unlike harvesting,
- * collecting an already-dropped good applies no `needforgood` XP gate (carrying a trunk is hauling, not
- * harvesting). `within` bounds which piles count (a hunter's hunting ground) without moving the ranking,
- * which stays on the settler; unbounded, the scan is map-wide.
+ * The nearest ground drop a felling collector should carry off, with its Manhattan distance, or null.
+ * Scoped to keep it the collector's own-trade loop rather than a general porter drive: `GroundDrop` piles
+ * only, never a delivery flag or a boat hull, and only a good the settler's job may harvest. Collecting
+ * an already-dropped good applies no `needforgood` XP gate, since carrying a trunk is hauling.
+ * `within` bounds which piles count without moving the ranking, which stays on the settler.
  */
 export function nearestCollectablePileFor(
   plan: PlannerContext,
@@ -253,7 +172,7 @@ export function nearestCollectablePileFor(
     plan,
     (e) => {
       const good = lowestStockedGood(world.get(e, Stockpile));
-      if (good === null) return null; // an emptied drop (about to be reaped) - nothing to collect
+      if (good === null) return null; // an emptied drop, about to be reaped
       if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
       const harvestAtomic = targets.harvestAtomicByGood.get(good);
       if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
@@ -264,13 +183,9 @@ export function nearestCollectablePileFor(
 }
 
 /**
- * The nearest ground drop this gatherer harvested into being - a {@link GroundDrop} whose {@link HarvestedBy}
- * mark names `plan.entity` - with its Manhattan distance, or null if it holds none. The flag-bound
- * gatherer's collect drive: it reclaims the trunk/ore it felled or mined and delivers it to its flag, and -
- * unlike {@link nearestCollectablePileFor}'s trade-wide scan - it ignores every pile it did not make (another
- * gatherer's trunk, a player-dropped heap), the "carry only what you dug" rule. Nearest by Manhattan +
- * ascending-cell-id (canonical scan); the pile's good is its lowest-id stocked good. A fully-collected drop
- * empties and is reaped, so it drops out of the scan naturally.
+ * The nearest ground drop whose {@link HarvestedBy} mark names this gatherer, with its Manhattan
+ * distance, or null. Unlike {@link nearestCollectablePileFor}'s trade-wide scan it ignores every pile
+ * the gatherer did not make: it carries only what it dug.
  */
 export function nearestOwnDropFor(
   plan: PlannerContext,
@@ -278,9 +193,9 @@ export function nearestOwnDropFor(
   const { world, entity: gatherer } = plan;
   return nearestDropFor(plan, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
-    if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop - leave it be
+    if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop
     const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) return null; // emptied (about to be reaped)
+    if (good === null) return null; // emptied, about to be reaped
     return good;
   });
 }

@@ -10,17 +10,9 @@ import { dispatchRecruitArming } from './recruit-arming.js';
 import { releaseStaleIntent } from './replan.js';
 
 /**
- * PlannerSystem - the settler planner: two layered passes per tick.
- *
- *  1. {@link atomicPlanner} (the *what*): for each idle settler (a job, no atomic running, not
- *     travelling), run the drive ladder (../drives/ladder.ts) and either issue a MoveGoal to walk to
- *     the chosen target or start the CurrentAtomic the AtomicSystem will execute.
- *  2. {@link navigationPlanner} (the *where*, ./navigation.ts): turn a MoveGoal on a path-less,
- *     request-less entity into a PathRequest; PathfindingSystem routes it, MovementSystem walks it,
- *     and the goal is removed on arrival.
- *
- * The atomic planner runs first so a freshly-set goal is picked up by the navigation pass in the same
- * tick (no one-tick stall).
+ * The settler planner: {@link atomicPlanner} chooses what each idle settler does, then
+ * {@link navigationPlanner} turns any goal it set into a path request. The atomic pass runs first, so a
+ * freshly-set goal is routed in the same tick rather than stalling for one.
  */
 export const plannerSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
@@ -31,21 +23,17 @@ export const plannerSystem: System = (world, ctx) => {
 /** Sweep every settler through the drive ladder, sharing one {@link beginPlannerPass} snapshot. */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
   const pass = beginPlannerPass(world, ctx, terrain);
-  // The assistant's errands are stamped before the sweep, so a dispatched settler is planned onto
-  // its fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
+  // The assistant's errands are stamped before the sweep, so a dispatched settler is planned onto its
+  // fetch the same tick; arming first, so a recruit's weapon outranks its pair of boots.
   dispatchRecruitArming(pass);
   dispatchAssistantGrants(pass);
-  // Canonical order (the pass's shared sort - see PlannerPass.settlers): the per-tick claim maps
-  // hand out targets first-come-first-served, so the visit order is a pick, not a mere sweep.
   for (const e of pass.settlers) {
-    // Busy (an atomic running, a live route, a parked failed one) - leave it to play out; else the
-    // settler is re-planning, and every intent the previous plan left is shed first (./replan.ts).
+    // A busy settler plays its intent out; the rest shed what the previous plan left before re-planning.
     if (!releaseStaleIntent(world, ctx, e, pass.farmClaims, pass.inbound)) continue;
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
     // Key on Age, not the age-class job ids: only a born-young settler carries one, so a fixture's
-    // adult job id colliding with an age-class id can't misroute an adult here (see
-    // ../../lifecycle/ageclass.ts).
+    // adult job id colliding with an age-class id cannot misroute an adult here.
     if (world.has(e, Age)) {
       planChild(pass, e, settler);
       continue;
