@@ -1,10 +1,7 @@
 /**
- * The storable-object vocabulary Cultures containers share: the class ids the original's factory
- * dispatches on, and the `CMemory` blob wrapper they nest payloads in. Format-neutral, so no decoder
- * depends on a sibling format's module for it.
- *
- * Source basis: each id is the leading `u32` observed on its container in an owned copy; the decoders
- * assert them per-format and synthetic round-trip fixtures pin the layouts.
+ * The storable class ids Cultures containers share, plus the `CMemory` blob wrapper they nest payloads
+ * in. Each id is the leading `u32` observed on its container in an owned copy; the decoders assert them
+ * per-format and synthetic round-trip fixtures pin the layouts.
  */
 
 import type { ByteCursor } from './byte-cursor.js';
@@ -22,8 +19,7 @@ export const StorableId = {
 
 /**
  * Reads one `CMemory` body (`[u32 id=0x3E9][u32 version][u32 size][size bytes]`), returning a copy so
- * the caller may decrypt in place without touching the source buffer. Asserts the id, tagging the
- * error with the cursor's format prefix.
+ * the caller may decrypt in place without touching the source buffer.
  */
 export function readCMemory(r: ByteCursor): Uint8Array {
   const id = r.u32();

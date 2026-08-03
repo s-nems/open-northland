@@ -1,19 +1,11 @@
 /**
- * PNG container encoder/decoder - wraps straight 8-bit RGBA pixels in a PNG file (and reads them back).
- *
- * Unlike the other decoders this ports no original game format: PNG is the pipeline's output container.
- * `decodePcx` (and later `decodeBmd`) produce indexed pixels → `expandToRgba` → `encodePng` → a `.png`
- * written under content/. The byte layout follows the PNG spec (W3C / ISO 15948):
+ * PNG container encoder/decoder - wraps straight 8-bit RGBA pixels in a file and reads them back. This
+ * is the pipeline's output container, not an original game format, so the layout follows the PNG spec
+ * (W3C / ISO 15948):
  *   signature 89 50 4E 47 0D 0A 1A 0A, then length-prefixed CRC-32'd chunks IHDR, IDAT(s), IEND
  *   (all multi-byte fields big-endian).
- * We emit the simplest conformant stream: 8-bit colour-type-6 (truecolour + alpha), no interlace, every
- * scanline prefixed with filter type 0 (None), the whole filtered image zlib-deflated as one IDAT.
- * `decodePng` is the inverse, used to round-trip `encodePng` without committing real assets. Foreign PNGs
- * that use the other four row filters (1..4) are rejected with a clear `png:` error rather than silently
- * corrupted; the oracle pixel-diff step can extend it to read those when needed.
  *
- * Pure functions (no I/O): bytes in, bytes out. zlib is via node:zlib - this is an offline build tool,
- * not the deterministic sim, so Node APIs are fair game here.
+ * zlib comes from node:zlib: this is an offline build tool, not the deterministic sim.
  */
 
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -63,9 +55,8 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
 }
 
 /**
- * Encodes straight 8-bit RGBA pixels into a PNG (colour type 6, no interlace, filter-0 scanlines, one
- * zlib-deflated IDAT). Throws a `png:`-prefixed error on dimensions that don't describe a valid image or
- * an `rgba` buffer whose length disagrees with them - programmer errors, not recoverable boundary cases.
+ * Encodes straight 8-bit RGBA pixels into the simplest conformant stream: colour type 6 (truecolour
+ * plus alpha), no interlace, filter-0 scanlines, and one zlib-deflated IDAT.
  */
 export function encodePng(image: RgbaImage): Uint8Array {
   const { width, height, rgba } = image;
@@ -79,12 +70,12 @@ export function encodePng(image: RgbaImage): Uint8Array {
   }
 
   const stride = width * CHANNELS;
-  // Each scanline is prefixed with its filter-type byte (0 = None); the row-0 bytes stay zero-filled.
+  // Each scanline is prefixed with its filter-type byte; 0 (None) is already the zero fill.
   const filtered = new Uint8Array(height * (stride + 1));
   for (let y = 0; y < height; y++) {
     filtered.set(rgba.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
   }
-  const idat = deflateSync(filtered); // a Buffer, i.e. a Uint8Array - chunk() only reads it
+  const idat = deflateSync(filtered);
 
   const ihdr = new Uint8Array(IHDR_BYTES);
   const hv = new DataView(ihdr.buffer);
@@ -102,10 +93,9 @@ export function encodePng(image: RgbaImage): Uint8Array {
 }
 
 /**
- * Inverse of {@link encodePng}: parses the minimal shape we emit and returns straight RGBA. Throws a
- * `png:`-prefixed error on a bad signature, a chunk that overruns the buffer, a CRC mismatch, a header
- * we don't support (non-8-bit, non-RGBA, interlaced), a non-None row filter, or a truncated pixel
- * stream. These are malformed/unsupported inputs - a boundary failure the caller should surface per-file.
+ * Inverse of `encodePng`: parses the minimal shape this module emits and returns straight RGBA. Throws
+ * a `png:`-prefixed error on a bad signature, a CRC mismatch, an unsupported header (non-8-bit,
+ * non-RGBA, interlaced), a row filter other than None, or a truncated pixel stream.
  */
 export function decodePng(bytes: Uint8Array): RgbaImage {
   if (bytes.length < SIGNATURE.length || !signatureMatches(bytes)) {

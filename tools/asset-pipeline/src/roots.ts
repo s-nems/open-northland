@@ -4,13 +4,10 @@ import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
 /**
- * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay -
- * a directory shaped like the game root (e.g. the unpacked CnMod zip, which ships `DataCnmd/`,
- * `CnModMaps/`, and patched `Data/`/`DataX/` files) - then the owned base install, then the
- * unpacked-archive layer ({@link withArchiveLayer}). A file present in an earlier layer wins the same
- * relative path, matching what an install with the mod extracted over it would contain. `mod === game`
- * is that installed-in-place layout: the overlay is the identity and every path resolves against the
- * one tree.
+ * The source trees one conversion reads, highest precedence first: the culturesnation mod overlay, the
+ * owned base install, then the unpacked-archive layer. A file in an earlier layer wins the same
+ * relative path, matching an install with the mod extracted over it. `mod === game` is that
+ * installed-in-place layout.
  */
 export interface SourceRoots {
   readonly game: string;
@@ -33,8 +30,8 @@ export function rootsInOrder(roots: SourceRoots): readonly string[] {
 
 /**
  * Adds the unpacked-archive tree under `outDir` as the lowest-precedence layer, so a loose file wins a
- * path collision with its `.lib` twin. Source basis (data consistency, not a direct observation of the
- * original) in docs/SOURCES.md "Source precedence".
+ * path collision with its `.lib` twin. Source basis: data consistency, docs/SOURCES.md "Source
+ * precedence".
  */
 export function withArchiveLayer(roots: SourceRoots, outDir: string): SourceRoots {
   return { ...roots, archive: outDir };
@@ -42,9 +39,8 @@ export function withArchiveLayer(roots: SourceRoots, outDir: string): SourceRoot
 
 /**
  * Picks the directory entry that case-folds to `segment`: the exact spelling when present, else the
- * single folded match. Two folded matches with no exact one are a same-layer case collision this
- * policy refuses to order (only a case-sensitive filesystem can host such twins). Undefined when
- * nothing matches.
+ * single folded match. Two folded matches with no exact one throw instead of being ordered
+ * arbitrarily; undefined when nothing matches.
  */
 export function pickCaseFoldedEntry(
   entries: readonly string[],
@@ -64,11 +60,9 @@ export function pickCaseFoldedEntry(
 }
 
 /**
- * Resolves `segments` under `dir`, matching each path segment case-insensitively
- * ({@link pickCaseFoldedEntry}), and returns the real-cased on-disk path, or undefined when any
- * segment is absent. The shipped trees mix casing freely (`Text/`, `TEXT/`, `Pol/`, `Strings.ini`
- * all ship), which a case-insensitive macOS/Windows filesystem hides but a case-sensitive Linux one
- * does not; resolving via directory listings keeps every stage portable.
+ * Resolves `segments` under `dir` matching each segment case-insensitively, returning the real-cased
+ * on-disk path. The shipped trees mix casing freely (`Text/`, `TEXT/`, `Pol/`, `Strings.ini`), which a
+ * case-insensitive macOS/Windows filesystem hides and a case-sensitive Linux one does not.
  */
 export async function findPathCaseInsensitive(
   dir: string,
@@ -89,7 +83,7 @@ export async function findPathCaseInsensitive(
   return current;
 }
 
-/** {@link findPathCaseInsensitive} over candidate directories in priority order - the first that resolves wins. */
+/** Case-insensitive resolution across candidate directories in priority order; the first hit wins. */
 export async function findPathCaseInsensitiveInDirs(
   dirs: readonly string[],
   segments: readonly string[],
@@ -102,13 +96,9 @@ export async function findPathCaseInsensitiveInDirs(
 }
 
 /**
- * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively
- * ({@link findPathCaseInsensitive}), or undefined in neither. The pipeline's one source-path rule;
- * every loose-file read resolves through this.
- *
- * Both separators split: callers pass either a `join`ed constant (platform `sep`) or an ini-borne
- * reference already forward-slashed by `normalizeAssetPath`. Splitting on the platform `sep` alone
- * left the other shape as one unsplittable segment, so every normalized reference missed on Windows.
+ * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively, or
+ * undefined when none does. Splits on either separator, since callers pass either a `join`ed constant
+ * or an ini-borne reference already forward-slashed by `normalizeAssetPath`.
  */
 export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
   return findPathCaseInsensitiveInDirs(rootsInOrder(roots), rel.split(/[\\/]+/));
@@ -122,10 +112,9 @@ interface RootFiles {
 
 /**
  * Merges per-root listings into one union keyed by the case-folded relative path, an earlier root
- * winning a collision even when the trees spell the path with different case (an over-install on the
- * original's case-insensitive targets would have merged such paths into one file). Two same-root
- * paths that fold equal have no such merged identity and throw instead of silently ordering. Sorted
- * by `rel` so a re-run is reproducible regardless of directory-entry order.
+ * winning a collision even when the trees spell the path with different case. Two same-root paths
+ * that fold equal throw instead. Sorted by `rel` so a re-run is reproducible regardless of
+ * directory-entry order.
  */
 export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[] {
   const byKey = new Map<string, SourceFile>();
@@ -149,9 +138,7 @@ export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[
 
 /**
  * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
- * as a layer-ordered case-folded union ({@link unionCaseFoldedRoots}). A missing root propagates (an
- * environmental error): the mod root's existence is the caller's contract ({@link SourceRoots}), and
- * the archive layer's is the unpack stage's - `runPipeline` creates `--out` before any stage runs.
+ * as a layer-ordered case-folded union. A missing root propagates as an environmental error.
  */
 export async function collectSourceFiles(
   roots: SourceRoots,
@@ -169,24 +156,19 @@ export async function collectSourceFiles(
   return unionCaseFoldedRoots(perRoot);
 }
 
-/**
- * Collects every file whose last path segment is `name` (case-insensitive) - the shared file
- * selection of the map tree-walk stages (`map.cif`, `map.dat`), overlay-aware.
- */
+/** Collects every file whose last path segment is `name`, case-insensitively, across the roots. */
 export async function collectSourceFilesNamed(roots: SourceRoots, name: string): Promise<SourceFile[]> {
   const suffix = `${sep}${name.toLowerCase()}`;
   return collectSourceFiles(roots, (rel) => `${sep}${rel}`.endsWith(suffix));
 }
 
-/** Where players get the culturesnation mod - named in the fail-fast error and the installer UI. */
+/** Where players download the culturesnation mod. */
 export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
 
 /**
- * Resolves the mod overlay root the conversion reads from: an explicit `modRoot` must contain a
- * `DataCnmd/` directory; with none given, a game folder that contains one (the mod installed in
- * place) is its own overlay. No mod anywhere fails fast here - a mod-less conversion would
- * otherwise die deep in IR cross-reference validation (the tribe/weapon/house tables are readable
- * only under `DataCnmd/`) with an error nobody can act on.
+ * Resolves the mod overlay root: an explicit `modRoot` must contain a `DataCnmd/` directory, and with
+ * none given a game folder that contains one is its own overlay. No mod anywhere fails fast here,
+ * because the tribe/weapon/house tables are readable only under `DataCnmd/`.
  */
 export async function resolveModRoot(game: string, modRoot: string | undefined): Promise<string> {
   const hasMod = async (root: string): Promise<boolean> => {

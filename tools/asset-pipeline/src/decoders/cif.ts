@@ -9,8 +9,6 @@
  *   0x01 "logichousetype"            (level 1 = section)
  *   0x02 'debugname "headquarters"'  (level 2 = property)
  * i.e. the same vocabulary as the readable `.ini` sources, just stored as an encrypted CStringArray.
- *
- * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
 import { ByteCursor, decodeLatin1, viewOf } from './byte-cursor.js';
@@ -106,9 +104,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
 
 /**
  * Decodes a `.cif` whose root is a `CStringArray` (type tables, maps). Returns the decrypted,
- * level-tagged text lines plus the array header. Throws on a structurally invalid container - so a
- * batch pipeline over many owned files must wrap each call per-file (one corrupt `.cif` shouldn't
- * abort the run).
+ * level-tagged text lines plus the array header, and throws on a structurally invalid container.
  *
  * Text is decoded as latin1 to preserve every source byte. Display strings carrying Polish glyphs
  * are actually CP1250; re-decode those at the IR layer where it matters.

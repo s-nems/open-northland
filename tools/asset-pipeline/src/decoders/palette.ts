@@ -1,16 +1,9 @@
 /**
- * Standalone `CPalette` decoder - the 256-color palette stored as its own storable (id 0x3F6) in
- * `.cif`/`.lib` object graphs (used by bobs and maps). This is not the `.pcx` trailing palette -
- * that one is RGB triples handled in `pcx.ts`; this one is the engine's native `[B,G,R,_]` table.
+ * Standalone `CPalette` decoder: the 256-color palette stored as its own storable (id 0x3F6) in
+ * `.cif`/`.lib` object graphs, not the `.pcx` trailing palette handled in `pcx.ts`.
  *
- * Byte-level inspection of palettes from an owned game copy establishes a 0x400-byte body: 256
- * `[B, G, R, unused]` entries after the storable header. Synthetic round trips pin that layout.
- *
- * Unlike a `CStringArray`, the body is read raw (no CMemory wrapper, no encryption): the bytes after
- * the 8-byte header are the palette directly.
- *
- * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
- * `encodePalette` is the faithful inverse, used to round-trip test without committing real assets.
+ * Byte-level inspection of an owned copy establishes the layout: an 8-byte storable header then a
+ * 0x400-byte body of 256 `[B, G, R, unused]` entries, read raw with no CMemory wrapper or encryption.
  */
 
 import { viewOf } from './byte-cursor.js';
@@ -22,22 +15,17 @@ const ENTRY_COUNT = 256;
 const BYTES_PER_ENTRY = 4; // on disk: [B, G, R, _]
 const PALETTE_BODY_BYTES = ENTRY_COUNT * BYTES_PER_ENTRY; // 0x400
 
-/** A decoded standalone palette: its storable version plus 256 colors as RGB triples. */
 export interface Palette {
-  /** Storable version word from the header (0 in observed game data); carried, not interpreted. */
+  /** Storable version word from the header, 0 in observed game data. */
   readonly version: number;
-  /**
-   * 256 RGB triples (768 bytes), row-major `[R, G, B] × 256`. Reordered from the on-disk `[B, G, R, _]`
-   * so it drops straight into {@link import('./pcx.js').expandToRgba} like the `.pcx` trailer palette.
-   */
+  /** 256 RGB triples (768 bytes), reordered from the on-disk `[B, G, R, _]` entries. */
   readonly rgb: Uint8Array;
 }
 
 /**
- * Decodes a standalone `CPalette` storable into 256 RGB triples. Throws a `palette:`-prefixed error on
- * a buffer too short for the header+body, or a header id that isn't 0x3F6 (a structurally wrong object
- * is a corrupt input - a batch pipeline should wrap the call per-file so one bad object can't abort the
- * run). Trailing bytes past the 0x400-byte body are ignored, matching the original's fixed-size read.
+ * Decodes a standalone `CPalette` storable into 256 RGB triples. Throws on a buffer too short for the
+ * header and body, or a header id that isn't 0x3F6. Trailing bytes past the 0x400-byte body are
+ * ignored, matching the original's fixed-size read.
  */
 export function decodePalette(bytes: Uint8Array): Palette {
   if (bytes.length < STORABLE_HEADER_BYTES + PALETTE_BODY_BYTES) {
@@ -70,19 +58,17 @@ export function decodePalette(bytes: Uint8Array): Palette {
   return { version, rgb };
 }
 
-/** What {@link encodePalette} serializes: 256 RGB triples plus an optional storable version word. */
 export interface PaletteInput {
-  /** 256 RGB triples (768 bytes), `[R, G, B] × 256`. */
+  /** 256 RGB triples (768 bytes). */
   readonly rgb: Uint8Array;
-  /** Storable version word for the header. Defaults to 0 (as in observed game data). */
+  /** Storable version word for the header, 0 in observed game data. */
   readonly version?: number;
 }
 
 /**
- * Inverse of {@link decodePalette}: serializes the 8-byte storable header (id 0x3F6 + version) and the
- * 0x400-byte `[B, G, R, _]` body, reordering the RGB-triple input back to on-disk order with a zeroed
- * pad byte. Kept faithful so decode can be round-tripped without committing copyrighted fixtures (same
- * rationale as the `.lib`/`.cif`/`.pcx` encoder pairs). Throws on a palette that isn't 768 bytes.
+ * Inverse of {@link decodePalette}: writes the 8-byte storable header and the 0x400-byte `[B, G, R, _]`
+ * body, reordering the RGB triples back to on-disk order with a zeroed pad byte. Kept faithful so decode
+ * can be round-tripped without committing copyrighted fixtures. Throws on a palette that isn't 768 bytes.
  */
 export function encodePalette(input: PaletteInput): Uint8Array {
   const { rgb, version = 0 } = input;

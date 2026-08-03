@@ -1,11 +1,9 @@
 /**
- * The pipeline's progress seam. A conversion of a full game copy takes minutes, so an embedding
- * host (the desktop shell's first-run installer) needs live feedback; the CLI passes nothing and
- * keeps its stage summary logs. Reporting is best-effort telemetry: reporters must not throw, and
- * stages ignore the seam entirely when absent.
+ * The pipeline's progress seam for an embedding host. Reporting is best-effort telemetry: reporters
+ * must not throw, and stages ignore the seam entirely when absent.
  */
 
-/** Stage ids in `runPipeline`'s fixed execution order; hosts map them to labels and weights. */
+/** Stage ids in `runPipeline`'s fixed execution order. */
 export const PIPELINE_STAGES = [
   'unpack',
   'pictures',
@@ -22,14 +20,13 @@ export const PIPELINE_STAGES = [
 export type PipelineStageId = (typeof PIPELINE_STAGES)[number];
 
 /**
- * Per-item heartbeat within the current stage: `done` items so far; `total` when the stage knows its
- * item count up front (walk-as-you-go stages report `undefined` - a moving counter, not a fraction).
- * Convention: known-total stages tick at item start (the final tick is `total - 1`), walk-as-you-go
- * stages tick after each write (`1..N`) - consumers must not expect a closing `done === total` tick.
+ * Per-item heartbeat within the current stage: `done` items so far, `total` only when the stage knows
+ * its item count up front. Known-total stages tick at item start (the final tick is `total - 1`) and
+ * walk-as-you-go stages tick after each write, so no closing `done === total` tick is guaranteed.
  */
 export type StageItemReporter = (done: number, total?: number) => void;
 
-/** Progress callbacks for {@link runPipeline}; `item` ticks always belong to the last `stage`. */
+/** Progress callbacks for `runPipeline`; `item` ticks always belong to the most recent `stage`. */
 export interface PipelineProgress {
   stage?(stage: PipelineStageId): void;
   item?: StageItemReporter;

@@ -5,17 +5,16 @@ import { join } from 'node:path';
 /**
  * Cheap validation of a user-picked original-game folder for installer UIs. An owned install is
  * recognized by its `.lib` archives (the real copy ships `DataX/Libs/data0001.lib`); `DataCnmd/`
- * marks the culturesnation mod whose readable `.ini` sources the pipeline prefers (golden rule #4).
+ * marks the culturesnation mod whose readable `.ini` sources the pipeline prefers.
  */
 
-/** How deep {@link probeGameFolder} scans for a `.lib` - the known archive sits at depth 3. */
+/** How deep the probe scans for a `.lib`; the known archive sits at depth 3. */
 const PROBE_MAX_DEPTH = 4;
 
 export interface GameFolderProbe {
-  /** At least one `.lib` archive within {@link PROBE_MAX_DEPTH} - the minimum the unpack stage needs. */
+  /** At least one `.lib` archive within the depth bound; the minimum the unpack stage needs. */
   readonly hasArchives: boolean;
-  /** Whether `DataCnmd/` (the culturesnation mod, installed in place) is present - if not, the
-   * conversion needs an external mod root (`--mod-root`; see `resolveModRoot`). */
+  /** Whether `DataCnmd/` is present in place; if not, the conversion needs an external `--mod-root`. */
   readonly hasMod: boolean;
 }
 
@@ -23,8 +22,8 @@ export interface GameFolderProbe {
 export const CULTURESNATION_MOD = 'DataCnmd';
 
 /**
- * Probe `dir` as a game-folder candidate. Bounded breadth-first scan (never a full-tree walk - a
- * wrong pick like the user's home directory must stay cheap); unreadable directories count as empty.
+ * Probes `dir` as a game-folder candidate with a bounded breadth-first scan, never a full-tree walk,
+ * so a wrong pick like the user's home directory stays cheap. Unreadable directories count as empty.
  */
 export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
   let top: Dirent[];
@@ -34,7 +33,6 @@ export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
     return { hasArchives: false, hasMod: false };
   }
   const hasMod = top.some((e) => e.isDirectory() && e.name === CULTURESNATION_MOD);
-  // Scan `entries` (children of `parent`) for a .lib, queueing subdirectories onto `next`.
   const scan = (parent: string, entries: readonly Dirent[], next: string[]): boolean => {
     for (const entry of entries) {
       if (entry.isFile() && entry.name.toLowerCase().endsWith('.lib')) return true;
