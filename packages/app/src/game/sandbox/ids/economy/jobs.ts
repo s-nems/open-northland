@@ -1,5 +1,7 @@
 /** The sandbox's own derived job ids: the rebased worker-slot band and its classification. */
 import {
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
   JOB_CARRIER,
   JOB_COLLECTOR,
   JOB_FARMER,
@@ -11,8 +13,8 @@ import {
 /**
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own
  * functional job band (idle 0, builder 7, collector 8, carrier 24, soldiers 31..41, the picker
- * professions - all < 1000). A rebased slot job is `BASE + originalId`; the carrier and the hunter
- * keep their own ids. See {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed.
+ * professions - all < 1000). A rebased slot job is `BASE + originalId`; {@link UNREBASED_SLOT_JOBS} keep
+ * their own. See {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed.
  */
 export const WORKER_SLOT_JOB_BASE = 1000;
 
@@ -27,12 +29,22 @@ export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([
   JOB_FISHER,
 ]);
 
-/** Rebase one extracted slot job clear of the sandbox band. The carrier and the hunter keep their
- *  own ids: the sandbox band defines those trades itself, and the hunter's combat/signpost role is
- *  classified by the `hunter` id slug (`jobRoleOfId`), which a synthetic `worker_*` id would strip -
- *  a rebased building hunter could never shoot game. */
+/** The slot trades that keep their own `jobtypes.ini` id instead of being rebased, because the sandbox
+ *  band already DEFINES them and the sim classifies them by their id slug (`jobRoleOfId`), which a
+ *  synthetic `worker_*` id would strip: the carrier, the hunter (a rebased building hunter could never
+ *  shoot game) and the two tower archers (a rebased one could never man the tower - see
+ *  {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS`). */
+const UNREBASED_SLOT_JOBS: ReadonlySet<number> = new Set([
+  JOB_CARRIER,
+  JOB_HUNTER,
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+]);
+
+/** Rebase one extracted slot job clear of the sandbox band, except the trades the sandbox already owns
+ *  ({@link UNREBASED_SLOT_JOBS}). */
 export function rebaseSlotJob(jobType: number): number {
-  return jobType === JOB_CARRIER || jobType === JOB_HUNTER ? jobType : WORKER_SLOT_JOB_BASE + jobType;
+  return UNREBASED_SLOT_JOBS.has(jobType) ? jobType : WORKER_SLOT_JOB_BASE + jobType;
 }
 
 /**

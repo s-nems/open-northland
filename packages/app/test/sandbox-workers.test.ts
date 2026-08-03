@@ -1,15 +1,21 @@
 import { DEFAULT_RECIPE_TICKS } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_HUNTER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_CARRIER, JOB_HUNTER } from '../src/catalog/jobs.js';
 import {
   BUILDING_JOINERY,
   BUILDING_MILL,
+  BUILDING_WATCHTOWER,
   GOOD_FLOUR,
   GOOD_WHEAT,
   JOB_MILLER_SLOT,
   WORKER_SLOT_JOB_BASE,
 } from '../src/game/sandbox/ids/index.js';
-import { assignmentPriority, sandboxContent, workerRoleOf } from '../src/game/sandbox/index.js';
+import {
+  assignmentPriority,
+  assignmentPriorityFor,
+  sandboxContent,
+  workerRoleOf,
+} from '../src/game/sandbox/index.js';
 import { professionLabel } from '../src/i18n/index.js';
 
 /**
@@ -47,16 +53,16 @@ describe('sandbox building worker slots', () => {
   });
 
   it('rebases every extracted slot job clear of the native sandbox bands - the id-collision guard', () => {
-    // The original `logicworker` ids overlap the sandbox's own bands (22 = mud gatherer, 40/41 = archers,
-    // 24 = carrier), so before the rebase an HQ slot silently read as a native gatherer/soldier. Every
-    // extracted slot must now be the carrier or the hunter (both rebase-exempt: the sandbox band defines
-    // those trades itself) or a rebased id (>= the base) - never any other raw native-band id.
+    // The original `logicworker` ids overlap the sandbox's own bands (22 = mud gatherer, 24 = carrier), so
+    // before the rebase an HQ slot silently read as a native gatherer. Every extracted slot must now be one
+    // of the rebase-exempt trades the sandbox band DEFINES - the carrier, the hunter, and the two tower
+    // archers, each of which the sim classifies by its id slug - or a rebased id (>= the base), never any
+    // other raw native-band id.
+    const exempt = new Set([JOB_CARRIER, JOB_HUNTER, JOB_ARCHER, JOB_ARCHER_LONG]);
     for (const b of content.buildings) {
       if (b.typeId === BUILDING_JOINERY) continue; // its demo worker is a DELIBERATE native gatherer (below)
       for (const w of b.workers)
-        expect(
-          w.jobType === JOB_CARRIER || w.jobType === JOB_HUNTER || w.jobType >= WORKER_SLOT_JOB_BASE,
-        ).toBe(true);
+        expect(exempt.has(w.jobType) || w.jobType >= WORKER_SLOT_JOB_BASE).toBe(true);
     }
     // The HQ dispatches gatherers (collector/fisher/hunter) and carriers - 9 gatherers + 3 carriers, no
     // in-workshop craftsman. The player can only hand-assign its carriers (a gatherer is never a PPM target).
@@ -100,6 +106,17 @@ describe('sandbox building worker slots', () => {
     const priority = assignmentPriority(byType.get(35)?.workers);
     expect(priority.every((jobType) => workerRoleOf(jobType) !== 'gatherer')).toBe(true);
     expect(content.jobs.find((j) => j.typeId === priority[0])?.name).toBe('Druid');
+  });
+
+  it('offers a watchtower’s archer posts to that archer alone, and its hauler slot to everyone else', () => {
+    const slots = byType.get(BUILDING_WATCHTOWER)?.workers;
+    // A bow soldier gets his own post and NOTHING else: the tower also employs haulers, and falling
+    // through would quietly re-trade him into one.
+    expect(assignmentPriorityFor(JOB_ARCHER, slots)).toEqual([JOB_ARCHER]);
+    expect(assignmentPriorityFor(JOB_ARCHER_LONG, slots)).toEqual([JOB_ARCHER_LONG]);
+    // Everyone else is never offered a post - only the hauler slot.
+    expect(assignmentPriority(slots)).toEqual([JOB_CARRIER]);
+    expect(assignmentPriorityFor(JOB_CARRIER, slots)).toEqual([JOB_CARRIER]);
   });
 });
 

@@ -5,6 +5,7 @@ import {
   FamilyDuty,
   Fleeing,
   Frightened,
+  Garrison,
   LivestockVisit,
   PathRequest,
   PlayerOrder,
@@ -13,6 +14,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { isManningPost } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState, isTravelling } from '../../spatial/nodes.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
@@ -104,6 +106,11 @@ export function releaseStaleIntent(
 ): boolean {
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
+  // A garrison that is no longer holding its tower gives the post up HERE, above the busy/travel
+  // early-outs: it is usually a walk that took it off the post (a player order, an equip errand, a
+  // drill), and the marker also hides it from the render, so waiting for it to fall idle would march an
+  // invisible settler across the map. Garrison-scoped, so no other rest-inside marker is touched.
+  if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
   if (world.has(e, CurrentAtomic)) return false;
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
@@ -124,8 +131,11 @@ export function releaseStaleIntent(
   }
   releaseFarmTask(world, e, farmClaims);
   // The FamilyDuty and LivestockVisit holds keep their Resting through a re-plan: the family drive and
-  // the feed batch's release own those exits (the indoors contract, settlers/indoors.ts).
-  if (!world.has(e, FamilyDuty) && !world.has(e, LivestockVisit)) stepOut(world, e);
+  // the feed batch's release own those exits (the indoors contract, settlers/indoors.ts). A garrison
+  // still on its tower keeps it too - anything else already gave the post up at the top.
+  if (!world.has(e, FamilyDuty) && !world.has(e, LivestockVisit) && !world.has(e, Garrison)) {
+    stepOut(world, e);
+  }
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

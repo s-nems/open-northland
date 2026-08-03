@@ -1,25 +1,25 @@
-# Implement tower garrisons and defence mode
+# Implement defence mode and house-bow fire
 
 **Area:** sim, app · **Priority:** P2
 
-No garrison fire, no defence-mode command exists (`core/commands.ts` has neither). Buildings can now
-BE attacked and razed (warriors target enemy structures - `systems/conflict/`), but no building fires
-back; this ticket is the return-fire half.
+Tower garrisons now return fire: a bow soldier posted to a tower mans it, shoots from cover at his own
+bow plus the tower's reach bonus, and is untargetable while he holds it (`systems/conflict/tower-post.ts`,
+`settlers/drives/tower-post.ts`, `?scene=tower-garrison`). The other half of the extracted mode is still
+missing - no `setDefenceMode` command exists, and no building fires the house bow.
 
-**Source basis (extracted):** towers logictype 40/41, maintype 5 FIGHT, garrison `logicworker`
-3–4× short-bow job 40 + long-bow job 41 + carriers; `logicCanEnableDefenceMode 1` also on HQ
-(logictype 1) and barracks (39); house bow = weapons.ini type 20, jobtype 6 (civilist!), range
-0–29, dmg 375, arrow munition speed 7. Garrison shelter semantics and defence-mode fire cadence
-are unreadable → named approximations, log the choices.
+**Source basis (extracted):** `logicCanEnableDefenceMode 1` sits on the headquarters (logictype 1),
+barracks (39) and both towers (40/41); house bow = `weapons.ini` type 20, jobtype 6 (civilist!), range
+0–29, dmg 375, arrow munition speed 7. What the mode DOES - who shelters, the fire cadence - is
+unreadable → named approximations, log the choices.
 
 ## Scope
 
-- Tower garrison fire using the existing worker-slot machinery; garrisoned units hidden and
-  untargetable.
-- Defence-mode command + selected-building panel toggle + house-bow fire from enabled buildings.
-- A `?scene=tower-defence` acceptance scene.
+- A `setDefenceMode` command + a selected-building panel toggle, on every type the data marks.
+- Civilians shelter inside an alarmed building and fire the house bow from it, reusing the garrison
+  shelter machinery (`components/combat.ts` `Garrison`, `settlers/indoors.ts` `takePost`).
+- A `?scene=defence-mode` acceptance scene.
 
 ## Verify
 
 - `npm test` - existing goldens byte-identical.
-- `?scene=tower-defence` - **user's eyes** (arrows from the tower, attackers fall, tower falls).
+- `?scene=defence-mode` - **user's eyes** (civilians running in, house-bow arrows from the walls).

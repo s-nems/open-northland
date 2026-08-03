@@ -67,10 +67,20 @@ export function computeDoorBadges(
     const jobType = settlerJobType(e);
     if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) - nothing to draw
     const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [] };
-    const role = roleOf(jobType);
-    if (role === 'carrier') bucket.carriers.push(e.id);
-    else if (role === 'gatherer') bucket.gatherers.push(e.id);
-    else bucket.craftsmen.push(e.id);
+    switch (roleOf(jobType)) {
+      case 'carrier':
+        bucket.carriers.push(e.id);
+        break;
+      case 'gatherer':
+        bucket.gatherers.push(e.id);
+        break;
+      // A tower garrison shares the worker marker: it is invisible up there, so the badge is the only
+      // sign the post is manned.
+      case 'garrison':
+      case 'craftsman':
+        bucket.craftsmen.push(e.id);
+        break;
+    }
     tally.set(workplace, bucket);
   }
 

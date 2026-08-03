@@ -20,6 +20,7 @@ import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
+import { eatAtPost, sleepAtPost } from './tower-post.js';
 
 // The NEEDS drives - the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
@@ -99,13 +100,14 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
  * ownership gate and economy work, with the unsatisfied bar staying clamped at ONE.
  *
  *  - **EAT** (highest): eat a carried edible on the spot; else drink a carried draught in place
- *    ({@link draughtSlotFor} - a food potion, else mead); else walk to the NEAREST food of any kind
+ *    ({@link draughtSlotFor} - a food potion, else mead); else eat a manned tower post's own rations
+ *    ({@link eatAtPost}); else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) - a store holding food, or a ripe wild berry bush (the fallback) - and eat/
  *    forage it there. A settler that finds nothing keeps climbing to {@link HUNGER_BUBBLE_THRESHOLD},
  *    which is where the HUD's famine icon comes in.
- *  - **SLEEP** (below eat - a starving settler eats before it can rest): go home to bed when the settler
- *    has a house ({@link sleepAtHome}), else step off the workplace doorstep to open ground
- *    ({@link restingCell}) and sleep there.
+ *  - **SLEEP** (below eat - a starving settler eats before it can rest): bed down at a manned tower post
+ *    ({@link sleepAtPost}), else go home when the settler has a house ({@link sleepAtHome}), else step off
+ *    the workplace doorstep to open ground ({@link restingCell}) and sleep there.
  *  - **PRAY** (below eat + sleep - survival outranks devotion): the first **target-bound** need -
  *    walk to the nearest temple and pray on it ({@link nearestTemple}).
  */
@@ -146,6 +148,7 @@ export function planNeeds(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
+    if (eatAtPost(world, ctx, e, settler)) return true;
     // Find the NEAREST food of any kind - a stocked/produced larder or a wild berry bush (the fallback
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
@@ -174,6 +177,7 @@ export function planNeeds(
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
+    if (sleepAtPost(world, ctx, e, settler)) return true;
     // A settler with a house goes home to bed - the data gives that a clip of its own worth the same
     // rest in a fifth of the time (see {@link sleepAtHome}).
     if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;

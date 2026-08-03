@@ -109,6 +109,17 @@ export const Stance = defineComponent<{ mode: MilitaryMode; anchorCell: NodeId |
 export const Fleeing = defineComponent<{ repathAt: number; calmUntil: number | null }>('Fleeing');
 
 /**
+ * A combatant posted to a defensive building and standing on it - the tower garrison. Stamped when the
+ * settler takes the post and shed when it steps back out (`systems/settlers/indoors.ts` owns both halves);
+ * `returnTo` is the doorstep it walked in from. The marker alone is not proof it is still up there - every
+ * read confirms it against the settler's tile (`systems/conflict/tower-post.ts` `standsAtPost`).
+ *
+ * Approximated: `houses.ini` gives the towers their bow-soldier `logicworker 40/41` posts, but what manning
+ * one DOES is unreadable.
+ */
+export const Garrison = defineComponent<{ post: Entity; returnTo: { x: Fixed; y: Fixed } }>('Garrison');
+
+/**
  * An explicit attack order the `attackUnit` command stamps on an owned combatant. Unlike auto-engagement,
  * which re-acquires the nearest enemy in sight each tick, an ordered unit chases this specific `target`
  * regardless of sight radius until it dies or becomes invalid - then the CombatSystem drops the order and the

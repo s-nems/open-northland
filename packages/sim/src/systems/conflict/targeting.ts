@@ -10,6 +10,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
+import { standsAtPost } from './tower-post.js';
 
 // The combat TARGETING relations - who may fight whom (the player/tribe/predation/anger axes) and
 // how far a combatant spots an enemy. The leaf of the conflict/ split: flee.ts, weapons.ts and
@@ -59,6 +60,10 @@ export function isValidTarget(
     return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
   }
   if (!world.has(t, Settler)) return false;
+  // A garrison shoots from inside its tower: nothing can reach it there, so the attackers must raze the
+  // tower to get at it. Keyed on where it actually STANDS, not on the marker - a garrison another drive
+  // walked out into the open is a target like anyone else (`conflict/tower-post.ts`).
+  if (standsAtPost(world, t) !== null) return false;
   return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, world.get(t, Settler).tribe);
 }
 

@@ -59,6 +59,7 @@ export const enGame = {
     unequipSlotHint: 'Order this settler to take this item off.',
     usedItemDiscardHint: 'A used item is discarded, not stored.',
     equipPickEmpty: 'No items available nearby.',
+    defenseGarrison: 'Garrison',
     defenseStopped: 'Defence stopped',
     upgrade: 'Upgrade',
     upgradeCostHint: 'Upgrade requires:',

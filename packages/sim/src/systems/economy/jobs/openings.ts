@@ -3,6 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
+import { isFighterJob } from '../../readviews/index.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
 /** The settler-side context an openness probe reads: who is asking ({@link NeedSubject} - the same
@@ -11,6 +12,9 @@ import { buildingWorkerJobs } from '../../stores/index.js';
 export interface OpeningsQuery extends NeedSubject {
   readonly world: World;
   readonly ctx: SystemContext;
+  /** The settler's CURRENT trade (null when it holds none) - read only by the garrison gate, which admits
+   *  a fighting-class slot to a settler already of that class ({@link garrisonPostOpenTo}). */
+  readonly jobType: number | null;
 }
 
 /**
@@ -53,10 +57,24 @@ export function openWorkerJobFromList(
   for (const jobType of jobPriority) {
     if (!offered.has(jobType)) continue; // not a job this building employs
     if (!jobUnderstaffed(query, building, jobType)) continue;
+    if (!garrisonPostOpenTo(query, jobType)) continue;
     if (!settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue; // XP gate (needforjob)
     return jobType;
   }
   return null;
+}
+
+/**
+ * Whether a GARRISON slot admits the querying settler. A worker slot naming a fighting class - the towers'
+ * `logicworker 40 3` / `41 3` short/long-bow posts - is manned, not trained into: it takes only a settler
+ * who already fights in exactly that class, since taking up a weapon good is what sets a soldier's class
+ * (`atomics/effects/goods/weapon-class.ts`). Without it a tower would re-trade any colonist into an archer.
+ *
+ * The readable data says only that the posts exist; who may take one is our rule. Every non-fighter slot
+ * passes.
+ */
+function garrisonPostOpenTo(query: OpeningsQuery, jobType: number): boolean {
+  return !isFighterJob(query.ctx.content, jobType) || query.jobType === jobType;
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
+  BUILDING_WATCHTOWER,
   BUILDING_WELL,
   GOOD_BREAD,
   GOOD_CATTLE,
@@ -26,6 +27,7 @@ import {
   GOOD_GOLD,
   GOOD_IRON,
   GOOD_LEATHER,
+  GOOD_MEAD,
   GOOD_MEAT,
   GOOD_MUD,
   GOOD_MUSHROOM,
@@ -160,6 +162,9 @@ export interface SandboxBuildingRow {
  * here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS} default (the
  * joinery pins its own collector-fed plank producer for the production demo).
  */
+/** The watchtower larder's per-good capacity - the extracted `logicstock 16 25` / `43 25` on both tiers. */
+const TOWER_LARDER_CAPACITY = 25;
+
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
   // The well - EXTRACTED shape (`DataCnmd/types/houses.ini` "work well 00"): a water-only store and
@@ -218,6 +223,17 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
         outputs: [{ goodType: GOOD_FLOUR, amount: 1 }],
         ticks: DEFAULT_RECIPE_TICKS,
       },
+    ],
+  },
+  // The watchtower - EXTRACTED stock (`DataCnmd/types/houses.ini` "tower 00"/"tower 01"): the garrison's
+  // own larder, `logicstock 16 25 0` food + `logicstock 43 25 0` mead, which is what lets a manned post
+  // feed itself instead of climbing down (sim `settlers/drives/tower-post.ts`). The arsenal slots the
+  // same rows declare (the bow/spear/sword goods) wait on the tower carrier's supply run; its worker
+  // slots come from BUILDING_WORKER_SLOTS.
+  [BUILDING_WATCHTOWER]: {
+    stock: [
+      { goodType: GOOD_FOOD_SIMPLE, capacity: TOWER_LARDER_CAPACITY, initial: 0 },
+      { goodType: GOOD_MEAD, capacity: TOWER_LARDER_CAPACITY, initial: 0 },
     ],
   },
   // The animal farm - EXTRACTED shape (`DataCnmd/types/houses.ini` "work animal farm"): water+wheat in,

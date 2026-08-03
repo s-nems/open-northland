@@ -55,12 +55,17 @@ export interface CombatantStance {
   readonly ordered: boolean;
   /** The {@link MILITARY_MODE} the unit acts under ({@link stanceMode}), or null for an unowned combatant. */
   readonly mode: MilitaryMode | null;
+  /** The tower the unit is manning ({@link import('./garrison.js').garrisonPostFor}), or null. A garrison
+   *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
+  readonly post: Entity | null;
 }
 
 /**
  * How a combatant acquires a target this tick, resolved from its stance - the ring-search `accept` filter, the
  * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND
  * post, a hunter's ground).
+ *  - **GARRISON** (manning a tower, whatever the stance) → general hostility inside the tower-boosted reach,
+ *    and no advance at all.
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
  *  - **IGNORE hunter** → the hunting policy ({@link hunterEngageSpec}, ./hunting/):
@@ -102,6 +107,20 @@ export function engageSpec(
   // A hunter is NEVER presence-gated, in any stance: its prey filter admits the passive wildlife the
   // grid discounts (see {@link HostilePresence}). Hunters are a handful per map - the scan is cheap.
   const player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer?.player ?? null);
+
+  // A GARRISON outranks every stance: it shoots whatever hostile comes inside the tower's reach and never
+  // steps out after one, so its search band IS that reach (`weapon` already carries the tower bonus - see
+  // ./garrison.ts) rather than the advance sight radius.
+  if (stance.post !== null) {
+    return {
+      accept: generalAccept,
+      minDist,
+      searchRadius: weapon.maxRange,
+      player,
+      lowPriority: lowPriorityBuildings,
+      defend: null,
+    };
+  }
 
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
