@@ -27,18 +27,13 @@ import {
   unequipWornGood,
 } from './goods/index.js';
 
-/** The live {@link CurrentAtomic} fields a completed effect reads, plus the `workCredit` a harvest swing
- *  banks back onto the running component. */
+/** A live view onto the running {@link CurrentAtomic}: a harvest swing banks `workCredit` back through it. */
 type CompletedAtomic = Pick<
   NonNullable<(typeof CurrentAtomic)['__value']>,
   'atomicId' | 'duration' | 'effect' | 'workCredit'
 >;
 
-/**
- * Apply a completed atomic's effect. Exhaustive over the `AtomicEffect` union (`assertNever` makes a new
- * variant a compile error here), so behavior is the typed effect, never an opaque atomicId. Returns the
- * units a `harvest` swing extracted - the executor's release signal - and undefined otherwise.
- */
+/** Apply a completed atomic's effect. Returns the units a `harvest` swing extracted, undefined otherwise. */
 export function applyEffect(
   world: World,
   ctx: SystemContext,
@@ -120,9 +115,8 @@ export function applyEffect(
     case 'unequip':
       unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
       return;
-    // Nothing lands on completion: walking is the navigation layer's (`move`/`idle`), an `attack`'s blow
-    // already landed mid-animation at its hit frame, and no planner emits `produce` - the ProductionSystem
-    // advances crafting cycles from the workplace itself, never from a worker's atomic.
+    // Nothing lands on completion: movement belongs to the navigation layer, an `attack` already landed at
+    // its hit frame, and crafting cycles advance from the workplace, never from a worker's atomic.
     case 'move':
     case 'idle':
     case 'attack':
@@ -133,15 +127,13 @@ export function applyEffect(
   }
 }
 
-/** Credit one meal to the eater's hunger bar - `eat` and `forage` feed identically in the original.
- *  No-op on an entity that is no longer a {@link Settler}. */
+/** Credit one meal to the eater's hunger bar; `eat` and `forage` feed identically. */
 function relieveHunger(world: World, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
   if (s !== undefined) s.hunger = relieveNeed(s.hunger, EAT_HUNGER_RESTORE);
 }
 
-/** Zero a need the satisfying act clears outright (rather than the partial refill `eat`/`sleep` give),
- *  closing the NeedsSystem's rise→satisfy→reset loop. No-op on a non-{@link Settler}. */
+/** Zero a need the satisfying act clears outright, unlike the partial refill `eat` and `sleep` give. */
 function clearNeed(world: World, settler: Entity, need: 'piety' | 'enjoyment'): void {
   const s = world.tryGet(settler, Settler);
   if (s !== undefined) s[need] = fx.fromInt(0);

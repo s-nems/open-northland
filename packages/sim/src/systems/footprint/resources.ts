@@ -16,15 +16,13 @@ import {
   syncResourceBlockedCacheGeneration,
 } from './resource-blocked-cache.js';
 
-// RESOURCE footprints - the `[GfxLandscape]` walk/build/work areas a stamped resource occupies. Opt-in
-// via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior. The blocked-cell
-// overlay these feed lives in ./resource-blocked-cache.ts (maintained by the stamp/unstamp paths below).
+// Resource footprints are the `[GfxLandscape]` walk, build and work areas a stamped resource occupies.
+// They are opt-in through ResourceFootprint: a bare Resource keeps the same-tile fixture behavior.
 
 /**
- * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload.
- * The source stores repeated rows per valency/growth state; collision for Step 5 is static until the
- * node is removed, so `fullStateBlockAreaCells` (the fresh/full object's cells - also the app's
- * map-collision join) is the correct conservative consumer.
+ * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload. The
+ * source stores repeated rows per valency and growth state, and collision is static until the node is
+ * removed, so `fullStateBlockAreaCells` (the fresh, full object's cells) is the conservative consumer.
  */
 function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
   return {
@@ -83,14 +81,11 @@ export function stampResourceFootprint(
 }
 
 /**
- * The stand-in footprint for a node whose good resolves no landscape record - the synthetic fixtures,
- * the sandbox catalog, and real goods with no `[GfxLandscape]` stage (wool). Non-blocking (empty
- * walk/build match the recorded lanes of the goods it stands in for), and `work` listing the node's
- * own anchor is an invention - a real record's work area is the neighbour ring - kept anchor-only so a
- * worker can reach the node on a one-node map; the divergence class is tracked in
- * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. Declaring a footprint at all also
- * moves the node from the placement rule's OBSTACLE channel to RESOURCE_ANCHOR: it admits a building
- * over the node but refuses a work flag on it, like every footprinted resource.
+ * The stand-in footprint for a node whose good resolves no landscape record: the synthetic fixtures, the
+ * sandbox catalog, and real goods with no `[GfxLandscape]` stage such as wool. It is non-blocking, and the
+ * `work` entry naming the node's own anchor is an invention, since a real record's work area is the
+ * neighbour ring. Declaring a footprint at all also moves the node from the placement rule's OBSTACLE
+ * channel to RESOURCE_ANCHOR, which admits a building over the node but refuses a work flag on it.
  */
 export const ANCHOR_ONLY_FOOTPRINT: ResourceFootprintData = Object.freeze({
   walk: [],
@@ -98,9 +93,8 @@ export const ANCHOR_ONLY_FOOTPRINT: ResourceFootprintData = Object.freeze({
   work: [{ dx: 0, dy: 0 }],
 });
 
-/** Stamp a node with its good's content-derived footprint, falling back to
- *  {@link ANCHOR_ONLY_FOOTPRINT} when the content ships no record - the shared stamp of the two
- *  effect-spawned node kinds (a sown field, a carcass). */
+/** Stamp a node with its good's content-derived footprint, falling back to {@link ANCHOR_ONLY_FOOTPRINT}
+ *  when the content ships no record. */
 export function stampResourceFootprintOrFallback(
   world: World,
   content: ContentSet,
@@ -120,34 +114,30 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
 }
 
 /**
- * The caller-resolved shape of a resource node to place: its good, half-cell NODE, starting yield and
- * harvest atomic, plus which harvest LIFECYCLE it runs (a felled tree, a mined deposit, or - neither - a
- * pluck-whole node). The felling/deposit balance constants live in the app catalog, so the caller
- * resolves them and hands the sim a ready spec (the same "app resolves content, sim applies" split as
- * the `attack` effect's pre-resolved damage). Consumed by {@link createResourceNode}.
+ * The caller-resolved shape of a resource node to place: its good, half-cell node, starting yield and
+ * harvest atomic, plus which harvest lifecycle it runs (a felled tree, a mined deposit, or neither). The
+ * felling and deposit balance constants live in the app catalog, so the caller resolves them and hands the
+ * sim a ready spec.
  */
 export interface ResourceNodeSpec {
   readonly good: number;
-  /** The node's half-cell lattice coords (like every sim command; → a visual-tile Position). */
+  /** The node's half-cell lattice coords, like every sim command, mapped to a visual-tile Position. */
   readonly x: number;
   readonly y: number;
   readonly remaining: number;
   readonly harvestAtomic: number;
   /**
-   * OPAQUE render-variant tag: the app's decoded-map species record index ("pine 02", "stones 05
-   * grey" in the APP's content numbering) - stored on {@link Resource.gfxIndex} verbatim and carried
-   * out through the snapshot so the render draws the exact original object. The sim NEVER interprets
-   * it (footprint/collision still come from the good's own record in the SIM's content set, whose
-   * numbering is unrelated). Omitted for an admin/scene spawn - the per-good representative draws, and
-   * the component hashes exactly as before, so goldens are untouched.
+   * Opaque render-variant tag: the app's decoded-map species record index, stored verbatim and carried out
+   * through the snapshot so the render draws the exact original object. The sim never interprets it, since
+   * footprint and collision come from the good's own record in the sim's content set, whose numbering is
+   * unrelated. Omitted for an admin or scene spawn, where the per-good representative draws.
    */
   readonly gfxIndex?: number;
-  /** A felled node (a tree): its chops-to-fell counter. Mutually exclusive with `deposit`. */
+  /** A felled node such as a tree: its chops-to-fell counter. Mutually exclusive with `deposit`. */
   readonly felling?: { readonly chopsLeft: number };
-  /** A mined finite deposit (stone/clay/iron/gold): its level ladder and how many work cycles chip one
-   *  unit off (the app catalog's observed calibration; omitted → 1). `initial` is the deposit's full
-   *  size - the ladder denominator - for a node placed already part-mined (a map's authored growth
-   *  level); omitted it is `remaining`, a node that spawns full. */
+  /** A mined finite deposit: its level ladder and how many work cycles chip one unit off (an observed
+   *  calibration in the app catalog; omitted means 1). `initial` is the deposit's full size, the ladder
+   *  denominator, for a node placed already part-mined; omitted it is `remaining`. */
   readonly deposit?: {
     readonly levels: number;
     readonly strikesPerUnit?: number;
@@ -156,37 +146,23 @@ export interface ResourceNodeSpec {
 }
 
 /**
- * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}: a {@link Position} +
- * {@link Resource} carrying its yield/atomic, its content-derived footprint (from `good`), and the
- * {@link Felling}/{@link MineDeposit} lifecycle marker the spec asks for. Every PLACED node is built
- * here - the scene-setup helpers (pre-tick-0, direct) and the `placeResource` command handler
- * (runtime, through the mutation seam) both route here, so a hand-placed tree and a command-placed
- * tree are byte-identical entities. The two EFFECT-spawned node kinds (a sown field, a hunter's
- * carcass) assemble their own extra shape but stamp their footprint through the same seam
- * ({@link stampResourceFootprintOrFallback}).
+ * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}. Every placed node is built
+ * here, so a hand-placed tree and a command-placed tree are byte-identical entities.
  *
- * Returns `null` - creating NOTHING, so no entity id is burned - when `good` has no resource footprint
- * record: a scene-setup caller treats that as a hard bug and throws; the command handler treats it as
- * recoverable bad input and skips. The footprint is resolved BEFORE `create()` for exactly that reason -
- * an id-neutral skip like the `placeBuilding`/`placeBoat` gates, rather than a create-then-destroy that
- * would make the id sequence depend on how many rejected commands were issued. Determinism: a single
- * `create()` plus pure content reads (the footprint stamp maintains its own blocked-cell cache) - no
- * RNG, no wall-clock.
+ * Returns `null` without creating anything when `good` has no resource footprint record. The footprint is
+ * resolved before `create()` so the rejection burns no entity id: a create-then-destroy would make the id
+ * sequence depend on how many rejected commands were issued.
  */
 export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
-  // Resolve the footprint FIRST (a memoized content read) so an unknown good is an id-neutral skip
-  // before any `create()`. The `stampResourceFootprint` below re-resolves the same memoized record and
-  // so cannot fail here - it does the ResourceFootprint stamp + the incremental blocked-cell cache entry.
+  // The stamp below re-resolves this same memoized record, so it cannot fail after the create.
   if (resourceFootprintForGood(content, spec.good) === null) return null;
   const e = world.create();
-  // `spec.x`/`y` are HALF-CELL NODE coords (like every sim command); the Position is the node's
-  // visual-tile coord, exactly as `spawnSettler` maps its command node → Position.
+  // `spec.x` and `spec.y` are half-cell node coords; the Position is the node's visual-tile coord.
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Resource, {
     goodType: spec.good,
     remaining: spec.remaining,
     harvestAtomic: spec.harvestAtomic,
-    // The opaque render-variant tag rides the component (absent = hash-identical to a pre-variant node).
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   stampResourceFootprint(world, content, e, spec.good);
@@ -195,8 +171,7 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     world.add(e, MineDeposit, {
       initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
-      // Stamp the strike calibration only when the caller provides one - an unstamped node keeps the
-      // legacy 1-strike hash shape (the separate-optional-field pattern).
+      // Stamp the strike calibration only when the caller provides one; an unstamped node stays 1-strike.
       ...(spec.deposit.strikesPerUnit !== undefined
         ? { strikesPerUnit: spec.deposit.strikesPerUnit, strikes: 0 }
         : {}),

@@ -28,36 +28,25 @@ import { deliveryTargetFor } from './delivery-targets.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
 /**
- * HARVEST / COLLECT - the gatherer drive, in two shapes:
+ * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer works only its flag's radius, carries off
+ * only what it dug itself, and always owns the tick, so it never ferries other settlers' goods. An unbound
+ * roamer takes the nearest standing resource or loose trunk of its trade, whichever is nearer, and returns
+ * false when nothing is reachable.
  *
- *  - **Flag-bound** (carries a {@link WorkFlag}): the user-specified collector - it works only the nodes within
- *    its flag's radius, carries off only the trunks/ore it dug itself, delivers to its own flag, and stands
- *    idle beside the flag when nothing is in reach ({@link planFlagGatherer}). It always owns the tick (returns
- *    true), so it never ferries other settlers' goods or de-stacks off its post.
- *  - **Unbound roaming** (no WorkFlag): chops the nearest standing resource its job may harvest, or carries off
- *    the nearest loose trunk of that trade, whichever is nearer, delivering to the nearest capable store.
- *    A roamer EMPLOYED at a stocking building forages only the goods that building stores (its
- *    {@link GatherSelection} pick when set, else all of them). Returns false when nothing is reachable,
- *    falling through to the porter/carrier drives.
- *
- * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting an
- * already-dropped good is hauling, not harvesting. Ordered before the porter/carrier drives so a gatherer works
- * its own resources+trunks before ferrying others'. `jobType` is non-null here.
+ * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting
+ * an already-dropped good is hauling, not harvesting.
  */
 export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims): boolean {
   const { world, ctx, terrain, entity: e } = plan;
   const flag = world.tryGet(e, WorkFlag);
-  // A live flag binding switches on the bounded collector behaviour; a stale binding (the flag was removed)
-  // falls back to roaming so the gatherer is never stranded pointing at a gone flag.
+  // A stale binding (the flag was removed) falls back to roaming rather than stranding the gatherer.
   if (flag !== undefined && world.has(flag.flag, Position)) {
     return planFlagGatherer(plan, flag, harvestClaims);
   }
 
-  // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
-  // stores ({@link workplaceStocksGood}, banked form included - an HQ-employed hunter's meat shelves as
-  // food, and filtering the carcass out would wedge him after one kill), narrowed to its GatherSelection
-  // pick when one is set (the flag-less collector rule - a smithy's collector fetches iron/wood, never
-  // the quarry's stone). An unemployed roamer, or one at a store-less building, stays unrestricted.
+  // A building-employed roamer forages only goods its workplace stocks, banked form included: an
+  // HQ-employed hunter's meat shelves as food, and filtering the carcass out would wedge him after one
+  // kill. A GatherSelection pick narrows it further; an unemployed roamer stays unrestricted.
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   const rawStored = workplace !== undefined ? workplaceStoredGoods(world, plan.ctx, workplace) : undefined;
   const stored =
@@ -72,12 +61,9 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
   const goodFilter =
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
 
-  // A hunter's work is its own HUNTING GROUND (conflict/hunting/), the very band the one-kill gate
-  // probes: unbounded, this scan is map-wide, so a hut hunter walks across the map to a kill while its
-  // own ground goes unhunted - and the gate and the harvest that must answer it disagree on what its
-  // work even is. The trade-off the bound buys: a body that drifts past EVERY ground now has no
-  // sweeper left, and nothing rots a carcass, so it stays as a decal. A hunter with neither flag nor
-  // workplace has no ground and still roams unbounded.
+  // A hunter is bounded to its own hunting ground, the same band the one-kill gate probes, so the gate and
+  // the harvest that answers it cannot disagree about what its work is. A body that drifts past every
+  // ground has no sweeper left. A hunter with neither flag nor workplace still roams unbounded.
   const hunter = isHunterJob(ctx.content, plan.jobType);
   const ground = hunter ? huntingGround(world, terrain, e) : null;
   const huntArea =
@@ -93,7 +79,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
     ...(huntArea !== undefined ? { within: huntArea } : {}),
   });
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
-  // Prefer the trunk on a tie (it is the wood already at hand - grab it before a fresh tree).
+  // On a tie prefer the already-felled trunk over a fresh tree.
   if (trunk !== null && trunk.dist <= nodeDist) {
     walkPickupBatch(plan, trunk.pile, trunk.goodType);
     return true;
@@ -106,20 +92,11 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
 }
 
 /**
- * The flag-bound gatherer's decision, in priority order (the user-specified behaviour):
- *
- *  1. **Finish your own drop** - if this gatherer has a trunk/ore pile it dug ({@link nearestOwnDropFor}, keyed
- *     by {@link HarvestedBy}), carry it off before starting anything new. Clearing its own drop first keeps it
- *     from scattering half-emptied trunks, and it leaves every other loose pile untouched.
- *  2. **Harvest within the flag radius** - else chop/mine the nearest node inside the flag's work area
- *     ({@link nearestHarvestableFor} with the flag as centre); a felled trunk / mined pile becomes an owned
- *     drop that branch 1 then carries home.
- *  3. **Idle by the flag** - nothing in reach: walk to and hold beside the flag, rather than roaming or
- *     ferrying.
- *
- * Always returns true: a flag-bound gatherer is spoken for every tick (the flag guarantees a fallback target),
- * so it never falls through to the porter / carrier / de-stack rungs. The delivery of a carried load to the
- * flag is the carrying rung's job ({@link deliveryTargetFor} routes a WorkFlag load to its flag).
+ * The flag-bound gatherer: carry off a pile it dug itself first, else harvest the nearest node inside the
+ * flag's radius, else idle beside the flag. Clearing its own drop first keeps it from scattering
+ * half-emptied trunks. Always returns true, so it never falls through to the porter, carrier, or de-stack
+ * rungs; delivering the load stays the carrying rung's job, where {@link deliveryTargetFor} routes a
+ * WorkFlag load to its flag. Source basis: authored.
  */
 function planFlagGatherer(
   plan: PlannerContext,
@@ -129,18 +106,14 @@ function planFlagGatherer(
   const { world, ctx, terrain, entity: e, here } = plan;
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
 
-  // 1. Carry off a trunk/ore this gatherer dug (only its own - foreign piles are left in peace).
   const own = nearestOwnDropFor(plan);
   if (own !== null) {
     walkPickupBatch(plan, own.pile, own.goodType);
     return true;
   }
 
-  // 2. Chop / mine the nearest FREE node within the flag's work radius (nothing beyond it; a node a
-  //    colleague already digs is claimed - one digger per node). A hunter's reach adds the kill slack,
-  //    and its flag's good filter is IGNORED: a layered carcass re-arms through its goods in turn, so a
-  //    meat-only pick would strand the body at its leather stage while the filter-blind one-kill gate
-  //    (`huntingGroundHoldsCarcass`) held forever - the whole body is the hunter's work.
+  // A hunter ignores its flag's good filter: a layered carcass re-arms through its goods in turn, so a
+  // meat-only pick would strand the body at its leather stage while the one-kill gate held forever.
   const hunter = isHunterJob(ctx.content, plan.jobType);
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
@@ -156,32 +129,29 @@ function planFlagGatherer(
     return true;
   }
 
-  // 3. Nothing to dig and nothing of its own to carry - stand idle beside the flag.
+  // Nothing in reach: stand idle beside the flag.
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
 }
 
 /**
  * How far from a hunting ground's anchor this scan must still look for a carcass. The one-kill gate
- * measures a body at its ANCHOR ({@link claimedByAnotherHunter}'s neighbour, `huntingGroundHoldsCarcass`)
- * while this scan measures the WORK CELL a settler stands on, which `resourceStanceCells` can resolve up
- * to `maxResourceWorkOffset` outward. The scan must therefore be a provable superset of the gate: any
- * narrower and a body in the outer band reads as standing work the hunter may never select, wedging it
- * off hunting for good.
+ * measures a body at its anchor while this scan measures the work cell a settler stands on, so the scan
+ * must stay a provable superset: any narrower and a body in the outer band reads as standing work the
+ * hunter may never select, wedging it off hunting for good.
  */
 function carcassReach(plan: PlannerContext, radius: number): number {
   return radius + HUNT_CARCASS_SLACK_NODES + contentIndex(plan.ctx.content).maxResourceWorkOffset;
 }
 
-/** The harvest-scan rejection behind {@link claimedByAnotherHunter}, which owns the rule. */
+/** The harvest-scan rejection; `claimedByAnotherHunter` owns the rule. */
 function foreignKill(plan: PlannerContext): (node: Entity) => boolean {
   const { world, ctx, terrain, entity: e } = plan;
   return (node) => claimedByAnotherHunter(world, ctx, terrain, node, e);
 }
 
-/** Walk to a harvestable node's work cell and start its content-defined harvest atomic - the shared body of
- *  the roaming and flag-bound gatherer's "chop/mine the nearest node" step. Claims the node for this tick,
- *  so colleagues planned later this pass pick other nodes (one digger per node). */
+/** Walk to a node's work cell and start its harvest atomic, claiming the node so colleagues planned later
+ *  this pass pick another. */
 function startHarvestFromNode(
   plan: PlannerContext,
   node: { entity: Entity; cell: NodeId },

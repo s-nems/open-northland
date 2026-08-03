@@ -21,21 +21,17 @@ import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 /**
- * How long a recruit stays inside the barracks before it comes back out a soldier - 15 s of game time
- * (design rule, user-specified 2026-07-27), drawn down per COMPLETED repetition by
- * {@link serveDrillRepetition}, so the last one always overruns. Every recruit serves this ONE
- * standard drill and exits unarmed - arming is a separate later step (user rule 2026-08-01).
+ * How long a recruit stays inside the barracks before it comes back out a soldier: 15 s of game time,
+ * drawn down per completed repetition, so the last one always overruns. Every recruit serves this one
+ * standard drill and exits unarmed; arming is a separate later step. Source basis: authored.
  */
 export const BARRACKS_DRILL_TICKS = 15 * TICKS_PER_SECOND;
 
 /**
- * The planner's BARRACKS-DRILL rung (called from `./ladder.ts`, which states where it sits): drive a
- * settler's live {@link TrainingOrder} one step forward.
- *
- * The settler walks to the barracks door, steps inside and runs the exercise atomic one repetition at a
- * time until {@link BARRACKS_DRILL_TICKS} are served, then steps back out {@link enlist}ed.
- * The order is abandoned when the barracks is gone/unbuilt or its door is no longer open to the settler -
- * it is handed back to the economy rather than looping on a dead errand.
+ * The barracks-drill rung: drive a settler's live `TrainingOrder` one step forward. It walks to the
+ * barracks door, steps inside and runs the exercise atomic one repetition at a time until the drill time is
+ * served, then steps back out enlisted. The order is abandoned when the barracks is gone or unbuilt, or its
+ * door is no longer open to the settler, rather than looping on a dead errand.
  */
 export function planTraining(
   world: World,
@@ -48,10 +44,9 @@ export function planTraining(
 ): boolean {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return false;
-  // Time served is served: the enlistment is settled before the house is looked at again, so a barracks
-  // razed (or walled off) between the last repetition and this planning cannot swallow it. It takes the
-  // settler for the tick because `enlist` retires its trade - the rungs below were entered with the old
-  // one and would plan its work; the fresh soldier re-plans next tick.
+  // Time served is served: the enlistment settles before the house is looked at again, so a barracks razed
+  // between the last repetition and this planning cannot swallow it. It takes the settler for the tick
+  // because `enlist` retires its trade, and the rungs below were entered with the old one.
   if (order.drillTicksLeft <= 0) {
     abandonDrill(world, e);
     enlist(world, ctx, e);
@@ -75,9 +70,8 @@ export function planTraining(
 
 /**
  * Whether `e` may walk to a drill at `door` right now: its signpost area must admit the node and its
- * failed-goal memo must not already name it. The `trainSoldier` handler and the assistant's dispatch
- * gate (`mayDrillAt`) refuse on a false, so a walled-off barracks cannot be re-ordered and
- * re-abandoned every beat - each acceptance cancels whatever the recruit was doing.
+ * failed-goal memo must not already name it. The order handlers refuse on a false, so a walled-off barracks
+ * cannot be re-ordered and re-abandoned every beat.
  */
 export function drillDoorOpen(
   world: World,
@@ -91,15 +85,13 @@ export function drillDoorOpen(
 }
 
 /**
- * One finished drill repetition: charge its `ticks` against the errand's remaining time. Nothing else
- * accrues (the no-XP rule - `progression/experience.ts`'s TRAINING bucket states it). Called from
- * the atomic executor, so a repetition cut short (a stagger, a re-issued order) costs the recruit no
- * time. The charge takes the executor's own floor of one tick per repetition, so a zero-length clip
- * cannot stall the drill forever.
+ * One finished drill repetition charged against the errand's remaining time; no experience accrues. Called
+ * from the atomic executor, so a repetition cut short costs the recruit no time, and the charge floors at
+ * one tick so a zero-length clip cannot stall the drill forever.
  */
 export function serveDrillRepetition(world: World, e: Entity, ticks: number): void {
   const order = world.tryGet(e, TrainingOrder);
-  if (order === undefined) return; // the errand was called off mid-repetition - it counts nothing
+  if (order === undefined) return;
   world.write(e, TrainingOrder, (o) => {
     o.drillTicksLeft -= Math.max(1, ticks);
   });
@@ -113,16 +105,12 @@ function abandonDrill(world: World, e: Entity): boolean {
 }
 
 /**
- * Enlist a settler that has served its drill: it takes the base soldier class ({@link baseSoldierJobType})
- * unconditionally - the served term IS the qualification. Why no stat accrues and why the `trainfor*`
- * rows still gate every OTHER door is stated once, on `progression/experience.ts`'s TRAINING bucket.
- * A settler that already holds a fighter trade keeps it - his drill is a plain no-op (the original's
- * paid barracks retraining is deliberately not implemented). A tribe whose data names no soldier
- * class gets its settler back out unchanged.
+ * Enlist a settler that has served its drill: it takes the base soldier class unconditionally, since the
+ * served term is the qualification. A settler that already holds a fighter trade keeps it, and a tribe
+ * whose data names no soldier class gets its settler back out unchanged.
  *
  * The only trade change made from inside the planner sweep: `reidleAsJob` destroys the recruit's work flag
- * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either (today it indexes
- * neither).
+ * and may drop a ground pile, so a list `beginPlannerPass` holds must not index either.
  */
 function enlist(world: World, ctx: SystemContext, e: Entity): void {
   if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
@@ -131,7 +119,7 @@ function enlist(world: World, ctx: SystemContext, e: Entity): void {
   world.remove(e, JobAssignment); // its old post is not a soldier's, and nothing re-posts on its own
   reidleAsJob(world, ctx, e, jobType);
   // A counter-funded recruit pays its counter here if the base class was the whole ask; a weapon-class
-  // booking is paid by the arming step instead (`planner/recruit-arming.ts`), so it stays marked.
+  // booking is paid by the arming step instead, so it stays marked.
   if (world.tryGet(e, AssistantRecruit)?.intent === 'trainSoldiers') {
     consumeAssistantCounter(world, ownerOf(world, e), 'trainSoldiers');
     world.remove(e, AssistantRecruit);

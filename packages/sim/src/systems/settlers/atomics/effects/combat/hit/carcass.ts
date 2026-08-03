@@ -16,44 +16,36 @@ import { dynamicBlockOverlay, stampResourceFootprintOrFallback } from '../../../
 import { huntYieldsOf, isHunterJob } from '../../../../../readviews/index.js';
 
 /**
- * The hunter's kill payoff - a **hunter**'s lethal blow on huntable prey leaves ONE carcass on the
- * ground (user rule: one body, one decal): a harvestable {@link Resource} node holding the head of the
- * body's yield table, the rest queued as {@link ResourceLayers} (which owns the alternating-cadaver
- * source basis). The hunter works it through the ordinary gatherer machinery - one unit per pluck,
- * carried off over several trips, the node reaped when the last layer drains - and each layer carries
- * its good's cadaver decal index (`Resource.gfxIndex`, opaque to the sim), so the decal flips between
- * stages as the hunter works down the body.
- *
- * Placement: where the prey fell, or its first free walkable neighbour, falling back to the kill node
- * when hemmed in. The body is player-neutral ground (no owner stamp) but names its killer
- * ({@link KilledBy}), the claim that keeps a fellow hunter off it. No-ops unless the attacker is a
- * hunter and the target huntable prey; mapless worlds (fixture combat tests) spawn nothing. Pure over
- * content + entity state - no RNG, no wall-clock.
+ * A hunter's lethal blow on huntable prey leaves one carcass node. Authored: one body, one decal - the head
+ * of the yield table becomes a harvestable {@link Resource}, the rest queue as {@link ResourceLayers}, and
+ * each layer carries its good's cadaver decal index (`Resource.gfxIndex`, opaque to the sim), so the decal
+ * flips as the hunter works down the body. The body is player-neutral ground that names its killer through
+ * {@link KilledBy}, the claim that keeps a fellow hunter off it.
  */
 export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const hunter = world.tryGet(attacker, Settler);
-  if (hunter === undefined || !isHunterJob(ctx.content, hunter.jobType)) return; // hunters only
+  if (hunter === undefined || !isHunterJob(ctx.content, hunter.jobType)) return;
   const prey = world.tryGet(target, Settler);
   if (prey === undefined) return;
   const yields = huntYieldsOf(ctx.content, prey.tribe);
   if (yields === null) return; // not huntable prey - no carcass
   const terrain = ctx.terrain;
   const at = world.tryGet(target, Position);
-  if (terrain === undefined || at === undefined) return; // mapless / positionless - nowhere to fall
+  if (terrain === undefined || at === undefined) return; // mapless - nowhere to fall
   const n = nodeOfPosition(at.x, at.y);
   const anchor = terrain.nodeAtClamped(n.hx, n.hy);
 
   const index = contentIndex(ctx.content);
   const pool = yields.flatMap((y) => {
     const harvestAtomic = index.goods.get(y.goodType)?.atomics.harvest;
-    if (harvestAtomic === undefined) return []; // load-checked (cross-references); never mint unharvestable goods
+    if (harvestAtomic === undefined) return []; // load-checked; never mint an unharvestable good
     const pipeline = index.gatheringPipelinesByGood.get(y.goodType);
     const gfxIndex = (pipeline?.harvest ?? pipeline?.pickup)?.gfxIndices[0];
     return [{ goodType: y.goodType, harvestAtomic, gfxIndex, left: y.amount }];
   });
   const layers = interleavedLayers(pool);
   const head = layers.shift();
-  if (head === undefined) return; // nothing resolvable to yield
+  if (head === undefined) return;
 
   // The kill node, or its first free walkable neighbour (canonical N,E,S,W) when something stands there.
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
@@ -74,9 +66,8 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
   stampResourceFootprintOrFallback(world, ctx.content, e, head.goodType);
 }
 
-/** The body's extraction sequence: one unit per step, round-robin across the yield goods in authored
- *  order (the cadaver's per-pluck stage flip), merged into same-good runs - a single-good body reads
- *  as one plain run, an exhausted good simply drops out of the rotation. */
+/** The body's extraction sequence: one unit per step, round-robin over the yield goods in authored order,
+ *  merged into same-good runs. An exhausted good drops out of the rotation. */
 function interleavedLayers(
   pool: { goodType: number; harvestAtomic: number; gfxIndex: number | undefined; left: number }[],
 ): ResourceLayer[] {

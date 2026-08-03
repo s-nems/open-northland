@@ -9,17 +9,14 @@ import { buildingBlockedCells } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
-// WALK-BLOCK overlays the routing/render consume: the union views over the memoized building
-// walk-block cells (./building-blocked-cache.ts) and the incrementally-cached resource cells
-// (./resource-blocked-cache.ts), plus the ground plots of under-construction sites. DERIVED state -
-// never hashed, never stored. The views ALIAS the live caches, so a holder spanning several entities
-// (a planner pass, a routing drain) relies on no stamp/unstamp running inside its schedule slot;
-// today every stamp site sits in command/atomic/growth/reclaim slots, none inside a holder's.
+// Walk-block overlays for routing and render, over the memoized building cells and the incrementally
+// cached resource cells. Derived state, never hashed, never stored. The views alias the live caches, so a
+// holder spanning several entities relies on no stamp or unstamp running inside its schedule slot.
 
 /**
- * Every standing building's door node - the passable gates {@link buildingBlockedCells} carves out of
- * the walk-block. A door is a designated stand (an operator runs its workshop from it), so displacement
- * passes exempt it the same way the blocked-set carve-out does. Order-independent set union.
+ * Every standing building's door node, the passable gates {@link buildingBlockedCells} carves out of the
+ * walk-block. A door is a designated stand, so displacement passes exempt it the same way the blocked-set
+ * carve-out does.
  */
 export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
   const doors = new Set<NodeId>();
@@ -34,22 +31,16 @@ export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: Ter
   return doors;
 }
 
-/** One under-construction building's ground plot - the half-cell body cells it occupies, for the render's
- *  grey "construction site" decal. Cells are `(col,row)` on the `2W×2H` half-cell lattice (anchor +
- *  footprint offset), the same coords `halfCellToScreen` projects. */
+/** One under-construction building's ground plot, for the render's construction-site decal. Cells are
+ *  `(col, row)` on the `2W×2H` half-cell lattice, the same coords `halfCellToScreen` projects. */
 export interface ConstructionPlot {
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
 /**
- * The ground plots of every UNDER-CONSTRUCTION building - its footprint body cells (`blocked`, this size
- * level's walk-block body) translated to world half-cell nodes, so the render can wash a grey "plac budowy"
- * over exactly the cells the finished building will stand on. A footprint-less type (synthetic content, the
- * one graphics-less real type) falls back to its single anchor cell so a site always marks its ground.
- *
- * Read-only render support like {@link import('../../simulation.js').Simulation.placementProbe} - never
- * mutates, so it is determinism-irrelevant; it reads only positions + content, no RNG, no wall-clock, and
- * iterates the small {@link UnderConstruction} store (membership, no pick - order-independent).
+ * The ground plots of every under-construction building: its footprint body cells translated to world
+ * half-cell nodes, so the render marks exactly the cells the finished building will stand on. A
+ * footprint-less type falls back to its single anchor cell, so a site always marks its ground.
  */
 export function constructionSitePlots(world: World, content: ContentSet): ConstructionPlot[] {
   const plots: ConstructionPlot[] = [];
@@ -65,12 +56,8 @@ export function constructionSitePlots(world: World, content: ContentSet): Constr
 }
 
 /**
- * One building's walk-blocked body - its footprint `blocked` cells translated onto the map, minus its
- * door cell (the passable gate, exactly as {@link buildingBlockedCells} carves it out globally) - or
- * null when the type blocks nothing (footprint-less synthetic content, or a body erased by the door
- * carve-out). The shared stanza of the footprint displacement passes (`evictSettlersFromFootprint`,
- * `evictLooseGoodsFromFootprint`), extracted so the door-carve invariant lives in one place; both
- * consumers also share its traversal rule: a displacement search may cross this body's own cells but
+ * One building's walk-blocked body: its footprint `blocked` cells translated onto the map, minus its door
+ * cell, or null when the type blocks nothing. A displacement search may cross this body's own cells but
  * never any other blocked cell.
  */
 export function walkBlockedBodyOf(
@@ -94,10 +81,9 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-/** The two shared walk-block caches (standing building bodies, then resource footprints) as the
- *  layer list a caller folds into its own {@link LayeredBlocks} alongside further layers (routing adds
- *  the unit stamp), so composing never copies either cache. Membership reads only: the sets stay the
- *  shared cached copies. */
+/** The two shared walk-block caches, standing building bodies then resource footprints, as a layer list a
+ *  caller folds into its own {@link LayeredBlocks}. The sets stay the shared cached copies, so a caller
+ *  must read membership only. */
 export function dynamicBlockLayers(
   world: World,
   ctx: SystemContext,
@@ -107,11 +93,8 @@ export function dynamicBlockLayers(
 }
 
 /**
- * The building + resource walk-block overlay as a membership VIEW ({@link LayeredBlocks}) that never
- * copies either cached layer into a fresh set. For a caller that only asks `.has(node)` - the
- * pathfinder's block test, the move-order goal snap, the spawn push - this is the O(1)-to-compose
- * form: a box-select issuing one move order per selected unit (or a map load spawning hundreds of
- * settlers) reuses the two shared caches per call.
+ * The building and resource walk-block overlay as a membership view that never copies either cached layer
+ * into a fresh set, so a caller asking only `.has(node)` composes it in O(1) per call.
  */
 export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
   return new LayeredBlocks(dynamicBlockLayers(world, ctx, terrain));

@@ -2,18 +2,12 @@ import type { ContentSet, Recipe } from '@open-northland/data';
 import { harvestCapableJobs } from './atomics.js';
 import { isCarrierJobId } from './jobs.js';
 
-/** The per-building-type `product → recipe` tables
- *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) - first-wins per typeId
- *  like the other tables; a recipe's product key is its first output's goodType (per-product recipes carry
- *  exactly one output), first-wins on a duplicate product. Types without recipes are absent.
+/** The per-building-type `product → recipe` tables, first-wins per typeId and per product; a recipe's
+ *  product key is its first output's goodType. Types without recipes are absent.
  *
- *  At a livestock workplace (`livestockWorkplaces` - the feed-recipe types of the content-index
- *  livestock join), an INPUT-LESS recipe is the original's slaughter production (`breeder_slay_*`
- *  atomics: the breeder kills a penned animal for the good). It is dropped here - THE one home of the
- *  no-slaughter rule (design decision, user-specified 2026-07-30): our breeder never slaughters, and
- *  food arrives as the feed-cycle meat byproduct instead (`depositCycleOutput`). Dropping it at the
- *  table hides it from every consumer at once (rotation, dormancy, planner sizing). A type whose every
- *  recipe was dropped is absent, i.e. not a producing workplace. */
+ *  At a livestock workplace an input-less recipe is the original's slaughter production (`breeder_slay_*`
+ *  atomics), and it is dropped here: the one home of the authored no-slaughter rule, under which food
+ *  arrives as the feed-cycle meat byproduct instead. A type whose every recipe was dropped is absent. */
 export function recipeProductTables(
   content: ContentSet,
   livestockWorkplaces: ReadonlySet<number>,
@@ -49,8 +43,8 @@ export function mergeRecipes(recipes: readonly Recipe[]): Recipe {
   return { inputs: lines(inputs), outputs: lines(outputs), ticks };
 }
 
-/** The per-building-type union recipes ({@link import('../content-index.js').ContentIndex.mergedRecipeByBuilding}):
- *  the single-recipe view the supply AI plans against. First-wins per typeId. */
+/** The per-building-type union recipes, the single-recipe view the supply AI plans against. First-wins
+ *  per typeId. */
 export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> {
   const map = new Map<number, Recipe>();
   for (const b of content.buildings) {
@@ -61,13 +55,11 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
 }
 
 /**
- * `goodType → the building typeIds a consumer self-serves it from` - the shared UNSTAFFED utilities that
- * mint a good from no inputs (the well drawing water, the hive drawing honey). A type qualifies only when
- * it both (a) has a recipe producing the good with no inputs, and (b) is unstaffed-by-design: every worker
- * slot is a carrier or gatherer, none an operator trade. Condition (b) excludes a STAFFED input-less
- * producer - the animal farm's breeders mint meat from nothing, but that is real husbandry, not a public
- * tap a stranger cranks. The signal is data ("an unstaffed input-less producer of the needed good"), never
- * a hardcoded well/hive id. First-wins per typeId, matching the other tables.
+ * `goodType → the building typeIds a consumer self-serves it from` - the shared unstaffed utilities that
+ * mint a good from no inputs (the well drawing water, the hive drawing honey). A type qualifies only
+ * when it has a recipe producing the good with no inputs and every worker slot is a carrier or gatherer
+ * rather than an operator trade, which excludes a staffed input-less producer like the animal farm.
+ * First-wins per typeId.
  */
 export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
   // A carrier/gatherer-only building has no operator trade.
@@ -95,9 +87,8 @@ export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number,
   return map;
 }
 
-/** The per-building-type worker-job sets - first-wins per typeId unconditionally (a first record with zero
- *  workers claims the key with an empty set, exactly as the `.find` it replaced resolved the first record and
- *  read its empty `workers`), so a later duplicate can never shadow it. */
+/** The per-building-type worker-job sets - first-wins per typeId unconditionally, so a first record with
+ *  zero workers claims the key with an empty set and a later duplicate cannot shadow it. */
 export function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
   const map = new Map<number, ReadonlySet<number>>();
   for (const b of content.buildings) {
@@ -107,8 +98,8 @@ export function workerJobSets(content: ContentSet): ReadonlyMap<number, Readonly
   return map;
 }
 
-/** The per-type stored-good sets ({@link import('../content-index.js').ContentIndex.storedGoodsByBuilding});
- *  first-wins per typeId, types with no stock slots omitted (an employed gatherer there stays unrestricted). */
+/** The per-type stored-good sets; first-wins per typeId, types with no stock slots omitted, where an
+ *  employed gatherer stays unrestricted. */
 export function storedGoodSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
   const map = new Map<number, ReadonlySet<number>>();
   for (const b of content.buildings) {
@@ -118,10 +109,8 @@ export function storedGoodSets(content: ContentSet): ReadonlyMap<number, Readonl
   return map;
 }
 
-/** The per-type per-good stock-slot capacities
- *  ({@link import('../content-index.js').ContentIndex.stockSlotCapacityByBuilding}) - first-wins per
- *  typeId AND per good within a type (matching the `.find` scan it replaces); types with no stock
- *  slots omitted. */
+/** The per-type per-good stock-slot capacities - first-wins per typeId and per good within a type;
+ *  types with no stock slots omitted. */
 export function stockSlotCapacityTables(
   content: ContentSet,
 ): ReadonlyMap<number, ReadonlyMap<number, number>> {

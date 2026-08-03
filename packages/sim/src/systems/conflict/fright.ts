@@ -21,10 +21,9 @@ import {
 } from '../spatial/nodes.js';
 import { fleeDestination } from './flee.js';
 
-// The wildlife FRIGHT reaction - a loosed shot scatters the passive animals around its mark, so a herd
-// no longer stands still while a hunter picks it off one by one. All three knobs are approximations
-// (source basis "Hunter aim"): the original's scare radius/duration are unreadable; observed play just
-// shows game bolting when shots land near it.
+// The wildlife fright reaction: a loosed shot scatters the passive animals around its mark, so a herd does
+// not stand still while a hunter picks it off. All three knobs below are approximations. The original's
+// scare radius and duration are unreadable, and observed play only shows game bolting when shots land near.
 
 /** How far (Manhattan nodes) from a shot's mark the scare carries. */
 export const FRIGHT_RADIUS_NODES = 12;
@@ -34,13 +33,10 @@ export const FRIGHT_DURATION_TICKS = 48;
 export const FRIGHT_REPATH_CADENCE = 6;
 
 /**
- * Scare the passive wildlife around `atNode` - stamp/refresh {@link Frightened} on every non-aggressive
- * animal within {@link FRIGHT_RADIUS_NODES}. Wildlife = a {@link StayPoint} carrier (the spawn-time
- * roaming marker; owned settlers never carry one). An aggressive species answers threat with threat and
- * an {@link Anger}-provoked animal is already fighting - neither is stampeded. Cost shape: one linear
- * pass over the map's wildlife per ranged launch (every archer's release, not just a hunter's), with
- * launches bounded by shooters x their draw cadence - unmeasured under an archer-volley battle on a
- * wildlife-rich map; move to a spatial candidate list if a bench ever shows it.
+ * Scare the passive wildlife around `atNode`: stamp or refresh {@link Frightened} on every non-aggressive
+ * animal within {@link FRIGHT_RADIUS_NODES}. Wildlife is a {@link StayPoint} carrier, the spawn-time roaming
+ * marker an owned settler never carries. An aggressive species and an already-provoked animal fight instead
+ * of stampeding.
  */
 export function frightenWildlifeNear(
   world: World,
@@ -66,14 +62,11 @@ export function frightenWildlifeNear(
 }
 
 /**
- * AnimalFrightSystem - run every {@link Frightened} animal away from its scare node, the wildlife twin
- * of the FLEE drive's steering: re-aim to the best away-cell ({@link fleeDestination}) on the
- * {@link FRIGHT_REPATH_CADENCE} throttle (immediately on a failed route), keep the live route between
- * re-aims so the gait never lurches. A lapsed `until` - or an {@link Anger} stamped by a landed blow
- * (a provoked animal fights, it does not stampede) - calms the animal: the marker and the flee route
- * are shed, and the herd drives (cohesion, the stay-point graze) pick it up again next tick, walking
- * it home. Scheduled before `herding` so a fresh scatter outranks the recall pull. Idle when nothing
- * is frightened (one empty query); no RNG.
+ * Run every {@link Frightened} animal away from its scare node, re-aiming on the
+ * {@link FRIGHT_REPATH_CADENCE} throttle and immediately after a failed route, and keeping the live route
+ * between re-aims so the gait never lurches. A lapsed `until`, or an {@link Anger} stamped by a landed blow,
+ * calms the animal and sheds the flee route, so the herd drives walk it home again. Scheduled before
+ * `herding` so a fresh scatter outranks the recall pull.
  */
 export const animalFrightSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;

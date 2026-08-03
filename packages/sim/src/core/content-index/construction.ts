@@ -2,12 +2,8 @@ import type { BuildingType, ContentSet } from '@open-northland/data';
 import type { GoodsLine } from '../../components/economy/infrastructure.js';
 import { byKey } from './by-key.js';
 
-/**
- * The per-type from-scratch construction bills
- * ({@link import('../content-index.js').ContentIndex.constructionBillByBuilding}). First-wins per typeId,
- * like the other tables (a leveled tier resolves each chain member through the first-wins views, so the
- * summed rows are the ones every other read sees).
- */
+/** The per-type from-scratch construction bills. First-wins per typeId, and a leveled tier resolves each
+ *  chain member through the same first-wins views, so the summed rows match every other read. */
 export function constructionBills(content: ContentSet): ReadonlyMap<number, readonly GoodsLine[]> {
   const prev = prevTierLinks(content.buildings);
   const buildings = byKey(content.buildings, (b) => b.typeId);
@@ -54,21 +50,18 @@ function billOf(
     .map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** One typeId view + reverse-chain-link map per building list, keyed on the list's identity - a WeakMap
- *  so a dropped list frees its views with it. {@link constructionBillForType} is a per-frame path (the
- *  HUD's construction window asks every frame while a site is selected), and rebuilding the O(buildings)
- *  maps per call was that frame cost. */
+/** One typeId view and reverse-chain-link map per building list, keyed on the list's identity; a WeakMap
+ *  so a dropped list frees its views with it. {@link constructionBillForType} is a per-frame path, so it
+ *  must not rebuild the O(buildings) maps per call. */
 const billViewCache = new WeakMap<
   readonly BuildingType[],
   { readonly byId: ReadonlyMap<number, BuildingType>; readonly prev: ReadonlyMap<number, number> }
 >();
 
 /**
- * The from-scratch construction bill of one `buildingType` over a plain building list - the pure
- * content-level accessor for a consumer holding building defs but no `ContentSet` (the HUD's
- * construction window shows the same delivered/needed rows the sim demands). Empty for an unknown
- * type. The same math as {@link import('../content-index.js').ContentIndex.constructionBillByBuilding};
- * sim systems read that memoized table instead.
+ * The from-scratch construction bill of one `buildingType` over a plain building list: the content-level
+ * accessor for a consumer holding building defs but no `ContentSet`. Empty for an unknown type. Sim
+ * systems read the memoized `constructionBillByBuilding` table instead.
  */
 export function constructionBillForType(
   buildings: readonly BuildingType[],

@@ -1,10 +1,6 @@
-// The economy drives - the work rungs of the planner ladder, in priority order: deliver a carried load, run a
-// bound producer's supply→produce→deliver loop, raise a construction site, wait out (or supply) the build of
-// the workplace one is posted to, gather (chop/collect), ferry as a bound porter, haul as the carrier
-// fallback. planBuilder/planSiteStaff/planGatherer/planPorter/planCarrierHaul return `true` when they acted
-// (the settler is spoken for this tick) and `false` to let the next rung try; planDelivery and planProducer
-// always own their settler once entered (a loaded / bound settler never falls through), so their result
-// carries no information.
+// The economy drives: the work rungs of the planner ladder. A rung returns true when it acted and the
+// settler is spoken for this tick, false to let the next rung try; planDelivery and planProducer always own
+// their settler once entered, so they report nothing.
 
 export { planBuilder, SiteLeads } from './builder.js';
 export { planDelivery, reconcileYardRoute } from './delivery.js';

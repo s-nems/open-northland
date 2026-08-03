@@ -13,29 +13,19 @@ import { carriedGoodForm } from '../../../drives/economy/delivery-targets.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 
-// Store transfer: a settler picking a load up off a store/pile and depositing it into a store (or onto
-// its own tile at a delivery flag). Goods are conserved on both sides.
-
 /**
- * Resolve one completed `draw`: mint one unit of `goodType` onto the drawing worker's back (the `draw`
- * effect's conservation note covers why an input-less utility creates the unit). The worker reached here
- * empty - the delivery rung runs first on a loaded settler - so {@link addCarry} never merges a foreign good.
+ * Resolve one completed `draw`: mint one unit of `goodType` onto the worker's back - an input-less utility
+ * creates its good. The worker reached here empty, so {@link addCarry} cannot throw on a foreign load.
  */
 export function drawUtilityGood(world: World, settler: Entity, goodType: number): void {
-  addCarry(world, settler, goodType, CARRY_CAPACITY); // one unit per trip - more water/honey takes more trips
+  addCarry(world, settler, goodType, CARRY_CAPACITY); // one trip's worth; more water takes more trips
 }
 
 /**
- * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
- * {@link Stockpile} onto the settler's back. The amount is conserved - the carrier gains exactly what
- * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
- * The good's identity is not: a dish lands on the back as the edible it becomes in THIS settler's
- * hands ({@link carriedGoodForm} - the rule and its source basis live there); the bakery loses one
- * bread, the carrier holds one `food_simple`. The planner probed routing through the same helper
- * before ordering the lift, so the delivery rung already agrees on what is being carried.
- * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
- * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
- * completing - a competing system or another carrier). A source with nothing left to give is a no-op.
+ * Resolve one completed `pickup`: move up to `amount` of `goodType` from the source's {@link Stockpile}
+ * onto the settler's back, capped by what is left there. The amount is conserved but the identity is not:
+ * a dish lands on the back as the edible it becomes in this settler's hands ({@link carriedGoodForm}), so
+ * the bakery loses one bread and the carrier holds one `food_simple`. A null `from` is a sourceless pickup.
  */
 export function pickupFromStore(
   world: World,
@@ -51,27 +41,22 @@ export function pickupFromStore(
     return;
   }
   const stock = world.tryGet(from, Stockpile);
-  if (stock === undefined) return; // source gone - nothing to take (don't conjure goods)
+  if (stock === undefined) return;
   const have = stock.amounts.get(goodType) ?? 0;
   const moved = Math.min(amount, have);
-  if (moved <= 0) return; // source emptied since the planner chose it - nothing to carry
+  if (moved <= 0) return;
   setStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);
   flushBankedBonus(world, ctx, from); // the freed slot may release a capacity-blocked bonus unit
-  reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
+  reapEmptyLoosePile(world, from);
 }
 
 /**
- * Deposit a settler's carried load. A **delivery flag** ({@link DeliveryFlag}) is a MARKER, not a store:
- * the load drops onto a loose ground heap on the tile the gatherer STANDS on ({@link dropCarryAtOwnTile}),
- * capped per tile - the planner walked it to a free yard tile first (`nearestFreeYardNode`), so the goods
- * land where its feet are and never teleport, and each heap is pinned to its own tile so relocating the
- * flag moves nothing already dropped. Any other store takes the load into its own {@link Stockpile}, capped
- * at the building type's per-good capacity, overflow staying on the settler's back (goods conserved). No-op
- * if the settler carries nothing or the (non-flag) store has no stockpile.
- *
- * Returns the units actually taken into a store's stockpile, the executor's signal that a delivery
- * landed: 0 on a no-op, a blocked deposit, or a flag drop (a ground heap is not a delivery).
+ * Deposit a settler's carried load. A {@link DeliveryFlag} is a marker, not a store: the load drops onto a
+ * ground heap on the tile the settler stands on, pinned to that tile, so relocating the flag moves nothing
+ * already dropped. Any other store takes the load into its own {@link Stockpile} up to the building type's
+ * per-good capacity, overflow staying on the back. Returns the units taken into a stockpile; a flag drop
+ * returns 0, since a ground heap is not a delivery.
  */
 export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): number {
   if (world.has(store, DeliveryFlag)) {
@@ -86,9 +71,9 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   const slot = bankedSlot(world, ctx, store, load.goodType); // the shelf settles the good's final identity
   const have = stock.amounts.get(slot.goodType) ?? 0;
   const moved = Math.min(load.amount, Math.max(0, slot.capacity - have));
-  if (moved <= 0) return 0; // store full for this good - keep carrying
+  if (moved <= 0) return 0;
 
   setStockAmount(world, store, slot.goodType, have + moved);
-  shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
+  shrinkCarry(world, settler, load, moved);
   return moved;
 }

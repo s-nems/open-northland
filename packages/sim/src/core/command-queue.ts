@@ -11,12 +11,11 @@ export interface LoggedCommand {
 }
 
 /**
- * The command queue is the single external mutation seam into the sim. Player/UI/AI and replay code call
- * {@link enqueue}; systems own internal world updates. Each tick CommandSystem {@link drain}s the pending
- * commands (in FIFO enqueue order, with no Map/Set iteration)
- * and applies them, appending each to the {@link log}. Determinism: the queue is a plain array, so
- * apply order is exactly enqueue order; two runs that enqueue the same commands on the same ticks
- * produce byte-identical state.
+ * The command queue is the single external mutation seam into the sim. Player, UI, AI and replay code
+ * call {@link enqueue}; systems own internal world updates. Each tick CommandSystem {@link drain}s the
+ * pending commands in FIFO enqueue order and applies them, appending each to the {@link log}. The queue
+ * is a plain array, so apply order is exactly enqueue order and two runs that enqueue the same commands
+ * on the same ticks produce byte-identical state.
  */
 export class CommandQueue {
   private pending: Command[] = [];

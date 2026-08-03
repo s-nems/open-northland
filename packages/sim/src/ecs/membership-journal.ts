@@ -1,8 +1,7 @@
 import type { Component, Entity } from './component.js';
 
-/** Retained span length past which the oldest span is dropped (`base` advances) instead of growing forever:
- *  a consumer further behind rebuilds from scratch. Generous versus real churn, since an incremental index
- *  catches up within the same dispatch loop, typically a handful of ops behind. */
+/** Retained span length past which the oldest span is dropped (`base` advances) instead of growing
+ *  forever; a consumer further behind rebuilds from scratch. */
 export const MEMBERSHIP_JOURNAL_LIMIT = 1024;
 
 /** One store's retained ops: entry `i` is the entity whose add/remove/destroy bumped that store's

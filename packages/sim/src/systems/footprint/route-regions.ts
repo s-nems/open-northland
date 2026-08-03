@@ -7,27 +7,22 @@ import type { SystemContext } from '../context.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
-// The lazy route-region memo over the building + resource walk-block overlay - the target picks'
-// "clear cell sealed inside blocker walls" signal that neither static components
-// (TerrainGraph.componentOf) nor the bounded per-settler failed-goal memo can give. DERIVED state,
-// never hashed, never stored on an entity.
+// The lazy route-region memo over the building and resource walk-block overlay: the "clear cell sealed
+// inside blocker walls" signal that static terrain components cannot give. Derived state, never hashed.
 
 /**
- * The flood cap that separates a provable pocket from the open world, in expanded nodes. Sized above
- * the sealed-pocket class the pathfinder profiled (a 494-node overlay pocket, see find-path.ts's
- * flood guard); a pure performance/coverage knob, not a decoded distance (named approximation).
+ * The flood cap that separates a provable pocket from the open world, in expanded nodes. Approximation:
+ * a coverage knob sized above the largest observed sealed pocket of 494 nodes, not a decoded distance.
  */
 export const ROUTE_REGION_POCKET_CAP = 512;
 
-/** Label of every node not proved to sit in a sealed pocket. See {@link RouteRegions.unroutable}
- *  for what "open" does and does not promise. */
+/** Label of every node not proved to sit in a sealed pocket. */
 const OPEN_REGION = -1;
 
-/** In-flight label of the current flood's own nodes. A flood that steps onto a same-epoch node NOT
- *  carrying this label has joined an earlier capped sweep's region (a pocket's enumeration is
- *  complete, so only open-labeled ground can border unstamped nodes), which proves the union larger
- *  than the cap: the flood must label itself open even when its own remainder exhausts. Never visible
- *  outside a flood - the final labeling pass overwrites every visited node. */
+/** In-flight label of the current flood's own nodes. A flood that steps onto a same-epoch node without
+ *  this label has joined an earlier capped sweep's region, which proves the union larger than the cap, so
+ *  the flood labels itself open even when its own remainder exhausts. The final labeling pass overwrites
+ *  every visited node, so this never escapes a flood. */
 const PENDING_REGION = -2;
 
 /** Int32 stamp ceiling; on the (practically unreachable) wrap, clear the stamps so no stale slot can
@@ -57,11 +52,10 @@ interface RouteRegionCache {
 const cacheByWorld = new WeakMap<World, RouteRegionCache>();
 
 /**
- * Route-reachability verdicts over the building + resource walk-block overlay, resolved through
- * {@link routeRegions}. Verdicts are pure functions of (terrain, overlay), never of query history:
- * a pocket label is minted only for a completely enumerated region, and every other flood outcome
- * collapses to the one shared open label, so a cold cache answers exactly like a warm one (the sim
- * contract for a results-invisible memo cache).
+ * Route-reachability verdicts over the building and resource walk-block overlay. A verdict is a pure
+ * function of terrain and overlay, never of query history: a pocket label is minted only for a completely
+ * enumerated region and every other flood outcome collapses to the shared open label, so a cold cache
+ * answers exactly like a warm one.
  */
 export class RouteRegions {
   constructor(
@@ -71,15 +65,10 @@ export class RouteRegions {
   ) {}
 
   /**
-   * Whether a walk from `from` to `to` PROVABLY has no route under the building + resource overlay:
-   * one endpoint sits in a sealed pocket (an exhaustively enumerated region of at most
-   * {@link ROUTE_REGION_POCKET_CAP} nodes) that the other endpoint is not in. True is a proof and the
-   * only proof this memo issues; every other case fails open to the route + failed-goal-memo path.
-   * False is therefore not a routability promise: two open endpoints may be walled apart (regions
-   * beyond the cap are never compared), unit bodies are not in this overlay, and a blocked endpoint
-   * always reads false - a blocked GOAL is the picks' existing gates' verdict, and a blocked START is
-   * findPath's step-off exemption (the walker may enter any adjacent region, so no single region
-   * describes it).
+   * Whether a walk from `from` to `to` provably has no route under the overlay: one endpoint sits in a
+   * sealed pocket the other is not in. True is a proof; false is not a routability promise, since two open
+   * endpoints may be walled apart beyond the cap, unit bodies are not in this overlay, and a blocked
+   * endpoint always reads false because findPath exempts a blocked start.
    */
   unroutable(from: NodeId, to: NodeId): boolean {
     if (from === to) return false;
@@ -182,14 +171,10 @@ export class RouteRegions {
 }
 
 /**
- * The world's route-region memo over the current building + resource walk-block overlay. Resolve per
- * scan and query {@link RouteRegions.unroutable}; verdicts re-key against the overlay inputs on every
- * call, so holding the instance is safe. First use allocates two node-sized Int32 arrays per world
- * (the pathfinding-scratch pattern). Cost per verdict: O(1) on labeled ground; otherwise one flood of
- * at most {@link ROUTE_REGION_POCKET_CAP} expansions that also stops on contact with ground an
- * earlier flood of the epoch already swept. Every blocker change re-opens the whole map's labels, so
- * the flood cost recurs per scan origin per epoch; the veto sits last in its pick's gate chain to
- * keep that off candidates cheaper gates already rejected.
+ * The world's route-region memo over the current building and resource walk-block overlay. Verdicts re-key
+ * against the overlay inputs on every call, so holding the instance is safe. A verdict is O(1) on labeled
+ * ground, otherwise one flood of at most {@link ROUTE_REGION_POCKET_CAP} expansions; every blocker change
+ * re-opens the whole map's labels, so the veto belongs last in a pick's gate chain.
  */
 export function routeRegions(world: World, ctx: SystemContext, terrain: TerrainGraph): RouteRegions {
   let cache = cacheByWorld.get(world);

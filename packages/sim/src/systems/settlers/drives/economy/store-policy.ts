@@ -12,12 +12,10 @@ function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, job
 }
 
 /**
- * Whether `home` is a farm whose OUTPUT this settler hauls OUT to storage: the building is a field
- * producer of `tribe` (it carries a `farming` good - {@link farmWorkGood}) and the settler is its
- * CARRIER, not its field worker. The shared role gate of the farm haul-out twins - the pickup side
- * (`boundProducerOutputToHaul`) and the delivery-routing side (`toStorageOffFarm`), which must
- * agree or a carrier lifts a farm's output and then can't route it. A farmer banks its reaped crop INTO
- * the farm; only the carrier clears it to central storage.
+ * Whether `home` is a farm whose output this settler hauls out to storage: a field producer of `tribe`
+ * whose carrier, not field worker, this settler is. Shared by the pickup and delivery-routing sides, which
+ * must agree or a carrier lifts a farm's output and then cannot route it. A farmer banks its reaped crop
+ * into the farm; only the carrier clears it to central storage.
  */
 export function isFarmCarrierHaulOutRole(
   world: World,
@@ -42,8 +40,8 @@ export function isStorageSink(world: World, ctx: SystemContext, store: Entity): 
   );
 }
 
-/** Whether a store has capacity for another unit of the requested good, judged on the {@link bankedSlot}
- *  the deposit would land in so the bound-store rungs see the same sink `pileupIntoStore` does. */
+/** Whether a store has capacity for another unit of the requested good, judged on the banked slot the
+ *  deposit would land in, so the bound-store rungs see the same sink `pileupIntoStore` does. */
 export function hasRoom(world: World, ctx: SystemContext, store: Entity, goodType: number): boolean {
   const slot = bankedSlot(world, ctx, store, goodType);
   return (world.get(store, Stockpile).amounts.get(slot.goodType) ?? 0) < slot.capacity;

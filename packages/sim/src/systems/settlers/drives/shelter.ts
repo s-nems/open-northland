@@ -13,22 +13,16 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { answerNeedInPlace } from './needs.js';
 
 /**
- * THE RUN FOR COVER - the top rung of the drive ladder while its owner has a building on alarm: a
- * civilian drops whatever it was doing, runs to the nearest defence-mode building with room, and waits
- * inside shooting the house bow (the CombatSystem's half).
+ * THE RUN FOR COVER - the top rung of the drive ladder while its owner has a building on alarm: a civilian
+ * drops what it was doing, runs to the nearest defence-mode building with room, and waits inside.
  *
- * NOTHING TAKES A SHELTERING SETTLER BACK OUT while the alarm stands (user rule) - not hunger, not
- * fatigue, not a wedding, not a chat, and it does not flee. This rung is where that holds: it sits above
- * the needs drives AND above the ladder's ownership gate, so no lower rung is ever consulted. The
- * wedding/gossip drives run their own walks before the planner and stand down against a claim of their
- * own accord. A player MOVE order still walks the unit out, and this rung walks it straight back on
- * arrival: to move people, lower the alarm.
+ * Nothing takes a sheltering settler back out while the alarm stands: not hunger, not fatigue, not a chat,
+ * and it does not flee. This rung sits above the needs drives and above the ladder's ownership gate, so no
+ * lower rung is consulted. A player move order still walks the unit out, and this rung walks it straight
+ * back on arrival. A settler that already holds a claim keeps it; the DefenceSystem is what breaks it.
  *
- * A settler that already holds a claim keeps it - the pick is made once, and the DefenceSystem is what
- * breaks it.
- *
- * Source basis: the mode is extracted; that civilians shelter in it, who counts as a civilian, and how
- * many fit are named approximations (user rules).
+ * Source basis: the defence mode is extracted; that civilians shelter in it, who counts as a civilian, and
+ * how many fit are approximations.
  */
 export function planShelter(
   world: World,
@@ -54,9 +48,8 @@ export function planShelter(
 }
 
 /**
- * The nearest of the player's shelters that still has room and whose door this settler may head for
- * ({@link doorIsWalkable} - an outlying gatherer with no road home simply keeps working). Ties break on
- * the canonical ascending entity id the ledger is already sorted by.
+ * The nearest of the player's shelters that still has room and whose door this settler may head for. Ties
+ * break on the ascending entity id the ledger is already sorted by.
  */
 function nearestShelterWithRoom(
   world: World,
@@ -74,9 +67,8 @@ function nearestShelterWithRoom(
   let bestDistance = 0;
   for (const site of shelters.get(player) ?? []) {
     if (site.free <= 0) continue;
-    // Rank on the straight-line node distance to the building, and resolve a door only for a candidate
-    // that beats the running best: the door resolve walks the footprint's approach cells, too much to
-    // pay for every site on the list.
+    // Rank on straight-line distance and resolve a door only for a candidate that beats the running best:
+    // the door resolve walks the footprint's approach cells, too much to pay for every site on the list.
     const distance = Math.abs(site.hx - from.hx) + Math.abs(site.hy - from.hy);
     if (best !== null && distance >= bestDistance) continue;
     if (!doorIsWalkable(interactionCell(world, ctx, terrain, site.entity, here), limit, failed)) continue;
@@ -86,9 +78,8 @@ function nearestShelterWithRoom(
   return best;
 }
 
-/** Whether this settler may head for `door`: inside its signpost confinement (the alarm does not suspend
- *  the work-area rule) and not a goal its routes have just failed to reach. Both the claim pick and the
- *  walk below test it, so a seat can never be held by a settler that cannot take it. */
+/** Whether this settler may head for `door`: inside its signpost confinement, which the alarm does not
+ *  suspend, and not a goal its routes have just failed to reach. */
 function doorIsWalkable(
   door: NodeId,
   limit: NavigationLimit | null,
@@ -99,13 +90,9 @@ function doorIsWalkable(
 }
 
 /**
- * Walk `e` to its shelter's door and step it inside on arrival, then hold it there. What it carries is
- * all it can answer a need with under cover ({@link answerNeedInPlace}) - eating and drinking take it
- * nowhere; a walk to a larder or a bed would take it back out.
- *
- * Returns false only when the door has stopped being walkable ({@link doorIsWalkable}) - the claim is
- * given up rather than held, so this settler falls through to its trade instead of standing outside a
- * door forever. The freed seat reappears on the next tick's ledger, not on this pass's copy of it.
+ * Walk `e` to its shelter's door, step it inside on arrival, and hold it there; under cover it can only
+ * answer a need with what it carries. Returns false only when the door has stopped being walkable, giving
+ * up the claim rather than standing outside a door forever.
  */
 function walkInto(
   world: World,

@@ -19,9 +19,9 @@ export interface LivestockTables {
  * `sheep` 57 / `cattle` 58, produced from grain+water by the animal farm's feed recipes), while the
  * live creature is an `animaltypes.ini` record keyed by tribe. No numeric link exists in the readable
  * data, but both sides carry the same species slug (good id `sheep` = tribe id `sheep`), so the join
- * is by that name (named approximation: a slug join over the base data's own naming). Only `catchable`
- * species join - the two the original lets a scout claim (cow 10, sheep 19). First-wins per key on
- * both sides, matching the other tables.
+ * is by that name (approximation: a slug join over the base data's own naming). Only `catchable`
+ * species join, the two the original lets a scout claim (cow 10, sheep 19). First-wins per key on both
+ * sides.
  */
 export function livestockTables(content: ContentSet): LivestockTables {
   const goodBySlug = new Map<string, number>();
