@@ -37,7 +37,7 @@ function thanksEntry(name: string, detail: string, href?: string): HTMLParagraph
   return entry;
 }
 
-/** Credits / about (design frame 5a): project story and repo links left, team and thanks right. */
+/** Credits / about: one centered column - intro, repo links, the team and thanks cards, legal. */
 export function creditsScreen(open: (screen: MenuScreen) => void): HTMLElement {
   const copy = messages().mainMenu;
   const section = document.createElement('section');
@@ -55,24 +55,16 @@ export function creditsScreen(open: (screen: MenuScreen) => void): HTMLElement {
   title.textContent = copy.screenTitles.credits;
   head.append(back, title);
 
-  const story = document.createElement('div');
-  story.className = 'main-menu__credits-story';
   const intro = document.createElement('p');
   intro.className = 'main-menu__credits-intro';
   intro.textContent = copy.credits.intro;
-  const note = document.createElement('p');
-  note.className = 'main-menu__credits-note';
-  note.textContent = copy.credits.filesNote;
   const links = document.createElement('div');
   links.className = 'main-menu__credits-links';
   links.append(
     externalLink(copy.credits.sourceLink, REPO_URL, 'main-menu__ghost is-accent'),
     externalLink(copy.credits.reportLink, ISSUES_URL, 'main-menu__ghost'),
   );
-  story.append(intro, note, links);
 
-  const aside = document.createElement('div');
-  aside.className = 'main-menu__credits-aside';
   const team = creditsCard(copy.credits.teamTitle);
   const person = document.createElement('div');
   person.className = 'main-menu__credits-person';
@@ -90,14 +82,17 @@ export function creditsScreen(open: (screen: MenuScreen) => void): HTMLElement {
     thanksEntry(copy.credits.thanksCommunityName, copy.credits.thanksCommunityDetail, CULTURES_NATION_URL),
   );
 
+  const cards = document.createElement('div');
+  cards.className = 'main-menu__credits-cards';
+  cards.append(team, thanks);
+
   const legal = document.createElement('div');
   legal.className = 'main-menu__credits-legal';
   legal.textContent = `${VERSION_LINE} · ${copy.credits.legal}`;
-  aside.append(team, thanks, legal);
 
   const body = document.createElement('div');
   body.className = 'main-menu__credits';
-  body.append(story, aside);
+  body.append(intro, links, cards, legal);
   section.append(head, body);
   return section;
 }

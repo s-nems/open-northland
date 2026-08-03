@@ -149,13 +149,11 @@ export const plSurfaces = {
     },
     credits: {
       intro:
-        'Open Northland to niezależny, otwarty silnik dla gier z serii Cultures: deterministyczna symulacja, nowy renderer i własny potok zasobów, budowane od zera.',
-      filesNote:
-        'Gra nie zawiera oryginalnych plików. Aby zagrać na klasycznych mapach, wskaż własną kopię Cultures - 8th Wonder of the World, a silnik przygotuje zasoby lokalnie.',
+        'Open Northland to niezależny, otwarty silnik dla gier z serii Cultures: deterministyczna symulacja, nowy renderer i narzędzia przygotowujące zasoby z oryginalnej gry, budowane od zera.',
       sourceLink: 'Kod źródłowy - GitHub',
       reportLink: 'Zgłoś błąd',
       teamTitle: 'Zespół',
-      teamName: 's-nems',
+      teamName: 'Sebastian Nemś',
       teamRole: 'projekt i kod',
       thanksTitle: 'Podziękowania',
       thanksFunaticsName: 'Funatics Software',

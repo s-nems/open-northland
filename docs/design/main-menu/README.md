@@ -26,10 +26,13 @@ Accepted deviations (user feedback, 2026-08-03): the mockups' 1:1 scale read ove
 viewport, so sub-screens render all design px at 0.8 (`--u` override in `menu.css`), which also
 lowers the 19px text minimum proportionally; the home screen shrinks its type (logo 110, menu items
 30, eyebrow 19, version 18, badge 14); the lobby has no "Zmień mapę" link - the header back button
-and Esc cover it. The credits cards carry real content, not the mockup placeholders: the team card
-lists the one actual maintainer (nick only, no "współtwórcy GitHub" row), the thanks card adds the
-CulturesNation.pl community beside Funatics, and the legal line reuses the home screen's version
-constant, so it reads "GPL-3.0" rather than "licencja GPL-3.0".
+and Esc cover it. The credits screen drops the mockup's two-column split: the "no original files"
+paragraph was removed entirely (the setup flow owns that message), and the sparse remainder - intro, repo
+links, the team and thanks cards, legal line - sits as one centered column. Its cards carry real
+content, not the mockup placeholders: the team card lists the one actual maintainer (no
+"współtwórcy GitHub" row), the thanks card adds the CulturesNation.pl community beside Funatics,
+and the legal line reuses the home screen's version constant, so it reads "GPL-3.0" rather than
+"licencja GPL-3.0".
 
 Fonts are the one asset gap. The design calls for Cinzel (display) and Alegreya Sans (UI); the repo
 currently bundles only Tinos under `packages/app/public/fonts/`. Both are OFL, so an implementation
