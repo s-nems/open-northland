@@ -21,12 +21,6 @@ import { isAppUrl } from './protocol-routing.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
 import { buildAppMenu } from './window.js';
 
-/**
- * The main-process end of every {@link IPC_CHANNELS} call: the setup renderer's only way to reach
- * the game folder, the conversion, and the mod installer. Each handler re-validates its own
- * arguments - the renderer is sandboxed but not trusted.
- */
-
 export interface IpcDeps {
   readonly win: BrowserWindow;
   readonly paths: ShellPaths;
@@ -34,10 +28,7 @@ export interface IpcDeps {
   readonly pipeline: PipelineHost;
 }
 
-/**
- * Serves a channel only when the call came from one of the shell's own `app://` pages. The handler
- * receives the arguments alone, never the event, so it cannot soften that decision.
- */
+/** Serves a channel only when the sender frame is one of the shell's own `app://` pages. */
 function handleFromAppFrame(channel: IpcInvokeChannel, handler: (...args: unknown[]) => unknown): void {
   ipcMain.handle(channel, (event, ...args: unknown[]) => {
     if (!isAppUrl(event.senderFrame?.url)) throw new Error('IPC from an untrusted frame');
@@ -83,8 +74,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
     const probe = await probeGameFolder(gamePath);
     if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
-    // A mod inside the game folder is auto-detected by the pipeline; otherwise pass the external
-    // mod root - the conversion is materially incomplete without the mod, so none anywhere is an error.
+    // The pipeline auto-detects a mod inside the game folder; only an external one must be passed.
     const modRoot = probe.hasMod ? undefined : await state.availableModRoot();
     if (!probe.hasMod && modRoot === undefined) {
       throw new Error(messages().errors.modRequired);
@@ -92,7 +82,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     pipeline.start(gamePath, paths.contentDir, modRoot, (event: PipelineEvent) => {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
     });
-    // Remembered only after start() accepted the run - a double-start throw must not clobber it.
+    // Remembered only after start() accepted the run, so a double-start throw cannot clobber it.
     patchConfig(paths.configFile, { gamePath });
   });
   handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());
@@ -138,7 +128,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     assertLocale(locale);
     setActiveLocale(locale);
     patchConfig(paths.configFile, { locale });
-    // The native menu is already built; rebuild it so its labels follow the renderer's new language.
+    // The native menu does not re-localize itself; rebuild it for the new language.
     buildAppMenu(win, paths.dataRoot.path);
   });
 }

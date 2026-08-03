@@ -7,19 +7,15 @@ export const APP_ORIGIN_PREFIX = `${APP_SCHEME}://`;
 export const GAME_HOST = 'game';
 export const SETUP_HOST = 'setup';
 
-/**
- * The one origin test behind both the IPC sender guard and the window's navigation guard. A URL the
- * caller could not report is never one of ours.
- */
+/** The one origin test behind the IPC sender and navigation guards; an unreported URL is never ours. */
 export function isAppUrl(url: string | undefined): boolean {
   return (url ?? '').startsWith(APP_ORIGIN_PREFIX);
 }
 
 /**
  * The content-route path an `app://` request maps to, or `undefined` for the routeless setup host.
- * Pixi's path resolver mis-joins root-relative asset URLs on a custom scheme: a worker-side
- * `/bobs/<stem>.png` arrives as `app://bobs/<stem>.png` - the route segment lands in the URL host, so
- * folding it back into the pathname makes both spellings hit the same route table.
+ * Pixi mis-joins a worker's root-relative `/bobs/<stem>.png` into `app://bobs/<stem>.png`, so folding
+ * that host back into the pathname makes both spellings hit the same route table.
  */
 export function routePathOf(host: string, rawPathname: string): string | undefined {
   if (host === GAME_HOST) return rawPathname;
@@ -31,9 +27,8 @@ export function routePathOf(host: string, rawPathname: string): string | undefin
 const SESSION_PARAMS = ['map', 'scene'] as const;
 
 /**
- * Whether a loaded URL is a game page with a world in progress, so leaving it loses a session (there
- * is no saving yet). The menu page is a game URL too and always carries `?lang=`, so having a query
- * proves nothing.
+ * Whether a game page has a world in progress, so navigating away loses it (there is no saving yet).
+ * The menu page is a game URL too and always carries `?lang=`, so a non-empty query proves nothing.
  */
 export function isInGameSession(url: string): boolean {
   let parsed: URL;
