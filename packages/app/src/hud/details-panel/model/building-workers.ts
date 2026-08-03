@@ -56,7 +56,6 @@ export function workerSlotsFor(
  * mechanics in the original: a tower's archers shoot whether or not the alarm is up.
  */
 export function defenseLine(
-  _ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
   buildingId: number,

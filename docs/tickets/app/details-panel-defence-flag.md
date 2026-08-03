@@ -16,8 +16,8 @@ invent source data and another join without changing the current rule.
 
 - Set visibility from the live definition only: `def.id === 'headquarters' || def.kind === 'tower'`.
 - Remove the details-model dependency on `vikingBuildingByTypeId`; do not add a new content field.
-- Keep the displayed defence state as its separately named approximation until the tower-defence
-  feature gives it live state.
+- Leave the displayed defence state alone: a manned tower already reports its live garrison strength,
+  and only the no-garrison fall-back is still the separately named approximation.
 
 ## Verify
 

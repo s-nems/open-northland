@@ -156,15 +156,15 @@ export interface SandboxBuildingRow {
   upgradeTarget?: number;
 }
 
+/** The watchtower larder's per-good capacity - the extracted `logicstock 16 25` / `43 25` on both tiers. */
+const TOWER_LARDER_CAPACITY = 25;
+
 /**
  * Per-building sandbox behaviour overrides, keyed by typeId - a data table, so {@link buildingRow}
  * stays a pure spread and a new special building means a new row here, not another branch. A `workers`
  * here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS} default (the
  * joinery pins its own collector-fed plank producer for the production demo).
  */
-/** The watchtower larder's per-good capacity - the extracted `logicstock 16 25` / `43 25` on both tiers. */
-const TOWER_LARDER_CAPACITY = 25;
-
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
   // The well - EXTRACTED shape (`DataCnmd/types/houses.ini` "work well 00"): a water-only store and

@@ -149,9 +149,7 @@ function startPlayerWalk(
   // after the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // and a barracks drill - the player's one way to call that off too
-  // Sending a tower garrison anywhere else calls the posting off outright: his work IS standing up there,
-  // so leaving the binding would walk him straight back the tick he arrives. Only a tower post is dropped -
-  // an ordinary worker sent across the map keeps his workplace and returns to it (user rule 2026-08-03).
+  // The player's way to call a tower posting off; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
   // A move order relocates a DEFEND unit's post: the guard defends the spot it was sent to, not the tile the
   // stance was set on. Without the re-anchor, the arrived-hold combat pass would march the guard back to its

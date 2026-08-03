@@ -172,7 +172,7 @@ export function buildUnitPanelModel(
       // pinned approximation (no component exists yet - the original's state/toggle strings live at
       // `housewindow` 140–143, "Rozpocznij/Zatrzymaj Tryb Obrony"). Without this a tower whose archers are
       // visibly shooting would read "Obrona zatrzymana".
-      defenseLabel: defenseLine(ctx, snapshot, def, entityId),
+      defenseLabel: defenseLine(snapshot, def, entityId),
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
       // A running upgrade site offers Cancel instead of Upgrade.

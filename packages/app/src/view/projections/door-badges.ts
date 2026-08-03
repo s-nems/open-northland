@@ -102,7 +102,10 @@ export function computeDoorBadges(
     const families = households.get(e.id);
     const hearts = isMakingLove(e);
     if (counts === undefined && families === undefined && !hearts) continue; // nothing to draw here
-    const garrison = counts?.garrison ?? 0;
+    // No flag over a foundation: the mast point is the FINISHED tower's, ~239 px up, and the sim refuses
+    // an unbuilt post anyway (`conflict/tower-post.ts`), so an archer already assigned to the site would
+    // otherwise fly a banner over scaffolding for a garrison that cannot exist yet.
+    const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const typeId = buildingTypeOf(e);

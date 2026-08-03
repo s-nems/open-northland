@@ -55,7 +55,7 @@ export interface CombatantStance {
   readonly ordered: boolean;
   /** The {@link MILITARY_MODE} the unit acts under ({@link stanceMode}), or null for an unowned combatant. */
   readonly mode: MilitaryMode | null;
-  /** The tower the unit is manning ({@link import('./garrison.js').garrisonPostFor}), or null. A garrison
+  /** The tower the unit is manning ({@link import('./tower-post.js').towerPostFor}), or null. A garrison
    *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
 }
@@ -110,7 +110,7 @@ export function engageSpec(
 
   // A GARRISON outranks every stance: it shoots whatever hostile comes inside the tower's reach and never
   // steps out after one, so its search band IS that reach (`weapon` already carries the tower bonus - see
-  // ./garrison.ts) rather than the advance sight radius.
+  // ./tower-post.ts) rather than the advance sight radius.
   if (stance.post !== null) {
     return {
       accept: generalAccept,
@@ -118,7 +118,7 @@ export function engageSpec(
       searchRadius: weapon.maxRange,
       player,
       lowPriority: lowPriorityBuildings,
-      lock: null, // it re-acquires the nearest hostile in reach every tick; only the hunter commits
+      lock: null,
       defend: null,
     };
   }

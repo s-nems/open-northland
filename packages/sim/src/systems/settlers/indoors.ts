@@ -44,6 +44,11 @@ export function stepOut(world: World, e: Entity): void {
  * Take the post inside `building`: stand on its own tile and remember the doorstep to come back to. The
  * caller has already stepped the settler in; this is the extra move a GARRISON makes, so its shot leaves
  * the tower instead of its doorstep (see {@link Garrison}).
+ *
+ * This and {@link standDownFromPost} are the only writes to a settler's `Position` outside the movement
+ * system, and they land it on a building's own (walk-blocked) node. Every incremental spatial structure is
+ * keyed on static entities, never on settler positions, so nothing desynchronizes today - but a new
+ * settler-position-keyed index would have to account for these two.
  */
 export function takePost(world: World, e: Entity, building: Entity): void {
   const at = world.tryGet(building, Position);
