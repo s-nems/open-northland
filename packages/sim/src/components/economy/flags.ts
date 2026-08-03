@@ -68,10 +68,13 @@ export const YardDeliveryRoute = defineComponent<{
 export const DEFAULT_WORK_FLAG_RADIUS = 24;
 
 /**
- * The hunter's work radius (same integer node-distance): far wider than the gatherer default, because a
- * hunter is not a stationary digger - it ranges around the base after mobile game that scatters on every
- * shot (user rule; hunter-only, every other gatherer keeps the default). 64 nodes ≈ 32 tiles, the
- * {@link import('../../systems/economy/berries.js').BERRY_FORAGE_RADIUS} scale. A named approximation -
- * the original's hunter range is not decoded.
+ * The hunter's work radius (same integer node-distance): wider than the gatherer default, because a
+ * hunter is not a stationary digger - it ranges after mobile game that scatters on every shot (user
+ * rule; hunter-only, every other gatherer keeps the default). A named approximation - the original's
+ * hunter range is not decoded - but sized by a measured sweep on a real map (the run is in the commit
+ * that set it): at twice this radius hunters spend the run WALKING, a mean 12-17 tiles out and peaks
+ * past 30, because last-resort livestock yields to normal game anywhere in the ground (`lowPriority`),
+ * so one distant deer outranks the herd underfoot. Bought with reach: a ground's area falls with the
+ * SQUARE of this, and nothing respawns game, so it is hunted out sooner and wants re-posting.
  */
-export const HUNTER_WORK_FLAG_RADIUS = 64;
+export const HUNTER_WORK_FLAG_RADIUS = 32;
