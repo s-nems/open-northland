@@ -68,38 +68,23 @@ describe('setPlayerAi - the AI seat flag', () => {
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(false);
   });
 
-  it('withdraws the AI-published counters on disable, sparing the class rows', () => {
+  it('withdraws the AI-published counters on disable, sparing the rows it never publishes', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    // The standing state the modules publish, plus a class row only a human hand sets.
-    sim.enqueue({
-      kind: 'setAssistantCounter',
-      player: AI_SEAT,
-      counter: 'extraMen',
-      value: 0,
-      infinite: true,
-    });
-    sim.enqueue({
-      kind: 'setAssistantCounter',
-      player: AI_SEAT,
-      counter: 'trainSoldiers',
-      value: 5,
-      infinite: false,
-    });
-    sim.enqueue({
-      kind: 'setAssistantCounter',
-      player: AI_SEAT,
-      counter: 'trainSword',
-      value: 3,
-      infinite: false,
-    });
+    // The standing state the modules publish - the garrison rung's whole weapon mix among it - plus
+    // the spear row, which no AI hand ever sets.
+    for (const counter of ['extraMen', 'trainSoldiers', 'trainSword', 'trainBow', 'trainSpear'] as const) {
+      sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter, value: 3, infinite: false });
+    }
     sim.step();
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     const counters = sim.assistantCounters(AI_SEAT);
     expect(counters.extraMen).toEqual({ value: 0, infinite: false });
     expect(counters.trainSoldiers).toEqual({ value: 0, infinite: false });
-    expect(counters.trainSword).toEqual({ value: 3, infinite: false });
+    expect(counters.trainSword).toEqual({ value: 0, infinite: false });
+    expect(counters.trainBow).toEqual({ value: 0, infinite: false });
+    expect(counters.trainSpear).toEqual({ value: 3, infinite: false });
   });
 
   it("withdraws a module's counters when its publishing gate flips off, keeping the rest", () => {

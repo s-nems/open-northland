@@ -22,8 +22,8 @@ export interface ArmyCensus {
   /** Out on the map with no focus left, free to be re-aimed at the next objective. */
   readonly afield: readonly Entity[];
   /** How many of {@link muster} shoot, and how many fight in reach (they sum to `muster.length`).
-   *  Both are 0 for a seat whose recruits are all the weaponless base class the drill enlists: the
-   *  garrison rung publishes only `trainSoldiers`, never the assistant's weapon-class counters. */
+   *  A recruit still waiting for the weapon his class counter booked counts as melee: until the
+   *  arming pass dresses him he wears the weaponless base class. */
   readonly ranged: number;
   readonly melee: number;
 }

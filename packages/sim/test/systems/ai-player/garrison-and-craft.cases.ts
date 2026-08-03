@@ -1,25 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { AssistantRecruit, JobAssignment, Settler, TrainingOrder } from '../../../src/components/index.js';
+import {
+  type AssistantCounterKind,
+  AssistantRecruit,
+  type AssistantRecruitIntent,
+  JobAssignment,
+  Settler,
+  setStockAmount,
+  TrainingOrder,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
-import { isFighterJob } from '../../../src/systems/index.js';
+import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/shared.js';
+import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
   ANIMAL_FARM_TYPE,
   aiSim,
+  armedContent,
   BARRACKS_TYPE,
+  BOW,
   BREEDER,
   BUILDER,
   collectModule,
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  HQ_X,
+  HQ_Y,
   husbandryContent,
   JOINERY_TYPE,
   LEATHER,
   makeAiSeat,
   placeHq,
   SEAT,
+  SWORD,
   spawnMen,
   TOOL_IRON,
   VIKING,
@@ -27,7 +41,85 @@ import {
   WOOL,
 } from './support.js';
 
-/** The garrison sizing out of the true bachelor surplus, and the per-seat craft restrictions. */
+// The garrison sizing out of the true bachelor surplus, the weapon mix it publishes, and the
+// per-seat craft restrictions.
+
+/** Spare civilians an armed-seat case spawns by default - well past every post, reserve and
+ *  collector tier. */
+const SPARE_MEN = 40;
+
+interface ArmedSeat {
+  readonly sim: Simulation;
+  readonly ctx: SystemContext;
+  /** Civilians spawned - the baseline {@link sparePool} subtracts the ladder's claims from. */
+  readonly men: number;
+}
+
+/** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword
+ *  and bow classes are equippable ({@link armedContent}). */
+function armedSeat(arms: readonly { good: number; amount: number }[], men = SPARE_MEN): ArmedSeat {
+  const content = armedContent();
+  const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+  sim.enqueue({
+    kind: 'placeBuilding',
+    buildingType: HQ_TYPE,
+    x: HQ_X,
+    y: HQ_Y,
+    tribe: VIKING,
+    owner: SEAT,
+    initialGoods: arms,
+  });
+  sim.enqueue({
+    kind: 'placeBuilding',
+    buildingType: BARRACKS_TYPE,
+    x: 40,
+    y: 16,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  spawnMen(sim, men);
+  makeAiSeat(sim, SEAT);
+  sim.step();
+  return { sim, ctx: { ...ctxOf(sim), content }, men };
+}
+
+/** The rung's standing order, by counter. A counter the decision leaves where it already sits issues
+ *  no command, so an absent key means "still zero". */
+function counterWants(sim: Simulation, ctx: SystemContext): Partial<Record<AssistantCounterKind, number>> {
+  const wants: Partial<Record<AssistantCounterKind, number>> = {};
+  for (const c of collectModule.run(sim.world, ctx, SEAT)) {
+    if (c.kind === 'setAssistantCounter') wants[c.counter] = c.value;
+  }
+  return wants;
+}
+
+/** The men the ladder leaves over - the draft allowance, derived from the other side: the spawned
+ *  civilians minus everyone a post, reserve or flag claimed this decision. */
+function sparePool(seat: ArmedSeat): number {
+  const claimed = new Set<Entity>();
+  for (const c of collectModule.run(seat.sim.world, seat.ctx, SEAT)) {
+    if (c.kind === 'setJob' || c.kind === 'assignWorker') claimed.add(c.entity);
+  }
+  return seat.men - claimed.size;
+}
+
+/** The free drill slots the standing order opens: what the dispatcher computes per counter - the
+ *  published value less that counter's own unpaid bookings (`systems/assistant/`). A counter the
+ *  decision leaves alone keeps its live value. */
+function draftHeadroom(seat: ArmedSeat): number {
+  const live = seat.sim.assistantCounters(SEAT);
+  const wants = counterWants(seat.sim, seat.ctx);
+  const booked = new Map<AssistantRecruitIntent, number>();
+  for (const e of seat.sim.world.query(AssistantRecruit)) {
+    const booking = seat.sim.world.get(e, AssistantRecruit);
+    if (!booking.armed) booked.set(booking.intent, (booked.get(booking.intent) ?? 0) + 1);
+  }
+  const owned: readonly AssistantRecruitIntent[] = ['trainSoldiers', 'trainSword', 'trainBow'];
+  return owned.reduce(
+    (slots, intent) => slots + Math.max(0, (wants[intent] ?? live[intent].value) - (booked.get(intent) ?? 0)),
+    0,
+  );
+}
 
 describe('workforce module - the barracks and craft selections', () => {
   it('never staffs the barracks: it is a military building, not a workplace the plan crews', () => {
@@ -45,7 +137,7 @@ describe('workforce module - the barracks and craft selections', () => {
     sim.step();
 
     // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
-    // rule 2026-07-26) and stamps no fighter trade by command: a soldier is made by the drill, never
+    // rule) and stamps no fighter trade by command: a soldier is made by the drill, never
     // by `setJob` - and a seat that is not AI-flagged runs no garrison hire at all.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
@@ -73,7 +165,7 @@ describe('workforce module - the barracks and craft selections', () => {
     makeAiSeat(sim, SEAT);
     sim.step();
 
-    // The seat hand-picks no recruit (user rule 2026-08-02): the rung publishes the leftover
+    // The seat hand-picks no recruit (user rule): the rung publishes the leftover
     // free-civilian count as the standing `trainSoldiers` order and the assistant drafts from it.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(commands.filter((c) => c.kind === 'trainSoldier')).toEqual([]);
@@ -199,6 +291,106 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setAssistantCounter'),
     ).toEqual([]);
+  });
+
+  it('splits the standing order between swordsmen and archers once both arms are in store', () => {
+    // One unit of each is enough: the counter is a standing want, and the smithy keeps making more.
+    const both = [
+      { good: SWORD, amount: 1 },
+      { good: BOW, amount: 1 },
+    ];
+    const even = armedSeat(both);
+    const evenTotal = sparePool(even);
+    expect(evenTotal % 2).toBe(0);
+    expect(counterWants(even.sim, even.ctx)).toEqual({
+      trainSword: evenTotal / 2,
+      trainBow: evenTotal / 2,
+    });
+
+    // One man fewer makes the split odd: the extra recruit fights in reach, never at range.
+    const odd = armedSeat(both, SPARE_MEN - 1);
+    const oddTotal = sparePool(odd);
+    expect(oddTotal % 2).toBe(1);
+    expect(counterWants(odd.sim, odd.ctx)).toEqual({
+      trainSword: (oddTotal + 1) / 2,
+      trainBow: (oddTotal - 1) / 2,
+    });
+  });
+
+  it('puts the whole order on the one class it can arm, never on fists', () => {
+    const seat = armedSeat([{ good: BOW, amount: 1 }]);
+    // Swords unmade: a swordsman would stand around weaponless, so every recruit becomes an archer
+    // (user rule - the fist is the last resort, not half the plan).
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainBow: sparePool(seat) });
+  });
+
+  it('falls back to fist-fighters only while the seat holds no arms at all', () => {
+    const seat = armedSeat([]);
+    const total = sparePool(seat);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: total });
+
+    // The fallback follows the STORE, not the content: one delivered sword flips the whole order.
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 1);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: total });
+  });
+
+  it('keeps each counter carrying its own recruits, so a new weapon drafts nobody extra', () => {
+    // The regression a pooled total caused: the assistant reads headroom PER counter
+    // (`counter - its own unpaid bookings`), so a shared total re-opened every booked slot the
+    // moment the armable set changed, and the dispatcher filled it from married men.
+    const seat = armedSeat([{ good: SWORD, amount: SPARE_MEN }]);
+    seat.sim.run(200); // the sword order is published and a queue of recruits is in flight
+    expect([...seat.sim.world.query(AssistantRecruit)].length).toBeGreaterThan(1);
+
+    const before = draftHeadroom(seat);
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), BOW, SPARE_MEN);
+    // Bows arriving changes which classes the seat drills, never how many men it may still take.
+    expect(draftHeadroom(seat)).toBe(before);
+  });
+
+  it('books the class intents through the assistant, and re-publishes nothing while they work', () => {
+    const seat = armedSeat([
+      { good: SWORD, amount: 4 },
+      { good: BOW, amount: 4 },
+    ]);
+    seat.sim.run(80); // the seat publishes its order, the assistant's beats pace the drafts
+
+    // Every booking is a class intent - the seat drills nobody into the weaponless base class.
+    const armed: readonly AssistantRecruitIntent[] = ['trainSword', 'trainBow'];
+    const intents = [...seat.sim.world.query(AssistantRecruit)].map(
+      (e) => seat.sim.world.get(e, AssistantRecruit).intent,
+    );
+    expect(intents.length).toBeGreaterThanOrEqual(2);
+    expect(intents.filter((intent) => !armed.includes(intent))).toEqual([]);
+    // Each draft moves one man from the allowance into its counter's bookings, so the published
+    // values are unchanged and the rung re-issues nothing.
+    expect(
+      [...collectModule.run(seat.sim.world, seat.ctx, SEAT)].filter((c) => c.kind === 'setAssistantCounter'),
+    ).toEqual([]);
+  });
+
+  it('publishes only counters the AI teardown knows how to withdraw', () => {
+    // Drift guard: `setPlayerAi(false)` resets exactly the AI_PUBLISHED_COUNTERS kinds, so a counter
+    // this rung reaches for outside that list would keep drafting after the seat's AI is detached.
+    const withdrawable = new Set<string>(
+      AI_PUBLISHED_COUNTERS.filter((entry) => entry.modules.includes('military')).flatMap(
+        (entry) => entry.kinds,
+      ),
+    );
+    const published = new Set<string>();
+    for (const arms of [
+      [],
+      [{ good: SWORD, amount: 1 }],
+      [
+        { good: SWORD, amount: 1 },
+        { good: BOW, amount: 1 },
+      ],
+    ]) {
+      const seat = armedSeat(arms);
+      for (const kind of Object.keys(counterWants(seat.sim, seat.ctx))) published.add(kind);
+    }
+    expect([...published].filter((kind) => !withdrawable.has(kind))).toEqual([]);
+    expect(published.size).toBe(3); // all three reached: the fallback and both armed classes
   });
 
   it('keeps a joinery operator on iron tools only, idempotently', () => {
