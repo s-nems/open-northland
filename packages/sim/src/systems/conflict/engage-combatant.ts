@@ -8,15 +8,19 @@ import {
   Health,
   HuntFocus,
   HuntRest,
+  MoveGoal,
   Owner,
   PlayerOrder,
+  Position,
   Settler,
   type SettlerIdentity,
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { isStanding } from '../movement/collision/index.js';
 import { withFightDamageBonus } from '../progression/index.js';
 import {
   isAnimalTribe,
@@ -136,7 +140,7 @@ export function engageCombatant(
 
   const { target, dist } = found;
   holdPrey(world, e, spec, target);
-  if (inReachAndStanding(dist, weapon, travelling)) {
+  if (inReachAndStanding(dist, weapon, travelling && !arrivedAtGoal(world, e, terrain))) {
     swingAt(world, ctx, e, attacker, owned, target, weapon);
     return;
   }
@@ -287,8 +291,22 @@ function standsDownAsPassiveAnimal(
  *  lattice (`nodeOfPosition`), so a walker can read as in-band mid-stride (up to half an edge short of a
  *  centre) and swinging there would freeze it off any node centre, reading as a glide. Gated, the walker
  *  finishes its braked last leg onto the slot's centre first. */
-function inReachAndStanding(dist: number, weapon: ArmedWith, travelling: boolean): boolean {
-  return dist >= weapon.minRange && dist <= weapon.maxRange && !travelling;
+function inReachAndStanding(dist: number, weapon: ArmedWith, moving: boolean): boolean {
+  return dist >= weapon.minRange && dist <= weapon.maxRange && !moving;
+}
+
+/** Whether `e` is route-free ({@link isStanding}) and standing on the exact centre of the goal it still
+ *  carries - the remnant between a walk ending and next tick's navigation planner retiring the goal, which is
+ *  not motion. The centre test is the planner's own (`planner/navigation.ts`), so this means precisely "that
+ *  goal is retired next tick"; the truncated node alone would also admit a walker parked up to half a node
+ *  off centre, and swinging there is the glide {@link inReachAndStanding} exists to prevent. */
+function arrivedAtGoal(world: World, e: Entity, terrain: TerrainGraph): boolean {
+  const goal = world.tryGet(e, MoveGoal)?.cell;
+  if (goal === undefined || !isStanding(world, e)) return false;
+  const g = terrain.coordsOf(goal);
+  const centre = positionOfNode(g.x, g.y);
+  const p = world.get(e, Position);
+  return p.x === centre.x && p.y === centre.y;
 }
 
 function swingAt(
