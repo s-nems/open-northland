@@ -23,7 +23,6 @@ import {
 } from '../../src/systems/ai-player/index.js';
 import { standsAtPost } from '../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../src/systems/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { entityNode } from '../../src/systems/spatial/nodes.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -56,6 +55,15 @@ const FOE_HQ = { x: 112, y: 20 };
 const EAGER_SEED = 7;
 /** Long enough for a posted archer to walk the few nodes to his tower and step inside. */
 const WALK_IN_TICKS = 200;
+
+/** A map split by a full-height water column at `waterX`: the two banks never connect. */
+function splitNodeMap(width: number, height: number, waterX: number): TerrainMap {
+  const GRASS = 0;
+  const WATER = 1;
+  const typeIds = new Array<number>(width * height).fill(GRASS);
+  for (let y = 0; y < height; y++) typeIds[y * width + waterX] = WATER;
+  return { resolution: 'half-cell', width, height, typeIds };
+}
 
 function aiSim(map: TerrainMap = grassNodeMap(128, 96)): Simulation {
   return new Simulation({ seed: 1, content: aiContent(), map });
@@ -108,6 +116,29 @@ function spawn(
   }
   sim.step();
   return [...sim.world.query(Settler)].filter((e) => !before.has(e));
+}
+
+/** An unfinished building of `owner` - a foundation with a live hitpoint pool that can be razed. */
+function placeSite(
+  sim: Simulation,
+  buildingType: number,
+  at: { x: number; y: number },
+  owner = SEAT,
+): Entity {
+  const before = new Set(sim.world.query(Building));
+  sim.enqueue({
+    kind: 'placeBuilding',
+    buildingType,
+    x: at.x,
+    y: at.y,
+    tribe: VIKING,
+    owner,
+    underConstruction: true,
+  });
+  sim.step();
+  const site = [...sim.world.query(Building)].find((e) => !before.has(e));
+  if (site === undefined) throw new Error('setup: the building site was refused');
+  return site;
 }
 
 /** The watch band every case measures against - the house bow's reach in the fixture content. */
@@ -198,6 +229,29 @@ describe('ai defence - the alarm', () => {
     expect(alarms(run(sim))).toEqual([]);
   });
 
+  it('goes out at a raider whose alarm it is still holding, though he stands past its fire', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    const band = spawn(sim, 3, { x: BARRACKS.x, y: BARRACKS.y + 6 }, SPEARMAN);
+    const raider = standOff(sim, hq, watchOf(sim), SPEARMAN);
+    // Only the alarm applies: the first decision's sortie would leave the band mid-walk and out of reach
+    // of the second one.
+    apply(
+      sim,
+      run(sim).filter((c) => c.kind === 'setDefenceMode'),
+    );
+    expect(sim.world.has(hq, DefenceMode)).toBe(true);
+
+    // Inside the margin, outside the reach a sheltering civilian answers with. Held there he shuts the
+    // town down for nothing, so the band that answers has to reach as far as the alarm holds.
+    drawOff(sim, raider, THREAT_STAND_DOWN_MARGIN_NODES);
+    const commands = run(sim);
+    const at = nodeOf(sim, raider);
+    expect(alarms(commands)).toEqual([]);
+    expect(attackMoves(commands)).toEqual(band.map((e) => ({ entity: e, x: at.x, y: at.y })));
+  });
+
   it('lowers it once the raider draws off past the margin', () => {
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
@@ -224,22 +278,74 @@ describe('ai defence - the alarm', () => {
 
   it('never rings a shelter that is still a building site', () => {
     const sim = aiSim();
-    const before = new Set(sim.world.query(Building));
-    sim.enqueue({
-      kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      x: SEAT_TOWER.x,
-      y: SEAT_TOWER.y,
-      tribe: VIKING,
-      owner: SEAT,
-      underConstruction: true,
-    });
-    sim.step();
-    const site = [...sim.world.query(Building)].find((e) => !before.has(e));
-    if (site === undefined) throw new Error('setup: the tower site was refused');
+    const site = placeSite(sim, TOWER_TYPE, SEAT_TOWER);
     standOff(sim, site, 2, SPEARMAN);
 
     expect(alarms(run(sim))).toEqual([]);
+  });
+
+  it('lowers the alarms it is standing on when the seat stops deciding', () => {
+    const sim = aiSim();
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    standOff(sim, hq, watchOf(sim), SPEARMAN);
+    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    apply(sim, run(sim));
+    expect(sim.world.has(hq, DefenceMode)).toBe(true);
+
+    // Nothing else ever lowers it, so a seat that stops deciding would hold its people in cover for the
+    // rest of the game.
+    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: false });
+    sim.step();
+    expect(sim.world.has(hq, DefenceMode)).toBe(false);
+  });
+
+  it('lowers them when the military gate alone flips off', () => {
+    const sim = aiSim();
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    standOff(sim, hq, watchOf(sim), SPEARMAN);
+    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    apply(sim, run(sim));
+
+    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: { military: false } });
+    sim.step();
+    expect(sim.world.has(hq, DefenceMode)).toBe(false);
+  });
+
+  it('keeps marching while a raider it cannot walk to holds the alarm up', () => {
+    const water = SEAT_HQ.x + 8;
+    const sim = aiSim(splitNodeMap(128, 96, water));
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    place(sim, HQ_TYPE, FOE_HQ, FOE);
+    const band = spawn(sim, WAVE_MIN_SOLDIERS, { x: BARRACKS.x, y: BARRACKS.y + 6 }, SPEARMAN);
+    // Across the water, inside the watch band: he can shoot into the street, so the town takes cover -
+    // but nobody can walk out at him, and benching the army for a siege it can never join would hand a
+    // human the same permanent freeze from the far bank.
+    const raider = standOff(sim, hq, watchOf(sim) - 2, SPEARMAN);
+
+    const commands = run(sim);
+    const at = nodeOf(sim, raider);
+    expect(alarms(commands)).toEqual([{ building: hq, enabled: true }]);
+    expect(attackMoves(commands).filter((m) => m.x === at.x && m.y === at.y)).toEqual([]);
+    // Benched, the campaign would issue nothing at all and these five would stand idle for the rest of
+    // the game.
+    expect(commands.some((c) => 'entity' in c && band.includes(c.entity))).toBe(true);
+  });
+
+  it('sorties for a construction site under attack, though it cannot ring one', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const band = spawn(sim, 3, { x: BARRACKS.x, y: BARRACKS.y + 6 }, SPEARMAN);
+    // Away south, so the band answers the raid rather than picking the raider up on sight from the rally.
+    const site = placeSite(sim, TOWER_TYPE, SEAT_TOWER);
+    const raider = standOff(sim, site, 2, SPEARMAN);
+
+    // A site has no inside to hide in, so no alarm - but it can be razed, and losing the build queue
+    // uncontested is worse than losing the wall it would have been.
+    const commands = run(sim);
+    expect(alarms(commands)).toEqual([]);
+    const at = nodeOf(sim, raider);
+    expect(attackMoves(commands)).toEqual(band.map((e) => ({ entity: e, x: at.x, y: at.y })));
   });
 });
 
@@ -311,9 +417,6 @@ describe('ai defence - the sortie', () => {
     const commands = run(sim);
     const at = terrainOf(sim).coordsOf(entityNode(sim.world, terrainOf(sim), raider));
     expect(attackMoves(commands)).toEqual(band.map((e) => ({ entity: e, x: at.x, y: at.y })));
-    // The band answers the raid instead of gathering for the campaign.
-    expect(commands.filter((c) => c.kind === 'moveUnit')).toEqual([]);
-    expect(commands.filter((c) => c.kind === 'setStance' && c.mode !== MILITARY_MODE.ATTACK)).toEqual([]);
   });
 
   it('leaves the men already chasing a focus to it', () => {

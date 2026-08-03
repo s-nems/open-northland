@@ -555,6 +555,33 @@ describe('military module - the objective', () => {
     expect(targetOf(sim)).toBe(buildingOfType(sim, TOWER_TYPE, FOE));
   });
 
+  it('marches on an enemy construction site when nothing of his is finished', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const before = new Set(sim.world.query(Building));
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: HQ_TYPE,
+      x: FOE_HQ.x,
+      y: FOE_HQ.y,
+      tribe: VIKING,
+      owner: FOE,
+      underConstruction: true,
+    });
+    sim.step();
+    const site = [...sim.world.query(Building)].find((e) => !before.has(e));
+    if (site === undefined) throw new Error('setup: the enemy building site was refused');
+
+    // A site holds a live pool from its first hitpoint and can be razed, so denying the expansion is a
+    // war aim like any other building.
+    expect(targetOf(sim)).toBe(site);
+
+    // It is tiered by what it is being built into, so a nearer headquarters foundation outranks the
+    // finished seat behind it - one blow denies the expansion, and the real seat is next.
+    place(sim, HQ_TYPE, { x: FOE_HQ.x + 10, y: FOE_HQ.y }, FOE);
+    expect(targetOf(sim)).toBe(site);
+  });
+
   it('never marches on its own settlement', () => {
     const sim = aiSim();
     place(sim, BARRACKS_TYPE, BARRACKS);

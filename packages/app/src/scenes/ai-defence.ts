@@ -67,7 +67,8 @@ const FIGHTER_HITPOINTS = 200_000;
 /** Past the walk to the wall, the run for cover and the charge out - the state every check reads. */
 const RUN_TICKS = 300;
 
-const { Building, DefenceMode, Garrison, JobAssignment, Owner, Position, Settler, Sheltering } = components;
+const { Building, DefenceMode, Garrison, JobAssignment, Owner, Position, Resting, Settler, Sheltering } =
+  components;
 
 function build(sim: Simulation): void {
   placeBuiltSandboxBuilding(sim, BUILDING_WATCHTOWER, TOWER.x, TOWER.y, ENEMY_PLAYER);
@@ -179,7 +180,15 @@ export const aiDefenceScene: SceneDefinition = {
       label: 'its colonists are all in cover',
       predicate: (sim) => {
         const colonists = townsfolk(sim, (job) => job !== null && COLONIST_JOBS.includes(job));
-        return colonists.length > 0 && colonists.every((e) => sim.world.has(e, Sheltering));
+        // Claimed AND arrived: `Sheltering` alone is stamped when the drive picks a shelter, so it would
+        // pass with the whole town still crossing the field.
+        return (
+          colonists.length > 0 &&
+          colonists.every((e) => {
+            const claim = sim.world.tryGet(e, Sheltering)?.shelter;
+            return claim !== undefined && sim.world.tryGet(e, Resting)?.at === claim;
+          })
+        );
       },
     },
   ],

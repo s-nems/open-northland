@@ -47,7 +47,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     ...alarmOrders(world, ctx, terrain, owned, raiders),
     ...posts.commands,
     ...(raid === null ? [] : sortieOrders(world, terrain, free, raid)),
-    ...runOffensive(world, ctx, terrain, player, { ...army, ready: marchable }),
+    ...runOffensive(world, ctx, terrain, player, { army: marchable, awaitingWeapon: army.awaitingWeapon }),
   ];
 }
 

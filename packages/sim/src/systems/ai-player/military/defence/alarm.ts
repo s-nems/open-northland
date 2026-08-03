@@ -6,19 +6,10 @@ import type { SystemContext } from '../../../context.js';
 import { shelterCapacityOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { isBuilt } from '../../shared.js';
-import {
-  nearestRaiderWithin,
-  type Raider,
-  THREAT_STAND_DOWN_MARGIN_NODES,
-  threatWatchNodes,
-} from './threat.js';
+import { nearestRaiderWithin, type Raider, watchBandOf } from './threat.js';
 
-/**
- * Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has closed
- * inside {@link threatWatchNodes} of, and comes down once the last one has drawn off past
- * {@link THREAT_STAND_DOWN_MARGIN_NODES} beyond that. The two radii differ on purpose - raising the alarm
- * pulls every civilian off the map, so a border that flapped would cost the seat its economy.
- */
+/** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has
+ *  closed inside its {@link watchBandOf}, and comes down once the last one is out of it. */
 export function alarmOrders(
   world: World,
   ctx: SystemContext,
@@ -31,26 +22,22 @@ export function alarmOrders(
     const building = world.get(e, Building);
     if (shelterCapacityOf(ctx.content, building.buildingType) === 0) continue;
     const up = world.has(e, DefenceMode);
-    const threatened =
-      isBuilt(world, e) && raiders.length > 0 && closedOn(world, ctx, terrain, e, up, raiders);
+    const threatened = isBuilt(world, e) && raiders.length > 0 && closedOn(world, ctx, terrain, e, raiders);
     if (threatened === up) continue;
     commands.push({ kind: 'setDefenceMode', building: e, enabled: threatened });
   }
   return commands;
 }
 
-/** Whether a raider stands inside `shelter`'s band - widened by the stand-down margin while its alarm is
- *  already `up`, which is the whole of the hysteresis. */
+/** Whether a raider stands inside `shelter`'s band ({@link watchBandOf} - the hysteresis lives there). */
 function closedOn(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   shelter: Entity,
-  up: boolean,
   raiders: readonly Raider[],
 ): boolean {
-  const watch = threatWatchNodes(ctx, world.get(shelter, Building).tribe);
-  const band = up ? watch + THREAT_STAND_DOWN_MARGIN_NODES : watch;
   const at = terrain.coordsOf(entityNode(world, terrain, shelter));
-  return nearestRaiderWithin(raiders, at.x, at.y, band) !== null;
+  // Reachability is not asked: a bow across a river still puts arrows in the street.
+  return nearestRaiderWithin(raiders, at.x, at.y, watchBandOf(world, ctx, shelter), null) !== null;
 }
