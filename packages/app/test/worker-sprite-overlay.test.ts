@@ -134,6 +134,27 @@ describe('WorkerSpriteOverlay hit boxes', () => {
   });
 });
 
+describe('WorkerSpriteOverlay crowd packing', () => {
+  /** A headquarters' garrison - well past the ~10 cells this field fits at the fixed cell width. */
+  const GARRISON = 30;
+
+  it('squeezes a full garrison into the field instead of drawing off its right edge', () => {
+    const stage = new Container();
+    const overlay = new WorkerSpriteOverlay(stubApp(stage), SHEET, 0);
+    const garrison = Array.from({ length: GARRISON }, (_, i) =>
+      worker(i + 1, { Sheltering: { shelter: BUILDING } }),
+    );
+
+    overlay.update(snapshotOf([...garrison, STORE], 0), BUILDING, FIELD);
+
+    expect(drawnBobs(stage)).toHaveLength(GARRISON); // one body layer each, none dropped
+    // The last man stands inside the field rather than past its right edge, and it is really him.
+    expect(overlay.hitTest(FIELD.x + FIELD.w - 5, FIELD.y + FIELD.h / 2)).toBe(GARRISON);
+
+    overlay.dispose();
+  });
+});
+
 describe('WorkerSpriteOverlay display-object pool', () => {
   /** A staffed building whose `crew` workers all carry ids unique to `round` - the panel one building later. */
   function crew(round: number, size: number): Ent[] {

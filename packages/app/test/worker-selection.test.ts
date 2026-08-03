@@ -4,6 +4,7 @@ import { actorsOf } from '../src/game/snapshot.js';
 import {
   boundWorkers,
   FAMILY_GAP_FRAC,
+  fieldWorkers,
   groupedWorkers,
   MAX_WORKERS,
 } from '../src/hud/details-panel/worker-selection.js';
@@ -93,6 +94,44 @@ describe('boundWorkers', () => {
     ];
     const kept = boundWorkers(snapshotOf(entities), BUILDING, false);
     expect(kept).toEqual(Array.from({ length: MAX_WORKERS }, (_, i) => i + 2));
+  });
+});
+
+describe('fieldWorkers - the garrison takes the field', () => {
+  /** A settler sheltering in `shelter`, `inside` once it has reached it (the sim's `Resting` marker). */
+  const hiding = (id: number, shelter: number, inside: boolean): Ent =>
+    sett(id, { Sheltering: { shelter }, ...(inside ? { Resting: { at: shelter } } : {}) });
+
+  it('draws the claimants after the building own staff, the men already inside first', () => {
+    const snap = snapshotOf([
+      hiding(1, BUILDING, false),
+      sett(2, { JobAssignment: { workplace: BUILDING } }), // posted here: keeps its place in the strip
+      hiding(3, BUILDING, true),
+      hiding(4, OTHER, true),
+    ]);
+    expect(fieldWorkers(snap, BUILDING, false)).toEqual([2, 3, 1]);
+    expect(fieldWorkers(snap, OTHER, false)).toEqual([4]);
+  });
+
+  it('lists a settler that both works here and shelters here exactly once', () => {
+    const snap = snapshotOf([
+      sett(1, { JobAssignment: { workplace: BUILDING }, Sheltering: { shelter: BUILDING } }),
+    ]);
+    expect(fieldWorkers(snap, BUILDING, false)).toEqual([1]);
+  });
+
+  it('draws a sheltering crowd past the worker cap, where the workers themselves stop', () => {
+    const size = MAX_WORKERS + 7; // a watchtower's 15
+    const snap = snapshotOf(Array.from({ length: size }, (_, i) => hiding(i + 1, BUILDING, true)));
+    expect(fieldWorkers(snap, BUILDING, false)).toHaveLength(size);
+  });
+
+  it('leaves the field to the workers where nobody is sheltering', () => {
+    const snap = snapshotOf([
+      sett(1, { JobAssignment: { workplace: BUILDING } }),
+      hiding(2, OTHER, true), // an alarm elsewhere takes nothing from this building's field
+    ]);
+    expect(fieldWorkers(snap, BUILDING, false)).toEqual([1]);
   });
 });
 
