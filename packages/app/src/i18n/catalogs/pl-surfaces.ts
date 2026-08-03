@@ -67,6 +67,9 @@ export const plSurfaces = {
     teamColour: 'Kolor drużyny',
     teamColourLocked: 'ta mapa ma stałe kolory',
     startNeedsSeat: 'Najpierw zajmij miejsce',
+  },
+  mainMenu: {
+    eyebrow: 'Otwarta reimplementacja serii Cultures',
     tribeNames: {
       1: 'Wikingowie',
       2: 'Frankowie',
@@ -76,9 +79,6 @@ export const plSurfaces = {
       6: 'Wilkołaki',
       7: 'Egipcjanie',
     } as Readonly<Record<number, string>>,
-  },
-  mainMenu: {
-    eyebrow: 'Otwarta reimplementacja serii Cultures',
     items: {
       newGame: 'Nowa gra',
       loadGame: 'Wczytaj grę',
@@ -101,10 +101,13 @@ export const plSurfaces = {
       searchPlaceholder: 'Szukaj mapy…',
       filters: {
         all: 'Wszystkie',
+        campaign: 'Kampania',
+        tutorial: 'Samouczek',
         story: 'Fabularne',
         multiplayer: 'Multiplayer',
         scenes: 'Sceny testowe',
       },
+      comingSoonTip: 'Wkrótce',
       categoryNames: {
         story: 'fabularna',
         multiplayer: 'multiplayer',

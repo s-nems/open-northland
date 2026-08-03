@@ -1,5 +1,5 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
-import { PLAYER_SWATCH_COLORS } from '../../../catalog/roster.js';
+import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   authoredVacantMode,
@@ -34,9 +34,6 @@ export interface PlayersPanel {
   /** The current roster's start params ({@link rosterStartParams}); empty when hidden. */
   startParams(): readonly (readonly [string, string])[];
 }
-
-const swatchHex = (colorId: number): string =>
-  `#${(PLAYER_SWATCH_COLORS[colorId] ?? 0).toString(16).padStart(6, '0')}`;
 
 /**
  * Mounts the roster panel over the menu template's `[data-menu-players]` fieldset. Choices persist
@@ -89,7 +86,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     swatch.type = 'button';
     swatch.className = 'game-menu__player-swatch';
     const colorId = s.colors.get(slot.player) ?? slot.colorId;
-    swatch.style.background = swatchHex(colorId);
+    swatch.style.background = playerSwatchHex(colorId);
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
     const fixed = shown?.fixedColors === true;
     swatch.title = fixed
@@ -111,7 +108,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     name.textContent = slot.name ?? formatMessage(copy.playerSlotLabel, { n: slot.player + 1 });
     const detail = document.createElement('span');
     detail.className = 'game-menu__player-detail';
-    const tribe = copy.tribeNames[slot.tribeId] ?? `#${slot.tribeId}`;
+    const tribe = messages().mainMenu.tribeNames[slot.tribeId] ?? `#${slot.tribeId}`;
     detail.textContent = `${tribe} · ${slot.type === 'human' ? copy.playerTypeHuman : copy.playerTypeAi}`;
     label.append(name, detail);
 
@@ -166,7 +163,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       const option = document.createElement('button');
       option.type = 'button';
       option.className = 'game-menu__player-swatch is-option';
-      option.style.background = swatchHex(colorId);
+      option.style.background = playerSwatchHex(colorId);
       const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
       option.title = `${copy.teamColour}: ${colourName}`;
       // The slot's own colour stays enabled and outlined even when an authored duplicate also

@@ -67,6 +67,11 @@ export const enSurfaces = {
     teamColour: 'Team colour',
     teamColourLocked: 'this map fixes its colours',
     startNeedsSeat: 'Take a seat first',
+  },
+  // The redesigned menu flow (docs/design/main-menu); the `menu` block above leaves with the
+  // legacy menu once every screen has landed.
+  mainMenu: {
+    eyebrow: 'An open reimplementation of the Cultures series',
     tribeNames: {
       1: 'Vikings',
       2: 'Franks',
@@ -76,11 +81,6 @@ export const enSurfaces = {
       6: 'Werewolves',
       7: 'Egyptians',
     } as Readonly<Record<number, string>>,
-  },
-  // The redesigned menu flow (docs/design/main-menu); the `menu` block above leaves with the
-  // legacy menu once every screen has landed.
-  mainMenu: {
-    eyebrow: 'An open reimplementation of the Cultures series',
     items: {
       newGame: 'New game',
       loadGame: 'Load game',
@@ -103,10 +103,13 @@ export const enSurfaces = {
       searchPlaceholder: 'Search maps…',
       filters: {
         all: 'All',
+        campaign: 'Campaign',
+        tutorial: 'Tutorial',
         story: 'Story',
         multiplayer: 'Multiplayer',
         scenes: 'Test scenes',
       },
+      comingSoonTip: 'Coming soon',
       categoryNames: {
         story: 'story',
         multiplayer: 'multiplayer',
