@@ -53,9 +53,11 @@ legal wording is in `docs/LEGAL.md`.
   to a test, ticket, or focused document. Only indivisible protocol layouts, security/legal boundaries,
   and byte-level format evidence justify a longer block.
 - Do not write mini design documents above modules or exports. Avoid phase and caller inventories,
-  repeated examples, rhetorical asides, emphasis through capitals, and chains of parenthetical remarks.
-- When behavior changes, rewrite or delete its comment so only the new invariant remains. Never append
-  a dated correction or revision note. Compress historical or narrative comments in code you touch.
+  `{@link}` chains that restate the import graph, repeated examples, rhetorical asides, emphasis
+  through capitals, and chains of parenthetical remarks.
+- When behavior changes, rewrite or delete its comment so only the new invariant remains; never append
+  a dated correction or revision note. Leave unrelated historical comments to a dedicated comment
+  pass instead of widening a feature diff.
 - Give each fact one durable home. Investigation, benchmarks, caller inventories, and decision history
   belong in tests, tickets, or the completing commit, not repeated in production JSDoc.
 - When extracting or moving code, review comments across the old and new modules as one budget. Moving
