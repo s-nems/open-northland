@@ -72,17 +72,26 @@ export function aiContent(): ContentSet {
       { typeId: 40, id: 'soldier_bow_short' },
     ],
     // The fighter classes' weapons, keyed by (tribe, job) as in the original - including the base
-    // class's bare fist, which the real `weapons.ini` binds to job 31 too. The short bow carries a
-    // `munitionType`, the data-pinned ranged marker the army census splits on; the other two strike
-    // in reach.
+    // class's bare fist, which the real `weapons.ini` binds to job 31 too. `mainType` carries the same
+    // classes the real rows do (UNARMED/SPEAR/BOW): the army census sends nobody whose class is the fist.
+    // The short bow's `munitionType` is the data-pinned ranged marker; the other two strike in reach.
     weapons: [
-      { typeId: 2, id: 'viking_fist', tribeType: 1, jobType: 31, minRange: 1, maxRange: 1 },
-      { typeId: 5, id: 'viking_spear_wooden', tribeType: 1, jobType: 32, minRange: 1, maxRange: 2 },
+      { typeId: 2, id: 'viking_fist', tribeType: 1, jobType: 31, mainType: 1, minRange: 1, maxRange: 1 },
+      {
+        typeId: 5,
+        id: 'viking_spear_wooden',
+        tribeType: 1,
+        jobType: 32,
+        mainType: 2,
+        minRange: 1,
+        maxRange: 2,
+      },
       {
         typeId: 6,
         id: 'viking_bow_short',
         tribeType: 1,
         jobType: 40,
+        mainType: 6,
         munitionType: 1,
         speed: 8,
         minRange: 3,
