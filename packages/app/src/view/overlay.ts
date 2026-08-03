@@ -1,7 +1,6 @@
 /**
  * Shared DOM chrome for the app's on-canvas panels - the scene routing error
- * ({@link import('./scene-overlay.js')}), the animation gallery panel
- * ({@link import('../entries/anim-overlay.js')}) and the main menu ({@link import('../entries/menu.js')}).
+ * ({@link import('./scene-overlay.js')}) and the gallery entries (anim, icons, sounds).
  * Plain DOM + floats, app-layer only (never in `sim`).
  */
 

@@ -1,9 +1,8 @@
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import { SCENES } from '../../scenes/index.js';
-import { generatedMapPreview } from '../menu/map-preview.js';
-import { targetSearch } from '../menu/settings.js';
 import { createMapDetailsCard, metaLine } from './map-card.js';
+import { generatedMapPreview } from './map-preview.js';
 import {
   filterItems,
   MAP_FILTER_TABS,
@@ -16,6 +15,7 @@ import {
 } from './map-select-model.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
+import { targetSearch } from './target-search.js';
 
 /**
  * The map-select screen (design frame 4a): searchable, filterable list of decoded maps plus the

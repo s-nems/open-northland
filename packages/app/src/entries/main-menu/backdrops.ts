@@ -2,10 +2,10 @@ import { fetchJsonOrNull } from '../../content/net.js';
 import { diag } from '../../diag/index.js';
 
 /**
- * The rotating menu backdrop (docs/design/main-menu/README.md "Background stack" layer 1): stills
- * captured from decoded maps by `npm run menu-backdrops`, shown in a shuffled order with a slow
- * crossfade. Never throws: without `content/backdrops/` the static brand art stands, exactly like
- * the live scene this replaced.
+ * The rotating menu backdrop, the bottom layer of the menu's background stack: stills captured
+ * from decoded maps by `npm run menu-backdrops`, shown in a shuffled order with a slow crossfade.
+ * Never throws: without `content/backdrops/` the static brand art stands, exactly like the live
+ * scene this replaced.
  */
 
 /** How long one still stays before the next crossfades in; menu.css sizes the matching push-in. */

@@ -146,9 +146,9 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
 /**
  * Menu-boot bridge between the store and the URL: carried params absent from the URL adopt the
  * stored non-default values, while explicit ones (a shared `?lang=…` link) win and become the
- * session's effective settings without being persisted. Only the redesigned menu runs this; direct
- * `?map=`/`?scene=` entries and the legacy menu read the URL alone. Mutates `params` in place so
- * the caller's bag matches the rewritten URL.
+ * session's effective settings without being persisted. Only the menu runs this; direct
+ * `?map=`/`?scene=` entries read the URL alone. Mutates `params` in place so the caller's bag
+ * matches the rewritten URL.
  */
 export function adoptStoredSettings(params: URLSearchParams): void {
   const stored = persistedSettings();

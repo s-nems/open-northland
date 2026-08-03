@@ -51,11 +51,9 @@ fresh conversion into a temporary directory and validates the result. It uses
 
 ## Browser entries
 
-`npm run dev` opens the redesigned main menu, which is landing screen by screen
-(`docs/design/main-menu/`). With `content/backdrops/` present (see `npm run menu-backdrops` below)
-the menu rotates captured settlement stills behind the grade; without them the static brand art
-stands in. Until its map-select screen ships, starting a game from UI goes through `?menu=legacy`.
-Direct entries are useful during focused work:
+`npm run dev` opens the main menu. With `content/backdrops/` present (see `npm run menu-backdrops`
+below) the menu rotates captured settlement stills behind the grade; without them the static brand
+art stands in. Direct entries are useful during focused work:
 
 | URL query | Purpose |
 | --- | --- |
@@ -66,11 +64,10 @@ Direct entries are useful during focused work:
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
-| `?menu=legacy` | the previous menu, kept while the redesigned menu lands screen by screen |
 
 Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<...>`, `player=<...>`, `ai=<...>`,
-`sound=off`, and `postfx=off`. The legacy menu exposes normal settings, so direct query parameters
-are mainly for reproducible diagnostics.
+`sound=off`, and `postfx=off`. The menu's settings screen covers the player-facing options, so
+direct query parameters are mainly for reproducible diagnostics.
 
 Debug modes:
 

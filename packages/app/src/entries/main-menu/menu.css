@@ -1,4 +1,4 @@
-/* Redesigned menu ("polar night", docs/design/main-menu/README.md). Sizes marked with --u are
+/* The menu's "polar night" look. Sizes marked with --u are
    design pixels at the 1920x1080 reference frame, scaling with viewport height.
    This file holds the fonts, tokens, background layers, the main screen and the controls every
    sub-screen shares; each sub-screen adds its own sheet (map-select.css, lobby.css, settings.css,
