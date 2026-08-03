@@ -3,7 +3,7 @@ import { pl } from './pl.js';
 
 export type Locale = 'pol' | 'eng';
 
-const DEFAULT_LOCALE: Locale = 'pol';
+export const DEFAULT_LOCALE: Locale = 'pol';
 
 const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en };
 let activeLocale: Locale = DEFAULT_LOCALE;

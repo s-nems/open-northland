@@ -284,7 +284,7 @@ describe('targetSearch', () => {
     );
 
     expect(targetSearch('?scene=sandbox', current)).toBe(
-      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&debug=geometry&scene=sandbox',
+      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&sound=off&debug=geometry&scene=sandbox',
     );
   });
 

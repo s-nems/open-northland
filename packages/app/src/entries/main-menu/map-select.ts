@@ -15,6 +15,7 @@ import {
   sceneItem,
 } from './map-select-model.js';
 import type { MenuScreen } from './model.js';
+import { screenHead } from './screen-head.js';
 
 /**
  * The map-select screen (design frame 4a): searchable, filterable list of decoded maps plus the
@@ -47,16 +48,7 @@ export function mapSelectScreen(
   section.className = 'main-menu__screen main-menu__map-select';
 
   // Header row: back + title on the left baseline, search + segmented filter on the right.
-  const head = document.createElement('div');
-  head.className = 'main-menu__screen-head';
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'main-menu__back';
-  back.textContent = `← ${copy.back}`;
-  back.addEventListener('click', () => open('main'));
-  const title = document.createElement('h1');
-  title.className = 'main-menu__screen-title';
-  title.textContent = copy.screenTitles.newGame;
+  const head = screenHead('newGame', open);
   const tools = document.createElement('div');
   tools.className = 'main-menu__head-tools';
   const search = document.createElement('input');
@@ -75,7 +67,7 @@ export function mapSelectScreen(
       // the native coming-soon tooltip in some engines.
       button.textContent = select.filters[tab.id];
       button.classList.add('is-coming-soon');
-      button.title = select.comingSoonTip;
+      button.title = copy.comingSoonTip;
       button.setAttribute('aria-disabled', 'true');
       seg.append(button);
       continue;
@@ -90,7 +82,7 @@ export function mapSelectScreen(
     seg.append(button);
   }
   tools.append(seg);
-  head.append(back, title, tools);
+  head.append(tools);
 
   // Body: the scrollable list column and the preview column.
   const body = document.createElement('div');

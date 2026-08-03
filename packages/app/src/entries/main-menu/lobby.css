@@ -405,45 +405,6 @@
   color: var(--text-body);
 }
 
-/* The 66x34 design pill; the knob slides right when on. */
-.main-menu__toggle {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  position: relative;
-  flex: none;
-  width: calc(var(--u) * 66);
-  height: calc(var(--u) * 34);
-  border-radius: calc(var(--u) * 17);
-  background: rgba(99, 196, 160, 0.2);
-  transition: background-color 150ms ease-out;
-}
-
-.main-menu__toggle::after {
-  content: "";
-  position: absolute;
-  left: calc(var(--u) * 4);
-  top: calc(var(--u) * 4);
-  width: calc(var(--u) * 26);
-  height: calc(var(--u) * 26);
-  border-radius: 50%;
-  background: var(--bg-base);
-  transition: left 150ms ease-out;
-}
-
-.main-menu__toggle.is-on {
-  background: var(--accent);
-}
-
-.main-menu__toggle.is-on::after {
-  left: calc(var(--u) * 36);
-}
-
-.main-menu__toggle:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
-}
-
 .main-menu__lobby-start {
   width: 100%;
   box-sizing: border-box;

@@ -7,6 +7,9 @@ import type { RosterState } from './lobby/roster-state.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
+import { screenHead } from './screen-head.js';
+import { settingsScreen } from './settings.js';
+import { adoptStoredSettings, initialSettingsMemory } from './settings-state.js';
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
@@ -72,17 +75,7 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
   const section = document.createElement('section');
   section.className = 'main-menu__screen';
 
-  const head = document.createElement('div');
-  head.className = 'main-menu__screen-head';
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'main-menu__back';
-  back.textContent = `← ${copy.back}`;
-  back.addEventListener('click', () => open(backTarget(screen) ?? 'main'));
-  const title = document.createElement('h1');
-  title.className = 'main-menu__screen-title';
-  title.textContent = copy.screenTitles[screen];
-  head.append(back, title);
+  const head = screenHead(screen, open);
 
   const wip = document.createElement('p');
   wip.className = 'main-menu__wip';
@@ -93,6 +86,9 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
 }
 
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  // Before anything reads the locale or the URL: stored settings fill the absent carried params,
+  // explicit ones win (settings-state.ts).
+  adoptStoredSettings(params);
   const root = document.createElement('main');
   root.className = 'main-menu';
   root.style.setProperty('--menu-scene-art', `url("${BRAND_BACKDROP}")`);
@@ -118,6 +114,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   // Screen state that outlives the screens themselves: the map-select filter/query/selection, the
   // map the lobby negotiates, and each map's roster choices (a round trip keeps the seats).
   const mapSelectMemory = initialMapSelectMemory();
+  const settingsMemory = initialSettingsMemory();
   const rosters = new Map<string, RosterState>();
   let lobbyMap: MapSelectItem | null = null;
   const openLobby = (item: MapSelectItem): void => {
@@ -128,6 +125,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters);
+    if (next === 'settings') return settingsScreen(show, settingsMemory);
     if (next === 'credits') return creditsScreen(show);
     return placeholderScreen(next, show);
   };

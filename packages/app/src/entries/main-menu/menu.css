@@ -1,7 +1,8 @@
 /* Redesigned menu ("polar night", docs/design/main-menu/README.md). Sizes marked with --u are
    design pixels at the 1920x1080 reference frame, scaling with viewport height.
    This file holds the fonts, tokens, background layers, the main screen and the controls every
-   sub-screen shares; each sub-screen adds its own sheet (map-select.css, lobby.css, credits.css). */
+   sub-screen shares; each sub-screen adds its own sheet (map-select.css, lobby.css, settings.css,
+   credits.css). */
 
 /* Bundled OFL faces (public/fonts/LICENSE-Cinzel.txt, LICENSE-AlegreyaSans.txt). The Cinzel file
    is the variable font, so one file per subset covers the 600 and 700 display weights.
@@ -415,8 +416,11 @@
 
 /* ---- Controls shared by the sub-screens ---- */
 
-/* Outlined link-buttons; the accent variant marks a row's primary destination. */
+/* Outlined link-buttons (both <a> and <button>); the accent variant marks a row's primary
+   destination. */
 .main-menu__ghost {
+  background: none;
+  cursor: pointer;
   padding: calc(var(--u) * 16) calc(var(--u) * 36);
   font:
     500 calc(var(--u) * 24) / 1 "Alegreya Sans",
@@ -490,6 +494,49 @@
 .main-menu__seg-btn.is-coming-soon:hover,
 .main-menu__seg-btn.is-coming-soon:focus-visible {
   color: rgba(219, 232, 227, 0.25);
+}
+
+/* The 66x34 design pill; the knob slides right when on. */
+.main-menu__toggle {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * 66);
+  height: calc(var(--u) * 34);
+  border-radius: calc(var(--u) * 17);
+  background: rgba(99, 196, 160, 0.2);
+  transition: background-color 150ms ease-out;
+}
+
+.main-menu__toggle::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--u) * 4);
+  top: calc(var(--u) * 4);
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 26);
+  border-radius: 50%;
+  background: var(--bg-base);
+  transition: left 150ms ease-out;
+}
+
+.main-menu__toggle.is-on {
+  background: var(--accent);
+}
+
+.main-menu__toggle.is-on::after {
+  left: calc(var(--u) * 36);
+}
+
+.main-menu__toggle:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.main-menu__toggle:disabled {
+  cursor: default;
 }
 
 .main-menu__primary {

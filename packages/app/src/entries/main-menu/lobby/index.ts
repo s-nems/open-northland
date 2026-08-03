@@ -2,9 +2,11 @@ import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { targetSearch } from '../../menu/settings.js';
+import { segControl, togglePill } from '../controls.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
+import { screenHead } from '../screen-head.js';
 import {
   initialLobbyOptions,
   initialLobbyState,
@@ -42,20 +44,11 @@ export function lobbyScreen(
   const section = document.createElement('section');
   section.className = 'main-menu__screen main-menu__lobby';
 
-  const head = document.createElement('div');
-  head.className = 'main-menu__screen-head';
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'main-menu__back';
-  back.textContent = `← ${lobby.backLabel}`;
-  back.addEventListener('click', () => open('newGame'));
-  const title = document.createElement('h1');
-  title.className = 'main-menu__screen-title';
-  title.textContent = copy.screenTitles.lobby;
+  const head = screenHead('lobby', open);
   const kicker = document.createElement('div');
   kicker.className = 'main-menu__kicker';
   kicker.textContent = lobby.kicker;
-  head.append(back, title, kicker);
+  head.append(kicker);
 
   const body = document.createElement('div');
   body.className = 'main-menu__lobby-body';
@@ -106,43 +99,32 @@ export function lobbyScreen(
   const fogLabel = document.createElement('div');
   fogLabel.className = 'main-menu__lobby-option-label';
   fogLabel.textContent = lobby.fogLabel;
-  const fogSeg = document.createElement('div');
-  fogSeg.className = 'main-menu__seg main-menu__lobby-fog';
-  const fogButtons = new Map<string, HTMLButtonElement>();
-  for (const mode of LOBBY_FOG_MODES) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'main-menu__seg-btn';
-    button.textContent = lobby.fogModes[mode].label;
-    button.title = lobby.fogModes[mode].detail;
-    button.classList.toggle('is-active', options.fog === mode);
-    button.addEventListener('click', () => {
+  const fogSeg = segControl(
+    LOBBY_FOG_MODES.map((mode) => ({
+      id: mode,
+      label: lobby.fogModes[mode].label,
+      title: lobby.fogModes[mode].detail,
+    })),
+    options.fog,
+    (mode) => {
       options.fog = mode;
-      for (const [key, b] of fogButtons) b.classList.toggle('is-active', key === mode);
-    });
-    fogButtons.set(mode, button);
-    fogSeg.append(button);
-  }
-  optionsCard.append(fogLabel, fogSeg);
+      fogSeg.setActive(mode);
+    },
+  );
+  fogSeg.root.classList.add('main-menu__lobby-fog');
+  optionsCard.append(fogLabel, fogSeg.root);
 
   const progressionRow = document.createElement('div');
   progressionRow.className = 'main-menu__lobby-option-row';
   const progressionLabel = document.createElement('span');
   progressionLabel.textContent = lobby.progressionLabel;
-  const progressionToggle = document.createElement('button');
-  progressionToggle.type = 'button';
-  progressionToggle.className = 'main-menu__toggle';
-  progressionToggle.setAttribute('role', 'switch');
-  const paintProgression = (): void => {
-    progressionToggle.classList.toggle('is-on', options.professionProgression);
-    progressionToggle.setAttribute('aria-checked', String(options.professionProgression));
-    progressionToggle.title = lobby.progressionModes[options.professionProgression ? 'on' : 'off'];
-  };
-  paintProgression();
-  progressionToggle.addEventListener('click', () => {
-    options.professionProgression = !options.professionProgression;
-    paintProgression();
-  });
+  const progressionToggle = togglePill(
+    options.professionProgression,
+    (on) => {
+      options.professionProgression = on;
+    },
+    (on) => lobby.progressionModes[on ? 'on' : 'off'],
+  );
   progressionRow.append(progressionLabel, progressionToggle);
   optionsCard.append(progressionRow);
 
@@ -363,7 +345,7 @@ export function lobbyScreen(
   };
   const unhookKeys = (): void => window.removeEventListener('keydown', onKeydown, true);
   window.addEventListener('keydown', onKeydown, true);
-  back.addEventListener('click', unhookKeys);
+  head.querySelector('.main-menu__back')?.addEventListener('click', unhookKeys);
 
   start.addEventListener('click', () => {
     if (start.disabled) return;

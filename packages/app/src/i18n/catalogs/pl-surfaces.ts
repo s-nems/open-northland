@@ -58,7 +58,8 @@ export const plSurfaces = {
       exit: 'Wyjście',
     },
     comingSoon: 'wkrótce',
-    back: 'Menu',
+    comingSoonTip: 'Wkrótce',
+    backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
     underConstruction: 'Ten ekran jest w budowie.',
     screenTitles: {
       newGame: 'Nowa gra',
@@ -77,7 +78,6 @@ export const plSurfaces = {
         multiplayer: 'Multiplayer',
         scenes: 'Sceny testowe',
       },
-      comingSoonTip: 'Wkrótce',
       categoryNames: {
         story: 'fabularna',
         multiplayer: 'multiplayer',
@@ -94,7 +94,6 @@ export const plSurfaces = {
       run: 'Uruchom',
     },
     lobby: {
-      backLabel: 'Wybór mapy',
       kicker: 'Gra lokalna',
       slotHeader: 'Slot',
       controlHeader: 'Sterowanie',
@@ -146,6 +145,31 @@ export const plSurfaces = {
       },
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
+    },
+    settings: {
+      tabs: {
+        graphics: 'Grafika',
+        audio: 'Dźwięk',
+        gameplay: 'Rozgrywka',
+        controls: 'Sterowanie',
+      },
+      displayMode: 'Tryb wyświetlania',
+      displayFullscreen: 'Pełny ekran',
+      displayWindow: 'Okno',
+      resolution: 'Rozdzielczość',
+      uiScale: 'Skala interfejsu w grze',
+      smoothScroll: 'Płynne przewijanie mapy',
+      animatedScene: 'Animowana scena w menu',
+      soundEnabled: 'Dźwięk w grze',
+      masterVolume: 'Głośność ogólna',
+      musicVolume: 'Głośność muzyki',
+      sfxVolume: 'Głośność efektów',
+      language: 'Język',
+      languageNames: { pol: 'Polski', eng: 'English' },
+      scrollSpeed: 'Prędkość przewijania mapy',
+      edgeScroll: 'Przewijanie przy krawędzi ekranu',
+      autosaveNote: 'Zmiany zapisują się od razu.',
+      restoreDefaults: 'Przywróć domyślne',
     },
     credits: {
       intro:
