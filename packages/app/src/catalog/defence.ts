@@ -32,18 +32,18 @@ export function shelterCapacityById(id: string): number {
  * hold that - against wool/chain/plate the extracted wall bow beats the short bow (240/150/150 against
  * 128/100/100).
  *
- * The rule is one line: no column above three quarters of the short bow's. The bare-target and leather
- * columns already sit exactly there (375 of 500, 300 of 400) and are the source's own numbers; the three
- * that overshot are reined in to it; the two already below it (house 50, wood 11) keep their extracted
- * value. The band and munition are NOT overridden - a wall bow outranging a hand bow is the source's
- * choice and the point of a tower.
+ * The rule is one line: no column above A THIRD of the short bow's (user decision, after watching a full
+ * tower cut a warband down). A column already under that keeps its extracted value (wood 11). The band and
+ * munition are NOT overridden - a wall bow outranging a hand bow is the source's choice and the point of a
+ * tower, and it is what makes a garrison strong: fifteen of these outshoot anything that walks up, one
+ * peasant with one is a nuisance.
  */
 export const HOUSE_BOW_DAMAGE: Readonly<Record<string, number>> = {
-  '0': 375,
-  '1': 96,
-  '2': 300,
-  '3': 75,
-  '4': 75,
+  '0': 167,
+  '1': 43,
+  '2': 133,
+  '3': 33,
+  '4': 33,
   '6': 11,
-  '7': 50,
+  '7': 33,
 };

@@ -155,6 +155,13 @@ describe('mergeRealContent', () => {
         expect(row.damage[column] ?? 0).toBeLessThan(soldierDamage);
       }
     }
+
+    // The wall bow is held to the tighter share its own rule states - a garrison's strength is its numbers
+    // and its reach, not the arrow (`catalog/defence.ts`).
+    const wall = bow('house_bow');
+    for (const [column, soldierDamage] of Object.entries(short.damage)) {
+      expect(wall?.damage[column] ?? 0).toBeLessThanOrEqual(Math.round(soldierDamage / 3));
+    }
   });
 
   it('surfaces gathered/field goods it cannot complete, and buildings beyond the clean-room catalog', () => {
