@@ -18,6 +18,19 @@ export {
 } from './elevation.js';
 export { composeShadingLane } from './hillshade.js';
 export {
+  averagePatternColour,
+  cellColourResolver,
+  cellColoursFromGround,
+  MAP_PREVIEW_MAX_HEIGHT,
+  MAP_PREVIEW_MAX_WIDTH,
+  MINIMAP_CELL_UNRESOLVED,
+  mapPreviewSize,
+  rasterizeTerrain,
+  type TerrainCells,
+  terrainWorldBounds,
+  type WorldBounds,
+} from './minimap.js';
+export {
   cellNode,
   type NodeXY,
   nodeCell,
@@ -27,5 +40,12 @@ export {
   triangleBNodes,
 } from './tessellation.js';
 export { TRANSITION_NONE, transitionRef } from './transitions.js';
-export { type CellTexture, patternSrcRect, rectTriangleUVs, type SrcRect, triangleUVs } from './uv.js';
+export {
+  type CellTexture,
+  patternSrcRect,
+  rectTriangleUVs,
+  type SrcRect,
+  texturePageKey,
+  triangleUVs,
+} from './uv.js';
 export { makeWaveField, NO_WAVE, type NodeWaveFn } from './water.js';

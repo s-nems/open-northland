@@ -1,20 +1,20 @@
 import {
   FOG_EXPLORED_ALPHA,
   FOG_UNEXPLORED_ALPHA,
-  TILE_HALF_H,
-  TILE_HALF_W,
   type Viewport,
+  type WorldBounds,
 } from '@open-northland/render';
 import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The pure half of the minimap (no Pixi, no DOM - headlessly unit-tested): the bottom-left window
- * layout inside the original braided frame, the world↔minimap linear projection, the terrain colour
- * raster and the camera-viewport rectangle. "World" here is the renderer's projected px space before
- * the camera transform (`tileToScreen` / `screen = world*scale + offset` - see render's `iso.ts`), so
- * the minimap is a uniform downscale of the on-screen world: clicks, dots and the view rectangle all
- * share one linear mapping.
+ * The pure half of the minimap window (no Pixi, no DOM - headlessly unit-tested): the bottom-left
+ * layout inside the original braided frame, the world↔minimap linear projection, the dot/fog raster
+ * writes and the camera-viewport rectangle. The terrain colour raster itself lives in
+ * `@open-northland/render` (shared with the menu preview and the pipeline's thumbnails). "World" here
+ * is the renderer's projected px space before the camera transform (`tileToScreen` /
+ * `screen = world*scale + offset` - see render's `iso.ts`), so the minimap is a uniform downscale of
+ * the on-screen world: clicks, dots and the view rectangle all share one linear mapping.
  */
 
 /**
@@ -50,28 +50,6 @@ export interface MinimapLayout {
   readonly scale: number;
   /** Drawn px per native frame px - the frame art's placement scale. */
   readonly artScale: number;
-}
-
-/** The world-space (projected px, pre-camera) axis-aligned bounds of a whole terrain grid. */
-export interface WorldBounds {
-  readonly minX: number;
-  readonly minY: number;
-  readonly width: number;
-  readonly height: number;
-}
-
-/**
- * The world box covering every cell diamond of a `mapW × mapH` cell grid. Centres span
- * `x ∈ [0, (2·mapW−1)·TILE_HALF_W]` (odd rows staggered half a cell right), `y ∈ [0, (mapH−1)·TILE_HALF_H]`;
- * each diamond extends ±TILE_HALF_W / ±TILE_HALF_H around its centre.
- */
-export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
-  return {
-    minX: -TILE_HALF_W,
-    minY: -TILE_HALF_H,
-    width: (2 * mapW + 1) * TILE_HALF_W,
-    height: (mapH + 1) * TILE_HALF_H,
-  };
 }
 
 /**
@@ -155,13 +133,6 @@ export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-/** The cell grid the raster samples - the render `SceneTerrain` sub-shape it actually reads. */
-export interface TerrainCells {
-  readonly width: number;
-  readonly height: number;
-  readonly typeIds: readonly number[];
-}
-
 /**
  * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
  * the buffer edges - the per-tick unit/building dot write. Writing pixels into one retained buffer
@@ -219,55 +190,4 @@ export function fillFogAlpha(fog: FogCells, rgba: Uint8Array): void {
             : FOG_UNEXPLORED_ALPHA;
     }
   }
-}
-
-/**
- * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) - built once
- * per map (terrain is static) and uploaded as the minimap's ground texture. Each pixel samples the cell
- * diamond containing its world point: candidate centres on the two nearest rows (odd rows staggered half
- * a cell right, matching `tileToScreen`), picked by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H`
- * (≤ 1 ⇔ inside the diamond - the diamonds tile the plane, so the minimum is the containing cell).
- * `colourOfCell` maps the winning cell (row-major index + its typeId) to `0xRRGGBB`.
- */
-export function rasterizeTerrain(
-  terrain: TerrainCells,
-  colourOfCell: (cell: number, typeId: number) => number,
-  pxW: number,
-  pxH: number,
-): Uint8Array {
-  const bounds = terrainWorldBounds(terrain.width, terrain.height);
-  const out = new Uint8Array(pxW * pxH * 4);
-  for (let py = 0; py < pxH; py++) {
-    const wy = bounds.minY + ((py + 0.5) / pxH) * bounds.height;
-    // The two rows whose diamonds can contain this y (rows interlock at half-diamond spacing).
-    const rowLo = Math.floor(wy / TILE_HALF_H);
-    for (let px = 0; px < pxW; px++) {
-      const wx = bounds.minX + ((px + 0.5) / pxW) * bounds.width;
-      let bestCol = 0;
-      let bestRow = 0;
-      let bestDist = Number.POSITIVE_INFINITY;
-      // The two candidate rows, unrolled (no per-pixel array) - this loop runs once per raster px.
-      for (let candidate = 0; candidate < 2; candidate++) {
-        const clampedRow = Math.min(terrain.height - 1, Math.max(0, rowLo + candidate));
-        const stagger = clampedRow % 2 === 0 ? 0 : 1; // odd rows sit half a cell right (tileToScreen)
-        const col = Math.min(terrain.width - 1, Math.max(0, Math.round((wx / TILE_HALF_W - stagger) / 2)));
-        const cx = (2 * col + stagger) * TILE_HALF_W;
-        const cy = clampedRow * TILE_HALF_H;
-        const dist = Math.abs(wx - cx) / TILE_HALF_W + Math.abs(wy - cy) / TILE_HALF_H;
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestCol = col;
-          bestRow = clampedRow;
-        }
-      }
-      const cell = bestRow * terrain.width + bestCol;
-      const colour = colourOfCell(cell, terrain.typeIds[cell] ?? 0);
-      const o = (py * pxW + px) * 4;
-      out[o] = (colour >> 16) & 0xff;
-      out[o + 1] = (colour >> 8) & 0xff;
-      out[o + 2] = colour & 0xff;
-      out[o + 3] = 0xff;
-    }
-  }
-  return out;
 }

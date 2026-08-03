@@ -1,17 +1,19 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Args } from './args.js';
+import { decodePng } from './decoders/png.js';
 import { errorMessage } from './errors.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots, withArchiveLayer } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
+import { TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
 import { writeIr } from './stages/ir/index.js';
 import { unpackLibTree } from './stages/lib.js';
-import { convertMapDatTree } from './stages/maps/index.js';
+import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
 import {
   convertGuidepostPlayerAtlases,
@@ -160,17 +162,32 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
 
   // Decode each map's binary terrain grid (map.dat hoix container -> lmlt landscape-type layer -> one
   // per-cell typeId) into maps/<id>.json - the TerrainMap the sim's buildTerrainGraph consumes. Joins
-  // onto the same-folder map.cif's MapInfo id.
+  // onto the same-folder map.cif's MapInfo id. Maps without a shipped minimap.pcx get a thumbnail
+  // synthesized from those cells - reading back the `text_NNN` pages the pictures stage emitted above
+  // (the same pages the `/textures/` route serves).
   progress?.stage?.('maps');
-  const terrains = await convertMapDatTree(roots, args.out, progress?.item);
+  const texturesDir = join(args.out, TEXTURES_DIR);
+  const synthesizeMinimap = createMinimapSynthesizer({
+    gfxPatterns: ir.gfxPatterns,
+    terrainPatterns: ir.terrainPatterns,
+    readPage: async (pageKey) => {
+      try {
+        return decodePng(await readFile(join(texturesDir, `${pageKey}.png`)));
+      } catch {
+        return null;
+      }
+    },
+  });
+  const terrains = await convertMapDatTree(roots, args.out, progress?.item, synthesizeMinimap);
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
   const metas = terrains.filter((t) => t.meta).length;
   const minimaps = terrains.filter((t) => t.minimap).length;
+  const synthesized = terrains.filter((t) => t.minimapSynthesized).length;
   const scripts = terrains.filter((t) => t.script).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s), ` +
-      `${scripts} script sidecar(s)) into ${join(args.out, 'maps')}`,
+      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s) ` +
+      `of which ${synthesized} synthesized, ${scripts} script sidecar(s)) into ${join(args.out, 'maps')}`,
   );
 
   // Stamped last on purpose: its presence marks a conversion that ran to completion, and its

@@ -1,8 +1,7 @@
-import { fogTileVisible, ONE, tileToScreen } from '@open-northland/render';
+import { fogTileVisible, ONE, tileToScreen, type WorldBounds } from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { actorsOf, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
-import type { WorldBounds } from './model.js';
 
 /** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
 const SETTLER_DOT_PX = 2;

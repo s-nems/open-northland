@@ -61,12 +61,24 @@ export {
   type StockpileBinding,
 } from './data/sprites/index.js';
 export {
+  averagePatternColour,
   type BrightnessField,
   type CellTexture,
+  cellColourResolver,
+  cellColoursFromGround,
   type ElevationField,
+  MAP_PREVIEW_MAX_HEIGHT,
+  MAP_PREVIEW_MAX_WIDTH,
+  MINIMAP_CELL_UNRESOLVED,
   makeElevationField,
+  mapPreviewSize,
   patternSrcRect,
+  rasterizeTerrain,
+  type TerrainCells,
   terrainLiftAt,
+  terrainWorldBounds,
+  texturePageKey,
+  type WorldBounds,
 } from './data/terrain/index.js';
 export {
   AnimationGallery,

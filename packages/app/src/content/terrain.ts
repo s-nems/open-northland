@@ -5,6 +5,7 @@ import {
   patternSrcRect,
   type TerrainTextureSet,
   type TransitionPattern,
+  texturePageKey,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
 import { loadIr } from './ir/load.js';
@@ -31,12 +32,6 @@ import type { ContentIr } from './ir/rows.js';
 
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
 
-/** Texture page key from a `data/.../text_NNN.pcx` path: the basename without its extension (`text_NNN`). */
-function pageKeyOf(texture: string): string {
-  const base = texture.split('/').pop() ?? texture;
-  return base.replace(/\.[^.]+$/, '');
-}
-
 /** Index the decoded ground patterns without loading their texture pages. */
 export function buildGroundPatternIndex(tables: ContentIr): ReadonlyMap<string, GroundPattern> {
   const patterns = new Map<string, GroundPattern>();
@@ -50,7 +45,7 @@ export function buildGroundPatternIndex(tables: ContentIr): ReadonlyMap<string, 
       continue;
     }
     patterns.set(row.editName, {
-      pageKey: pageKeyOf(row.texture),
+      pageKey: texturePageKey(row.texture),
       coordsA: row.coordsA,
       coordsB: row.coordsB,
     });
@@ -106,7 +101,7 @@ export async function loadRealTerrain(
   const debugColours = buildTerrainDebugColourIndex(tables);
   const pageKeys = new Set<string>();
   for (const row of rows) {
-    const pageKey = pageKeyOf(row.texture);
+    const pageKey = texturePageKey(row.texture);
     pageKeys.add(pageKey);
     const fallbackColour = debugColours.get(row.typeId);
     // Spread the optional colour only when present - `exactOptionalPropertyTypes` rejects an explicit
@@ -126,7 +121,7 @@ export async function loadRealTerrain(
   const transitionByName = new Map<string, TransitionPattern>();
   for (const row of tables.gfxPatternTransitions ?? []) {
     if (row.editName === undefined || row.texture === undefined || row.coordsA.length === 0) continue;
-    const pageKey = `${pageKeyOf(row.texture)}.masked`;
+    const pageKey = `${texturePageKey(row.texture)}.masked`;
     pageKeys.add(pageKey);
     transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }

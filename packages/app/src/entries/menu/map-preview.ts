@@ -1,28 +1,19 @@
-import { flatTileColour, terrainMapToScene } from '@open-northland/render';
+import {
+  cellColourResolver,
+  flatTileColour,
+  mapPreviewSize,
+  rasterizeTerrain,
+  terrainMapToScene,
+} from '@open-northland/render';
 import { loadIr } from '../../content/ir/load.js';
 import { loadTerrainMap } from '../../content/map-loader.js';
-import { cellColourResolver, loadMinimapCellColours } from '../../content/minimap-ground.js';
+import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
-import { rasterizeTerrain, terrainWorldBounds } from '../../hud/minimap/model.js';
 
-const PREVIEW_MAX_WIDTH = 720;
-const PREVIEW_MAX_HEIGHT = 420;
 /** mapId → generated preview URL, memoised so each map rasterises at most once. The blob URLs are
  *  never revoked - fine because the menu reloads on Start (a full navigation), so this cache and its
  *  object URLs live for the menu-page lifetime and die with the page rather than accumulating. */
 const previews = new Map<string, Promise<string | null>>();
-
-export function mapPreviewDimensions(
-  mapWidth: number,
-  mapHeight: number,
-): { readonly width: number; readonly height: number } {
-  const bounds = terrainWorldBounds(mapWidth, mapHeight);
-  const scale = Math.min(PREVIEW_MAX_WIDTH / bounds.width, PREVIEW_MAX_HEIGHT / bounds.height);
-  return {
-    width: Math.max(1, Math.round(bounds.width * scale)),
-    height: Math.max(1, Math.round(bounds.height * scale)),
-  };
-}
 
 function imageUrl(rgba: Uint8Array, width: number, height: number): Promise<string | null> {
   const canvas = document.createElement('canvas');
@@ -49,7 +40,7 @@ async function buildMapPreview(mapId: string): Promise<string | null> {
   const typeColours = ir === null ? null : buildTerrainDebugColourIndex(ir);
   const colourOfType = (typeId: number): number => typeColours?.get(typeId) ?? flatTileColour(typeId);
   const colourOfCell = cellColourResolver(cellColours, colourOfType);
-  const { width, height } = mapPreviewDimensions(terrain.width, terrain.height);
+  const { width, height } = mapPreviewSize(terrain.width, terrain.height);
   return imageUrl(rasterizeTerrain(terrain, colourOfCell, width, height), width, height);
 }
 
