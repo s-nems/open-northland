@@ -1,4 +1,4 @@
-import { Building } from '../../components/index.js';
+import { Building, Owner, ownerOf } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -34,16 +34,18 @@ export function seatBaseOf(world: World, ctx: SystemContext, player: number): En
 }
 
 /**
- * The army's anchor, the way {@link seatBaseOf} is the economy's: the seat's lowest-id standing
- * barracks, or null when it has none. A canonical pick rather than the nearest one, so the rung that
- * sizes the garrison and the module that musters it always mean the same house - one rally point, and
- * one tribe whose weapon rows the drill may arm (a seat can hold a captured house of another tribe).
+ * The army's anchor, the way {@link seatBaseOf} is the economy's: the seat's lowest-id standing barracks,
+ * or null when it has none. Lowest id rather than nearest, so the rung that sizes the garrison and the
+ * module that musters it always mean the same house - one drill floor, one rally point. Scanned for the
+ * minimum rather than over a sorted list: a canonical winner costs no sort.
  */
 export function seatBarracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
-  for (const e of ownedBuildings(world, player)) {
-    if (isBarracks(world, ctx, e)) return e;
+  let best: Entity | null = null;
+  for (const e of world.query(Building, Owner)) {
+    if (best !== null && e >= best) continue;
+    if (ownerOf(world, e) === player && isBarracks(world, ctx, e)) best = e;
   }
-  return null;
+  return best;
 }
 
 /** The candidate nearest the settlement centroid, ties to the lower entity id - `candidates` arrives

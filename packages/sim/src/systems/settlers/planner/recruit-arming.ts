@@ -2,13 +2,16 @@ import type { ContentSet, WeaponType } from '@open-northland/data';
 import {
   Age,
   AssistantRecruit,
+  Building,
   Carrying,
   Equipment,
   EquipOrder,
   ownerOf,
+  ownersCompatible,
   Position,
   Settler,
   type SettlerIdentity,
+  Stockpile,
   SupplyRun,
   TrainingOrder,
 } from '../../../components/index.js';
@@ -16,6 +19,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { buildingBlockedCells } from '../../footprint/index.js';
 import {
   ARMOR_MAIN_TYPE,
   armorByClass,
@@ -23,9 +27,14 @@ import {
   weaponDamageVsMaterial,
 } from '../../readviews/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { canonicalById, entityNode } from '../../spatial/nodes.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
-import { nearestStoreHolding, type TargetCandidates } from '../targets/index.js';
+import {
+  interactionCell,
+  nearestStoreHolding,
+  storeYieldsGood,
+  type TargetCandidates,
+} from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 import { ASSISTANT_SCAN_PERIOD_TICKS } from './assistant-grants.js';
 import type { PlannerPass } from './pass.js';
@@ -102,6 +111,41 @@ export function armingGoodPreference(
       a.goodType - b.goodType,
   );
   return [...new Set(rows.map((w) => w.goodType))];
+}
+
+/**
+ * Whether the seat could arm a `tribe` recruit of this `intent` right now: some store inside `reach` holds
+ * a good {@link armingGoodPreference} would shop for. The prediction the garrison rung sizes its standing
+ * order with, kept beside the pass that has to fulfil it so the two cannot drift - same goods, same store
+ * rule ({@link storeYieldsGood}), same reach {@link fetchRouteFor} searches under. Existence only: which
+ * recruit walks there is the dispatch's problem. Ownership follows the pass's rule ({@link
+ * ownersCompatible}), so a neutral ground heap of swords counts like a stocked warehouse.
+ */
+export function canArmRecruit(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  tribe: number,
+  intent: keyof typeof INTENT_WEAPON_CLASS,
+  reach: NavigationLimit | null,
+): boolean {
+  const goods = armingGoodPreference(ctx.content, tribe, intent);
+  if (goods.length === 0) return false; // the tribe's data binds no such class
+  const walls = buildingBlockedCells(world, ctx, terrain);
+  for (const store of world.query(Stockpile)) {
+    if (!ownersCompatible(player, ownerOf(world, store))) continue;
+    if (!goods.some((good) => storeYieldsGood(world, ctx, terrain, walls, store, good))) continue;
+    if (reach === null || reach.allowsNode(approachNode(world, ctx, terrain, store))) return true;
+  }
+  return false;
+}
+
+/** Where a fetcher stands to draw on a store - a building at its door, a ground pile at its own node. */
+function approachNode(world: World, ctx: SystemContext, terrain: TerrainGraph, store: Entity): NodeId {
+  return world.has(store, Building)
+    ? interactionCell(world, ctx, terrain, store)
+    : entityNode(world, terrain, store);
 }
 
 /** Send the recruit for the strongest reachable weapon of its intent's class it qualifies for. */
@@ -236,8 +280,8 @@ function pickReachableArmor(
 const BARE_TARGET = 0;
 
 /** The recruit's store-search inputs, resolved once per dispatch attempt. The limit is the signpost
- *  network at his feet, not the per-settler confinement (`signposts/network.ts`): a soldier is exempt
- *  from that one and would walk past his settlement for a weapon on distant neutral ground. */
+ *  network at his feet rather than his own confinement, and the equip drive re-applies the same rule to
+ *  every step of the walk (`settlers/drives/equip-order.ts` states why). */
 interface FetchRoute {
   readonly here: NodeId;
   readonly limit: NavigationLimit | null;

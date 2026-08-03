@@ -269,7 +269,7 @@ export function armedContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      { typeId: SWORD, id: 'sword_shord', weight: 1 },
+      { typeId: SWORD, id: 'sword_short', weight: 1 },
       { typeId: BOW, id: 'bow_short', weight: 1 },
     ],
     jobs: [...base.jobs, { typeId: SWORDSMAN, id: 'soldier_sword_short' }],

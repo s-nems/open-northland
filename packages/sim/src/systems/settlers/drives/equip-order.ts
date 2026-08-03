@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import type { NavigationLimit } from '../../signposts/index.js';
+import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
 import { chainRecruitArmor } from '../planner/recruit-arming.js';
@@ -39,6 +39,24 @@ interface EquipErrand {
 }
 
 const EXCLUDE_PRODUCERS = false;
+
+/** The confinement an errand SHOPS under, which is not always its settler's own. A player order keeps his
+ *  limit; an ASSISTANT errand keeps the settlement's, because the jobs exempt from confinement so they can
+ *  range would otherwise re-target across the map the moment their store runs dry - a soldier campaigns
+ *  anywhere, but he shops where he stands (user rule). It gates the WALK, not just the dispatch:
+ *  {@link planFetch} re-picks the store every tick. */
+function errandGate(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  issuer: EquipOrderState['issuer'],
+  here: NodeId,
+  limit: NavigationLimit | null,
+): NavigationLimit | undefined {
+  const owner = issuer === 'assistant' ? ownerOf(world, e) : undefined;
+  if (owner === undefined) return limit ?? undefined;
+  return networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ?? undefined;
+}
 
 /**
  * The planner's EQUIP-ERRAND rung: drive a settler's live {@link EquipOrder} one step forward.
@@ -68,7 +86,7 @@ export function planEquipOrder(
     settler,
     order,
     here,
-    gate: limit ?? undefined,
+    gate: errandGate(world, terrain, e, order.issuer, here, limit),
     avoid: unreachableGoalVeto(world, ctx, e),
     owner: ownerOf(world, e),
     targets,
