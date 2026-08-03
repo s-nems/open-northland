@@ -2,13 +2,9 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
 
-/** Finds an unpacked mod root: under one folder the user picked, or by sweeping the data root's
- *  `mods/` for the newest install. */
-
 /**
- * Locates a mod root (a directory that contains `DataCnmd/`) at `dir` itself or one level below -
- * the CnMod zip wraps everything in one `CnMod <version>/` top folder, but a rezipped archive
- * might not.
+ * Locates a mod root (a directory containing `DataCnmd/`) at `dir` or one level below - the CnMod
+ * zip wraps everything in a `CnMod <version>/` folder, but a rezipped archive might not.
  */
 export async function findModRootUnder(dir: string): Promise<string | undefined> {
   const hasMod = async (candidate: string): Promise<boolean> => {
@@ -35,17 +31,14 @@ export async function findModRootUnder(dir: string): Promise<string | undefined>
 }
 
 /**
- * The already-installed mod root under the data root's `mods/` dir, or undefined. Among several
- * installed versions the lexicographically last wins - the CnMod folder names embed the version
- * (`CnMod 1.3.1`), so that is the newest (an approximation that holds for dotted versions of equal
- * segment width).
+ * The installed mod root under `modsDir`, or undefined. Approximation: the lexicographically last
+ * folder is the newest, which holds for dotted `CnMod 1.3.1` names of equal segment width.
  */
 export async function discoverInstalledMod(modsDir: string): Promise<string | undefined> {
   let children: string[];
   try {
     children = (await readdir(modsDir, { withFileTypes: true }))
-      // Dot-dirs are never installed mods - `install.ts`'s STAGING_DIR_NAME in particular, whose
-      // half-written DataCnmd/ must not be discovered after an interrupted install.
+      // A dot-dir is an interrupted install's staging dir, never an installed mod.
       .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .map((e) => e.name);
   } catch {

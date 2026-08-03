@@ -2,10 +2,9 @@ import type { FileHandle } from 'node:fs/promises';
 import { inflateRaw } from 'node:zlib';
 
 /**
- * Minimal ZIP reader for the mod-download flow (PKWARE APPNOTE 4.5 layout: end-of-central-directory
- * record → central directory → per-entry local headers). Supports the two compression methods real
- * archives use (0 = stored, 8 = deflate); ZIP64 archives are rejected - the CnMod zip is ~600 MB
- * with ~46k entries, well inside the classic limits.
+ * Minimal ZIP reader (PKWARE APPNOTE 4.5): end-of-central-directory record → central directory →
+ * per-entry local headers, with methods 0 (stored) and 8 (deflate). ZIP64 is rejected; the ~600 MB,
+ * ~46k-entry CnMod archive stays inside the classic limits.
  */
 
 const EOCD_SIGNATURE = 0x06054b50;
@@ -33,8 +32,8 @@ const CENTRAL_COMMENT_LENGTH = 32;
 const CENTRAL_LOCAL_HEADER_OFFSET = 42;
 const LOCAL_NAME_LENGTH = 26;
 const LOCAL_EXTRA_LENGTH = 28;
-/** General-purpose flag bit 11: the entry name is UTF-8 (otherwise CP437; decoded as latin1 -
- * byte-preserving and unambiguous for path handling). */
+/** General-purpose flag bit 11: the name is UTF-8, otherwise CP437 - decoded as latin1, which
+ * preserves the bytes for path handling. */
 const UTF8_NAME_FLAG = 1 << 11;
 const METHOD_STORED = 0;
 const METHOD_DEFLATE = 8;
@@ -45,7 +44,7 @@ export interface ZipEntry {
   readonly method: number;
   readonly compressedSize: number;
   readonly size: number;
-  /** Offset of the entry's local file header from the start of the archive. */
+  /** Byte offset from the start of the archive. */
   readonly localHeaderOffset: number;
 }
 
@@ -56,14 +55,14 @@ async function readAt(fh: FileHandle, offset: number, length: number): Promise<B
   return buffer;
 }
 
-/** Reads the central directory of the archive behind `fh` (of `fileSize` bytes). */
+/** Reads the central directory of the archive behind `fh`. */
 export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<ZipEntry[]> {
   const span = Math.min(fileSize, EOCD_SEARCH_SPAN);
   const tail = await readAt(fh, fileSize - span, span);
   let eocd = -1;
   for (let i = span - EOCD_MIN_SIZE; i >= 0; i--) {
-    // A real EOCD's comment length must reach exactly the end of the file - this rejects a stray
-    // signature embedded in the comment (or in trailing garbage) that a plain scan would take.
+    // A real EOCD's comment length reaches exactly the end of the file; a stray signature inside a
+    // comment or trailing garbage does not.
     if (
       tail.readUInt32LE(i) === EOCD_SIGNATURE &&
       i + EOCD_MIN_SIZE + tail.readUInt16LE(i + EOCD_COMMENT_LENGTH) === span
@@ -77,8 +76,7 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   const cdSize = tail.readUInt32LE(eocd + EOCD_CD_SIZE);
   const cdOffset = tail.readUInt32LE(eocd + EOCD_CD_OFFSET);
   if (count === 0xffff || cdOffset === 0xffffffff) throw new Error('zip: ZIP64 archives are not supported');
-  // Sizes/offsets are attacker-readable u32 fields; anything past the file itself is a lie and
-  // would otherwise drive a multi-GB Buffer.alloc before the first read fails.
+  // Untrusted u32 fields: a directory claiming to lie past the file would drive a multi-GB alloc.
   if (cdOffset + cdSize > fileSize) throw new Error('zip: central directory lies outside the file');
 
   const cd = await readAt(fh, cdOffset, cdSize);
@@ -106,10 +104,9 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
 }
 
 /**
- * Reads and decompresses one entry's bytes (via its local header, whose extra field can differ from
- * the central one). `fileSize` bounds the claimed compressed size, and the central directory's
- * uncompressed size caps the inflate output - a lying deflate member (zip bomb) fails instead of
- * exhausting memory.
+ * Reads and decompresses one entry through its local header, whose extra field can differ from the
+ * central one. `fileSize` bounds the claimed compressed size and the central uncompressed size caps
+ * inflate output, so a lying deflate member cannot exhaust memory.
  */
 export async function readZipEntryData(
   fh: FileHandle,
