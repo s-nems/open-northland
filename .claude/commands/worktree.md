@@ -77,9 +77,11 @@ Before the completing commit:
 For refactor cleanup, report unrelated findings instead of filing follow-up tickets unless the user
 requested backlog updates or a material blocker would otherwise be lost.
 
-Re-read the full diff and confirm that source comments do not repeat its commit rationale. Run
-`git diff --check`, and commit with the repository's Conventional Commit style. The completing commit
-must include the final tracker state.
+Re-read the full diff and confirm that source comments do not repeat its commit rationale and that no
+added comment carries a calendar date, attribution, revision label, or conversation reference;
+grepping the diff's added lines for `20[0-9]{2}-` and the attribution vocabulary is a sufficient
+check. Run `git diff --check`, and commit with the repository's Conventional Commit style. The
+completing commit must include the final tracker state.
 
 ## 6. Serve the branch for verification
 

@@ -30,6 +30,9 @@ transitions disappear, flag missing code structure rather than asking for a shor
 
 Comments should state an invariant, unit, source basis, approximation, or necessary reason. Flag:
 
+- any comment the diff adds or edits that carries a calendar date, user or author attribution, a
+  revision or feedback label, or a conversation, plan, ticket, or PR reference; this alone makes the
+  comment verdict `regressed`;
 - JSDoc that only repeats a symbol's name or type;
 - new or expanded prose copied from investigation, tests, handoff, or commit rationale;
 - repeated facts with more than one owner;
