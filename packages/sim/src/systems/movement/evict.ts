@@ -22,9 +22,8 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   const body = walkBlockedBodyOf(world, ctx, terrain, building);
   if (body === null) return; // nothing impassable
 
-  // One unsorted pass: every unit enters the occupancy set (travellers too, a landing must not stack on
-  // anyone), and standing ones split into evictees and nook candidates. Sorting is deferred to the
-  // evictees so a finish with nobody on or beside the plot early-outs before any sort or overlay build.
+  // Travellers enter the occupancy set too, since a landing must not stack on anyone. Sorting is deferred
+  // to the evictees so a finish with nobody on or beside the plot early-outs before any sort.
   const units: Entity[] = [];
   const evicteesUnsorted: Entity[] = [];
   const nookCandidates: Entity[] = [];
@@ -75,11 +74,11 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
 
 /**
  * Push a settler that spawned on walk-blocked ground off it. Authored maps enqueue every `placeBuilding`
- * before any `spawnSettler`, so humans land inside bodies that {@link evictSettlersFromFootprint} already
- * passed over. Unlike that twin this crosses other buildings' bodies (never unwalkable terrain) and skips
- * the occupancy check, which would cost O(settlers) for each of a map load's thousands of spawns; the
- * optional `claimed` set threads one command's batch so a herd fans out instead of stacking. Approximation:
- * whether the original leaves these humans standing on a body is unobserved.
+ * before any `spawnSettler`, so humans land inside bodies the footprint eviction already passed over. This
+ * crosses other buildings' bodies but never unwalkable terrain, and skips the occupancy check that would
+ * cost O(settlers) per spawn; the optional `claimed` set threads one command's batch so a herd fans out
+ * instead of stacking. Approximation: whether the original leaves these humans standing on a body is
+ * unobserved.
  */
 export function evictSettlerFromBlockedSpawn(
   world: World,

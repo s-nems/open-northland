@@ -4,23 +4,21 @@ import type { Entity } from '../../ecs/world.js';
 export type RulesCommand =
   | {
       /**
-       * Toggle the needs mechanic globally: hunger/fatigue/piety/enjoyment stop rising (and starvation stops
-       * draining) while disabled. Sets the {@link import('../../components/index.js').WorldRules} singleton
-       * (created on first use), so the toggle hashes and replays like any other state. A dev/admin lever (user
-       * decision): acceptance scenes issue `enabled: false` at build so test units don't starve mid-checklist;
-       * live maps keep the default (enabled). The admin panel flips it at runtime.
+       * Toggle the needs mechanic globally: hunger, fatigue, piety and enjoyment stop rising, and
+       * starvation stops draining, while disabled. Sets the `WorldRules` singleton (created on first
+       * use), so the toggle hashes and replays like any other state. Authored: an admin lever that
+       * acceptance scenes disable so test units do not starve; live maps keep it enabled.
        */
       readonly kind: 'setNeedsEnabled';
       readonly enabled: boolean;
     }
   | {
       /**
-       * Set the fog-of-war mode globally - one of the {@link import('../../components/rules.js').FOG_MODE} ids
-       * (`OFF` / `REVEAL` sticky exploration / `RECON` known terrain with current entity vision). Sets the
-       * {@link import('../../components/index.js').FogRules} singleton (created on first use), so the mode hashes
-       * and replays like any other state; the VisionSystem rebuilds the per-player masks the same tick.
-       * Switching to `OFF` drops the masks (exploration history resets). A `mode` outside the three ids is
-       * recoverable bad input - skipped, still logged.
+       * Set the fog-of-war mode globally (`OFF`, `REVEAL` sticky exploration, `RECON` known terrain with
+       * current entity vision). Sets the `FogRules` singleton (created on first use), so the mode hashes
+       * and replays like any other state, and the VisionSystem rebuilds the per-player masks the same
+       * tick. Switching to `OFF` drops the masks, resetting exploration history. A `mode` outside the
+       * three ids is skipped.
        */
       readonly kind: 'setFogMode';
       /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2). */
@@ -28,24 +26,21 @@ export type RulesCommand =
     }
   | {
       /**
-       * Toggle signpost-navigation confinement globally: while enabled, a civilian settler may only work and
-       * walk within its local reach plus a reachable signpost group's circles (`systems/signposts/`). Sets the
-       * {@link import('../../components/rules.js').SignpostRules} singleton (created on first use), so the
-       * toggle hashes and replays like any other state. Default off - maps/scenes that ship signposts opt in
-       * (a named deviation: the original always confines, but existing scenes/goldens predate signposts).
+       * Toggle signpost-navigation confinement globally: while enabled, a civilian settler may only work
+       * and walk within its local reach plus a reachable signpost group's circles. Sets the
+       * `SignpostRules` singleton (created on first use), so the toggle hashes and replays like any
+       * other state. Deviation: the original always confines, but this defaults off and maps opt in.
        */
       readonly kind: 'setSignpostNavigation';
       readonly enabled: boolean;
     }
   | {
       /**
-       * Toggle the profession-progression tech tree globally: while disabled, the `needfor*` XP thresholds
-       * and the `jobEnables` presence graph stop gating CIVILIAN jobs and goods - every settler may take any
-       * civilian trade from the start (a multiplayer-style free start). Fighter-band jobs (soldier/hero)
-       * stay gated regardless: those are unlocked by barracks training, not by the toggle. XP accrual keeps
-       * running, so experience bonuses still pay off. Sets the
-       * {@link import('../../components/rules.js').ProgressionRules} singleton (created on first use), so
-       * the toggle hashes and replays like any other state. Default on - the original always gates.
+       * Toggle the profession-progression tech tree globally: while disabled, the `needfor*` XP
+       * thresholds and the `jobEnables` presence graph stop gating civilian jobs and goods, so every
+       * settler may take any civilian trade from the start. XP still accrues, so experience bonuses keep
+       * paying off, and fighter-band jobs stay gated because barracks training unlocks those. Sets the
+       * `ProgressionRules` singleton (created on first use). Default on, as the original always gates.
        */
       readonly kind: 'setProfessionProgression';
       readonly enabled: boolean;
@@ -54,24 +49,19 @@ export type RulesCommand =
 /** Replayable admin commands used to drive existing mechanics during testing. */
 export type DebugCommand =
   /**
-   * Debug / cheat commands - the admin panel's "make testing trivial" seam. Each is a real, serializable
-   * {@link Command} that mutates through the one command path (so a debug poke replays and hashes like any
-   * order - never an app-side reach into `sim.world`), but is issued only by the debug panel: no system or AI
-   * emits them, so they never fire on a golden/replay run and the goldens stay put. Every one targets an entity
-   * by ref and is a recoverable-bad-input no-op when the target is dead or the wrong kind (a raced/stale ref).
-   * Source basis: pure test affordances, not original mechanics - they drive existing systems (the CleanupSystem
-   * reaps a 0-HP kill; the NeedsSystem reacts to a set need) rather than inventing behaviour.
+   * Each mutates through the one command path, so a debug poke replays and hashes like any order, but
+   * only the debug panel issues them: no system or AI emits them, so goldens stay put. Every one targets
+   * an entity by ref and is a no-op when the target is dead or the wrong kind. Source basis: test
+   * affordances that drive existing systems rather than original mechanics.
    */
-  /** Kill `target` outright - a settler only (animals included): drain its
-   *  {@link import('../../components/combat.js').Health} pool to 0 so the CleanupSystem reaps it next tick with
-   *  the normal `settlerDied` event (the real death path, not a silent destroy). A non-settler is a no-op -
-   *  including a building placed under construction, which carries a `Health` pool but must be torn down via
-   *  `demolish` (its worker-unbind seam), never reaped as if it were a unit. */
+  /** Kill `target`, a settler or animal only: drain its `Health` pool to 0 so the CleanupSystem reaps it
+   *  next tick with the normal `settlerDied` event. A non-settler is a no-op, including a building under
+   *  construction, which carries a `Health` pool but must be torn down through `demolish` for its
+   *  worker-unbind seam. */
   | { readonly kind: 'debugKill'; readonly target: Entity }
-  /** Set `target`'s needs to whole-percent levels (`0` = fully sated, `100` = maxed → the NeedsSystem's
-   *  starvation/rest drive kicks in). Each field is optional; an omitted need is left untouched. Percents
-   *  (not raw `Fixed`) keep the command serializable; the handler converts to the `0..ONE` need `Fixed`.
-   *  A non-settler target is a no-op. */
+  /** Set `target`'s needs to whole-percent levels (`0` fully sated, `100` maxed, where the NeedsSystem's
+   *  starvation and rest drives kick in); an omitted need is left untouched. Percents rather than raw
+   *  `Fixed` keep the command serializable. A non-settler target is a no-op. */
   | {
       readonly kind: 'debugSetNeeds';
       readonly target: Entity;
@@ -80,12 +70,10 @@ export type DebugCommand =
       readonly piety?: number;
       readonly enjoyment?: number;
     }
-  /** Fill `target` building's {@link import('../../components/economy/index.js').Stockpile} to capacity: every good
-   *  its building type declares a stock slot for is set to that slot's `capacity`. A non-building target,
-   *  or one without a `Stockpile`, is a no-op. */
+  /** Fill `target` building's stockpile: every good its type declares a stock slot for is set to that
+   *  slot's `capacity`. A non-building target, or one without a `Stockpile`, is a no-op. */
   | { readonly kind: 'debugFillStockpile'; readonly target: Entity }
-  /** Finish `target`'s construction now: force a site carrying an
-   *  {@link import('../../components/economy/index.js').UnderConstruction} marker straight to built (full `Health`,
-   *  marker removed, `buildingFinished` emitted) regardless of delivered material or builder labor. A
-   *  target that is not a construction site is a no-op. */
+  /** Finish `target`'s construction now, regardless of delivered material or builder labor: full
+   *  `Health`, marker removed, `buildingFinished` emitted. A target that is not a construction site is a
+   *  no-op. */
   | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity };

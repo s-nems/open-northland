@@ -1,23 +1,16 @@
 /**
- * Fixed-point math for the simulation, stored as scaled integers in a plain JS `number`.
+ * Fixed-point math for the simulation: an integer-valued double where one whole unit (one tile) is
+ * ONE == 65536. Float results can differ across CPUs and engines, so every state-affecting value in
+ * `sim` is fixed point; rendering may use plain floats because it never feeds back.
  *
- * Why fixed-point: IEEE-754 float results can differ across CPUs / engines for transcendental
- * ops; for lockstep multiplayer and reproducible replays we need bit-identical results. All
- * state-affecting math in `sim` uses these. Rendering may use plain floats (it never feeds back).
+ * A double rather than an int32, because JS doubles represent integers exactly up to 2^53 and the
+ * basic ops (+ - * with Math.round/trunc over integer-valued doubles) are IEEE-deterministic across
+ * platforms. Never use Math.sqrt/sin/cos/pow here; add an integer helper instead (see fx.isqrt).
  *
- * Why a `number` (double), not int32: JS doubles represent integers EXACTLY up to 2^53. The basic
- * ops (+ - * and Math.round/trunc on integer-valued doubles) are IEEE-deterministic across
- * platforms. Storing in a double (instead of `x | 0`) avoids the silent int32 overflow that bit
- * a previous Q16.16-in-int32 design above ~32767 units. NEVER use Math.sqrt/sin/cos/pow here -
- * add integer helpers if you need them (see fx.isqrt).
+ * Safe range: keep magnitudes below ~2^25 units so `mul`'s intermediate product stays exact under 2^53.
  *
- * A `Fixed` is an integer-valued double where one whole unit (e.g. one tile) == ONE == 65536.
- * Safe range: keep magnitudes below ~2^25 units, so that mul's intermediate product stays under
- * 2^53 and remains exact. A 300-tile map sits comfortably inside this.
- *
- * `Fixed` is a BRANDED type: a raw `number` is not assignable to it, so you cannot accidentally
- * mix an unscaled count with a scaled value or pass a goodType where a Fixed is expected. The `fx`
- * helpers are the only mint authority - `fx.fromInt(1)`, not the literal `1`.
+ * `Fixed` is branded, so a raw `number` is not assignable to it and the `fx` helpers are the only mint
+ * authority: `fx.fromInt(1)`, not the literal `1`.
  */
 import type { Brand } from './brand.js';
 export type Fixed = Brand<number, 'Fixed'>;
@@ -99,11 +92,10 @@ export const fx = {
     return v as Fixed;
   },
   /**
-   * Divide two Fixeds, rounding the quotient UP (toward +∞). For minting per-tick step quanta from
-   * a duration: `divCeil(ONE, ticks)` guarantees `ticks` steps cover the whole unit, where plain
-   * `div` truncates and leaves an ulp-scale remainder that costs a nearly-stationary extra step (a
-   * visible hitch when the quantum paces movement). Positive divisor only. Integer-exact: float-fast
-   * guess, then the same deterministic correction discipline as {@link fx.isqrt}.
+   * Divide two Fixeds, rounding the quotient up. For minting per-tick step quanta from a duration:
+   * `divCeil(ONE, ticks)` guarantees `ticks` steps cover the whole unit, where plain `div` truncates
+   * and leaves an ulp-scale remainder that costs a nearly-stationary extra step. Positive divisor only,
+   * and integer-exact through the same float guess plus correction as {@link fx.isqrt}.
    */
   divCeil(a: Fixed, b: Fixed): Fixed {
     if (b <= 0) throw new Error('fixed-point divCeil requires a positive divisor');
@@ -115,11 +107,10 @@ export const fx = {
     return q as Fixed;
   },
   /**
-   * `a·b/c` with a SINGLE truncation (toward zero): the scales cancel, so no intermediate
-   * fixed-point rounding - `mul` then `div` truncates twice and can shave several ulps (enough to
-   * cost a movement step an extra near-stationary tick). For ratio scaling like "advance `a` by
-   * `b/c` of itself"; when `a === c` the result is exactly `b`. Intermediate `a*b` must stay
-   * < 2^53 (dev-asserted, like {@link fx.mul}).
+   * `a·b/c` with a single truncation toward zero: the scales cancel, so there is no intermediate
+   * fixed-point rounding, unlike `mul` then `div`, which truncates twice and can shave several ulps.
+   * When `a === c` the result is exactly `b`. Intermediate `a*b` must stay < 2^53, dev-asserted like
+   * {@link fx.mul}.
    */
   mulDiv(a: Fixed, b: Fixed, c: Fixed): Fixed {
     if (c === 0) throw new Error('fixed-point division by zero');

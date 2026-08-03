@@ -7,12 +7,8 @@ import {
   atomicEventFrame,
 } from '../../readviews/animations.js';
 
-/**
- * The frame within a settler's atomic animation at which it plays its PLAY_SOUND_FX cue
- * ({@link ATOMIC_EVENT_TYPE_PLAY_SOUND_FX}), or undefined when the settler's tribe binds the atomic to no
- * animation or that animation carries no such event. The content indexes it resolves through are memoized,
- * so the per-tick lookup is O(1) per active swing.
- */
+/** The frame in a settler's atomic animation carrying its PLAY_SOUND_FX cue, or undefined when the tribe
+ *  binds the atomic to no animation or that animation has no such event. */
 export function atomicSoundFrame(
   world: World,
   ctx: SystemContext,

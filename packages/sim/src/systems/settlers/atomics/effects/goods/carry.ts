@@ -4,17 +4,10 @@ import { nodeOfPosition, positionOfNode } from '../../../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../../../nav/terrain/index.js';
 import { spillOverRings, stackOntoTile } from './piles.js';
 
-// A settler's carried load (single-slot {@link Carrying}): add to it, shrink it, or set it down on the
-// tile the settler stands on. The shared load primitives the harvest, store-transfer, and consume
-// effects build on.
-
 /**
- * Add `amount` of `goodType` to a settler's carried load, merging if it already carries that good.
- *
- * A settler carries one good at a time (single-slot {@link Carrying}). Asking it to pick up a
- * *different* good while still loaded would silently overwrite - and so destroy - the held good,
- * breaking goods conservation. That can only be a planner bug (the planner must pile up the current
- * load first), so we throw rather than corrupt state (AGENTS.md: throw for bugs).
+ * Add `amount` of `goodType` to a settler's carried load, merging into an existing load of that good.
+ * {@link Carrying} is single-slot, so picking up a different good while loaded would overwrite and destroy
+ * the held one. That can only be a planner bug, so it throws rather than break goods conservation.
  */
 export function addCarry(world: World, settler: Entity, goodType: number, amount: number): void {
   const held = world.tryGet(settler, Carrying);
@@ -30,24 +23,17 @@ export function addCarry(world: World, settler: Entity, goodType: number, amount
   world.add(settler, Carrying, { goodType, amount });
 }
 
-/** Shrink a settler's carried load by `by` units, removing the {@link Carrying} entirely when that
- *  empties it - the shared decrement-or-remove step of eating a carried unit and unloading a pile. */
+/** Shrink a carried load by `by` units, removing the {@link Carrying} entirely when that empties it. */
 export function shrinkCarry(world: World, settler: Entity, load: { amount: number }, by: number): void {
   if (load.amount > by) load.amount -= by;
   else world.remove(settler, Carrying);
 }
 
 /**
- * Drop a settler's carried load onto a loose ground heap on the tile it STANDS on - the observed "collector
- * sets its harvest down where its feet are". Two callers: a flag-bound gatherer banking its harvest (the
- * planner walked it to a free yard tile via `nearestFreeYardNode`), and a PORTER setting a surplus load down
- * when no store can take it (see `planDelivery`) - it sheds the undepositable good and is free to haul a
- * deliverable one. Banks up to {@link MAX_GROUND_STACK} onto the tile; any remainder stays on its back and
- * the next drop walks it on (it PHYSICALLY carries the spill - nothing teleports). The heap is snapped to the
- * settler's half-cell NODE ({@link positionOfNode}), NOT its exact fractional Position, so every drop on a
- * node stacks onto the same heap and heaps sit tile-to-tile on the lattice. Returns how many units were set
- * down (0 when the tile is full / holds a different good - the caller then keeps the load). No-op if it
- * carries nothing / has no position. Pure over entity state; no RNG/wall-clock.
+ * Drop a settler's carried load onto a loose ground heap on the tile it stands on, up to the per-tile stack
+ * cap; any remainder stays on its back and the next drop physically walks it on. The heap snaps to the
+ * settler's half-cell node ({@link positionOfNode}), not its fractional Position, so every drop on a node
+ * stacks onto the same heap. Returns the units set down, 0 when the tile is full or holds a different good.
  */
 export function dropCarryAtOwnTile(world: World, settler: Entity): number {
   const load = world.tryGet(settler, Carrying);
@@ -55,18 +41,17 @@ export function dropCarryAtOwnTile(world: World, settler: Entity): number {
   const pos = world.tryGet(settler, Position);
   if (pos === undefined) return 0;
   const node = nodeOfPosition(pos.x, pos.y);
-  const at = positionOfNode(node.hx, node.hy); // the node's canonical lattice Position, so drops stack
+  const at = positionOfNode(node.hx, node.hy);
   const placed = stackOntoTile(world, at.x, at.y, load.goodType, load.amount);
-  if (placed > 0) shrinkCarry(world, settler, load, placed); // fully placed ⇒ Carrying removed
+  if (placed > 0) shrinkCarry(world, settler, load, placed);
   return placed;
 }
 
 /**
- * Force a settler's whole carried load onto the ground - the "set it down before an interrupt takes over"
- * primitive, unlike {@link dropCarryAtOwnTile} which keeps any tile-overflow on the back for the next walk.
- * Its own tile first, then the remainder scattered over the nearest tiles ({@link spillOverRings}); what
- * the scatter cannot place stays carried. Returns how many units reached the ground. No-op if it carries
- * nothing / has no position. Mapless (no `terrain`): drops only on the own tile, no scatter.
+ * Force a settler's whole carried load onto the ground, unlike {@link dropCarryAtOwnTile} which leaves any
+ * tile overflow on the back: its own tile first, then the remainder scattered over the nearest tiles. What
+ * the scatter cannot place stays carried. Returns the units that reached the ground; without terrain there
+ * is no scatter, only the own tile.
  */
 export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined, settler: Entity): number {
   const load = world.tryGet(settler, Carrying);
@@ -74,9 +59,9 @@ export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined,
   const pos = world.tryGet(settler, Position);
   if (pos === undefined) return 0;
 
-  const total = dropCarryAtOwnTile(world, settler); // own tile first (the shared set-down-at-feet step)
+  const total = dropCarryAtOwnTile(world, settler);
   const left = world.tryGet(settler, Carrying);
-  if (terrain === undefined || left === undefined) return total; // mapless, or the load is fully down
+  if (terrain === undefined || left === undefined) return total;
   const start = nodeOfPosition(pos.x, pos.y);
   const spilled = spillOverRings(
     world,
@@ -85,6 +70,6 @@ export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined,
     left.goodType,
     left.amount,
   );
-  if (spilled > 0) shrinkCarry(world, settler, left, spilled); // fully placed ⇒ Carrying removed
+  if (spilled > 0) shrinkCarry(world, settler, left, spilled);
   return total + spilled;
 }

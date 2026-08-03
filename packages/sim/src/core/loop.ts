@@ -6,7 +6,7 @@
  * This helper is pure timing bookkeeping - it holds no game state and uses no wall-clock itself;
  * the caller passes elapsed milliseconds (so tests can drive it with synthetic time).
  */
-/** User-requested fidelity approximation: the base game clock advances at 12 simulation ticks per second. */
+/** Approximation: the base game clock advances at 12 simulation ticks per second. */
 export const TICKS_PER_SECOND = 12;
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND;
 
@@ -20,9 +20,9 @@ export class FixedTimestep {
   }
 
   /**
-   * Ticks the cap has discarded since construction, to the nearest whole tick. Dropping the backlog is what stops a death
-   * spiral, but an unreported drop makes a requested playback speed a lie: `?speed=10` cannot be
-   * delivered below `speed * TICKS_PER_SECOND / maxSteps` fps, and without this counter nothing says so.
+   * Ticks the cap has discarded since construction, to the nearest whole tick. Dropping the backlog is
+   * what stops a death spiral, but an unreported drop makes a requested playback speed a lie: a speed
+   * multiplier cannot be delivered below `speed * TICKS_PER_SECOND / maxSteps` fps.
    */
   get droppedTicks(): number {
     return this.dropped;

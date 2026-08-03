@@ -1,15 +1,12 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { Entity } from '../../ecs/world.js';
 
-/** Commands that direct existing settlers and their work. */
+/** Commands that direct existing settlers and their work. Coordinates are half-cell nodes. */
 export type UnitOrderCommand =
   | {
       /**
-       * Order one owned settler to walk to (x,y) - the RTS "go there" order. It sets a `MoveGoal` (the
-       * existing pathfinding→movement pipeline carries it out) + a `PlayerOrder` en-route marker; on arrival
-       * the economy AI reclaims the unit at once (no post-arrival stand). A tower garrison is released from
-       * its post outright - the order is how the player calls a posting off. Skipped for a dead/stale target,
-       * a non-settler, or a neutral (unowned) entity. See the `moveUnit` handler.
+       * Walk one owned settler to (x,y). The economy AI reclaims the unit on arrival, and a tower
+       * garrison is released from its post.
        */
       readonly kind: 'moveUnit';
       readonly entity: Entity;
@@ -18,12 +15,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned settler to fight its way to (x,y) - the original's "Attack Position"
-       * (`misclogic/48`, armed by the `misc/31` "Select attack position" prompt). Every `moveUnit` refusal
-       * and its carry-then-drop behaviour apply; the march itself is
-       * {@link import('../../components/index.js').AttackMoveMarch}, which owns the rule. Approximated: the
-       * original's en-route behaviour is unobserved, so fighting along the way (and the stance override it
-       * implies) is the RTS reading of the order.
+       * Walk one owned settler to (x,y) fighting what it meets on the way - the original's "Attack
+       * Position" (`misclogic/48`, armed by the `misc/31` "Select attack position" prompt).
+       * Approximation: the original's en-route behaviour is unobserved.
        */
       readonly kind: 'attackMoveUnit';
       readonly entity: Entity;
@@ -32,13 +26,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Change one owned settler's profession: set its `jobType` and reset it to a fresh idle worker of the new
-       * trade (drop its workplace binding, cancel its action/route/order), leaving it unposted - a trade
-       * whose work runs through a binding waits for an `assignWorker`. The civilist job (`jobtypes.ini` 6)
-       * is an ordinary assignable
-       * record no workplace employs, so assigning it is the original's "make this settler a civilian".
-       * Skipped for a dead/stale target, a non-settler, a neutral entity, an unknown `jobType`, or a
-       * still-growing child. See `setJob`.
+       * Change one owned settler's trade: set `jobType` and reset it to an unposted idle worker of that
+       * trade. The civilist job (`jobtypes.ini` 6) is an ordinary assignable record no workplace employs.
        */
       readonly kind: 'setJob';
       readonly entity: Entity;
@@ -46,14 +35,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned combatant to attack a specific `target` unit - the RTS "attack that one" order (the
-       * combat twin of `moveUnit`). It stamps an `AttackOrder` focus so the unit chases and strikes `target`
-       * regardless of sight radius until the target dies or stops being valid (then it reverts to
-       * auto-engagement). Like `moveUnit` it is authoritative - it cancels the unit's current action/route so
-       * it obeys at once. Skipped for a dead/stale/non-combatant issuer or target, a neutral issuer, or a
-       * self-target. The right-click-on-an-enemy = attack idiom is the original's RTS convention (source
-       * basis). Carries no issuing-player yet (the per-player authority check lands with lockstep); hostility
-       * is re-validated each tick by the CombatSystem, not at issue. See `attackUnit`.
+       * Focus one owned combatant on `target` until the target dies, overriding sight-radius
+       * auto-engagement. Hostility is re-validated each tick by the CombatSystem, not at issue.
        */
       readonly kind: 'attackUnit';
       readonly entity: Entity;
@@ -61,17 +44,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Set one owned unit's military stance - the original's per-unit `MILITARY_MODE` (`setStance`), the
-       * player's control over how a unit reacts to enemies: `ATTACK` (auto-engage on sight), `DEFEND` (hold a
-       * radius around where the stance was set), `IGNORE` (never auto-engage - the scout's mode), `FLEE` (run
-       * from danger - the civilian's mode). The CombatSystem gates auto-engagement on the resulting
-       * {@link import('../../components/index.js').Stance}; an explicit {@link Command} `attackUnit` order
-       * still overrides the mode.
-       *
-       * For `DEFEND` the unit's current tile is captured as the defend anchor (the centre of the defend
-       * radius / the tile it returns to when clear). Recoverable bad input (skipped, still logged for
-       * faithful replay): a dead/stale target, a non-settler, a neutral entity, or a `mode` outside the five
-       * `MILITARY_MODE` ids. Carries no issuing-player yet. See `setStance`.
+       * Set one owned unit's military stance - the original's per-unit `MILITARY_MODE`. `DEFEND` captures
+       * the unit's current tile as its defend anchor; an explicit `attackUnit` order overrides the mode.
        */
       readonly kind: 'setStance';
       readonly entity: Entity;
@@ -80,39 +54,20 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Assign one owned settler to work at a specific `building` ("employ this colonist here" - the one
-       * way a settler becomes employed): bind it to that workplace
-       * ({@link JobAssignment}) and set its `jobType` to the building's open worker slot, the same
-       * re-idle-to-a-fresh-worker reset as {@link setJob} but pinned to a building the player chose. The bound
-       * settler then walks to and staffs that building through the normal AI planner.
-       *
-       * `jobPriority` is the caller's ordered preference over which of the building's worker jobs to fill -
-       * the sim walks it and binds the settler to the first job genuinely open for it (an understaffed slot
-       * at a same-tribe building whose job the settler qualifies for - a building still under construction
-       * offers its slots too). The list only reorders/filters candidates - every entry still passes
-       * the sim's gate, so a hand assignment can never reach a state the economy wouldn't (in *Cultures* a
-       * right-click makes a colonist a tradesman first, a hauler only if the trade is full or the settler
-       * lacks its skill). A job the building doesn't offer (or that's full/gated) is skipped; an empty list,
-       * or one whose every entry is closed, is a no-op. Recoverable bad input (skipped, still logged for
-       * faithful replay): a dead/stale/non-settler/neutral issuer, a still-growing child, a
-       * dead/stale/non-building target, or no open job for this settler. See `assignWorker`.
+       * Employ one owned settler at `building`: bind it to that workplace and set its `jobType` to the
+       * open worker slot it qualifies for. The only way a settler becomes employed.
        */
       readonly kind: 'assignWorker';
       readonly entity: Entity;
       readonly building: Entity;
-      /** Ordered candidate worker jobs to try (highest preference first); the first open one wins. */
+      /** Ordered candidate worker jobs to try (highest preference first); the first one open for this
+       *  settler wins. Entries only filter candidates - each still passes the sim's staffing gate. */
       readonly jobPriority: readonly number[];
     }
   | {
       /**
-       * Assign one owned builder to a specific construction `site` (the original's "put a builder on a
-       * foundation"). It pins a {@link import('../../components/index.js').SiteAssignment} so the builder
-       * raises that site (over the nearest one) and stays listed in its workers window until the site
-       * finishes. Recoverable bad input (skipped, still logged for faithful replay): a
-       * dead/stale/non-settler/neutral issuer, a still-growing child, a dead or not-under-construction target,
-       * a wrong-tribe site, or a settler whose job cannot run the build atomic (only the builder trade assigns
-       * - a civilian right-clicked onto a normal building takes the `assignWorker` path instead). See
-       * `assignBuilder`.
+       * Pin one owned builder to construction `site` so it raises that site over the nearest one. Only a
+       * job that can run the build atomic qualifies; other trades take the `assignWorker` path.
        */
       readonly kind: 'assignBuilder';
       readonly entity: Entity;
@@ -120,18 +75,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Place / move one owned gatherer's work flag to node (x,y) - the player's "work here" order (the
-       * gathering twin of `moveUnit`). If the gatherer already carries a
-       * {@link import('../../components/index.js').WorkFlag} its flag entity is relocated to (x,y) (only the
-       * marker moves - goods already dropped stay pinned to their tiles); otherwise a fresh flag - a pure
-       * {@link import('../../components/index.js').DeliveryFlag} marker with no Stockpile (the harvest piles
-       * on the ground around it, not into it) - is created there and bound with the default radius. From then
-       * on the gatherer harvests only within that flag's radius, carries only what it dug, and banks its
-       * harvest on the ground by the flag (see `planGatherer`).
-       *
-       * Recoverable bad input (skipped, still logged for faithful replay): a blocked/unwalkable destination,
-       * a dead/stale target, a non-settler, a neutral entity, or a settler whose job cannot harvest. Carries
-       * no issuing-player yet. The app maps Ctrl+Right-Click with a gatherer selected to this. See `setWorkFlag`.
+       * Place or move one owned gatherer's work flag to (x,y). The gatherer then harvests only within
+       * that flag's radius and banks its harvest on the ground beside it; the flag holds no stockpile.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;
@@ -147,14 +92,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned scout to erect a signpost at node (x,y) - the original's "Erect Signpost" scout
-       * action. The scout walks there (a normal {@link import('../../components/index.js').PlayerOrder}
-       * walk), plays the one-shot build-guide hammer atomic (jobtypes.ini scout `allowatomic 43`,
-       * `viking_scout_build_guide`) and the signpost appears when it completes - instant, no materials
-       * (source basis: observed original behaviour; a single hammer-strike animation, no cost). Recoverable
-       * bad input (skipped, still logged): a dead/stale/non-settler/neutral issuer, a non-scout job, or a
-       * spot that fails the signpost placement gate (unwalkable, inside a standing body, or within another
-       * same-player signpost's spacing circle). See `placeSignpost`.
+       * Send one owned scout to erect a signpost at (x,y): it walks there and plays the build-guide
+       * atomic (`jobtypes.ini` scout `allowatomic 43`, `viking_scout_build_guide`). Observation: the
+       * signpost is instant and free.
        */
       readonly kind: 'placeSignpost';
       readonly entity: Entity;
@@ -163,12 +103,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Choose which of its workplace's products a craft worker makes - the crafting twin of
-       * `setGatherGood`. `goods` are product goodTypes of the settler's bound workplace's recipes;
-       * several selected alternate per started cycle (one short sword, one plate armor, …); empty
-       * restores the all-products mode. Recoverable bad input (skipped, still logged): a non-settler,
-       * a worker with no workplace, goods the workplace doesn't make (invalid entries are dropped,
-       * and a selection with none left is ignored).
+       * Choose which of its workplace's products a craft worker makes; several selected alternate per
+       * started cycle, and an empty list restores the all-products mode. Goods the workplace does not
+       * make are dropped, and a selection with none left is ignored.
        */
       readonly kind: 'setCraftGoods';
       readonly entity: Entity;
@@ -176,18 +113,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Send one owned adult settler to drill at a barracks `house` - the right-click that turns a colonist
-       * into a soldier. It stamps a {@link import('../../components/index.js').TrainingOrder} errand: the
-       * settler walks to the door, stays inside for
-       * {@link import('../../systems/settlers/drives/training.js').BARRACKS_DRILL_TICKS} of drill
-       * (banking TRAINING experience per repetition), then steps out enlisted as the base soldier class - and
-       * stays qualified for the soldier trades from then on. A settler that already holds a fighter trade
-       * only drills; its trade is unchanged. A `moveUnit` order calls the errand off.
-       *
-       * Recoverable bad input (skipped, still logged for faithful replay): a target `isTradeAssignable`
-       * rejects (dead/stale, non-settler, neutral, a child, a woman), a dead/stale/non-building/unbuilt
-       * target, a barracks of another tribe or side, a building that is not a barracks, a door outside the
-       * settler's signpost area, or a settler already drilling at this same house. See `trainSoldier`.
+       * Send one owned adult settler to drill at barracks `house` for `BARRACKS_DRILL_TICKS`; it comes
+       * out enlisted as the base soldier class and stays qualified for the soldier trades. A settler that
+       * already holds a fighter trade only drills. A `moveUnit` order calls the errand off.
        */
       readonly kind: 'trainSoldier';
       readonly entity: Entity;
@@ -195,24 +123,18 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned unmarried adult settler to marry: it seeks the nearest eligible partner of its
-       * tribe (opposite sex, adult, unmarried, not a soldier/scout - the "on a mission" trades) and the
-       * pair walks together and kisses (atomics 20/21), becoming spouses for life. Auto-cancels (a skip,
-       * still logged) when no eligible partner exists right now - and is likewise skipped for a
-       * dead/stale/non-settler/neutral issuer, a child, an already-married or already-marrying settler,
-       * or a soldier/scout issuer. See `marry`.
+       * Order one owned unmarried adult settler to seek the nearest eligible partner of its tribe and
+       * wed. Soldiers and scouts are ineligible on either side, and the order auto-cancels when no
+       * eligible partner exists right now.
        */
       readonly kind: 'marry';
       readonly entity: Entity;
     }
   | {
       /**
-       * Assign one owned adult settler's FAMILY (the settler, its spouse, their still-growing child) to
-       * live in `house`: each member gets a {@link Residence} there. A home houses up to `homeSize`
-       * FAMILIES (`houses.ini` `logichomesize`, 1..5 by level; see `familiesOf`) - the command is
-       * skipped when every family slot is taken by another household. Re-assigning moves the family
-       * (their previous residences are dropped). Skipped for a dead/stale/non-settler/neutral issuer, a
-       * child, or a target that is not a built same-tribe `home`. See `assignHouse`.
+       * House one owned adult settler's whole family (the settler, its spouse, their still-growing child)
+       * in `house`. A home holds up to `homeSize` families (`houses.ini` `logichomesize`, 1..5 by level);
+       * re-assigning moves the family out of its previous home.
        */
       readonly kind: 'assignHouse';
       readonly entity: Entity;
@@ -220,25 +142,17 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Remove one owned adult settler's FAMILY (the settler, its spouse, their still-growing child)
-       * from its home: each member drops its {@link Residence}, freeing the family slot for another
-       * household. The family-wide inverse of `assignHouse` - the same unit moves out that moved in.
-       * Skipped for a dead/stale/non-settler/neutral issuer, a child (it leaves with its parents), or
-       * an unhoused issuer (nothing to remove). See `unassignHouse`. Source basis: user-specified design
-       * (the original has no readable "remove from home" primitive; this mirrors the housed-as-one family).
+       * Move one owned adult settler's whole family out of its home, freeing the family slot. Authored:
+       * the original has no readable "remove from home" primitive; this mirrors the housed-as-one family.
        */
       readonly kind: 'unassignHouse';
       readonly entity: Entity;
     }
   | {
       /**
-       * Order one owned settler to put a good on in equipment slot (`group`, `slot`) - the equip
-       * window's plus/swap button, stamping the {@link import('../../components/index.js').EquipOrder}
-       * errand the planner's equip rung walks out (fetch → wear → stow a swap-out → return). `goodType`
-       * must be an equippable good whose `equip.category` matches `group`. Recoverable bad input
-       * (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral issuer, a
-       * still-growing child, a jobless settler, a bad slot address, or a non-matching good. No source
-       * holding the good makes the errand return empty-handed, not a rejected command. See `equipGood`.
+       * Put `goodType` on in equipment slot (`group`, `slot`); the good's `equip.category` must match
+       * `group`. No source holding the good makes the errand return empty-handed rather than rejecting
+       * the command.
        */
       readonly kind: 'equipGood';
       readonly entity: Entity;
@@ -249,11 +163,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned settler to take the good in equipment slot (`group`, `slot`) off - the equip
-       * window's cross button, stamping the take-off flavour of the same errand (walk to the stow
-       * store still wearing it → take off there → return; a part-used unit is instead destroyed in
-       * place - see the `unequip` effect). Recoverable bad input (skipped, still logged): the
-       * `equipGood` issuer guards, or an already-empty slot. See `unequipGood`.
+       * Take the good in equipment slot (`group`, `slot`) off at its stow store; a part-used unit is
+       * instead destroyed in place.
        */
       readonly kind: 'unequipGood';
       readonly entity: Entity;
@@ -263,12 +174,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Order one owned married woman to make a child of the chosen sex - a standing order (it persists
-       * until the birth succeeds; other orders interrupt but never cancel it). The FamilySystem drives
-       * its stages: she stocks the couple's home with food, waits inside for her husband, and the child
-       * is born once they have made love (see `ChildOrder`). Re-issuing replaces the chosen sex. Skipped
-       * for a dead/stale/non-settler/neutral issuer, a male, a child, an unmarried woman, or while the
-       * couple's previous child is still growing up. See `makeChild`.
+       * Order one owned married woman to make a child of the chosen sex - a standing order that persists
+       * until the birth succeeds. Re-issuing replaces the chosen sex.
        */
       readonly kind: 'makeChild';
       readonly entity: Entity;
@@ -276,12 +183,9 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Raise or lower the alarm on one owned building that can hold a garrison - the original's defence
-       * mode. While it is up, the owner's civilians run to the building and shoot the house bow from inside it
-       * (see `systems/defence/`), up to the type's `shelterCapacity`. Lowering it releases everyone
-       * sheltering there - they re-claim another building still on alarm, or go back to work.
-       * Recoverable bad input (skipped, still logged): a dead/stale/non-building/neutral target, one whose
-       * type holds no garrison, or one that is still a construction site. See `setDefenceMode`.
+       * Raise or lower the alarm on one owned garrison building. While it is up the owner's civilians
+       * shelter inside and shoot the house bow, up to the type's `shelterCapacity`; lowering it releases
+       * everyone sheltering there.
        */
       readonly kind: 'setDefenceMode';
       readonly building: Entity;

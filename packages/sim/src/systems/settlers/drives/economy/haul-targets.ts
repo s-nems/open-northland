@@ -10,20 +10,10 @@ import { deliverableGoodProbe } from './delivery-targets.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
- * The nearest **ground pile** a porter should collect from and the good to lift, or null if none is
- * within reach. A ground pile is a bare {@link Stockpile} on a positioned entity with **no
- * {@link Building}** (a loose heap dropped at a flag) holding at least one unit - the counterpart of
- * {@link nearestStoreFor}'s building-store sink. Nearest by Manhattan + ascending-cell-id (canonical
- * scan); within the chosen pile the good is its lowest-id stocked good ({@link stockpileEntries}, never
- * raw Map order). The porter then delivers the load through {@link deliveryTargetFor} to its warehouse.
- *
- * A pile is skipped when its good is currently **undeliverable for this porter** - `deliverable` is the
- * settler's own {@link deliverableGoodProbe} (the delivery rung's exact routing decision, signpost gate
- * included): lifting it would just make the porter hold a load it can't deposit and shed it at its feet,
- * so instead it leaves that good on the ground and collects the next deliverable pile - "the store is
- * full of wood, so stop hauling wood and fetch something else" (the same gate
- * {@link nearestWorkplaceOutput} applies to workplace output). A pile buried under a building's walls is
- * skipped too ({@link buriedUnderBuilding} - an unreachable stand would strand the porter).
+ * The nearest ground pile a porter should collect from and the good to lift, or null when none is within
+ * reach. A ground pile is a positioned `Stockpile` with no `Building`; the good lifted is its lowest-id
+ * stocked one, and the scan is canonical by Manhattan distance then ascending cell id. A pile whose good
+ * this porter could not deliver is skipped, since lifting it would only make it shed the load at its feet.
  *
  * The same-side gate stays even though a ground heap is never owner-stamped: a boat hull is a positioned
  * building-less stockpile too, so without it a porter would unload a rival's ship.
@@ -34,7 +24,7 @@ export function nearestGroundPile(
 ): { pile: Entity; goodType: number } | null {
   const { world, ctx, terrain, here, targets } = plan;
   const { deliverable } = opts;
-  const gate = plan.limit ?? undefined; // the porter's confinement - an out-of-area pile is not one it fetches
+  const gate = plan.limit ?? undefined; // the porter's confinement: an out-of-area pile is not one it fetches
   const walls = buildingBlockedCells(world, ctx, terrain);
   const memo = unreachableGoals(world, ctx, plan.entity);
   const best = nearestByCell(
@@ -42,14 +32,14 @@ export function nearestGroundPile(
     targets.stockpiles,
     here,
     (e) => {
-      if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
+      if (world.has(e, Building)) return null;
       if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
       const good = lowestStockedGood(world.get(e, Stockpile));
-      if (good === null) return null; // an empty pile is nothing to collect
-      if (!deliverable(good)) return null; // no sink this porter can reach - leave it, try another good
-      if (buriedUnderBuilding(world, terrain, walls, e)) return null; // walled in - an unreachable stand
+      if (good === null) return null;
+      if (!deliverable(good)) return null;
+      if (buriedUnderBuilding(world, terrain, walls, e)) return null;
       const cell = interactionCell(world, ctx, terrain, e, here);
-      if (cell !== here && isUnreachableGoal(memo, cell)) return null; // a goal this porter's route just failed on
+      if (cell !== here && isUnreachableGoal(memo, cell)) return null;
       if (gate !== undefined && !gate.allowsNode(cell)) return null;
       return { cell, payload: good };
     },
@@ -59,27 +49,16 @@ export function nearestGroundPile(
 }
 
 /**
- * The finished OUTPUT good a carrier should haul OUT of the **producing building it is bound to**, to a
- * warehouse - or null when there is nothing to haul. This is the production half of the carrier rule
- * ("tragarz wbity w produkcję jednocześnie przynosi towary I odnosi do magazynu"): a carrier stationed at
- * a FARM (or any producing building) carries its finished output to central storage, where a carrier
- * stationed at a warehouse/HQ only brings goods IN.
+ * The finished output a carrier bound to a producing building should haul out to a warehouse, or null when
+ * there is nothing to haul. A candidate is a good the building's type produces, currently stocks, and this
+ * carrier could deliver somewhere; walked in `produces` order, so the pick never depends on store
+ * insertion history.
  *
- * A candidate is a good the bound building's type PRODUCES ({@link buildingProduces}) that the building
- * currently stocks (>0) and that this carrier could actually deliver somewhere (`deliverable`, its
- * {@link deliverableGoodProbe} - the delivery rung's routing, producer-exclusion and signpost gate
- * included). Walked in `produces` order (a fixed content array, so the pick never depends on store
- * insertion history), first haulable output wins.
- *
- * Scoped to a bound building whose produced good is **field-farmed** (a `farming` block -
- * {@link farmWorkGood}), the field loop's own data signal: a recipe workshop's finished output is already
- * hauled by the producer loop / carrier fallback ({@link workplaceOutputToHaul}/`nearestWorkplaceOutput`),
- * so this closes the gap only for the field producer (the farm) whose bound carrier was otherwise a pure
- * inbound porter. (Keying on "no recipe" instead would silently turn this off under real extracted
- * content - the pipeline synthesizes a recipe for every producing building.) Gated to a NON-field-worker,
- * mirroring the delivery twin: a FARMER falling through to the porter rung must never lift the farm's
- * wheat only to bank it straight back (a per-tick pickup/deposit ping-pong). Returns the bound home and
- * the good to lift, or null when there is nothing to haul.
+ * Scoped to a bound building whose produced good is field-farmed (a `farming` block), since a recipe
+ * workshop's output is already hauled by the producer loop. Keying on the absence of a recipe instead would
+ * silently disable this under extracted content, where the pipeline synthesizes a recipe for every
+ * producing building. Gated to a non-field-worker so a farmer never lifts the farm's wheat only to bank it
+ * straight back.
  */
 export function boundProducerOutputToHaul(
   deliverable: (goodType: number) => boolean,
@@ -92,13 +71,12 @@ export function boundProducerOutputToHaul(
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return null;
   const home = binding.workplace;
-  // Only a farm's CARRIER (same tribe, a field producer, not the field worker) hauls output out - the
-  // role gate shared with `toStorageOffFarm`, so pickup and delivery routing can't disagree.
+  // The role gate is shared with `toStorageOffFarm`, so pickup and delivery routing cannot disagree.
   if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
   if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
-    if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
+    if ((stock.get(goodType) ?? 0) <= 0) continue;
     if (deliverable(goodType)) {
       return { home, goodType };
     }
@@ -107,11 +85,8 @@ export function boundProducerOutputToHaul(
 }
 
 /**
- * The porter rung's whole pickup decision, side-effect-free: haul the bound producer's output out
- * ({@link boundProducerOutputToHaul}) or bring the nearest deliverable ground pile in
- * ({@link nearestGroundPile}), in that priority order - or null when the porter has nothing to do.
- * Split from `planPorter` (which acts on it) so the dormancy verifier can re-run the exact decision
- * without mutating state (see ./porter-dormancy.ts).
+ * The porter rung's pickup decision, side-effect-free so the dormancy verifier can re-run it without
+ * mutating state: the bound producer's output out first, else the nearest deliverable ground pile in.
  */
 export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodType: number } | null {
   const deliverable = deliverableGoodProbe(plan);
@@ -128,11 +103,7 @@ export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodTy
   return pile === null ? null : { from: pile.pile, goodType: pile.goodType };
 }
 
-/**
- * Whether a settler is a **porter**: bound (via {@link JobAssignment}) to a storage fixture rather than a
- * producing workplace - the gate for the ground-pile collection drive. A porter has no recipe workshop to
- * staff and (by content) no harvest atomic, so it exists to move loose goods into its store.
- */
+/** Whether a settler is a porter: bound to a storage fixture rather than a producing workplace. */
 export function isPorterBoundToStore(world: World, ctx: SystemContext, settler: Entity): boolean {
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return false;

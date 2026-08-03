@@ -9,19 +9,11 @@ import { fetchNeededMaterial } from './site-supply.js';
 
 /**
  * SITE STAFF - a worker posted to a building that is still going up hauls its construction bill (a carrier)
- * or waits at it (every other trade). Waiting rather than working reads off `jobtypes.ini`
- * `mustHaveFinishedWorkHouseFlag`, applied here as a blanket: the flag is not extracted into the IR, and its
- * 1 rows cover the craft trades this rung mostly sees. The blanket over-applies to the flag's 0 rows - a
- * hunter posted to a store's gatherer slot stops hunting while that store is upgraded, where the data says
- * he should carry on (`docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md`).
+ * or waits at it (every other trade). Waiting reads off `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`,
+ * applied as a blanket because the flag is not extracted into the IR; that over-applies to its 0 rows, so a
+ * hunter posted to a store's gatherer slot stops hunting while the store is upgraded.
  *
- * The stand goes through {@link claimWorkCell}, so staff spread over the site's perimeter alongside the
- * build crew. The binding survives the rise, so work starts the tick the building is finished. A posted
- * trade that can BUILD never reaches this rung - {@link import('./builder.js').planBuilder} takes it above
- * and puts it to work on its own site.
- *
- * source-basis: that a posted worker exists before completion at all is a user rule, as is a carrier
- * supplying its own site; the original has no pre-completion staff to observe.
+ * Source basis: authored, since the original has no pre-completion staff to observe.
  */
 export function planSiteStaff(
   plan: PlannerContext,

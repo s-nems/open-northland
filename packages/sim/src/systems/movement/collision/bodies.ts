@@ -6,28 +6,20 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 
 /**
- * Unit body collision, an authored deviation: the original is observed letting walkers pass through each
- * other. This module is the who/where read model behind the vocabulary the rest of the folder uses. Soft
- * movers (any owned walking settler) nudge each other apart, capped below the arrival brake floor in
- * separation.ts so a nudge can delay an arrival but never prevent one. Firm movers (owned fighters)
- * additionally resolve against posts, a firm collider standing still, whose nodes enter the walk overlay.
- * Everyone else is a ghost that passes through, which keeps converging economy flows unjammable and every
- * unowned fixture byte-identical.
+ * Unit body collision is an authored deviation: the original is observed letting walkers pass through each
+ * other. Soft movers (any owned walking settler) nudge each other apart; firm movers (owned fighters) also
+ * resolve against posts, a firm collider standing still, whose nodes enter the walk overlay. Everyone else
+ * is a ghost that passes through, which keeps converging economy flows unjammable.
  */
 
 /**
- * The Manhattan node radius of a player's calm zone around each of its buildings. Inside its own player's
- * zone a firm mover drops to the soft tier and its posts stay out of that player's walk overlay, so town
- * traffic keeps flowing; enemies get no exemption from someone else's town. Approximation: sized to cover a
- * building footprint plus its door approaches, with no original counterpart.
+ * The Manhattan node radius of a player's calm zone around each of its buildings. Inside its own zone a firm
+ * mover drops to the soft tier and its posts stay out of that player's walk overlay; enemies get no
+ * exemption. Approximation: sized to cover a building footprint plus its door approaches.
  */
 const CALM_ZONE_RADIUS_NODES = 8;
 
-/**
- * Whether `e` is a firm collider: an owned fighter. Routing applies the standing-body walk overlay only to a
- * requester that firmly collides, since a ghost walks straight through bodies and an economy walk's target
- * must stay exactly on its goal node for the node-coincidence checks.
- */
+/** Whether `e` is a firm collider: an owned fighter. */
 export function hasBodyCollision(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.has(e, Owner)) return false;
   const settler = world.tryGet(e, Settler);
@@ -51,9 +43,9 @@ export function isStanding(world: World, e: Entity): boolean {
 }
 
 /**
- * Per-world memo of {@link calmZonesByPlayer}, keyed on the `Building` and `Owner` membership generations
- * plus terrain identity. Positions are immutable once placed and ownership only changes by add/remove, so
- * the key covers every input, conservatively: `Owner` rides settlers too, so settler churn also bumps it.
+ * Per-world calm-zone memo keyed on the `Building` and `Owner` membership generations plus terrain identity.
+ * Positions are immutable once placed and ownership only changes by add or remove, so the key covers every
+ * input, conservatively: `Owner` rides settlers too, so settler churn also bumps it.
  */
 const zonesMemo = new WeakMap<
   World,

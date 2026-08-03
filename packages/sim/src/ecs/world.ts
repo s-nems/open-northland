@@ -36,10 +36,8 @@ export class World {
   /** Derived-cache verifiers by name, run in first-registration order; registering a name again replaces the
    *  verifier but keeps its position. */
   private readonly cacheVerifiers = new Map<string, CacheVerifier>();
-  /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create}/
-   *  {@link destroy} since component add/remove cannot change membership. Without it a system that scans the
-   *  world per entity re-sorts the whole alive set per call: the quadratic stall that pinned a few-thousand
-   *  unit crowd at ~1 fps. */
+  /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
+   *  {@link destroy} since component add/remove cannot change membership. */
   private canonicalCache: readonly Entity[] | null = null;
 
   create(): Entity {
@@ -95,12 +93,10 @@ export class World {
   }
 
   /**
-   * Apply an in-place mutation to `entity`'s stored `component` value and log it on every change channel at
-   * once (the identity-keyed snapshot clone cache and the component's value generation). Required for any
-   * write a derived cache can observe; `add`/`remove`/`destroy` log for themselves, and a raw
-   * `get(...).field = x` reaches no channel - the staleness {@link verifyCaches} exists to catch.
-   * Throws when `entity` does not carry `component`; a caller that tolerates a raced-away entity tests
-   * with {@link has}/{@link tryGet} first.
+   * Apply an in-place mutation to `entity`'s stored `component` value and log it on every change
+   * channel at once (the identity-keyed snapshot clone cache and the component's value generation).
+   * Required for any write a derived cache can observe, because a raw `get(...).field = x` reaches no
+   * channel. Throws when `entity` does not carry `component`.
    */
   write<T>(entity: Entity, component: Component<T>, mutate: (value: T) => void): void {
     mutate(this.get(entity, component));
@@ -147,8 +143,8 @@ export class World {
     return new QueryIterator(this.stores, required);
   }
 
-  /** The lowest-id entity carrying `component`, or null. The world-rules singleton read called from hot
-   *  per-candidate gates: a missing or empty store answers without allocating an iterator. */
+  /** The lowest-id entity carrying `component`, or null; a missing or empty store answers without
+   *  allocating an iterator. */
   lowestEntityWith(component: Component<unknown>): Entity | null {
     const store = this.stores.get(component);
     if (store === undefined || store.size === 0) return null;
@@ -181,11 +177,10 @@ export class World {
   }
 
   /**
-   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live copy
-   * (empty = coherent). Incremental caches are the classic lockstep-desync source, so a missed invalidation
-   * shows up here, at the tick it happens, not as an unexplained hash divergence later: `harness/invariants.ts`
-   * runs it every tick of an invariant-checked scenario/golden/fuzz run. The World's own memo is checked
-   * first and unconditionally, so no registered name can shadow it.
+   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live
+   * copy (empty = coherent), so a missed invalidation surfaces at the tick it happens rather than as a
+   * hash divergence later. The World's own memo is checked first and unconditionally, so no registered
+   * name can shadow it.
    */
   verifyCaches(): string[] {
     const out = this.verifyCanonicalCache();
@@ -215,10 +210,7 @@ export class World {
     return out;
   }
 
-  /**
-   * Visit an entity's components (name + live value) in registration order: the single canonical traversal
-   * "what the state is" has. Allocation-free, because the per-frame snapshot clone runs it per entity.
-   */
+  /** Visit an entity's components (name and live value) in registration order, without allocating. */
   forEachComponent(entity: Entity, visit: (name: string, value: unknown) => void): void {
     for (const c of this.registered) {
       const v = this.stores.get(c)?.get(entity);

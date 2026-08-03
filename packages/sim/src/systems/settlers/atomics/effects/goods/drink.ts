@@ -6,11 +6,10 @@ import { applyEquipWear, draughtRestores, wearStepOf } from '../../../../equipme
 import { relieveNeed } from '../../../../lifecycle/needs.js';
 
 /**
- * Apply one completed `drink`: re-read misc[`slot`] - a slot emptied or spent since the drive chose
- * it whiffs (unlike `eat`'s raced store, the bottle is the SOLE source, so nothing restores from a
- * bare slot). Otherwise apply ALL the good's content restores - hunger/fatigue via
- * {@link relieveNeed}, health capped at max - then advance the bottle one sip; the last rated sip
- * vanishes it from the slot (manual: "Small potions can be used twice ... Then they are used up").
+ * Apply one completed `drink`: a slot emptied or spent since the drive chose it restores nothing, since
+ * the bottle is the sole source. Otherwise apply the good's hunger, fatigue, and health restores, then
+ * advance the bottle one sip; the last rated sip vanishes it from the slot (manual: "Small potions can be
+ * used twice ... Then they are used up").
  */
 export function drinkDraught(world: World, ctx: SystemContext, settler: Entity, slot: number): void {
   const eq = world.tryGet(settler, Equipment);

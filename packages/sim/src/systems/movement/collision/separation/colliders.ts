@@ -11,10 +11,9 @@ export interface TickColliders {
   readonly movers: readonly Entity[];
   readonly firmMovers: ReadonlySet<Entity>;
   /**
-   * Pre-separation positions AND headings, so a pair's two halves read the same state whatever the
-   * processing order. Headings must come from here, not a live component read: the grind bookkeeping can
-   * drop an earlier-processed mover's PathFollow mid-loop (a re-route/stand-down in a converging crowd),
-   * so a live read on a later mover's neighbour would throw - and would split the pair order-dependently.
+   * Pre-separation positions and headings, so a pair's two halves read the same state whatever the
+   * processing order. A live heading read would be order-dependent and can throw, since the grind
+   * bookkeeping drops an earlier-processed mover's PathFollow mid-loop.
    */
   readonly before: ReadonlyMap<Entity, Readonly<MoverSnapshot>>;
   readonly moverIndex: NodeBuckets;

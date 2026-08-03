@@ -19,38 +19,20 @@ import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/n
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
 /**
- * HerdingSystem - the **follow-the-leader** movement drive for a herding animal.
+ * The follow-the-leader drive: an idle {@link HerdMember} that has strayed farther than its cohesion radius
+ * from its leader is sent back to a spot beside it, through the same goal-to-path chain a settler walks. A
+ * leader points at itself and follows no one, and a solitary animal carries no `HerdMember`. Only an idle,
+ * resting follower is moved, so a swing in progress or an already-travelling animal is left alone.
  *
- * A herd animal that `searchforleader`s carries a {@link HerdMember} pointing at its pack's leader
- * (set once at spawn by the `spawnAnimalHerd` command - the lowest-id member, which points at
- * **itself**). This system keeps the pack together: an idle **follower** that has wandered farther
- * than its `animaltypes.ini` `maximumleaderdistance` from its leader is sent back, walking to a spot
- * BESIDE the leader via the same {@link MoveGoal}→{@link PathRequest}→{@link PathFollow} chain a
- * settler uses. The recall never aims at an occupied field: landing on the leader's own node draws
- * the two sprites as one animal until the graze drive un-stacks them (user feedback), so the target
- * is the nearest {@link RECALL_OFFSETS} spot inside the cohesion radius that no standing animal
- * holds, falling back to the leader's cell only when the whole ring is taken or the radius is too
- * tight for the stander spacing. The **leader itself** (`HerdMember.leader === self`) runs no follow
- * drive, and a **solitary** animal carries no `HerdMember` at all, so it is never visited.
+ * Landing on the leader's own node draws the two sprites as one animal, so the recall aims at the nearest
+ * free ring spot and falls back to the leader's cell only when the ring is taken or the radius is too tight.
  *
- * A follower is moved only when **idle and at rest**: no {@link CurrentAtomic} running (don't yank a
- * creature out of an attack swing) and not already travelling (no {@link MoveGoal}/{@link PathRequest}/
- * {@link PathFollow} - it is already heading somewhere; re-issuing would fight the planner). So a
- * fighting or already-returning animal is left alone; cohesion is the **idle-default** behaviour, the
- * same precedence the AI planner gives travel.
+ * source-basis: the cohesion radius is the verbatim `animaltypes.ini` `maximumleaderdistance`. Approximation:
+ * that a strayed follower walks back to a free spot beside the leader, and that a radius of 0 reads literally
+ * as standing on the leader's cell.
  *
- * source-basis: the **cohesion radius** is the verbatim extracted `animaltypes.ini` `maximumleaderdistance`
- * param (faithful - *how far* a follower may stray). **Approximated (no oracle):** that a strayed
- * follower walks back to a free spot beside the leader (the original's herd-cohesion AI - flocking
- * offsets, formation, wander-while-near - is the undocumented "soul"); a `maximumleaderdistance` of 0
- * means "stay on the leader's cell", the literal reading of the param. Recorded in source basis.
- *
- * Determinism: no RNG, no wall-clock. Followers are visited in canonical id order because the spot
- * picks consume a shared taken-set - an earlier follower's choice excludes it for later ones. The
- * standing-occupancy set and block overlay are built lazily, only on a tick where some follower
- * actually strays. No-ops without a terrain graph (a mapless sim has no cells to measure leader
- * distance over - the golden is untouched). Inert on the goldens/slice: no entity there carries a
- * `HerdMember`, so the follower scan finds nobody.
+ * Followers are visited in canonical id order because the spot picks consume a shared taken-set, so an
+ * earlier follower's choice excludes it for later ones.
  */
 export const herdingSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure leader distance over
@@ -62,16 +44,14 @@ export const herdingSystem: System = (world, ctx) => {
   for (const e of canonicalById(world.query(HerdMember, Settler, Position))) {
     const leader = world.get(e, HerdMember).leader;
     if (leader === e) continue; // the leader follows no one
-    // Busy / already travelling: leave it (don't interrupt a swing or fight the navigation planner).
+    // Busy or already travelling: interrupting would cut a swing short or fight the navigation planner.
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
     if (world.has(e, Frightened)) continue; // a scattering follower is not pulled back into the scare
     // A workplace visit owns the creature: no recall out of the building (Resting), and none competing
     // with the visit system's walk to the door (LivestockVisit).
     if (world.has(e, Resting) || world.has(e, LivestockVisit)) continue;
-    // A leader that has been reaped (killed in combat) is gone - its components are removed, so a
-    // follower has no cell to return to; leave it where it stands (the herd is leaderless until a
-    // later slice re-designates one).
+    // A reaped leader has no Position, so the follower has no cell to return to and stays where it is.
     if (!world.has(leader, Position)) continue;
 
     const range = herdParams(ctx.content, world.get(e, Settler).tribe)?.leaderDistance ?? 0;
@@ -88,8 +68,8 @@ export const herdingSystem: System = (world, ctx) => {
   }
 };
 
-/** Recall landing spots ringing the leader, nearest first: the node-Manhattan-2 diagonals/axials, then
- *  the 3-ring - every spot at least the stander spacing from the leader, in fixed (canonical) order. */
+/** Recall landing spots ringing the leader, nearest first and in canonical order: every spot sits at least
+ *  the stander spacing away. */
 const RECALL_OFFSETS: readonly (readonly [number, number])[] = [
   [1, 1],
   [-1, -1],
@@ -113,10 +93,10 @@ const RECALL_OFFSETS: readonly (readonly [number, number])[] = [
   [0, -3],
 ];
 
-/** Where a strayed follower lands: the first {@link RECALL_OFFSETS} spot inside the cohesion radius
- *  that is walkable, reachable from `from`, unblocked, and clear of standing animals and of spots
- *  earlier recalls took this tick. The leader's own cell is the fallback - a radius under the stander
- *  spacing (the literal `maximumleaderdistance 0` reading) or a fully taken ring still recalls. */
+/** Where a strayed follower lands: the first {@link RECALL_OFFSETS} spot inside the cohesion radius that is
+ *  walkable, reachable from `from`, unblocked, and clear of standing animals and of spots earlier recalls
+ *  took this tick. A radius under the stander spacing or a fully taken ring falls back to the leader's cell,
+ *  so a recall always has a target. */
 function recallSpot(
   terrain: TerrainGraph,
   standing: ReadonlySet<NodeId>,
@@ -142,8 +122,8 @@ function recallSpot(
   return leaderCell;
 }
 
-/** The nodes standing animals hold right now - every {@link StayPoint} creature not walking and not
- *  inside a building - the recall's "occupied field" read (mirrors the wander system's keeper scan). */
+/** The nodes standing animals hold right now: every {@link StayPoint} creature not walking and not inside
+ *  a building. */
 function standingAnimalNodes(world: World, terrain: TerrainGraph): Set<NodeId> {
   const nodes = new Set<NodeId>();
   for (const e of world.query(StayPoint, Settler, Position)) {

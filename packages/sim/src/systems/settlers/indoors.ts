@@ -6,13 +6,8 @@ import { atOrWalk } from './atomics/start.js';
 /**
  * Walk `e` to `door`, then step it inside `building` on arrival and run `then`: the tail of every errand
  * that ends indoors. The marker means "inside, and the render must not draw it", so it holds only while
- * something keeps the settler in - the planner sheds it on every re-plan (`planner/replan.ts`) unless the
- * FamilySystem owns the settler (`FamilyDuty`), a feed batch owns the visiting animal
- * (`LivestockVisit` - `livestock/processing.ts` releases it), the settler is manning a post
- * ({@link takePost}), or an alarm holds it in cover (`Sheltering` - the DefenceSystem owns that exit), and
- * a firing needs drive sheds it (`drives/ladder.ts`) unless the settler just bedded down indoors. An
- * errand outlasts both by running an atomic (a re-plan skips a busy settler) and steps back out when it
- * ends; {@link isInside} is the read.
+ * some owner keeps the settler in - a family duty, a livestock visit, a manned post, or an alarm - while a
+ * plain errand outlasts a re-plan by running an atomic and steps back out when it ends.
  */
 export function enterBuilding(
   world: World,
@@ -42,14 +37,12 @@ export function stepOut(world: World, e: Entity): void {
 }
 
 /**
- * Take the post inside `building`: stand on its own tile and remember the doorstep to come back to. The
- * caller has already stepped the settler in; this is the extra move a GARRISON makes, so its shot leaves
- * the tower instead of its doorstep (see {@link Garrison}).
+ * Take the post inside `building`: stand on its own tile and remember the doorstep to come back to. This is
+ * the extra move a garrison makes, so its shot leaves the tower instead of its doorstep.
  *
- * This and {@link standDownFromPost} are the only writes to a settler's `Position` outside the movement
- * system, and they land it on a building's own (walk-blocked) node. Every incremental spatial structure is
- * keyed on static entities, never on settler positions, so nothing desynchronizes today - but a new
- * settler-position-keyed index would have to account for these two.
+ * This and `standDownFromPost` are the only writes to a settler's `Position` outside the movement system,
+ * and they land it on a building's own walk-blocked node, so a settler-position-keyed spatial index would
+ * have to account for them.
  */
 export function takePost(world: World, e: Entity, building: Entity): void {
   const at = world.tryGet(building, Position);
@@ -61,10 +54,9 @@ export function takePost(world: World, e: Entity, building: Entity): void {
 }
 
 /**
- * Leaving the building ends any garrison duty. The doorstep is restored only while the settler is still
- * standing where {@link takePost} put it: another drive (a player walk, an equip errand, a flee) can march
- * a garrison off its tower without passing through here, and putting THAT settler back on a doorstep it
- * has already left would teleport it across the map. No-op for anyone holding no post.
+ * Leaving the building ends any garrison duty. The doorstep is restored only while the settler still stands
+ * where `takePost` put it: another drive can march a garrison off its tower without passing through here,
+ * and restoring that settler's doorstep would teleport it across the map.
  */
 function standDownFromPost(world: World, e: Entity): void {
   const held = world.tryGet(e, Garrison);

@@ -78,8 +78,8 @@ export const ANIMAL_WANDER_STEP_NODES = 4;
  * on one node un-stack, since only walkers get the separation system's soft nudge. The territory radius
  * leashes where a step may end rather than how far one step reaches, so short hops drift a creature around
  * its territory without leaving it, and one displaced past its leash may still step home. No leg starts
- * while a fight is live: `combatSystem` skips target acquisition for a travelling unit that is not yet
- * engaged, so every graze leg is a window in which a creature runs no combat.
+ * while a fight is live, and `combatSystem` skips acquisition for a travelling unit, so a graze leg is a
+ * window in which a creature runs no combat.
  *
  * source-basis: the territory radius is the verbatim extracted `maximumdistancetostaypoint`, consumed as a
  * node-lattice Manhattan radius like `maximumleaderdistance`, so a territory is a node diamond, wider than

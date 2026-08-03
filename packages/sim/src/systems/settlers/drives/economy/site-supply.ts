@@ -7,13 +7,11 @@ import { interactionCell, nearestStoreHolding } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 
 /**
- * Fetch one still-needed construction good for `site` from a store that holds it, routing the pickup so the
- * delivery drive carries the load back to the site (which advertises the demand). Tries the least-covered
- * material first but falls through the whole bill: the goods need not arrive in bill order, so a good with no
- * source anywhere never blocks fetching the ones that are available (the site accumulates what it can and
- * waits for the scarce good). One unit per trip (the global {@link CARRY_CAPACITY}). The needs already
- * discount other settlers' live supply errands (SupplyRun), and this fetch stamps its own - so a crew spreads
- * over the still-unclaimed materials instead of racing to the same unit. Returns whether a fetch was started.
+ * Fetch one still-needed construction good for `site` from a store that holds it; the delivery drive then
+ * carries the load back. Tries the least-covered material first but falls through the whole bill, so a good
+ * with no source anywhere never blocks the ones that are available. The needs discount other settlers' live
+ * supply errands and this fetch stamps its own, so a crew spreads over the still-unclaimed materials
+ * instead of racing to the same unit.
  */
 export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
@@ -31,7 +29,7 @@ export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean
       plan.limit ?? undefined,
       avoid,
     );
-    if (src == null) continue; // no store holds this material - try the next bill line
+    if (src == null) continue;
     const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
