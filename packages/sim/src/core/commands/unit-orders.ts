@@ -7,8 +7,10 @@ export type UnitOrderCommand =
       /**
        * Order one owned settler to walk to (x,y) - the RTS "go there" order. It sets a `MoveGoal` (the
        * existing pathfinding→movement pipeline carries it out) + a `PlayerOrder` en-route marker; on arrival
-       * the economy AI reclaims the unit at once (no post-arrival stand). Skipped for a dead/stale target, a
-       * non-settler, or a neutral (unowned) entity. See the `moveUnit` handler.
+       * the economy AI reclaims the unit at once (no post-arrival stand). A tower garrison is released from
+       * its post outright ({@link import('../../systems/settlers/drives/tower-post.js').releaseTowerPost}) -
+       * the order is how the player calls a posting off. Skipped for a dead/stale target, a non-settler, or a
+       * neutral (unowned) entity. See the `moveUnit` handler.
        */
       readonly kind: 'moveUnit';
       readonly entity: Entity;

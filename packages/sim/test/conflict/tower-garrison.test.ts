@@ -212,10 +212,10 @@ describe('the tower garrison - taking the post', () => {
     // doorstep left to put him back on.
     expect(tileOf(sim, soldier)).toEqual(rubble);
   });
+});
 
-  it('gives up the post when another drive walks the garrison out, and retakes it after', () => {
-    // The leak this guards: the markers used to survive any walk that did not go through `stepOut`,
-    // leaving a settler who was invisible, untargetable and shooting at the tower's reach from anywhere.
+describe('the tower garrison - calling the posting off', () => {
+  it('a walk order releases the garrison, and he stays off the wall', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
@@ -224,13 +224,45 @@ describe('the tower garrison - taking the post', () => {
     sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
     run(sim, 40);
 
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false); // the posting is cancelled outright
     expect(sim.world.has(soldier, Garrison)).toBe(false); // off the wall, so no reach bonus, no cover
     expect(sim.world.has(soldier, Resting)).toBe(false); // and drawn again
     expect(tileOf(sim, soldier)).not.toEqual(tileOf(sim, tower));
 
-    run(sim, 400); // the order runs out and the post pulls him back
-    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
-    expect(tileOf(sim, soldier)).toEqual(tileOf(sim, tower));
+    // Without the release the post would pull him straight back the tick the order retires.
+    run(sim, 400);
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false);
+    expect(sim.world.has(soldier, Garrison)).toBe(false);
+    expect(tileOf(sim, soldier)).not.toEqual(tileOf(sim, tower));
+  });
+
+  it('releases a garrison still on his way to the tower', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    run(sim, 4); // walking to the door, not up there yet
+
+    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    run(sim, 400);
+
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false);
+    expect(sim.world.has(soldier, Garrison)).toBe(false);
+  });
+
+  it('leaves an ordinary worker of the same tower his job', () => {
+    // The release is post-scoped: sending a hauler somewhere is the old "go there, then back to work",
+    // and only the man whose work IS the watch loses his workplace.
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const hauler = settlerAt(sim, CARRIER_JOB, 2, 3);
+    sim.enqueue({ kind: 'assignWorker', entity: hauler, building: tower, jobPriority: [CARRIER_JOB] });
+    run(sim, 4);
+
+    sim.enqueue({ kind: 'moveUnit', entity: hauler, x: 2, y: 6 });
+    run(sim, 40);
+
+    expect(sim.world.tryGet(hauler, JobAssignment)).toEqual({ workplace: tower });
   });
 });
 

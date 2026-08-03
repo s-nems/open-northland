@@ -1,4 +1,10 @@
-import { CurrentAtomic, Garrison, type SettlerIdentity } from '../../../components/index.js';
+import {
+  CurrentAtomic,
+  Garrison,
+  JobAssignment,
+  Settler,
+  type SettlerIdentity,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { standsAtPost, towerPostFor } from '../../conflict/tower-post.js';
@@ -36,6 +42,22 @@ export function planTowerPost(
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), door)) return false;
   enterBuilding(world, e, post, here, door, () => takePost(world, e, post));
   return true;
+}
+
+/**
+ * Give the post up: drop the workplace binding, so {@link planTowerPost} stops claiming this settler.
+ * Standing the watch has no completion, so nothing else ends it - a garrison walked off its tower with the
+ * binding intact climbs straight back on the next re-plan. Stepping off the tile is not done here: the
+ * re-plan's garrison stand-down owns that exit and runs the same tick (`planner/replan.ts`). No-op for
+ * anyone who is not a posted fighter, so a shared order handler leaves every other worker employed.
+ *
+ * Source basis: user rule 2026-08-03. The original exposes no readable "leave the tower" primitive; the
+ * decision is that the player's next order for that man IS the cancellation.
+ */
+export function releaseTowerPost(world: World, ctx: SystemContext, e: Entity): void {
+  const jobType = world.tryGet(e, Settler)?.jobType;
+  if (jobType == null || towerPostFor(world, ctx, e, jobType) === null) return;
+  world.remove(e, JobAssignment);
 }
 
 /**
