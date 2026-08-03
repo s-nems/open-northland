@@ -28,6 +28,7 @@ import {
   WAVE_MIN_SOLDIERS,
   weaponMix,
 } from '../../src/systems/ai-player/index.js';
+import { combatTargetNode } from '../../src/systems/conflict/target-node.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
@@ -157,8 +158,11 @@ function rallyOf(sim: Simulation): { node: NodeId; x: number; y: number } {
 /** Where the seat's waves form up against `target`, as a node and as coordinates to spawn around. */
 function stagingOf(sim: Simulation, target: Entity): { node: NodeId; x: number; y: number } {
   const terrain = terrainOf(sim);
-  const objective = objectiveNode(sim.world, ctxOf(sim), terrain, target);
-  const node = stagingNode(terrain, rallyOf(sim).node, objective);
+  const home = rallyOf(sim).node;
+  // The module stages off the wall the band would reach, not the door - mirror it here or the helper
+  // names a point the module never picks.
+  const face = combatTargetNode(sim.world, ctxOf(sim), terrain, home, target);
+  const node = stagingNode(terrain, home, face);
   if (node === null) throw new Error('setup: the objective stands too close to stage against');
   return { node, ...terrain.coordsOf(node) };
 }
@@ -323,12 +327,29 @@ describe('military module - the campaign', () => {
     expect(moveDestinations(commands)).toEqual(
       new Array(WAVE_MIN_SOLDIERS).fill({ x: staging.x, y: staging.y }),
     );
-    // The forming-up point stands one standoff short of the objective, on the way home.
+    // The forming-up point stands one standoff short of the WALL the band would reach, on the way home -
+    // measured off the door, a big house would let the muster stand against its near side.
+    const home = rallyOf(sim).node;
+    const face = combatTargetNode(sim.world, ctxOf(sim), terrain, home, foeHq);
+    expect(Math.abs(manhattan(terrain, staging.node, face) - STAGING_STANDOFF_NODES)).toBeLessThanOrEqual(1);
+    expect(manhattan(terrain, staging.node, home)).toBeLessThan(manhattan(terrain, face, home));
+  });
+
+  it('stages off the wall it would reach, not off a door on the far side', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    // Due south, so the band comes at its north wall while the fixture HQ's door faces south.
+    place(sim, HQ_TYPE, { x: BARRACKS.x, y: BARRACKS.y + 60 }, FOE);
+    const terrain = terrainOf(sim);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+    const home = rallyOf(sim).node;
+    const staging = stagingOf(sim, foeHq);
+
+    const wall = combatTargetNode(sim.world, ctxOf(sim), terrain, home, foeHq);
     const door = objectiveNode(sim.world, ctxOf(sim), terrain, foeHq);
-    expect(Math.abs(manhattan(terrain, staging.node, door) - STAGING_STANDOFF_NODES)).toBeLessThanOrEqual(1);
-    expect(manhattan(terrain, staging.node, rallyOf(sim).node)).toBeLessThan(
-      manhattan(terrain, door, rallyOf(sim).node),
-    );
+    expect(manhattan(terrain, staging.node, wall)).toBeLessThanOrEqual(STAGING_STANDOFF_NODES + 1);
+    // Measured off the door instead, the same standoff would put the band against that near wall.
+    expect(manhattan(terrain, staging.node, door)).toBeGreaterThan(STAGING_STANDOFF_NODES + 1);
   });
 
   it('charges the objective once the group has formed up at the staging point', () => {
@@ -350,7 +371,12 @@ describe('military module - the campaign', () => {
     const staging = stagingOf(sim, foeHq);
     pack(sim, WAVE_MIN_SOLDIERS, { x: staging.x, y: staging.y });
 
-    expect(run(sim, PATIENT_SEED)).toEqual([]); // formed up already, so nothing to order either
+    // Formed up already, so nobody is walked anywhere; they are only put on hold where they stand, so
+    // the band waits as a band instead of each man picking his own house to attack.
+    const held = run(sim, PATIENT_SEED);
+    expect(attackTargets(held)).toEqual([]);
+    expect(moveDestinations(held)).toEqual([]);
+    expect(stanceModes(held)).toEqual(new Array(WAVE_MIN_SOLDIERS).fill(MILITARY_MODE.DEFEND));
     expect(attackTargets(run(sim, EAGER_SEED))).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 
@@ -362,8 +388,14 @@ describe('military module - the campaign', () => {
     const [survivor] = spawn(sim, 1, { x: rally.x + 60, y: rally.y });
     if (survivor === undefined) throw new Error('setup: no soldier');
 
-    // One man is no wave, so there is nothing to gather out in the field: he comes back to the barracks.
-    expect(run(sim)).toEqual([{ kind: 'moveUnit', entity: survivor, x: rally.x, y: rally.y }]);
+    // One man is no wave, so there is nothing to gather out in the field: he comes back to the barracks,
+    // where the army waits on the attack so it meets whatever comes to the door.
+    const commands = run(sim);
+    expect(attackTargets(commands)).toEqual([]);
+    expect(commands.filter((c) => c.kind === 'moveUnit')).toEqual([
+      { kind: 'moveUnit', entity: survivor, x: rally.x, y: rally.y },
+    ]);
+    expect(stanceModes(commands)).toEqual([]); // a fighter already defaults to ATTACK - nothing to restate
   });
 
   it('pulls the last man forward instead of stranding a band short of the objective', () => {
@@ -378,7 +410,9 @@ describe('military module - the campaign', () => {
     // has to count him with them - measured over the men at home alone, the two halves wait forever.
     const commands = run(sim);
     expect(attackTargets(commands)).toEqual([]);
-    expect(commands).toEqual([{ kind: 'moveUnit', entity: last, x: staging.x, y: staging.y }]);
+    expect(commands.filter((c) => c.kind === 'moveUnit')).toEqual([
+      { kind: 'moveUnit', entity: last, x: staging.x, y: staging.y },
+    ]);
   });
 
   it('leaves a man who stopped short of the staging ring closing on it, never walks him back', () => {
@@ -393,7 +427,9 @@ describe('military module - the campaign', () => {
     if (late === undefined) throw new Error('setup: no soldier');
 
     // He is past the halfway mark, so a lost roll must not march him back to the barracks and out again.
-    expect(run(sim, PATIENT_SEED)).toEqual([{ kind: 'moveUnit', entity: late, x: staging.x, y: staging.y }]);
+    expect(run(sim, PATIENT_SEED).filter((c) => c.kind === 'moveUnit')).toEqual([
+      { kind: 'moveUnit', entity: late, x: staging.x, y: staging.y },
+    ]);
   });
 
   it('keeps a muster below the wave minimum at home', () => {
@@ -421,15 +457,42 @@ describe('military module - the campaign', () => {
     expect(leaving(run(full, PATIENT_SEED))).toBe(CERTAIN_WAVE);
   });
 
-  it('never marches a shooting line with nobody in front of it', () => {
+  it('never marches a shooting line while the seat still owns somebody to lead it', () => {
     const sim = armedSim(0);
     const staging = stagingOf(sim, buildingOfType(sim, HQ_TYPE, FOE));
     pack(sim, CERTAIN_WAVE, { x: staging.x, y: staging.y }, BOWMAN);
+    // The one spearman is back at the barracks, so the seat HAS a front rank - it just is not here yet.
+    const rally = rallyOf(sim);
+    spawn(sim, 1, { x: rally.x, y: rally.y + 1 }, SPEARMAN);
     expect(attackTargets(run(sim))).toEqual([]);
 
-    // One man who fights in reach is enough to send them all.
+    // And once one of them stands with the band, the band goes in - the man left at the barracks is not
+    // part of this wave, only of the seat's melee tally.
     pack(sim, 1, { x: staging.x, y: staging.y + 1 }, SPEARMAN);
     expect(attackTargets(run(sim))).toHaveLength(CERTAIN_WAVE + 1);
+  });
+
+  it('sends an all-archer army rather than benching it for a swordsman it will never own', () => {
+    const sim = armedSim(0);
+    const staging = stagingOf(sim, buildingOfType(sim, HQ_TYPE, FOE));
+    pack(sim, CERTAIN_WAVE, { x: staging.x, y: staging.y }, BOWMAN);
+
+    // Nobody in the whole army fights in reach, so the melee core is waived: holding out for a front
+    // rank the seat cannot raise would bench its army for the rest of the game.
+    expect(attackTargets(run(sim))).toHaveLength(CERTAIN_WAVE);
+  });
+
+  it('leaves a band that outnumbers the free count standing, instead of marching it home', () => {
+    const sim = armedSim(0);
+    const staging = stagingOf(sim, buildingOfType(sim, HQ_TYPE, FOE));
+    const band = pack(sim, WAVE_MIN_SOLDIERS, { x: staging.x, y: staging.y });
+    // A skirmish takes two of them: the census drops the engaged, so the FREE count falls under the
+    // minimum. The men still standing there are already forward and must not be walked home for it.
+    for (const e of band.slice(0, 2)) sim.world.add(e, Engagement, { repathAt: 0 });
+
+    const commands = run(sim, PATIENT_SEED);
+    expect(attackTargets(commands)).toEqual([]);
+    expect(moveDestinations(commands)).toEqual([]);
   });
 
   it('charges an objective inside the settlement straight from the barracks', () => {
@@ -521,7 +584,9 @@ describe('military module - the objective', () => {
   });
 });
 
-describe('military module - the live seat', () => {
+// These three drive the real tick schedule for a full march, so they share the CPU with the whole suite -
+// the explicit timeout keeps a loaded machine from flaking them (the convention in ai-player-modules).
+describe('military module - the live seat', { timeout: 60_000 }, () => {
   /** Ticks to watch a wave: the seat decides on tick 2, walks out to the staging point, forms up there
    *  and charges from it - two decisions with a march between them. */
   const MARCH_TICKS = 1200;

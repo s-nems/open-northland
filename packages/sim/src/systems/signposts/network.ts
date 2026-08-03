@@ -246,13 +246,10 @@ function computeNavigationLimit(
   return networkLimitAt(world, terrain, player, hx, hy);
 }
 
-/**
- * The confinement a spot carries whoever stands on it: the union of the LOCAL circle around `(hx, hy)`
- * and the nav circles of every signpost group that circle reaches. Null when signpost navigation is off.
- *
- * {@link navigationLimitFor} is this plus the per-job exemptions, which an ERRAND does not inherit: a
- * soldier roams the map to fight but shops inside the settlement he stands in (user rule).
- */
+/** The confinement a spot carries whoever stands on it: the union of the LOCAL circle around `(hx, hy)`
+ *  and the nav circles of every signpost group that circle reaches, or null when signpost navigation is
+ *  off. {@link navigationLimitFor} is this plus the per-job exemptions, which an errand does not inherit
+ *  (`settlers/drives/equip-order.ts`). */
 export function networkLimitAt(
   world: World,
   terrain: TerrainGraph,

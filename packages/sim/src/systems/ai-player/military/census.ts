@@ -62,8 +62,9 @@ export function weaponMix(world: World, ctx: SystemContext, units: readonly Enti
 }
 
 /** The weapon the CombatSystem would resolve for a fighter - the worn one, else his class default - or
- *  null when he carries none: a bare fist ({@link WEAPON_MAIN_TYPE.UNARMED}) or a class the content arms
- *  with nothing. A row that names no class still arms him; the content named a weapon, only not its class. */
+ *  null when he goes in with nothing but his hands: no row at all, a bare fist
+ *  ({@link WEAPON_MAIN_TYPE.UNARMED}), or a row whose class is {@link WEAPON_MAIN_TYPE.NONE} and so names
+ *  no way of fighting either. */
 function fightingWeapon(
   world: World,
   ctx: SystemContext,
@@ -72,5 +73,8 @@ function fightingWeapon(
 ): WeaponType | null {
   const armed = attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
   if (armed === null) return null;
-  return weaponClassOf(armed.weapon) === WEAPON_MAIN_TYPE.UNARMED ? null : armed.weapon;
+  const weaponClass = weaponClassOf(armed.weapon);
+  return weaponClass !== undefined && BARE_HANDED.has(weaponClass) ? null : armed.weapon;
 }
+
+const BARE_HANDED: ReadonlySet<number> = new Set([WEAPON_MAIN_TYPE.NONE, WEAPON_MAIN_TYPE.UNARMED]);

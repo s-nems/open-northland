@@ -12,5 +12,6 @@ export {
   nearestStoreHolding,
   nearestTemple,
   nearestWorkplaceOutput,
+  storeYieldsGood,
 } from './stores/index.js';
 export { boundWorkplaceTarget, interactionCell, jobAtomics } from './workplaces.js';

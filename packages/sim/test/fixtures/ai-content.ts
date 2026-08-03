@@ -1,4 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
 
 /**
  * A synthetic content set for the strategic AI-player tests, using the REAL stable content ids
@@ -72,17 +73,24 @@ export function aiContent(): ContentSet {
       { typeId: 40, id: 'soldier_bow_short' },
     ],
     // The fighter classes' weapons, keyed by (tribe, job) as in the original - including the base
-    // class's bare fist, which the real `weapons.ini` binds to job 31 too. `mainType` carries the same
-    // classes the real rows do (UNARMED/SPEAR/BOW): the army census sends nobody whose class is the fist.
-    // The short bow's `munitionType` is the data-pinned ranged marker; the other two strike in reach.
+    // class's bare fist, which the real `weapons.ini` binds to job 31 too. The army census sends nobody
+    // whose `mainType` is the fist. The short bow's `munitionType` is the data-pinned ranged marker.
     weapons: [
-      { typeId: 2, id: 'viking_fist', tribeType: 1, jobType: 31, mainType: 1, minRange: 1, maxRange: 1 },
+      {
+        typeId: 2,
+        id: 'viking_fist',
+        tribeType: 1,
+        jobType: 31,
+        mainType: WEAPON_MAIN_TYPE.UNARMED,
+        minRange: 1,
+        maxRange: 1,
+      },
       {
         typeId: 5,
         id: 'viking_spear_wooden',
         tribeType: 1,
         jobType: 32,
-        mainType: 2,
+        mainType: WEAPON_MAIN_TYPE.SPEAR,
         minRange: 1,
         maxRange: 2,
       },
@@ -91,7 +99,7 @@ export function aiContent(): ContentSet {
         id: 'viking_bow_short',
         tribeType: 1,
         jobType: 40,
-        mainType: 6,
+        mainType: WEAPON_MAIN_TYPE.BOW,
         munitionType: 1,
         speed: 8,
         minRange: 3,
@@ -105,6 +113,22 @@ export function aiContent(): ContentSet {
         kind: 'storage',
         // A life pool, so a placed HQ carries Health and can be marched on (the army's objective).
         hitpoints: 500,
+        // A real BODY, with the door on one side of it - the seat's army stages off the wall it would
+        // reach, so a doorless point building could not tell that rule from staging off the door.
+        footprint: {
+          blocked: [
+            { dx: -2, dy: -2 },
+            { dx: 0, dy: -2 },
+            { dx: 2, dy: -2 },
+            { dx: -2, dy: 0 },
+            { dx: 0, dy: 0 },
+            { dx: 2, dy: 0 },
+            { dx: -2, dy: 2 },
+            { dx: 0, dy: 2 },
+            { dx: 2, dy: 2 },
+          ],
+          door: { dx: 0, dy: 4 },
+        },
         // A transport band plus the gatherer band - the collector reconciliation must pick the
         // harvest-capable slot (8), never the carrier one (24).
         workers: [

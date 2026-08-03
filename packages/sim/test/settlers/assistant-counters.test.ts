@@ -483,6 +483,29 @@ describe('the training queue', () => {
     expect(sim.world.tryGet(recruit, Equipment)?.armor ?? null).toBe(null);
   });
 
+  it('keeps him inside the network for the whole walk, not just the moment he is sent', () => {
+    const sim = trainSim(grassMap(64, 6));
+    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    barracksAt(sim, 6, 3);
+    const recruit = settlerAt(sim, CIVILIST, 3, 3);
+    stampPost(sim, 12, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    stampPost(sim, 32, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    const inNetwork = pileAt(sim, FAR_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+    const outside = pileAt(sim, BEYOND_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+
+    setCounter(sim, 'trainSword', 1);
+    runUntil(sim, () => sim.world.has(recruit, EquipOrder), 3000, 'sent for the sword');
+
+    // Somebody else takes the sword he was sent for while he is still walking. The store search re-picks
+    // a source every planner tick, so a confinement applied only at dispatch would now hand him the pile
+    // past the end of the network - the half-map errand this whole rule exists to stop.
+    sim.world.get(inNetwork, Stockpile).amounts.set(SWORD_LONG_GOOD, 0);
+    run(sim, 4000);
+    expect(sim.world.get(recruit, Settler).jobType).toBe(SOLDIER);
+    expect(sim.world.get(outside, Stockpile).amounts.get(SWORD_LONG_GOOD)).toBe(1);
+  });
+
   it('trains without arming ("naked") on the plain soldier counter even with weapons in store', () => {
     const sim = trainSim();
     barracksAt(sim, 6, 3);

@@ -2,15 +2,11 @@ import {
   AssistantRecruit,
   type AssistantRecruitIntent,
   aiModuleRuns,
-  Building,
   Equipment,
   Female,
   ownerOf,
-  ownersCompatible,
   Settler,
-  Stockpile,
   TrainingOrder,
-  UnderConstruction,
 } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -18,11 +14,9 @@ import { draftableTrade } from '../../assistant/index.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { baseSoldierJobType, isSoldierJob } from '../../readviews/index.js';
-import { armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
+import { canArmRecruit } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
-import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
-import { entityNode } from '../../spatial/nodes.js';
-import { mayFetchGoodFrom } from '../../stores/index.js';
+import { networkLimitAt } from '../../signposts/index.js';
 import { seatBarracksOf } from '../base.js';
 import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
@@ -74,13 +68,12 @@ export function trainGarrison(
 
 /**
  * The wanted value per counter: each keeps its own unpaid bookings ({@link bookedByIntent}) plus an
- * even share of {@link draftAllowance}, so the headroom the dispatcher sees (`counter - bookings`,
- * `systems/assistant/`) sums to exactly the men the seat may still spare. Publishing a pooled total
- * instead lets a class-skewed booking set open phantom slots and drafts husbands.
+ * even share of the men the seat may still draft, so the headroom the dispatcher sees
+ * (`counter - bookings`, `systems/assistant/`) sums to exactly that number.
  *
- * Shares go only to the classes the seat can arm RIGHT NOW ({@link canArm}), the earlier class taking
- * the remainder. A seat that can arm none of them shares out onto `trainSoldiers` instead - a recruit
- * who fights with his fists is the last resort, never the plan (user rule).
+ * Shares go only to the classes the seat can arm RIGHT NOW ({@link canArmRecruit}), the earlier class
+ * taking the remainder. A seat that can arm none of them shares out onto `trainSoldiers` instead - a
+ * recruit who fights with his fists is the last resort, never the plan (user rule).
  *
  * Empty (every counter withdrawn to zero) when the seat may not or cannot raise an army at all: the
  * `military` toggle is off, the content names no soldier class, or it owns no barracks to drill in.
@@ -99,13 +92,12 @@ function standingOrder(
 
   const booked = bookedByIntent(world, ctx, player);
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
-  const tribe = world.get(barracks, Building).tribe;
-  const reach = drillFloorReach(world, ctx, barracks);
-  const armable = GARRISON_WEAPON_INTENTS.filter((intent) =>
-    canArm(world, ctx, player, tribe, intent, reach),
-  );
-  const drafting: readonly AssistantRecruitIntent[] = armable.length > 0 ? armable : ['trainSoldiers'];
-  const allowance = draftAllowance(world, ctx, player, force);
+
+  const draftable = draftableSpare(world, force);
+  const allowance = Math.min(draftable.length, Math.max(0, bachelorSurplus(world, ctx, player)));
+  const next = draftable[0];
+  if (allowance === 0 || next === undefined) return wants; // nobody to draft: the classes need no probe
+  const drafting = draftingClasses(world, ctx, player, barracks, next);
   for (const [rank, intent] of drafting.entries()) {
     const share = Math.floor(allowance / drafting.length) + (rank < allowance % drafting.length ? 1 : 0);
     wants.set(intent, (wants.get(intent) ?? 0) + share);
@@ -113,69 +105,39 @@ function standingOrder(
   return wants;
 }
 
-/** How many NEW men the seat may still draft: its spare free bachelors, capped by the bachelor
- *  surplus. Men already booked are not counted here - each of their counters carries them. */
-function draftAllowance(world: World, ctx: SystemContext, player: number, force: SpareForce): number {
-  const surplus = Math.max(0, bachelorSurplus(world, ctx, player));
-  const free = force.remaining().filter((e) => {
+/**
+ * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit for,
+ * else `trainSoldiers`. Judged for the tribe of `next` - the man the dispatcher would draft first - because
+ * the arming pass shops against the RECRUIT's weapon rows, not the barracks'; and from the barracks door,
+ * where he stands when that pass first looks at him.
+ */
+function draftingClasses(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  barracks: Entity,
+  next: Entity,
+): readonly AssistantRecruitIntent[] {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return GARRISON_WEAPON_INTENTS; // mapless sim: no network to walk
+  const tribe = world.get(next, Settler).tribe;
+  const door = interactionCell(world, ctx, terrain, barracks);
+  const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
+  const armable = GARRISON_WEAPON_INTENTS.filter((intent) =>
+    canArmRecruit(world, ctx, terrain, player, tribe, intent, reach),
+  );
+  return armable.length > 0 ? armable : ['trainSoldiers'];
+}
+
+/** The spare men the dispatcher could still draft, in its own draft order. Men already booked are not
+ *  here - each of their counters carries them. */
+function draftableSpare(world: World, force: SpareForce): Entity[] {
+  return force.remaining().filter((e) => {
     if (!draftableTrade(world.get(e, Settler).jobType) || isMarried(world, e)) return false;
     // A man wearing a weapon good (a manual civilian equip) is persistently undraftable - counting
     // him would leave the published want standing unfillable.
     return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
-  }).length;
-  return Math.min(free, surplus);
-}
-
-/**
- * How far a recruit fresh off the drill can shop: the signpost network around the barracks door, where
- * he stands when the arming pass first looks at him (`settlers/planner/recruit-arming.ts` gates the same
- * way). Null when navigation is unconfined - then every store counts. Mapless sims have no network at all.
- */
-function drillFloorReach(world: World, ctx: SystemContext, barracks: Entity): NavigationLimit | null {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return null;
-  const door = interactionCell(world, ctx, terrain, barracks);
-  return networkLimitAt(world, terrain, ownerOf(world, barracks) ?? 0, terrain.xOf(door), terrain.yOf(door));
-}
-
-/**
- * Whether the seat could arm an `intent` recruit: some store within his {@link drillFloorReach} holds a
- * weapon good the arming pass would shop for ({@link armingGoodPreference}). Existence only - which
- * recruit walks there is the pass's problem - but the reach must match, or the seat publishes a class
- * whose recruits enlist and then stand around bare-handed forever. Ownership follows that pass's own
- * rule ({@link ownersCompatible}), so a neutral ground heap of swords counts like a stocked warehouse.
- */
-function canArm(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  tribe: number,
-  intent: (typeof GARRISON_WEAPON_INTENTS)[number],
-  reach: NavigationLimit | null,
-): boolean {
-  const goods = armingGoodPreference(ctx.content, tribe, intent);
-  if (goods.length === 0) return false; // the tribe's data binds no such class
-  for (const store of world.query(Stockpile)) {
-    if (!ownersCompatible(player, ownerOf(world, store))) continue;
-    if (world.has(store, UnderConstruction)) continue; // a site is a sink, never a source to strip
-    if (reach !== null && !storeInReach(world, ctx, store, reach)) continue;
-    const { amounts } = world.get(store, Stockpile);
-    for (const good of goods) {
-      if ((amounts.get(good) ?? 0) > 0 && mayFetchGoodFrom(world, ctx, store, good)) return true;
-    }
-  }
-  return false;
-}
-
-/** Whether a store's approach node lies inside `reach` - a building by its door, a ground pile by its
- *  own node, the same cells the arming pass's store search offers. */
-function storeInReach(world: World, ctx: SystemContext, store: Entity, reach: NavigationLimit): boolean {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return true;
-  const at = world.has(store, Building)
-    ? interactionCell(world, ctx, terrain, store)
-    : entityNode(world, terrain, store);
-  return reach.allowsNode(at);
+  });
 }
 
 /** The seat's marriageable men beyond its marriageable women, the men the family plan will never

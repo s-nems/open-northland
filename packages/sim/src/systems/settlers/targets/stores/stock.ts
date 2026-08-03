@@ -225,16 +225,31 @@ export function nearestStoreHolding(
   return (
     index.nearest(
       here,
-      (e) =>
-        !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
-        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
-        mayFetchGoodFrom(world, ctx, e, goodType) &&
-        !buriedUnderBuilding(world, terrain, walls, e)
-          ? QUALIFIES
-          : null,
+      (e) => (storeYieldsGood(world, ctx, terrain, walls, e, goodType) ? QUALIFIES : null),
       gate,
       avoid,
       sameSideAs(world, owner),
     )?.entity ?? null
+  );
+}
+
+/**
+ * Whether `store` is a SOURCE this good can be fetched from - {@link nearestStoreHolding}'s accept minus
+ * the spatial gate and the owner axis, so a caller that only needs "does such a source exist" asks the
+ * same question the walk will. Cheapest test first: most stores hold none of the good.
+ */
+export function storeYieldsGood(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  walls: ReadonlySet<NodeId>,
+  store: Entity,
+  goodType: number,
+): boolean {
+  return (
+    (world.get(store, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
+    !world.has(store, UnderConstruction) && // a site is a sink, never a source to strip
+    mayFetchGoodFrom(world, ctx, store, goodType) &&
+    !buriedUnderBuilding(world, terrain, walls, store)
   );
 }
