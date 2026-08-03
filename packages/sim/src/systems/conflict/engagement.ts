@@ -118,6 +118,7 @@ export function engageSpec(
       searchRadius: weapon.maxRange,
       player,
       lowPriority: lowPriorityBuildings,
+      lock: null, // it re-acquires the nearest hostile in reach every tick; only the hunter commits
       defend: null,
     };
   }
