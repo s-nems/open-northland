@@ -73,7 +73,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     built: building.built,
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
-  unbindWorkersOf(world, e);
+  unbindWorkersOf(world, ctx, e);
   const spill = spilledStockOf(world, e);
   world.destroy(e);
   scatterSpilledStock(world, ctx, spill);

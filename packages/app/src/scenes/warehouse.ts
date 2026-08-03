@@ -27,9 +27,9 @@ import type { SceneDefinition } from './types.js';
  * staffs, stops at the store's per-good limit, and moves on to the next good instead of jamming.
  *
  * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
- * piles. Three carriers are posted to it at build, filling its three
- * carrier slots. Bound to a recipe-less store, each becomes a porter: it collects the
- * nearest loose pile whose good the store can still take and carries it home one unit per foot-trip.
+ * piles. Three carriers are posted to it at build, filling its three carrier slots. Bound to a recipe-less
+ * store, each becomes a porter: it collects the nearest loose pile whose good the store can still take and
+ * carries it home one unit per foot-trip.
  *
  * Wood is over-supplied (1.5× its cap, read from content) nearest the door, so the store fills to 100/100 and
  * the cap bites: the carriers stop hauling wood (the ~50 surplus rests on the ground) and switch to the goods
