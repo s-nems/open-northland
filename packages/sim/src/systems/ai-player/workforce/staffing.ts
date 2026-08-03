@@ -33,15 +33,16 @@ const DEFAULT_WORKPLACE_STAFFING: BuildingStaffing = {
   carrierTarget: 0,
 };
 
-/** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (user plan).
- *  Applies per building INSTANCE - a second bakery gets the same one-baker minimum and
- *  two-plus-carrier target as the first. Every SECOND hand is a target-tier extra, including the
- *  farm's (user rule: a farm runs on one farmer until men are actually spare - knowingly buying the
- *  measured lone-farmer shortfall, where the second farmer is worth more than its own output
- *  because one man cannot walk the watering circuit in time); the bakery's carrier is the one
- *  carrier post the minimum still pays for. */
+/** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id. They apply per
+ *  building instance, so a second bakery gets the same plan as the first, and a second hand is a
+ *  target-tier extra unless its row says otherwise. Authored balance throughout. */
 export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingStaffing>>> = {
-  work_farm_00: { operatorTarget: 2, operatorSurplus: 3 },
+  // A lone farmer cannot walk the watering circuit in time, so the second hand is worth more than its
+  // own output; the third and fourth only pay off out of genuine surplus.
+  work_farm_00: { operatorTarget: 2, operatorSurplus: 4 },
+  // Surplus-only: one farm grows roughly what one miller grinds, so the second seat is worth filling
+  // only once the farm's own extra hands have outgrown him. Approximation.
+  work_mill_00: { operatorSurplus: 2 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // The one building whose SECOND operator is a minimum: a breeder works a single species line
   // (see CRAFT_RESTRICTIONS_BY_BUILDING_ID), so the pair is what runs the ox and sheep lines at

@@ -1,4 +1,4 @@
-import { systems } from '@open-northland/sim';
+import { constructionBillForType, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
@@ -59,6 +59,65 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
           return false;
         });
         expect(reachable, `upgrade chain into ${entry.building}`).toBe(true);
+      }
+    }
+  });
+
+  it('raises every weapon shop in the opening, never in the late tail', async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
+    // Every good some class could be armed with, deliberately wider than the three main types the
+    // garrison orders: a shop is worth checking whoever ends up carrying its output.
+    const armingGoods = new Set(
+      content.weapons.flatMap((w) =>
+        w.goodType !== undefined && w.jobType !== undefined ? [w.goodType] : [],
+      ),
+    );
+    // The perpetual tower-coverage entry opens the late tail.
+    const tail = DEFAULT_BUILD_ORDER.findIndex((entry) => entry.kind === 'towerCoverage');
+    expect(tail, 'a tower-coverage entry').toBeGreaterThanOrEqual(0);
+
+    const firstPlaced = new Map<string, number>();
+    for (const [i, entry] of DEFAULT_BUILD_ORDER.entries()) {
+      if (entry.kind === 'place' && !firstPlaced.has(entry.building)) firstPlaced.set(entry.building, i);
+    }
+    for (const [id, placed] of firstPlaced) {
+      const makesArms = (buildingById.get(id)?.recipes ?? []).some((r) =>
+        r.outputs.some((o) => armingGoods.has(o.goodType)),
+      );
+      // The ordering rule and its reason live on `DEFAULT_BUILD_ORDER`.
+      if (makesArms) expect(placed, `${id} in the opening`).toBeLessThan(tail);
+    }
+  });
+
+  it('never reaches an entry whose bill the entries before it cannot supply', async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
+    // Why an unbuildable bill is fatal rather than merely slow lives on `DEFAULT_BUILD_ORDER`.
+    // Seeded with every harvestable good rather than the plan's own collector list - an upper bound on
+    // gathered income, since a farm declares no recipe and its wheat can only enter through `harvest`.
+    const available = new Set(
+      content.goods.flatMap((g) => (g.atomics?.harvest === undefined ? [] : [g.typeId])),
+    );
+    const goodName = new Map(content.goods.map((g) => [g.typeId, g.id]));
+
+    for (const entry of DEFAULT_BUILD_ORDER) {
+      if (entry.kind === 'collector') continue;
+      const building = buildingById.get(entry.building);
+      if (building === undefined) continue; // absent from this content set - the sim skips the entry
+      // The two bill shapes are `stores/construction.ts`'s rule.
+      const bill =
+        entry.kind === 'upgrade'
+          ? building.construction
+          : constructionBillForType(content.buildings, building.typeId);
+      const missing = bill
+        .filter((line) => !available.has(line.goodType))
+        .map((line) => goodName.get(line.goodType) ?? line.goodType);
+      expect(missing, `${entry.kind} ${entry.building} needs`).toEqual([]);
+      for (const recipe of building.recipes) {
+        for (const output of recipe.outputs) available.add(output.goodType);
       }
     }
   });

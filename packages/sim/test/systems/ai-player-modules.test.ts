@@ -645,11 +645,12 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueue({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
 
-    // Past the gate: the barracks, the bakery upgrade, then the 2026-07-25 tail - the tower
-    // coverage entry rests (everything sits inside the HQ circle on this map), the second bakery
-    // arrives directly at its level-2 tier, the second brewery, and the two outskirts warehouses
-    // end the list. The five-home entry names `home_level_04`, a tier this content set stops short
-    // of, so it skips here - the direct top-tier placement has its own test below.
+    // Past the gate: the barracks, the bakery upgrade, then the late tail - the tower coverage entry
+    // rests (everything sits inside the HQ circle on this map), the second bakery arrives directly at
+    // its level-2 tier, the second brewery, the two outskirts warehouses, and the closing pair of
+    // level-2 bakeries end the list. The five-home entry names `home_level_04`, a tier this content
+    // set stops short of, so it skips here - the direct top-tier placement has its own test below.
+    // The smithy and armory entries are absent from this fixture, so both skip.
     const barracks = nextPlacement(sim);
     if (barracks?.kind !== 'placeBuilding') throw new Error('expected the barracks placement');
     expect(barracks.buildingType).toBe(BARRACKS_TYPE);
@@ -658,7 +659,14 @@ describe('build-order module (houseBuild)', () => {
     if (upgrade?.kind !== 'upgradeBuilding') throw new Error('expected the bakery upgrade');
     expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
     applyAndFinish(sim, upgrade);
-    for (const expected of [BAKERY_TOP_TYPE, BREWERY_TYPE, STOCK_TOP_TYPE, STOCK_TOP_TYPE]) {
+    for (const expected of [
+      BAKERY_TOP_TYPE,
+      BREWERY_TYPE,
+      STOCK_TOP_TYPE,
+      STOCK_TOP_TYPE,
+      BAKERY_TOP_TYPE,
+      BAKERY_TOP_TYPE,
+    ]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
       expect(next.buildingType).toBe(expected);
@@ -1096,7 +1104,7 @@ describe('the full strategic registry - determinism and replay', () => {
     );
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
     // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
-    // skip here), the upgraded bakery AND the direct-placed second level-2 bakery, two breweries,
+    // skip here), the upgraded bakery plus the three direct-placed level-2 bakeries, two breweries,
     // the joinery, the barracks, and both outskirts warehouses (every building sits inside the HQ's
     // coverage circle, so no tower is needed).
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
@@ -1107,6 +1115,8 @@ describe('the full strategic registry - determinism and replay', () => {
         FARM_TYPE,
         WELL_TYPE,
         MILL_TYPE,
+        BAKERY_TOP_TYPE,
+        BAKERY_TOP_TYPE,
         BAKERY_TOP_TYPE,
         BAKERY_TOP_TYPE,
         BREWERY_TYPE,

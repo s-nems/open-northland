@@ -14,18 +14,21 @@ import { draftableTrade } from '../../assistant/index.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { baseSoldierJobType, isSoldierJob } from '../../readviews/index.js';
-import { canArmRecruit } from '../../settlers/planner/recruit-arming.js';
+import { armableIntents } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { seatBarracksOf } from '../base.js';
 import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
-/** The army's weapon mix, in publication order: half swordsmen, half archers (user rule). Swords
- *  lead, so the odd man of an odd draft fights in reach. Spears are left out - the seat fields two
- *  classes, not three. */
+/** The army's weapon mix: equal shares over the three armed classes, but only over those a store can
+ *  arm this decision, so the fielded mix tracks stock. Publication order breaks a draft that does not
+ *  divide - the leftover men fight in reach. Authored balance, and blind to the tower posts, which
+ *  take bow classes only (`military/defence/posts.ts`) and take them for good: a seat holding towers
+ *  fields fewer archers than the share implies. */
 const GARRISON_WEAPON_INTENTS = [
   'trainSword',
+  'trainSpear',
   'trainBow',
 ] as const satisfies readonly AssistantRecruitIntent[];
 
@@ -69,9 +72,9 @@ export function trainGarrison(
  * even share of the men the seat may still draft, so the headroom the dispatcher sees
  * (`counter - bookings`, `systems/assistant/`) sums to exactly that number.
  *
- * Shares go only to the classes the seat can arm RIGHT NOW ({@link canArmRecruit}), the earlier class
- * taking the remainder. A seat that can arm none of them shares out onto `trainSoldiers` instead - a
- * recruit who fights with his fists is the last resort, never the plan (user rule).
+ * Shares go only to the classes the seat can arm right now ({@link armableIntents}), the earlier
+ * classes taking the remainder. A seat that can arm none of them shares out onto `trainSoldiers`
+ * instead: a recruit who fights with his fists is the last resort, never the plan.
  *
  * Empty (every counter withdrawn to zero) when the seat may not or cannot raise an army at all: the
  * `military` toggle is off, the content names no soldier class, or it owns no barracks to drill in.
@@ -121,9 +124,7 @@ function draftingClasses(
   const tribe = world.get(next, Settler).tribe;
   const door = interactionCell(world, ctx, terrain, barracks);
   const reach = networkLimitAt(world, terrain, player, terrain.xOf(door), terrain.yOf(door));
-  const armable = GARRISON_WEAPON_INTENTS.filter((intent) =>
-    canArmRecruit(world, ctx, terrain, player, tribe, intent, reach),
-  );
+  const armable = armableIntents(world, ctx, terrain, player, tribe, GARRISON_WEAPON_INTENTS, reach);
   return armable.length > 0 ? armable : ['trainSoldiers'];
 }
 

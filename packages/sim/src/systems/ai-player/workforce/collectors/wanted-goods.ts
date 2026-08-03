@@ -11,13 +11,14 @@ import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '..
  *  skipped. The build order adds its `collector` entries' goods (e.g. iron) once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
-/** How many flag gatherers the plan keeps per good, by stable content id (user plan 2026-07-25:
- *  wood/stone/iron run two, clay stays at {@link DEFAULT_COLLECTOR_TARGET}). The first post is
- *  phase-1 work (`allocateCollectors`); the rest are best-effort top-ups (`topUpCollectors`). */
+/** How many flag gatherers the plan keeps per good, by stable content id; anything unlisted stays at
+ *  {@link DEFAULT_COLLECTOR_TARGET}. Iron runs three because the plan ends on two smithies and an
+ *  iron-tool joinery. Approximation. The first post is phase-1 work (`allocateCollectors`); the rest
+ *  are best-effort top-ups (`topUpCollectors`). */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
-  iron: 2,
+  iron: 3,
 };
 export const DEFAULT_COLLECTOR_TARGET = 1;
 
