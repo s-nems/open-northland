@@ -2,14 +2,12 @@ import { Graphics, Mesh, MeshGeometry, type Shader, Texture, type TextureSource 
 import { scaleColour } from '../../data/terrain/index.js';
 import { makeShadedTerrainShader, type WaveUniforms } from '../shading.js';
 
-/** A chunk's display child: a per-page mesh (stock or brightness-shaded shader) or the fallback trace. */
 export type TerrainChild = Mesh<MeshGeometry, Shader> | Graphics;
 
 /**
  * A terrain draw layer, in paint order: `base` is the opaque ground triangle, `overlay2` the
- * under-transition (`emt3`/`emt4`), `overlay1` the top transition (`emt1`/`emt2`) - the overlays
- * alpha-blend over whatever is below (their RGBA pages carry the mask), so compositing is plain
- * back-to-front child order, no custom blending.
+ * under-transition (`emt3`/`emt4`), `overlay1` the top transition (`emt1`/`emt2`). The overlay pages
+ * carry their own alpha mask, so compositing is back-to-front child order with no custom blending.
  */
 export type TerrainLayerKind = 'base' | 'overlay2' | 'overlay1';
 
@@ -22,28 +20,26 @@ export interface TerrainBatch {
   readonly uvs: number[];
   readonly indices: number[];
   /**
-   * Per-vertex UVs into the map's brightness-lane texture (2 per position pair) - pushed by the
-   * caller in lockstep with {@link positions} only on a shaded map (`BrightnessField.shaded`);
-   * left empty on the unshaded path so its geometry (and draw pipeline) stays byte-identical.
+   * Per-vertex UVs into the map's brightness-lane texture, 2 per position pair, pushed in lockstep
+   * with {@link positions} only on a shaded map. Empty on the unshaded path so its geometry stays
+   * byte-identical.
    */
   readonly brightnessUVs: number[];
   /**
-   * Per-vertex water-wave amplitude (1 per position pair, `data/terrain/water.ts`) - pushed in lockstep with
-   * {@link brightnessUVs} (the shaded ground program declares both attributes; a land map pushes
-   * zeros). Empty exactly when {@link brightnessUVs} is.
+   * Per-vertex water-wave amplitude, 1 per position pair. The shaded ground program declares both
+   * attributes, so a land map pushes zeros; empty exactly when {@link brightnessUVs} is.
    */
   readonly waves: number[];
 }
 
-/** Make an empty {@link TerrainBatch} (also the flat-tint path's accumulator shape). */
 export function emptyBatch(): TerrainBatch {
   return { positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [] };
 }
 
 /**
- * Upload one accumulated terrain batch (positions/uvs/indices) as a {@link MeshGeometry}. A batch
- * carrying brightness-lane UVs gains the `aBrightnessUV` attribute the shaded ground shader
- * (`shading.ts`) consumes; an empty lane adds nothing (the stock mesh shader).
+ * Upload one accumulated terrain batch as a {@link MeshGeometry}. A batch carrying brightness-lane
+ * UVs gains the `aBrightnessUV` attribute the shaded ground shader consumes; an empty lane adds
+ * nothing and draws through the stock mesh shader.
  */
 export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   const geometry = new MeshGeometry({
@@ -59,22 +55,18 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
 }
 
 /**
- * The per-(layer × texture-page) batch accumulator for one chunk, shared by the two textured build
- * paths (1:1 ground and per-typeId): get-or-create a batch per page per {@link TerrainLayerKind},
- * trace unbound triangles into a shared fallback {@link Graphics}, then emit one {@link Mesh} per
- * batch in layer paint order (fallback first, then base pages, then the two overlay layers) - so
- * the draw-call count per block is ~one per touched page per layer, and the translucent transition
- * overlays composite over the opaque ground by child order alone. Single-use per chunk build:
- * accumulate first, then call {@link children} exactly once.
+ * The per-(layer × texture-page) batch accumulator for one chunk: one {@link Mesh} per touched page
+ * per {@link TerrainLayerKind}, with unbound triangles traced into a shared fallback
+ * {@link Graphics}. Single-use per chunk build - accumulate first, then call {@link children} once.
  */
 export class ChunkBatcher {
   private readonly byLayerPage = new Map<string, TerrainBatch & { source: TextureSource; order: number }>();
   private readonly fallback = new Graphics();
   private fallbackUsed = false;
 
-  /** @param brightnessTex the map's `embr` lane as an R8 texture - bound into the shaded ground
+  /** @param brightnessTex the map's `embr` lane as an R8 texture, bound into the shaded ground
    *  shader of every mesh whose batch accumulated `brightnessUVs`; undefined on an unshaded map.
-   *  @param wave the map's ONE shared water-animation uniform group, bound into the same shaders. */
+   *  @param wave the map's single shared water-animation uniform group, bound into the same shaders. */
   constructor(
     private readonly brightnessTex?: TextureSource,
     private readonly wave?: WaveUniforms,
@@ -91,10 +83,9 @@ export class ChunkBatcher {
     return batch;
   }
 
-  /** Trace one flat-colour ground triangle (the unbound-cell fallback): `positions` is the
-   *  `[x0,y0, x1,y1, x2,y2]` vertex buffer (already lifted); `brightness` (a cell-centre multiplier,
-   *  default 1) darkens/brightens the flat fill CPU-side - a solid fill can't gradient, so the
-   *  owning cell's own value stands in for the whole triangle. */
+  /** Trace one flat-colour ground triangle for an unbound cell. `positions` is the already-lifted
+   *  `[x0,y0, x1,y1, x2,y2]` vertex buffer; `brightness` is the owning cell's centre multiplier,
+   *  applied CPU-side to the whole triangle because a solid fill cannot gradient. */
   drawFallbackTriangle(positions: readonly number[], colour: number, brightness = 1): void {
     this.fallback
       .moveTo(positions[0] ?? 0, positions[1] ?? 0)
@@ -105,10 +96,8 @@ export class ChunkBatcher {
     this.fallbackUsed = true;
   }
 
-  /** The chunk's display children in paint order: the fallback (when used), then one mesh per
-   *  accumulated batch - base pages first, then the overlay layers. A batch that accumulated
-   *  brightness UVs draws through the shaded ground shader instead of the stock mesh shader -
-   *  same geometry, same one-draw-call-per-batch batching. */
+  /** The chunk's display children in paint order: the fallback when used, then one mesh per
+   *  accumulated batch, base pages before the overlay layers. */
   children(): TerrainChild[] {
     const out: TerrainChild[] = [];
     if (this.fallbackUsed) out.push(this.fallback);

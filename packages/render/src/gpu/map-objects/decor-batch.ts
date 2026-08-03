@@ -4,16 +4,13 @@ import { makeShadedDecorShader } from '../shading.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
- * The decor half of the map-object feature: flat ground decor (waves, grass, flowers, mine stains)
- * batched into per-block quad meshes under the entity sprites - one draw call per texture page per
- * block, built once; an animated batch's vertex/uv buffers are rewritten in place when the play-head
- * advances (and only while the block is visible). Translucency (waves, fern edges) rides in the atlas
- * texture's own alpha channel - there is no per-object opacity.
+ * The decor half of the map-object feature: flat ground decor batched into per-block quad meshes
+ * under the entity sprites, one draw call per texture page per block. Translucency rides in the
+ * atlas texture's own alpha channel; there is no per-object opacity.
  *
- * On a brightness-shaded map ({@link MapObjectSprite.brightness}) each quad carries its anchor
- * cell's multiplier as a constant per-vertex `aBrightness` (the ground's shaded-mesh shader - same
- * one-draw-call batching, full >1 range), because the original bakes the `embr` shading into these
- * ground-coupled decals too (measured on the corpus - see the field's doc).
+ * On a brightness-shaded map each quad carries its anchor cell's multiplier as a constant per-vertex
+ * `aBrightness`, because the original bakes the `embr` shading into these ground-coupled decals too
+ * (measured on the corpus; see {@link MapObjectSprite.brightness}).
  */
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
@@ -54,8 +51,8 @@ export function writeObjectQuad(
   uvs[p + 7] = v1;
 }
 
-/** One built quad-batch mesh + the buffers behind it (the caller keeps the buffers only for an
- *  animated batch, whose quads are rewritten in place when the play-head advances). */
+/** One built quad-batch mesh plus the buffers behind it; only an animated batch's caller keeps the
+ *  buffers, to rewrite its quads in place when the play-head advances. */
 interface QuadBatch {
   readonly mesh: Mesh<MeshGeometry, Shader>;
   readonly positions: Float32Array;
@@ -63,10 +60,9 @@ interface QuadBatch {
   readonly geometry: MeshGeometry;
 }
 
-/** Batch `objects` (all sharing `source`) into one mesh of quads, each written for its
- *  tick-0 frame - the shared build step for a decor group's static and animated halves. A batch with
- *  any per-object brightness draws through the shaded ground shader, each quad's four vertices
- *  carrying its anchor cell's multiplier (constant per quad, so an animated rewrite never touches it). */
+/** Batch `objects`, which all share `source`, into one mesh of quads written for their tick-0 frame.
+ *  A batch with any per-object brightness draws through the shaded ground shader, with the multiplier
+ *  constant across a quad's four vertices so an animated rewrite never touches it. */
 function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSource): QuadBatch {
   const positions = new Float32Array(objects.length * 8);
   const uvs = new Float32Array(objects.length * 8);
@@ -103,9 +99,8 @@ interface AnimatedDecorBatch {
   readonly pageH: number;
 }
 
-/** Where one decor object's quad lives - the removal handle {@link DecorChunk.quads} hands the layer:
- *  zero the 8 floats at `quadIndex` (+ buffer update) and, for an animated batch, null its slot so the
- *  play-head rewrite never restores it. */
+/** Where one decor object's quad lives. Removing it means zeroing the 8 floats at `quadIndex`, then
+ *  updating the buffer and, for an animated batch, nulling its slot. */
 interface DecorQuadRef {
   readonly positions: Float32Array;
   readonly geometry: MeshGeometry;
@@ -115,9 +110,9 @@ interface DecorQuadRef {
 }
 
 /**
- * One decor chunk: flat map objects batched by texture source into meshes (built once for static
- * objects; animated ones have their vertex/uv buffers rewritten in place when the play-head
- * advances - and only while the chunk is visible). AABB-culled like terrain chunks.
+ * One decor chunk: flat map objects batched by texture source into meshes, AABB-culled like terrain
+ * chunks. Static batches are built once; an animated batch's buffers are rewritten in place when the
+ * play-head advances, and only while the chunk is visible.
  */
 export interface DecorChunk {
   readonly container: Container;
@@ -127,16 +122,14 @@ export interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
-  /** Per-object removal handles (see {@link DecorQuadRef}) - how the layer takes one quad out of a
-   *  built batch when a virgin map resource is first worked (the `?map=` handover). */
   readonly quads: Map<MapObjectSprite, DecorQuadRef>;
-  /** The tick the animated buffers were last written for - per chunk, so a chunk scrolling into
-   *  view while the sim is paused still gets caught up to the current tick's frame. */
+  /** The tick the animated buffers were last written for. Per chunk, so a chunk scrolling into view
+   *  while the sim is paused still catches up to the current tick's frame. */
   lastWrittenTick: number;
 }
 
-/** Batch one decor block: group its objects by texture source into a static and an animated mesh each.
- *  The caller owns attaching the returned chunk's container to its layer. */
+/** Batch one decor block, grouping its objects by texture source into a static and an animated mesh
+ *  each. The caller owns attaching the returned chunk's container to its layer. */
 export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
   const container = new Container();
   let minX = Number.POSITIVE_INFINITY;

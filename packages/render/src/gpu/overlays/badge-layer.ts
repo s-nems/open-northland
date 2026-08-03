@@ -13,33 +13,22 @@ import {
   sheetFor,
 } from './sign-gfx.js';
 
-// Re-exported so app-side DoorBadge producers keep importing them from the badge layer they feed.
+// Re-exported so app-side DoorBadge producers import them from the layer they feed.
 export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
 
 /**
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
- * (one sign per settler) and, for a home, its resident families. Like the selection rings this is a
- * client-side projection of the read-only snapshot, not sim state: the app's `computeDoorBadges`
- * resolves each building's anchor and its bottom-to-top {@link DoorBadgeRow} list; this layer only
- * draws them.
+ * (one sign per settler) and, for a home, its resident families. The app's `computeDoorBadges` resolves
+ * each building's anchor and its bottom-to-top rows from the read-only snapshot; this layer draws them.
  *
- * The stacks live in the depth-sorted sprite layer, not a painter slot of their own, keyed just above
- * the OWNING BUILDING's {@link screenDepth} ({@link SIGN_DEPTH_EPS}) rather than the post's own planted
- * spot: the chain clears its house whichever side the post stands on, and every unit from the house's
- * row forward paints over it. APPROXIMATION - how the original sorts its sign records against units is
- * not established here; this rule is chosen so a marker never swallows the unit the player is watching,
- * at the cost of a band between house anchor and post where a settler is drawn in front of a post he
- * stands behind (measured against the shipped data in the layer's test). Off-screen stacks detach, so
- * this layer's share of the depth sort tracks the screen.
+ * Stacks live in the depth-sorted sprite layer, keyed just above the owning building's depth rather than
+ * the post's own planted spot, so a marker never swallows the unit the player is watching. That costs a
+ * band between house anchor and post where a settler draws in front of a post he stands behind.
+ * APPROXIMATION: how the original sorts its sign records against units is not established.
  *
- * Retained, like the selection layer: one badge-stack {@link Container} per building id (a stable key),
- * rebuilt only when its rows, family banners, or owner change, otherwise just repositioned each frame;
- * a stack whose building left the badge list is destroyed.
- *
- * The badge art is the original's player-coloured `ls_temp` signs (see `sign-gfx.ts` for the shared
- * contract, chain layout, and fallback rules, and `badge-stack.ts` for the drawn chain); without
- * decoded art the layer draws the placeholder coloured squares/dots instead. A manned post additionally
- * flies its garrison flag (`garrison-flag.ts`) as a second mark at its own mast anchor.
+ * Retained per building id and rebuilt only when its rows, family banners, or owner change; an off-screen
+ * stack detaches from the depth sort. Without decoded `ls_temp` art the layer draws placeholder squares,
+ * and a manned post flies its garrison flag as a second mark at its own mast anchor.
  */
 
 /** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
@@ -47,8 +36,8 @@ export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
 export interface DoorBadge {
   /** The building entity id - the retained-pool key (ids are monotonic, a stable key). */
   readonly id: number;
-  /** The OWNING BUILDING's position in fixed-point `Position` units (same space as a snapshot
-   *  `Position`) - the depth key, so the stack sorts with its house wherever the post stands. */
+  /** The owning building's position in fixed-point `Position` units - the depth key, so the stack sorts
+   *  with its house wherever the post stands. */
   readonly x: number;
   readonly y: number;
   /** Screen-px offset from the projected anchor to the post (+y down); absent = 0. The original's
@@ -57,15 +46,14 @@ export interface DoorBadge {
   readonly dy?: number;
   /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
   readonly player?: number;
-  /** Bottom-to-top sign rows. The projection owns the order (families at the base, worker discs, then
-   *  carrier pennants on top); this layer draws them as given. */
+  /** Bottom-to-top sign rows; the projection owns the order and this layer draws them as given. */
   readonly rows: readonly DoorBadgeRow[];
   /** True while the resident couple makes love here - draws the hearts over the house. */
   readonly hearts?: boolean;
-  /** The garrison this building's roof flies a flag for - the men POSTED to it, not the ones currently
-   *  up there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers are
-   *  deliberately absent from {@link rows}: the flag stands for the whole post, one star per man (the art
-   *  caps the count), at its own screen-px offset from the projected anchor (the mast point, +y down). */
+  /** The garrison this building's roof flies a flag for - the men posted to it, not the ones currently up
+   *  there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers are
+   *  deliberately absent from `rows`: the flag stands for the whole post, one star per man, at its own
+   *  screen-px offset from the projected anchor (the mast point, +y down). */
   readonly garrison?: {
     readonly stars: number;
     readonly dx: number;
@@ -78,7 +66,6 @@ interface BadgeStack {
   /** The garrison flag, flown from the building's mast. A sibling of the chain in the sprite layer, not
    *  its child: the two marks stand at different anchors but pool, cull and sort as one building. */
   readonly flag?: Container | undefined;
-  /** The flag's per-frame wave step, when it flies one and draws real art. */
   readonly advanceFlag?: ((clock: number) => void) | undefined;
   /** The drawn rows joined into a change-detection key ('' = none). */
   readonly rows: string;
@@ -86,10 +73,8 @@ interface BadgeStack {
   /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
    *  swaps the flag. */
   readonly stars: number;
-  /** The player recolour the stack was built with (0 when drawing the player-agnostic placeholder
-   *  squares, so an owner change never rebuilds a visually identical square stack). The art basis
-   *  itself is not part of the key - it changes only through {@link BadgeLayer.setGfx}, which clears
-   *  the pool. */
+  /** The player recolour the stack was built with, 0 when drawing the player-agnostic placeholder
+   *  squares, so an owner change never rebuilds a visually identical square stack. */
   readonly player: number;
   /** px added below the anchor when positioning (the placeholder squares sit slightly lower). */
   readonly baseDrop: number;
@@ -106,7 +91,7 @@ function rowsKey(badge: DoorBadge): string {
 export class BadgeLayer {
   /** One persistent badge-stack per building id; rebuilt only when its rows change, else repositioned. */
   private readonly stacks = new Map<number, BadgeStack>();
-  /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
+  /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
   private readonly drawn = new Set<number>();
   /** The decoded sign art; unset draws the placeholder squares. */
   private gfx: SignGfx | undefined;
@@ -123,7 +108,7 @@ export class BadgeLayer {
   }
 
   /** Provide (or clear) the decoded `ls_temp` sign art. Every live stack is retired so the next draw
-   *  rebuilds against the new art basis. */
+   *  rebuilds against the new art basis, which is why it stays out of the per-stack rebuild key. */
   setGfx(gfx: SignGfx | undefined): void {
     this.gfx = gfx;
     for (const s of this.stacks.values()) destroyStack(s);
@@ -131,13 +116,10 @@ export class BadgeLayer {
   }
 
   /**
-   * Reconcile the badge stacks to `badges`: get-or-(re)build a stack per building whose rows changed,
-   * move it to the building's anchor (projected + terrain-lifted) and re-key its depth, then destroy
-   * stacks for buildings no longer in the list. An empty list retires every stack. A `viewport` bounds
-   * the per-frame work to the screen: a staffed building outside the framed box keeps its pooled stack
-   * (it scrolls back) but is detached and neither repositioned nor rebuilt, so cost tracks the screen,
-   * not the map's building count. `clock` is the render clock the garrison flags wave on - only the
-   * on-screen ones are stepped, for the same reason.
+   * Reconcile the badge stacks to `badges`, retiring stacks for buildings no longer in the list. A
+   * building outside `viewport` keeps its pooled stack but is detached and neither repositioned nor
+   * rebuilt, so cost tracks the screen and not the map's building count. `clock` is the render clock the
+   * on-screen garrison flags wave on.
    */
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport, clock = 0): void {
     this.drawn.clear();

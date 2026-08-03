@@ -3,36 +3,22 @@ import { makeVignetteSprite } from '../post-fx.js';
 import type { TextureCache } from '../texture-cache.js';
 
 /**
- * The world renderer's screen-space chrome: the two full-screen quads that sit between the world and the
- * HUD (the pause wash and the post-fx vignette) plus the zoom-driven atlas sampling toggle. None of it is
- * world content - it neither rides the camera transform nor reads the snapshot.
- *
- * Both quads are `app.stage` children whose add order IS their z-order, so this class never adds them
- * itself: {@link attach} is called at the one point in the renderer's constructor where they belong.
+ * The world renderer's screen-space chrome. None of it is world content: it neither rides the camera
+ * transform nor reads the snapshot.
  */
 
 /**
- * The paused-game wash: one screen-sized multiply quad over the world, not the HUD. The original's
- * observed pause treatment is a neutral 50% darken; this warmer brown is an intentional visual
- * deviation. It costs one extra draw call while paused, but it sits at the world→HUD boundary, which
- * flushes anyway.
+ * The paused-game multiply wash. The original's observed pause treatment is a neutral 50% darken; this
+ * warmer brown is a deliberate deviation.
  */
 const PAUSE_WASH_TINT = 0xc9a87c;
 
 export class WorldChrome {
-  /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
   private readonly pauseWash = new Sprite(Texture.WHITE);
-  /** The post-pass vignette sprite ({@link import('./frame.js').WorldRendererOptions.postFx}); null when
-   *  off/unavailable. */
   private readonly vignette: Sprite | null;
-  /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} - exactly the
-   *  set to restore to nearest when the camera zooms back in. */
+  /** Atlas pages currently flipped to linear minification: exactly the set to restore to nearest on zoom in. */
   private readonly linearPages = new Set<TextureSource>();
 
-  /**
-   * @param textures the renderer's shared frame→texture cache, whose atlas pages {@link applyWorldSampling} flips.
-   * @param postFx whether to build the vignette quad at all.
-   */
   constructor(
     private readonly textures: TextureCache,
     postFx: boolean,
@@ -44,10 +30,8 @@ export class WorldChrome {
   }
 
   /**
-   * Mount the chrome quads on `stage`, in z-order: the vignette sits directly over the world so the grade
-   * colours the map but never the chrome, and the pause wash over that, so pausing browns the map but
-   * never the HUD or the tool panel. The caller must invoke this after adding the world layer and before
-   * adding the HUD - stage child order is the z-order and there is no sorting here.
+   * Mount the chrome quads on `stage`. Stage child order is the z-order and nothing sorts here, so the
+   * caller must invoke this after adding the world layer and before adding the HUD.
    */
   attach(stage: Container): void {
     if (this.vignette !== null) stage.addChild(this.vignette);

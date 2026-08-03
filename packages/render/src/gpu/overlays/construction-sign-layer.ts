@@ -5,21 +5,14 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 import { CONSTRUCTION_SIGN_DX, IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
 /**
- * The construction-sign layer - one player-coloured `ls_temp` stand planted beside each building site's
- * sign post ({@link CONSTRUCTION_SIGN_DX} clear of it, so it never sits over the site's door badges),
- * drawn in world space like those badges. A client-side projection of the read-only snapshot: the app's
- * `computeConstructionSigns` decides what counts as a site and where its post is.
- *
- * Unlike the door-badge chain that replaces it when the site completes, the stand keeps its painter
- * slot above the sprites: it marks a site the builders crowd around, so it stays readable through them.
- *
- * Retained per site id with the shared viewport-cull dance ({@link retainOffscreen} /
- * {@link retireUndrawn}); a sprite is rebuilt only when the site's owner changes, else repositioned.
+ * One player-coloured `ls_temp` stand per building site, planted {@link CONSTRUCTION_SIGN_DX} clear of the
+ * site's sign post so it never sits over the site's door badges. The app's `computeConstructionSigns`
+ * decides what counts as a site and where its post is; this layer only projects.
  */
 export interface ConstructionSign {
   /** The building entity id - the retained-pool key. */
   readonly id: number;
-  /** Anchor position in fixed-point `Position` units (same space as a snapshot `Position`). */
+  /** Anchor position in fixed-point `Position` units. */
   readonly x: number;
   readonly y: number;
   /** Screen-px offset from the projected anchor - the original's `GfxFlagPoint` (+y down); absent = 0. */
@@ -29,7 +22,6 @@ export interface ConstructionSign {
   readonly player?: number;
 }
 
-/** One planted construction sign, keyed by site building id. */
 interface SignNode {
   readonly node: Sprite;
   readonly player: number;
@@ -39,26 +31,23 @@ export class ConstructionSignLayer {
   readonly container = new Container();
   /** One persistent sign per site building id; rebuilt only on owner change, else repositioned. */
   private readonly signs = new Map<number, SignNode>();
-  /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
   private readonly drawn = new Set<number>();
-  /** The decoded sign art; unset draws nothing (the plot overlay already marks a fallback-boot site). */
+  /** Decoded sign art; unset draws nothing. */
   private gfx: SignGfx | undefined;
-  /** Session owner→colour-slot mapping - the same one pooled sprites draw through. */
+  /** Owner→colour-slot mapping, the same one pooled sprites draw through. */
   private readonly colourOf: (player: number) => number;
 
   constructor(colourOf: (player: number) => number = IDENTITY_COLOUR) {
     this.colourOf = colourOf;
   }
 
-  /** Provide (or clear) the decoded sign art. Every live sign is retired so the next draw rebuilds
-   *  against the new art basis. */
+  /** Provide or clear the sign art; live signs are retired so the next draw rebuilds against it. */
   setGfx(gfx: SignGfx | undefined): void {
     this.gfx = gfx;
     for (const s of this.signs.values()) s.node.destroy();
     this.signs.clear();
   }
 
-  /** Reconcile the planted signs to `signs`, with the same screen-bounded cull as the badge stacks. */
   draw(signs: readonly ConstructionSign[], elevation?: ElevationField, viewport?: Viewport): void {
     this.drawn.clear();
     const gfx = this.gfx;

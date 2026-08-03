@@ -1,22 +1,4 @@
-/**
- * The single-file retained overlay layers the {@link import('../world-renderer/index.js').WorldRenderer}
- * composes around its terrain / sprite-pool / map-object subsystems - each a pure projection of the
- * read-only snapshot + plain per-frame data into one slice of the scene graph:
- *  - ground marks below the sprites: the fog wash ({@link FogLayer}), the build-placement wash
- *    ({@link PlacementOverlayLayer}) and cursor ghost ({@link PlacementGhostLayer}), construction
- *    plots ({@link ConstructionPlotLayer}), selection rings ({@link SelectionLayer}), and combat
- *    litter ({@link CombatEffectsLayer});
- *  - marks inside the depth-sorted sprite layer, so units occlude them: door badges
- *    ({@link BadgeLayer}) and a razed body sinking ({@link CollapseLayer});
- *  - markers above the sprites: the `?debug=geometry` overlay ({@link GeometryDebugLayer});
- *  - the pinned/second-render surfaces: the HUD ({@link HudLayer}) and the details-panel portrait
- *    inset ({@link PortraitInsetLayer}).
- *
- * Grouped here (with an index barrel keeping external import paths stable) so the ~10 sibling layer
- * files stop widening a flat `gpu/`, mirroring the `gpu/terrain`, `gpu/sprite-pool`, `gpu/map-objects`
- * and `gpu/gallery` feature folders. Files inside the folder import their deps directly, not through
- * this barrel.
- */
+// Files inside this folder import their deps directly, not through this barrel.
 export {
   BadgeLayer,
   type DoorBadge,

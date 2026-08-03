@@ -2,43 +2,28 @@ import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
 
 /**
- * The custom mesh shaders for the brightness-shaded ground and decor - the stock textured-mesh draw
- * plus the baked `embr` multiplier (`data/terrain/brightness.ts`). Needed because Pixi's built-in mesh shader
- * has no per-vertex/per-fragment shading lane, and a per-mesh `tint` cannot vary across a chunk -
- * while the lane both darkens (slope shadow, the border fade to 0) and brightens (values > 127, up to
- * ≈2×; the measured curve), so the multiplier must ride unclamped and the framebuffer write clamps.
+ * The custom mesh shaders for the brightness-shaded ground and decor - the stock textured-mesh draw times
+ * the baked `embr` multiplier (`data/terrain/brightness.ts`). Pixi's built-in mesh shader has no shading
+ * lane and a per-mesh `tint` cannot vary across a chunk, while the lane both darkens (slope shadow, the
+ * border fade to 0) and brightens (values > 127, up to ≈2× on the measured curve), so the multiplier must
+ * ride unclamped and the framebuffer write clamps. They swap the shader of the existing
+ * one-mesh-per-page-per-chunk draws, so mesh and draw-call counts are unchanged.
  *
- * Two variants share one idea, two sampling grains:
- *  - **field** ({@link makeShadedTerrainShader}) - the ground mesh samples the whole lane per
- *    fragment from an R8 texture at each vertex's own cell-centre coordinate
- *    (`data/terrain/tessellation.ts` {@link import('../data/terrain/tessellation.js').nodeLaneUV}, interpolated across the
- *    triangle). The texture's own bilinear between those texel centres reproduces the original's
- *    smooth per-pixel banding (the map-border fade, the rock hill) instead of a per-vertex zigzag
- *    along triangle edges.
- *  - **per-vertex** ({@link makeShadedDecorShader}) - a decor quad batch carries one constant
- *    multiplier per quad (`aBrightness`, its anchor cell's value); a flat decal has no cell-space
- *    UV lattice to interpolate, and the anchor-constant is the recorded approximation.
- *
- * Batching stays intact: these swap the shader of the existing one-mesh-per-page-per-chunk draws -
- * same mesh count, same draw calls, no per-sprite filters (packages/render/AGENTS.md). Unlike
- * `PalettedSprite`, these meshes do ride the scene-graph camera transform: for a custom mesh shader
- * Pixi's `GlMeshAdaptor` binds the renderer's global uniforms (`uProjectionMatrix`,
- * `uWorldTransformMatrix`) and the mesh-pipe locals (`uTransformMatrix`, `uColor`) onto the shader's
- * groups, so declaring them as loose uniforms is enough (the official Pixi v8 mesh-and-shaders
- * pattern). The explicit "#version 300 es" matters: GlProgram only runs its ES-300 preprocessing
- * (version header, precision insertion) when the fragment source already carries the directive.
+ * The explicit `#version 300 es` matters: `GlProgram` only runs its ES-300 preprocessing when the source
+ * already carries the directive.
  */
 
-/** GLSL for `mvp` + UV pass-through shared by both variants (the extra varying differs). */
+/** GLSL for `mvp` + UV pass-through shared by both variants. Pixi's `GlMeshAdaptor` binds the renderer's
+ *  global uniforms and the mesh-pipe locals onto a custom mesh shader, so declaring them loose is enough. */
 const matrixBlock = `
   uniform mat3 uProjectionMatrix;
   uniform mat3 uWorldTransformMatrix;
   uniform mat3 uTransformMatrix;
 `;
 
-// Water-surface animation constants (an OpenNorthland enhancement - the original's water is static
-// geometry; `data/terrain/water.ts`). Time is measured in sim ticks (tick + alpha), so a `?shot` frame at a
-// fixed tick is byte-reproducible. Tuned by eye.
+// Water-surface animation constants: a named OpenNorthland enhancement (the original's water is static
+// geometry), tuned by eye. Time is measured in sim ticks, so a `?shot` frame at a fixed tick is
+// byte-reproducible.
 /** Peak vertical bob (world px) at full wave amplitude. */
 const WAVE_AMPLITUDE_PX = 1.75;
 /** Swell angular speed: one bob cycle every 30 ticks (~2.5 s at the 12 Hz sim). */
@@ -49,8 +34,8 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed - off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
-/** The two waves' exact common period (lcm of 30 and 21 ticks): the animation clock wraps modulo
- *  this, so the f32 `uWave.x` never grows into `sin` precision loss over a long session. */
+/** The two waves' common period (lcm of 30 and 21 ticks): the clock wraps modulo this, so the f32
+ *  `uWave.x` never grows into `sin` precision loss over a long session. */
 export const WAVE_TIME_PERIOD_TICKS = 210;
 
 const FIELD_VERTEX = `#version 300 es
@@ -80,8 +65,8 @@ const FIELD_VERTEX = `#version 300 es
   }
 `;
 
-// texel.r is the raw lane byte / 255; the measured curve is byte / BRIGHTNESS_NEUTRAL - one constant
-// rescale. uColor is the mesh-pipe group colour (premultiplied tint·alpha) the stock shader applies.
+// texel.r is the raw lane byte / 255 while the measured curve is byte / BRIGHTNESS_NEUTRAL, hence the
+// constant rescale. uColor is the mesh-pipe group colour (premultiplied tint·alpha).
 const FIELD_FRAGMENT = `#version 300 es
   precision highp float;
   in vec2 vUV;
@@ -142,11 +127,9 @@ const VERTEX_FRAGMENT = `#version 300 es
 let fieldProgram: GlProgram | undefined;
 let vertexProgram: GlProgram | undefined;
 
-/** The map's water-animation uniform group: `uWave = [timeTicks, amplitudeScale]`, mutated in place
- *  per frame (a `Float32Array` so the shared program re-uploads changed contents - the same rule as the
- *  paletted sprite's uniforms). ONE group per map, shared by every shaded mesh
- *  ({@link makeShadedTerrainShader}), so the per-frame animation is a single write + dirty bump instead
- *  of one per chunk mesh. A real {@link UniformGroup}, typed to its known uniform view. */
+/** The map's water-animation uniform group: `uWave = [timeTicks, amplitudeScale]`, mutated in place per
+ *  frame (a `Float32Array`, because a shared program re-uploads only changed contents). One group per
+ *  map, shared by every shaded mesh, so the per-frame animation is one write instead of one per chunk. */
 export type WaveUniforms = UniformGroup & { readonly uniforms: { readonly uWave: Float32Array } };
 
 /** Make the map's shared water-animation uniform group (time 0, full amplitude). */
@@ -157,13 +140,10 @@ export function makeWaveUniforms(): WaveUniforms {
 }
 
 /**
- * A {@link Shader} for the shaded ground mesh: draws `uTexture = source` with the per-fragment lane
- * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
- * edge-clamped - the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`, plus the
- * water-wave vertex bob/shimmer driven by `wave`, the map's ONE shared {@link WaveUniforms} group.
- * One shader per mesh/page; the compiled program is shared. WebGL-only, like
- * {@link import('./paletted-sprite/index.js').PalettedSprite} - the renderer preference is `webgl`
- * (`pixi-app.ts`).
+ * A {@link Shader} for the shaded ground mesh: the lane multiplier is sampled per fragment from
+ * `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered + edge-clamped), so the
+ * texture's own bilinear reproduces the original's smooth per-pixel banding instead of a per-vertex
+ * zigzag along triangle edges. One shader per mesh/page; the compiled program is shared. WebGL-only.
  */
 export function makeShadedTerrainShader(
   source: TextureSource,
@@ -183,9 +163,9 @@ export function makeShadedTerrainShader(
 }
 
 /**
- * A {@link Shader} for a shaded decor quad batch: draws `uTexture = source` with the constant
- * per-quad `aBrightness` multiplier (each quad's anchor-cell value). One per mesh/page; the compiled
- * program is shared.
+ * A {@link Shader} for a shaded decor quad batch: one constant `aBrightness` multiplier per quad, its
+ * anchor cell's value. A flat decal has no cell-space UV lattice to interpolate, so the anchor constant
+ * is the recorded approximation. One per mesh/page; the compiled program is shared.
  */
 export function makeShadedDecorShader(source: TextureSource): Shader {
   vertexProgram ??= new GlProgram({ vertex: VERTEX_VERTEX, fragment: VERTEX_FRAGMENT });

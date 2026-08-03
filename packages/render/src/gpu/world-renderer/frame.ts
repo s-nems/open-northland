@@ -5,45 +5,32 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { ConstructionSign, DoorBadge, HudFrame, LifeHeart, SettlerBubble } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
-/**
- * The world renderer's public data contract: what the app constructs it with, what it hands it per frame
- * or through a setter, and the shared defaults the no-op cases fall back to.
- */
-
-/** One candidate building's workplace-assignment verdict: its entity id and whether the selected settler
- *  can be assigned there (green) or not (red). Fed to {@link import('./world-renderer.js').WorldRenderer.setBuildingHighlight}. */
+/** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
 export interface BuildingHighlightItem {
   readonly id: number;
   readonly ok: boolean;
 }
 
-/** Construction options of a {@link import('./world-renderer.js').WorldRenderer}. */
 export interface WorldRendererOptions {
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**
-   * Interactive view smoothing: snap the camera pan to whole device pixels (nearest-sampled art
-   * shimmer-crawls on fractional-pixel pans) and switch the world atlases to linear minification while
-   * zoomed out below 1 (nearest minification sparkles). For the live entries only - the deterministic
-   * `?shot` capture must stay byte-stable, so it never enables this.
+   * Snap the camera pan to whole device pixels and minify the world atlases linear below zoom 1, killing
+   * the shimmer of nearest-sampled art. Live entries only: the deterministic `?shot` capture must stay
+   * byte-stable, so it never enables this.
    */
   readonly viewSmoothing?: boolean | undefined;
   /**
-   * The world post pass (`gpu/post-fx.ts`): a warm-graded vignette multiply over the world, under the
-   * HUD. An OpenNorthland enhancement for the live entries; the deterministic `?shot` capture never
-   * enables it (`?postfx=off` disables it live).
+   * The world post pass: a warm-graded vignette multiply over the world, under the HUD. An enhancement
+   * over the original, so the deterministic `?shot` capture never enables it.
    */
   readonly postFx?: boolean | undefined;
-  /**
-   * Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
-   * default (see {@link import('../../data/scene/index.js').SpriteSceneOptions.playerColourOf}).
-   * Absent = identity.
-   */
+  /** Owner slot → team-colour slot when a map's roster recolours players; absent means identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
-/** The decoded bone-pile art the app resolves for a death mark (`ls_skeletons.bmd`): the atlas page plus
- *  its interchangeable frames. `scale` defaults to the native landscape-object scale (1). */
+/** The decoded bone-pile art for a death mark (`ls_skeletons.bmd`); its frames are interchangeable.
+ *  `scale` defaults to the native landscape-object scale of 1. */
 export interface CombatBonesGfx {
   readonly source: TextureSource;
   readonly frames: readonly AtlasFrame[];
@@ -60,40 +47,31 @@ export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
 
-/**
- * The per-frame inputs of {@link import('./world-renderer.js').WorldRenderer.update}, named rather than
- * positional so the same-typed `selection`/`flagged` sets cannot be swapped silently. Mirrors the
- * {@link import('../sprite-pool/index.js').SpritePool}'s `PoolFrame`: only `snapshot` + `camera` are
- * required, everything else falls back to its transient-view default.
- */
+/** The per-frame inputs of one `WorldRenderer.update`; every optional field falls back to a no-op default. */
 export interface WorldFrame {
   readonly snapshot: WorldSnapshot;
   /** The world layer's own transform (screen = world*scale + offset). */
   readonly camera: Camera;
-  /** The integer sim tick the snapshot is at - the animation clock for gaits/rotors/decor (default 0). */
+  /** The snapshot's integer sim tick, used as the animation clock for gaits, rotors and decor (default 0). */
   readonly tick?: number | undefined;
-  /** The HUD text frame to repaint, or absent to leave the HUD unchanged. */
+  /** The HUD text frame to repaint; absent leaves the HUD unchanged. */
   readonly hud?: HudFrame | undefined;
-  /** The app's currently-selected entity ids, projected to feet rings (default none). Transient view state. */
+  /** Selected entity ids, drawn as feet rings (default none). Transient view state, never sim state. */
   readonly selection?: ReadonlySet<number> | undefined;
-  /** The fixed-timestep interpolation fraction (the loop's `FixedTimestep.advance` return): each entity
-   *  draws `alpha` of the way from its previous tick anchor to its current one (default 1 = raw tick). */
+  /** Fixed-timestep interpolation fraction: each entity draws `alpha` of the way from its previous tick
+   *  anchor to its current one (default 1 draws raw tick positions). */
   readonly alpha?: number | undefined;
-  /** Per-building door badges - each carries its projection-ordered sign rows (default none). */
   readonly doorBadges?: readonly DoorBadge[] | undefined;
-  /** Per-site construction signs to plant at each site's sign post (default none). */
   readonly constructionSigns?: readonly ConstructionSign[] | undefined;
-  /** Per-settler thought bubbles to float over a settler's head (make-child / wedding; default none). */
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
-  /** Faction-coloured life hearts to float over the units whose life the player tracks (default none). */
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
-  /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
+  /** Ids of gatherers carrying a work flag; their feet rings draw the flagged variant (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
 }
 
 /**
- * World-space slack (px) the sprite cull box is grown by on every side, so a tall sprite whose feet are
- * just off-screen but whose body pokes into view still draws (culling is by the feet anchor). Covers the
- * tallest scaled building or map object; still small next to a real map (≈8 tiles), so culling bites.
+ * World-space slack in px added to every side of the sprite cull box, since culling is by the feet anchor
+ * and a tall sprite standing just off-screen still pokes into view. Covers the tallest scaled building or
+ * map object while staying about 8 tiles wide, so culling still bites.
  */
 export const SPRITE_CULL_MARGIN = 512;
