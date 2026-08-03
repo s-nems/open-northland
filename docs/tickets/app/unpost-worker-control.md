@@ -21,6 +21,10 @@ building.
 Out of scope: any automatic re-employment. A released settler stays trade-ful and unposted until the
 player says otherwise.
 
+Related gap worth folding in: there is no settlement-wide view of trade-ful but unposted settlers, and
+a razed workplace now releases its crew into exactly that state. Today they can only be found by
+clicking each one, so the release control and a way to see who is waiting for work belong together.
+
 ## Verify
 
 A sim case per arm (posted → released keeps its trade; a released carrier stops hauling), an app

@@ -188,8 +188,8 @@ export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType:
  *
  * A settler already bound to a workplace is the third case and takes no flag: a bound gatherer harvests
  * its building's stored goods, not a flag yard ({@link import('./jobs/binding.js').bindEmployment}). The
- * caller that binds may do so first, which is what keeps a burst of automatic hires from planting a flag
- * entity each and destroying it a line later.
+ * caller that binds may do so first, so posting a gatherer never plants a flag entity only to destroy it a
+ * line later.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   if (jobCanHarvest(ctx, jobType) && !world.has(e, JobAssignment)) {

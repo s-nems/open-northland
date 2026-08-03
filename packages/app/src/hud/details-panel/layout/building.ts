@@ -167,8 +167,8 @@ export function layoutBuilding(
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
   // A construction site swaps production/stock/defence for the Construction window (delivered materials
-  // would otherwise read as store stock). The workers window stays - it shows the live building crew
-  // (user-requested). The Construction body is one gauge row + one row per material line.
+  // would otherwise read as store stock). The workers window stays - it shows the site's posted staff and
+  // the crew raising it (user-requested). The Construction body is one gauge row + one row per material line.
   const underConstruction = model.construction !== null;
   const constructionBodyH = underConstruction
     ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)

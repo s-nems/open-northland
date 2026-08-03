@@ -9,8 +9,15 @@ import { HOUSEWINDOW } from './shared.js';
  *  free for the animated worker sprites (drawn by the panel's own pass - see panel.ts). A home shows its
  *  residents instead - the "Mieszkańcy" headline and a "Rodziny 1/3" family-slot line over the
  *  family-grouped sprite field. A workplace still going up lists the same worker strip - it takes its staff
- *  while it is raised - and its field adds the build crew beside them; a HOME going up lists no family line,
- *  because it houses nobody until it stands (`assignHouse` refuses an unfinished home). */
+ *  while it is raised - and its field adds the build crew beside them. */
+
+/** Whether the window draws a limits strip at all. False only for a home still going up: it houses nobody
+ *  until it stands (`assignHouse` refuses an unfinished home), so the row goes to its build crew instead.
+ *  The panel insets the sprite field by exactly this row - one owner for the two decisions. */
+export function hasWorkerLimitsRow(model: BuildingPanelModel): boolean {
+  return model.home === null || model.construction === null;
+}
+
 export function drawWorkersSection(
   chrome: Chrome,
   layout: BuildingLayout,
@@ -25,12 +32,12 @@ export function drawWorkersSection(
       : ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers);
   chrome.headline(layout.workers.title, title);
   const body = layout.workers.body;
+  if (!hasWorkerLimitsRow(model)) return;
+  const home = model.home;
   const limits =
-    model.home !== null
-      ? model.construction !== null
-        ? '' // an unfinished home offers no family slot yet
-        : // The decoded original label ("Liczba Rodzin", trailing-space in the data) + the slot count.
-          `${ui('housewindow', HOUSEWINDOW.families, messages().hud.families).trim()} ${model.home.families.length}/${model.home.capacity}`
+    home !== null
+      ? // The decoded original label ("Liczba Rodzin", trailing-space in the data) + the slot count.
+        `${ui('housewindow', HOUSEWINDOW.families, messages().hud.families).trim()} ${home.families.length}/${home.capacity}`
       : model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ');
-  if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
+  chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
 }

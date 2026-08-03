@@ -5,7 +5,6 @@ import {
   Position,
   Settler,
   Stockpile,
-  setSettlerJob,
   stampOwner,
   stockpileEntries,
   UnderConstruction,
@@ -29,11 +28,14 @@ import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 import { upgradeTierOf } from '../stores/index.js';
 
 /**
- * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed: drop the binding
- * and reset the settler to idle (`jobType = null`). Without this a demolished workplace would strand its
- * operators - the binding would dangle on a dead entity (its consumers only defend against a stale binding,
- * none clears it), so the worker would neither produce nor be postable elsewhere. Faithful to the original:
- * pulling down a building turns its workers back into job-seekers - here, ones the player re-posts.
+ * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed. Without this a
+ * demolished workplace would strand its operators - the binding would dangle on a dead entity (its consumers
+ * only defend against a stale binding, none clears it), so the worker would neither produce nor be postable
+ * elsewhere.
+ *
+ * The released settler keeps its TRADE and loses only the post: employment is directed, so a trade taken
+ * away here is one nothing gives back, and the player would have to re-pick a profession the settler had
+ * earned. It stands inert until re-posted, which is the same state any unposted tradesman is in.
  *
  * The scan only mutates the matched settlers (no chosen-entity pick), so iterating store order is permitted.
  * Matches are collected before mutating because `world.remove` deletes from the `JobAssignment` store that
@@ -44,10 +46,7 @@ export function unbindWorkersOf(world: World, building: Entity): void {
   for (const e of world.query(Settler, JobAssignment)) {
     if (world.get(e, JobAssignment).workplace === building) bound.push(e);
   }
-  for (const e of bound) {
-    world.remove(e, JobAssignment);
-    setSettlerJob(world, e, null); // trade-less again; the player picks its next post
-  }
+  for (const e of bound) world.remove(e, JobAssignment);
 }
 
 export function placeBuilding(

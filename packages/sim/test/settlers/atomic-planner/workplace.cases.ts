@@ -20,7 +20,7 @@ describe('atomicPlanner - walk-to-workplace drive (a BOUND operator reaches ITS 
 
   // The walk drive reads the JobAssignment binding an `assignWorker` order sets - the operator heads for
   // *its* mill, not the nearest one. These planner unit tests set the binding directly (the order
-  // integration is exercised in job-system.test.ts) so they test the AI drive in isolation.
+  // integration is exercised in test/economy/assign-worker.test.ts) so they test the drive in isolation.
   function carpenterAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });

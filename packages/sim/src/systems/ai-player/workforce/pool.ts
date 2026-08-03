@@ -30,7 +30,7 @@ export interface Workforce {
 export function builderJobOf(ctx: SystemContext): number | null {
   let best: number | null = null;
   for (const job of ctx.content.jobs) {
-    if (!jobCanBuild(ctx, job.typeId)) continue;
+    if (!jobCanBuild(ctx.content, job.typeId)) continue;
     if (best === null || job.typeId < best) best = job.typeId;
   }
   return best;

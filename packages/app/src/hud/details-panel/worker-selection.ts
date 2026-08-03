@@ -52,7 +52,13 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
   const posted: number[] = [];
   const crew: number[] = [];
   const drilling: number[] = [];
+  // Each bucket stops at the field's capacity, and the whole scan stops once the posted staff alone fills
+  // it: nothing below them could be drawn. This runs per sim tick while a building panel is open.
+  const push = (into: number[], id: number): void => {
+    if (into.length < MAX_WORKERS) into.push(id);
+  };
   for (const e of actorsOf(snapshot)) {
+    if (posted.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
@@ -65,8 +71,8 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
     if (num(assignment?.workplace) === buildingId) posted.push(e.id);
-    else if (raising) crew.push(e.id);
-    else if (num(drill?.house) === buildingId) drilling.push(e.id);
+    else if (raising) push(crew, e.id);
+    else if (num(drill?.house) === buildingId) push(drilling, e.id);
   }
   return [...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
 }

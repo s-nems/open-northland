@@ -90,6 +90,7 @@ export const enGame = {
       standing: 'standing ({seconds}s)',
       working: 'working',
       walking: 'walking',
+      awaitingWorkplace: 'waiting for the building',
       idle: 'idle',
     },
     playerTribe: 'Player #{player} · Tribe {tribe}{stance}',

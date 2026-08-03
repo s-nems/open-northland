@@ -1,4 +1,4 @@
-import { fx, systems } from '@open-northland/sim';
+import { entityById, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -200,12 +200,23 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
   return rows.map(({ label, repeats, bonusPct }) => ({ label, repeats, bonusPct }));
 }
 
-export function settlerStatus(components: Comp): string {
+export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string {
   const statuses = messages().hud.statuses;
   // PlayerOrder is a bare en-route marker the sim retires the tick the unit reaches its commanded
   // destination, so a settler carrying it is always still walking there (no post-arrival dwell).
   if ('PlayerOrder' in components) return statuses.ordered;
   if ('CurrentAtomic' in components) return statuses.working;
   if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
+  // A settler posted to a building still going up stands at the site by design until it opens. Without
+  // its own caption that deliberate wait reads as the idle of a settler with no post at all.
+  if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
   return statuses.idle;
+}
+
+/** Whether this settler is posted to a workplace that is still a construction site. */
+function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {
+  const assignment = components.JobAssignment as { workplace?: unknown } | undefined;
+  const workplaceId = num(assignment?.workplace);
+  if (workplaceId === undefined) return false;
+  return entityById(snapshot, workplaceId)?.components.UnderConstruction !== undefined;
 }

@@ -179,7 +179,8 @@ export function spawnWorkersAtDoor(
 }
 
 /** Spawn `count` settlers of `jobType` on `building`'s door node and bind each to it - the one place a
- *  sandbox fixture employs anyone. */
+ *  sandbox fixture employs anyone. Stamps the binding directly rather than issuing `assignWorker`, so no
+ *  slot gate runs and nothing evicts a settler off a blocked spawn: a scene author owns both. */
 function bindCrewAtDoor(
   sim: Simulation,
   building: Entity,

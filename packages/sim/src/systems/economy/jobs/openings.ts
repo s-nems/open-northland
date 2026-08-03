@@ -5,26 +5,6 @@ import type { SystemContext } from '../../context.js';
 import { buildingEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
-/** Bound-settler headcount per (building, jobType) - the AI player's staffing plan counts against it. */
-export type StaffingTally = Map<Entity, Map<number, number>>;
-
-export function buildStaffingTally(world: World): StaffingTally {
-  const tally: StaffingTally = new Map();
-  for (const e of world.query(Settler, JobAssignment)) {
-    const jobType = world.get(e, Settler).jobType;
-    if (jobType === null) continue;
-    const workplace = world.get(e, JobAssignment).workplace;
-    incrementStaffing(tally, workplace, jobType);
-  }
-  return tally;
-}
-
-export function incrementStaffing(tally: StaffingTally, workplace: Entity, jobType: number): void {
-  const jobs = tally.get(workplace) ?? new Map<number, number>();
-  jobs.set(jobType, (jobs.get(jobType) ?? 0) + 1);
-  tally.set(workplace, jobs);
-}
-
 /** The settler-side context an openness probe reads: who is asking ({@link NeedSubject} - the same
  *  tribe/owner/experience triple the `needfor*` gate judges). One object because these always travel
  *  together. */
@@ -51,12 +31,13 @@ export interface OpeningsQuery extends NeedSubject {
  * The building-level gate (`buildingEnabled`) runs too but is currently a feature-wide no-op (see it).
  *
  * A building still under construction answers like a finished one: its slots take staff while it is raised,
- * and that staff waits at the site until it stands ({@link import('../../settlers/drives/economy/index.js').planSiteStaff}).
- * An upgrade site reports the slots of the tier it currently IS - the target tier is adopted only on
- * completion - so the extra seats a higher tier brings cannot be filled early.
+ * and that staff waits at the site until it stands (`drives/economy/site-staff.ts`). An upgrade site reports
+ * the slots of the tier it currently IS - the target tier is adopted only on completion - so the extra seats
+ * a higher tier brings cannot be filled early.
  *
- * source-basis: hiring onto a foundation at all, and the upgrade's base-tier cap, are a user rule with no original oracle - the original offers no pre-completion staffing. The slot counts and
- * the tier chain themselves are extracted (`logicworker`, `upgradeTarget`); only the timing is ours.
+ * source-basis: hiring onto a foundation at all, and the upgrade's base-tier cap, are a user rule with no
+ * original oracle - the original offers no pre-completion staffing. The slot counts and the tier chain
+ * themselves are extracted (`logicworker`, `upgradeTarget`); only the timing is ours.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,

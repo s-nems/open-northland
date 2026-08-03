@@ -78,9 +78,9 @@ export {
   livestockMeatGoodOf,
   livestockTribeOfGood,
 } from './readviews/tribes/livestock.js';
-// The build-house atomic id - the data-driven "can this trade raise a foundation" key. The app routes a
-// right-click on a site by it, so the click and the sim's own `jobCanBuild` gate read the same rule.
-export { BUILD_HOUSE_ATOMIC_ID } from './settlers/atomics/start.js';
+// The "can this trade raise a foundation" gate - the app routes a right-click on a site through the very
+// function the sim's own assignBuilder and builder drive ask, so the click cannot drift from the rule.
+export { jobCanBuild } from './settlers/atomics/start.js';
 export {
   FATIGUE_BUBBLE_THRESHOLD,
   FATIGUE_SLEEP_THRESHOLD,

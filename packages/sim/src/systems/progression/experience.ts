@@ -170,9 +170,9 @@ export function grantScoutExperience(world: World, content: ContentSet, settler:
  * The TRAINING bucket every `trainfor*` requirement row reads (source basis: each tribe's
  * `trainforjob`/`trainforgood` rows name expType 77 and nothing else does). NOTHING accrues it: a
  * barracks drill banks no experience stat, it unlocks the soldier trade by flipping it directly at
- * the drill's end (user rule 2026-08-02), so the rows naming this bucket act as an always-closed
- * gate on every other door into a fighter trade (manual employment, the job system's openings) and
- * the barracks stays the one route in.
+ * the drill's end (user rule), so the rows naming this bucket act as an always-closed gate on every
+ * other door into a fighter trade (the profession picker, an `assignWorker` post) and the barracks
+ * stays the one route in.
  */
 export const TRAINING_EXPERIENCE_TYPE = 77;
 

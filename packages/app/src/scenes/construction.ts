@@ -132,7 +132,7 @@ export const constructionScene: SceneDefinition = {
         SITES.filter((s) => s.ref === BUILDING_BAKERY).length * (SITE_BAKERS + SITE_CARRIERS),
     },
     {
-      label: 'all four commanded sites are present as finished buildings',
+      label: 'all four sites are present as finished buildings',
       predicate: (sim) => {
         let built = 0;
         for (const e of sim.world.query(Building)) {

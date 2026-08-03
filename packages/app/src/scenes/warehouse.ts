@@ -27,7 +27,7 @@ import type { SceneDefinition } from './types.js';
  * staffs, stops at the store's per-good limit, and moves on to the next good instead of jamming.
  *
  * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
- * piles. Three carriers are posted to it at build - nothing employs a settler on its own - filling its three
+ * piles. Three carriers are posted to it at build, filling its three
  * carrier slots. Bound to a recipe-less store, each becomes a porter: it collects the
  * nearest loose pile whose good the store can still take and carries it home one unit per foot-trip.
  *

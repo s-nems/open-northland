@@ -27,8 +27,8 @@ const DEFAULT_SETTLEMENTS = 4;
  */
 const DEFAULT_FIGHTERS_PER_SIDE = 0;
 const DEFAULT_MEASURED_TICKS = 300;
-/** Warmup ticks, excluded from the samples: the settlement's first ticks are atypical (the JobSystem's
- *  adopt pass binds every crew, routes are cold) and JIT tiering has not settled. */
+/** Warmup ticks, excluded from the samples: the settlement's first ticks are atypical (every crew walks
+ *  to its post from the spawn, routes are cold) and JIT tiering has not settled. */
 const DEFAULT_WARMUP_TICKS = 60;
 /** One window by default: this world is stationary, so its cost has no growth curve to report. */
 const DEFAULT_WINDOWS = 1;

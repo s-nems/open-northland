@@ -4,10 +4,10 @@ import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { incrementStaffing, type StaffingTally } from '../../economy/jobs/openings.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { isBuilt, ownedBuildings } from '../shared.js';
 import type { SpareForce } from './pool.js';
+import { incrementStaffing, type StaffingTally } from './tally.js';
 
 /** A building's staffing plan: workers per OPERATOR trade and TOTAL transport carriers, read tier
  *  by tier (everyone's minimum beats anyone's second worker, targets before any surplus seat). Slot

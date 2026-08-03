@@ -23,8 +23,8 @@ import {
  * A building offers the current trade when one of its worker slots is the same trade canonically
  * ({@link canonicalJobType} - a settler's picker id 14 and a building's rebased slot id 1014 are both
  * coin-maker) and that slot still has room (`held < count` at this building). The sim still enforces its
- * own tech/XP gate on the `assignWorker` command; here green = "an own, built building with my trade's free
- * slot", the candidacy + capacity half the player reads at a glance.
+ * own XP gate on the `assignWorker` command; here green = "an own building, finished or still going up,
+ * with my trade's free slot" - the candidacy + capacity half the player reads at a glance.
  */
 
 /** The slice of a building type this projection needs: its worker slots. */

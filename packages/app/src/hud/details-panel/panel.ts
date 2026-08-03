@@ -8,6 +8,7 @@ import { type EquipSlotRef, ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
+import { hasWorkerLimitsRow } from './sections/building/workers.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { createPanelStage, WORKER_OVERLAY_Z } from './stage.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
@@ -309,12 +310,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       return;
     }
     const b = view.layout.workers.body;
-    // The compact limits line sits in the first row; below it the sprite field. A construction site shows
-    // the same strip (it employs while it is raised) and adds the build crew to the field - the overlay's
-    // siteCrew selector. An unfinished HOME draws no line (no family slot yet, see drawWorkersSection), so
-    // it keeps the row for its crew.
+    // The limits strip owns the first row wherever it is drawn; the sprite field takes what is left. A
+    // construction site also adds the build crew to that field - the overlay's siteCrew selector.
     const siteCrew = view.model.construction !== null;
-    const inset = siteCrew && view.model.home !== null ? 0 : Math.round(ROW_H * scale);
+    const inset = hasWorkerLimitsRow(view.model) ? Math.round(ROW_H * scale) : 0;
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
     // A home's field draws its residents grouped per family (the Mieszkańcy window) instead of the
     // bound-worker scan - until it has any, which is every home still going up (see the overlay).
