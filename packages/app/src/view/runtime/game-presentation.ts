@@ -5,7 +5,6 @@ import { loadSettlerBubbleGfx } from '../../content/bubbles.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadCombatBones } from '../../content/objects.js';
-import { mountSoundToggle } from '../overlay.js';
 
 /** Load optional decoded presentation assets shared by the game view's sound and combat rendering.
  *  `hasSignArt` reports whether the `ls_temp` sign sheets resolved - the gate for door-badge click
@@ -23,8 +22,23 @@ export async function mountGamePresentation(
           buildAtomicId: BUILD_HOUSE_ATOMIC,
         });
   if (sound !== null) {
-    sound.setEnabled(false);
-    mountSoundToggle(sound);
+    // The engine starts enabled; opting out is the menu's "Dźwięk w grze" setting (`?sound=off`
+    // skips the driver above). Browsers keep the AudioContext suspended until a gesture that
+    // grants user activation - pointerdown does only for mice, so pointerup covers touch and
+    // keydown covers the keyboard. Frames before the resume drop unheard, and the listeners stay
+    // hooked until a resume actually starts the context (a non-activating gesture just retries).
+    const GESTURE_EVENTS = ['pointerdown', 'pointerup', 'keydown'] as const;
+    const resume = (): void => {
+      void sound
+        .resume()
+        .then(() => {
+          if (!sound.started) return;
+          for (const event of GESTURE_EVENTS) window.removeEventListener(event, resume);
+        })
+        // Constructing/resuming the context can throw (e.g. a context-count cap) - stay silent, not crash.
+        .catch(() => undefined);
+    };
+    for (const event of GESTURE_EVENTS) window.addEventListener(event, resume);
   }
   renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
   renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());

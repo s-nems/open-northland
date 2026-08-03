@@ -36,12 +36,16 @@ and the legal line reuses the home screen's version constant, so it reads "GPL-3
 
 Settings deviations: every live control applies and persists immediately, so the footer keeps only
 "Przywróć domyślne" plus an autosave note - there is no "Zapisz" button. Controls without an engine
-backend yet (resolution, smooth scrolling, the volume sliders, scroll speed, edge scrolling, the
-whole Sterowanie tab) render disabled with the "wkrótce" badge instead of being omitted; the
-resolution slot shows the live window size until a real dropdown exists (desktop). Rows the design
-lacks: "Język" (endonym segment), "Dźwięk w grze" (the `?sound` mute), "Prędkość przewijania mapy"
-and "Przewijanie przy krawędzi ekranu". The scale slider is labelled "Skala interfejsu w grze"
-because it drives only the in-game HUD; the menu's own scale stays viewport-derived.
+backend yet (resolution, the volume sliders, scroll speed, edge scrolling, the whole Sterowanie
+tab) render disabled with the "wkrótce" badge instead of being omitted; the resolution slot shows
+the live window size until a real dropdown exists (desktop). The design's "Płynne przewijanie
+mapy" and "Animowana scena w menu" rows are dropped entirely (user decision 2026-08-03); the scene
+still freezes under prefers-reduced-motion. Rows the design lacks: "Język" (endonym segment),
+"Dźwięk w grze" (the `?sound` mute - the game has no in-game sound toggle, starts audible and
+resumes its audio context on the first input gesture), "Prędkość przewijania mapy" and
+"Przewijanie przy krawędzi ekranu". The scale slider is labelled "Skala
+interfejsu w grze" because it drives only the in-game HUD; the menu's own scale stays
+viewport-derived.
 
 Fonts are the one asset gap. The design calls for Cinzel (display) and Alegreya Sans (UI); the repo
 currently bundles only Tinos under `packages/app/public/fonts/`. Both are OFL, so an implementation

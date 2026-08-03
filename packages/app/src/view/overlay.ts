@@ -1,5 +1,3 @@
-import { messages } from '../i18n/index.js';
-
 /**
  * Shared DOM chrome for the app's on-canvas panels - the scene routing error
  * ({@link import('./scene-overlay.js')}), the animation gallery panel
@@ -62,55 +60,6 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
     window.location.search = href;
   });
   return b;
-}
-
-/** The minimal audio-driver shape {@link mountSoundToggle} needs (structural - no `@open-northland/audio` import). */
-interface SoundToggleDriver {
-  resume(): Promise<void>;
-  readonly started: boolean;
-  /** Mute/unmute the running engine (the button starts muted and flips this on click). */
-  setEnabled(enabled: boolean): void;
-}
-
-/** The bottom-centre sound toggle button - a real click target (pointer-events on), so it must sit above panels. */
-const SOUND_TOGGLE_STYLE = [
-  'position:fixed',
-  'left:50%',
-  'bottom:24px',
-  'transform:translateX(-50%)',
-  'cursor:pointer',
-  'padding:10px 18px',
-  'background:rgba(20,16,12,0.92)',
-  'color:#e8dcc8',
-  'font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'border:1px solid #8a6f4c',
-  'border-radius:24px',
-  'box-shadow:0 6px 24px rgba(0,0,0,0.5)',
-  'z-index:200',
-].join(';');
-
-/**
- * Mount the bottom-centre sound toggle button. Audio starts muted (the driver is created with
- * `setEnabled(false)`); the game is silent until the user clicks this button. The click doubles as the
- * autoplay gesture - browsers keep an `AudioContext` suspended until a trusted user gesture, so the same
- * click that unmutes also `resume()`s the context. Clicking again re-mutes (the context stays running).
- */
-export function mountSoundToggle(driver: SoundToggleDriver): void {
-  const button = el('button', SOUND_TOGGLE_STYLE, messages().common.soundOff);
-  document.body.append(button);
-  let enabled = false;
-  button.addEventListener('click', () => {
-    const next = !enabled;
-    // Resume before unmuting so the very first enable satisfies autoplay policy; harmless once running.
-    void driver
-      .resume()
-      .then(() => {
-        driver.setEnabled(next);
-        enabled = next;
-        button.textContent = next ? messages().common.soundOn : messages().common.soundOff;
-      })
-      .catch(() => undefined); // constructing/resuming the context can throw (e.g. a context-count cap) - stay silent, not crash
-  });
 }
 
 /**

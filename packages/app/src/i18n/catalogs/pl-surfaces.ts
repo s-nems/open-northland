@@ -158,8 +158,6 @@ export const plSurfaces = {
       displayWindow: 'Okno',
       resolution: 'Rozdzielczość',
       uiScale: 'Skala interfejsu w grze',
-      smoothScroll: 'Płynne przewijanie mapy',
-      animatedScene: 'Animowana scena w menu',
       soundEnabled: 'Dźwięk w grze',
       masterVolume: 'Głośność ogólna',
       musicVolume: 'Głośność muzyki',
@@ -201,8 +199,6 @@ export const plSurfaces = {
   },
   common: {
     backToMenu: 'Wróć do menu',
-    soundOn: '🔊 Dźwięk włączony',
-    soundOff: '🔇 Kliknij, aby włączyć dźwięk',
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',
     missingTerrainDetail:
       'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na posiadanej kopii gry (npm run pipeline) i odśwież stronę.',

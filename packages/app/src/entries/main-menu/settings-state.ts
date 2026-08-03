@@ -38,7 +38,6 @@ export interface MenuSettings {
   readonly displayMode: 'fullscreen' | 'window';
   /** In-game HUD scale multiplier (`?uiscale`); the menu's own scale is viewport-derived. */
   readonly uiScale: number;
-  readonly animatedMenuScene: boolean;
   /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */
   readonly soundEnabled: boolean;
   readonly language: Locale;
@@ -47,7 +46,6 @@ export interface MenuSettings {
 export const DEFAULT_SETTINGS: MenuSettings = {
   displayMode: 'window',
   uiScale: DEFAULT_UI_SCALE,
-  animatedMenuScene: true,
   soundEnabled: true,
   language: DEFAULT_LOCALE,
 };
@@ -78,10 +76,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
   return {
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     uiScale: clampScale(record.uiScale),
-    animatedMenuScene:
-      typeof record.animatedMenuScene === 'boolean'
-        ? record.animatedMenuScene
-        : DEFAULT_SETTINGS.animatedMenuScene,
     soundEnabled:
       typeof record.soundEnabled === 'boolean' ? record.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
     language: record.language === 'eng' ? 'eng' : DEFAULT_LOCALE,
@@ -114,8 +108,6 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
   ];
 }
 
-type SettingsListener = (settings: MenuSettings) => void;
-const listeners = new Set<SettingsListener>();
 /** What localStorage holds: only the user's own choices, never URL-adopted overrides. */
 let persisted: MenuSettings | null = null;
 /** The session's effective settings: `persisted` plus any explicit URL overrides. */
@@ -135,8 +127,7 @@ export function menuSettings(): MenuSettings {
 /**
  * Apply and persist a change: merge into the session settings, advance the store by the patch
  * alone (so a shared link's URL overrides never leak into the stored defaults), activate a patched
- * locale, project the touched carried keys onto the URL, and notify subscribers (the live scene
- * freezes and resumes through this).
+ * locale, and project the touched carried keys onto the URL.
  */
 export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   const next = { ...menuSettings(), ...patch };
@@ -149,13 +140,7 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   }
   if (patch.language !== undefined) setActiveLocale(next.language);
   syncCarriedParams(patch, next);
-  for (const listener of listeners) listener(next);
   return next;
-}
-
-/** Subscribers live as long as the menu page; there is no unsubscribe seam yet. */
-export function onSettingsChange(listener: SettingsListener): void {
-  listeners.add(listener);
 }
 
 /**

@@ -187,17 +187,10 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       value: settings.uiScale,
       onCommit: (value) => updateSettings({ uiScale: value }),
     });
-    const smoothScroll = togglePill(true, () => undefined);
-    const animatedScene = togglePill(settings.animatedMenuScene, (on) =>
-      updateSettings({ animatedMenuScene: on }),
-    );
-    animatedScene.setAttribute('aria-label', text.animatedScene);
     return [
       settingRow(text.displayMode, displaySeg.root),
       settingRow(text.resolution, resolutionChip, soon),
       settingRow(text.uiScale, uiScale),
-      settingRow(text.smoothScroll, smoothScroll, soon),
-      settingRow(text.animatedScene, animatedScene),
     ];
   };
 

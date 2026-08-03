@@ -18,7 +18,6 @@ describe('parseStoredSettings', () => {
     const settings = {
       displayMode: 'fullscreen',
       uiScale: 1.75,
-      animatedMenuScene: false,
       soundEnabled: false,
       language: 'eng',
     } as const;
@@ -30,7 +29,7 @@ describe('parseStoredSettings', () => {
     expect(parsed.language).toBe('eng');
     expect(parsed.uiScale).toBe(DEFAULT_SETTINGS.uiScale);
     expect(parsed.displayMode).toBe('window');
-    expect(parsed.animatedMenuScene).toBe(DEFAULT_SETTINGS.animatedMenuScene);
+    expect(parsed.soundEnabled).toBe(DEFAULT_SETTINGS.soundEnabled);
   });
 
   it('clamps an out-of-range stored scale instead of dropping it', () => {

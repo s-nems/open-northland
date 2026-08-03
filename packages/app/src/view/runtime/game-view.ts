@@ -173,10 +173,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
   // attenuated, panned) + non-spatial life-event jingles + settler voice chatter - a pure consumer of
-  // the same snapshot + events render reads. Default-muted: the driver is built (unless `?sound=off`
-  // skips it entirely) but starts disabled, so the game is silent until the user clicks the bottom
-  // sound toggle - that click both unmutes and satisfies the browser autoplay gesture. A checkout
-  // without `content/` (no sound bank) degrades to silence (no driver, no button).
+  // the same snapshot + events render reads. The start-audible/gesture-resume policy lives in
+  // game-presentation.ts. A checkout without `content/` (no sound bank) degrades to silence.
   const { sound: soundDriver, hasSignArt } = await mountGamePresentation(params, renderer);
 
   // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
