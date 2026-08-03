@@ -1,10 +1,10 @@
-import type { HudLayout } from '@open-northland/render';
+import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
 import type { Command } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
 import type { Rect } from '../src/hud/geometry.js';
-import { minimapLayout, terrainWorldBounds } from '../src/hud/minimap/model.js';
+import { minimapLayout } from '../src/hud/minimap/model.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';

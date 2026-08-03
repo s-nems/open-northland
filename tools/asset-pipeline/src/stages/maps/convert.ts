@@ -33,8 +33,10 @@ export interface MapDatConversion {
   readonly output: string;
   /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted (the folder carried strings). */
   readonly meta: boolean;
-  /** Whether a `maps/<id>.png` minimap was emitted (the folder carried `minimap/minimap.pcx`). */
+  /** Whether a `maps/<id>.png` minimap was emitted (decoded from `minimap/minimap.pcx`, or synthesized). */
   readonly minimap: boolean;
+  /** The emitted minimap was synthesized from the decoded cells (no usable `minimap.pcx`). */
+  readonly minimapSynthesized: boolean;
   /** Whether a `maps/<id>.script.json` sidecar was emitted (the map carried playerdata/missions). */
   readonly script: boolean;
 }
@@ -74,6 +76,7 @@ export async function convertMapDatTree(
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
+  synthesizeMinimap?: (terrain: MapDatTerrainFile) => Promise<Uint8Array | undefined>,
 ): Promise<MapDatConversion[]> {
   const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.dat'));
   // This stage is the only writer under <outDir>/maps; an interrupted run already reads as
@@ -165,6 +168,7 @@ export async function convertMapDatTree(
       await writeFile(scriptPath, `${JSON.stringify(scriptFile)}\n`);
     }
     let minimap = false;
+    let minimapSynthesized = false;
     const minimapPath = await findPathCaseInsensitiveInDirs(mapDirs, ['minimap', 'minimap.pcx']);
     if (minimapPath !== undefined) {
       try {
@@ -174,6 +178,20 @@ export async function convertMapDatTree(
         console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
       }
     }
+    // No shipped card (or an undecodable one): rasterize a thumbnail from the decoded cells, so
+    // the menu never has to pull the multi-MB terrain JSON just to draw a list row.
+    if (!minimap && synthesizeMinimap !== undefined) {
+      try {
+        const png = await synthesizeMinimap(terrain);
+        if (png !== undefined) {
+          await writeFile(pngPath, png);
+          minimap = true;
+          minimapSynthesized = true;
+        }
+      } catch (err) {
+        console.warn(`[pipeline] map ${rel}: minimap synthesis failed: ${errorMessage(err)}`);
+      }
+    }
     done.push({
       id,
       width: terrain.width,
@@ -181,6 +199,7 @@ export async function convertMapDatTree(
       output,
       meta: metaFile !== undefined,
       minimap,
+      minimapSynthesized,
       script: scriptFile !== undefined,
     });
   }

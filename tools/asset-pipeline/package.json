@@ -17,7 +17,8 @@
     "start": "tsc --build && node ./dist/cli.js"
   },
   "dependencies": {
-    "@open-northland/data": "*"
+    "@open-northland/data": "*",
+    "@open-northland/render": "*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

@@ -1,8 +1,8 @@
+import { terrainWorldBounds } from '@open-northland/render';
 import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerRoleOf } from '../src/game/sandbox/index.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
-import { terrainWorldBounds } from '../src/hud/minimap/model.js';
 import { createFogGates, createSnapshotProjections } from '../src/view/projections/index.js';
 import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 

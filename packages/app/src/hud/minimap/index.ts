@@ -1,7 +1,14 @@
-import { type Camera, cameraViewport, flatTileColour, type SceneTerrain } from '@open-northland/render';
+import {
+  type Camera,
+  cameraViewport,
+  cellColourResolver,
+  flatTileColour,
+  rasterizeTerrain,
+  type SceneTerrain,
+  terrainWorldBounds,
+} from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { cellColourResolver } from '../../content/minimap-ground.js';
 import type { Rect } from '../geometry.js';
 import { forEachMinimapDot, type MinimapDotSink } from './dots.js';
 import { createFogMaskLayer } from './fog-mask.js';
@@ -12,9 +19,7 @@ import {
   minimapToWorld,
   pointOverMinimap,
   pointOverMinimapHole,
-  rasterizeTerrain,
   stampDot,
-  terrainWorldBounds,
   viewportRectOnMinimap,
 } from './model.js';
 

@@ -76,3 +76,11 @@ export function patternSrcRect(coordsA: readonly number[], coordsB: readonly num
   const minY = Math.min(...fys);
   return { x: minX, y: minY, w: Math.max(...fxs) - minX, h: Math.max(...fys) - minY };
 }
+
+/** Texture page key from a `data/.../text_NNN.pcx` path: the basename without its extension
+ *  (`text_NNN`) — the stem both the served `/textures/<key>.png` route and the pipeline's emitted
+ *  page file carry. */
+export function texturePageKey(texture: string): string {
+  const base = texture.split('/').pop() ?? texture;
+  return base.replace(/\.[^.]+$/, '');
+}

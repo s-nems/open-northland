@@ -1,9 +1,8 @@
-import { tileToScreen } from '@open-northland/render';
+import { terrainWorldBounds, tileToScreen } from '@open-northland/render';
 import { FOG_MODE, FOG_STATE, type FogView, fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import { forEachMinimapDot } from '../src/hud/minimap/dots.js';
-import { terrainWorldBounds } from '../src/hud/minimap/model.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 const BOUNDS = terrainWorldBounds(8, 8);
