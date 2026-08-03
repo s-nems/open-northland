@@ -3,7 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
+import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
 import { anchorCentroid, anchorNodeOf, ownedBuildings } from './shared.js';
 
 /**
@@ -31,6 +31,19 @@ export function seatBaseOf(world: World, ctx: SystemContext, player: number): En
     if (type.kind === 'storage') storage.push(e);
   }
   return centralOf(world, owned, storage);
+}
+
+/**
+ * The army's anchor, the way {@link seatBaseOf} is the economy's: the seat's lowest-id standing
+ * barracks, or null when it has none. A canonical pick rather than the nearest one, so the rung that
+ * sizes the garrison and the module that musters it always mean the same house - one rally point, and
+ * one tribe whose weapon rows the drill may arm (a seat can hold a captured house of another tribe).
+ */
+export function seatBarracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
+  for (const e of ownedBuildings(world, player)) {
+    if (isBarracks(world, ctx, e)) return e;
+  }
+  return null;
 }
 
 /** The candidate nearest the settlement centroid, ties to the lower entity id - `candidates` arrives
