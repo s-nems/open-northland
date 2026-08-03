@@ -5,10 +5,6 @@ import { describe, expect, it } from 'vitest';
 import { readConfig, writeConfig } from '../src/config.js';
 import { PORTABLE_DIR_NAME, resolveDataRoot } from '../src/paths.js';
 
-/**
- * The data-root decision (`src/paths.ts`): env override → portable marker beside the executable →
- * dev repo root → per-user dir; and the config round-trip with its degrade-to-empty policy.
- */
 describe('resolveDataRoot', () => {
   const base = {
     envOverride: undefined,

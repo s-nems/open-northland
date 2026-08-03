@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { overallFraction } from '../src/progress-model.js';
 
-/**
- * The installer's bar math (`src/progress-model.ts`). Invariants: monotone within a stage and
- * across stage boundaries in pipeline order, clamped to 0..1, and an estimated (total-less) stage
- * never claims its own completion.
- */
+/** A stage reporting no `total` only estimates its size, so its fraction never fills its weight. */
 describe('overallFraction', () => {
   it('is 0 at the first stage start and 1 only when the last stage completes', () => {
     expect(overallFraction({ stage: 'unpack', done: 0, total: undefined })).toBe(0);

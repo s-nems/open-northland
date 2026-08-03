@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { classifyContent } from '../src/content-state.js';
 
-/**
- * The staleness classification (`src/content-state.ts`): what the shell boots into. Only an exact
- * stamp match is `ready`; a schema mismatch blocks play; a missing stamp (pre-manifest or
- * interrupted conversion) degrades to recommended-regeneration, never to a crash-at-load.
- */
+/** A missing stamp means pre-manifest or interrupted conversion, not an incompatible schema. */
 describe('classifyContent', () => {
   const current = { irVersion: 2, contentRevision: 3 };
 
@@ -20,7 +16,6 @@ describe('classifyContent', () => {
 
   it('treats an IR schema mismatch in either direction as blocking', () => {
     expect(classifyContent({ irVersion: 1, contentRevision: 3 }, current, true)).toBe('stale-schema');
-    // Newer content is not forward-compatible either.
     expect(classifyContent({ irVersion: 3, contentRevision: 3 }, current, true)).toBe('stale-schema');
   });
 

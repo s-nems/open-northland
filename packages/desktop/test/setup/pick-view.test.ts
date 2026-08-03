@@ -3,9 +3,6 @@ import type { ContentStatus } from '../../src/content-state.js';
 import { formatMessage, messages, setActiveLocale } from '../../src/i18n/index.js';
 import { type PickState, type Probe, pickView } from '../../src/setup/pick-view.js';
 
-/** The wizard's first phase derived from state alone, across both axes: what the probe found and
- *  how the installed content compares to this shell. */
-
 const VALID_WITH_MOD: Probe = { kind: 'valid', path: '/games/cultures', hasMod: true };
 const VALID_WITHOUT_MOD: Probe = { kind: 'valid', path: '/games/cultures', hasMod: false };
 const EXTERNAL_MOD = '/data/mods/CnMod 1.3.1';

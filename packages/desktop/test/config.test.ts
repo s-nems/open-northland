@@ -3,11 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { patchConfig, readConfig, writeConfig } from '../src/config.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The shell's remembered config (`src/config.ts`). Invariants: known string fields survive a
- * round-trip, an unsupported `locale` is dropped rather than trusted, and a malformed file degrades
- * to `{}` instead of throwing.
- */
 describe('desktop config', () => {
   let temp: TempDir;
   let file: string;

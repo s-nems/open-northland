@@ -16,7 +16,7 @@ describe('drive URL parsing', () => {
   });
 
   it('replays the confirm form fields as query params on the form action', () => {
-    // Shape observed on the live drive.usercontent.google.com interstitial (2026-07).
+    // Shape observed on the live drive.usercontent.google.com interstitial.
     const html =
       '<form action="https://drive.usercontent.google.com/download" method="get">' +
       '<input type="hidden" name="id" value="FILE"><input type="hidden" name="export" value="download">' +

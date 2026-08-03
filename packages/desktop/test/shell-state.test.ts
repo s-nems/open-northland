@@ -6,12 +6,7 @@ import { configFileOf, contentDirOf, modsDirOf } from '../src/paths.js';
 import { createShellState, type ShellPaths } from '../src/shell-state.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The shell's view of its own data root (`src/shell-state.ts`). Invariants: a hand-picked mod root
- * is re-validated on every read and a stale one is dropped from the config (without losing the
- * remembered game path), an installed mod under `mods/` is the fallback, and `desktopState` omits
- * absent optional keys rather than sending `undefined` over IPC.
- */
+/** `desktopState` crosses IPC, so an absent optional key must be missing, not `undefined`. */
 describe('createShellState', () => {
   let temp: TempDir;
   let paths: ShellPaths;

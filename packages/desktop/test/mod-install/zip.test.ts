@@ -23,8 +23,8 @@ describe('zip reader', () => {
     const stored = Uint8Array.from([1, 2, 3, 4]);
     const compressible = new TextEncoder().encode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
     const { path, size } = await writeZip([
-      // Local extra differs from the central record's (real archives do this) - the data offset
-      // must come from the local header.
+      // Real archives' local extra field differs from the central record's, so the data offset must
+      // come from the local header.
       {
         name: 'CnMod 1.3.1/DataCnmd/types/houses.ini',
         data: stored,
@@ -55,9 +55,7 @@ describe('zip reader', () => {
     try {
       const [entry] = await readZipEntries(fh, size);
       if (entry === undefined) throw new Error('expected one entry');
-      // Honest size inflates fine…
       expect((await readZipEntryData(fh, entry, size)).length).toBe(bomb.length);
-      // …a lying (smaller) declared size aborts the inflate instead of trusting the stream.
       await expect(readZipEntryData(fh, { ...entry, size: 16 }, size)).rejects.toThrow();
     } finally {
       await fh.close();

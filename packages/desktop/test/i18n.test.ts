@@ -10,11 +10,6 @@ import {
   resolveLocale,
 } from '../src/i18n/index.js';
 
-/**
- * The installer's own i18n catalog (`src/i18n`). Invariants: OS-locale detection collapses to the
- * two shipped languages, both catalogs cover every pipeline stage the progress line can name, and
- * placeholder interpolation matches the game's `formatMessage` contract.
- */
 describe('installer i18n', () => {
   it('maps an OS locale onto the two languages, defaulting non-Polish to English', () => {
     expect(resolveLocale('pl')).toBe('pol');
