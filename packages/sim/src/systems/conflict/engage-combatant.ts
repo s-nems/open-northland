@@ -63,6 +63,7 @@ export function engageCombatant(
   presence: HostilePresence,
   slots: MeleeSlots,
   bodyNodes: BuildingBodyNodeCache,
+  seats: ReadonlyMap<Entity, number>,
   e: Entity,
 ): void {
   const attacker = world.get(e, Settler);
@@ -87,12 +88,15 @@ export function engageCombatant(
 
   const owned = world.has(e, Owner);
   const ordered = liveAttackOrder(world, ctx, e, attacker);
+  const manned = mannedShelter(world, e);
   const stance: CombatantStance = {
     owned,
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
     post: manning ? posted : null,
-    shelter: mannedShelter(world, e),
+    // A manned settler always has a seat - `garrisonSeats` numbers every live claim - so the fallback is
+    // only for a claim made after that pass, which reads as the first seat until the next tick.
+    shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
 
   // The two PASSIVE stances are overridden by the post, not applied under it: a manned tower IS the order
@@ -136,7 +140,7 @@ export function engageCombatant(
   // A garrison acquires and measures reach from the TOWER, not from the door node it happens to stand on
   // inside - the same point its arrow leaves from (`launchProjectile`), so the band it shoots into is the
   // band it swings in.
-  const here = entityNode(world, terrain, stance.shelter ?? e);
+  const here = entityNode(world, terrain, stance.shelter?.building ?? e);
   const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {

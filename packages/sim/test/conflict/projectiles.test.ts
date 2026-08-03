@@ -220,7 +220,7 @@ describe('projectiles - homing flight + on-contact damage', () => {
 });
 
 describe('projectiles - expiry + dead zone', () => {
-  it('expires (no hit, no re-target) when its target dies mid-flight', () => {
+  it('is destroyed with no hit when its target leaves the world mid-flight', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     fighterAt(sim, 0, 0, VIKING, ARCHER);
     const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
@@ -228,17 +228,78 @@ describe('projectiles - expiry + dead zone', () => {
     stepToLaunch(sim);
     expect(projectiles(sim)).toHaveLength(1);
 
-    // The mark falls (removed from the world) while the arrow is still in the air.
+    // The mark is removed outright while the arrow is still in the air - no Position left, so there is
+    // nowhere for the shot to come down.
     sim.world.destroy(target);
     sim.step();
 
-    // The homing arrow lost its target: it expires in place - destroyed, no hit event, and (the target
-    // being gone) the archer looses nothing new either.
     expect(projectiles(sim)).toHaveLength(0);
     expect(sim.snapshot().events.some((ev) => ev.kind === 'projectileHit')).toBe(false);
     // A few more ticks confirm it stays clear (no re-target, no spurious shot at a dead target).
     for (let i = 0; i < 20; i++) sim.step();
     expect(projectiles(sim)).toHaveLength(0);
+  });
+
+  it('lands in the dirt where the mark fell, instead of evaporating in mid-air', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    const spot = sim.world.get(target, Position);
+    const fell = { x: spot.x, y: spot.y };
+
+    // The mark drops (0 hitpoints) with the arrow still well short of it, the way it does when an earlier
+    // shot of the same volley kills the man everyone is loosing at.
+    sim.world.write(target, Health, (h) => {
+      h.hitpoints = 0;
+    });
+    sim.step();
+
+    // The shot stayed in the air, re-frozen onto the spot the mark fell on.
+    expect(sim.world.isAlive(shot)).toBe(true);
+    expect(sim.world.get(shot, Projectile).missAim).toEqual(fell);
+
+    // It flies the rest of the way and lands there, dealing nothing.
+    let sawMiss = false;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) sawMiss = true;
+    }
+    expect(sim.world.isAlive(shot)).toBe(false);
+    expect(sawMiss).toBe(true);
+    expect(sim.snapshot().events.some((ev) => ev.kind === 'projectileHit')).toBe(false);
+  });
+
+  it('settles the aim of a shot still resting at the bow when its mark falls that same tick', () => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    fighterAt(sim, 0, 0, VIKING, ARCHER);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes - in band
+
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    // Put the shot back at the bow for the NEXT tick and drop the mark on that same tick - the exact
+    // overlap a real volley makes, where one arrow lands the kill in the same pass another is loosed in.
+    // The cleanupSystem reaps the corpse at the end of that tick, so the aim has to be taken during it.
+    sim.world.write(shot, Projectile, (v) => {
+      v.launchTick = sim.tick + 1;
+    });
+    sim.world.write(target, Health, (h) => {
+      h.hitpoints = 0;
+    });
+    sim.step();
+
+    expect(sim.world.isAlive(target)).toBe(false); // reaped, so no position is readable any more
+    expect(sim.world.isAlive(shot)).toBe(true); // the shot did not evaporate at the bow
+    expect(sim.world.get(shot, Projectile).missAim).not.toBeNull();
+
+    let sawMiss = false;
+    for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
+      sim.step();
+      if (sim.snapshot().events.some((ev) => ev.kind === 'projectileMissed')) sawMiss = true;
+    }
+    expect(sawMiss).toBe(true); // it flew on and came down
   });
 
   it('does not shoot an enemy inside the bow dead zone (closer than minRange)', () => {

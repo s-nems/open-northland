@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Age,
   Building,
+  CurrentAtomic,
   DefenceMode,
   Health,
   Owner,
@@ -315,6 +316,35 @@ describe('defence mode', () => {
 
     expect(insideOf(sim, farmer)).toBe(tower); // still under cover, so it shot from in there
     expect([...sim.world.query(Projectile)]).not.toHaveLength(0);
+  });
+
+  it('fans the garrison across the nearest raiders instead of stacking it all on one', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const first = settlerAt(sim, 4, 1, P1, FARMER);
+    // A gap in the entity ids, as a real village has: what divides the band between the two shooters is
+    // their SEAT in the garrison, not their id. With a gap of 6 and three marks below, an id-derived
+    // offset would land both on the same man.
+    for (let i = 0; i < 5; i++) sim.world.create();
+    const garrison = [first, settlerAt(sim, 4, 2, P1, FARMER)];
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => garrison.every((g) => insideOf(sim, g) === tower));
+    // Three marks at three distances, all inside the bow's band: a garrison that always took the nearest
+    // would put every arrow of every tick into the same man.
+    for (const x of [6, 7, 8]) settlerAt(sim, x, 1, P2, SOLDIER);
+
+    let split = false;
+    for (let i = 0; i < 600 && !split; i++) {
+      sim.step();
+      const drawn = garrison.map((g) => {
+        const swing = sim.world.tryGet(g, CurrentAtomic)?.effect;
+        return swing?.kind === 'attack' ? swing.target : null;
+      });
+      split = drawn.every((t) => t !== null) && new Set(drawn).size === garrison.length;
+    }
+
+    expect(split).toBe(true); // both shooters drew on DIFFERENT raiders in the same tick
   });
 
   it('leaves a civilian outside its work area at work - the alarm does not suspend the signpost rule', () => {

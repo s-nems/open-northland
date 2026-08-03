@@ -106,3 +106,73 @@ describe('NodeBuckets.nearest - grid ring search', () => {
     expect(buckets.nearest(0, 0, 0, 3, ALL)).toBeNull();
   });
 });
+
+/**
+ * {@link NodeBuckets.nearestFew} - the same ring walk, kept going until it has several. Seekers stacked on
+ * one node (a tower's garrison) take an offset into this band instead of all choosing its first entry, so
+ * the ORDER is the contract, not just the membership.
+ */
+describe('NodeBuckets.nearestFew - the nearest several', () => {
+  it('orders by distance, then by ascending id, and leads with what nearest would pick', () => {
+    const { world, ids } = place([
+      { x: 4, y: 0 }, // id 0, dist 4
+      { x: -2, y: 0 }, // id 1, dist 2 - shares the ring with id 2, scanned FIRST in the dx sweep
+      { x: 2, y: 0 }, // id 2, dist 2 - scanned last, but a higher id, so it follows id 1
+      { x: 0, y: 1 }, // id 3, dist 1 - the nearest
+    ]);
+    const buckets = new NodeBuckets(world, ids);
+    expect(buckets.nearestFew(0, 0, 0, 10, ALL, 4)).toEqual([
+      { entity: ids[3], distance: 1 },
+      { entity: ids[1], distance: 2 },
+      { entity: ids[2], distance: 2 },
+      { entity: ids[0], distance: 4 },
+    ]);
+    expect(buckets.nearestFew(0, 0, 0, 10, ALL, 4)[0]).toEqual(buckets.nearest(0, 0, 0, 10, ALL));
+  });
+
+  it('truncates to `limit` at the ring that fills it, keeping the nearest', () => {
+    const { world, ids } = place([
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+      { x: 4, y: 0 },
+    ]);
+    const buckets = new NodeBuckets(world, ids);
+    expect(buckets.nearestFew(0, 0, 0, 10, ALL, 2)).toEqual([
+      { entity: ids[0], distance: 1 },
+      { entity: ids[1], distance: 2 },
+    ]);
+  });
+
+  it('lists an entity bucketed at several nodes once, at its nearest', () => {
+    // A building buckets at every wall cell, so one entity sits on several nodes of several rings.
+    const world = new World();
+    const wall = world.create();
+    world.add(wall, Position, positionOfNode(3, 0));
+    const other = world.create();
+    world.add(other, Position, positionOfNode(6, 0));
+    const nodesOf = (e: Entity): { x: number; y: number }[] =>
+      e === wall
+        ? [
+            { x: 3, y: 0 },
+            { x: 4, y: 0 },
+            { x: 5, y: 0 },
+          ]
+        : [{ x: 6, y: 0 }];
+    const buckets = new NodeBuckets(world, [wall, other], undefined, nodesOf);
+    expect(buckets.nearestFew(0, 0, 0, 10, ALL, 4)).toEqual([
+      { entity: wall, distance: 3 },
+      { entity: other, distance: 6 },
+    ]);
+  });
+
+  it('returns everything the band holds when that is fewer than `limit`, and empty when it holds none', () => {
+    const { world, ids } = place([
+      { x: 2, y: 0 },
+      { x: 9, y: 0 }, // outside the radius below
+    ]);
+    const buckets = new NodeBuckets(world, ids);
+    expect(buckets.nearestFew(0, 0, 0, 4, ALL, 4)).toEqual([{ entity: ids[0], distance: 2 }]);
+    expect(buckets.nearestFew(0, 0, 0, 1, ALL, 4)).toEqual([]);
+  });
+});

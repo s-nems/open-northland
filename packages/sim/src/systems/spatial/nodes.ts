@@ -193,6 +193,41 @@ export class NodeBuckets {
     return null;
   }
 
+  /**
+   * The `limit` nearest bucketed entities to `(fromX, fromY)` that satisfy `accept`, in the same
+   * (distance, then id) order {@link nearest} picks its single winner from - so `[0]` is exactly what
+   * `nearest` returns. Every ring is finished before the walk stops, keeping the result independent of
+   * node-iteration order; an entity bucketed at several nodes is listed once, at its nearest.
+   *
+   * Costs more than {@link nearest}: it does not stop at the first ring that hits, so a band holding
+   * fewer than `limit` acceptors is walked to `maxDist`. Only for a seeker that needs alternatives.
+   */
+  nearestFew(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    accept: (e: Entity) => boolean,
+    limit: number,
+  ): readonly { entity: Entity; distance: number }[] {
+    const found: { entity: Entity; distance: number }[] = [];
+    const taken = new Set<Entity>();
+    for (let d = minDist; d <= maxDist && found.length < limit; d++) {
+      const ring: Entity[] = [];
+      forEachRingOffset(d, (dx, dy) => {
+        for (const e of this.at(fromX + dx, fromY + dy)) {
+          if (!taken.has(e) && accept(e)) {
+            taken.add(e);
+            ring.push(e);
+          }
+        }
+      });
+      ring.sort((a, b) => a - b);
+      for (const entity of ring) found.push({ entity, distance: d });
+    }
+    return found.length > limit ? found.slice(0, limit) : found;
+  }
+
   /** The lower-id of `best` and the smallest accepted entity on node (x,y) - the per-node step of the
    *  ring search's min-id pick (buckets are ascending-id, so the first accepted entity on a node is its
    *  smallest, but we still min against `best` across the ring's other nodes). */

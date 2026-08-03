@@ -101,14 +101,14 @@ function playerSettlers(sim: Simulation): Entity[] {
 
 // runTicks sits past the walk to cover and the whole exchange of fire, so the end state shows both halves
 // of the mechanic: full towers and a spent warband. The garrison's arrow is a third of a soldier's
-// (`catalog/defence.ts`), which puts the last raider down around tick 614 - the margin above that is for
-// reading room, not slack.
+// (`catalog/defence.ts`) and its fire fans across the nearest few raiders rather than stacking on one, so
+// the warband falls man by man rather than in one volley - the margin here is for reading room, not slack.
 export const towerDefenceScene: SceneDefinition = {
   id: 'tower-defence',
   seed: 7,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 700,
+  runTicks: 600,
   initialZoom: 0.8,
   checks: [
     {

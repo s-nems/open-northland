@@ -135,7 +135,8 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *  - `source` - the shooter, for the fight-XP grant + provoked-anger side effect on impact (a `tryGet`
  *    no-ops if it died mid-flight, so a dead archer's arrow still lands);
  *  - `target` - homed on at its current position each tick (homing, approximated - the original's
- *    ballistic-vs-homing choice is unreadable). A target that dies/vanishes ⇒ expires;
+ *    ballistic-vs-homing choice is unreadable). A target that dies mid-flight strands the shot into a
+ *    `missAim` where it last stood, so the arrow lands rather than evaporating in the air;
  *  - `damage` - the pre-resolved material-column damage (`weapon.damagevalue[targetMaterial]`), resolved at
  *    launch rather than on contact (equivalent since armor is immutable in flight);
  *  - `weaponMainType` - the coarse weapon class keying the fight-XP bucket (`null` ⇒ no fight XP);
@@ -149,8 +150,9 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *  - `cover` - the building a garrison shot was loosed from, else `null`. Frozen at launch and read only
  *    by the render, which draws such a shot falling from the gallery; razing the tower mid-flight must not
  *    snap the drawn arrow to the dirt;
- *  - `missAim` - a MISSED shot's aim point (the target's position frozen at release): the flight steers here
- *    instead of homing, and lands in the dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot;
+ *  - `missAim` - a frozen aim point: the target's position at release for a shot that MISSED, or where the
+ *    mark stood when it fell for a stranded one. The flight steers here instead of homing and lands in the
+ *    dirt (`projectileMissed`) dealing nothing. `null` ⇒ a true shot still homing;
  *  - `launchTick` - the tick the string was loosed on; the flight rests at the bow through it (approximated
  *    - the sub-tick release instant is unreadable), so a shot is observable at its launch point.
  */
