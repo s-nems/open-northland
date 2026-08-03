@@ -1,14 +1,15 @@
-import { playerSwatchHex } from '../../catalog/roster.js';
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import { SCENES } from '../../scenes/index.js';
 import { generatedMapPreview } from '../menu/map-preview.js';
 import { targetSearch } from '../menu/settings.js';
+import { createMapDetailsCard, metaLine } from './map-card.js';
 import {
   filterItems,
   MAP_FILTER_TABS,
   type MapFilter,
   type MapSelectItem,
+  type MapSelectMemory,
   mapItem,
   pluralForm,
   sceneItem,
@@ -20,8 +21,6 @@ import type { MenuScreen } from './model.js';
  * registered test scenes, a large preview, and the primary action. Maps continue to the lobby;
  * a test scene starts directly (scenes have no roster to negotiate).
  */
-
-type MapSelectCopy = ReturnType<typeof messages>['mainMenu']['mapSelect'];
 
 /** Rows rasterize their thumb this far before entering the viewport, so scrolling meets a ready
  *  image instead of a placeholder swap. */
@@ -36,17 +35,11 @@ function sceneRows(): readonly MapSelectItem[] {
   });
 }
 
-/** The row/panel meta line: category name, plus the roster size when the map ships one. */
-function metaLine(item: MapSelectItem, copy: MapSelectCopy): string {
-  const category = copy.categoryNames[item.category];
-  if (item.seats.length === 0) return category;
-  const players = formatMessage(pluralForm(item.seats.length, copy.players, bcp47Tag()), {
-    count: item.seats.length,
-  });
-  return `${category} · ${players}`;
-}
-
-export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement {
+export function mapSelectScreen(
+  open: (screen: MenuScreen) => void,
+  memory: MapSelectMemory,
+  openLobby: (item: MapSelectItem) => void,
+): HTMLElement {
   const copy = messages().mainMenu;
   const select = copy.mapSelect;
 
@@ -89,8 +82,8 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     }
     button.textContent = select.filters[tab.filter];
     button.addEventListener('click', () => {
-      filter = tab.filter;
-      for (const [key, b] of segButtons) b.classList.toggle('is-active', key === filter);
+      memory.filter = tab.filter;
+      for (const [key, b] of segButtons) b.classList.toggle('is-active', key === memory.filter);
       renderList();
     });
     segButtons.set(tab.filter, button);
@@ -115,50 +108,24 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   count.className = 'main-menu__map-count';
   listCol.append(search, listScroll, count);
 
-  // The details card: preview section on top, then name, meta, roster seat chips, description and
-  // the primary action. One bordered object, so the column reads as content rather than dead space.
+  // The details card (shared with the lobby): this screen contributes the primary action button.
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
-  const card = document.createElement('div');
-  card.className = 'main-menu__map-card';
-  const frame = document.createElement('div');
-  frame.className = 'main-menu__map-preview';
-  const previewImg = document.createElement('img');
-  previewImg.alt = '';
-  previewImg.hidden = true;
-  const frameLabel = document.createElement('div');
-  frameLabel.className = 'main-menu__map-preview-label';
-  frame.append(previewImg, frameLabel);
-  const details = document.createElement('div');
-  details.className = 'main-menu__map-details';
-  const name = document.createElement('div');
-  name.className = 'main-menu__map-name';
-  const meta = document.createElement('div');
-  meta.className = 'main-menu__map-meta';
-  const seats = document.createElement('div');
-  seats.className = 'main-menu__map-seats';
-  const description = document.createElement('p');
-  description.className = 'main-menu__map-desc';
-  const actions = document.createElement('div');
-  actions.className = 'main-menu__map-actions';
+  const card = createMapDetailsCard();
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
   primary.disabled = true;
-  actions.append(primary);
-  details.append(name, meta, seats, description, actions);
-  card.append(frame, details);
-  previewCol.append(card);
+  card.actions.append(primary);
+  previewCol.append(card.root);
 
   body.append(listCol, previewCol);
   section.append(head, body);
 
   // Scenes are available immediately; decoded maps join when /maps-index answers.
   let items: readonly MapSelectItem[] = sceneRows();
-  let filter: MapFilter = 'all';
   let selected: MapSelectItem | null = null;
   let mapsLoaded = false;
-  let previewGeneration = 0;
   const rowButtons = new Map<MapSelectItem, HTMLButtonElement>();
 
   // Maps without a decoded PNG rasterize a thumb from map data, but only once their row nears the
@@ -187,66 +154,15 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     { root: listScroll, rootMargin: THUMB_PRELOAD_MARGIN },
   );
 
-  const showPreview = (item: MapSelectItem): void => {
-    const generation = ++previewGeneration;
-    previewImg.hidden = true;
-    previewImg.removeAttribute('src');
-    if (item.kind === 'scene') {
-      frameLabel.textContent = select.noPreview;
-      return;
-    }
-    frameLabel.textContent = '';
-    const applyGenerated = (): void => {
-      void generatedMapPreview(item.id).then((source) => {
-        if (generation !== previewGeneration || source === null) return;
-        previewImg.src = source;
-        previewImg.hidden = false;
-      });
-    };
-    if (item.minimap) {
-      // The decoded minimap PNG when the pipeline emitted one; a broken file falls back to the
-      // client-side rasterized preview (the `error` handler below).
-      previewImg.src = `/maps/${encodeURIComponent(item.id)}.png`;
-      previewImg.hidden = false;
-    } else {
-      applyGenerated();
-    }
-    previewImg.onerror = () => {
-      if (generation !== previewGeneration) return;
-      // One hop only: a failing generated blob must not re-enter this handler.
-      previewImg.onerror = null;
-      previewImg.hidden = true;
-      applyGenerated();
-    };
-  };
-
-  const seatChip = (tribeId: number, colorId: number): HTMLElement => {
-    const chip = document.createElement('span');
-    chip.className = 'main-menu__seat-chip';
-    const dot = document.createElement('span');
-    dot.className = 'main-menu__seat-dot';
-    dot.style.background = playerSwatchHex(colorId);
-    const tribe = document.createElement('span');
-    tribe.textContent = copy.tribeNames[tribeId] ?? `#${tribeId}`;
-    chip.append(dot, tribe);
-    return chip;
-  };
-
   const selectItem = (item: MapSelectItem): void => {
     selected = item;
+    memory.selectedId = item.id;
     for (const [rowItem, button] of rowButtons) {
       button.classList.toggle('is-selected', rowItem === item);
     }
-    card.hidden = false;
-    name.textContent = item.title;
-    meta.textContent = metaLine(item, select);
-    seats.replaceChildren(...item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)));
-    seats.hidden = item.seats.length === 0;
-    description.textContent = item.description ?? '';
-    description.hidden = item.description === undefined || item.description === '';
+    card.show(item);
     primary.disabled = false;
     primary.textContent = item.kind === 'map' ? select.next : select.run;
-    showPreview(item);
   };
 
   const rowButton = (item: MapSelectItem): HTMLButtonElement => {
@@ -278,7 +194,7 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     rowName.textContent = item.title;
     const rowMeta = document.createElement('div');
     rowMeta.className = 'main-menu__map-row-meta';
-    rowMeta.textContent = item.kind === 'scene' ? (item.description ?? '') : metaLine(item, select);
+    rowMeta.textContent = item.kind === 'scene' ? (item.description ?? '') : metaLine(item);
     text.append(rowName, rowMeta);
     button.append(thumb, text);
     button.addEventListener('click', () => selectItem(item));
@@ -286,9 +202,9 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   };
 
   const renderList = (): void => {
-    const rows = filterItems(items, filter, search.value);
+    const rows = filterItems(items, memory.filter, search.value);
     // The scenes filter counts scenes; every other filter counts maps.
-    const countForms = filter === 'scenes' ? select.scenes : select.maps;
+    const countForms = memory.filter === 'scenes' ? select.scenes : select.maps;
     const mapsText = formatMessage(pluralForm(rows.length, countForms, bcp47Tag()), {
       count: rows.length,
     });
@@ -306,21 +222,26 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
       list.replaceChildren(notice);
       if (!mapsLoaded) count.textContent = '';
       selected = null;
-      card.hidden = true;
+      card.hide();
       primary.disabled = true;
-      previewGeneration += 1;
-      previewImg.hidden = true;
-      frameLabel.textContent = '';
       return;
     }
     for (const item of rows) rowButtons.set(item, rowButton(item));
     list.replaceChildren(...rowButtons.values());
-    const current = selected !== null && rows.includes(selected) ? selected : rows[0];
+    // A re-entered screen restores the remembered selection by id (items are fresh objects).
+    const current =
+      selected !== null && rows.includes(selected)
+        ? selected
+        : (rows.find((row) => row.id === memory.selectedId) ?? rows[0]);
     if (current !== undefined) selectItem(current);
   };
 
-  search.addEventListener('input', renderList);
-  segButtons.get(filter)?.classList.add('is-active');
+  search.value = memory.query;
+  search.addEventListener('input', () => {
+    memory.query = search.value;
+    renderList();
+  });
+  segButtons.get(memory.filter)?.classList.add('is-active');
   renderList();
   void loadMapList().then((maps) => {
     // A navigation away detaches the screen; a late response must not rasterize previews for it.
@@ -337,7 +258,7 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
       window.location.search = targetSearch(`?scene=${encodeURIComponent(selected.id)}`);
       return;
     }
-    open('lobby');
+    openLobby(selected);
   });
 
   return section;
