@@ -2,13 +2,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
 
-/** Node-side builder for the `/maps-index` payload - the decoded-maps list the app menu renders. */
-
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
 interface ScriptMultiplayer {
   /** Slots whose `playeroption` row offers `human`. */
   readonly humanOptionSlots: ReadonlySet<number>;
-  /** Slots whose `playeroption` row does NOT offer `ai` (Human/Closed-only seats). */
+  /** Slots whose `playeroption` row omits `ai` (Human/Closed-only seats). */
   readonly aiDeniedSlots: ReadonlySet<number>;
   readonly hiddenSlots: ReadonlySet<number>;
   readonly fixedColors: boolean;
@@ -41,8 +39,7 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer {
   return { humanOptionSlots, aiDeniedSlots, hiddenSlots: hidden, fixedColors: fixedColors === true };
 }
 
-/** Structurally validates one roster row off a parsed script sidecar. No schema dep: the sidecar was
- *  zod-validated at pipeline emit, so this only guards the menu against a hand-edited file. */
+/** Guards the menu against a hand-edited roster row; the pipeline zod-validates what it emits. */
 function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPlayerSlot | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { player, type, tribeId, colorId, name } = raw as Record<string, unknown>;
@@ -61,7 +58,7 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
   };
 }
 
-/** Parses `<id><suffix>`, or undefined when absent or unreadable (warned, never thrown). */
+/** Undefined when `<id><suffix>` is absent or unparsable; an unparsable sidecar warns, never throws. */
 function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
   const file = join(mapsRoot, `${id}${suffix}`);
   if (!existsSync(file)) return undefined;
@@ -73,7 +70,7 @@ function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
   }
 }
 
-/** Reads `<id>.meta.json`'s display strings; a wrong-typed field is dropped silently. */
+/** Display strings from `<id>.meta.json`; a wrong-typed field is dropped without a warning. */
 function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonly description?: string } {
   const parsed = readSidecar(mapsRoot, id, '.meta.json');
   if (parsed === undefined) return {};
@@ -88,8 +85,7 @@ function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonl
   };
 }
 
-/** Reads `<id>.script.json`'s roster (+ colour locking and multiplayer capability), or undefined
- *  when absent/malformed. */
+/** Undefined when `<id>.script.json` is absent, malformed, or carries no readable slot. */
 function playersOf(
   mapsRoot: string,
   id: string,
@@ -116,10 +112,9 @@ function playersOf(
 }
 
 /**
- * Builds one entry per `content/maps/<id>.json` grid, sorted, joined with its optional sidecars -
- * the `.meta.json`/`.script.json` ones are not maps of their own and are filtered out. Tolerance is
- * per entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist
- * (the caller guards).
+ * One entry per `content/maps/<id>.json` grid, joined with its optional sidecars. Tolerance is per
+ * entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist - the
+ * caller guards.
  */
 export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
   return readdirSync(mapsRoot)
@@ -127,7 +122,6 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
     .map((f) => f.slice(0, -'.json'.length))
     .sort()
     .map((id) => {
-      // Read in sidecar order (meta, then script) so a map with two bad sidecars warns in that order.
       const meta = metaOf(mapsRoot, id);
       const players = playersOf(mapsRoot, id);
       return {
