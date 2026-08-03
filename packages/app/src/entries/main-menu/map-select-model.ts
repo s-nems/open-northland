@@ -7,8 +7,28 @@ import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
 
 export type MapFilter = 'all' | 'story' | 'multiplayer' | 'scenes';
 
-/** Segmented-filter order, matching the design frame left to right. */
-export const MAP_FILTERS: readonly MapFilter[] = ['all', 'story', 'multiplayer', 'scenes'];
+/** A mode the corpus cannot serve yet; its tab renders greyed out with a coming-soon tooltip. */
+export type ComingSoonTab = 'campaign' | 'tutorial';
+
+export type MapFilterTab =
+  | { readonly kind: 'filter'; readonly filter: MapFilter }
+  | { readonly kind: 'comingSoon'; readonly id: ComingSoonTab };
+
+/** Segmented-bar order: the coming-soon modes sit next to "all", before the live filters. */
+export const MAP_FILTER_TABS: readonly MapFilterTab[] = [
+  { kind: 'filter', filter: 'all' },
+  { kind: 'comingSoon', id: 'campaign' },
+  { kind: 'comingSoon', id: 'tutorial' },
+  { kind: 'filter', filter: 'story' },
+  { kind: 'filter', filter: 'multiplayer' },
+  { kind: 'filter', filter: 'scenes' },
+];
+
+/** One listed roster slot as the details card shows it: authored tribe + team colour. */
+export interface MapSeat {
+  readonly tribeId: number;
+  readonly colorId: number;
+}
 
 export interface MapSelectItem {
   /** A decoded map (opens the lobby) or a registered test scene (starts directly). */
@@ -16,8 +36,8 @@ export interface MapSelectItem {
   readonly id: string;
   readonly title: string;
   readonly category: Exclude<MapFilter, 'all'>;
-  /** Listed (non-hidden) roster slots; 0 when the map ships no roster. */
-  readonly playerCount: number;
+  /** Listed (non-hidden) roster slots in authored order; empty when the map ships no roster. */
+  readonly seats: readonly MapSeat[];
   readonly description?: string;
   /** `/maps/<id>.png` exists, so rows and the preview can use the decoded minimap. */
   readonly minimap: boolean;
@@ -32,7 +52,7 @@ export function mapItem(entry: MapsIndexEntry): MapSelectItem {
     id: entry.id,
     title: entry.name ?? entry.id,
     category: entry.multiplayer === true ? 'multiplayer' : 'story',
-    playerCount: listed.length,
+    seats: listed.map((slot) => ({ tribeId: slot.tribeId, colorId: slot.colorId })),
     ...(entry.description !== undefined ? { description: entry.description } : {}),
     minimap: entry.minimap,
   };
@@ -45,7 +65,7 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     id,
     title,
     category: 'scenes',
-    playerCount: 0,
+    seats: [],
     description: summary,
     minimap: false,
   };

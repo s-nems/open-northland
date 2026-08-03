@@ -473,6 +473,16 @@
   font-weight: 700;
 }
 
+.main-menu__seg-btn.is-coming-soon {
+  cursor: default;
+  color: rgba(219, 232, 227, 0.25);
+}
+
+.main-menu__seg-btn.is-coming-soon:hover,
+.main-menu__seg-btn.is-coming-soon:focus-visible {
+  color: rgba(219, 232, 227, 0.25);
+}
+
 .main-menu__map-body {
   flex: 1;
   display: flex;
@@ -626,24 +636,33 @@
   min-height: 0;
 }
 
-/* Shrink-wraps the minimap instead of filling the column: the decoded PNGs are 160-330 px
- * sources, so a bounded upscale keeps them readable where a full-column stretch turns to mush.
- * The auto margins center the frame in the space the old full-height frame occupied. */
-.main-menu__map-preview {
-  flex: none;
-  margin: auto;
-  max-width: 100%;
-  min-width: calc(var(--u) * 380);
-  min-height: calc(var(--u) * 200);
+/* One bordered card: preview section on top, details below. Vertically centered in the column. */
+.main-menu__map-card {
+  margin: auto 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: calc(var(--u) * 12);
+  flex-direction: column;
   border: 2px solid rgba(99, 196, 160, 0.35);
   border-radius: 8px;
   background: rgba(16, 29, 44, 0.6);
   box-shadow: 0 0 34px rgba(99, 196, 160, 0.15);
   overflow: hidden;
+}
+
+/* `display: flex` above outweighs the UA's `[hidden]`; restate it for the no-selection state. */
+.main-menu__map-card[hidden] {
+  display: none;
+}
+
+/* The card's preview section. The image keeps a bounded upscale: the decoded PNGs are 160-330 px
+ * sources, so a full-column stretch turns to mush. */
+.main-menu__map-preview {
+  min-height: calc(var(--u) * 200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--u) * 20);
+  background: rgba(10, 18, 30, 0.55);
+  border-bottom: 1px solid rgba(99, 196, 160, 0.25);
 }
 
 .main-menu__map-preview img {
@@ -669,18 +688,47 @@
   color: rgba(190, 215, 225, 0.5);
 }
 
-.main-menu__map-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: calc(var(--u) * 40);
-}
-
 .main-menu__map-details {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 10);
+  gap: calc(var(--u) * 14);
   min-width: 0;
+  padding: calc(var(--u) * 26) calc(var(--u) * 30) calc(var(--u) * 30);
+}
+
+.main-menu__map-seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 10);
+  padding-top: calc(var(--u) * 4);
+}
+
+.main-menu__seat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 9);
+  padding: calc(var(--u) * 5) calc(var(--u) * 14);
+  border: 1px solid rgba(99, 196, 160, 0.25);
+  border-radius: 999px;
+  font:
+    400 calc(var(--u) * 18) / 1.2 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(180, 205, 200, 0.8);
+}
+
+.main-menu__seat-dot {
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 calc(var(--u) * 6) rgba(0, 0, 0, 0.5);
+}
+
+.main-menu__map-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: calc(var(--u) * 8);
 }
 
 .main-menu__map-name {
@@ -707,7 +755,7 @@
     sans-serif;
   color: var(--text-muted);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

@@ -96,6 +96,11 @@ export const PLAYER_SWATCH_COLORS: readonly number[] = [
   0xe64887, // pink (hue 336)
 ];
 
+/** {@link PLAYER_SWATCH_COLORS} as a CSS hex colour; unknown ids fall to black. */
+export function playerSwatchHex(colorId: number): string {
+  return `#${(PLAYER_SWATCH_COLORS[colorId] ?? 0).toString(16).padStart(6, '0')}`;
+}
+
 /** The civilist-job (`logicjob 6`) head looks `head_00..03` - the in-game generic man's faces. The
  *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the druid looks (90..93)
  *  below stay gallery-only until that job exists in a running sim. */

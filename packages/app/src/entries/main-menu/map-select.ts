@@ -1,3 +1,4 @@
+import { playerSwatchHex } from '../../catalog/roster.js';
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import { SCENES } from '../../scenes/index.js';
@@ -5,7 +6,7 @@ import { generatedMapPreview } from '../menu/map-preview.js';
 import { targetSearch } from '../menu/settings.js';
 import {
   filterItems,
-  MAP_FILTERS,
+  MAP_FILTER_TABS,
   type MapFilter,
   type MapSelectItem,
   mapItem,
@@ -38,9 +39,9 @@ function sceneRows(): readonly MapSelectItem[] {
 /** The row/panel meta line: category name, plus the roster size when the map ships one. */
 function metaLine(item: MapSelectItem, copy: MapSelectCopy): string {
   const category = copy.categoryNames[item.category];
-  if (item.playerCount === 0) return category;
-  const players = formatMessage(pluralForm(item.playerCount, copy.players, bcp47Tag()), {
-    count: item.playerCount,
+  if (item.seats.length === 0) return category;
+  const players = formatMessage(pluralForm(item.seats.length, copy.players, bcp47Tag()), {
+    count: item.seats.length,
   });
   return `${category} · ${players}`;
 }
@@ -72,17 +73,27 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   const seg = document.createElement('div');
   seg.className = 'main-menu__seg';
   const segButtons = new Map<MapFilter, HTMLButtonElement>();
-  for (const f of MAP_FILTERS) {
+  for (const tab of MAP_FILTER_TABS) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'main-menu__seg-btn';
-    button.textContent = select.filters[f];
+    if (tab.kind === 'comingSoon') {
+      // aria-disabled instead of `disabled`: a truly disabled button swallows hover, which kills
+      // the native coming-soon tooltip in some engines.
+      button.textContent = select.filters[tab.id];
+      button.classList.add('is-coming-soon');
+      button.title = select.comingSoonTip;
+      button.setAttribute('aria-disabled', 'true');
+      seg.append(button);
+      continue;
+    }
+    button.textContent = select.filters[tab.filter];
     button.addEventListener('click', () => {
-      filter = f;
+      filter = tab.filter;
       for (const [key, b] of segButtons) b.classList.toggle('is-active', key === filter);
       renderList();
     });
-    segButtons.set(f, button);
+    segButtons.set(tab.filter, button);
     seg.append(button);
   }
   tools.append(search, seg);
@@ -104,8 +115,12 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   count.className = 'main-menu__map-count';
   listCol.append(listScroll, count);
 
+  // The details card: preview section on top, then name, meta, roster seat chips, description and
+  // the primary action. One bordered object, so the column reads as content rather than dead space.
   const previewCol = document.createElement('div');
   previewCol.className = 'main-menu__map-preview-col';
+  const card = document.createElement('div');
+  card.className = 'main-menu__map-card';
   const frame = document.createElement('div');
   frame.className = 'main-menu__map-preview';
   const previewImg = document.createElement('img');
@@ -114,23 +129,26 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   const frameLabel = document.createElement('div');
   frameLabel.className = 'main-menu__map-preview-label';
   frame.append(previewImg, frameLabel);
-  const info = document.createElement('div');
-  info.className = 'main-menu__map-info';
   const details = document.createElement('div');
   details.className = 'main-menu__map-details';
   const name = document.createElement('div');
   name.className = 'main-menu__map-name';
   const meta = document.createElement('div');
   meta.className = 'main-menu__map-meta';
+  const seats = document.createElement('div');
+  seats.className = 'main-menu__map-seats';
   const description = document.createElement('p');
   description.className = 'main-menu__map-desc';
-  details.append(name, meta, description);
+  const actions = document.createElement('div');
+  actions.className = 'main-menu__map-actions';
   const primary = document.createElement('button');
   primary.type = 'button';
   primary.className = 'main-menu__primary';
   primary.disabled = true;
-  info.append(details, primary);
-  previewCol.append(frame, info);
+  actions.append(primary);
+  details.append(name, meta, seats, description, actions);
+  card.append(frame, details);
+  previewCol.append(card);
 
   body.append(listCol, previewCol);
   section.append(head, body);
@@ -202,14 +220,30 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     };
   };
 
+  const seatChip = (tribeId: number, colorId: number): HTMLElement => {
+    const chip = document.createElement('span');
+    chip.className = 'main-menu__seat-chip';
+    const dot = document.createElement('span');
+    dot.className = 'main-menu__seat-dot';
+    dot.style.background = playerSwatchHex(colorId);
+    const tribe = document.createElement('span');
+    tribe.textContent = copy.tribeNames[tribeId] ?? `#${tribeId}`;
+    chip.append(dot, tribe);
+    return chip;
+  };
+
   const selectItem = (item: MapSelectItem): void => {
     selected = item;
     for (const [rowItem, button] of rowButtons) {
       button.classList.toggle('is-selected', rowItem === item);
     }
+    card.hidden = false;
     name.textContent = item.title;
     meta.textContent = metaLine(item, select);
+    seats.replaceChildren(...item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)));
+    seats.hidden = item.seats.length === 0;
     description.textContent = item.description ?? '';
+    description.hidden = item.description === undefined || item.description === '';
     primary.disabled = false;
     primary.textContent = item.kind === 'map' ? select.next : select.run;
     showPreview(item);
@@ -275,11 +309,8 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
         list.replaceChildren();
       }
       selected = null;
-      name.textContent = '';
-      meta.textContent = '';
-      description.textContent = '';
+      card.hidden = true;
       primary.disabled = true;
-      primary.textContent = select.next;
       previewGeneration += 1;
       previewImg.hidden = true;
       frameLabel.textContent = '';
