@@ -97,49 +97,38 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const entity = entityById(snapshot, building);
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
       const def = type !== undefined ? buildingsByType.get(type) : undefined;
-      // A construction site splits by trade: a BUILDER is put on the foundation (the original's "put a
-      // builder on a foundation"), anyone else is hired into the building it will become - its worker
-      // slots are open from the moment the foundation is placed, and the staff waits at the site.
-      if (entity?.components.UnderConstruction !== undefined) {
-        for (const target of commanded) {
-          const self = entityById(snapshot, target.ref);
-          const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-          if (currentJob !== undefined && canRaiseSites(currentJob)) {
-            deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
-            continue;
-          }
-          const jobPriority = assignmentPriorityFor(currentJob, def?.workers);
-          if (jobPriority.length === 0) continue;
-          deps.enqueue({
-            kind: 'assignWorker',
-            entity: target.ref as Entity,
-            building: building as Entity,
-            jobPriority,
-          });
-        }
-        return;
-      }
-      // A built home takes the move-in path: right-click = "live here" for every selected settler (the
-      // family moves as one - the sim's assignHouse validates the free family slot and no-ops otherwise).
-      if (def?.kind === 'home') {
-        for (const target of commanded) {
-          deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
-        }
-        return;
-      }
       const slots = def?.workers;
-      // One command per selected settler, its priority computed from ITS current trade: keep it where the
-      // building offers that slot (a miller stays a miller at the mill; a hunter stays a gatherer at a
-      // warehouse's gatherer slot), else the building's default order (craftsman → carrier, gatherers
-      // excluded for a non-gatherer - so a plain settler on a warehouse becomes a carrier). The sim gates
-      // every candidate, so an unoffered/full trade just falls through.
+      const underConstruction = entity?.components.UnderConstruction !== undefined;
+      // One ladder for every own building. A foundation leads with its own rung (a trade that can raise it
+      // joins the crew - the original's "put a builder on a foundation"), then follows the rules of the
+      // building it will become.
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-        if (trainsRatherThanEmploys(def, currentJob)) {
-          deps.enqueue({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
+        if (underConstruction && currentJob !== undefined && canRaiseSites(currentJob)) {
+          deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
           continue;
         }
+        // Moving in and drilling need the building STANDING (assignHouse takes a built home, mayDrillAt no
+        // barracks under construction), so a foundation drops past them to employment, whose slots are open
+        // from the moment it is placed.
+        if (!underConstruction) {
+          // A home takes the move-in path: right-click = "live here" (the family moves as one - the sim's
+          // assignHouse validates the free family slot and no-ops otherwise).
+          if (def?.kind === 'home') {
+            deps.enqueue({ kind: 'assignHouse', entity: target.ref as Entity, house: building as Entity });
+            continue;
+          }
+          if (trainsRatherThanEmploys(def, currentJob)) {
+            deps.enqueue({ kind: 'trainSoldier', entity: target.ref as Entity, house: building as Entity });
+            continue;
+          }
+        }
+        // The employment priority is computed from the settler's CURRENT trade: keep it where the building
+        // offers that slot (a miller stays a miller at the mill; a hunter stays a gatherer at a warehouse's
+        // gatherer slot), else the building's default order (craftsman → carrier, gatherers excluded for a
+        // non-gatherer - so a plain settler on a warehouse becomes a carrier). The sim gates every
+        // candidate, so an unoffered/full trade just falls through.
         const jobPriority = assignmentPriorityFor(currentJob, slots);
         if (jobPriority.length === 0) continue;
         deps.enqueue({
