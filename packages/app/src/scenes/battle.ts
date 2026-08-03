@@ -23,7 +23,7 @@ import type { SceneDefinition } from './types.js';
  * gaps as front-liners fall.
  *
  * Both sides get the settler HP from the loaded content's tribe (`settlerHitpoints`, one value for every
- * spawn - no per-scene override), and the sandbox weapon damages are transcribed on the real scale
+ * adult spawn - no per-scene override), and the sandbox weapon damages are transcribed on the real scale
  * (`game/sandbox/combat.ts`), so the headless twin resolves combat like the browser on real content. The
  * outcome is deterministic from the seed but not scripted, so the headless checks assert crowd-shape
  * properties (the battle really runs at scale; nobody stacks), not a winner.

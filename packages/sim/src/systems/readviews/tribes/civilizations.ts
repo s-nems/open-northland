@@ -48,10 +48,11 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
 }
 
 /**
- * The hitpoint pool a settler of `tribeType` is born with - the human counterpart to
+ * The hitpoint pool an ADULT settler of `tribeType` carries - the human counterpart to
  * {@link import('./animals.js').animalHitpoints}, read straight from the tribe's clean-room
- * {@link TribeType.hitpoints}. `0` when the tribe has no record or leaves it unset; the caller
- * (`createSettler`) then falls back to `DEFAULT_SETTLER_HITPOINTS`. Source basis "Combat hit resolution":
+ * {@link TribeType.hitpoints}. `0` when the tribe has no record or leaves it unset, which each caller
+ * answers for itself (an adult spawn takes `DEFAULT_SETTLER_HITPOINTS`, a graduating child keeps the pool
+ * it already has). Source basis "Combat hit resolution":
  * the original's human HP is not in the readable data, so it is supplied at the content boundary (sandbox
  * tribes + the real-content overlay). Pure over `content`, no RNG/wall-clock.
  */

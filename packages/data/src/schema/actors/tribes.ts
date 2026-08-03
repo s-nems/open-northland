@@ -71,7 +71,7 @@ export const TribeType = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   /**
-   * The hitpoint pool a settler of this tribe is born with. The original's human HP is not in the
+   * The hitpoint pool an ADULT settler of this tribe carries. The original's human HP is not in the
    * readable data (source basis "Combat hit resolution"), so it is a clean-room approximation supplied
    * at the content boundary; `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
    */

@@ -40,10 +40,13 @@ import { settlerHitpoints } from '../readviews/index.js';
 export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind'>;
 
 /**
- * The hitpoint pool a settler spawns with when its command names none. Every human carries a {@link Health}
- * pool (user decision: civilians have health too - the panel shows it, a soldier can strike them, starvation
- * drains it). The magnitude is approximated - a human's hitpoints are below the readable `.ini` (source basis
- * "Combat hit resolution"); 300 is the sandbox scale the combat scenes and admin palette already use.
+ * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
+ * adult whose tribe declares no pool. Every human carries a {@link Health} pool (user decision: civilians
+ * have health too - the panel shows it, a soldier can strike them, starvation drains it). The magnitude is
+ * approximated - a human's hitpoints are below the readable `.ini` (source basis "Combat hit resolution");
+ * 300 is the sandbox scale the combat scenes and admin palette already use. Keeping a child on it while its
+ * tribe's adults carry theirs is a user decision; the ratio that implies is uncalibrated
+ * (docs/tickets/features/combat-calibration.md).
  */
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
@@ -100,14 +103,15 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   if (ageTicks !== null) {
     world.add(e, Age, { ticks: ageTicks });
   }
-  // Every settler carries a `Health` pool. The pool comes from the content - the settler's tribe HP
-  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` - so every spawn on
-  // one content base shares one value (no per-scene tuning). A command may still pass an explicit positive
-  // `hitpoints` to override (admin/debug); a tribe that leaves it unset falls back to
-  // {@link DEFAULT_SETTLER_HITPOINTS}.
+  // Every settler carries a `Health` pool. An ADULT takes it from the content - the settler's tribe HP
+  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` - so every adult spawn on
+  // one content base shares one value (no per-scene tuning). A young stage keeps the childhood default and
+  // grows into the tribe pool (GrowthSystem); an explicit positive `hitpoints` (admin/debug) wins over both.
+  const young = ageTicks !== null;
   const override = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : undefined;
   const tribeHitpoints = settlerHitpoints(content, spec.tribe);
-  const hitpoints = override ?? (tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS);
+  const adultPool = tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS;
+  const hitpoints = override ?? (young ? DEFAULT_SETTLER_HITPOINTS : adultPool);
   world.add(e, Health, { hitpoints, max: hitpoints });
   // A combatant wearing armor carries an `Armor` class: an incoming hit selects that tier's damage
   // column instead of the unarmored class 0 (`weaponDamageVsMaterial`). Only a positive class is stamped.
