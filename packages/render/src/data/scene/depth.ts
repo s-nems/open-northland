@@ -2,20 +2,15 @@ import { depthKey } from '../projection/index.js';
 import type { DrawKind } from './draw-item.js';
 
 /**
- * Same-anchor sprite depth: the one home of the "who paints in front at a shared feet anchor"
- * decision. Two composed keys share the bias table below, {@link spriteDepth} for the headless
- * oracle's row-major list order and {@link screenDepth} for the live painter's `zIndex`, so the two
- * orders cannot drift.
+ * The oracle's list order ({@link spriteDepth}) and the live painter's `zIndex` ({@link screenDepth})
+ * share one paint-bias table, so the two orders cannot drift.
  */
 
 /**
- * Same-feet-anchor paint priority per drawable kind - a higher value draws later (in front) when two
- * sprites resolve to (nearly) the same depth. A worker stands on the resource cell it harvests and a
- * delivery flag sits on the ground drops piling up around it, so without a tiebreak the taller node/drop
- * paints over the unit/flag by mere attach order. Each composed key scales it by its own sub-cell
- * epsilon - orders of magnitude below one row's depth separation - so it only breaks ties at a shared
- * anchor and never reorders sprites a genuine row apart. `tile` is 0 (tiles carry their own sub-zero
- * depth band).
+ * Same-feet-anchor paint priority per drawable kind - a higher value draws in front when two sprites
+ * resolve to nearly the same depth. Each composed key scales it by its own sub-cell epsilon, so it
+ * only breaks ties at a shared anchor and never reorders sprites a genuine row apart. `tile` is 0;
+ * tiles carry their own sub-zero depth band.
  */
 const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
@@ -24,74 +19,55 @@ const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   stump: 0,
   building: 1,
   grounddrop: 1,
-  signpost: 1, // the post occludes like a small building; its boards ride the flag half-step above it
+  signpost: 1, // the post occludes like a small building
   stockpile: 2,
   settler: 3,
   projectile: 4, // an arrow in flight crosses over the fighters it flies between
 };
 
 /**
- * Extra fractional paint-order step a delivery flag gets above a plain `stockpile` heap on the same
- * tile. A flag and the goods heaps it collects are both `stockpile` kind (same
- * {@link SPRITE_PAINT_ORDER}), so the kind bias alone ties them - and since the flag is created first
- * (lowest id) the id tiebreak would bury it under the later heap. Half a paint step lifts the flag
- * just past a co-located heap; `2 + 0.5` sits below `settler`'s `3`, so a worker on the tile still
- * draws in front.
+ * Extra paint-order step lifting a delivery flag above a heap on the same tile. Both are `stockpile`
+ * kind, so the kind bias ties them and the id tiebreak would bury the earlier-created flag under the
+ * later heap. Half a step stays below `settler`'s `3`, so a worker on the tile still draws in front.
  */
 const FLAG_PAINT_STEP = 0.5;
 
-/** The same-feet-anchor paint bias of a draw item - the kind's {@link SPRITE_PAINT_ORDER} plus the
- *  extra {@link FLAG_PAINT_STEP} for a delivery flag - as a unitless order value. */
 function paintOrderBias(kind: DrawKind, isFlag: boolean): number {
   return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
 }
 
-/**
- * Oracle depth packing. A sprite's sort key is `tileY * ROW_STRIDE + tileX`, so the integer-tile
- * `y` dominates and `x` orders within a row - valid only while `tileX < ROW_STRIDE`, which holds for
- * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Terrain tiles
- * sit in a band shifted strictly below every sprite (see {@link import('./terrain-scene.js')}).
- */
+/** Row stride of the oracle sort key `tileY * ROW_STRIDE + tileX`, valid only while
+ *  `tileX < ROW_STRIDE` (real maps are a few hundred tiles wide). */
 const ROW_STRIDE = 4096;
 
-/** Depth added per {@link paintOrderBias} step in the oracle sort key. `< 1 / maxOrder` so the whole
- *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
+/** Depth added per paint-order step in the oracle key. `< 1 / maxOrder`, so the whole bias stays under
+ *  one tile column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
 const PAINT_ORDER_EPS = 1 / 16;
 
-/** The oracle depth key for a sprite at integer-tile `(tileX, tileY)` (x-first, like `tileToScreen`):
- *  the row-major feet-anchor packing (`tileY` dominates, `tileX` orders within a row) plus the
- *  sub-cell paint-order tiebreak. */
 export function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
   return tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
 }
 
-/**
- * Screen-px depth added per {@link paintOrderBias} step in the live painter key. Comfortably above the
- * `depthKey` x-tiebreak's max contribution (so the kind order wins at a shared feet anchor) yet far below
- * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
- */
+/** Screen-px depth added per paint-order step in the live painter key. Above `depthKey`'s max
+ *  x-tiebreak contribution, so the kind order wins at a shared feet anchor, and far below one iso
+ *  row's screen-y gap, so it never lifts a sprite past one a genuine row away. */
 const SCREEN_PAINT_EPS = 0.25;
 
-/** The live painter's `zIndex` for a feet anchor at projected `(x, y)` px: the screen-space
- *  {@link depthKey} plus the sub-row paint-order tiebreak, {@link spriteDepth}'s screen twin. */
 export function screenDepth(x: number, y: number, kind: DrawKind, isFlag = false): number {
   return depthKey(x, y) + paintOrderBias(kind, isFlag) * SCREEN_PAINT_EPS;
 }
 
 /**
- * The offset a mark takes to sit just beside one sprite without joining the kind order: half a
- * {@link SCREEN_PAINT_EPS} step, which is above `depthKey`'s max x-tiebreak contribution (~0.07 on a
- * 1024-tile-wide map, so the pair can never interleave) and below one whole step (so it never crosses
- * a genuine kind or row boundary). Both marks below are one of these, in opposite directions.
+ * The offset a mark takes to sit beside one sprite without joining the kind order: above `depthKey`'s
+ * max x-tiebreak contribution (~0.07 on a 1024-tile-wide map, so the pair can never interleave) and
+ * below one whole step, so it never crosses a genuine kind or row boundary.
  */
 const HALF_PAINT_STEP = SCREEN_PAINT_EPS / 2;
 
-/** How far above its building's {@link screenDepth} a planted door-badge chain sorts - enough to clear
- *  the house it belongs to, while staying under `stockpile` (the next kind up), so anything the player
- *  sees standing in front of the house paints over the chain. */
+/** How far above its building a planted door-badge chain sorts - enough to clear the house, still
+ *  under `stockpile`, so anything standing in front of the house paints over the chain. */
 export const SIGN_DEPTH_EPS = HALF_PAINT_STEP;
 
-/** How far below its caster's {@link depthKey} a tall object's cast shadow sorts. The original blits a
- *  shadow immediately before its caster, so the shadow draws over sprites behind the caster but under
- *  the caster itself. */
+/** How far below its caster a tall object's cast shadow sorts. The original blits a shadow immediately
+ *  before its caster, so the shadow draws over sprites behind the caster but under the caster itself. */
 export const SHADOW_DEPTH_EPS = HALF_PAINT_STEP;

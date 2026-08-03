@@ -9,18 +9,10 @@ import type {
   StockpileBinding,
 } from './layered-bindings.js';
 
-/**
- * The layered-kind resolvers: which bob id - and from which named atlas-layer family - a building /
- * resource node / stockpile draw item draws. All pure "layer *decision*" functions; binding the
- * resolved frame to a GPU texture is the renderer's half.
- */
-
-/** Unwrap a {@link LayeredBobRef} to the generic {@link BuildingDraw} shape (bob + optional family layer). */
 function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
 }
 
-/** A stable identity for a resolved building draw - its bob id plus its family layer (or the default layer). */
 export function bobKey(draw: BuildingDraw): string {
   return `${draw.bob}:${draw.layer ?? ''}`;
 }
@@ -33,10 +25,9 @@ function fillFrameIndex(fillOneBased: number, frameCount: number): number {
 const finishedKeyCache = new WeakMap<BuildingTypeBinding, ReadonlySet<string>>();
 
 /**
- * The {@link bobKey} of every finished-building sprite a binding can draw (each type's completed bob plus
- * the default). The under-construction rise keeps only the stages outside this set, so a construction stage
- * that reuses another tier's finished-home bob draws only at completion. Memoized per binding (immutable
- * for the sheet's life).
+ * Every finished-building sprite a binding can draw. The under-construction rise keeps only the stages
+ * outside this set, so a stage reusing another tier's finished-home bob draws only at completion.
+ * Memoized per binding, which is immutable for the sheet's life.
  */
 export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlySet<string> {
   let keys = finishedKeyCache.get(binding);
@@ -51,12 +42,8 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
 }
 
 /**
- * Resolve which bob id - and from which named atlas-layer family - a building draw item draws, from its
- * (number | per-type table) binding. A plain-number binding is the same bob for every building, drawn
- * from the default building layer (no family). A {@link BuildingTypeBinding} picks `byType[item.typeId]`
- * (the building's `Building.buildingType`, the `[GfxHouse]` `LogicType`), falling back to `default` when
- * the item carries no type or the type is unmapped - so a sparse table is always total (an unknown
- * building still draws the representative house, never nothing).
+ * Keyed by the building's `Building.buildingType` (the `[GfxHouse]` `LogicType`). An unmapped or
+ * type-less item falls back to `default`, so a sparse table is always total.
  */
 export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
@@ -64,25 +51,18 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
   return unwrapBobRef(ref);
 }
 
-/** A construction-stage draw: the stage's bob (+ family layer) and its `[fromPct, toPct]` progress
- *  window - the per-pixel reveal maps eased progress into this window as its TimeMask threshold. */
+/** The per-pixel reveal maps eased progress into this window as its TimeMask threshold. */
 export interface ConstructionDraw extends BuildingDraw {
   readonly fromPct: number;
   readonly toPct: number;
 }
 
 /**
- * Resolve the stack of construction-stage draws an under-construction building shows, or `null` when the
- * normal body draw applies (no {@link DrawItem.builtPct}, or no construction layers bound for the type).
- * A layer is active from its `fromPct` on; it stays drawn past its own `toPct` until every higher-stack
- * layer above it has also finished revealing - the max `toPct` of the layer and everything stacked over
- * it. So a scaffold (e.g. the bakery's roof scaffold) persists under the roof body that covers it as that
- * body reveals, instead of vanishing the instant its own window ends, while a top-stack layer with nothing
- * above it (the frank well's teardown overlay) still retires at its own `toPct`. Layers are in the
- * source's file order - the finished body last, so it lands on top at high progress. An empty active set
- * (progress below every `fromPct`) falls back to the lowest-`fromPct` layer so a site never draws as
- * nothing. Source basis: the `[fromPct, toPct]` windows are extracted; the persist-until-covered handoff
- * is a named approximation of the original's scaffold teardown.
+ * The stage stack an under-construction building shows, or `null` when the normal body draw applies. A
+ * layer is active from its `fromPct` and stays drawn until every layer stacked above it has finished
+ * revealing, so a scaffold persists under the body covering it. Below every `fromPct` the lowest-`fromPct`
+ * layer draws, so a site is never empty. The windows are extracted; the persist-until-covered handoff is
+ * a named approximation of the original's scaffold teardown.
  */
 export function resolveConstructionDraws(
   binding: number | BuildingTypeBinding,
@@ -92,9 +72,7 @@ export function resolveConstructionDraws(
   const layers = binding.constructionByType?.[item.typeId];
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.builtPct;
-  // Walk top-down (index descending = drawn-on-top first) tracking the max toPct seen so far - the
-  // cover end each lower layer stays drawn to. A layer is active while `pct` sits in [fromPct, coverTo],
-  // so a scaffold persists under a still-revealing body above it; `unshift` restores stacking order.
+  // Descending index is drawn-on-top first, so `coverTo` accumulates the max `toPct` above each layer.
   const active: ConstructionLayerRef[] = [];
   let coverTo = 0;
   for (let i = layers.length - 1; i >= 0; i--) {
@@ -110,7 +88,7 @@ export function resolveConstructionDraws(
   return chosen.map(stageDraw);
 }
 
-/** A stage layer ref to its draw - the exactOptional `layer` split both stage resolvers share. */
+/** The `exactOptionalPropertyTypes` split on `layer` that both stage resolvers share. */
 function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
   return l.layer === undefined
     ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
@@ -118,15 +96,11 @@ function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
 }
 
 /**
- * Resolve the upgrade-overlay draws an UPGRADING building shows on top of its (still-drawn) old-tier
- * finished body, or `null` when none apply: not upgrading (no {@link DrawItem.upgradePct}), no
- * upgrade layers bound for the type, or no layer window containing the progress. The layers are the
- * type's `upgrade === 1` rows (the next tier's body - the real data binds one or two full-window
- * `[0,100]` rows per chained tier), revealed across their window like a construction stage. Unlike
- * {@link resolveConstructionDraws} there is no lowest-stage fallback: outside every window the old
- * body alone is the correct draw, never a placeholder stage. Source basis: the rows are extracted;
- * the old-body-plus-revealing-overlay composition is a named approximation (the original's exact
- * upgrade-pass compositing is not decoded - `BuildingConstructionLayer.upgrade`).
+ * The overlays an upgrading building reveals on top of its still-drawn old-tier body: the type's
+ * `upgrade === 1` rows, revealed across their window like a construction stage. Unlike
+ * {@link resolveConstructionDraws} there is no lowest-stage fallback, since outside every window the
+ * old body alone is the correct draw. The rows are extracted; composing them over the old body is a
+ * named approximation, as the original's upgrade-pass compositing is not decoded.
  */
 export function resolveUpgradeDraws(
   binding: number | BuildingTypeBinding,
@@ -142,12 +116,10 @@ export function resolveUpgradeDraws(
 }
 
 /**
- * Map build progress (0..1 - `builtPct/100`, or the pool's eased display value) into a construction
- * stage's `[fromPct, toPct]` window as the 0–255 TimeMask threshold - the `time` argument of the
- * original's observed time-mask rule (a pixel draws once its `timeByte <= time`). The linear
- * window→byte mapping (start → 0, end → 255) is a named approximation because the original caller's
- * mapping is not established. A degenerate window
- * (`toPct <= fromPct`) snaps whole.
+ * Map progress (0..1) into a stage's `[fromPct, toPct]` window as the 0-255 TimeMask threshold, the
+ * `time` of the observed rule that a pixel draws once its `timeByte <= time`. The linear window-to-byte
+ * mapping is a named approximation, as the original caller's mapping is not established. A degenerate
+ * window (`toPct <= fromPct`) snaps whole.
  */
 export function buildTimeThreshold(progress: number, fromPct: number, toPct: number): number {
   const pct = progress * 100;
@@ -157,14 +129,9 @@ export function buildTimeThreshold(progress: number, fromPct: number, toPct: num
 }
 
 /**
- * Resolve a finished building's animated state overlay - the extra sprite drawn on top of the body
- * (the `[GfxHouse]` type-4 `GfxOverlay` join: the mill's rotor) - or `null` when none applies: a
- * plain-number binding, a type with no {@link BuildingTypeBinding.overlayByType} entry, or an
- * under-construction / upgrading item (`builtPct`/`upgradePct` present - the original lists overlays
- * only for the finished body). A {@link DrawItem.working} building loops the `working` spin cycle on the free `tick`
- * clock, one frame per {@link import('./bindings.js').BuildingOverlayRef.ticksPerFrame} ticks;
- * otherwise the `idle` frame draws. A state whose frames are absent draws no overlay at all (never a
- * borrowed frame).
+ * A finished building's state overlay, or `null` when none applies. A working building loops the spin
+ * cycle on the free `tick` clock at the overlay's `ticksPerFrame`; otherwise the `idle` frame draws. A
+ * state with no bound frames draws no overlay rather than borrowing the other state's.
  */
 export function resolveBuildingOverlayDraw(
   binding: number | BuildingTypeBinding,
@@ -172,14 +139,14 @@ export function resolveBuildingOverlayDraw(
   tick: number,
 ): BuildingDraw | null {
   if (typeof binding === 'number' || item.typeId === undefined || item.builtPct !== undefined) return null;
-  if (item.upgradePct !== undefined) return null; // an upgrading body draws no state overlay either
+  if (item.upgradePct !== undefined) return null;
   const overlay = binding.overlayByType?.[item.typeId];
   if (overlay === undefined) return null;
   const spin = item.working === true ? overlay.working : undefined;
   if (spin !== undefined && spin.length > 0) {
     const ticksPerFrame = Math.max(1, overlay.ticksPerFrame ?? 1);
     const bob = spin[Math.floor(tick / ticksPerFrame) % spin.length];
-    if (bob === undefined) return null; // unreachable (index < length), but proven not asserted
+    if (bob === undefined) return null; // unreachable (index < length), proven instead of asserted
     return overlay.layer === undefined ? { bob } : { bob, layer: overlay.layer };
   }
   if (overlay.idle === undefined) return null;
@@ -187,35 +154,22 @@ export function resolveBuildingOverlayDraw(
 }
 
 /**
- * Resolve which bob id - and from which named atlas-layer family - a resource draw item draws, from its
- * (number | per-good table) binding. A plain-number binding is the same node bob for every good (drawn from
- * the default resource layer); a {@link ResourceTypeBinding} picks `byGood[item.goodType]`'s per-level
- * frames (the node's `Resource.goodType`) and indexes them by the node's {@link DrawItem.level} (a mined
- * deposit's shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). When the
- * item also carries {@link DrawItem.levels} and it differs from the record's own state count, the ladder is
- * rescaled onto the frames (`ceil(level·frames/levels)`) - a map's deposit is sized from its record and
- * matches, but a record-less scene/admin one carries the catalog count, and a full deposit must draw its
- * fullest authored frame either way. A ground drop routed through this resolver
- * (the `trunk` binding) carries a {@link DrawItem.fill} instead - the pile's unit count indexes the same
- * empty→full frames directly (the original's "state ≡ remaining units" valency read). A plain node carries
- * neither and draws the full (last) frame.
- * Falls back to `default` (the representative yew) when the item carries no good or the good is unmapped -
- * so a sparse table is always total. Returns `null` for a level whose entry is the explicit `null`
- * invisible marker (see {@link ResourceTypeBinding.byGood} - the original's freshly-sown field draws
- * nothing): the caller draws nothing at all, not the placeholder.
+ * A node's `level` indexes its good's empty-to-full frames, so a mined deposit shrinks. When `levels`
+ * differs from the record's own state count the ladder is rescaled (`ceil(level*frames/levels)`),
+ * because a record-less scene carries the catalog count while a full deposit must still draw its
+ * fullest authored frame. A ground drop carries `fill` instead, its unit count indexing the same frames
+ * directly (the original's state-as-remaining-units read). Carrying neither draws the full, last frame.
+ * `null` is a data-pinned invisible level, not a missing binding.
  */
 export function resolveResourceDraw(
   binding: number | ResourceTypeBinding,
   item: DrawItem,
 ): BuildingDraw | null {
   if (typeof binding === 'number') return { bob: binding };
-  // The node's exact source variant ("pine 02") wins over its good's representative ("yew 01") - a
-  // decoded map keeps its species variety; an unbound variant (unloaded family) falls back per-good.
   const variantFrames = item.gfxIndex !== undefined ? binding.byGfxIndex?.[item.gfxIndex] : undefined;
   const frames = variantFrames ?? (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined);
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
-  // A 1-based level (rescaled onto the record's own state count when the ladders differ) or a drop's
-  // fill; neither present falls to the full, last state.
+  // A 1-based level or a drop's fill; neither present falls to the full, last state.
   const ladder = item.level ?? item.fill;
   const span = item.level !== undefined && item.levels !== undefined && item.levels > 0 ? item.levels : null;
   const scaled =
@@ -226,22 +180,17 @@ export function resolveResourceDraw(
         : ladder;
   const idx = fillFrameIndex(scaled, frames.length);
   const ref = frames[idx];
-  if (ref === null) return null; // a data-pinned invisible level - draw nothing, never the placeholder
+  if (ref === null) return null; // a data-pinned invisible level: draw nothing, never the placeholder
   return unwrapBobRef(ref ?? binding.default);
 }
 
 /**
- * Resolve which bob id - and from which named atlas-layer family - a stockpile draw item draws, from its
- * (number | per-good table) binding. A plain-number binding is the same bob for every pile. A
- * {@link StockpileBinding}:
- *  - an empty pile ({@link DrawItem.goodType} absent - a bare delivery flag) draws the {@link StockpileBinding.flag};
- *  - a held pile picks its good's heap frames (`byGood[goodType]`, ordered fewest→most) and indexes them by
- *    the pile's {@link DrawItem.fill} amount, clamped into range - so the heap grows with its contents;
- *  - a held pile whose good has no bound frames falls back to {@link StockpileBinding.default}.
+ * A held pile's `fill` indexes its good's heap frames, clamped, so the heap grows with its contents. A
+ * pile with no good is a bare collection point and draws the delivery flag.
  */
 export function resolveStockpileDraw(binding: number | StockpileBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
-  if (item.goodType === undefined) return unwrapBobRef(binding.flag); // empty pile → the delivery flag
+  if (item.goodType === undefined) return unwrapBobRef(binding.flag);
   const frames = binding.byGood[item.goodType];
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
   const idx = fillFrameIndex(item.fill ?? 1, frames.length);
@@ -249,16 +198,14 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
 }
 
 /**
- * Resolve which bob - and from which named atlas-layer family - a signpost draw item draws: the post
- * when {@link DrawItem.boardIndex} is absent, else that angular direction-board frame (clamped into
- * the bound board list). `null` when the binding is absent (placeholder).
+ * The post when the item has no `boardIndex`, else that angular board frame clamped into the bound
+ * list, drawn from the owner's recolour variant when one is bound.
  */
 export function resolveSignpostDraw(
   binding: SignpostBinding | undefined,
   item: DrawItem,
 ): BuildingDraw | null {
   if (binding === undefined) return null;
-  // The owner's recolour variant when one is bound (the per-player baked atlas); else the base frames.
   const b = (item.player !== undefined ? binding.byPlayer?.[item.player] : undefined) ?? binding;
   if (item.boardIndex === undefined) return unwrapBobRef(b.post);
   const board = b.boards[Math.min(b.boards.length - 1, Math.max(0, item.boardIndex))];

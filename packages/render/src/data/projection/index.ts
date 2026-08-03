@@ -1,10 +1,9 @@
 /**
- * The projection folder: the isometric tile/half-cell → screen mapping, the camera transform, and the
- * viewport-cull math inverted back out of it. Dependency-light and Pixi-free - the layer every other
- * `data/` folder and the GPU renderer hang off.
+ * The isometric projection, the camera transform, and the viewport-cull math inverted out of it -
+ * Pixi-free, so every other `data/` folder and the GPU renderer can hang off it.
  *
- * Modules here import each other directly (`./iso.js`), never through this barrel: `iso.ts` documents the
- * barrel↔module cycle that forces a TDZ workaround.
+ * Modules here import each other directly (`./iso.js`), never through this barrel: that cycle would
+ * force a TDZ workaround.
  */
 
 export {

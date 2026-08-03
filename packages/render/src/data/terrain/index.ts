@@ -1,9 +1,6 @@
 /**
- * The terrain folder: the pure, Pixi-free half of drawing the ground - the mesh's node geometry
- * ({@link import('./tessellation.js')}), the pattern-page UV fold ({@link import('./uv.js')}), the
- * transition-lane decode ({@link import('./transitions.js')}), and the per-cell fields the mesh samples
- * (elevation lift, brightness, hillshade, the water wave). The twin of `gpu/terrain/`, so the vertex,
- * UV, and shading math is unit-tested headlessly.
+ * The Pixi-free half of drawing the ground: the twin of `gpu/terrain/`, so the vertex, UV, and shading
+ * math is unit-tested headlessly.
  */
 
 export { BRIGHTNESS_NEUTRAL, type BrightnessField, makeBrightnessField, scaleColour } from './brightness.js';

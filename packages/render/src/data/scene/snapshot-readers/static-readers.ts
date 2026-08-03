@@ -3,111 +3,79 @@ import { ONE } from '../../projection/index.js';
 import { readNumField } from '../../snapshot/index.js';
 import type { StaticDrawFields } from '../draw-item.js';
 
-/**
- * Per-static-object component reads - how a building, resource node, stump or berry bush fills the
- * {@link StaticDrawFields} it draws by, plus {@link assignStaticFields}.
- */
-
-/**
- * A building entity's type id - `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
- * command stamped), stamped onto the draw item as {@link import('../draw-item.js').DrawItem.typeId} so a
- * per-type {@link import('../../sprites/index.js').BuildingTypeBinding} draws each building its own house
- * bob. `undefined` for a missing/malformed component (the binding falls back to its default house).
- */
 function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Building', 'buildingType');
 }
 
 /**
- * An under-construction building's progress as a whole percent (0..99), or `undefined` for a finished
- * building (`built >= ONE`), an UPGRADING one (its progress reads as {@link readUpgradePct} instead -
- * the old-tier body must keep drawing under the upgrade overlay, not the from-scratch stages), or a
- * missing/malformed component. The sim's `Building.built` is a fixed-point fraction of ONE; the floor
- * keeps a nearly-done site below 100 so the construction stages stay up until the finish tick flips
- * the draw to the completed body.
+ * An under-construction building's progress as a whole percent (0..99), or `undefined` when it is
+ * finished, unreadable, or upgrading - an upgrade reads {@link readUpgradePct} instead, so the old-tier
+ * body keeps drawing under the upgrade overlay rather than the from-scratch stages.
  */
 export function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
-  if ('Upgrading' in components) return undefined; // an upgrade site - see readUpgradePct
+  if ('Upgrading' in components) return undefined;
   return risingPct(components);
 }
 
 /**
- * An UPGRADING building's progress as a whole percent (0..99), or `undefined` when the building is not
- * mid-upgrade (no `Upgrading` component, or already finished). The same floored `Building.built` read
- * as {@link readBuiltPct}; the two are mutually exclusive by construction, so a building draw is either
- * a from-scratch stage stack, an old-body-plus-upgrade-overlay, or the plain finished body.
+ * An upgrading building's progress as a whole percent (0..99), or `undefined` when it is not
+ * mid-upgrade. Mutually exclusive with {@link readBuiltPct} by construction.
  */
 export function readUpgradePct(components: Readonly<Record<string, unknown>>): number | undefined {
   if (!('Upgrading' in components)) return undefined;
   return risingPct(components);
 }
 
-/** The shared floored `Building.built` → 0..99 percent read behind {@link readBuiltPct} /
- *  {@link readUpgradePct}; `undefined` for a finished building or a malformed component. */
+/** The shared read behind the two above: `Building.built`, a fixed-point fraction of ONE, floored to a
+ *  0..99 percent so a nearly-done site never reads as finished. `undefined` once `built >= ONE`. */
 function risingPct(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.Building as { built?: unknown } | undefined;
   if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
-    return undefined; // finished (or malformed - NaN would poison every range test downstream)
+    return undefined;
   }
   return clamp(Math.floor((b.built * 100) / ONE), 0, 99);
 }
 
 /**
- * A FINISHED building's remaining Health fraction (0..1), or `undefined` when it is undamaged, still
- * under construction / upgrading (its pool ramps with the build - a site would read damaged forever), or
- * carries no readable Health. Stamped onto the draw item as
- * {@link import('../draw-item.js').DrawItem.hpFrac}, the damage-smoke overlay's drive - a pure function
- * of the current pool, so an HP rise (repair, an upgrade refill) sheds the smoke by itself. Live-only,
- * like `working` (a fog ghost is a memory, not a live health readout).
+ * A finished building's remaining Health fraction (0..1), or `undefined` when it is undamaged, carries
+ * no readable Health, or is still building/upgrading - its pool ramps with the build, so a site would
+ * otherwise read damaged for its whole construction.
  */
 export function readHpFraction(components: Readonly<Record<string, unknown>>): number | undefined {
-  if (risingPct(components) !== undefined) return undefined; // under construction / upgrading
+  if (risingPct(components) !== undefined) return undefined;
   const h = components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
   if (h === undefined || typeof h.hitpoints !== 'number' || typeof h.max !== 'number' || h.max <= 0) {
     return undefined;
   }
-  if (!Number.isFinite(h.hitpoints) || h.hitpoints >= h.max) return undefined; // undamaged
+  if (!Number.isFinite(h.hitpoints) || h.hitpoints >= h.max) return undefined;
   return clamp(h.hitpoints / h.max, 0, 1);
 }
 
 /**
- * Whether a building is mid production cycle - the sim `Production` component's presence (it exists
- * exactly while a cycle runs, `productionSystem`). Stamped onto the draw item as
- * {@link import('../draw-item.js').DrawItem.working}, the switch an animated state overlay flips on (the
- * mill's rotor spins while it produces). Presence is the whole signal; the component's `elapsed`/`duration`
- * counters are sim-internal.
+ * Whether a building is mid production cycle. The `Production` component exists exactly while a cycle
+ * runs, so its presence is the whole signal - its `elapsed`/`duration` counters stay sim-internal.
  */
 export function readProducing(components: Readonly<Record<string, unknown>>): boolean {
   return 'Production' in components;
 }
 
-/**
- * A resource node's `Resource.goodType` - the per-good join key
- * ({@link import('../draw-item.js').DrawItem.goodType}) a {@link import('../../sprites/index.js').ResourceTypeBinding}
- * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed
- * component (the binding falls back to its default node).
- */
 function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Resource', 'goodType');
 }
 
 /**
- * A resource node's render-variant tag - `Resource.gfxIndex`, the exact `[GfxLandscape]` record a decoded
- * map spawned it from ("pine 02", not the good's representative "yew 01"; an opaque app-numbered index the
- * sim never interprets). The per-variant join key ({@link import('../draw-item.js').DrawItem.gfxIndex}) a
- * {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} draws by. `undefined` for an
- * admin/scene-spawned node - the per-good binding then draws the representative node.
+ * A resource node's render-variant tag: `Resource.gfxIndex`, the exact `[GfxLandscape]` record a decoded
+ * map spawned it from ("pine 02", not the good's representative "yew 01"). An opaque app-numbered index
+ * the sim never interprets; `undefined` for an admin- or scene-spawned node.
  */
 function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Resource', 'gfxIndex');
 }
 
 /**
- * The visual fill level of a mined deposit ({@link import('../draw-item.js').DrawItem.level}): an integer in
- * `[1, levels]`, `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty.
- * `ceil(remaining · levels / initial)` rounds up, so a partially-drained deposit looks full until the first
- * unit is actually gone and only the last unit shows the dregs. Level `k` ⇒ mine gfx `state k`, which is
- * authored full at the highest state.
+ * The visual fill level of a mined deposit: an integer in `[1, levels]`, `levels` when full and `0` for
+ * an exhausted or mis-stamped deposit. Rounding up keeps a barely-drained deposit on its full frame and
+ * shows the dregs only on the last unit. Level `k` draws mine gfx state `k`, authored fullest at the top.
  */
 export function depositVisualLevel(remaining: number, initial: number, levels: number): number {
   if (remaining <= 0 || initial <= 0 || levels <= 0) return 0;
@@ -115,15 +83,10 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 }
 
 /**
- * A mined node's / crop's visual ladder - its current fill `level` (in `[1, levels]`) and the `levels`
- * denominator it is out of - or `undefined` for a plain node (no `Crop`, no readable `MineDeposit`). The
- * single narrowing {@link assignStaticFields} reads, so the two are defined/undefined together by
- * construction.
- *
- * A sown field (a `Crop` resource) uses its growth stage as the level directly: stage k ⇒ gfx state k (the
- * wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the stage numbering).
- * Checked before the deposit shape - a field is never a mined deposit. A `MineDeposit` instead buckets
- * `Resource.remaining` against its `initial`/`levels` capacity via {@link depositVisualLevel}.
+ * A mined node's or crop's visual ladder - the current `level` and the `levels` denominator it is out
+ * of, returned together so the two can never drift - or `undefined` for a plain node. A sown `Crop`
+ * uses its growth stage as the level directly: stage `k` draws gfx state `k` (the wheat record's 5
+ * states are authored smallest-at-1 to ripe-at-5, exactly the stage numbering).
  */
 function readResourceLadder(
   components: Readonly<Record<string, unknown>>,
@@ -144,51 +107,37 @@ function readResourceLadder(
   };
 }
 
-/**
- * A stump's `Stump.goodType` - the resource it is the remains of (a chopped tree → wood), the per-good
- * join key ({@link import('../draw-item.js').DrawItem.goodType}) a {@link import('../../sprites/index.js').ResourceTypeBinding}
- * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to
- * its default).
- */
+/** A stump's `Stump.goodType` - the resource it is the remains of (a chopped tree → wood). */
 function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Stump', 'goodType');
 }
 
-/** The `BerryBush.stage` draw levels: 1 bare (foraged, regrowing), 2 flowering (blooming at the regrow
- *  midpoint), 3 ripe (holds fruit) - the 1-based index into the per-bush three-frame
- *  {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} list (bare, flowering, ripe). */
+/** `BerryBush.stage` as the 1-based index into a bush binding's three-frame list (bare, flowering, ripe). */
 const BERRY_STAGE_LEVEL: Readonly<Record<string, number>> = { bare: 1, flowering: 2, ripe: 3 };
 
-/**
- * A berry bush's growth draw level ({@link import('../draw-item.js').DrawItem.level}) from `BerryBush.stage`.
- * A per-bush {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} three-frame list (bare,
- * flowering, ripe) indexes by it. `undefined` for a malformed component (the binding then draws its default).
- */
+/** A berry bush's growth draw level from `BerryBush.stage`, or `undefined` for an unknown or malformed
+ *  stage, which draws the binding's default frame rather than a bogus level. */
 export function readBerryBushLevel(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.BerryBush as { stage?: unknown } | undefined;
   if (b === undefined || typeof b.stage !== 'string') return undefined;
-  return BERRY_STAGE_LEVEL[b.stage] ?? undefined; // an unknown stage string → default frame, not a bogus level
+  return BERRY_STAGE_LEVEL[b.stage] ?? undefined;
 }
 
-/**
- * A berry bush's render-variant `gfxIndex` ({@link import('../draw-item.js').DrawItem.gfxIndex}) - the
- * decoded map's fruited-bush `[GfxLandscape]` record index the bush was spawned from (`BerryBush.gfxIndex`),
- * so a per-variant binding draws the exact bush species. `undefined` for a scene/synthetic bush with no
- * variant tag (the binding then draws its default bush).
- */
+/** A berry bush's render variant: the fruited-bush `[GfxLandscape]` record it was spawned from
+ *  (`BerryBush.gfxIndex`), or `undefined` for a scene- or synthetic bush with no variant tag. */
 export function readBerryBushGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'BerryBush', 'gfxIndex');
 }
 
 const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex'] as const;
-// The one list {@link copyStaticFields} walks, so a field added to StaticDrawFields can't be dropped by a
-// hand copy: a key missing from the tuple above makes _UncopiedKey non-never and fails to compile here.
+// A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
+// StaticDrawFields entry cannot be silently dropped by the hand copy below.
 type _UncopiedKey = Exclude<keyof StaticDrawFields, (typeof STATIC_DRAW_KEYS)[number]>;
 const _allKeysListed: [_UncopiedKey] extends [never] ? true : _UncopiedKey = true;
 void _allKeysListed;
 
-/** Copy the present {@link StaticDrawFields} of `source` onto `target` in place, leaving absent facts
- *  absent (exactOptionalPropertyTypes) so a fog ghost re-emits exactly the fields it captured. */
+/** Copy the present {@link StaticDrawFields} of `source` onto `target` in place, leaving absent fields
+ *  absent (exactOptionalPropertyTypes) so a fog ghost re-emits exactly what it captured. */
 export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFields): void {
   for (const key of STATIC_DRAW_KEYS) {
     const value = source[key];
@@ -197,11 +146,9 @@ export function copyStaticFields(target: StaticDrawFields, source: StaticDrawFie
 }
 
 /**
- * Assign the shared {@link StaticDrawFields} read off a building / resource / stump entity onto `target`,
- * in place (no intermediate object, so the per-frame scene build allocates nothing) and omitting absent
- * facts. The single place the "which components a static reads for its draw" decision lives, so the live
- * scene build and the fog-ghost capture can't drift on it. Each kind's live-only extras stay with their
- * caller (see {@link StaticDrawFields}).
+ * Assign the {@link StaticDrawFields} a building / resource / stump draws by onto `target` in place - no
+ * intermediate object, so the per-frame scene build allocates nothing - omitting absent facts. The one
+ * place that choice lives, so the live scene build and the fog-ghost capture cannot drift apart.
  */
 export function assignStaticFields(
   target: StaticDrawFields,
@@ -234,8 +181,6 @@ export function assignStaticFields(
       return;
     }
     default: {
-      // Exhaustiveness guard: a new static kind fails to assign to `never` here instead of silently
-      // taking the stump path.
       const _exhaustive: never = kind;
       void _exhaustive;
     }

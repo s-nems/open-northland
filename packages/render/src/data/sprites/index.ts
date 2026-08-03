@@ -1,13 +1,6 @@
 /**
- * The pure half of the atlas-sprite swap - which atlas frame a draw item references (a data lookup an
- * agent can self-verify); binding that rect to a GPU texture + sampling it is the GPU layer's half
- * (pixels, which only a human can judge). No Pixi, no canvas. Split by concern:
- *  - {@link import('./atlas.js')} - atlas frame geometry + the manifest adaptation;
- *  - {@link import('./bindings.js')} - the root {@link SpriteBindings} vocabulary;
- *  - {@link import('./settler-bindings.js')} / {@link import('./layered-bindings.js')} - the per-kind binding-table types;
- *  - {@link import('./settler.js')} - the settler state/facing/clock frame selection;
- *  - {@link import('./layered.js')} - the building/resource/stockpile layer decisions;
- *  - {@link import('./resolve.js')} - the top-level per-kind dispatch.
+ * Pure frame selection, with no Pixi and no canvas: binding a resolved frame to a GPU texture is the
+ * `gpu` layer's half.
  */
 export {
   type AtlasFrame,

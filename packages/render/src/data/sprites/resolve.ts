@@ -10,9 +10,8 @@ import {
 import { resolveSettlerBobId } from './settler.js';
 
 /**
- * Resolve the atlas bob id a drawable {@link DrawItem} should draw - the frame *selection* alone (no
- * atlas lookup), so the GPU layer can draw the same id from several layered atlases (body + head)
- * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind.
+ * Frame selection alone, without the atlas lookup, so the GPU layer can draw one id from several
+ * layered atlases without re-deciding per layer. `null` means a terrain tile or an unbound kind.
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   // The unbound checks cover the required-typed keys too: the binding record is content-built, and a
@@ -20,36 +19,30 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   switch (item.kind) {
     case 'tile': // tiles bind by landscape typeId, not these per-kind bindings
       return null;
-    // A projectile never binds an atlas frame (no decoded arrow bob exists) - the GPU pool draws its
-    // oriented-arrow marker instead (see gpu/sprite-pool/placeholder.ts).
+    // No decoded arrow bob exists, so the GPU pool draws its own oriented-arrow marker.
     case 'projectile':
       return null;
     case 'settler':
       return bindings.settler === undefined ? null : resolveSettlerBobId(bindings.settler, item, tick);
     case 'building':
       return bindings.building === undefined ? null : resolveBuildingDraw(bindings.building, item).bob;
-    // resource, stump and berrybush all reuse the per-good resource resolver - a stump draws its debris
-    // frame, a bush its per-variant ripe/bare frame, the same way a node draws its species, each from the
-    // atlas its own binding names. A ground drop joins them through the `trunk` binding: the DrawKind
-    // ('grounddrop') and the binding key differ, so it names its key instead of reusing `item.kind`.
+    // These kinds all reuse the per-good resource resolver, each from the atlas its own binding names.
+    // A ground drop's kind and binding key differ, so it names its key instead of reusing `item.kind`.
     case 'resource':
     case 'stump':
     case 'berrybush':
     case 'grounddrop': {
       const binding = item.kind === 'grounddrop' ? bindings.trunk : bindings[item.kind];
-      // A null draw is an invisible level; this bare-atlas path collapses it to the placeholder so the
-      // synthetic/debug sheet shows every entity, where the GPU path (gpu/sprite-pool/resolve-layers.ts)
-      // draws nothing.
+      // This bare-atlas path collapses an invisible level to the placeholder so the synthetic sheet
+      // shows every entity; the GPU path draws nothing for it.
       return binding === undefined ? null : (resolveResourceDraw(binding, item)?.bob ?? null);
     }
-    // A signpost resolves its post/board frame from the dedicated binding (placeholder when unbound).
     case 'signpost':
       return resolveSignpostDraw(bindings.signpost, item)?.bob ?? null;
     case 'stockpile':
       return bindings.stockpile === undefined ? null : resolveStockpileDraw(bindings.stockpile, item).bob;
     default: {
-      // Exhaustiveness guard: a new DrawKind fails to assign to `never` here instead of silently
-      // taking a neighbouring kind's resolver.
+      // A new DrawKind must fail to assign here instead of silently taking a neighbour's resolver.
       const _exhaustive: never = item.kind;
       void _exhaustive;
       return null;
@@ -58,21 +51,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
 }
 
 /**
- * Resolve the atlas frame a drawable {@link DrawItem} should draw, given the per-kind {@link SpriteBindings}
- * and the loaded {@link SpriteAtlas}. Returns `null` - meaning "no bound sprite, draw the placeholder" -
- * when:
- *  - the item is a terrain tile (tiles bind by landscape typeId, a separate path), or
- *  - the kind has no binding, or
- *  - the bound bob id isn't in the atlas (a missing/0×0 frame).
- *
- * For a settler the bob id is chosen by the item's {@link import('../scene/index.js').SpriteState} (and
- * atomic id) via {@link resolveSettlerBobId} - a settler walking resolves its `moving` frame, one
- * mid-swing its `acting` frame - when the binding is a
- * {@link import('./settler-bindings.js').SettlerStateBinding}; a plain-number
- * settler binding draws the same frame regardless of state (back-compat).
- *
- * The GPU layer calls this per draw item; a `null` keeps the current placeholder geometry, a frame is
- * the atlas rect to blit.
+ * The atlas rect to blit for a draw item, or `null` for "no bound sprite, draw the placeholder": a
+ * terrain tile, an unbound kind, or a bob id the atlas has no frame for.
  */
 export function resolveSpriteFrame(
   item: DrawItem,
@@ -82,6 +62,5 @@ export function resolveSpriteFrame(
 ): AtlasFrame | null {
   const bobId = resolveSpriteBobId(item, bindings, tick);
   if (bobId === null) return null;
-  // A missing or 0-area frame is an empty/zero-size bob - treat it as unbound so the placeholder draws.
   return lookupFrame(atlas, bobId);
 }
