@@ -8,6 +8,7 @@ export {
   type BuildingLayout,
   type ButtonAction,
   type ButtonHit,
+  DEFENCE_LABEL_GAP,
   layoutBuilding,
   MAX_STOCK_ROWS,
   PREVIEW_INSET,
