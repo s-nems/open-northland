@@ -1,16 +1,10 @@
-/**
- * Rate-limits the shell's progress streams, which tick far faster than a bar can use: the pipeline's
- * unpack stage reports thousands of items per second and the mod installer ticks per downloaded
- * chunk.
- */
-
-/** Minimum ms between forwarded progress events; ~one UI frame's worth, well under human notice. */
+/** Minimum ms between forwarded progress events; an approximation below notice on a progress bar. */
 const EVENT_INTERVAL_MS = 100;
 
 export interface EventThrottle {
   /** Whether to forward this event now; `final` events always pass and restart the interval. */
   shouldEmit(final: boolean): boolean;
-  /** Drop the interval so the next event passes - a new stage starts its own stream. */
+  /** Drop the interval so the next event passes. */
   reset(): void;
 }
 

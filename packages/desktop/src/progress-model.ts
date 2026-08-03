@@ -1,16 +1,14 @@
-// The `/progress` subpath is import-free by design - this module rides the browser-side setup
-// bundle, which must never drag the pipeline's node:fs decoder graph in.
+// The `/progress` subpath is import-free: this module rides the browser-side setup bundle, which
+// must never drag the pipeline's node:fs decoder graph in.
 import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
 import { PIPELINE_STAGES } from '@open-northland/asset-pipeline/progress';
 
 /**
- * Maps the pipeline's progress events onto one 0..1 fraction for the installer's bar. Stage weights
- * and the item estimates for walk-as-you-go stages are approximations observed from one full run
- * against the real game copy + culturesnation mod (2026-07-16, 167 s end to end); they only shape
- * the bar, never gate completion, so drift on other installs is cosmetic.
+ * Approximation: the weights and item estimates below come from one observed full run against the
+ * game copy plus the culturesnation mod. They only shape the bar and never gate completion.
  */
 
-// Roughly the stage's seconds in the reference run (167 s total).
+// Approximate seconds per stage in that run, 167 s end to end.
 const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   unpack: 10,
   pictures: 55,
@@ -24,14 +22,13 @@ const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   maps: 3,
 };
 
-/** Expected item counts for stages that walk as they go (no up-front total): the reference run
- * extracted ~4,100 archive members and converted ~5,800 pictures. */
+/** Item counts for the stages that walk as they go without an up-front total. */
 const ESTIMATED_ITEMS: Partial<Record<PipelineStageId, number>> = {
   unpack: 4100,
   pictures: 5800,
 };
 
-/** Progress within an estimated-total stage is capped here so the bar never claims a finish it can't know. */
+/** Caps an estimated stage so the bar never claims a finish it cannot know. */
 const ESTIMATE_CAP = 0.95;
 
 const TOTAL_WEIGHT = PIPELINE_STAGES.reduce((sum, stage) => sum + STAGE_WEIGHTS[stage], 0);
@@ -52,7 +49,7 @@ function stageFraction(snapshot: ProgressSnapshot): number {
   return Math.min(snapshot.done / estimate, ESTIMATE_CAP);
 }
 
-/** Overall 0..1 fraction: completed stage weights + the current stage's weighted fraction. */
+/** Overall progress across every stage, 0..1. */
 export function overallFraction(snapshot: ProgressSnapshot): number {
   const index = PIPELINE_STAGES.indexOf(snapshot.stage);
   let completed = 0;

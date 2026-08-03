@@ -5,9 +5,8 @@ import { probeGameFolder } from '@open-northland/asset-pipeline';
 import type { GameFolderCandidate } from './ipc.js';
 
 /**
- * Best-effort scan for an existing game install: look one level under the conventional Windows
- * install roots for a folder whose name mentions "cultures", then probe it (OpenRA's
- * detect-known-installs first-run pattern; no registry crawl - the picker is always the fallback).
+ * Best-effort scan for an existing game install, following OpenRA's detect-known-installs pattern:
+ * no registry crawl, and the folder picker stays the fallback.
  */
 
 const CANDIDATE_LIMIT = 5;
@@ -17,7 +16,6 @@ function windowsInstallRoots(env: NodeJS.ProcessEnv): string[] {
   return roots.filter((r): r is string => r !== undefined && r !== '');
 }
 
-/** Scan `roots` (defaults to the Windows install roots; empty elsewhere) for probe-positive folders. */
 export async function detectGameFolders(
   roots: readonly string[] = process.platform === 'win32' ? windowsInstallRoots(process.env) : [],
 ): Promise<GameFolderCandidate[]> {
