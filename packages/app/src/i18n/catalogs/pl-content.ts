@@ -259,5 +259,10 @@ export const plContent = {
       summary:
         'Sześciu łuczników - trzy krótkie łuki i trzy długie - obsadza wieżę strażniczą, znika w środku i strzela z niej na zasięg swojego łuku powiększony o premię wieży. Zamiast znacznika przy każdym z nich na dachu powiewa flaga załogi: pięć gwiazdek na sześciu ludzi. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
     },
+    'death-loot': {
+      title: 'Polegli żołnierze',
+      summary:
+        'Dwa szeregi mieczników wycinają się w polu. Każdy jest ubrany tak samo - krótki miecz, kolczuga, pełny miód pitny i wychodzone do połowy buty - a jego wyposażenie zostaje przy jego kościach: miecz, zbroja i nietknięty miód wypadają na ziemię, zużyte buty przepadają razem z nim.',
+    },
   },
 } as const;

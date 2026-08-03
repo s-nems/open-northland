@@ -4,7 +4,7 @@ import { type Fixed, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
-import { scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
+import { droppedEquipmentOf, scatterSpilledStock, spilledStockOf } from '../economy/goods-spill.js';
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
@@ -79,11 +79,12 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
   scatterSpilledStock(world, ctx, spill);
 }
 
-/** Announce a combatant's death (`settlerDied`, the render/audio cue) and remove it from the world. The event
- *  is emitted before the destroy so the entity id it carries is still that of a (just-)alive entity, and so its
- *  `Owner`/`Position` are still readable: `player` (owner slot, `null` when unowned) lets audio play the death
- *  stinger for the local player only, and `at` (the death node) lets render leave a bones marker where it fell
- *  (humans only, which is what the `animal` flag tells apart - see the event's doc). */
+/** Announce a combatant's death (`settlerDied`, the render/audio cue), remove it from the world, and leave its
+ *  gear on the ground where it fell ({@link droppedEquipmentOf}). The event is emitted before the destroy so the
+ *  entity id it carries is still that of a (just-)alive entity, and so its `Owner`/`Position` are still
+ *  readable: `player` (owner slot, `null` when unowned) lets audio play the death stinger for the local player
+ *  only, and `at` (the death node) lets render leave a bones marker where it fell (humans only, which is what
+ *  the `animal` flag tells apart - see the event's doc). */
 function reap(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
@@ -101,7 +102,9 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);
   const wasMinor = isMinor(world, e);
+  const loot = droppedEquipmentOf(world, e);
   world.destroy(e);
+  scatterSpilledStock(world, ctx, loot);
   // The widowing rule (`family/widowhood.ts`) needs the decedent already dead, so the destroy runs
   // first. A dying MINOR is the other expiry trigger: its widowed parent's carve-out ends with it.
   if (marriage !== undefined && world.isAlive(marriage.spouse)) settleWidowhood(world, marriage.spouse);

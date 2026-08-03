@@ -115,6 +115,8 @@ export const economyContent = {
     // A second permanent weapon good: the fresh-swap shape - walking wears boots, so only a
     // non-wearing good still stows after the walk to its replacement.
     { typeId: 17, id: 'long_sword', weight: 1, equip: { category: 'weapon' } },
+    // The armor slot's good - permanent like the swords; nothing places it either.
+    { typeId: 18, id: 'mail', weight: 1, equip: { category: 'armor' } },
     // The two carcass goods a hunter's kill leaves on the ground (real ids: meat 21, harvest_cadaver
     // atomic 33). Direct-pickup nodes like the mushroom - no felling/deposit lifecycle.
     { typeId: 21, id: 'meat', weight: 1, atomics: { harvest: 33 } },
