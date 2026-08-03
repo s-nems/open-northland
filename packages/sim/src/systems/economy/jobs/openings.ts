@@ -28,10 +28,11 @@ export interface OpeningsQuery extends NeedSubject {
  *  - the TRIBE-tech gate (`jobEnablesJob`, "does a settler of the enabling trade live here") is NOT applied,
  *    a deliberate convenience deviation: an assignment staffs a built workshop with its own trade instead of
  *    silently downgrading to the carrier slot (the reported "mennica → tragarz" bug);
- *  - the per-settler XP threshold (`needforjob`) IS enforced, like everywhere else. A trade is earned by the
- *    settler, so an assignment cannot mint a 0-XP potter the profession picker refuses to offer; an
- *    unqualified settler falls through to the next listed job, which is the carrier slot - the original's
- *    "make him a tradesman, else a hauler" rule.
+ *  - the per-settler XP threshold (`needforjob`) IS enforced on a trade the settler does not yet hold, like
+ *    everywhere else. A trade is earned by the settler, so an assignment cannot mint a 0-XP potter the
+ *    profession picker refuses to offer; an unqualified settler falls through to the next listed job, which
+ *    is the carrier slot - the original's "make him a tradesman, else a hauler" rule. Being posted to the
+ *    trade it already practises is not earning it, so that case skips the gate (see below).
  * The building-level gate (`buildingEnabled`) runs too but is currently a feature-wide no-op (see it).
  *
  * A building still under construction answers like a finished one: its slots take staff while it is raised,
@@ -58,7 +59,10 @@ export function openWorkerJobFromList(
     if (!offered.has(jobType)) continue; // not a job this building employs
     if (!jobUnderstaffed(query, building, jobType)) continue;
     if (!garrisonPostOpenTo(query, jobType)) continue;
-    if (!settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue; // XP gate (needforjob)
+    const alreadyHoldsTrade = query.jobType === jobType;
+    // The XP gate judges TAKING one UP (see above). A bow soldier's `needforjob 40 5 69` reads a fight track
+    // only fighting accrues, so re-gating it would leave every tower post unmannable.
+    if (!alreadyHoldsTrade && !settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue;
     return jobType;
   }
   return null;
