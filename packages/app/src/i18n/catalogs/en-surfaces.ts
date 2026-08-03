@@ -149,6 +149,24 @@ export const enSurfaces = {
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
     },
+    credits: {
+      intro:
+        'Open Northland is an independent, open-source engine for the Cultures strategy series: a deterministic simulation, a new renderer and its own asset pipeline, built from scratch.',
+      filesNote:
+        'The game ships no original files. To play the classic maps, point the engine at your own copy of Cultures - 8th Wonder of the World and it prepares the assets locally.',
+      sourceLink: 'Source code - GitHub',
+      reportLink: 'Report a bug',
+      teamTitle: 'Team',
+      teamName: 's-nems',
+      teamRole: 'design and code',
+      thanksTitle: 'Thanks',
+      thanksFunaticsName: 'Funatics Software',
+      thanksFunaticsDetail: 'for the original Cultures series, whose spirit guides this project.',
+      thanksCommunityName: 'The CulturesNation.pl community',
+      thanksCommunityDetail:
+        'for keeping the series alive over the years, the CulturesNation mod and the knowledge gathered around the game.',
+      legal: 'a non-commercial project, unaffiliated with the series rights holders',
+    },
   },
   // One label per `view/boot-progress.ts` BootPhase - the card's only text.
   loading: {

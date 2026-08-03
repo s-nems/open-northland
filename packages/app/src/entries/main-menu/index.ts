@@ -1,14 +1,12 @@
 import { messages } from '../../i18n/index.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
+import { creditsScreen } from './credits.js';
 import { startMenuScene } from './live-scene.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
-import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus } from './model.js';
-
-/** Shown verbatim under the logo, per the accepted design frame. */
-const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
+import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
@@ -130,6 +128,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters);
+    if (next === 'credits') return creditsScreen(show);
     return placeholderScreen(next, show);
   };
   const show = (next: MenuScreen): void => {
