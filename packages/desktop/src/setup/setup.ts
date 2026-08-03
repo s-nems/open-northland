@@ -5,13 +5,6 @@ import { createLangSwitch } from './lang-switch.js';
 import { createPickPanel } from './pick-panel.js';
 import { createPipelineProgress } from './pipeline-progress.js';
 
-/**
- * The first-run installer page: it composes the wizard's phases (pick → run → done | failed), owns
- * the switch between them, and re-renders every locale-dependent string when the language changes.
- * Each phase owns its own DOM and state; all game-folder knowledge lives behind `window.desktop`
- * ({@link DesktopApi}).
- */
-
 declare global {
   interface Window {
     readonly desktop: DesktopApi;
@@ -48,12 +41,11 @@ async function runPipeline(gamePath: string): Promise<void> {
 
 async function applyLocale(locale: Locale): Promise<void> {
   if (currentLocale() === locale) return;
-  await window.desktop.setLocale(locale); // persist + re-localize the native menu
+  await window.desktop.setLocale(locale);
   setActiveLocale(locale);
   renderAll();
 }
 
-/** Re-render every locale-dependent string from the current active locale + remembered state. */
 function renderAll(): void {
   const t = messages().setup;
   document.title = t.title;
@@ -66,7 +58,7 @@ function renderAll(): void {
   el('legal').innerHTML = t.legalHtml;
   el('data-root').textContent = dataRootPath; // legalHtml just recreated an empty #data-root
   pick.applyLabels();
-  progress.relabel(); // the run/failed phase's live stage or failure line owns its own text
+  progress.relabel();
   langSwitch.applyLabels();
 }
 
@@ -81,7 +73,7 @@ async function boot(): Promise<void> {
   window.desktop.onModEvent((event) => pick.handleModEvent(event));
 
   el('cancel').addEventListener('click', async () => {
-    // stop() silences the run's events, so no late error flips the page to the failed phase.
+    // Awaited so a late error event cannot flip the page to the failed phase.
     await window.desktop.stopPipeline();
     showPhase('pick');
   });

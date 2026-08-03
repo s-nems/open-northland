@@ -1,4 +1,4 @@
-/** Resolve a required element of the setup page; a missing id is an HTML/script mismatch, not a state. */
+/** A missing id is an HTML/script mismatch, not a state the page can render. */
 export function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
   if (found === null) throw new Error(`setup page is missing #${id}`);
