@@ -1,9 +1,9 @@
-/**
- * Pure state for the redesigned menu flow (docs/design/main-menu/README.md). Slice 1 ships the
- * main screen plus placeholder sub-screens; `lobby` and `load` arrive in later slices.
- */
+/** Pure state for the redesigned menu flow (docs/design/main-menu/README.md). */
 
 export type MenuScreen = 'main' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
+
+/** Shown verbatim under the home logo; the credits legal line opens with the same text. */
+export const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
 
 export type MainNavItem =
   | { readonly id: Extract<MenuScreen, 'newGame' | 'settings' | 'credits'>; readonly kind: 'open' }

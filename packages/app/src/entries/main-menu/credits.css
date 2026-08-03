@@ -1,0 +1,107 @@
+/* Credits / about (design frame 5a). The scaffold, header and tokens live in menu.css. */
+
+.main-menu__credits {
+  flex: 1;
+  display: flex;
+  gap: calc(var(--u) * 100);
+  min-height: 0;
+}
+
+.main-menu__credits-story {
+  max-width: calc(var(--u) * 860);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 36);
+}
+
+.main-menu__credits-intro {
+  margin: 0;
+  font:
+    400 calc(var(--u) * 30) / 1.55 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+.main-menu__credits-note {
+  margin: 0;
+  font:
+    400 calc(var(--u) * 26) / 1.6 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(180, 205, 200, 0.7);
+}
+
+.main-menu__credits-links {
+  display: flex;
+  gap: calc(var(--u) * 20);
+}
+
+.main-menu__credits-aside {
+  flex: 1;
+  max-width: calc(var(--u) * 520);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 28);
+}
+
+.main-menu__credits-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 18);
+  padding: calc(var(--u) * 28) calc(var(--u) * 32);
+  border: 2px solid rgba(99, 196, 160, 0.2);
+  border-radius: 8px;
+  background: rgba(16, 29, 44, 0.55);
+}
+
+.main-menu__credits-card-title {
+  font:
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(143, 184, 173, 0.7);
+}
+
+.main-menu__credits-person {
+  display: flex;
+  justify-content: space-between;
+  font:
+    400 calc(var(--u) * 24) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--text-body);
+}
+
+.main-menu__credits-role {
+  color: rgba(143, 184, 173, 0.7);
+}
+
+.main-menu__credits-thanks {
+  margin: 0;
+  font:
+    400 calc(var(--u) * 23) / 1.55 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(219, 232, 227, 0.75);
+}
+
+.main-menu__credits-link {
+  color: var(--accent-bright);
+  text-decoration: none;
+}
+
+.main-menu__credits-link:hover,
+.main-menu__credits-link:focus-visible {
+  text-decoration: underline;
+}
+
+.main-menu__credits-legal {
+  font:
+    400 calc(var(--u) * 21) / 1.6 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: rgba(180, 205, 200, 0.45);
+}
