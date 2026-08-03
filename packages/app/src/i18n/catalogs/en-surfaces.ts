@@ -60,7 +60,9 @@ export const enSurfaces = {
       exit: 'Exit',
     },
     comingSoon: 'coming soon',
-    back: 'Menu',
+    comingSoonTip: 'Coming soon',
+    // The sub-screen back link names the screen it returns to (screen-head.ts).
+    backLabels: { main: 'Menu', newGame: 'Map selection' },
     underConstruction: 'This screen is under construction.',
     screenTitles: {
       newGame: 'New game',
@@ -79,7 +81,6 @@ export const enSurfaces = {
         multiplayer: 'Multiplayer',
         scenes: 'Test scenes',
       },
-      comingSoonTip: 'Coming soon',
       categoryNames: {
         story: 'story',
         multiplayer: 'multiplayer',
@@ -96,7 +97,6 @@ export const enSurfaces = {
       run: 'Run',
     },
     lobby: {
-      backLabel: 'Map selection',
       kicker: 'Local game',
       slotHeader: 'Slot',
       controlHeader: 'Control',
@@ -148,6 +148,32 @@ export const enSurfaces = {
       },
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
+    },
+    settings: {
+      tabs: {
+        graphics: 'Graphics',
+        audio: 'Sound',
+        gameplay: 'Gameplay',
+        controls: 'Controls',
+      },
+      displayMode: 'Display mode',
+      displayFullscreen: 'Fullscreen',
+      displayWindow: 'Window',
+      resolution: 'Resolution',
+      uiScale: 'In-game interface scale',
+      smoothScroll: 'Smooth map scrolling',
+      animatedScene: 'Animated menu scene',
+      soundEnabled: 'In-game sound',
+      masterVolume: 'Master volume',
+      musicVolume: 'Music volume',
+      sfxVolume: 'Effects volume',
+      language: 'Language',
+      // Endonyms on purpose: each language names itself, so a stranded player can find theirs.
+      languageNames: { pol: 'Polski', eng: 'English' },
+      scrollSpeed: 'Map scroll speed',
+      edgeScroll: 'Edge scrolling',
+      autosaveNote: 'Changes are saved immediately.',
+      restoreDefaults: 'Restore defaults',
     },
     credits: {
       intro:

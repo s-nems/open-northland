@@ -8,7 +8,7 @@
 /** The player-facing settings that carry between the menu and a running game - kept across a scene/map
  *  switch (menu → game, {@link import('../entries/menu/settings.js').targetSearch}) and a quit back to
  *  the menu ({@link menuSearch}). Everything else (the entry selector `scene`/`map`/…) is dropped. */
-export const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'progression', 'debug'] as const;
+export const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'progression', 'sound', 'debug'] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
 /** Copy just the {@link CARRIED_PARAMS} settings out of a search into a fresh params bag. */

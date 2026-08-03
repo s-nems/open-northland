@@ -1,5 +1,6 @@
 import { messages } from '../../i18n/index.js';
 import { type MenuScreen, VERSION_LINE } from './model.js';
+import { screenHead } from './screen-head.js';
 
 /** Outbound targets of the credits screen (design frame 5a wires them to the project pages). */
 const REPO_URL = 'https://github.com/s-nems/open-northland';
@@ -43,17 +44,7 @@ export function creditsScreen(open: (screen: MenuScreen) => void): HTMLElement {
   const section = document.createElement('section');
   section.className = 'main-menu__screen';
 
-  const head = document.createElement('div');
-  head.className = 'main-menu__screen-head';
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'main-menu__back';
-  back.textContent = `← ${copy.back}`;
-  back.addEventListener('click', () => open('main'));
-  const title = document.createElement('h1');
-  title.className = 'main-menu__screen-title';
-  title.textContent = copy.screenTitles.credits;
-  head.append(back, title);
+  const head = screenHead('credits', open);
 
   const intro = document.createElement('p');
   intro.className = 'main-menu__credits-intro';
