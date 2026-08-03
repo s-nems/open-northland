@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 
-/** The sandboxed bridge: the setup renderer sees exactly {@link DesktopApi} as `window.desktop`. */
+/** The context-isolated bridge: the renderer gets exactly this API as `window.desktop`, no `ipcRenderer`. */
 const api: DesktopApi = {
   getState: () => ipcRenderer.invoke(IPC_CHANNELS.getState),
   pickGameFolder: () => ipcRenderer.invoke(IPC_CHANNELS.pickGameFolder),

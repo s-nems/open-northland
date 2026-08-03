@@ -4,22 +4,14 @@ import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/con
 import { net, protocol } from 'electron';
 import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } from './protocol-routing.js';
 
-/**
- * The `app://` scheme the shell serves the game from - the packaged equivalent of the Vite dev
- * server: `app://game/<path>` maps to the built web app's static files plus the shared content
- * routes (`@open-northland/content-resolver`) over the data root's `content/`, and `app://setup/…`
- * serves the first-run installer page from the shell's own renderer files.
- */
+/** The `app://` scheme the shell serves the game from: the packaged stand-in for the Vite dev server. */
 
 import type { Locale } from './i18n/index.js';
 
 export const GAME_URL = `${APP_ORIGIN_PREFIX}${GAME_HOST}/index.html`;
 export const SETUP_URL = `${APP_ORIGIN_PREFIX}${SETUP_HOST}/setup.html`;
 
-/**
- * The game URL carrying the installer's language into the web app via its `?lang=` seam (the game's
- * `localeParam` accepts `eng`/`pol`), so a language picked in the wizard also greets the player.
- */
+/** The game URL carrying the installer language in the `?lang=` seam the web app reads. */
 export function gameUrlForLocale(locale: Locale): string {
   return `${GAME_URL}?lang=${locale}`;
 }
@@ -54,12 +46,11 @@ function notFound(): Response {
   return new Response('not found', { status: 404 });
 }
 
-// Pixi's mangled `app://bobs/...` spelling (see `routePathOf`) is cross-origin to `app://game`, and
-// a worker's fetch enforces CORS even on a custom scheme. Only the game origin is approved - a page
-// on any other origin (there should never be one) gets no cross-origin read.
+// A worker's fetch enforces CORS even on a custom scheme, and the folded host spellings (see
+// `routePathOf`) are cross-origin to `app://game`. Only that origin may read across.
 const CORS_HEADER = { 'access-control-allow-origin': 'app://game' } as const;
 
-/** Serve `file` with an explicit content type; a HEAD probe gets headers only (the app's texture probes). */
+/** A HEAD request gets headers only, serving the app's texture existence probes. */
 async function serveFile(file: string, contentType: string, method: string): Promise<Response> {
   const headers = { 'content-type': contentType, ...CORS_HEADER };
   if (method === 'HEAD') return new Response(null, { headers });
@@ -67,15 +58,14 @@ async function serveFile(file: string, contentType: string, method: string): Pro
   return new Response(res.body, { headers });
 }
 
-/** A page host's directory index: `app://game/` serves the built app's entry document. */
 const DIRECTORY_INDEX = 'index.html';
 
 export interface AppProtocolRoots {
-  /** The built web app (`packages/app/dist`) - packaged as a resource, the app dist in dev. */
+  /** The built web app (`packages/app/dist`). */
   readonly appRoot: string;
   /** The shell's own renderer files (the setup page). */
   readonly setupRoot: string;
-  /** The data root's `content/` dir the shared routes serve from. */
+  /** The data root's `content/` the shared routes serve from. */
   readonly contentRoot: string;
 }
 
