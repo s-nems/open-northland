@@ -4,11 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveFileUnderRoot } from '../src/under-root.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The containment rule (`src/under-root.ts`) both hosts sit on: the content routes and the desktop
- * shell's static page files. It is the only thing standing between a crafted request path and the
- * rest of the user's disk, so it is tested directly rather than only through its two callers.
- */
+/** The security boundary between a crafted request path and the rest of the user's disk. */
 describe('resolveFileUnderRoot', () => {
   let tmp: TempDir;
   let root: string;

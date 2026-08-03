@@ -4,12 +4,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isContentRoute, resolveContentRequest } from '../src/routes.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The shared content-route resolver (`src/routes.ts`) both hosts (Vite dev middleware, desktop
- * protocol handler) sit on. Invariants: each route serves only its subtree and extension allowlist,
- * traversal cannot escape a route's root, and unmatched/absent paths resolve to `undefined` (the
- * host's 404 fall-through) instead of throwing.
- */
 describe('resolveContentRequest', () => {
   let tmp: TempDir;
   let contentRoot: string;
@@ -175,8 +169,6 @@ describe('resolveContentRequest', () => {
 
 describe('isContentRoute', () => {
   it('claims every content-namespace path even when nothing resolves there', () => {
-    // A host must 404 these itself; an SPA fallback answering 200 text/html would make the loaders'
-    // `!res.ok` absence checks read a missing content/ as bytes.
     expect(isContentRoute('/ir.json')).toBe(true);
     expect(isContentRoute('/maps-index')).toBe(true);
     expect(isContentRoute('/bobs-index')).toBe(true);

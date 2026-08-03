@@ -4,11 +4,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildBobsIndexEntries } from '../src/bobs-index.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The `/bobs-index` scan (`src/bobs-index.ts`): the list the `?icons` gallery browses. Invariants:
- * only viewable atlases (a `<stem>.atlas.json` with a matching `<stem>.png`, and not an `.indexed`
- * sheet) are listed, split into base + palette variant, sorted by (base, variant).
- */
 describe('buildBobsIndexEntries', () => {
   let tmp: TempDir;
   let bobsRoot: string;
@@ -36,9 +31,9 @@ describe('buildBobsIndexEntries', () => {
   });
 
   it('skips .indexed sheets (index-in-red, not viewable) and atlases with no matching png', async () => {
-    await atlas('ls_gui_window.indexed'); // recolour source, not viewable
+    await atlas('ls_gui_window.indexed');
     await png('ls_gui_window.indexed');
-    await atlas('ls_goods.goods01'); // atlas.json but no png → not viewable
+    await atlas('ls_goods.goods01');
     expect(buildBobsIndexEntries(bobsRoot)).toEqual([]);
   });
 });

@@ -4,11 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMapsIndexEntries } from '../src/maps-index.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
-/**
- * The `/maps-index` join (`src/maps-index.ts`): grids + optional sidecars → menu entries. The
- * invariant under test is per-entry tolerance - one malformed sidecar degrades its own entry, never
- * the list. `null` is covered explicitly: it parses successfully but is not an object.
- */
 describe('buildMapsIndexEntries', () => {
   let tmp: TempDir;
   let mapsRoot: string;
