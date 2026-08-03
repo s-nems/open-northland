@@ -13,12 +13,13 @@ import { anchorNodeOf } from '../shared.js';
  * mod map corpus (`CnModMaps/<map>/staticobjects.inc`), the nearest cattle or sheep is a median 13 cells
  * out, and 140 seats have stock within the 32 cells this radius covers.
  *
- * KNOWN COLLISION, accepted: this is the same circle around the same anchor as a base-employed
- * hunter's ground (`HUNTER_WORK_FLAG_RADIUS`, also 64), and an unclaimed animal is nobody's property,
- * so it is valid last-resort prey (`isHuntTarget`) once no normal game is left in range - true from
- * the start at 12 of those 140 seats. Both behaviours are what their own rules ask for and the two
- * duties were requested to run together, so the round-up is NOT gated behind the hunt: the seat can
- * lose a stray to its own hunter until the hunt ends (`workforce/hunter.ts`).
+ * KNOWN COLLISION, accepted and now COMMON: a base-employed hunter's ground is a smaller circle around
+ * this same anchor (`HUNTER_WORK_FLAG_RADIUS`), and an unclaimed animal is nobody's property, so it is
+ * valid last-resort prey (`isHuntTarget`) once no normal game is left inside that circle - which the
+ * narrower ground reaches far sooner than the equal-radius one this note was first written for. Both
+ * behaviours are what their own rules ask for and the two duties were requested to run together, so
+ * the round-up is NOT gated behind the hunt: the seat races its own hunter for a stray until the hunt
+ * ends (`workforce/hunter.ts`).
  */
 export const SCOUT_CATCH_RADIUS_NODES = 64;
 

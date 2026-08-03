@@ -79,11 +79,15 @@ describe('hunter - one hunter per kill, inside its own ground', () => {
   /** A body comfortably outside that ground - the "other side of the map" case. */
   const BEYOND_GROUND = HUT_NODE.hx + GROUND_REACH + 18;
 
-  /** How far (Manhattan nodes) `settler` stands from the workplace - a walk it should never start. */
-  function nodesFromHut(sim: Simulation, settler: Entity): number {
+  /** How far (Manhattan nodes) `settler` stands from a node. */
+  function nodesFrom(sim: Simulation, settler: Entity, hx: number, hy: number): number {
     const p = sim.world.get(settler, Position);
     const at = nodeOfPosition(p.x, p.y);
-    return Math.abs(at.hx - HUT_NODE.hx) + Math.abs(at.hy - HUT_NODE.hy);
+    return Math.abs(at.hx - hx) + Math.abs(at.hy - hy);
+  }
+
+  function nodesFromHut(sim: Simulation, settler: Entity): number {
+    return nodesFrom(sim, settler, HUT_NODE.hx, HUT_NODE.hy);
   }
 
   /** A hunter employed at the meat workplace - flagless, so its ground is the radius around the hut. */
@@ -210,6 +214,26 @@ describe('hunter - one hunter per kill, inside its own ground', () => {
     expect(meatLeft(sim, body)).toBeLessThan(4);
   });
 
+  it('a FLAG-bound hunter stays in its ground however rich the ground beyond it is', () => {
+    const RADIUS = 16; // a literal, so the leash this pins survives any retune of the shipped radius
+    const FLAG = { hx: 20, hy: 2 };
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassNodeMap(200, 8) });
+    const hunter = hunterAtNode(sim, FLAG.hx, FLAG.hy);
+    bindFlagAtNode(sim, hunter, FLAG.hx, FLAG.hy, RADIUS);
+    // Its own kill, well past the ground - the only work on the map, so the ground bound is the one
+    // thing between this hunter and a walk across it (user report 2026-08-03).
+    const beyond = carcassAtNode(sim, FLAG.hx + RADIUS + 40, 2, hunter);
+
+    let strayed = 0;
+    for (let i = 0; i < 800; i++) {
+      sim.step();
+      strayed = Math.max(strayed, nodesFrom(sim, hunter, FLAG.hx, FLAG.hy));
+    }
+
+    expect(meatLeft(sim, beyond)).toBe(4);
+    expect(strayed).toBeLessThanOrEqual(RADIUS + HUNT_CARCASS_SLACK_NODES);
+  });
+
   it('a workplace hunter ignores a kill outside its ground, and works the one inside it', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassNodeMap(200, 8) });
     const hunter = workplaceHunter(sim);
@@ -221,8 +245,9 @@ describe('hunter - one hunter per kill, inside its own ground', () => {
     expect(meatLeft(sim, acrossTheMap)).toBe(4);
     expect(nodesFromHut(sim, hunter)).toBeLessThanOrEqual(GROUND_REACH); // it never set off at all
 
-    // The same body inside the ground proves the hunter was willing and able all along.
-    const inGround = carcassAtNode(sim, 40, 2, hunter);
+    // The same body inside the ground proves the hunter was willing and able all along. Derived from
+    // the radius, not written out: a body pinned at a literal node drifts outside on the next retune.
+    const inGround = carcassAtNode(sim, HUT_NODE.hx + HUNTER_WORK_FLAG_RADIUS / 2, 2, hunter);
 
     sim.run(600);
     expect(meatLeft(sim, inGround)).toBeLessThan(4);

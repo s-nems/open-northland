@@ -29,7 +29,7 @@ const HUNTER_CELLS = [
   { x: 8, y: 8 },
   { x: 8, y: 6 },
 ];
-/** Both herds well inside the hunter's auto-planted flag ground (`HUNTER_WORK_FLAG_RADIUS`, 64 nodes). */
+/** Both herds well inside the hunter's auto-planted flag ground (`HUNTER_WORK_FLAG_RADIUS`). */
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
 
