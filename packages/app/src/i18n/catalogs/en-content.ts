@@ -248,6 +248,11 @@ export const enContent = {
       summary:
         'A parade grid of sword soldiers: one column per armor state (bare, wool, leather, chain, plate) and one row per player colour, every unit standing down so rival owners never fight. For judging the per-armor recolours across team colours.',
     },
+    'ai-defence': {
+      title: 'AI defence',
+      summary:
+        'The red seat is handed to the strategic AI with only its military plan running. It rings its own alarm over the headquarters as the blue warband closes, walls three of its four archers into the watchtower - the fourth is left to the field army - and throws everyone still free at the raiders. Both warbands are over-tough, so the scene settles into a standing fight instead of a body count.',
+    },
     'tower-garrison': {
       title: 'Tower garrison',
       summary:

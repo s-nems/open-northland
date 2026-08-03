@@ -180,6 +180,14 @@ const EQUIP_ORDER_GOODS = [
 ] as const;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) - exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
+/** The first tick the harness raises its scripted alarms on, and how often it puts them back up. Raising
+ *  once is not enough: the stream's own alarm flips (case 43) and a seat handed to the strategic AI - which
+ *  stands its town back up when it sees no enemy (`ai-player/military/defence/alarm.ts`) - both take a
+ *  raised alarm off again, and a seed that lost it before any civilian claimed would quietly turn the whole
+ *  defence half of the stream into a skip path. A raise on an already-alarmed building is a no-op, so the
+ *  cadence perturbs nothing on its own. */
+const ALARM_RAISED_FROM = 200;
+const ALARM_RERAISE_EVERY = 20;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) - exercises `setStance`. */
 const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
 /** Fog modes: the three valid `FOG_MODE`s + one out-of-range (skipped) - exercises `setFogMode`, the
@@ -645,19 +653,18 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
     // seed where the wedding hasn't completed just exercises the unmarried skip instead).
     if (t === 150) sim.enqueue({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
-    // Raise the alarm on that shelter once it stands, so every seed runs the shelter drive and the release
-    // pass for real; the stream's own alarm flips (case 43) then interleave with it. Found by type rather
-    // than by a hard-coded id - the preamble's entity order is already load-bearing enough.
-    if (t === 200) {
+    // Raise the alarm on the shelter and on the nucleus home once they stand, so every seed runs the
+    // shelter drive and the release pass for real; the stream's own alarm flips (case 43) then interleave
+    // with it. The shelter is found by type rather than by a hard-coded id - the preamble's entity order is
+    // already load-bearing enough.
+    if (t >= ALARM_RAISED_FROM && (t - ALARM_RAISED_FROM) % ALARM_RERAISE_EVERY === 0) {
       for (const e of sim.world.query(Building)) {
         if (sim.world.get(e, Building).buildingType === SHELTER_TYPE) {
           sim.enqueue({ kind: 'setDefenceMode', building: e, enabled: true });
         }
       }
+      sim.enqueue({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
     }
-    // Raise the alarm on the nucleus home once it stands, so every seed runs the shelter drive and the
-    // release pass for real; the stream's own alarm flips (case 43) then interleave with it.
-    if (t === 200) sim.enqueue({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
     if (gen.int(COMMAND_EVERY) === 0) sim.enqueue(nextCommand(gen));
     sim.step();
     if (violations.length === 0) {

@@ -35,10 +35,12 @@ export interface AiPlayerModule {
 }
 
 /**
- * The strategic modules, in fixed run order: the workforce allocator first (it is the one module
- * that claims settlers, so no later module races it for a person), then building placement, the
- * scout's orders, population planning, and the army's muster and campaign. A per-seat
+ * The strategic modules, in fixed run order: the workforce allocator first, then building placement, the
+ * scout's orders, population planning, and the army's walls, muster and campaign. A per-seat
  * `AiPlayer.modules` flag gates each.
+ *
+ * Two modules claim settlers, and they cannot race for one: the allocator's spare pool holds no fighter
+ * (`workforce/pool.ts`) and the army's census admits nothing else (`military/census.ts`).
  */
 export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
   workforceModule(DEFAULT_BUILD_ORDER),

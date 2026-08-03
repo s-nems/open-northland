@@ -1,12 +1,13 @@
-import { CurrentAtomic, EquipOrder, Garrison, Stance, TrainingOrder } from '../../../components/index.js';
+import { Stance } from '../../../components/index.js';
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../readviews/index.js';
 import { anotherSystemOwns } from '../../settlers/planner/replan.js';
-import { entityNode, isTravelling, manhattan } from '../../spatial/nodes.js';
+import { entityNode, manhattan } from '../../spatial/nodes.js';
 import type { WeaponMix } from './census.js';
+import { onAnErrand } from './errand.js';
 
 // Where the army gathers and when it leaves. Every constant here is a named approximation: the original
 // exposes one `HAI_DisableMilitary` toggle and no readable army plan, so the sizes and radii are genre
@@ -34,7 +35,8 @@ export const WAVE_MELEE_CORE = 1;
 const LONGEST_REACH_NODES = 29;
 
 /** How far short of the objective a wave forms up before it charges (user rule): far enough to put the
- *  whole hold ring, not just its centre, PAST that reach (`dist <= maxRange` is in reach). */
+ *  whole hold ring, not just its centre, PAST that reach (`dist <= maxRange` is in reach) - a manned tower
+ *  and an alarmed shelter both shoot back, so a muster inside it would be shot at while it waited. */
 export const STAGING_STANDOFF_NODES = LONGEST_REACH_NODES + RALLY_HOLD_RADIUS_NODES + 1;
 
 /** The melee floor to hold `army` to - {@link WAVE_MELEE_CORE}, waived when the whole army fights at
@@ -154,7 +156,7 @@ export function gatherAt(
     // A man this drive will not move keeps the stance he has. Flipping it alone would anchor a DEFEND
     // post wherever the road happened to leave him, and drop a walker to ATTACK mid-march - where he
     // auto-acquires, engages, and leaves the census for good.
-    if (anotherSystemOwns(world, e) || isBusy(world, e)) continue;
+    if (anotherSystemOwns(world, e) || onAnErrand(world, e)) continue;
     // Stance BEFORE the walk: `moveUnit` re-anchors a DEFEND unit onto its goal (`orders/movement.ts`),
     // which is how each man ends up holding his own spot. Commands apply in the order enqueued.
     const { x, y } = terrain.coordsOf(holdSpot(terrain, rally, e, reachable));
@@ -200,18 +202,4 @@ function waitsIn(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId, 
 
 function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId): boolean {
   return manhattan(terrain, entityNode(world, terrain, e), rally) <= RALLY_HOLD_RADIUS_NODES;
-}
-
-/** Errands a recall would silently throw away: `moveUnit` strips the drill and equip orders, un-posts a
- *  tower garrison, and cancels a running action, and a fighter already walking is on his way somewhere for
- *  a reason. The garrison clause is insurance, not a live path - the AI staffs no towers today - but a seat
- *  handed to the AI (`?ai=`) would otherwise walk the human's archers off their walls for good. */
-function isBusy(world: World, e: Entity): boolean {
-  return (
-    world.has(e, TrainingOrder) ||
-    world.has(e, EquipOrder) ||
-    world.has(e, Garrison) ||
-    world.has(e, CurrentAtomic) ||
-    isTravelling(world, e)
-  );
 }

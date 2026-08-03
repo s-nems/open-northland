@@ -1,3 +1,4 @@
+import { aiDefenceScene } from './ai-defence.js';
 import { armorScene } from './armor.js';
 import { attackMoveScene } from './attack-move.js';
 import { barracksScene } from './barracks.js';
@@ -57,6 +58,7 @@ export const SCENES: readonly SceneDefinition[] = [
   barracksScene,
   armorScene,
   towerGarrisonScene,
+  aiDefenceScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

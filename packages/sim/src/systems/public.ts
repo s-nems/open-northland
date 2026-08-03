@@ -10,6 +10,8 @@ export {
   DEFAULT_BUILD_ORDER,
   TOWER_CONTENT_IDS,
 } from './ai-player/build-order/index.js';
+// The seat's own defence rules - exported so an acceptance scene can pin the garrison it walls in.
+export { TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
