@@ -42,16 +42,14 @@ const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ..
  * zero, so the assistant stops with the module; only losing the base freezes the standing counters (the
  * whole workforce ladder stops deciding upstream).
  *
- * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound
- * is the breeding engine that grows the next recruits: a fighter neither marries nor fathers
- * children, and the conversion is one-way, so the draft allowance counts only UNMARRIED spare men,
- * capped by the bachelor surplus beyond the seat's waiting brides ({@link bachelorSurplus}). The
- * dispatcher drafts unmarried men first, so a want sized to the free bachelors never reaches a
- * husband - the old hand-pick's family-line guarantee, kept through the counters.
+ * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound is
+ * the breeding engine that grows the next recruits: a fighter neither marries nor fathers children, and
+ * the conversion is one-way, so the allowance counts only UNMARRIED spare men, capped by the bachelor
+ * surplus beyond the seat's waiting brides ({@link bachelorSurplus}). The dispatcher drafts unmarried men
+ * first, so a want sized to the free bachelors never reaches a husband.
  *
- * Runs last in the workforce ladder: the allowance counts only the draft-shaped men (the dispatcher's
- * own {@link draftableTrade} rule) left unclaimed by every post, reserve and flag. Outflow pacing is
- * the assistant's trickle brake, no longer one man per decision.
+ * Runs last in the workforce ladder, so the allowance sees only the draft-shaped men left unclaimed by
+ * every post, reserve and flag. Outflow pacing is the assistant's trickle brake.
  */
 export function trainGarrison(
   world: World,
@@ -107,9 +105,9 @@ function standingOrder(
 
 /**
  * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit for,
- * else `trainSoldiers`. Judged for the tribe of `next` - the man the dispatcher would draft first - because
- * the arming pass shops against the RECRUIT's weapon rows, not the barracks'; and from the barracks door,
- * where he stands when that pass first looks at him.
+ * else `trainSoldiers`. Judged for `next`'s tribe - one of the men it may draft - because the arming pass
+ * shops against the RECRUIT's weapon rows, not the barracks'; and from the barracks door, where he stands
+ * when that pass first looks at him.
  */
 function draftingClasses(
   world: World,

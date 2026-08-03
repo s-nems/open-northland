@@ -473,6 +473,23 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(sim.world.get(woodcutter, Equipment).tool?.goodType).toBe(TOOL_IRON);
   });
 
+  it('still hands a grant to a settler whose job is exempt from confinement', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(64, 6) });
+    setNeedsEnabled(sim.world, false);
+    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    // A scout ranges the map, so he carries no signpost confinement at all. The ARMING errand overrides
+    // that with the settlement network on purpose; a plain grant must not, or the dispatcher would pick a
+    // store the walk then refuses and the errand would be stamped and dropped forever.
+    const scout = ownedSettler(sim, 40, 3);
+    setSettlerJob(sim.world, scout, SCOUT_JOB);
+    pileAt(sim, 2, 3, SHOES, 1);
+    grant(sim, SHOES);
+
+    sim.run(8 * ERRAND_TICKS);
+    expect(sim.world.get(scout, Equipment).boots?.goodType).toBe(SHOES);
+  });
+
   it('ignores settlers of a player with no grants and grants with no stock', () => {
     const sim = freshSim();
     const rival = ownedSettler(sim, 2, 2, RIVAL_PLAYER);
