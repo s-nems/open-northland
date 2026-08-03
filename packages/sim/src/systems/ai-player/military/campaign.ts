@@ -15,8 +15,7 @@ const SIEGE_TIERS: readonly BuildingCombatClass[] = ['hq', 'tower', 'other'];
 /**
  * What the seat's army marches on: the nearest enemy headquarters to its muster point (user rule), with
  * the lower {@link SIEGE_TIERS} behind it so a wave never stalls for want of an HQ. Distance is Manhattan
- * over half-cell nodes from `rally`; a building is measured and reached by its interaction cell, since
- * its own node is unwalkable.
+ * over half-cell nodes from `rally` to the candidate's approach node ({@link objectiveNode}).
  *
  * A candidate must be another player's (`mayTarget`'s owner axis), stand on ground connected to the
  * rally, and hold a live `Health` pool - content that pins no `hitpoints` gives its buildings none, and
@@ -42,10 +41,9 @@ export function campaignTarget(
     if (bucket === undefined) byTier.set(tier, [e]);
     else bucket.push(e);
   }
+  const approachOf = (e: Entity): NodeId => objectiveNode(world, ctx, terrain, e);
   for (const tier of SIEGE_TIERS) {
-    const winner = nearestReachable(terrain, byTier.get(tier) ?? [], rally, home, (e) =>
-      interactionCell(world, ctx, terrain, e),
-    );
+    const winner = nearestReachable(terrain, byTier.get(tier) ?? [], rally, home, approachOf);
     if (winner !== null) return winner;
   }
 
@@ -53,7 +51,20 @@ export function campaignTarget(
     // A claimed herd is loot, not a war aim.
     (e) => isEnemy(world, e, player) && !world.has(e, Livestock),
   );
-  return nearestReachable(terrain, people, rally, home, (e) => entityNode(world, terrain, e));
+  return nearestReachable(terrain, people, rally, home, approachOf);
+}
+
+/** Where a wave walks to reach an objective: a building is measured and reached by its interaction cell
+ *  (its own node is unwalkable), a person by the node he stands on. */
+export function objectiveNode(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  target: Entity,
+): NodeId {
+  return world.has(target, Building)
+    ? interactionCell(world, ctx, terrain, target)
+    : entityNode(world, terrain, target);
 }
 
 /** The candidate nearest `rally` whose approach node shares the `home` connectivity label, or null.
