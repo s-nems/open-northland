@@ -17,13 +17,12 @@ export const WorkerSlot = z.strictObject({
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
 /**
- * Game ticks for one production cycle: uniform 15 s at 1× speed (× the sim's 12 ticks/s). A named
- * approximation of the original's per-good pacing, replacing the extracted per-animation cycle lengths
- * so every craft paces identically and production chains are comparable at a glance.
+ * Game ticks for one production cycle: 15 s at 1× speed, at the sim's 12 ticks/s. A named approximation
+ * that replaces the extracted per-animation cycle lengths so every craft paces identically.
  */
 export const DEFAULT_RECIPE_TICKS = 180;
 
-/** A recipe: a workplace turns inputs into one product over time (one recipe per producible good). */
+/** A workplace turning inputs into one product over time; one recipe per producible good. */
 export const Recipe = z.strictObject({
   inputs: z.array(GoodQuantity).default([]),
   outputs: z.array(GoodQuantity).default([]),
@@ -33,10 +32,8 @@ export const Recipe = z.strictObject({
 export type Recipe = z.infer<typeof Recipe>;
 
 /**
- * The coarse building classes, mapped from the original `logichousetype` `logicmaintype`:
- * `storage` (HQ + stocks), `home` (residences), `workplace` (production), `training`
- * (barracks/school), `tower` (defence), `vehicle` (buildable carts/ships), `wonder`.
- * The specific building (headquarters vs a stock, which workplace) is carried by `id`.
+ * The coarse building classes, mapped from the original `logichousetype` `logicmaintype`. Which specific
+ * building (headquarters vs a stock, which workplace) is carried by `id`.
  */
 export const BUILDING_KIND = {
   storage: 'storage',
@@ -52,73 +49,57 @@ export type BuildingKind = (typeof BUILDING_KIND)[keyof typeof BUILDING_KIND];
 export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
-  /**
-   * Coarse building class: one of {@link BUILDING_KIND}, or the extractor's `maintype_<...>`
-   * fallback for an unrecognized `logicmaintype` (an unknown class degrades one record instead of
-   * failing the whole set).
-   */
+  /** Coarse building class, or the extractor's `maintype_<...>` fallback so an unrecognized
+   *  `logicmaintype` degrades one record instead of failing the whole set. */
   kind: z.union([z.enum(BUILDING_KIND), z.templateLiteral(['maintype_', z.string()])]),
   /** Population capacity tier from `logichomesize` - present only on `home` buildings (else 0). */
   homeSize: z.number().int().nonnegative().default(0),
   workers: z.array(WorkerSlot).default([]),
   stock: z.array(StockSlot).default([]),
   /**
-   * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
-   * The output side only: the original house table names what a workplace makes, not the input
-   * goods - the pipeline joins those in through each good's `goodtypes.productionInputGoods`
-   * (→ {@link GoodType.productionInputs}) to materialize {@link recipes}.
+   * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order. The
+   * output side only: the original house table names what a workplace makes, not what it consumes, so
+   * the pipeline joins the inputs in through each good's `goodtypes.productionInputGoods`.
    */
   produces: z.array(TypeId).default([]),
   /**
-   * The production recipes - one per producible good, filled by the pipeline's output-side join
-   * (`fillBuildingRecipes`) for a workplace with a non-empty `produces`; empty on a non-producing
-   * building. Each recipe's `inputs` come from that produced good's `productionInputs` and its
-   * `outputs` is that single good (amount = its `produces` multiplicity), in `produces` file order.
-   * Field-farmed goods form no recipe (they are grown, not made).
+   * One recipe per producible good, materialized by the pipeline from {@link produces} in file order:
+   * `inputs` come from that good's `productionInputs`, `outputs` is that single good with its
+   * `produces` multiplicity as the amount. Field-farmed goods form no recipe.
    */
   recipes: z.array(Recipe).default([]),
   /**
-   * Build-material cost - the goods that must be delivered to construct this building, joined onto
-   * the logic record from the graphics table's `[GfxHouse]` `LogicConstructionGoods` line (the readable
-   * `DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType` id). The source line is a
-   * flat good-id list where a repeat encodes quantity (`3 3 26` = 2× stone + pillar), collapsed to
-   * `{goodType, amount}` pairs exactly like a recipe's inputs. Empty for the always-present
-   * headquarters/wonder buildings (no construction cost) and for any type the graphics table omits.
-   * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its own
-   * upgrade cost, so a leveled `home` building resolves the cost of its tier here (not cumulative).
+   * Build-material cost, joined onto the logic record from the graphics table's `[GfxHouse]`
+   * `LogicConstructionGoods` line (`DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType`
+   * id). Empty for the always-present headquarters/wonder buildings and for any type the graphics table
+   * omits. Each level of a home's chain is a distinct `typeId` carrying its own cost, not a cumulative
+   * total.
    */
   construction: z.array(GoodQuantity).default([]),
   /**
-   * The `typeId` this building upgrades into - the next size level of the same `[GfxHouse]` record
-   * (`LogicType <sizeIdx> <typeId>`: the typeId mapped at `sizeIdx + 1`), absent on a chain's top
-   * level and on single-level buildings. Level chains are not homes-only: the real data chains
-   * storages (7→8→9), several workplaces, and a tower (40→41). The wonders (47..54) are NOT chained -
-   * each record maps every size level to its own typeId, a self-link the extractor skips.
+   * The `typeId` this building upgrades into: the next size level of the same `[GfxHouse]` record
+   * (`LogicType <sizeIdx> <typeId>` mapped at `sizeIdx + 1`), absent on a chain's top level and on
+   * single-level buildings. Chains are not homes-only - the real data chains storages (7→8→9), several
+   * workplaces, and a tower (40→41). The wonders map every size level to their own typeId, a self-link
+   * the extractor skips.
    */
   upgradeTarget: TypeId.optional(),
   /**
-   * Max hitpoints - the building's full life pool, from the graphics table's `[GfxHouse]`
-   * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
-   * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =
-   * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. Absent when the
-   * graphics table has no record for the type (and on synthetic test content) - a type with no HP
-   * simply carries no life pool.
+   * Max hitpoints from the graphics table's `[GfxHouse]` `logichitpoints` line, overlaid by `typeId`
+   * like {@link construction}; each level of a home's chain resolves its own tier. Absent when the
+   * graphics table has no record for the type, which simply leaves it with no life pool.
    */
   hitpoints: z.number().int().positive().optional(),
   /**
-   * Ground footprint (collision body / build-exclusion zone / door cell) from the graphics table's
-   * `[GfxHouse]` record, overlaid by `typeId` like {@link construction}. Absent when the graphics
-   * table has no record for the type (and on synthetic test content) - see {@link BuildingFootprint}.
+   * Ground footprint from the graphics table's `[GfxHouse]` record, overlaid by `typeId` like
+   * {@link construction}. Absent when the graphics table has no record for the type.
    */
   footprint: BuildingFootprint.optional(),
   /**
-   * How many civilians may shelter inside while the building is in DEFENCE MODE, each shooting the house
-   * bow from cover; `0` (the default) means the type has no defence mode at all.
-   *
-   * The mode is extracted (`houses.ini` `logicCanEnableDefenceMode 1` on the headquarters, barracks and
-   * both watchtowers) but the SIZE of a garrison is not - no readable record carries one - so the number
-   * is authored balance, overlaid onto the extracted table at the app boundary the way the hunter-bow and
-   * field-farming numbers are (`app/src/catalog/defence.ts`).
+   * How many civilians may shelter inside during defence mode, each shooting the house bow from cover;
+   * `0` means the type has no defence mode. The mode itself is extracted (`houses.ini`
+   * `logicCanEnableDefenceMode`), but no readable record carries a garrison size, so this number is
+   * authored balance overlaid onto the extracted table at the app boundary.
    */
   shelterCapacity: z.number().int().nonnegative().default(0),
   source: Provenance.optional(),

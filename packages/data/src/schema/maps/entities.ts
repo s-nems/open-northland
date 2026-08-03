@@ -1,22 +1,17 @@
 import { z } from 'zod';
 
 /**
- * The map's authored entity placements - the `map.cif` `StaticObjects` verbs (`sethouse`/`sethuman`/
- * `setanimal`) decoded verbatim: names stay the original strings (a `sethouse` name is the `[GfxHouse]`
- * `EditName`, a `sethuman` role a `[jobtype]` name), and coordinates stay half-cells (the same
- * `2W × 2H` lattice {@link TerrainObjects} uses; `÷2` → cell). Resolution to sim typeIds happens at
- * load by name against the IR ({@link BuildingBob} `editName`+`level`, {@link JobType} `name`) - the
- * engine's own version-robust join, mirroring how {@link TerrainGround} joins patterns. A building's
- * `goods` are its `addgoods` starting stock (good names verbatim, resolved to good typeIds at load).
- * The `setguide` verb (scout guides) is not captured yet.
+ * The map's authored entity placements: the `map.cif` `StaticObjects` verbs (`sethouse`/`sethuman`/
+ * `setanimal`) decoded verbatim. Names stay the original strings (a `sethouse` name is the
+ * `[GfxHouse]` `EditName`, a `sethuman` role a `[jobtype]` name) and coordinates stay half-cells;
+ * both resolve to sim typeIds by name at load. The `setguide` verb (scout guides) is not captured.
  */
 export const TerrainEntities = z.strictObject({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
-   * verb's first column, 0-based like `sethuman`'s (source basis: its per-value position centroids
-   * coincide with the matching `sethuman` clusters across the 13 entity-bearing mod maps). The fourth
-   * column is not the owner - it is `1` on 96 of 98 house-placing maps and `0` on the rest, a constant
-   * flag, not a player id. `rot` is decoded verbatim with no consumer yet (rotation→facing deferred).
+   * verb's first column, 0-based like `sethuman`'s (observation: its per-value position centroids
+   * coincide with the matching `sethuman` clusters). The fourth column is a constant flag, not an
+   * owner: `1` on 96 of 98 house-placing maps and `0` on the rest. `rot` has no consumer yet.
    */
   buildings: z
     .array(
@@ -27,8 +22,8 @@ export const TerrainEntities = z.strictObject({
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
         rot: z.number().int().nonnegative().optional(),
-        /** Authored starting stock - the `addgoods` runs after this `sethouse` (goodtype names verbatim;
-         *  the rare numeric variant stays a digit string, resolved by typeId at load). */
+        /** Authored starting stock, the `addgoods` runs after this `sethouse`: goodtype names verbatim,
+         *  with the rare numeric variant kept as a digit string and resolved by typeId at load. */
         goods: z.array(z.strictObject({ name: z.string(), count: z.number().int().positive() })).optional(),
       }),
     )
@@ -42,9 +37,8 @@ export const TerrainEntities = z.strictObject({
         player: z.number().int().nonnegative(),
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
-        /** A gatherer's authored resource pick - the `setproducedgood` in this settler's `sethuman`
-         *  block (goodtype name verbatim, resolved to a good typeId at load). Absent = gather every
-         *  good the trade may harvest. */
+        /** A gatherer's authored resource pick, the `setproducedgood` in this settler's `sethuman`
+         *  block (goodtype name verbatim). Absent = gather every good the trade may harvest. */
         producedGood: z.string().optional(),
       }),
     )

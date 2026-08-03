@@ -2,14 +2,10 @@ import { z } from 'zod';
 import { Provenance, TypeId } from '../record.js';
 
 /**
- * One `[animaltype]` record from the base `Data/logic/animaltypes.ini` - the per-tribe behaviour of a
- * non-controllable creature/monster tribe (bear, wolf, boar, cow, sheep, …). Unlike every other type
- * table, an animal record keys on `tribetype`, not `type`: the source carries no `type` id, and an
- * animal's identity is its owning tribe (the `Settler.tribe` cross-reference into {@link TribeType}).
- * `tribeType` is therefore the cross-ref key (validated against the tribe table). A handful of source
- * records carry no `tribetype` (a leftover/disabled stub); they are dropped at extract time since they
- * cannot resolve to a tribe. The graphics/sound/spawn extras are skipped - this is the behaviour
- * type-table slice, not a renderer.
+ * One `[animaltype]` record from the base `Data/logic/animaltypes.ini`: the behaviour of a
+ * non-controllable creature tribe (bear, wolf, boar, cow, sheep). Unlike every other type table it keys
+ * on `tribetype`, not `type` - the source carries no `type` id - so `tribeType` is the cross-reference
+ * key, validated against the tribe table.
  */
 export const AnimalType = z.strictObject({
   /** Slug of `name`/comment when present, else `animal_<tribeType>`. Not a cross-ref key - `tribeType` is. */
@@ -17,13 +13,13 @@ export const AnimalType = z.strictObject({
   name: z.string().optional(),
   /** Owning tribe (`animaltype` `tribetype`) - the cross-ref into {@link TribeType}, and the record key. */
   tribeType: TypeId,
-  /** `aggressive` - attacks civilizations unprovoked (the civ-vs-animal aggression driver). */
+  /** `aggressive` - attacks civilizations unprovoked. */
   aggressive: z.boolean().default(false),
   /** `getangry` - can be provoked into hostility (vs always-passive). */
   getAngry: z.boolean().default(false),
   /** `angryGameTime` - how long (game ticks) an angered animal stays hostile. */
   angryGameTime: z.number().int().nonnegative().default(0),
-  /** `hitpoints_adult` - the adult HP pool (200..20000); the `Health`-stamp source for animal combatants. */
+  /** `hitpoints_adult` - the adult HP pool (200..20000 in the base data). */
   hitpointsAdult: z.number().int().nonnegative().default(0),
   /** `hitpoints_baby` - the juvenile HP pool. Not inferred from `hitpointsAdult`; 0 when the source omits it. */
   hitpointsBaby: z.number().int().nonnegative().default(0),
@@ -41,8 +37,8 @@ export const AnimalType = z.strictObject({
   maximumDistanceToBirthPoint: z.number().int().nonnegative().default(0),
   /** `movespeed` - walking speed (0 = the source default). */
   moveSpeed: z.number().int().nonnegative().default(0),
-  /** `runspeed` - the original's animal run gait; 0 when the source omits it. Extracted for
-   *  fidelity but deliberately unconsumed by the sim - no run/sprint gait is modeled. */
+  /** `runspeed` - the original's animal run gait; 0 when the source omits it. Extracted for fidelity
+   *  but unconsumed: the sim models no run gait. */
   runSpeed: z.number().int().nonnegative().default(0),
   /** `catchable` - livestock a scout claims by contact (cows/sheep) vs wild-only. */
   catchable: z.boolean().default(false),

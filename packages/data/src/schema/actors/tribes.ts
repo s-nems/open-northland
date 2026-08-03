@@ -9,15 +9,9 @@ export const AtomicBinding = z.strictObject({
 export type AtomicBinding = z.infer<typeof AtomicBinding>;
 
 /**
- * One tech-graph edge from `tribetypes` `jobEnables<Kind> <jobType> <targetId>` - having a settler
- * of `jobType` in the tribe unlocks a target the tribe can then produce/build/train/use. The four
- * source keys (`jobEnablesGood`/`jobEnablesHouse`/`jobEnablesJob`/`jobEnablesVehicle`) differ only in
- * what kind of id the target is, so they unify into one record discriminated by `kind`; the target
- * id is keyed within that kind's type table (a `good`→{@link GoodType}, `house`→{@link BuildingType},
- * `job`→{@link JobType}, `vehicle`→{@link VehicleType} via its `type`/`logicvehicletype` namespace,
- * which is distinct from the building namespace). Edges are kept in exact source file order (the data
- * interleaves the four kinds within a job's block); a repeated `(jobType, kind, targetId)` triple is
- * kept verbatim.
+ * Which type table a `tribetypes` `jobEnables<Kind> <jobType> <targetId>` edge's target id belongs to.
+ * The four source keys differ only in that table, so they unify into one record keyed by `kind`; a
+ * `vehicle` target uses the `logicvehicletype` namespace, distinct from the building one.
  */
 export const JobEnablesKind = z.enum(['good', 'house', 'job', 'vehicle']);
 export type JobEnablesKind = z.infer<typeof JobEnablesKind>;
@@ -33,19 +27,10 @@ export const JobEnables = z.strictObject({
 export type JobEnables = z.infer<typeof JobEnables>;
 
 /**
- * One experience requirement from `tribetypes` `{need,train}for{job,good} <targetId> <amount>
- * <expType> [expType2]` - the experience-threshold half of progression, sitting under the
- * {@link JobEnables} who-unlocks-it gate. Two orthogonal dimensions:
- *
- * - `requirement`: `need` (`needfor*` - the XP the settler must already have accrued to unlock the
- *   target) vs `train` (`trainfor*` - the schooling time/XP to acquire it at a training house, paid
- *   in a synthetic "school" experience type, not a real work track).
- * - `target`: `job` (`*forjob` - the unlocked job id) vs `good` (`*forgood` - the unlocked good id).
- *
- * `experienceTypes` mostly name `humanjobexperiencetypes` `typeId`s, but they span an id space wider
- * than that 70-entry table - `need` lines reach 72/73/75 and `train` lines pay in synthetic "school"
- * markers (observed 57/77), none of which are in the experience table - so they are captured but
- * deliberately not cross-validated. Kept in source order.
+ * One experience requirement from `tribetypes` `{need,train}for{job,good} <targetId> <amount> <expType>
+ * [expType2]`. `experienceTypes` mostly name `humanjobexperiencetypes` ids but span a wider space:
+ * `need` lines reach 72/73/75 and `train` lines pay in synthetic "school" markers (observed 57/77), so
+ * they are captured without a cross-reference check.
  */
 export const JobRequirementKind = z.enum(['need', 'train']);
 export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
@@ -71,16 +56,16 @@ export const TribeType = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   /**
-   * The hitpoint pool an ADULT settler of this tribe carries. The original's human HP is not in the
-   * readable data (source basis "Combat hit resolution"), so it is a clean-room approximation supplied
-   * at the content boundary; `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
+   * The hitpoint pool an adult settler of this tribe carries. Human HP is not in the readable data
+   * (source basis "Combat hit resolution"), so this is an approximation supplied at the content
+   * boundary; `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
    */
   hitpoints: z.number().int().nonnegative().default(0),
   /** `setatomic` bindings in file order - a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
-  /** `jobEnables*` tech-graph edges in file order - what each job unlocks for the tribe. */
+  /** `jobEnables*` tech-graph edges in file order, repeated triples included. */
   jobEnables: z.array(JobEnables).default([]),
-  /** `{need,train}for{job,good}` XP/schooling requirements in file order - the gate's threshold half. */
+  /** `{need,train}for{job,good}` XP/schooling requirements in file order. */
   jobRequirements: z.array(JobRequirement).default([]),
   source: Provenance.optional(),
 });
@@ -88,10 +73,8 @@ export type TribeType = z.infer<typeof TribeType>;
 
 /**
  * One timed event inside an atomic animation (`event`/`eventx <at> <type> [value]` in
- * `atomicanimations.ini`). `at` is the offset within the animation's `length`; `type` + `value`
- * form an undocumented numeric vocabulary (good yields, hunger/morale deltas, sound/effect cues),
- * kept raw. `value` is optional and may be signed. `extended` marks the `eventx` variant (a distinct
- * event channel in the source) from plain `event`.
+ * `atomicanimations.ini`). `at` is an offset within the animation's `length`; `type` and `value` form an
+ * undocumented numeric vocabulary kept raw. `extended` marks the `eventx` variant.
  */
 export const AtomicEvent = z.strictObject({
   at: z.number().int().nonnegative(),
@@ -102,11 +85,10 @@ export const AtomicEvent = z.strictObject({
 export type AtomicEvent = z.infer<typeof AtomicEvent>;
 
 /**
- * Timing + effect data for one named animation from `atomicanimations.ini` (the `culturesnation` mod
- * ships a readable `.ini`; the base game has it as `.cif`). `name` is the join key a tribe's
- * `setatomic <job> <atomic> "anim"` binding ({@link AtomicBinding}) names. Cross-referencing tribe
- * bindings against these names is deferred: the mod's readable set is a subset of the base-game
- * animations, so absent names aren't dangling.
+ * Timing and effect data for one named animation from `atomicanimations.ini` (readable in the
+ * `culturesnation` mod, `.cif` in the base game). Tribe `setatomic` bindings are not cross-referenced
+ * against these names: the mod's readable set is a subset of the base-game animations, so an absent
+ * name is not a dangling reference.
  */
 export const AtomicAnimation = z.strictObject({
   /** Filesystem-safe slug of `name`. Display-only - it lowercases, so resolve `setatomic` bindings

@@ -1,67 +1,51 @@
 import { z } from 'zod';
 import { Provenance, TypeId } from '../record.js';
 
-/**
- * The fields every `[GfxHouse]` render binding shares: the `(tribeId, typeId, level)` key, the body
- * `.bmd` + recolour palette that name its atlas, the `EditName` handle, and provenance. Render-binding
- * data the pure sim ignores; {@link BuildingBob}, {@link BuildingConstructionLayer} and
- * {@link BuildingOverlay} each `.extend()` it with their own payload (a bob id, a construction range,
- * an animation frame list) - all keyed and atlas-resolved the same way.
- */
+/** The fields every `[GfxHouse]` render binding shares, keyed by `(tribeId, typeId, level)`. */
 const BuildingBobBase = z.strictObject({
-  /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) - the same logic `typeId` recurs per tribe. */
+  /** `LogicTribeType` - the tribe the record applies to (viking 1, frank 2); the same `typeId` recurs per tribe. */
   tribeId: TypeId,
-  /** The building `typeId` at this size level (the `LogicType` value - the sim's `Building.buildingType`). */
+  /** `LogicType` - the building typeId at this level (the sim's `Building.buildingType`). */
   typeId: TypeId,
-  /** The growth/size level index (`LogicType`/`GfxBobId`'s leading int) - a home's tier 0..4. */
+  /** The `LogicType`/`GfxBobId` leading int - the growth level (a home spans 0..4). */
   level: z.number().int().nonnegative(),
-  /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */
+  /** `GfxBobLibs` first value - the body bob set, normalized to lower-case with forward slashes. */
   bmd: z.string(),
-  /** The shadow bob set (`GfxBobLibs` second value), normalized, when the record names one - its 1-bit
-   *  silhouettes parallel the body's bob ids (the finished bob's cast shadow lives at the same id). */
+  /** `GfxBobLibs` second value, normalized - 1-bit shadow silhouettes at the same bob ids as the body. */
   shadowBmd: z.string().optional(),
-  /** One recolour skin (`GfxPalette` value), lower-cased - the atlas this bob is drawn in (`house01`/`house02`/…). */
+  /** One `GfxPalette` value, lower-cased - the recolour skin keying this bob's atlas (`house01`, `house02`). */
   paletteName: z.string(),
-  /** The record's `EditName` (`"viking home"`), kept as a render/debug handle when present. */
+  /** `EditName` - the record's building handle. */
   editName: z.string().optional(),
   source: Provenance.optional(),
 });
 
 /**
- * One `[GfxHouse]` building-type → house-bob binding: which atlas bob a building of a given
- * `(tribeId, typeId)` draws. Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a
- * `GfxBobId <level> <bobId>` table by the level index (a home spans levels 0..4, five distinct typeIds
- * at five rising bobs), and names the body `.bmd` (`GfxBobLibs`) recoloured by one-or-more palette
- * skins (`GfxPalette`); this is one row of that join - a single `(tribeId, typeId, level)` resolved to
- * its `(bmd, palette, bobId)`.
+ * One `[GfxHouse]` building-type → house-bob binding: the record's `LogicType <level> <typeId>` and
+ * `GfxBobId <level> <bobId>` tables joined by level, resolved to one `(bmd, palette, bobId)` row.
  */
 export const BuildingBob = BuildingBobBase.extend({
-  /** The atlas bob id this `(typeId, level)` draws (the `GfxBobId` for the level). */
+  /** `GfxBobId` - the atlas bob this `(typeId, level)` draws. */
   bobId: z.number().int().nonnegative(),
 });
 export type BuildingBob = z.infer<typeof BuildingBob>;
 
 /**
  * One `[GfxHouse]` construction-stage layer: `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
- * <shadowBobId|-1> <fromPct> <toPct>` - which atlas bob(s) an under-construction building draws at a
- * given build progress. A record lists several layers per size level with overlapping `[fromPct, toPct]`
- * ranges; at progress `p` (percent, 0..100) every layer whose range contains `p` draws, stacked in file
- * order (`stackIdx`) - the last-listed active layer (the finished body, whose range always ends at 100)
- * lands on top.
+ * <shadowBobId|-1> <fromPct> <toPct>`. A level's ranges overlap: at build progress `p` every layer
+ * whose range contains `p` draws, stacked in file order, so the last active layer lands on top.
  *
- * `upgrade` (the source's second int, 0 or 1): the 1-rows reference the next size level's finished body
- * and are not part of this level's from-scratch construction - they belong to the original's
- * upgrade-in-progress overlay (semantics not fully decoded; source basis). The from-scratch construction
- * render uses only the `upgrade === false` rows.
+ * The `upgrade` rows reference the next size level's finished body rather than this level's
+ * from-scratch construction; their exact semantics are undecoded (source basis).
  */
 export const BuildingConstructionLayer = BuildingBobBase.extend({
-  /** True for the source's `1` rows - the upgrade-overlay layers a from-scratch render skips. */
+  /** True for the source's `1` rows - the upgrade layers a from-scratch render skips. */
   upgrade: z.boolean(),
   /** Position of this layer in the record's file order - the stacking order at draw time. */
   stackIdx: z.number().int().nonnegative(),
   /** The atlas bob to draw while this layer is active. */
   bobId: z.number().int().nonnegative(),
-  /** The layer's shadow bob, when the source names one (`-1` = none → absent). */
+  /** The layer's shadow bob; the source's `-1` (none) becomes absent. */
   shadowBobId: z.number().int().nonnegative().optional(),
   /** Build progress percent at which the layer appears (inclusive). */
   fromPct: z.number().int().min(0).max(100),
@@ -71,18 +55,15 @@ export const BuildingConstructionLayer = BuildingBobBase.extend({
 export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer>;
 
 /**
- * One `[GfxHouse]` sign-post anchor: `GfxFlagPoint <sizeIdx> <x> <y>` - where the original plants a
- * building's occupancy/construction sign chain. Byte-verified: the key sits in `the original`'s
- * `[GfxHouse]` key list and the values come from the mod's plaintext `houses.ini`. The reading of
- * `x y` as screen pixels from the building bob's draw anchor, +y down, is an approximation inferred
- * from the sibling pixel keys' grammar (`GfxSmokePoint`, `GfxOverlay` - neither rendered here yet),
- * pending observation against the running original. Not an atlas binding - no `(bmd, palette)` - so
- * it stands alone rather than extending the bob-binding base.
+ * One `[GfxHouse]` sign-post anchor: `GfxFlagPoint <sizeIdx> <x> <y>`, where a building's
+ * occupancy/construction sign chain stands. The key sits in `the original`'s `[GfxHouse]` key list and the
+ * values come from the mod's plaintext `houses.ini`. Reading `x y` as screen pixels from the building
+ * bob's draw anchor, +y down, is an approximation inferred from the sibling pixel keys' grammar.
  */
 export const BuildingFlagPoint = z.strictObject({
   tribeId: TypeId,
   typeId: TypeId,
-  /** The growth/size level index (`GfxFlagPoint`'s leading int, joined to `typeId` via `LogicType`). */
+  /** The `GfxFlagPoint` leading int - the growth level, joined to `typeId` via `LogicType`. */
   level: z.number().int().nonnegative(),
   /** Pixel offset from the building bob's draw anchor (+y down/toward the viewer). */
   x: z.number().int(),
@@ -93,26 +74,22 @@ export const BuildingFlagPoint = z.strictObject({
 export type BuildingFlagPoint = z.infer<typeof BuildingFlagPoint>;
 
 /**
- * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` - an
- * extra sprite drawn on top of the finished body, with one frame list per state. The one type-4 user in
- * the source is the mill: its body bob has no rotor blades - state `0` is the single standing-still blade
- * frame, state `1` the multi-frame spin cycle the original plays while the mill produces (viking
- * `ls_houses_viking.bmd`: body 70, idle blade 76, spin 85..86 - 13 frames).
+ * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` - a
+ * sprite drawn on top of the finished body, with one frame list per state. The only type-4 user in the
+ * source is the mill, whose body bob has no rotor blades.
  *
- * Only the type-`4` rows (the 2nd int) are extracted - the two-state animated overlays, whose field
- * shape is pinned by comparing every such row in the file (offsets observed `0 0`, step `1`
- * throughout). The type-`3` rows have a different, not-yet-decoded shape (6 fields, no frame list -
- * static decal offsets) and are skipped rather than guessed.
+ * Only the type-`4` rows (the 2nd int) are extracted; the type-`3` rows have a different, undecoded
+ * field shape and are skipped rather than guessed.
  */
 export const BuildingOverlay = BuildingBobBase.extend({
-  /** The overlay state (the 3rd int): `0` = idle (one still frame), `1` = working (the spin cycle). */
+  /** The 3rd int: `0` = idle (one still frame), `1` = working (the spin cycle). */
   state: z.number().int().nonnegative(),
   /** Pixel offsets of the overlay (the 4th/5th ints; observed `0 0` on every type-4 row). */
   x: z.number().int(),
   y: z.number().int(),
-  /** The 6th int (observed `1` on every type-4 row; playback-step semantics undecoded - kept raw). */
+  /** The 6th int (observed `1` on every type-4 row; playback-step semantics undecoded, kept raw). */
   step: z.number().int(),
-  /** The state's frame list, in file order - one bob for state 0, the spin cycle for state 1. */
+  /** The state's frame list, in file order. */
   frames: z.array(z.number().int().nonnegative()).min(1),
 });
 export type BuildingOverlay = z.infer<typeof BuildingOverlay>;
