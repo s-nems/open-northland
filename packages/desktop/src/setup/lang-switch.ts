@@ -2,18 +2,16 @@ import { currentLocale, LOCALE_CODES, LOCALES, type Locale, messages } from '../
 import { el } from './dom.js';
 
 /**
- * The header's flag buttons. The installer ships before any game content exists, so the language
- * choice has to live on the page itself rather than behind the native menu.
+ * The installer runs before any game content exists, so its language choice lives on the page
+ * itself rather than behind the native menu.
  */
 
 export interface LangSwitchView {
-  /** Re-label the flags and mark the active one for the current locale. */
   applyLabels(): void;
 }
 
 export function createLangSwitch(onPick: (locale: Locale) => void): LangSwitchView {
   const root = el('lang-switch');
-  // Each button remembers its locale, so re-labelling needs no id lookup.
   const buttons = LOCALE_CODES.map((locale) => {
     const button = document.createElement('button');
     button.type = 'button';

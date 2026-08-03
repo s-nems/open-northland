@@ -1,13 +1,7 @@
 import type { ContentStatus } from '../content-state.js';
 import { formatMessage, messages } from '../i18n/index.js';
 
-/**
- * Derives the pick phase's whole view, worded for the active locale. The probe decides what is
- * reachable (install, the mod step); the installed content's status decides how install is worded
- * and whether booting what is already there is offered.
- */
-
-/** What the current probe found, kept so the note can be re-worded on a language switch. */
+/** Kept as findings rather than a rendered note, so a language switch can re-word it. */
 export type Probe =
   | { readonly kind: 'idle' }
   | { readonly kind: 'no-archives' }
@@ -71,7 +65,6 @@ function contentControlsOf(status: ContentStatus): ContentControls {
     case 'stale-revision':
       return {
         installLabel: t.regenerate,
-        // Also the face of an interrupted conversion (no stamp survives one), hence "incomplete".
         statusNote: { text: t.status.staleRevision, blocking: false },
         playNowLabel: t.playAnyway,
       };

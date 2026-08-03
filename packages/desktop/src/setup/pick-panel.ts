@@ -5,33 +5,18 @@ import { el } from './dom.js';
 import { createModPanel } from './mod-panel.js';
 import { type Probe, pickView } from './pick-view.js';
 
-/**
- * The wizard's first phase: choose the original game folder (typed, browsed, or auto-detected), get
- * a usable culturesnation mod alongside it, and hand a validated game path to the conversion. Owns
- * the `#pick` section - including the mod step nested inside it - and every piece of state that
- * section's wording depends on; {@link pickView} turns that state into the section's view.
- */
-
-/** Pause after the last keystroke before probing the typed path - one probe per pause, not per key. */
 const PROBE_DEBOUNCE_MS = 300;
 
 export interface PickPanelView {
-  /** Adopt the shell's startup state: the installed content's status and any mod already available. */
   applyState(state: DesktopState): void;
-  /**
-   * Open the phase for input: probe the remembered game folder, wire the controls, then offer the
-   * auto-detected candidates. Called after {@link applyState}, which must not race a user's pick.
-   */
+  /** Wires the controls, so it must run after {@link applyState}: no click may land first. */
   start(rememberedGamePath: string | undefined): Promise<void>;
   handleModEvent(event: ModEvent): void;
-  /** (Re-)apply every string this phase owns for the active locale. */
   applyLabels(): void;
 }
 
 export interface PickPanelHandlers {
-  /** A validated game folder is ready to convert. */
   onInstall(gamePath: string): void;
-  /** Boot the already-installed content instead of regenerating it. */
   onPlay(): void;
 }
 
@@ -52,7 +37,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     render();
   });
 
-  /** Paint the section from the derived view; every state change comes back through here. */
+  /** Every state change repaints the section through here. */
   function render(): void {
     const view = pickView({ probe, externalModRoot, contentStatus });
     probeNote.textContent = view.probeNote;
@@ -66,7 +51,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     playNowButton.classList.toggle('hidden', view.playNowLabel === undefined);
   }
 
-  /** `fillInput` is off when the probe echoes what the user is typing - never fight the caret. */
+  /** `fillInput` is off while the user is typing - never fight the caret. */
   function applyCandidate(candidate: GameFolderCandidate, fillInput = true): void {
     if (fillInput) pathInput.value = candidate.path;
     probe = candidate.probe.hasArchives
@@ -90,8 +75,6 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     applyCandidate(candidate, false);
   }
 
-  /** Wire the phase's controls. Deferred to {@link PickPanelView.start} so no click can land on
-   *  state the shell has not delivered yet. */
   function listen(): void {
     el('browse').addEventListener('click', async () => {
       const picked = await window.desktop.pickGameFolder();
@@ -111,8 +94,8 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   return {
     applyState(state: DesktopState): void {
       contentStatus = state.contentStatus;
-      // The mod panel's buttons are live from construction, so a mod the user resolved while the
-      // shell state was in flight outranks the (necessarily older) startup answer.
+      // The mod panel is live from construction, so a mod resolved while this state was in flight
+      // outranks the older startup answer.
       externalModRoot ??= state.modRoot;
     },
 

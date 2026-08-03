@@ -2,21 +2,12 @@ import { formatMessage, localeTag, messages } from '../i18n/index.js';
 import type { ModEvent } from '../ipc.js';
 import { el } from './dom.js';
 
-/**
- * The wizard's mod step. The culturesnation mod is required, so a game folder without `DataCnmd/`
- * gets this panel: download it into the data root, or point at a copy the user unpacked themselves.
- * Either way it reports the resolved mod root back to the page, which re-words the pick phase.
- */
-
-/** MB with no decimals - download progress copy ("312 / 594 MB"). */
+/** Whole megabytes; the caller appends the unit. */
 const mb = (bytes: number): string => `${Math.round(bytes / 1e6)}`;
 
 export interface ModPanelView {
-  /** Render one download/extract progress event from the installer. */
   handleEvent(event: ModEvent): void;
-  /** Show the step only while a mod is still needed. */
   setVisible(visible: boolean): void;
-  /** (Re-)apply the panel's static copy for the active locale. */
   applyLabels(): void;
 }
 
@@ -52,7 +43,6 @@ function renderModEvent(event: ModEvent): void {
   }
 }
 
-/** Wire the panel's buttons; `onModRoot` fires with the mod root each time one becomes available. */
 export function createModPanel(onModRoot: (root: string) => void): ModPanelView {
   const panel = el('mod-panel');
   const progress = el('mod-progress');
@@ -66,8 +56,7 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
       onModRoot(await window.desktop.downloadMod());
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      // A user-initiated Cancel surfaces as an AbortError riding the IPC rejection - that is not a
-      // failure and gets no fallback lecture.
+      // A user Cancel surfaces as an AbortError riding the IPC rejection, not as a failure.
       note.textContent = /abort/i.test(message)
         ? copy.cancelled
         : formatMessage(copy.downloadFailed, { message, fallback: copy.fallbackNote });
@@ -97,7 +86,7 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
     },
     applyLabels(): void {
       const copy = messages().setup.mod;
-      // Trusted developer markup (`<strong>`/`<code>`); never interpolates user input.
+      // Trusted developer markup; never interpolates user input.
       el('mod-required-note').innerHTML = copy.requiredHtml;
       el('mod-download').textContent = copy.download;
       el('mod-pick').textContent = copy.haveIt;

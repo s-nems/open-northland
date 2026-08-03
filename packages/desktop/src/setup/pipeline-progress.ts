@@ -3,20 +3,13 @@ import type { PipelineEvent } from '../ipc.js';
 import { overallFraction } from '../progress-model.js';
 import { el } from './dom.js';
 
-/**
- * The run phase: the conversion's bar, stage line and log tail, driven by the pipeline events the
- * main process streams over. It owns the log tail because the failure copy replays it beneath the
- * error, and it ends the run by handing the page its terminal phase.
- */
-
 const LOG_TAIL_LINES = 8;
 
 export interface PipelineProgressView {
-  /** Feed one conversion event; `done` and `error` are terminal and switch the phase. */
+  /** `done` and `error` are terminal: both switch the page's phase. */
   handleEvent(event: PipelineEvent): void;
-  /** A fresh run must not show the previous attempt's bar position or log tail. */
   reset(): void;
-  /** Repaint the live stage line / failure headline in the active locale after a language switch. */
+  /** Repaint the stage line or failure headline after a language switch. */
   relabel(): void;
 }
 
@@ -27,7 +20,6 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
   const logTail = el('log-tail');
   const logLines: string[] = [];
   let currentStage: Extract<PipelineEvent, { kind: 'stage' }> | undefined;
-  /** True once a run failed, so a language switch repaints the failure headline, not a stage line. */
   let errored = false;
 
   function pushLog(line: string): void {
