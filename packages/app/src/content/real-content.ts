@@ -188,7 +188,7 @@ export function mergeRealContent(
   const landscape = [...real.landscape, ...navRows];
   // Overlay the clean-room settler HP onto each playable tribe that ships without one (the real IR carries
   // no human hitpoints - unreadable, source basis "Combat hit resolution"), the same value the sandbox
-  // tribes use, so a settler has one HP on either content base (`settlerHitpoints` reads it at every spawn).
+  // tribes use, so an adult settler has one HP on either content base (`settlerHitpoints` reads it).
   // Scoped to the player civs (a `jobEnables` tech-graph): an animal/monster tribe is no settler's tribe, so
   // it stays at its own (0) HP rather than carrying a stray human pool it never uses.
   const tribes = real.tribes.map((t) =>

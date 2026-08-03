@@ -9,8 +9,8 @@ import { DEFAULT_SETTLER_HITPOINTS } from './settlers.js';
 /**
  * Assemble a newborn of the ordered `sex` at its mother's door. Deliberately not a `createSettler` call: it
  * rolls no RNG (a birth must not perturb the seeded stream), takes its sex and life stage from the parents'
- * order rather than a job slug, and uses {@link DEFAULT_SETTLER_HITPOINTS} rather than the tribe pool, since
- * no per-age pool is readable (named approximation). It emits nothing, and the stamp order is
+ * order rather than a job slug, and starts on the childhood {@link DEFAULT_SETTLER_HITPOINTS} pool, growing
+ * into its tribe's adult pool when it grows up (GrowthSystem). It emits nothing, and the stamp order is
  * hash-significant.
  */
 export function spawnNewborn(

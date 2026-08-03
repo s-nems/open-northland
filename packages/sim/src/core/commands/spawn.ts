@@ -28,8 +28,9 @@ export type SpawnCommand =
       /**
        * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). Every settler is stamped a {@link Health}
        * pool (civilians have health too - user decision): a positive `hitpoints` sets its size; omit it (the
-       * default) for the shared {@link import('../../systems/spawn/index.js').DEFAULT_SETTLER_HITPOINTS}
-       * pool. The pool magnitude is approximated either way: a human's hitpoints are below the readable
+       * default) for the tribe's adult pool, or the childhood
+       * {@link import('../../systems/spawn/index.js').DEFAULT_SETTLER_HITPOINTS} when the job's SLUG is a
+       * baby/child stage. The pool magnitude is approximated either way: a human's hitpoints are below the readable
        * `.ini` (only `animaltypes.ini` carries them; source basis "Combat hit resolution").
        *
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor (an
@@ -46,8 +47,8 @@ export type SpawnCommand =
       readonly x: number;
       readonly y: number;
       readonly tribe: number;
-      /** The settler's max hitpoint pool. Omit (or a non-positive value) for the default pool
-       *  (`DEFAULT_SETTLER_HITPOINTS`) - every settler carries `Health`. */
+      /** The settler's max hitpoint pool. Omit (or a non-positive value) for the stage-appropriate pool
+       *  above - every settler carries `Health`. */
       readonly hitpoints?: number;
       /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component). Omit
        *  (or a non-positive value) for an unarmored combatant - every hit then lands on class 0. */

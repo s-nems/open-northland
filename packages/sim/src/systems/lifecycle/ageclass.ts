@@ -24,11 +24,13 @@
  * order picks it; baby_female → child_female → woman; baby_male → child_male → civilist).
  */
 
-import { Age, Residence, Settler, setSettlerJob } from '../../components/index.js';
+import { Age, Health, Residence, Settler, setSettlerJob } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity } from '../../ecs/world.js';
-import type { System } from '../context.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { ContentContext, System } from '../context.js';
 import { releaseWidowedParentsOf } from '../family/widowhood.js';
+// The module, not the readviews barrel: the barrel imports CIVILIST_JOB back from here.
+import { settlerHitpoints } from '../readviews/tribes/civilizations.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`) - the data cross-reference into the
  * `JobType` IR, not control-flow opcodes. */
@@ -116,7 +118,8 @@ function isMaleStage(jobType: number | null): boolean {
 
 /**
  * GrowthSystem - age each {@link Age}-bearing settler one tick and promote it through the non-working life
- * stages: baby → child at {@link CHILD_AGE_TICKS}, child → adult-eligible at {@link ADULT_AGE_TICKS}.
+ * stages: baby → child at {@link CHILD_AGE_TICKS}, child → adult-eligible at {@link ADULT_AGE_TICKS}, where it
+ * also grows into its tribe's adult health pool ({@link applyAdultHitpoints}).
  *
  * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
  * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
@@ -125,7 +128,7 @@ function isMaleStage(jobType: number | null): boolean {
  * Removing `Age` on graduation is collect-then-mutate-safe: `query(Age, Settler)` yields entity ids, and the
  * removal happens after the loop, never mid-iterating a structure the query is walking.
  */
-export const growthSystem: System = (world) => {
+export const growthSystem: System = (world, ctx) => {
   const graduated: Entity[] = [];
   for (const e of world.query(Age, Settler)) {
     const age = world.get(e, Age);
@@ -149,8 +152,34 @@ export const growthSystem: System = (world) => {
     // the widowing rule re-evaluates the parents (the Age removal above is what expires it).
     world.remove(e, Residence);
     releaseWidowedParentsOf(world, e);
+    applyAdultHitpoints(world, ctx, e);
   }
 };
+
+/**
+ * Swap a grown settler's childhood {@link Health} pool for its tribe's adult one ({@link settlerHitpoints}),
+ * landing it on the pool every spawned adult of that tribe carries. The wound rides along as a fraction of
+ * the new pool (floored at 1 HP - growing up neither heals a starving child nor kills it). A tribe declaring
+ * no pool leaves the settler alone: its adults spawn on the same childhood default.
+ *
+ * Design rule (approximation): the original's growth-time health handling is not established. The
+ * proportional carry is the choice that keeps the panel's health bar and the life heart - both fractions -
+ * from jumping on the birthday.
+ */
+function applyAdultHitpoints(world: World, ctx: ContentContext, e: Entity): void {
+  const pool = settlerHitpoints(ctx.content, world.get(e, Settler).tribe);
+  const health = world.tryGet(e, Health);
+  if (pool <= 0 || health === undefined || health.max === pool) return;
+  // Combat and needs run before growth, so a settler killed this tick is awaiting CleanupSystem's reap
+  // (`hitpoints > 0` like the starvation twin) - a birthday must not revive it. `max > 0` keeps the
+  // fraction below over a real division.
+  if (health.hitpoints <= 0 || health.max <= 0) return;
+  const scaled = Math.max(1, Math.trunc((health.hitpoints * pool) / health.max));
+  world.write(e, Health, (h) => {
+    h.hitpoints = scaled;
+    h.max = pool;
+  });
+}
 
 /**
  * The age-class `jobType` a settler that has lived `ticks` (still short of adulthood) should currently be,
