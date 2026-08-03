@@ -626,13 +626,19 @@
   min-height: 0;
 }
 
+/* Shrink-wraps the minimap instead of filling the column: the decoded PNGs are 160-330 px
+ * sources, so a bounded upscale keeps them readable where a full-column stretch turns to mush.
+ * The auto margins center the frame in the space the old full-height frame occupied. */
 .main-menu__map-preview {
-  flex: 1;
-  min-height: 0;
-  position: relative;
+  flex: none;
+  margin: auto;
+  max-width: 100%;
+  min-width: calc(var(--u) * 380);
+  min-height: calc(var(--u) * 200);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: calc(var(--u) * 12);
   border: 2px solid rgba(99, 196, 160, 0.35);
   border-radius: 8px;
   background: rgba(16, 29, 44, 0.6);
@@ -641,14 +647,18 @@
 }
 
 .main-menu__map-preview img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  display: block;
+  height: calc(var(--u) * 300);
+  width: auto;
+  max-width: 100%;
   object-fit: contain;
   image-rendering: pixelated;
-  padding: calc(var(--u) * 12);
-  box-sizing: border-box;
+}
+
+/* `display: block` above outweighs the UA's `[hidden] { display: none }`; restate it so the
+ * imageless states (scenes, a preview still rasterizing) collapse to the min frame. */
+.main-menu__map-preview img[hidden] {
+  display: none;
 }
 
 .main-menu__map-preview-label {

@@ -22,6 +22,10 @@ import type { MenuScreen } from './model.js';
 
 type MapSelectCopy = ReturnType<typeof messages>['mainMenu']['mapSelect'];
 
+/** Rows rasterize their thumb this far before entering the viewport, so scrolling meets a ready
+ *  image instead of a placeholder swap. */
+const THUMB_PRELOAD_MARGIN = '200px';
+
 /** The registered test scenes as list rows, titled from the active locale's scene metadata. */
 function sceneRows(): readonly MapSelectItem[] {
   const sceneCopy = messages().scene;
@@ -139,6 +143,32 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
   let previewGeneration = 0;
   const rowButtons = new Map<MapSelectItem, HTMLButtonElement>();
 
+  // Maps without a decoded PNG rasterize a thumb from map data, but only once their row nears the
+  // viewport: each preview needs the full terrain JSON, so an eager pass over the list would pull
+  // tens of megabytes. generatedMapPreview memoises, so the large preview reuses the same blob.
+  const pendingThumbs = new Map<Element, string>();
+  const fillThumb = (thumb: Element, mapId: string): void => {
+    void generatedMapPreview(mapId).then((source) => {
+      if (source === null || !thumb.isConnected) return;
+      const img = document.createElement('img');
+      img.src = source;
+      img.alt = '';
+      thumb.replaceChildren(img);
+    });
+  };
+  const thumbObserver = new IntersectionObserver(
+    (observed) => {
+      for (const entry of observed) {
+        if (!entry.isIntersecting) continue;
+        thumbObserver.unobserve(entry.target);
+        const mapId = pendingThumbs.get(entry.target);
+        pendingThumbs.delete(entry.target);
+        if (mapId !== undefined) fillThumb(entry.target, mapId);
+      }
+    },
+    { root: listScroll, rootMargin: THUMB_PRELOAD_MARGIN },
+  );
+
   const showPreview = (item: MapSelectItem): void => {
     const generation = ++previewGeneration;
     previewImg.hidden = true;
@@ -196,9 +226,16 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
       img.src = `/maps/${encodeURIComponent(item.id)}.png`;
       img.alt = '';
       img.loading = 'lazy';
-      // A stale minimap flag degrades to the gradient placeholder, not a broken-image glyph.
-      img.addEventListener('error', () => img.remove());
+      // A stale minimap flag falls back to the rasterized thumb; img.remove() keeps the gradient
+      // placeholder (not a broken-image glyph) while that generates.
+      img.addEventListener('error', () => {
+        img.remove();
+        fillThumb(thumb, item.id);
+      });
       thumb.append(img);
+    } else if (item.kind === 'map') {
+      pendingThumbs.set(thumb, item.id);
+      thumbObserver.observe(thumb);
     }
     const text = document.createElement('div');
     text.className = 'main-menu__map-row-text';
@@ -223,6 +260,9 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     });
     count.textContent = formatMessage(select.countLine, { maps: mapsText });
     rowButtons.clear();
+    // The old rows leave the DOM with replaceChildren below; stop watching their thumbs.
+    thumbObserver.disconnect();
+    pendingThumbs.clear();
     if (rows.length === 0) {
       // Before /maps-index settles the list is merely not-yet-loaded, not absent; only a settled
       // empty result earns the "no decoded maps" explanation.
