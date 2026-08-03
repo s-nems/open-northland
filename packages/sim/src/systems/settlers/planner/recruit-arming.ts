@@ -1,3 +1,4 @@
+import type { ContentSet, WeaponType } from '@open-northland/data';
 import {
   Age,
   AssistantRecruit,
@@ -34,11 +35,10 @@ import { anotherSystemOwns } from './replan.js';
  * The assistant's arming pass: dress each enlisted weapon-class recruit (`AssistantRecruit`, drill
  * served) from any reachable store in ONE outing - the weapon first (the good→class transform lands
  * in the equip effect, which also pays the counter), then the equip drive chains the armor want at
- * the store via {@link chainRecruitArmor} before the single walk home (user rule 2026-08-01: no
- * second trip). Weapon preference is the strongest reachable row of the intent's class (no schooling
- * gate - `atomics/effects/goods/weapon-class.ts` states the rule): bare-target damage decides, a
- * long bow outranks a short one, never a good id. Armor comes from {@link pickReachableArmor}. Runs
- * on the grants pass's stride beat with the same one-errand rule.
+ * the store via {@link chainRecruitArmor} before the single walk home (user rule: no
+ * second trip). Weapon preference is the strongest reachable row of {@link armingGoodPreference};
+ * armor comes from {@link pickReachableArmor}. Runs on the grants pass's stride beat with the same
+ * one-errand rule.
  */
 export function dispatchRecruitArming(pass: PlannerPass): void {
   const { world, ctx } = pass;
@@ -81,6 +81,29 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
   }
 }
 
+/**
+ * The good types an `intent` recruit may be armed with, strongest first: bare-target damage decides
+ * (a long bow outranks a short one) and the good id only breaks a tie. A row needs both a class
+ * (`jobtype`) and a craftable good (`goodtype`) to arm anyone.
+ */
+export function armingGoodPreference(
+  content: ContentSet,
+  tribe: number,
+  intent: keyof typeof INTENT_WEAPON_CLASS,
+): readonly number[] {
+  const mainType = INTENT_WEAPON_CLASS[intent];
+  const rows = content.weapons.filter(
+    (w): w is WeaponType & { goodType: number } =>
+      w.tribeType === tribe && w.mainType === mainType && w.goodType !== undefined && w.jobType !== undefined,
+  );
+  rows.sort(
+    (a, b) =>
+      weaponDamageVsMaterial(b, BARE_TARGET) - weaponDamageVsMaterial(a, BARE_TARGET) ||
+      a.goodType - b.goodType,
+  );
+  return [...new Set(rows.map((w) => w.goodType))];
+}
+
 /** Send the recruit for the strongest reachable weapon of its intent's class it qualifies for. */
 function dispatchWeaponFetch(
   pass: PlannerPass,
@@ -90,26 +113,8 @@ function dispatchWeaponFetch(
   owner: number,
 ): void {
   const { world, ctx, terrain, targets } = pass;
-  const mainType = INTENT_WEAPON_CLASS[intent];
-  const candidates = ctx.content.weapons
-    .filter(
-      (w) =>
-        w.tribeType === settler.tribe &&
-        w.mainType === mainType &&
-        w.goodType !== undefined &&
-        w.jobType !== undefined,
-    )
-    // Strongest first, bare-target damage deciding (long over short); good id is only the tie-break.
-    .sort(
-      (a, b) =>
-        weaponDamageVsMaterial(b, BARE_TARGET) - weaponDamageVsMaterial(a, BARE_TARGET) ||
-        (a.goodType ?? 0) - (b.goodType ?? 0),
-    );
-  if (candidates.length === 0) return;
   let route: FetchRoute | undefined;
-  for (const weapon of candidates) {
-    const goodType = weapon.goodType;
-    if (goodType === undefined) continue;
+  for (const goodType of armingGoodPreference(ctx.content, settler.tribe, intent)) {
     route ??= fetchRouteFor(pass, e);
     const src = nearestStoreHolding(
       targets.stockpileCells,

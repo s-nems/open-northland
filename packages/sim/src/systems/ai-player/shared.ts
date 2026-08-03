@@ -158,14 +158,14 @@ export function anyLiveResource(world: World, goodType: number, near: HalfCellNo
  * ALL run for the kinds to stay published (the garrison rung lives inside the workforce module and
  * self-gates on `military`, so its counter needs both). `setPlayerAi`'s teardown (`orders/ai.ts`)
  * withdraws an entry's kinds the moment its conjunction breaks - a headless seat must stop breeding
- * and drafting when its AI does, while counters other hands own (the class rows) survive.
+ * and drafting when its AI does, while a counter no module publishes (the spear row) survives.
  */
 export const AI_PUBLISHED_COUNTERS: ReadonlyArray<{
   readonly modules: readonly AiModuleId[];
   readonly kinds: readonly AssistantCounterKind[];
 }> = [
   { modules: ['homeExpansion'], kinds: ['extraWomen', 'extraMen'] },
-  { modules: ['collectResources', 'military'], kinds: ['trainSoldiers'] },
+  { modules: ['collectResources', 'military'], kinds: ['trainSoldiers', 'trainSword', 'trainBow'] },
 ];
 
 /**

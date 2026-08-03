@@ -18,6 +18,7 @@ import { EventBuffer, positionOfNode, Rng, Simulation } from '../../../src/index
 import { DEFAULT_BUILD_ORDER, workforceModule } from '../../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { stampResourceFootprintData } from '../../../src/systems/index.js';
+import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
@@ -246,6 +247,45 @@ export function husbandryContent(): ContentSet {
           { goodType: WOOL, capacity: 5, initial: 0 },
           { goodType: MEAT, capacity: 5, initial: 0 },
         ],
+      },
+    ],
+  });
+}
+
+/** The armed soldier classes {@link armedContent} binds, and the goods that arm them (real bands).
+ *  The base fixture's weapon rows carry no `goodtype`, so only these two classes can be equipped -
+ *  and only while the seat has the good in store (`workforce/garrison.ts`). */
+export const SWORDSMAN = 34;
+export const BOWMAN = 40;
+export const SWORD = 41;
+export const BOW = 37;
+
+/** Content whose short sword and short bow are craftable goods a recruit can be armed with: the base
+ *  fixture binds the bow class already, but weaponless (no `goodtype`), so no seat can field either
+ *  class on it. */
+export function armedContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      { typeId: SWORD, id: 'sword_shord', weight: 1 },
+      { typeId: BOW, id: 'bow_short', weight: 1 },
+    ],
+    jobs: [...base.jobs, { typeId: SWORDSMAN, id: 'soldier_sword_short' }],
+    weapons: [
+      ...base.weapons.map((w) =>
+        w.jobType === BOWMAN ? { ...w, mainType: WEAPON_MAIN_TYPE.BOW, goodType: BOW } : w,
+      ),
+      {
+        typeId: 7,
+        id: 'viking_sword_short',
+        tribeType: VIKING,
+        jobType: SWORDSMAN,
+        mainType: WEAPON_MAIN_TYPE.SWORD,
+        goodType: SWORD,
+        minRange: 1,
+        maxRange: 1,
       },
     ],
   });
