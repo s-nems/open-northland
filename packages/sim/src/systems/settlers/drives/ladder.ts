@@ -187,7 +187,7 @@ function planEconomy(
 
   // A settler posted to a workplace that is still going up - a fresh foundation or a running upgrade -
   // supplies it (a carrier) or waits at it (every other trade), rather than running the remaining trade
-  // rungs. Sits below planBuilder, which takes a posted trade that can build and raises that same site.
+  // rungs.
   if (planSiteStaff(plan, pass.spacing, hx, hy)) return;
 
   if (planGatherer(plan, pass.harvestClaims)) return;

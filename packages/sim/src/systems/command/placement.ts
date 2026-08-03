@@ -21,7 +21,7 @@ import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { destroyFieldsUnderBuilding } from '../economy/fields.js';
 import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
-import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
+import { evictWorkFlagsFromFootprint, syncWorkFlagToJob } from '../economy/work-flag.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
@@ -35,18 +35,24 @@ import { upgradeTierOf } from '../stores/index.js';
  *
  * The released settler keeps its TRADE and loses only the post: employment is directed, so a trade taken
  * away here is one nothing gives back, and the player would have to re-pick a profession the settler had
- * earned. It stands inert until re-posted, which is the same state any unposted tradesman is in.
+ * earned. Each then does what any unposted settler of that trade does - a harvest trade gets its work flag
+ * back where it stands ({@link syncWorkFlagToJob}, so it keeps foraging somewhere the player can move), a
+ * builder joins the nearest site's crew, and the rest stand until re-posted.
  *
  * The scan only mutates the matched settlers (no chosen-entity pick), so iterating store order is permitted.
  * Matches are collected before mutating because `world.remove` deletes from the `JobAssignment` store that
  * `world.query` may be iterating - snapshot first, then mutate.
  */
-export function unbindWorkersOf(world: World, building: Entity): void {
+export function unbindWorkersOf(world: World, ctx: SystemContext, building: Entity): void {
   const bound: Entity[] = [];
   for (const e of world.query(Settler, JobAssignment)) {
     if (world.get(e, JobAssignment).workplace === building) bound.push(e);
   }
-  for (const e of bound) world.remove(e, JobAssignment);
+  for (const e of bound) {
+    world.remove(e, JobAssignment);
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType !== null) syncWorkFlagToJob(world, ctx, e, jobType);
+  }
 }
 
 export function placeBuilding(

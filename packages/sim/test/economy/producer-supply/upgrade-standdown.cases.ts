@@ -33,7 +33,7 @@ import {
  * Workers of an UPGRADING building stop working it (user rule: "pracownik budynku który jest ulepszany
  * powinien przestać pracować"). Source basis: readable original - `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`
  * is 1 for the craft trades, so a trade needs its finished workhouse; applied here as a blanket, since the
- * flag is not extracted (see docs/tickets/sim/extract-finished-workhouse-flag.md). The upgrade turns the
+ * flag is not extracted (see docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md). The upgrade turns the
  * building back into a construction site whose emptied stockpile is the construction hold, so an
  * ungated crew would read the stashed stock as starvation and shuttle goods, or strip the site's
  * delivered materials as "output".

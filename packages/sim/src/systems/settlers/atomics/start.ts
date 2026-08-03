@@ -79,8 +79,7 @@ export const PICKUP_ATOMIC_ID = 22;
 export const BUILD_HOUSE_ATOMIC_ID = 39;
 
 /** Whether `jobType` is a builder trade: it is one iff content lets it run the build-house atomic - the
- *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. Keyed by
- *  content rather than context, so the app's right-click router asks this same question. */
+ *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. */
 export function jobCanBuild(content: ContentSet, jobType: number): boolean {
   return contentIndex(content).atomicsByJob.get(jobType)?.has(BUILD_HOUSE_ATOMIC_ID) === true;
 }

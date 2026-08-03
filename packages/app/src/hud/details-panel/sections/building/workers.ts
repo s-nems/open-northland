@@ -39,5 +39,5 @@ export function drawWorkersSection(
       ? // The decoded original label ("Liczba Rodzin", trailing-space in the data) + the slot count.
         `${ui('housewindow', HOUSEWINDOW.families, messages().hud.families).trim()} ${home.families.length}/${home.capacity}`
       : model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ');
-  chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
+  if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
 }

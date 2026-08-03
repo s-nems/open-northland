@@ -13,7 +13,7 @@ import { fetchNeededMaterial } from './site-supply.js';
  * `mustHaveFinishedWorkHouseFlag`, applied here as a blanket: the flag is not extracted into the IR, and its
  * 1 rows cover the craft trades this rung mostly sees. The blanket over-applies to the flag's 0 rows - a
  * hunter posted to a store's gatherer slot stops hunting while that store is upgraded, where the data says
- * he should carry on (`docs/tickets/sim/extract-finished-workhouse-flag.md`).
+ * he should carry on (`docs/tickets/pipeline/jobtypes-per-job-flags-unextracted.md`).
  *
  * The stand goes through {@link claimWorkCell}, so staff spread over the site's perimeter alongside the
  * build crew. The binding survives the rise, so work starts the tick the building is finished. A posted

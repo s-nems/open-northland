@@ -99,6 +99,10 @@ export function constructionContent(): ContentSet {
           { goodType: WOOD, capacity: 10 },
           { goodType: STONE, capacity: 10 },
         ],
+        // Its own trade builds (like real content's joiner and armorer), so an `assignWorker` into this
+        // slot is what posts a builder to a foundation of it.
+        workers: [{ jobType: BUILDER, count: 1 }],
+        construction: [{ goodType: STONE, amount: 2 }],
       },
     ],
   });

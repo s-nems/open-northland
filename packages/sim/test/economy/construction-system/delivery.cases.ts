@@ -19,6 +19,7 @@ import { housingCapacity } from '../../../src/simulation/hud.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 
 import {
+  BUILDER,
   builderAt,
   builtBuildingAt,
   constructionContent,
@@ -339,16 +340,17 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     // workshop's slot instead of pinning a crew. The drive must then send them to THAT site: the site's
     // workers window lists them there, and a stroll to the nearest foundation would make the panel lie.
     const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
-    const near = siteAt(sim, HOUSE, 2, 1);
-    const far = siteAt(sim, HOUSE, 8, 1);
+    const near = siteAt(sim, WORKSHOP, 2, 1);
+    const far = siteAt(sim, WORKSHOP, 8, 1);
     for (const site of [near, far]) {
       sim.world.get(site, Stockpile).amounts.set(STONE, 2); // both hammer-ready: distance is the only tiebreak
-      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
     }
     const builder = builderAt(sim, 1, 1);
-    sim.world.add(builder, JobAssignment, { workplace: far }); // the binding an assignWorker order leaves
+    sim.world.add(builder, Owner, { player: 0 });
+    sim.enqueue({ kind: 'assignWorker', entity: builder, building: far, jobPriority: [BUILDER] });
 
     sim.step();
+    expect(sim.world.get(builder, JobAssignment).workplace).toBe(far); // the site took him as staff
 
     // Crewed for the site it staffs, and unpinned - the posting, not an assignBuilder right-click.
     expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: far, pinned: false });
