@@ -444,24 +444,6 @@
   outline-offset: 2px;
 }
 
-.main-menu__link {
-  all: unset;
-  cursor: pointer;
-  font:
-    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: var(--text-label);
-  text-decoration: underline;
-  text-underline-offset: calc(var(--u) * 5);
-  transition: color 150ms ease-out;
-}
-
-.main-menu__link:hover,
-.main-menu__link:focus-visible {
-  color: var(--accent-bright);
-}
-
 .main-menu__lobby-start {
   width: 100%;
   box-sizing: border-box;

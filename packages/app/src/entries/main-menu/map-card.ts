@@ -5,8 +5,8 @@ import { type MapSelectItem, pluralForm } from './map-select-model.js';
 
 /**
  * The map details card both map select and the lobby show on their right column: preview section
- * on top, then name, meta, roster seat chips and description. The owning screen appends its own
- * controls into `actions` (map select its primary button, the lobby its change-map link).
+ * on top, then name, meta, roster seat chips and description. The owning screen may append its own
+ * controls into `actions` (map select its primary button); an empty row collapses via CSS.
  */
 export interface MapDetailsCard {
   /** The card element (`.main-menu__map-card`); starts hidden until {@link MapDetailsCard.show}. */

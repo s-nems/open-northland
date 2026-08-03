@@ -146,7 +146,6 @@ export const enSurfaces = {
         on: 'Through experience',
         off: 'All unlocked from start',
       },
-      changeMap: 'Change map',
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
     },

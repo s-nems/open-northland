@@ -85,16 +85,11 @@ export function lobbyScreen(
   watch.append(watchTitle, watchList);
   main.append(cols, list, footnote, watch);
 
-  // Right column: the shared map card with a change-map link, then options and Start.
+  // Right column: the shared map card, then options and Start. Swapping the map goes through the
+  // header back button (or Esc), so the card carries no actions here.
   const side = document.createElement('aside');
   side.className = 'main-menu__lobby-side';
   const card = createMapDetailsCard();
-  const change = document.createElement('button');
-  change.type = 'button';
-  change.className = 'main-menu__link';
-  change.textContent = lobby.changeMap;
-  change.addEventListener('click', () => open('newGame'));
-  card.actions.append(change);
   card.show(item);
 
   const launch = document.createElement('div');
@@ -369,7 +364,6 @@ export function lobbyScreen(
   const unhookKeys = (): void => window.removeEventListener('keydown', onKeydown, true);
   window.addEventListener('keydown', onKeydown, true);
   back.addEventListener('click', unhookKeys);
-  change.addEventListener('click', unhookKeys);
 
   start.addEventListener('click', () => {
     if (start.disabled) return;

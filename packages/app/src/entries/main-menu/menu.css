@@ -99,8 +99,10 @@
 }
 
 .main-menu {
-  /* Design tokens (README "Design tokens"); --u converts design px to viewport-scaled px. */
-  --u: calc(100vh / 1080);
+  /* Design tokens (README "Design tokens"); --u converts design px to viewport-scaled px.
+     --u-base never changes; sub-screens override --u with a denser scale below. */
+  --u-base: calc(100vh / 1080);
+  --u: var(--u-base);
   --bg-base: #0c1420;
   --accent: #63c4a0;
   --accent-bright: #8ff0c8;
@@ -252,9 +254,9 @@
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 16);
-  margin-bottom: calc(var(--u) * 24);
+  margin-bottom: calc(var(--u) * 20);
   font:
-    500 calc(var(--u) * 22) / 1 "Alegreya Sans",
+    500 calc(var(--u) * 19) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   letter-spacing: 0.34em;
@@ -275,7 +277,7 @@
   margin: 0;
   font-family: Cinzel, serif;
   font-weight: 700;
-  font-size: calc(var(--u) * 150);
+  font-size: calc(var(--u) * 110);
   line-height: 0.98;
   letter-spacing: 0.01em;
   color: var(--text-primary);
@@ -283,9 +285,9 @@
 }
 
 .main-menu__version {
-  margin-top: calc(var(--u) * 36);
+  margin-top: calc(var(--u) * 28);
   font:
-    400 calc(var(--u) * 21) / 1 "Alegreya Sans",
+    400 calc(var(--u) * 18) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   color: var(--text-muted);
@@ -306,7 +308,7 @@
   gap: calc(var(--u) * 14);
   cursor: pointer;
   font:
-    500 calc(var(--u) * 34) / 1 "Alegreya Sans",
+    500 calc(var(--u) * 30) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   letter-spacing: 0.04em;
@@ -333,7 +335,7 @@
 
 .main-menu__badge {
   font:
-    500 calc(var(--u) * 16) / 1 "Alegreya Sans",
+    500 calc(var(--u) * 14) / 1 "Alegreya Sans",
     system-ui,
     sans-serif;
   letter-spacing: 0.14em;
@@ -358,6 +360,9 @@
 /* ---- Sub-screen scaffold (shared header of frames 4a/4b/3c/5a) ---- */
 
 .main-menu__screen {
+  /* Sub-screens render at 0.8 of the mockup's design scale: the 1:1 frames read oversized in a
+     real viewport, and the denser scale fits more list rows on screen. */
+  --u: calc(var(--u-base) * 0.8);
   position: absolute;
   inset: 0;
   box-sizing: border-box;

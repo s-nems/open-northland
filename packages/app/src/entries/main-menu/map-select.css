@@ -295,6 +295,11 @@
   padding-top: calc(var(--u) * 8);
 }
 
+/* The lobby appends nothing here; collapse the row instead of leaving stray padding. */
+.main-menu__map-actions:empty {
+  display: none;
+}
+
 .main-menu__map-name {
   font:
     700 calc(var(--u) * 34) / 1.1 "Alegreya Sans",
