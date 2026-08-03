@@ -22,7 +22,7 @@ import {
   isSoldierJob,
   weaponDamageVsMaterial,
 } from '../../readviews/index.js';
-import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
+import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { INTENT_WEAPON_CLASS } from '../atomics/effects/goods/weapon-class.js';
 import { nearestStoreHolding, type TargetCandidates } from '../targets/index.js';
@@ -115,7 +115,7 @@ function dispatchWeaponFetch(
   const { world, ctx, terrain, targets } = pass;
   let route: FetchRoute | undefined;
   for (const goodType of armingGoodPreference(ctx.content, settler.tribe, intent)) {
-    route ??= fetchRouteFor(pass, e);
+    route ??= fetchRouteFor(pass, e, owner);
     const src = nearestStoreHolding(
       targets.stockpileCells,
       world,
@@ -146,7 +146,7 @@ function dispatchWeaponFetch(
  */
 function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolean {
   const { world, ctx, terrain, targets } = pass;
-  const route = fetchRouteFor(pass, e);
+  const route = fetchRouteFor(pass, e, owner);
   const pick = pickReachableArmor(world, ctx, terrain, targets, route.here, owner, route.limit, route.veto);
   if (pick === null) return false;
   world.add(e, EquipOrder, {
@@ -165,6 +165,8 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
  * its weapon, ask for the armor want from RIGHT THERE instead of walking home first. Returns the
  * armor goodType to retarget the live order at, or null to walk home - a dressed recruit or one
  * with no tier reachable has its booking settled here, exactly as the fallback armor leg would.
+ *
+ * Searched from the network around the store he stands at, not the drive's own gate ({@link FetchRoute}).
  */
 export function chainRecruitArmor(
   world: World,
@@ -173,7 +175,6 @@ export function chainRecruitArmor(
   targets: TargetCandidates,
   e: Entity,
   here: NodeId,
-  limit: NavigationLimit | null,
   veto: ((cell: NodeId) => boolean) | undefined,
 ): number | null {
   const booking = world.tryGet(e, AssistantRecruit);
@@ -184,6 +185,7 @@ export function chainRecruitArmor(
     world.remove(e, AssistantRecruit); // already dressed - the booking is complete
     return null;
   }
+  const limit = networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here));
   const pick = pickReachableArmor(world, ctx, terrain, targets, here, owner, limit, veto);
   if (pick === null) {
     world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
@@ -233,20 +235,22 @@ function pickReachableArmor(
 /** The unarmored damage column (`damagevalue 0`) - the strength axis the weapon preference sorts on. */
 const BARE_TARGET = 0;
 
-/** The recruit's store-search inputs, resolved once per dispatch attempt. */
+/** The recruit's store-search inputs, resolved once per dispatch attempt. The limit is the signpost
+ *  network at his feet, not the per-settler confinement (`signposts/network.ts`): a soldier is exempt
+ *  from that one and would walk past his settlement for a weapon on distant neutral ground. */
 interface FetchRoute {
   readonly here: NodeId;
   readonly limit: NavigationLimit | null;
   readonly veto: ((cell: NodeId) => boolean) | undefined;
 }
 
-function fetchRouteFor(pass: PlannerPass, e: Entity): FetchRoute {
+function fetchRouteFor(pass: PlannerPass, e: Entity, owner: number): FetchRoute {
   const { world, ctx, terrain } = pass;
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
   return {
     here: terrain.nodeAtClamped(n.hx, n.hy),
-    limit: navigationLimitFor(world, ctx.content, terrain, e),
+    limit: networkLimitAt(world, terrain, owner, n.hx, n.hy),
     veto: unreachableGoalVeto(world, ctx, e),
   };
 }

@@ -13,6 +13,7 @@ import { Simulation } from '../../../src/index.js';
 import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/shared.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
+import { stampPost } from '../../signposts/support.js';
 import {
   ANIMAL_FARM_TYPE,
   aiSim,
@@ -55,11 +56,31 @@ interface ArmedSeat {
   readonly men: number;
 }
 
+interface SeatOptions {
+  readonly men?: number;
+  /** Where the barracks stands, in nodes - the drill floor an arming reach is measured from. */
+  readonly barracks?: { x: number; y: number };
+  /** Turn signpost navigation on, so that reach confines anything at all. */
+  readonly confined?: boolean;
+}
+
+/** The barracks a few nodes off the HQ: one settlement, everything inside one local circle. */
+const BARRACKS_AT = { x: 40, y: 16 };
+/** A barracks past the far end of a recruit's own local circle (24 nodes) from the HQ store. */
+const FAR_BARRACKS = { x: 58, y: 16 };
+/** A post midway between the two, in TILE coords (`Position` is tile-space), whose circle reaches
+ *  both - the network that makes the far store shoppable again. */
+const BRIDGE_POST = { x: 22, y: 8 };
+const POST_NAV_RADIUS_NODES = 24;
+
 /** A seat with an HQ holding `arms`, a barracks, and `men` idle civilians, on content whose sword
  *  and bow classes are equippable ({@link armedContent}). */
-function armedSeat(arms: readonly { good: number; amount: number }[], men = SPARE_MEN): ArmedSeat {
+function armedSeat(arms: readonly { good: number; amount: number }[], options: SeatOptions = {}): ArmedSeat {
   const content = armedContent();
+  const men = options.men ?? SPARE_MEN;
+  const barracks = options.barracks ?? BARRACKS_AT;
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+  if (options.confined === true) sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
   sim.enqueue({
     kind: 'placeBuilding',
     buildingType: HQ_TYPE,
@@ -72,8 +93,8 @@ function armedSeat(arms: readonly { good: number; amount: number }[], men = SPAR
   sim.enqueue({
     kind: 'placeBuilding',
     buildingType: BARRACKS_TYPE,
-    x: 40,
-    y: 16,
+    x: barracks.x,
+    y: barracks.y,
     tribe: VIKING,
     owner: SEAT,
   });
@@ -308,7 +329,7 @@ describe('workforce module - the barracks and craft selections', () => {
     });
 
     // One man fewer makes the split odd: the extra recruit fights in reach, never at range.
-    const odd = armedSeat(both, SPARE_MEN - 1);
+    const odd = armedSeat(both, { men: SPARE_MEN - 1 });
     const oddTotal = sparePool(odd);
     expect(oddTotal % 2).toBe(1);
     expect(counterWants(odd.sim, odd.ctx)).toEqual({
@@ -332,6 +353,18 @@ describe('workforce module - the barracks and craft selections', () => {
     // The fallback follows the STORE, not the content: one delivered sword flips the whole order.
     setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 1);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: total });
+  });
+
+  it('will not order a class whose weapons its recruits could never walk to', () => {
+    // The store a long march from the drill floor, with no signpost network bridging the two: the
+    // arming pass would never fetch these swords, and a `trainSword` order would fill the barracks
+    // with men who stand around bare-handed forever - and, being booked, never march either.
+    const seat = armedSeat([{ good: SWORD, amount: 1 }], { confined: true, barracks: FAR_BARRACKS });
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
+
+    // One post between the two puts the store back inside the drill floor's own network.
+    stampPost(seat.sim, BRIDGE_POST.x, BRIDGE_POST.y, POST_NAV_RADIUS_NODES, SEAT);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
   });
 
   it('keeps each counter carrying its own recruits, so a new weapon drafts nobody extra', () => {

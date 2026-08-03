@@ -20,7 +20,9 @@ import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { baseSoldierJobType, isBarracks, isSoldierJob } from '../../readviews/index.js';
 import { armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
-import { canonicalById } from '../../spatial/nodes.js';
+import { interactionCell } from '../../settlers/targets/index.js';
+import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import { canonicalById, entityNode } from '../../spatial/nodes.js';
 import { mayFetchGoodFrom } from '../../stores/index.js';
 import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
@@ -98,7 +100,10 @@ function standingOrder(
   const booked = bookedByIntent(world, ctx, player);
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
   const tribe = world.get(barracks, Building).tribe;
-  const armable = GARRISON_WEAPON_INTENTS.filter((intent) => canArm(world, ctx, player, tribe, intent));
+  const reach = drillFloorReach(world, ctx, barracks);
+  const armable = GARRISON_WEAPON_INTENTS.filter((intent) =>
+    canArm(world, ctx, player, tribe, intent, reach),
+  );
   const drafting: readonly AssistantRecruitIntent[] = armable.length > 0 ? armable : ['trainSoldiers'];
   const allowance = draftAllowance(world, ctx, player, force);
   for (const [rank, intent] of drafting.entries()) {
@@ -132,10 +137,23 @@ function barracksOf(world: World, ctx: SystemContext, player: number): Entity | 
 }
 
 /**
- * Whether the seat could arm an `intent` recruit at all: some store it may draw on holds a weapon
- * good the arming pass would shop for ({@link armingGoodPreference}). Existence only - whether one
- * recruit can walk there is the pass's problem. Ownership follows that pass's own rule
- * ({@link ownersCompatible}), so a neutral ground heap of swords counts like a stocked warehouse.
+ * How far a recruit fresh off the drill can shop: the signpost network around the barracks door, where
+ * he stands when the arming pass first looks at him (`settlers/planner/recruit-arming.ts` gates the same
+ * way). Null when navigation is unconfined - then every store counts. Mapless sims have no network at all.
+ */
+function drillFloorReach(world: World, ctx: SystemContext, barracks: Entity): NavigationLimit | null {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return null;
+  const door = interactionCell(world, ctx, terrain, barracks);
+  return networkLimitAt(world, terrain, ownerOf(world, barracks) ?? 0, terrain.xOf(door), terrain.yOf(door));
+}
+
+/**
+ * Whether the seat could arm an `intent` recruit: some store within his {@link drillFloorReach} holds a
+ * weapon good the arming pass would shop for ({@link armingGoodPreference}). Existence only - which
+ * recruit walks there is the pass's problem - but the reach must match, or the seat publishes a class
+ * whose recruits enlist and then stand around bare-handed forever. Ownership follows that pass's own
+ * rule ({@link ownersCompatible}), so a neutral ground heap of swords counts like a stocked warehouse.
  */
 function canArm(
   world: World,
@@ -143,18 +161,31 @@ function canArm(
   player: number,
   tribe: number,
   intent: (typeof GARRISON_WEAPON_INTENTS)[number],
+  reach: NavigationLimit | null,
 ): boolean {
   const goods = armingGoodPreference(ctx.content, tribe, intent);
   if (goods.length === 0) return false; // the tribe's data binds no such class
   for (const store of world.query(Stockpile)) {
     if (!ownersCompatible(player, ownerOf(world, store))) continue;
     if (world.has(store, UnderConstruction)) continue; // a site is a sink, never a source to strip
+    if (reach !== null && !storeInReach(world, ctx, store, reach)) continue;
     const { amounts } = world.get(store, Stockpile);
     for (const good of goods) {
       if ((amounts.get(good) ?? 0) > 0 && mayFetchGoodFrom(world, ctx, store, good)) return true;
     }
   }
   return false;
+}
+
+/** Whether a store's approach node lies inside `reach` - a building by its door, a ground pile by its
+ *  own node, the same cells the arming pass's store search offers. */
+function storeInReach(world: World, ctx: SystemContext, store: Entity, reach: NavigationLimit): boolean {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return true;
+  const at = world.has(store, Building)
+    ? interactionCell(world, ctx, terrain, store)
+    : entityNode(world, terrain, store);
+  return reach.allowsNode(at);
 }
 
 /** The seat's marriageable men beyond its marriageable women, the men the family plan will never
