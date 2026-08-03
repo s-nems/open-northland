@@ -1,7 +1,7 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
-import { MENU_UISCALES } from '../src/entries/menu/settings.js';
+import { UI_SCALE_MAX, UI_SCALE_MIN, UI_SCALE_STEP } from '../src/entries/main-menu/settings-state.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -31,8 +31,11 @@ import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 const BUILDING_TOWER = 40;
 const BUILDING_BARRACKS = 39;
 
-/** The settings menu's `?uiscale` steps as numbers - a newly offered scale joins the coverage. */
-const MENU_UISCALE_VALUES = MENU_UISCALES.map(Number);
+/** Every `?uiscale` step the settings slider offers - layout must hold across the whole range. */
+const MENU_UISCALE_VALUES = Array.from(
+  { length: Math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP) + 1 },
+  (_, i) => Math.round((UI_SCALE_MIN + i * UI_SCALE_STEP) * 100) / 100,
+);
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;
 const settlerLayoutOf = (model: UnitPanelModel, s = 1): SettlerLayout =>

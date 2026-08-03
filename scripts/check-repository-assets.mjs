@@ -22,8 +22,8 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
-  // The redesigned menu's typefaces (docs/design/main-menu): Cinzel and Alegreya Sans, subset from
-  // Google Fonts releases; SIL OFL texts sit beside them as LICENSE-*.txt.
+  // The menu's typefaces: Cinzel and Alegreya Sans, subset from Google Fonts releases; SIL OFL
+  // texts sit beside them as LICENSE-*.txt.
   'packages/app/public/fonts/alegreyasans-latin-400.woff2',
   'packages/app/public/fonts/alegreyasans-latin-500.woff2',
   'packages/app/public/fonts/alegreyasans-latin-700.woff2',
@@ -32,10 +32,8 @@ const reviewedBinaryAssets = new Set([
   'packages/app/public/fonts/alegreyasans-latinext-700.woff2',
   'packages/app/public/fonts/cinzel-latin.woff2',
   'packages/app/public/fonts/cinzel-latinext.woff2',
-  // Original OpenNorthland branding (commissioned art, no original-game material): the menu
-  // logo and the emblem as favicon/app icon. docs/images/logo.webp intentionally duplicates
-  // the menu logo - the README needs a stable path, the menu a Vite-fingerprinted one.
-  'packages/app/src/entries/menu/assets/logo.webp',
+  // Original OpenNorthland branding (commissioned art, no original-game material): the emblem
+  // as favicon/app icon; docs/images/logo.webp gives the README a stable logo path.
   'packages/desktop/build/icon.icns',
   'packages/desktop/build/icon.png',
 ]);

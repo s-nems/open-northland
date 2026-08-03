@@ -19,7 +19,8 @@ That closes every case a shorter list can close. Two cases it cannot:
 
    `MIN_LIST_ROWS = 3` deliberately outranks the reserve: at 1.4/H=600 dropping to the 1 row that
    would fit is worse than 3 rows with a 5 px sliver covered. The larger scales need placement, not
-   size. `uiscale` 1.75 and 2 are both offered by `entries/menu/settings.ts`.
+   size. `uiscale` 1.75 and 2 both sit inside the settings slider range (`UI_SCALE_MIN..UI_SCALE_MAX`
+   in `entries/main-menu/settings-state.ts`).
 
 2. **`extras-window.ts` cannot shrink at all** - its height follows its content (~173 design px on the
    assistant tab), so at 2x on a short screen its lower stepper rows sit under the same overlay and

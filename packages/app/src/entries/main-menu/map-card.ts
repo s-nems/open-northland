@@ -1,6 +1,6 @@
 import { playerSwatchHex } from '../../catalog/roster.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
-import { generatedMapPreview } from '../menu/map-preview.js';
+import { generatedMapPreview } from './map-preview.js';
 import { type MapSelectItem, pluralForm } from './map-select-model.js';
 
 /**

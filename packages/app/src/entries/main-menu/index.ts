@@ -13,8 +13,8 @@ import { adoptStoredSettings, initialSettingsMemory } from './settings-state.js'
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
-/** The grade layers above the scene, bottom to top (docs/design/main-menu/README.md
- *  "Background stack"); the scene layer itself is built separately as the backdrop host. */
+/** The background-stack grade layers above the scene, bottom to top; the scene layer itself is
+ *  built separately as the backdrop host. */
 const OVERLAY_LAYERS = ['tint', 'shade', 'aurora-green', 'aurora-blue'] as const;
 
 function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLButtonElement {

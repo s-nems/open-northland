@@ -19,8 +19,9 @@ import {
 export const LOBBY_FOG_MODES: readonly FogModeName[] = ['off', 'reveal', 'recon'];
 export type LobbyFogMode = FogModeName;
 
-/** Sticky-fog is the classic default the `?map=` entry also falls back to. */
-const DEFAULT_FOG_MODE: LobbyFogMode = 'reveal';
+/** Sticky-fog is the classic default a `?map=` launch without an explicit pick also falls back to
+ *  (`targetSearch` reuses it). */
+export const DEFAULT_FOG_MODE: LobbyFogMode = 'reveal';
 
 export interface LobbyOptions {
   fog: LobbyFogMode;

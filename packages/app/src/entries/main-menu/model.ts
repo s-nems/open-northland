@@ -1,4 +1,4 @@
-/** Pure state for the redesigned menu flow (docs/design/main-menu/README.md). */
+/** Pure state for the menu flow. */
 
 export type MenuScreen = 'main' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 

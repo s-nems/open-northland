@@ -1,12 +1,12 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { targetSearch } from '../../menu/settings.js';
 import { segControl, togglePill } from '../controls.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
+import { targetSearch } from '../target-search.js';
 import {
   initialLobbyOptions,
   initialLobbyState,

@@ -93,10 +93,9 @@ function settingRow(
 }
 
 /**
- * Settings (design frame 3c): category nav on the left, the active category's rows on the right.
- * Every live control applies and persists immediately (no Save button - an accepted deviation,
- * docs/design/main-menu/README.md); controls without an engine seam yet sit disabled behind
- * "coming soon" badges so the missing backends stay visible.
+ * Settings: category nav on the left, the active category's rows on the right. Every live control
+ * applies and persists immediately (no Save button, by decision); controls without an engine seam
+ * yet sit disabled behind "coming soon" badges so the missing backends stay visible.
  */
 export function settingsScreen(open: (screen: MenuScreen) => void, memory: SettingsMemory): HTMLElement {
   const copy = messages().mainMenu;

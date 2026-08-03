@@ -4,7 +4,6 @@ import { renderBackdrop } from './entries/backdrop.js';
 import { renderIconGallery } from './entries/icons.js';
 import { renderMainMenu } from './entries/main-menu/index.js';
 import { renderMap } from './entries/map.js';
-import { renderMenu } from './entries/menu.js';
 import { renderSceneMode } from './entries/scene.js';
 import { renderShot } from './entries/shot.js';
 import { renderSoundGallery } from './entries/sound.js';
@@ -27,10 +26,8 @@ import { dismissBootProgress } from './view/boot-progress.js';
  *  - `?sounds`          → the sound verification gallery (`entries/sound.ts`) - click ▶ to audition every
  *                         wired clip. Distinct from the `?sound=off` mute modifier on live/scene (key `sound`).
  *  - `?map=<id>`        → the decoded-map viewer (`entries/map.ts`) - a real `content/maps/<id>.json` grid.
- *  - `?menu=legacy`     → the previous menu (`entries/menu.ts`), kept reachable while the redesign
- *                         (`entries/main-menu/`) lands screen by screen; it still starts every mode.
- *  - otherwise          → the redesigned main menu (`entries/main-menu/`) - the default landing,
- *                         so a human never has to remember a `?…` string.
+ *  - otherwise          → the main menu (`entries/main-menu/`) - the default landing, so a human
+ *                         never has to remember a `?…` string.
  */
 async function main(): Promise<void> {
   const canvas = document.getElementById('game');
@@ -52,7 +49,6 @@ async function route(canvas: HTMLCanvasElement, params: URLSearchParams): Promis
   if (params.has('icons')) return renderIconGallery(canvas, params);
   if (params.has('sounds')) return renderSoundGallery(canvas, params);
   if (params.has('map')) return renderMap(canvas, params);
-  if (params.get('menu') === 'legacy') return renderMenu(canvas, params);
   return renderMainMenu(canvas, params);
 }
 

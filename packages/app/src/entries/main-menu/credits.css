@@ -1,5 +1,5 @@
-/* Credits / about: one centered column, deviating from design frame 5a (accepted deviations in
-   docs/design/main-menu/README.md). Scaffold, header and the shared ghost buttons live in menu.css. */
+/* Credits / about: one centered column. Scaffold, header and the shared ghost buttons live in
+   menu.css. */
 
 .main-menu__credits {
   flex: 1;
