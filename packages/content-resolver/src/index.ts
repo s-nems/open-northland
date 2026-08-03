@@ -1,3 +1,4 @@
+export { buildBackdropsIndexEntries } from './backdrops-index.js';
 export { buildBobsIndexEntries } from './bobs-index.js';
 export { buildMapsIndexEntries } from './maps-index.js';
 export {

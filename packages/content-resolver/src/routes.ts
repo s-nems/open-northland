@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { buildBackdropsIndexEntries } from './backdrops-index.js';
 import { buildBobsIndexEntries } from './bobs-index.js';
 import { buildMapsIndexEntries } from './maps-index.js';
 import { resolveFileUnderRoot } from './under-root.js';
@@ -29,6 +30,7 @@ export type ContentHit = ContentFileHit | ContentJsonHit;
 
 const CONTENT_TYPES = {
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.json': 'application/json',
   '.atlas.json': 'application/json',
   '.wav': 'audio/wav',
@@ -37,10 +39,11 @@ const CONTENT_TYPES = {
 
 type ServedExtension = keyof typeof CONTENT_TYPES;
 
-// The two subtrees a file route and a computed index route both address, named so the pair can
+// The subtrees a file route and a computed index route both address, named so each pair can
 // never drift onto different directories.
 const MAPS_ROOT = 'maps';
 const BOBS_ROOT = 'Data/engine2d/bin/bobs';
+const BACKDROPS_ROOT = 'backdrops';
 
 /** The one whole-file top-level route: the generated IR document. */
 const IR_PATHNAME = '/ir.json';
@@ -63,6 +66,7 @@ const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/gui/', root: 'gui', extensions: ['.json', '.png', '.cur'] },
   { prefix: '/gui-bitmaps/', root: 'Data/gui/bitmaps', extensions: ['.png'] },
   { prefix: '/goods/', root: 'goods', extensions: ['.json'] },
+  { prefix: '/backdrops/', root: BACKDROPS_ROOT, extensions: ['.jpg'] },
 ];
 
 /** One exact pathname → a JSON payload built by scanning a subtree of `content/`. */
@@ -76,6 +80,7 @@ interface IndexRoute {
 const INDEX_ROUTES: readonly IndexRoute[] = [
   { pathname: '/maps-index', root: MAPS_ROOT, build: buildMapsIndexEntries },
   { pathname: '/bobs-index', root: BOBS_ROOT, build: buildBobsIndexEntries },
+  { pathname: '/backdrops-index', root: BACKDROPS_ROOT, build: buildBackdropsIndexEntries },
 ];
 
 /** Longest matching served extension of `file`, or `undefined` when none is allowed on the route. */

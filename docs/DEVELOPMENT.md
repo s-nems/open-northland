@@ -52,9 +52,10 @@ fresh conversion into a temporary directory and validates the result. It uses
 ## Browser entries
 
 `npm run dev` opens the redesigned main menu, which is landing screen by screen
-(`docs/design/main-menu/`). With `content/` served it runs the live PROLOG scene behind the menu;
-without it the static brand art stands in. Until its map-select screen ships, starting a game from
-UI goes through `?menu=legacy`. Direct entries are useful during focused work:
+(`docs/design/main-menu/`). With `content/backdrops/` present (see `npm run menu-backdrops` below)
+the menu rotates captured settlement stills behind the grade; without them the static brand art
+stands in. Until its map-select screen ships, starting a game from UI goes through `?menu=legacy`.
+Direct entries are useful during focused work:
 
 | URL query | Purpose |
 | --- | --- |
@@ -64,6 +65,7 @@ UI goes through `?menu=legacy`. Direct entries are useful during focused work:
 | `?icons` | decoded sprite-frame gallery |
 | `?sounds` | sound-binding gallery |
 | `?shot` | single-frame screenshot entry used by the harness |
+| `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 | `?menu=legacy` | the previous menu, kept while the redesigned menu lands screen by screen |
 
 Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<...>`, `player=<...>`, `ai=<...>`,
@@ -97,6 +99,17 @@ npm run shot -- --seed 7 --ticks 20 --out shot.png
 
 Useful options are `--map <id>`, `--atlas [real]`, `--terrain`, `--zoom <n>`, and `--no-hud`.
 Screenshots still need human review.
+
+Regenerate the menu-backdrop stills (the curated framings live in
+`packages/app/scripts/menu-backdrops.mjs`):
+
+```bash
+npm run menu-backdrops
+```
+
+It boots each curated map through `?backdrop=<id>` and writes JPEGs into `content/backdrops/`,
+which the menu rotates through. The stills render decoded original art, so they are gitignored
+content, never repository files; re-run the command after `npm run pipeline`.
 
 ## Measuring performance
 

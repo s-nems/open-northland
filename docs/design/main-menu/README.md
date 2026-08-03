@@ -39,13 +39,21 @@ Settings deviations: every live control applies and persists immediately, so the
 backend yet (resolution, the volume sliders, scroll speed, edge scrolling, the whole Sterowanie
 tab) render disabled with the "wkrótce" badge instead of being omitted; the resolution slot shows
 the live window size until a real dropdown exists (desktop). The design's "Płynne przewijanie
-mapy" and "Animowana scena w menu" rows are dropped entirely (user decision 2026-08-03); the scene
-still freezes under prefers-reduced-motion. Rows the design lacks: "Język" (endonym segment),
+mapy" and "Animowana scena w menu" rows are dropped entirely (user decision 2026-08-03); reduced
+motion still gets a motionless backdrop (background deviation below). Rows the design lacks: "Język" (endonym segment),
 "Dźwięk w grze" (the `?sound` mute - the game has no in-game sound toggle, starts audible and
 resumes its audio context on the first input gesture), "Prędkość przewijania mapy" and
 "Przewijanie przy krawędzi ekranu". The scale slider is labelled "Skala
 interfejsu w grze" because it drives only the in-game HUD; the menu's own scale stays
 viewport-derived.
+
+Background deviation (user decision 2026-08-03): layer 1 of the background stack is not a live sim
+render. The menu rotates through settlement stills captured from decoded maps (`npm run
+menu-backdrops` into the gitignored `content/backdrops/` - the stills contain original art and
+never enter the repository), starting at a random one and crossfading with a slow push-in; the
+grade layers above are unchanged. The ambient-scene boot lives on as the `?backdrop` capture
+entry. Without the stills the static brand art stands, and under prefers-reduced-motion the first
+still simply holds, with no rotation or push-in.
 
 Fonts are the one asset gap. The design calls for Cinzel (display) and Alegreya Sans (UI); the repo
 currently bundles only Tinos under `packages/app/public/fonts/`. Both are OFL, so an implementation

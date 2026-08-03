@@ -13,8 +13,8 @@ import { defineConfig, type Plugin } from 'vite';
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),
 // OUTSIDE the app's vite root. The shared route table (`@open-northland/content-resolver`) bridges it in
-// - `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`, plus the
-// computed `/maps-index` + `/bobs-index` menu/gallery payloads - with path traversal rejected and only
+// - `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`,
+// `/backdrops`, plus the computed index payloads - with path traversal rejected and only
 // per-route extensions served. An in-namespace miss is answered 404 HERE: Vite's SPA fallback would
 // otherwise serve `index.html` as HTTP 200 `text/html` and the loaders' `!res.ok` absence checks would
 // mis-read a missing `content/` as bytes. Off-namespace paths fall through to Vite as before.

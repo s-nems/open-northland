@@ -1,0 +1,108 @@
+import { createWindowPixiApp, makeElevationField, type TerrainTextureSet } from '@open-northland/render';
+import { buildCollisionTerrain } from '../content/collision.js';
+import { buildingFootprints } from '../content/ir/joins.js';
+import { loadIr } from '../content/ir/load.js';
+import { loadMapScript, loadTerrainMap } from '../content/map-loader.js';
+import { loadMapObjects } from '../content/objects.js';
+import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
+import { loadRealTerrain } from '../content/terrain.js';
+import { diag } from '../diag/index.js';
+import { mapStartFocus } from '../game/map-start.js';
+import { colorOverridesParam, playerColourMap } from '../game/player-session.js';
+import { sandboxGoods } from '../game/sandbox/index.js';
+import { runAuthoredMap, runBareMap, terrainSceneFor } from '../game/world/index.js';
+import { cameraCenteredOnTile } from '../view/camera/index.js';
+import { floatParam, intParam } from '../view/params.js';
+import { createWorldRenderer, loadLocalizedRealContent } from '../view/runtime/world-bootstrap.js';
+
+/**
+ * `?backdrop=<mapId>` - the menu-backdrop capture entry (docs/DEVELOPMENT.md "Screenshots"): boot a
+ * decoded map as the calm ambient settlement (authored placements, needs off, no HUD, no RAF loop),
+ * draw ONE frame, then raise the same ready flag the `?shot` harness waits on. `npm run
+ * menu-backdrops` drives this entry to produce the stills the menu rotates through; the framing
+ * knobs exist so a capture can be tuned per map.
+ *
+ *  - `?zoom=N`     framing zoom (default reads as a scene, not a map overview);
+ *  - `?ticks=N`    total sim ticks (the first applies the authored placements; default 1);
+ *  - `?focus=x,y`  centre tile override when the start-village focus is not the map's best view.
+ *
+ * Dev-only: a missing map or `content/` throws (the crash banner names the cause) instead of
+ * degrading - a capture harness must never silently screenshot a blank canvas.
+ */
+
+/** Framing zoom shared with the old menu scene: close enough to read as a settlement. */
+const BACKDROP_ZOOM = 1.25;
+/** Ambient seed; captures never replay, so any fixed seed serves. */
+const BACKDROP_SEED = 7;
+
+export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  const mapId = params.get('backdrop');
+  if (mapId === null || mapId === '') throw new Error('backdrop: pass ?backdrop=<mapId>');
+
+  const loaded = await loadTerrainMap(mapId);
+  if (loaded === null) throw new Error(`backdrop: map "${mapId}" unavailable (content/ missing?)`);
+  const script = await loadMapScript(mapId);
+  const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
+  const ir = await loadIr();
+  if (ir === null) throw new Error('backdrop: ir.json unavailable (content/ missing?)');
+  const terrain: TerrainTextureSet = await loadRealTerrain(ir);
+
+  const app = await createWindowPixiApp(canvas);
+  const renderer = createWorldRenderer(
+    app,
+    params,
+    sheet,
+    playerColourMap(script, colorOverridesParam(params)),
+  );
+  const terrainGrid = terrainSceneFor(loaded);
+  renderer.setTerrain(terrainGrid, terrain);
+  const elevation = makeElevationField(loaded.elevation, loaded.width, loaded.height);
+  if (loaded.objects !== undefined) {
+    try {
+      const objects = await loadMapObjects(loaded.objects, ir, elevation, renderer.brightnessField());
+      renderer.setMapObjects(objects.sprites);
+    } catch (err) {
+      diag.warn('content', `backdrop objects unavailable, bare ground: ${String(err)}`);
+    }
+  }
+
+  // The ambient settlement the menu scene used to run live: the map's authored cast idling on the
+  // real collision grid - no AI seats, no fog, harvestables stay in the static collision grid.
+  const simMap = buildCollisionTerrain(loaded, ir);
+  const contentOptions = {
+    footprints: buildingFootprints(ir),
+    goodNames,
+    ...(realContent !== null ? { content: realContent.content } : {}),
+  };
+  // One tick applies the authored placements (queued commands land on the first step).
+  const sim =
+    (loaded.entities !== undefined
+      ? runAuthoredMap(BACKDROP_SEED, 1, simMap, loaded.entities, ir, contentOptions)
+      : null) ?? runBareMap(BACKDROP_SEED, simMap, contentOptions);
+  // Needs off before any extra ticks, like scene worlds: a foodless ambient world would otherwise
+  // starve its cast during a long pre-roll.
+  sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  for (let tick = intParam(params, 'ticks', 1); tick > 1; tick -= 1) sim.step();
+
+  const focus = focusParam(params) ?? mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height);
+  const zoom = floatParam(params, 'zoom', BACKDROP_ZOOM);
+  const snap = sim.snapshot();
+  renderer.update({
+    snapshot: snap,
+    camera: cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height),
+    tick: snap.tick,
+    alpha: 1,
+  });
+
+  window.__opennorthlandShotReady = true;
+}
+
+/** `?focus=x,y` in tile coordinates; absent or malformed reads as no override. */
+function focusParam(params: URLSearchParams): { x: number; y: number } | null {
+  const raw = params.get('focus');
+  if (raw === null) return null;
+  const [x, y] = raw.split(',').map((part) => Number.parseInt(part, 10));
+  if (x === undefined || y === undefined || Number.isNaN(x) || Number.isNaN(y)) return null;
+  return { x, y };
+}

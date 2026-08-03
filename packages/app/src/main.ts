@@ -1,5 +1,6 @@
 import { installCrashCapture, logBootHeader } from './diag/index.js';
 import { renderAnimationGallery } from './entries/anim.js';
+import { renderBackdrop } from './entries/backdrop.js';
 import { renderIconGallery } from './entries/icons.js';
 import { renderMainMenu } from './entries/main-menu/index.js';
 import { renderMap } from './entries/map.js';
@@ -17,6 +18,8 @@ import { dismissBootProgress } from './view/boot-progress.js';
  *
  *  - `?shot`            → deterministic, headless screenshot entry (`entries/shot.ts`) - the harness waits
  *                         on `window.__opennorthlandShotReady`; no menu, no RAF loop.
+ *  - `?backdrop=<id>`   → the menu-backdrop capture entry (`entries/backdrop.ts`): one ambient-settlement
+ *                         frame of a decoded map, driven by `npm run menu-backdrops`. Dev-only (needs `content/`).
  *  - `?scene=<id>`      → a registered acceptance scene (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
  *  - `?icons[&atlas=]`  → the icon gallery (`entries/icons.ts`) - browse every decoded bob-atlas frame by
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
 
 async function route(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   if (params.has('shot')) return renderShot(canvas);
+  if (params.has('backdrop')) return renderBackdrop(canvas, params);
   const sceneId = params.get('scene');
   if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);
   if (params.has('anim')) return renderAnimationGallery(canvas, params);

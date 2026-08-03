@@ -136,17 +136,29 @@
   filter: saturate(0.55) brightness(0.5);
 }
 
-/* The live-scene canvas crossfades in over the static art once its world has booted. */
-.main-menu__scene > canvas {
+/* A captured still crossfades in over the static art; two layers alternate so the swap is a fade,
+   and the slow push-in makes the backdrop read as alive. The push-in runs longer than the dwell +
+   fade (backdrops.ts DWELL_MS), so the motion never visibly freezes while a still is on screen. */
+.main-menu__backdrop {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
+  background: center / cover no-repeat;
   opacity: 0;
-  transition: opacity 800ms ease-out;
+  transition: opacity 1600ms ease-out;
 }
 
-.main-menu__scene.is-live > canvas {
+.main-menu__backdrop.is-visible {
   opacity: 1;
+}
+
+.main-menu__backdrop.is-zooming {
+  animation: menu-backdrop-zoom 17s linear forwards;
+}
+
+@keyframes menu-backdrop-zoom {
+  to {
+    transform: scale(1.05);
+  }
 }
 
 .main-menu__tint {
@@ -223,8 +235,10 @@
     animation: none;
   }
 
-  .main-menu__scene > canvas {
+  .main-menu__backdrop,
+  .main-menu__backdrop.is-zooming {
     transition: none;
+    animation: none;
   }
 }
 

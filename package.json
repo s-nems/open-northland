@@ -34,6 +34,7 @@
     "dev:ports": "scripts/dev-ports.sh",
     "dev:reset": "scripts/dev-reset.sh",
     "shot": "npm run shot --workspace @open-northland/app --",
+    "menu-backdrops": "npm run menu-backdrops --workspace @open-northland/app --",
     "pipeline": "npm run start --workspace @open-northland/asset-pipeline --"
   },
   "devDependencies": {
