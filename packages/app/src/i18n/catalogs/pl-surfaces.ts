@@ -144,7 +144,6 @@ export const plSurfaces = {
         on: 'Przez doświadczenie',
         off: 'Wszystkie od początku',
       },
-      changeMap: 'Zmień mapę',
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
     },
