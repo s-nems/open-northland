@@ -8,19 +8,27 @@ import { spawnSandboxSettler } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The hunter sign-off scene: one flag-bound hunter on open grass between a hare herd (small game) and
+ * The hunter sign-off scene: TWO flag-bound hunters on open grass between a hare herd (small game) and
  * a sheep herd (last-resort livestock). Headless, it proves the full loop - the auto-planted work
- * flag, the paced shot (misses included), one kill carried home at a time, the carcass, and the
+ * flags, the paced shot (misses included), one kill carried home at a time, the carcass, and the
  * `hunter_general` XP accrual - plus the tiering: the hares are taken while the sheep herd outlives
- * the run. In the browser a human judges the bow-in-hand draw, the missed arrows, the herd bolting
- * off each release, the carcass decals vanishing once a kill is picked clean (animals leave no
- * bones - only humans do), and the meat heaping up around the hunter's flag.
+ * the run. Two hunters make it a deadlock tripwire for the colleague rules (one hunter per animal, one
+ * hunter per kill): if either claim wedged a hunter, the bag would not come in.
+ *
+ * In the browser a human judges the bow-in-hand draw, the missed arrows, the herd bolting off each
+ * release, the carcass decals vanishing once a kill is picked clean (animals leave no bones - only
+ * humans do), the meat heaping up around each hunter's flag, and - the thing only a human can call -
+ * whether the two hunters read as splitting the herd rather than one shadowing the other's kill.
  */
 
 const MAP_W = 26;
 const MAP_H = 20;
 
-const HUNTER_CELL = { x: 8, y: 8 };
+/** Two hunters, a few tiles apart so each auto-plants its own flag and both herds sit in both grounds. */
+const HUNTER_CELLS = [
+  { x: 8, y: 8 },
+  { x: 8, y: 6 },
+];
 /** Both herds well inside the hunter's auto-planted flag ground (`HUNTER_WORK_FLAG_RADIUS`, 64 nodes). */
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
@@ -34,7 +42,7 @@ const HARE_MEAT_TOTAL =
 const { Settler, Stockpile, WorkFlag } = components;
 
 function build(sim: Simulation): void {
-  spawnSandboxSettler(sim, JOB_HUNTER, HUNTER_CELL.x, HUNTER_CELL.y);
+  for (const at of HUNTER_CELLS) spawnSandboxSettler(sim, JOB_HUNTER, at.x, at.y);
   for (const herd of [
     { tribe: ANIMAL_TRIBE_HARES, cell: HARE_HERD_CELL },
     { tribe: ANIMAL_TRIBE_SHEEP, cell: SHEEP_HERD_CELL },
@@ -52,8 +60,8 @@ function membersOf(sim: Simulation, tribe: number): Entity[] {
   return members;
 }
 
-function theHunter(sim: Simulation): Entity | undefined {
-  return [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === JOB_HUNTER);
+function hunters(sim: Simulation): Entity[] {
+  return [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === JOB_HUNTER);
 }
 
 /** Total banked meat across every stockpile - hunting is this scene's only goods source, so the sum
@@ -80,10 +88,10 @@ export const huntingScene: SceneDefinition = {
   initialZoom: 0.8,
   checks: [
     {
-      label: 'the hunter is flag-bound (spawn auto-planted its work flag)',
+      label: 'both hunters are flag-bound (spawn auto-planted their work flags)',
       predicate: (sim) => {
-        const hunter = theHunter(sim);
-        return hunter !== undefined && sim.world.has(hunter, WorkFlag);
+        const crew = hunters(sim);
+        return crew.length === HUNTER_CELLS.length && crew.every((e) => sim.world.has(e, WorkFlag));
       },
     },
     {
@@ -99,13 +107,21 @@ export const huntingScene: SceneDefinition = {
       predicate: (sim) => bankedMeat(sim) >= HARE_MEAT_TOTAL,
     },
     {
-      label: 'harvesting the carcasses trained hunter_general',
+      label: 'harvesting the carcasses trained hunter_general (summed - the bag splits across the crew)',
       predicate: (sim) => {
-        const hunter = theHunter(sim);
-        if (hunter === undefined) return false;
-        const xp = sim.world.get(hunter, Settler).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0;
+        const xp = hunters(sim).reduce(
+          (sum, e) => sum + (sim.world.get(e, Settler).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0),
+          0,
+        );
         return xp >= HARE_MEAT_TOTAL * HUNTER_GENERAL_XP_TRACK.experienceFactor;
       },
+    },
+    {
+      label: 'both hunters shared the work - neither was wedged off the bag by its colleague',
+      predicate: (sim) =>
+        hunters(sim).every(
+          (e) => (sim.world.get(e, Settler).experience.get(HUNTER_GENERAL_XP_TRACK.typeId) ?? 0) > 0,
+        ),
     },
   ],
 };

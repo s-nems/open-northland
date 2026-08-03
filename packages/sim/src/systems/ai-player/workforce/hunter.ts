@@ -30,7 +30,7 @@ export const OPENING_HUNT_UNTIL_BUILDING_ID = 'work_bakery_01';
  * {@link OPENING_HUNT_UNTIL_BUILDING_ID} stands built, then handed back to the civilian pool (user
  * plan). Employed rather than flag-bound because the two are mutually exclusive
  * (`syncWorkFlagToJob`): the post is what gives him the base as his hunting ground
- * (`conflict/hunting-ground.ts`) and banks his kills into its store as food (`bankedSlot`).
+ * (`conflict/hunting/ground.ts`) and banks his kills into its store as food (`bankedSlot`).
  *
  * Content missing either half of that plan, the hunter trade or the base's hunter seat or the
  * milestone tier, expresses no opening hunt and hires nobody (the plan's skip-missing-content

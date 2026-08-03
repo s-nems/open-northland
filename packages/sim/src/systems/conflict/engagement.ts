@@ -1,22 +1,25 @@
-import type { ContentSet } from '@open-northland/data';
 import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
-  defaultStanceForJob,
   isAnimalTribe,
   isHunterJob,
   isLowPriorityBuildingTarget,
   MILITARY_MODE,
   type MilitaryMode,
+  stanceMode,
 } from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
-import { hunterEngageSpec } from './hunting-ground.js';
+import { hunterEngageSpec } from './hunting/index.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
+
+// Re-exported so the combat modules keep one import site for the stance ladder; the read itself is a
+// plain view over Stance + the job default (readviews/stances.ts).
+export { stanceMode };
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
 // military stance, and the near/far reach band + DEFEND anchor leash the chase respects. Internal to
@@ -37,23 +40,6 @@ export const DEFEND_RADIUS_NODES = 8;
  * defender returns to its anchor. Approximated (source basis).
  */
 export const DEFEND_LEASH_NODES = 12;
-
-/**
- * The military mode an owned combatant acts under - its {@link Stance} `mode`, or (defensively, if the component
- * is somehow missing) the job's {@link defaultStanceForJob}. `NONE` (an unset mode the defaults never produce)
- * is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes an accidental
- * aggressor.
- */
-export function stanceMode(
-  world: World,
-  content: ContentSet,
-  e: Entity,
-  jobType: number | null,
-): MilitaryMode {
-  const s = world.tryGet(e, Stance);
-  const mode = s === undefined ? defaultStanceForJob(content, jobType) : s.mode;
-  return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
-}
 
 /**
  * What a combatant acts under this tick - derived together in one place ({@link engageCombatant}) and passed
@@ -77,7 +63,7 @@ export interface CombatantStance {
  * post, a hunter's ground).
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
- *  - **IGNORE hunter** → the hunting-ground policy ({@link hunterEngageSpec}, ./hunting-ground.ts):
+ *  - **IGNORE hunter** → the hunting policy ({@link hunterEngageSpec}, ./hunting/):
  *    huntable prey only, bounded to the work-flag / workplace ground with the flag as chase anchor,
  *    normal game before last-resort livestock, livestock gated on the ground holding no carcass work,
  *    and the one animal it has drawn on kept as a `lock` until the kill.
@@ -136,8 +122,8 @@ export function engageSpec(
     stance.mode === MILITARY_MODE.IGNORE &&
     isHunterJob(ctx.content, attacker.jobType)
   ) {
-    // The hunting-ground policy (where a hunter hunts, the prey tiers, the livestock gate) lives in
-    // ./hunting-ground.ts; this dispatch only routes the stance to it.
+    // The hunting policy (where a hunter hunts, the prey tiers, the livestock gate) lives in
+    // ./hunting/; this dispatch only routes the stance to it.
     return hunterEngageSpec(world, ctx, terrain, e, attacker.jobType, seesTarget, minDist, sight);
   }
 

@@ -63,7 +63,7 @@ export const HuntRest = defineComponent<{ until: number }>('HuntRest');
 
 /**
  * A hunter's committed prey: the animal it stays on until the kill, rather than re-picking the nearest
- * one each tick. `hunterEngageSpec` (conflict/hunting-ground.ts) owns what keeps a hold alive and reaps
+ * one each tick. `hunterEngageSpec` (conflict/hunting/spec.ts) owns what keeps a hold alive and reaps
  * a lapsed one as it reads it. Never outlives the carrier's {@link Engagement} - an invariant, since
  * only that one branch reaps it (`preyHoldWithinEngagement`).
  */

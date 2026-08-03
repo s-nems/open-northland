@@ -3,6 +3,8 @@
 // other data-defined taxonomies (`classes/`, `jobs.ts` and `tribes/`).
 
 import type { ContentSet } from '@open-northland/data';
+import { Stance } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { isFighterJob, isHunterJob, isScoutJob } from './jobs.js';
 
 /**
@@ -65,4 +67,21 @@ export function defaultStanceForJob(content: ContentSet, jobType: number | null)
   if (isScoutJob(content, jobType)) return MILITARY_MODE.IGNORE; // the scout explores, never picks fights
   if (isHunterJob(content, jobType)) return MILITARY_MODE.IGNORE; // ignores humans; its hunt drive stays
   return MILITARY_MODE.FLEE; // every other civilian job runs from danger
+}
+
+/**
+ * The military mode an owned combatant acts under - its {@link Stance} `mode`, or (defensively, if the
+ * component is somehow missing) the job's {@link defaultStanceForJob}. `NONE` (an unset mode the
+ * defaults never produce) is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value
+ * never becomes an accidental aggressor.
+ */
+export function stanceMode(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  jobType: number | null,
+): MilitaryMode {
+  const s = world.tryGet(e, Stance);
+  const mode = s === undefined ? defaultStanceForJob(content, jobType) : s.mode;
+  return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
 }

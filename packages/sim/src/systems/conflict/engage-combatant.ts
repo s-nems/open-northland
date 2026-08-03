@@ -29,7 +29,7 @@ import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../sp
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
-import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting-ground.js';
+import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting/index.js';
 import type { MeleeSlots } from './melee-slots.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';

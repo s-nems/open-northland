@@ -1,45 +1,18 @@
-import {
-  HUNTER_WORK_FLAG_RADIUS,
-  HuntFocus,
-  JobAssignment,
-  Position,
-  Resource,
-  Settler,
-  WorkFlag,
-} from '../../components/index.js';
-import { contentIndex } from '../../core/content-index.js';
-import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { isLastResortPrey } from '../readviews/index.js';
-import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
-import { entityNode, manhattan } from '../spatial/nodes.js';
-import { anyResourceNear } from '../spatial/resources.js';
-import type { EngageSpec } from './engagement.js';
-import { isHuntTarget } from './targeting.js';
+import { HuntFocus, Settler } from '../../../components/index.js';
+import { ownerOf, ownersCompatible } from '../../../components/ownership.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { isLastResortPrey } from '../../readviews/index.js';
+import { entityNode, manhattan } from '../../spatial/nodes.js';
+import type { EngageSpec } from '../engagement.js';
+import { isHuntTarget } from '../targeting.js';
+import { HUNT_CHASE_SLACK_NODES, huntingGround } from './ground.js';
+import { huntingGroundHoldsCarcass } from './kill-claim.js';
 
-// The hunter's HUNTING GROUND - the prey-acquisition policy an owned IGNORE hunter engages under.
-// Split out of engagement.ts (the stance dispatch) so the ground/tiering rules live in one place:
-// where a hunter hunts, which prey tier it takes, and when livestock is genuinely on the menu.
-
-/**
- * How far (Manhattan nodes) past its hunting ground's radius a hunter's chase may step - the hunting
- * twin of the DEFEND overshoot (`DEFEND_LEASH_NODES` - `DEFEND_RADIUS_NODES` = 4), so a hunter can
- * walk up to game right at the area edge without pursuing a fleeing herd across the map.
- * Approximated (source basis "Combat stances").
- */
-export const HUNT_CHASE_SLACK_NODES = 4;
-
-/**
- * How far (Manhattan nodes) past the ground's radius a hunter's carcass may lie and still be its work:
- * the chase overshoot ({@link HUNT_CHASE_SLACK_NODES}) plus a drift margin for prey that keeps fleeing
- * between the release and the arrow's contact. The carcass-gate probe and the hunter's harvest reach
- * share it, so a kill the leash permits is banked. Not airtight: the uninterruptible draw plus the
- * flight can carry a runner past even this band - a rare stranded decal, never a wedge (the gate
- * cannot see past the band either).
- */
-export const HUNT_CARCASS_SLACK_NODES = HUNT_CHASE_SLACK_NODES + 4;
+// The hunter's PREY-ACQUISITION policy - what an owned IGNORE hunter engages under. Split out of
+// engagement.ts (the stance dispatch) so the tiering, the ground bound and the prey commitment live in
+// one place. ./ground.ts owns where it hunts, ./kill-claim.ts owns which bodies are its work.
 
 /**
  * How long (ticks) a hunter's prey acquisition rests after a search that found nothing (`HuntRest` - the
@@ -55,8 +28,9 @@ export const HUNT_SEARCH_REST_TICKS = 10;
  * shielded a rung above (`carriesKillHome`). Accepts only huntable prey inside the hunting ground
  * ({@link huntingGround}), the ground anchor leashing the chase; never `hold` - an idle hunter belongs
  * to its flag-gatherer drive. Last-resort livestock (huntPrey `lastResort`; user rule) is deprioritized
- * (`lowPriority`: normal game always wins). A hunter with neither flag nor workplace (an unposted
- * fixture) hunts by plain sight, unanchored.
+ * (`lowPriority`: normal game always wins), and prey a fellow hunter has committed to is no candidate
+ * at all ({@link preyHeldByOthers}). A hunter with neither flag nor workplace (an unposted fixture)
+ * hunts by plain sight, unanchored.
  *
  * It also owns the ONE-PREY-AT-A-TIME rule (user rule): the spec's `lock` holds the animal the hunter
  * drew on until it drops, out to the CHASE LEASH rather than the tighter acquisition radius - prey bolts
@@ -75,12 +49,19 @@ export function hunterEngageSpec(
 ): EngageSpec {
   const hereNode = entityNode(world, terrain, e);
   const hunterComponent = terrain.componentOf(hereNode);
+  // Lazily resolved on the first candidate: a hunter that never reaches one pays nothing for the set.
+  let colleagueHolds: ReadonlySet<Entity> | null = null;
+  const heldByColleague = (t: Entity): boolean => {
+    colleagueHolds ??= preyHeldByOthers(world, e);
+    return colleagueHolds.has(t);
+  };
   // An animal across a static terrain seam (an island, the far bank) is not this hunter's game: taking
   // it would hold the unit in a chase re-issuing a route that can never resolve. The same rule the
-  // carcass gate below applies to a stranded kill.
+  // carcass gate applies to a stranded kill.
   const acceptPrey = (t: Entity): boolean =>
     isHuntTarget(world, ctx, t, jobType) &&
     terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent &&
+    !heldByColleague(t) &&
     seesTarget(t);
   const lastResortLivestock = (t: Entity): boolean => {
     const s = world.tryGet(t, Settler);
@@ -152,64 +133,19 @@ function livePrey(world: World, e: Entity, holds: (t: Entity) => boolean): Entit
 }
 
 /**
- * The area an owned hunter hunts: its work-flag circle (the same yard its carcass-harvest drive
- * works), or - employed at a stocking building instead ({@link JobAssignment}; the two are mutually
- * exclusive, see `syncWorkFlagToJob`) - the {@link HUNTER_WORK_FLAG_RADIUS} circle around that
- * workplace. Null for a hunter with neither.
+ * The prey every fellow hunter of the same player is committed to right now ({@link HuntFocus}) - the
+ * candidate set the ONE HUNTER PER ANIMAL rule (user rule 2026-08-03) subtracts, so two hunters sharing
+ * a ground split the herd instead of both drawing on the nearest deer. A rival player's hold is not
+ * subtracted: contested game stays contested. Membership only, so query order carries no decision;
+ * hunters engage in canonical order within the tick, so a hold {@link holdPrey} stamped earlier this
+ * same tick is already in it and two hunters never leave one pass on one animal.
  */
-function huntingGround(
-  world: World,
-  terrain: TerrainGraph,
-  e: Entity,
-): { anchorCell: NodeId; radius: number } | null {
-  const flag = world.tryGet(e, WorkFlag);
-  if (flag !== undefined && world.has(flag.flag, Position)) {
-    const p = world.get(flag.flag, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: flag.radius };
+function preyHeldByOthers(world: World, self: Entity): ReadonlySet<Entity> {
+  const mine = ownerOf(world, self);
+  const held = new Set<Entity>();
+  for (const other of world.query(HuntFocus)) {
+    if (other === self || !ownersCompatible(mine, ownerOf(world, other))) continue;
+    held.add(world.get(other, HuntFocus).target);
   }
-  const workplace = world.tryGet(e, JobAssignment)?.workplace;
-  if (workplace !== undefined && world.has(workplace, Position)) {
-    const p = world.get(workplace, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    return { anchorCell: terrain.nodeAtClamped(n.hx, n.hy), radius: HUNTER_WORK_FLAG_RADIUS };
-  }
-  return null;
-}
-
-/**
- * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's
- * probe: standing work means no new target. An existence-only box query over the resource region index
- * ({@link anyResourceNear}, reach = the ground's radius plus the kill slack, a Manhattan superset),
- * each hit checked for units left, the job's atomic grant, and the exact in-reach distance. It must not
- * out-claim the harvest drive: a carcass the hunter provably cannot bank - across a static terrain
- * component seam, or on a cell its routes just failed on ({@link unreachableGoals}) - counts as no
- * work, else one stranded kill would stall all hunting. Cost is unmeasured
- * (docs/tickets/sim/hunter-scan-costs-bench.md).
- */
-function huntingGroundHoldsCarcass(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  hunter: Entity,
-  jobType: number | null,
-  ground: { anchorCell: NodeId; radius: number },
-): boolean {
-  if (jobType === null) return false;
-  const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
-  if (allowed === undefined) return false;
-  const memo = unreachableGoals(world, ctx, hunter);
-  const hunterComponent = terrain.componentOf(entityNode(world, terrain, hunter));
-  const ax = terrain.xOf(ground.anchorCell);
-  const ay = terrain.yOf(ground.anchorCell);
-  // The slack band: a kill the chase leash permitted may fall past the radius - still this hunter's work.
-  const reach = ground.radius + HUNT_CARCASS_SLACK_NODES;
-  return anyResourceNear(world, ax, ay, reach, (node) => {
-    const res = world.get(node, Resource);
-    if (res.remaining <= 0 || !allowed.has(res.harvestAtomic)) return false;
-    const cell = entityNode(world, terrain, node);
-    if (terrain.componentOf(cell) !== hunterComponent) return false;
-    if (isUnreachableGoal(memo, cell)) return false;
-    return manhattan(terrain, ground.anchorCell, cell) <= reach;
-  });
+  return held;
 }
