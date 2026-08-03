@@ -12,8 +12,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAdultSettler, mayMarry } from '../family/eligibility.js';
 import { familiesOf } from '../family/households.js';
+import { seatBaseOf } from './base.js';
 import type { AiPlayerModule } from './index.js';
-import { assistantCounterCommand, headquartersOf, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
+import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
  * The HomeExpansion module - population planning (user plan, 2026-07-17): every adult woman marries
@@ -26,7 +27,7 @@ import { assistantCounterCommand, headquartersOf, isBuilt, ownedBuildings, owned
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly Command[] {
-  if (headquartersOf(world, ctx, player) === null) return [];
+  if (seatBaseOf(world, ctx, player) === null) return [];
   const commands: Command[] = [];
   const settlers = ownedSettlers(world, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));

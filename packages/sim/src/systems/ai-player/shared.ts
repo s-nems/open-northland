@@ -15,23 +15,15 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
-import { type ContentIndex, contentIndex } from '../../core/content-index.js';
+import type { ContentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
-import type { SystemContext } from '../context.js';
-import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 
 // Shared per-seat lookups the strategic modules recompute each decision (once per
 // AI_DECISION_INTERVAL_TICKS per seat, so plain canonical scans stay within the RTS budget).
-
-// The HQ content id lives with the building read views (a building content fact); re-exported here so
-// the AI barrel's consumers keep their import site. A seat with no built, owned headquarters builds no
-// economy (user rule: no HQ → the AI stays off); the army is the one exception, gating on its barracks
-// instead, so a seat that loses its seat keeps fighting.
-export { HEADQUARTERS_BUILDING_ID };
 
 /**
  * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. A genre-convention
@@ -142,7 +134,7 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
 /**
  * Whether any not-yet-empty resource of `goodType` stands on the map - existence only, so the first
  * box holding a live node answers without ranking it. `near` seeds the expanding-box search (the
- * seat's HQ - collector goods are gathered around it); a null seed or a within-cap miss falls back
+ * seat's base - collector goods are gathered around it); a null seed or a within-cap miss falls back
  * to the early-exit canonical scan, which alone decides a truly dry map.
  */
 export function anyLiveResource(world: World, goodType: number, near: HalfCellNode | null): boolean {
@@ -218,20 +210,6 @@ export function ownedSettlers(world: World, player: number): Entity[] {
 /** Whether the building's construction (or its latest upgrade) is complete. */
 export function isBuilt(world: World, e: Entity): boolean {
   return world.get(e, Building).built >= ONE;
-}
-
-/**
- * The seat's canonical headquarters - the lowest-id owned BUILT {@link HEADQUARTERS_BUILDING_ID}
- * building - or null, in which case every strategic module idles for the seat.
- */
-export function headquartersOf(world: World, ctx: SystemContext, player: number): Entity | null {
-  const buildings = contentIndex(ctx.content).buildings;
-  for (const e of ownedBuildings(world, player)) {
-    const b = world.get(e, Building);
-    if (b.built < ONE) continue;
-    if (buildings.get(b.buildingType)?.id === HEADQUARTERS_BUILDING_ID) return e;
-  }
-  return null;
 }
 
 /** The half-cell node under an entity's Position, or null for an unpositioned entity. */

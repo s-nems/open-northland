@@ -23,7 +23,7 @@ import type { SpareForce } from './pool.js';
  * this rung keeps the `trainSoldiers` counter at the number of men the settlement can spare, and the
  * dispatcher (`systems/assistant/`) drafts, walks and drills them. The more free civilians, the
  * larger the standing order; the AI hand-picks no recruit. A disabled `military` toggle publishes
- * zero, so the assistant stops with the module; only an HQ loss freezes the standing counter (the
+ * zero, so the assistant stops with the module; only losing the base freezes the standing counter (the
  * whole workforce ladder stops deciding upstream).
  *
  * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound

@@ -20,11 +20,11 @@ import {
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
-// PLACEMENT SPOT SEARCH - where a build-order `place` entry lands: always inside the near-HQ
+// PLACEMENT SPOT SEARCH - where a build-order `place` entry lands: always inside the near-anchor
 // Manhattan disc, ring-searched outward from the entry's affinity centre (the plan's "mason toward
-// the stone, chains cluster" rules) instead of the HQ itself, with the farm's plantable-ground
+// the stone, chains cluster" rules) instead of the anchor itself, with the farm's plantable-ground
 // rule as an extra accept filter. No affinity and no ground rule reproduces the original
-// closest-to-HQ pick exactly.
+// closest-to-anchor pick exactly (the anchor is the seat's base).
 
 /** How far past the frontier building an `outskirts` anchor is pushed away from the settlement
  *  centroid - roughly a footprint plus clearance beyond the built edge (named approximation, user
@@ -32,14 +32,14 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 const OUTSKIRTS_PUSH_NODES = 8;
 
 /** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
- *  the live resource of the good nearest the HQ, the map's centre node, or the settlement's
+ *  the live resource of the good nearest the anchor, the map's centre node, or the settlement's
  *  outskirts past a frontier building. Unresolvable anchors are dropped. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
-  hq: HalfCellNode,
+  anchor: HalfCellNode,
   type: BuildingType,
   sameKindAnchors: readonly HalfCellNode[],
   affinity: PlacementAffinity,
@@ -57,7 +57,7 @@ function affinityNode(
     case 'resource': {
       const good = goodTypeByContentId(ctx.content, affinity.good);
       if (good === undefined) return null;
-      const resource = nearestLiveResource(world, good.typeId, hq);
+      const resource = nearestLiveResource(world, good.typeId, anchor);
       return resource === null ? null : anchorNodeOf(world, resource);
     }
     case 'mapCentre':
@@ -77,13 +77,13 @@ function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
  * The `outskirts` anchor: a frontier building pushed {@link OUTSKIRTS_PUSH_NODES} further out from the
  * settlement centroid. `clearance` (distance to the nearest same-kind anchor) outranks `reach`
  * (distance from the centroid), so warehouse #2 anchors past the settlement's least-served side rather
- * than past the same corner as the HQ and warehouse #1 (user rule 2026-07-27); with no anchors the
+ * than past the same corner as the base and warehouse #1 (user rule 2026-07-27); with no anchors the
  * score collapses to the plain farthest-from-centroid frontier. Strict `>` over the canonical list
- * keeps the lowest id on ties, and `searchCentre` clamps the result back into the near-HQ disc.
+ * keeps the lowest id on ties, and `searchCentre` clamps the result back into the near-anchor disc.
  *
  * Clearance dominating means the elected anchor need not be the settlement's outermost building, so
  * the minimum separation is upheld by the {@link KIND_SPACING_NODES} veto, not by this ranking. The
- * HQ is itself a same-kind anchor, which is what keeps a centroid-adjacent candidate scoring low.
+ * base is itself a same-kind anchor, which is what keeps a centroid-adjacent candidate scoring low.
  */
 function outskirtsNode(
   world: World,
@@ -117,24 +117,24 @@ function outskirtsNode(
 }
 
 /** The centre the ring search grows from: the integer-mean of the entry's resolved affinity nodes,
- *  pulled back along the straight line to the HQ when it falls outside the near-HQ disc (so the
- *  search still starts inside the legal band and stays bounded). No resolved anchor → the HQ. */
+ *  pulled back along the straight line to the anchor when it falls outside its disc (so the
+ *  search still starts inside the legal band and stays bounded). No resolved affinity → the anchor. */
 function searchCentre(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
-  hq: HalfCellNode,
+  anchor: HalfCellNode,
   type: BuildingType,
   sameKindAnchors: readonly HalfCellNode[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, terrain, owned, hq, type, sameKindAnchors, affinity);
+    const node = affinityNode(world, ctx, terrain, owned, anchor, type, sameKindAnchors, affinity);
     if (node !== null) anchors.push(node);
   }
-  if (anchors.length === 0) return hq;
+  if (anchors.length === 0) return anchor;
   let sx = 0;
   let sy = 0;
   for (const a of anchors) {
@@ -142,15 +142,15 @@ function searchCentre(
     sy += a.hy;
   }
   const centre = { hx: Math.floor(sx / anchors.length), hy: Math.floor(sy / anchors.length) };
-  const dx = centre.hx - hq.hx;
-  const dy = centre.hy - hq.hy;
+  const dx = centre.hx - anchor.hx;
+  const dy = centre.hy - anchor.hy;
   const dist = Math.abs(dx) + Math.abs(dy);
   if (dist <= BUILD_SEARCH_MAX_RADIUS_NODES) return centre;
-  // Integer projection toward the HQ; trunc keeps |dx'|+|dy'| ≤ the radius. Plain `/` on integer
+  // Integer projection toward the anchor; trunc keeps |dx'|+|dy'| ≤ the radius. Plain `/` on integer
   // operands is IEEE-exact-rounded, hence byte-identical across engines (no transcendental math).
   return {
-    hx: hq.hx + Math.trunc((dx * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
-    hy: hq.hy + Math.trunc((dy * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
+    hx: anchor.hx + Math.trunc((dx * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
+    hy: anchor.hy + Math.trunc((dy * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
   };
 }
 
@@ -210,7 +210,7 @@ export function buildingSpotAccept(
 const KIND_SPACING_NODES = 20;
 
 /** The anchors an `apart` entry keeps its distance from: the seat's buildings of the same KIND as the
- *  placed type (a warehouse spreads away from the HQ and from every other warehouse). */
+ *  placed type (a warehouse spreads away from the base and from every other warehouse). */
 function kindSpacingAnchors(
   world: World,
   ctx: SystemContext,
@@ -229,9 +229,9 @@ function kindSpacingAnchors(
 
 /**
  * The spot a `place` entry builds on: the legal anchor closest to the entry's {@link searchCentre},
- * restricted to the near-HQ disc, on buildable (and, when required, plantable) ground, off every
+ * restricted to the near-anchor disc, on buildable (and, when required, plantable) ground, off every
  * existing building's anchor, and accepted by the shared placement probe. Ring order is canonical,
- * so the winner is deterministic; the search is bounded by twice the HQ radius (a centre inside the
+ * so the winner is deterministic; the search is bounded by twice the anchor radius (a centre inside the
  * disc reaches every disc node within that), never the whole map. Null stalls the entry.
  *
  * An `apart` entry's same-kind anchors do double duty: they steer the `outskirts` affinity to the
@@ -243,18 +243,18 @@ export function placementSpot(
   ctx: SystemContext,
   terrain: TerrainGraph,
   owned: readonly Entity[],
-  hq: HalfCellNode,
+  anchor: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode | null {
   const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
-  const centre = searchCentre(world, ctx, terrain, owned, hq, type, sameKindAnchors, entry);
+  const centre = searchCentre(world, ctx, terrain, owned, anchor, type, sameKindAnchors, entry);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
     firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-      // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
+      // The pure-arithmetic anchor-disc test first: an affinity-pulled centre puts up to half of every ring
       // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
-      if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
+      if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first
       if (!groundAccepted(ctx, terrain, type, entry, x, y)) return false;

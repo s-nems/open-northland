@@ -89,7 +89,7 @@ function stealVeteranFor(
 export function allocateCollectors(
   world: World,
   ctx: SystemContext,
-  hq: Entity,
+  base: Entity,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
@@ -100,12 +100,12 @@ export function allocateCollectors(
   if (terrain === undefined) return [];
   const commands: Command[] = [];
   const relocateDue = flagRelocateDue(ctx);
-  const hqNode = anchorNodeOf(world, hq);
+  const baseNode = anchorNodeOf(world, base);
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     upkeepHolders(world, ctx, terrain, w, holders, taken, relocateDue, builderJob, commands);
-    if (holders.length > 0 || hqNode === null) continue;
-    const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId, taken);
+    if (holders.length > 0 || baseNode === null) continue;
+    const spot = collectorSpot(world, ctx, terrain, baseNode, w.good.typeId, taken);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
     if (spare !== null) {
@@ -132,7 +132,7 @@ export function allocateCollectors(
 export function topUpCollectors(
   world: World,
   ctx: SystemContext,
-  hq: Entity,
+  base: Entity,
   wanted: readonly WantedGood[],
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
@@ -140,13 +140,13 @@ export function topUpCollectors(
 ): Command[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
-  const hqNode = anchorNodeOf(world, hq);
-  if (hqNode === null) return [];
+  const baseNode = anchorNodeOf(world, base);
+  if (baseNode === null) return [];
   const commands: Command[] = [];
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     while (holders.length > 0 && holders.length < w.target) {
-      const spot = collectorSpot(world, ctx, terrain, hqNode, w.good.typeId, taken);
+      const spot = collectorSpot(world, ctx, terrain, baseNode, w.good.typeId, taken);
       if (spot === null) break;
       const spare = force.take((e) => meetsNeed(world, ctx, e, w.good.typeId));
       if (spare === null) break;
@@ -160,13 +160,13 @@ export function topUpCollectors(
  * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts - a flag with NO good
  * filter (`setGatherGood null`), so the holder picks up whatever its trade may harvest inside the
  * circle (XP gates permitting). Hired at the lowest priority beside the collected-goods resource
- * nearest the HQ; retired to builder when nothing its trade harvests remains in the circle. No
+ * nearest the base; retired to builder when nothing its trade harvests remains in the circle. No
  * relocation cadence - a generic flag either lives or retires (user plan 2026-07-25).
  */
 export function allocateGenericCollectors(
   world: World,
   ctx: SystemContext,
-  hq: Entity,
+  base: Entity,
   genericCollectors: readonly Entity[],
   force: SpareForce,
   taken: TakenFlagNodes,
@@ -185,10 +185,10 @@ export function allocateGenericCollectors(
     if (builderJob !== null) commands.push({ kind: 'setJob', entity: g, jobType: builderJob });
   }
   const job = genericCollectorJob(ctx);
-  const hqNode = anchorNodeOf(world, hq);
-  if (job === null || hqNode === null) return commands;
+  const baseNode = anchorNodeOf(world, base);
+  if (job === null || baseNode === null) return commands;
   for (let hired = genericCollectors.length; hired < GENERIC_COLLECTOR_TARGET; hired++) {
-    const resource = nearestCollectedResource(world, ctx, hqNode);
+    const resource = nearestCollectedResource(world, ctx, baseNode);
     if (resource === null) break; // no collected good stands anywhere - no generic post
     const spot = flagSpotNear(world, ctx, terrain, resource, taken);
     if (spot === null) break;
@@ -202,22 +202,22 @@ export function allocateGenericCollectors(
   return commands;
 }
 
-/** The anchor of the live {@link COLLECTED_GOOD_IDS} resource nearest the HQ - canonical
+/** The anchor of the live {@link COLLECTED_GOOD_IDS} resource nearest the base - canonical
  *  `(distance, goodType)` pick, so two equidistant goods always resolve the same way. */
 function nearestCollectedResource(
   world: World,
   ctx: SystemContext,
-  hqNode: HalfCellNode,
+  baseNode: HalfCellNode,
 ): HalfCellNode | null {
   let best: { node: HalfCellNode; dist: number; goodType: number } | null = null;
   for (const goodId of COLLECTED_GOOD_IDS) {
     const good = goodByContentId(ctx.content, goodId);
     if (good === undefined) continue;
-    const resource = nearestLiveResource(world, good.typeId, hqNode);
+    const resource = nearestLiveResource(world, good.typeId, baseNode);
     if (resource === null) continue;
     const node = anchorNodeOf(world, resource);
     if (node === null) continue;
-    const dist = Math.abs(node.hx - hqNode.hx) + Math.abs(node.hy - hqNode.hy);
+    const dist = Math.abs(node.hx - baseNode.hx) + Math.abs(node.hy - baseNode.hy);
     if (best === null || dist < best.dist || (dist === best.dist && good.typeId < best.goodType)) {
       best = { node, dist, goodType: good.typeId };
     }

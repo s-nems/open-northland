@@ -78,6 +78,7 @@ import {
 } from './ai-player/support.js';
 import './ai-player/garrison-and-craft.cases.js';
 import './ai-player/livestock-round-up.cases.js';
+import './ai-player/loss-recovery.cases.js';
 import './ai-player/opening-hunter.cases.js';
 import './ai-player/signpost-coverage.cases.js';
 

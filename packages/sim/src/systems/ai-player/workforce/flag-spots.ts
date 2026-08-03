@@ -73,17 +73,17 @@ export function flagSpotNear(
   );
 }
 
-/** The flag spot beside the good's live resource nearest the HQ, or null when the map holds none
+/** The flag spot beside the good's live resource nearest the seat's base, or null when the map holds none
  *  (or no legal flag node stands near it). */
 export function collectorSpot(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  hqNode: HalfCellNode,
+  baseNode: HalfCellNode,
   goodType: number,
   taken: TakenFlagNodes,
 ): HalfCellNode | null {
-  const resource: Entity | null = nearestLiveResource(world, goodType, hqNode);
+  const resource: Entity | null = nearestLiveResource(world, goodType, baseNode);
   if (resource === null) return null;
   const node = anchorNodeOf(world, resource);
   return node === null ? null : flagSpotNear(world, ctx, terrain, node, taken);

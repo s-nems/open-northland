@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 const {
+  BASE_REPLACEMENT_ENTRY,
   COLLECTOR_TARGET_BY_GOOD_ID,
   CRAFT_RESTRICTIONS_BY_BUILDING_ID,
   DEFAULT_BUILD_ORDER,
@@ -17,10 +18,11 @@ const {
  * Pin the AI opening plan's content bindings against the real extracted content. The sim silently
  * `skip`s a plan entry whose id is unknown, so a typo amputates the AI's plan with no test failure
  * and no symptom beyond "the AI never builds X" - this suite is the tripwire: every id in
- * `DEFAULT_BUILD_ORDER` and the workforce tables must resolve, every direct-place tier must carry a
- * construction bill (a bill-less site would finish instantly), every upgrade target must be reachable
- * over the `upgradeTarget` chain, and the per-building staffing targets must fit real worker slots
- * (the staffing cap is `min(slot.count, target)`, so a stale target silently degrades).
+ * `DEFAULT_BUILD_ORDER`, the base replacement, and the workforce tables must resolve, every
+ * direct-place tier must carry a construction bill (a bill-less site would finish instantly), every
+ * upgrade target must be reachable over the `upgradeTarget` chain, and the per-building staffing
+ * targets must fit real worker slots (the staffing cap is `min(slot.count, target)`, so a stale
+ * target silently degrades).
  */
 describe.runIf(hasRealIr())('AI opening plan against real content', () => {
   it('every plan id resolves, direct places carry bills, upgrade targets are chained', async () => {
@@ -29,7 +31,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
     const byTypeId = new Map(content.buildings.map((b) => [b.typeId, b]));
 
-    for (const entry of DEFAULT_BUILD_ORDER) {
+    for (const entry of [BASE_REPLACEMENT_ENTRY, ...DEFAULT_BUILD_ORDER]) {
       if (entry.kind === 'collector') {
         expect(
           content.goods.some((g) => g.id === entry.good),
@@ -95,6 +97,18 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     expect(
       hq?.workers.some((w) => w.jobType === hunterJob),
       'a hunter slot at the headquarters',
+    ).toBe(true);
+    // Why the replacement exists at all: the headquarters declares an EMPTY bill, and an empty-cost
+    // type waives the labor gate, so rebuilding one would raise a free hub the moment it is placed.
+    expect(hq?.construction.length, 'an empty headquarters bill').toBe(0);
+    // The base replacement is found by KIND but named by id, so a drift between the two would leave a
+    // baseless seat re-placing a warehouse it never adopts. Its hunter slot keeps the opening hunt
+    // running out of the rebuilt hub.
+    const replacement = buildingById.get(BASE_REPLACEMENT_ENTRY.building);
+    expect(replacement?.kind, `${BASE_REPLACEMENT_ENTRY.building} is storage`).toBe('storage');
+    expect(
+      replacement?.workers.some((w) => w.jobType === hunterJob),
+      `a hunter slot at ${BASE_REPLACEMENT_ENTRY.building}`,
     ).toBe(true);
     expect(
       buildingById.has(OPENING_HUNT_UNTIL_BUILDING_ID),
