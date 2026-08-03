@@ -34,6 +34,8 @@ const BUTTONS_TOP = 60;
 const DEFENCE_ROW_H = 20;
 /** The alarm toggle's diameter - the equip-slot action button's size, the round control it copies. */
 const DEFENCE_TOGGLE_BTN = 15;
+/** Gap between the alarm toggle and the status line it leads. */
+export const DEFENCE_LABEL_GAP = 5;
 /** Need/progress bar height. */
 export const BAR_H = 10;
 /** Inset between the preview box's frame and the building bob drawn inside it. */
@@ -165,16 +167,15 @@ function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAc
   ];
 }
 
-/** The alarm toggle, right-aligned and vertically centred in the defence body's row, leaving the rest of
- *  the line to the status text. Always enabled: raising or lowering the alarm is always a legal order for
- *  a building that has the window at all. */
+/** The alarm toggle: it leads the defence body's row from the left, vertically centred. Always enabled -
+ *  raising or lowering the alarm is always a legal order for a building that has the window at all. */
 function defenceToggleHit(body: Rect, s: number): ButtonHit {
   const size = Math.round(DEFENCE_TOGGLE_BTN * s);
   return {
     action: 'toggle-defence',
     enabled: true,
     rect: {
-      x: body.x + body.w - size,
+      x: body.x,
       y: body.y + Math.round((body.h - size) / 2),
       w: size,
       h: size,

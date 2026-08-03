@@ -280,6 +280,25 @@ describe('details panel layout', () => {
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 
+  it('leads the Obrona row with the alarm toggle, centred on the line its status text sits on', () => {
+    for (const s of MENU_UISCALE_VALUES) {
+      const layout = viewOfKind(
+        buildUnitPanelModel(snapshotOf([buildingEntity(1, BUILDING_TOWER)]), new Set([1]), sandboxCtx()),
+        'building',
+        s,
+      ).layout;
+      const body = layout.defence?.body;
+      const toggle = layout.defenceToggle?.rect;
+      if (body === undefined || toggle === undefined) throw new Error(`no defence row at ×${s}`);
+      const at = `×${s}`;
+      expect(toggle.x, at).toBe(body.x); // leads the row: the status text follows it, never the reverse
+      expect(toggle.w, at).toBe(toggle.h); // round, like the equip controls it copies
+      // The section sets the status text on the toggle's own centre line, so the pair is level by
+      // construction; what the layout owes is a toggle centred in the row (within the integer-px round).
+      expect(Math.abs(toggle.y + toggle.h / 2 - (body.y + body.h / 2)), at).toBeLessThanOrEqual(1);
+    }
+  });
+
   it('swaps to the Construction window while a site rises - no production/stock sections', () => {
     const model = buildUnitPanelModel(
       {
