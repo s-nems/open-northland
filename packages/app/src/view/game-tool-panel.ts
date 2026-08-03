@@ -3,6 +3,7 @@ import type { Command } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
+import type { Rect } from '../hud/geometry.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
@@ -57,6 +58,8 @@ export interface GameToolPanelDeps {
   /** A higher HUD overlay's claim (the minimap window) - the panel yields left clicks it covers, so hit
    *  priority follows draw order (see {@link ToolPanelOptions.deferToOverlay}). */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
+  /** That overlay's screen-px box, which the panel's pop-up lists size against. */
+  readonly overlayReserve?: () => Rect | null;
   /** Open the in-game system menu - the `options` button's action, wired by the game view. */
   readonly onSystemMenu?: () => void;
 }
@@ -157,6 +160,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     onSpeedChange: deps.onSpeed,
     screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
     ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
+    ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
     ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
   });
 

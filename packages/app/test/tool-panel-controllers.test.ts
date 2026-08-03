@@ -3,6 +3,8 @@ import type { Command } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
+import type { Rect } from '../src/hud/geometry.js';
+import { minimapLayout, terrainWorldBounds } from '../src/hud/minimap/model.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
@@ -40,7 +42,7 @@ import { messages } from '../src/i18n/index.js';
 const SCREEN = { width: 800, height: 600 };
 
 /** A PanelContext whose text factory records what it was asked to build (no Pixi text, no fonts). */
-function stubContext(): { ctx: PanelContext; made: string[] } {
+function stubContext(overlayReserve?: () => Rect | null): { ctx: PanelContext; made: string[] } {
   const made: string[] = [];
   const layout = buildToolPanelLayout(1);
   const ctx: PanelContext = {
@@ -53,6 +55,7 @@ function stubContext(): { ctx: PanelContext; made: string[] } {
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
+    ...(overlayReserve !== undefined ? { overlayReserve } : {}),
   };
   return { ctx, made };
 }
@@ -211,6 +214,81 @@ describe('tabbed-list window controller (build menu)', () => {
     for (let i = 0; i < 5; i++) menu.handleWheel(p.x, p.y, 120);
     menu.handleClick(p.x, p.y);
     expect(picks.at(-1)).toBe(top + 5);
+  });
+});
+
+describe('tabbed-list window bound by a bottom-corner overlay', () => {
+  /** A bottom-left overlay reaching high enough to bite at the stub scale - the minimap's framed window
+   *  is the real one. Its x-span covers the pop-up column (`origin.x` = strip width + WIN_PAD = 56). */
+  const OVERLAY: Rect = { x: 0, y: 260, w: 224, h: SCREEN.height - 260 };
+
+  /** The lowest canvas y the open window still claims, probed down its own column: the controller keeps
+   *  its layout private, and `claims` is the seam the panel routes presses through anyway. */
+  function claimedBottom(menu: { claims(x: number, y: number): boolean }, x: number): number {
+    let last = -1;
+    for (let y = 0; y < SCREEN.height; y++) {
+      if (menu.claims(x, y)) last = y;
+    }
+    return last;
+  }
+
+  const columnX = (ctx: PanelContext): number => ctx.layout.width + WIN_PAD * ctx.scale + 1;
+
+  it('shortens the list so no row is left under the overlay', () => {
+    const unbounded = stubContext().ctx;
+    const bounded = stubContext(() => OVERLAY).ctx;
+    const free = menuWindow(unbounded, MANY, () => undefined);
+    const clipped = menuWindow(bounded, MANY, () => undefined);
+    free.toggle();
+    clipped.toggle();
+
+    // Without the reserve the same list reaches into the overlay - the bug this bounds.
+    expect(claimedBottom(free, columnX(unbounded))).toBeGreaterThanOrEqual(OVERLAY.y);
+    expect(claimedBottom(clipped, columnX(bounded))).toBeLessThan(OVERLAY.y);
+  });
+
+  it('keeps the full screen-foot height when the overlay is clear of the window x-span', () => {
+    const unbounded = stubContext().ctx;
+    // Right edge exactly at the window's left edge: rects are half-open, so this is no overlap.
+    const narrow: Rect = { ...OVERLAY, w: unbounded.layout.width + WIN_PAD * unbounded.scale };
+    const beside = stubContext(() => narrow).ctx;
+    const free = menuWindow(unbounded, MANY, () => undefined);
+    const other = menuWindow(beside, MANY, () => undefined);
+    free.toggle();
+    other.toggle();
+
+    expect(claimedBottom(other, columnX(beside))).toBe(claimedBottom(free, columnX(unbounded)));
+  });
+
+  it('clears the real minimap window at the shipped uiscales', () => {
+    // The shipped bottom-left overlay, not a fixture: the wired reserve is exactly this rect.
+    const bounds = terrainWorldBounds(200, 200);
+    for (const uiscale of [1, 1.25, 1.4, 1.75, 2]) {
+      const screen = { width: 1400, height: 900 };
+      const panel = minimapLayout(bounds, screen.height, uiscale).panel;
+      const layout = buildToolPanelLayout(uiscale);
+      const ctx: PanelContext = { ...stubContext().ctx, layout, scale: layout.scale };
+      const menu = menuWindow({ ...ctx, screen: () => screen, overlayReserve: () => panel }, MANY, () => {});
+      menu.toggle();
+      const x = layout.width + WIN_PAD * layout.scale + 1;
+      let lowest = -1;
+      for (let y = 0; y < screen.height; y++) {
+        if (menu.claims(x, y)) lowest = y;
+      }
+      expect({ uiscale, covered: lowest >= panel.y }).toEqual({ uiscale, covered: false });
+    }
+  });
+
+  it('re-fits on refresh when the overlay moves', () => {
+    let overlay: Rect | null = OVERLAY;
+    const { ctx } = stubContext(() => overlay);
+    const menu = menuWindow(ctx, MANY, () => undefined);
+    menu.toggle();
+    const clipped = claimedBottom(menu, columnX(ctx));
+
+    overlay = null; // the overlay went away - the next frame must grow the list back
+    menu.refresh();
+    expect(claimedBottom(menu, columnX(ctx))).toBeGreaterThan(clipped);
   });
 });
 

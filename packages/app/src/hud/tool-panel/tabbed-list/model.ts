@@ -40,6 +40,12 @@ export function chromeAboveList(tabCount: number, tabColumns: number): number {
   return HEADLINE_H + Math.ceil(tabCount / tabColumns) * TAB_H + LIST_GAP;
 }
 
+/** The screen-px width of every tabbed-list window - fixed per scale, so a controller knows its x-span
+ *  before it has a layout (the overlay-overlap test runs before the row count is decided). */
+export function tabbedListWindowWidth(scale: number): number {
+  return Math.round(WINDOW_W * Math.max(1, scale));
+}
+
 // --- Model -----------------------------------------------------------------------------------------
 
 /** A listed item, as the window needs it: it must name itself; the caller keys everything else. */
@@ -126,7 +132,7 @@ export function layoutTabbedList<Id, Item>(
   const px = (v: number): number => Math.round(v * s);
   const total = items.length;
 
-  const width = px(WINDOW_W);
+  const width = tabbedListWindowWidth(opts.scale);
   const headlineH = px(HEADLINE_H);
   const tabH = px(TAB_H);
   const rowH = px(ROW_H);

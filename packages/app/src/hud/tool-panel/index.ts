@@ -4,7 +4,7 @@ import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
-import { clientToCanvas } from '../geometry.js';
+import { clientToCanvas, type Rect } from '../geometry.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
@@ -76,6 +76,8 @@ export interface ToolPanelOptions {
    *  overlay must never toggle the hidden button / drop a foundation sight-unseen. Right-click
    *  (cancel placement) is deliberately not deferred. Injected per the hud contract. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
+  /** That same overlay's box, which the pop-up lists size against - see {@link PanelContext.overlayReserve}. */
+  readonly overlayReserve?: () => Rect | null;
   /** Open the in-game system menu - the `options` button's action (view/system-menu.ts). Injected per
    *  the hud contract (the panel invokes a callback; it never navigates or owns the session itself). */
   readonly onSystemMenu?: () => void;
@@ -179,6 +181,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     bitmaps,
     uiString: uiStringLookup(strings),
     screen: () => app.screen,
+    ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
   };
 
   const placement = createPlacementController({
