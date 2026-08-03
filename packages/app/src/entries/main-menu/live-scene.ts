@@ -13,10 +13,9 @@ import { sandboxGoods } from '../../game/sandbox/index.js';
 import { loadMapScript, loadTerrainMap } from '../../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, sliceTerrain } from '../../slice/vertical-slice.js';
 import { cameraCenteredOnTile } from '../../view/camera/index.js';
-import { type RafLoop, startRafLoop } from '../../view/runtime/raf-loop.js';
+import { startRafLoop } from '../../view/runtime/raf-loop.js';
 import { createWorldRenderer, loadLocalizedRealContent } from '../../view/runtime/world-bootstrap.js';
 import { cameraDrift } from './model.js';
-import { menuSettings, onSettingsChange } from './settings-state.js';
 
 /**
  * The live settlement behind the menu (docs/design/main-menu/README.md "Background stack" layer 1):
@@ -125,44 +124,28 @@ async function boot(host: HTMLElement, canvas: HTMLCanvasElement, params: URLSea
 
   frame(0, 1);
   host.classList.add('is-live');
+  // The design's reduced-motion behavior: freeze on the authored frame, keep the grade. Pixi's
+  // resize plugin re-renders the retained stage on resize with the old framing and culling, so the
+  // frozen frame must be redrawn for the new viewport.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // One frame late, after the plugin's own queued resize has applied the new screen size.
+    window.addEventListener('resize', () => requestAnimationFrame(() => frame(0, 1)));
+    return true;
+  }
 
-  // Freeze semantics shared by prefers-reduced-motion and the settings toggle "animated menu
-  // scene": no sim stepping, no drift, the last frame stands. Reduced motion wins over the toggle.
-  // The loop's lifetime is otherwise the page's - every way out of the menu is a URL navigation.
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const timestep = new FixedTimestep();
   let lastMs: number | null = null;
   let driftMs = 0;
-  let loop: RafLoop | null = null;
-  const startLoop = (): void => {
-    lastMs = null;
-    loop = startRafLoop((nowMs) => {
-      const elapsed = lastMs === null ? 0 : nowMs - lastMs;
-      lastMs = nowMs;
-      // Clamped so a backgrounded tab resumes the drift where it left off instead of teleporting
-      // the camera by the hidden time; the timestep's own step cap already drops the sim backlog.
-      driftMs += Math.min(elapsed, MAX_DRIFT_STEP_MS);
-      const alpha = timestep.advance(elapsed, () => sim.step());
-      frame(driftMs, alpha);
-    });
-  };
-  // Pixi's resize plugin re-renders the retained stage on resize with the old framing and culling,
-  // so a frozen frame must be redrawn for the new viewport - one frame late, after the plugin's own
-  // queued resize has applied the new screen size. The running loop covers the animated case.
-  window.addEventListener('resize', () => {
-    if (loop === null) requestAnimationFrame(() => frame(driftMs, 1));
+  // The stop handle is deliberately dropped: every way out of the menu is a URL navigation (full
+  // reload), so the page teardown is the loop's lifetime. An in-page exit would need to keep it.
+  startRafLoop((nowMs) => {
+    const elapsed = lastMs === null ? 0 : nowMs - lastMs;
+    lastMs = nowMs;
+    // Clamped so a backgrounded tab resumes the drift where it left off instead of teleporting the
+    // camera by the hidden time; the timestep's own step cap already drops the sim backlog.
+    driftMs += Math.min(elapsed, MAX_DRIFT_STEP_MS);
+    const alpha = timestep.advance(elapsed, () => sim.step());
+    frame(driftMs, alpha);
   });
-  if (!reducedMotion) {
-    if (menuSettings().animatedMenuScene) startLoop();
-    onSettingsChange((settings) => {
-      if (settings.animatedMenuScene === (loop !== null)) return;
-      if (settings.animatedMenuScene) {
-        startLoop();
-      } else {
-        loop?.stop();
-        loop = null;
-      }
-    });
-  }
   return true;
 }

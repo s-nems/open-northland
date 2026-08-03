@@ -161,8 +161,6 @@ export const enSurfaces = {
       displayWindow: 'Window',
       resolution: 'Resolution',
       uiScale: 'In-game interface scale',
-      smoothScroll: 'Smooth map scrolling',
-      animatedScene: 'Animated menu scene',
       soundEnabled: 'In-game sound',
       masterVolume: 'Master volume',
       musicVolume: 'Music volume',
@@ -206,8 +204,6 @@ export const enSurfaces = {
   },
   common: {
     backToMenu: 'Back to menu',
-    soundOn: '🔊 Sound on',
-    soundOff: '🔇 Click to enable sound',
     missingContentTitle: 'Decoded content is unavailable',
     missingTerrainDetail:
       'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on a game copy you own (npm run pipeline), then reload.',
