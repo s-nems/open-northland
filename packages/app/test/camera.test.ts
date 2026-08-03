@@ -16,8 +16,8 @@ import {
 /**
  * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here
  * (including `screenScale`, the CSS-px → Pixi-screen-px mapping every drag/pick/hit-test rides on).
- * The DOM wiring (`createCameraController`'s mouse/wheel/key listeners) and the *feel* of the result are
- * human-gated - see the `npm run dev` check in the iteration closeout.
+ * `createCameraController`'s edge-scroll arming is covered in `camera-controller.test.ts`; the rest of
+ * its DOM wiring and the *feel* of the result stay human-gated (the `npm run dev` pass).
  */
 
 /** A canvas stub with a `width×height` device-px backing store shown in a `cssW×cssH` CSS box. */

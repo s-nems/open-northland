@@ -77,16 +77,9 @@ export function createCameraController(
   let targetScale = initial.scale ?? 1;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
-  // Last known pointer position (client px) + whether it is over the canvas - the edge-scroll probe.
-  // `pointerMoved` gates the probe until a real `mousemove` sample lands: `onPointerEnter` sets
-  // `pointerInside` but records no position (the browser fires `mouseenter` when the canvas mounts under
-  // a stationary cursor, e.g. the loading-card→scene swap), so without this gate the still-(0,0)
-  // `pointerX/pointerY` would edge-scroll toward the top-left corner. It also honours the "parked cursor
-  // doesn't pan until it moves" intent.
-  let pointerX = 0;
-  let pointerY = 0;
-  let pointerInside = false;
-  let pointerMoved = false;
+  // The edge-scroll probe: the last `mousemove` sample that landed ON the canvas (client px), null while
+  // the cursor is elsewhere, the window is unfocused, or nothing has moved yet (a parked cursor waits).
+  let pointerSample: { readonly x: number; readonly y: number } | null = null;
 
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button !== 1) return; // middle button only
@@ -96,9 +89,10 @@ export function createCameraController(
     e.preventDefault(); // suppress the middle-click autoscroll widget
   };
   const onMouseMove = (e: MouseEvent): void => {
-    pointerX = e.clientX;
-    pointerY = e.clientY;
-    pointerMoved = true;
+    // Every move re-arms the probe, because `mouseenter` fires only on a boundary crossing: a refocus
+    // with the cursor already resting over the canvas gets none. Hit target rather than canvas rect, so a
+    // DOM element stacked over the canvas (an open picker window's full-screen backdrop) disarms it.
+    pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution);
     cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
@@ -108,11 +102,9 @@ export function createCameraController(
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button === 1) dragging = false;
   };
-  const onPointerEnter = (): void => {
-    pointerInside = true;
-  };
-  const onPointerLeave = (): void => {
-    pointerInside = false;
+  // The crossing still disarms: a cursor that leaves the browser window lands no further `mousemove`.
+  const onMouseLeave = (): void => {
+    pointerSample = null;
   };
   const onWheel = (e: WheelEvent): void => {
     // Over an open HUD window the wheel belongs to that window's list, not the camera - leave the event
@@ -140,14 +132,13 @@ export function createCameraController(
   const onBlur = (): void => {
     held.clear();
     dragging = false;
-    pointerInside = false;
+    pointerSample = null;
   };
 
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-  canvas.addEventListener('mouseenter', onPointerEnter);
-  canvas.addEventListener('mouseleave', onPointerLeave);
+  canvas.addEventListener('mouseleave', onMouseLeave);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -188,23 +179,21 @@ export function createCameraController(
       if (held.has('ArrowRight')) desiredX -= tuning.arrowPanSpeed;
       if (held.has('ArrowUp')) desiredY += tuning.arrowPanSpeed;
       if (held.has('ArrowDown')) desiredY -= tuning.arrowPanSpeed;
-      // Edge scroll: pointer resting in the margin band pans, but only once a real pointer sample has
-      // landed (`pointerMoved`; until then the position is the stale (0,0)) and not while mid-drag (the
-      // drag owns the motion), the window is unfocused (RAF still runs when visible), or a HUD surface
-      // claims the point (an open window / the minimap must not also pan). A LEFT-drag marquee is not suppressed
+      // Edge scroll: a pointer sample resting in the margin band pans, but not while mid-drag (the drag
+      // owns the motion), the window is unfocused (RAF still runs when visible), or a HUD surface claims
+      // the point (an open window / the minimap must not also pan). A LEFT-drag marquee is not suppressed
       // - dragging a selection box into the margin pans under the screen-anchored box (a named
       // tradeoff: RTS players use exactly that to select past the screen edge).
       if (
-        pointerInside &&
-        pointerMoved &&
+        pointerSample &&
         !dragging &&
         document.hasFocus() &&
-        edgeGuard?.(pointerX, pointerY) !== true
+        edgeGuard?.(pointerSample.x, pointerSample.y) !== true
       ) {
         const { sx, sy, rect } = screenScale(canvas, resolution);
         const edge = edgePanVelocity(
-          pointerX - rect.left,
-          pointerY - rect.top,
+          pointerSample.x - rect.left,
+          pointerSample.y - rect.top,
           rect.width,
           rect.height,
           tuning.edgeScrollSpeed,
@@ -220,8 +209,7 @@ export function createCameraController(
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('mouseenter', onPointerEnter);
-      canvas.removeEventListener('mouseleave', onPointerLeave);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
