@@ -1,8 +1,6 @@
 /**
- * Bundles the desktop shell's runtime with esbuild into `dist/` (tsc only typechecks - see
- * tsconfig's emitDeclarationOnly). Bundling (instead of shipping node_modules) is what lets
- * electron-builder package the npm-workspace-symlinked pipeline + content-resolver dependencies:
- * everything lands in four self-contained files plus the copied setup page statics.
+ * electron-builder ships only `dist/**` and `package.json`, so the workspace-symlinked pipeline and
+ * content-resolver dependencies must be inlined here; `tsc` emits declarations only.
  */
 
 import { cp, mkdir } from 'node:fs/promises';
@@ -13,7 +11,7 @@ import { build } from 'esbuild';
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const dist = join(packageRoot, 'dist');
 
-/** Everything Electron provides at runtime stays external; node builtins via platform: 'node'. */
+/** Electron is provided by the runtime, so it stays external. */
 const nodeBundle = {
   bundle: true,
   platform: 'node',
