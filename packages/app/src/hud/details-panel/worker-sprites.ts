@@ -17,12 +17,13 @@ import {
   Texture,
 } from 'pixi.js';
 import type { Rect } from '../geometry.js';
-import { boundWorkers, groupedWorkers } from './worker-selection.js';
+import { fieldWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
- * The animated worker sprites drawn in the details panel's "Pracownicy" field - the settlers bound to
- * the selected building, drawn as on the map (their real body/head, team colour and current-action
- * animation) but with no terrain behind them, so the player sees who is working there.
+ * The animated worker sprites drawn in the details panel's "Pracownicy" field - the settlers the selected
+ * building holds ({@link fieldWorkers}: its workers, or the garrison sheltering in it), drawn as on the
+ * map (their real body/head, team colour and current-action animation) but with no terrain behind them,
+ * so the player sees who is in there.
  *
  * It is a live overlay, not part of the baked panel texture: the panel re-bakes at most 4 Hz (its values
  * barely change), but an animation must advance every frame - so the worker sprites are drawn straight to
@@ -102,7 +103,7 @@ export class WorkerSpriteOverlay {
     }
     const resident = groups !== undefined ? groupedWorkers(snapshot, groups) : undefined;
     const grouped = resident !== undefined && resident.ids.length > 0 ? resident : undefined;
-    const workers = grouped?.ids ?? boundWorkers(snapshot, buildingId, siteCrew);
+    const workers = grouped?.ids ?? fieldWorkers(snapshot, buildingId, siteCrew);
     if (workers.length === 0) {
       this.hideRest();
       this.container.visible = false;
@@ -113,7 +114,7 @@ export class WorkerSpriteOverlay {
     const gapBefore = grouped?.gaps;
 
     // One scene build against the WHOLE snapshot, so each worker resolves against the same reads the map
-    // uses: `onlyRefs` narrows the emit to these ≤8 settlers without starving the builder's
+    // uses: `onlyRefs` narrows the emit to the field's own settlers without starving the builder's
     // whole-snapshot pre-scans, which decide indoor state and target-derived facing. `keepIndoorSettlers`
     // adds the workers the map suppresses (sim `Resting` / mid-store-exchange), each tagged `frozen`.
     const scene = buildSpriteScene(snapshot, {
@@ -131,8 +132,11 @@ export class WorkerSpriteOverlay {
       h: Math.max(1, field.h - 2 * FIELD_PAD),
     };
     // Pack left-to-right by a fixed cell width (not spread across the whole field), so two workers sit at
-    // the left rather than centred; cells past the field's right edge are simply not drawn.
-    const slotW = inner.h * SLOT_W_FRAC;
+    // the left rather than centred - narrowed only where the row would otherwise run past the field's
+    // right edge, so a crowd overlaps instead of losing its tail. Group gaps are measured in cell widths
+    // ({@link FAMILY_GAP_FRAC}), so they count toward the row's width.
+    const cells = workers.length + (gapBefore?.reduce((a, b) => a + b, 0) ?? 0);
+    const slotW = Math.min(inner.h * SLOT_W_FRAC, inner.w / cells);
     const feetY = inner.y + inner.h;
 
     // Resolve every drawn worker's layers first: the field shares ONE zoom - the tallest body fills
@@ -163,7 +167,6 @@ export class WorkerSpriteOverlay {
       gapOffset += (gapBefore?.[i] ?? 0) * slotW;
       if (r === null) return;
       const cellX = inner.x + slotW * i + gapOffset;
-      if (cellX + slotW > inner.x + inner.w + 1) return; // no room - overflow past the field's right edge
       const feetX = cellX + slotW / 2;
       const lut = this.sheet?.palette;
       // Same (armor tier, player) LUT row the world pool binds, so the portrait matches the map look.

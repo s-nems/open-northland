@@ -1,6 +1,6 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../game/sandbox/index.js';
-import { actorsOf, isSettler, num } from '../../game/snapshot.js';
+import { actorsOf, isSettler, num, shelterOf } from '../../game/snapshot.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 export const MAX_WORKERS = 8;
@@ -35,6 +35,32 @@ export function groupedWorkers(
     }
   }
   return { ids, gaps };
+}
+
+/** Who the flat field draws for `buildingId`: everyone the building holds. Its posted staff and crew
+ *  ({@link boundWorkers}) first, then the crowd that ran in under an alarm ({@link shelteringIn}) - the
+ *  posted men keep their places because this strip is their only click target, and the townspeople follow
+ *  them into a field that squeezes to fit. */
+export function fieldWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): number[] {
+  const sheltering = shelteringIn(snapshot, buildingId);
+  if (sheltering.length === 0) return boundWorkers(snapshot, buildingId, siteCrew);
+  const claimed = new Set(sheltering);
+  const staff = boundWorkers(snapshot, buildingId, siteCrew).filter((id) => !claimed.has(id));
+  return [...staff, ...sheltering];
+}
+
+/** The settlers sheltering in `buildingId`, those already inside (`Resting` there) before the ones still
+ *  running to it, so a squeezed field keeps the men under cover. Uncapped: the sim admits no more claims
+ *  than the building's own `shelterCapacity`, and it grants none at all until defence mode is raised. */
+function shelteringIn(snapshot: WorldSnapshot, buildingId: number): number[] {
+  const inside: number[] = [];
+  const running: number[] = [];
+  for (const e of actorsOf(snapshot)) {
+    if (!isSettler(e) || shelterOf(e) !== buildingId) continue;
+    const rest = e.components.Resting as { at?: unknown } | undefined;
+    (num(rest?.at) === buildingId ? inside : running).push(e.id);
+  }
+  return [...inside, ...running];
 }
 
 /** The (capped) settler ids to draw for `buildingId`, most-belonging first: its GARRISON, then the rest of
