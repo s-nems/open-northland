@@ -235,9 +235,8 @@
     animation: none;
   }
 
-  .main-menu__backdrop,
+  /* The rotation keeps its crossfade (a fade substitutes for movement); only the push-in stops. */
   .main-menu__backdrop.is-zooming {
-    transition: none;
     animation: none;
   }
 }
