@@ -299,15 +299,12 @@ export function mapSelectScreen(open: (screen: MenuScreen) => void): HTMLElement
     pendingThumbs.clear();
     if (rows.length === 0) {
       // Before /maps-index settles the list is merely not-yet-loaded, not absent; only a settled
-      // empty result earns the "no decoded maps" explanation.
-      if (mapsLoaded) {
-        const empty = document.createElement('p');
-        empty.className = 'main-menu__map-empty';
-        empty.textContent = select.empty;
-        list.replaceChildren(empty);
-      } else {
-        list.replaceChildren();
-      }
+      // empty result earns the "no decoded maps" explanation, and the wait states its purpose.
+      const notice = document.createElement('p');
+      notice.className = 'main-menu__map-empty';
+      notice.textContent = mapsLoaded ? select.empty : select.loading;
+      list.replaceChildren(notice);
+      if (!mapsLoaded) count.textContent = '';
       selected = null;
       card.hidden = true;
       primary.disabled = true;

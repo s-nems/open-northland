@@ -119,6 +119,7 @@ export const enSurfaces = {
       maps: { one: '{count} map', few: '{count} maps', many: '{count} maps' },
       scenes: { one: '{count} scene', few: '{count} scenes', many: '{count} scenes' },
       countLine: '{maps} · scroll or search',
+      loading: 'Loading maps…',
       empty: 'No decoded maps. Generate content/ or browse the test scenes.',
       noPreview: 'test scene · no map preview',
       next: 'Next',

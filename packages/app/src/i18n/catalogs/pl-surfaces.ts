@@ -117,6 +117,7 @@ export const plSurfaces = {
       maps: { one: '{count} mapa', few: '{count} mapy', many: '{count} map' },
       scenes: { one: '{count} scena', few: '{count} sceny', many: '{count} scen' },
       countLine: '{maps} · przewijaj lub szukaj',
+      loading: 'Wczytywanie map…',
       empty: 'Brak zdekodowanych map. Wygeneruj content/ albo przejrzyj sceny testowe.',
       noPreview: 'scena testowa · bez podglądu mapy',
       next: 'Dalej',
