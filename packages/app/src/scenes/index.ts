@@ -8,6 +8,7 @@ import { chainScene } from './chain.js';
 import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { constructionScene } from './construction.js';
+import { deathLootScene } from './death-loot.js';
 import { equipmentScene } from './equipment.js';
 import { equipmentEffectsScene } from './equipment-effects.js';
 import { familyScene } from './family.js';
@@ -59,6 +60,7 @@ export const SCENES: readonly SceneDefinition[] = [
   armorScene,
   towerGarrisonScene,
   aiDefenceScene,
+  deathLootScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

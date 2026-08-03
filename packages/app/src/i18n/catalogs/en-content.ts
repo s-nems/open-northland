@@ -258,5 +258,10 @@ export const enContent = {
       summary:
         'Six archers - three short bows, three long - fill a watchtower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. Instead of a sign per man the roof flies the garrison flag, five stars for the six of them. The enemy party takes arrows on the march, and once it reaches the wall it can only batter the tower: the men inside are out of reach.',
     },
+    'death-loot': {
+      title: 'Fallen soldiers',
+      summary:
+        'Two files of sword soldiers cut each other down in the open. Every man is dressed alike - short sword, chain armor, a full mead and half-walked shoes - and his gear lies beside his bones: the sword, the armor and the untouched mead drop, the part-used shoes go down with him.',
+    },
   },
 } as const;
