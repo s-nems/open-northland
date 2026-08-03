@@ -25,7 +25,7 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial/nodes.js';
-import { type ChaseTarget, chase, disengage, returnToAnchor } from './chase.js';
+import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HUNT_SEARCH_REST_TICKS } from './hunting-ground.js';
@@ -107,10 +107,7 @@ export function engageCombatant(
     if (isHunterJob(ctx.content, attacker.jobType) && spec.defend?.hold !== true && !world.has(e, HuntRest)) {
       world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
     }
-    // A DEFEND unit (`defend.hold`) walks back and holds its post when nothing is in its radius;
-    // everyone else - including a hunter between hunts - returns to the economy.
-    if (spec.defend?.hold) returnToAnchor(world, e, here, spec.defend.anchorCell);
-    else disengage(world, e);
+    breakOff(world, e, here, spec.defend);
     return;
   }
 

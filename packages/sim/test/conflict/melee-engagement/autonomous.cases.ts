@@ -1,9 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Engagement, Health, MoveGoal } from '../../../src/components/index.js';
-import { Simulation } from '../../../src/index.js';
+import {
+  CurrentAtomic,
+  Engagement,
+  Health,
+  MoveGoal,
+  PathRequest,
+  Position,
+  Resource,
+} from '../../../src/components/index.js';
+import { fx, Simulation } from '../../../src/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
+import {
+  BEAR,
+  ctxOf,
+  FRANK,
+  fighterAt,
+  grassMap,
+  HARVEST_ATOMIC,
+  HUNTER,
+  P0,
+  P1,
+  splitMap,
+  VIKING,
+  WOOD,
+  WOODCUTTER,
+} from './support.js';
 
 describe('combat hostility - the owner (player) axis', () => {
   it('two OWNED same-tribe combatants of DIFFERENT players are enemies (they fight)', () => {
@@ -111,6 +133,65 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     expect(sim.world.has(a, Engagement)).toBe(false);
     expect(sim.world.has(a, MoveGoal)).toBe(false);
     expect(sim.world.has(a, CurrentAtomic)).toBe(false);
+  });
+
+  it('releases an enemy it cannot reach and goes back to work', () => {
+    // The stance twin of the attack-move case: an enemy well inside sight but across an unswimmable
+    // column, so every chase route fails.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
+    fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0 });
+    fighterAt(sim, 9, 2, VIKING, WOODCUTTER, { owner: P1 }); // 14 nodes off, inside SIGHT_RADIUS_NODES
+    const wood = sim.world.create(); // work waiting on its own bank
+    sim.world.add(wood, Position, { x: fx.fromInt(3), y: fx.fromInt(2) });
+    sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
+
+    sim.run(62); // the walk out, then the first swings of the harvest
+
+    // Every idle moment between atomics re-acquires the enemy across the water: without the release the
+    // chase re-benches the woodcutter each time and the tree is never touched.
+    expect(sim.world.get(wood, Resource).remaining).toBeLessThan(100);
+  });
+
+  it('asks for no route at all toward the far bank', () => {
+    // Counted probe: navigationPlanner turns a chase goal into exactly one PathRequest, so a request
+    // standing after the planner pass is a route this fighter asked for. It should ask for none: the
+    // contact cell is in another static component, which is decided from the graph, not by searching.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
+    const a = fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0 });
+    fighterAt(sim, 9, 2, VIKING, WOODCUTTER, { owner: P1 });
+    let requests = 0;
+    sim.setInstrument((name, run) => {
+      run();
+      if (name === 'planner' && sim.world.has(a, PathRequest)) requests++;
+    });
+
+    for (let i = 0; i < 200; i++) sim.step();
+
+    expect(requests).toBe(0);
+    expect(sim.world.has(a, Engagement)).toBe(false); // and it never stood engaged, so the planner has it
+  });
+
+  it('still shoots across the water it cannot walk across', () => {
+    // The release refuses the WALK, never the swing: a bow reaches over the column (4 nodes, inside its
+    // [3, 17] band) and the reach check runs before the chase, so the far bank is still a target.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
+    const a = fighterAt(sim, 5, 2, VIKING, HUNTER, { owner: P0 });
+    const enemy = fighterAt(sim, 7, 2, VIKING, WOODCUTTER, { owner: P1 });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
+  });
+
+  it('still chases an enemy on its own bank - the release is unreachable-only', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
+    const a = fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
+    const enemy = fighterAt(sim, 5, 2, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
+
+    sim.run(200);
+
+    expect(sim.world.has(a, Engagement)).toBe(true);
+    expect(sim.world.get(enemy, Health).hitpoints).toBeLessThan(1_000_000); // it closed and struck
   });
 
   it('advances into contact and lands blows through the real step() schedule', () => {

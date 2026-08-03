@@ -10,12 +10,12 @@ import {
   Stance,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../../src/index.js';
+import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { combatSystem, playerOrderSystem } from '../../../src/systems/index.js';
 import { attackMoveUnit } from '../../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
+import { ctxOf, fighterAt, grassMap, P0, P1, splitMap, VIKING, WOOD, WOODCUTTER } from './support.js';
 
 /**
  * attack-move - the move order that keeps fighting. Its twin is move-order.cases.ts: the plain `moveUnit`
@@ -23,23 +23,10 @@ import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './suppor
  * the other way round.
  */
 
-const WOOD = 1;
-const GRASS = 0;
-const WATER = 1; // landscape type 1 in the fixture - unwalkable
-
 /** Order `entity` to fight its way to visual tile (x,y) - command coords are half-cell nodes. */
 function orderAttackMove(sim: Simulation, entity: Entity, x: number, y: number): void {
   const n = cellAnchorNode(x, y);
   attackMoveUnit(sim.world, ctxOf(sim), { kind: 'attackMoveUnit', entity, x: n.hx, y: n.hy });
-}
-
-/** A grass map split by a full-height water column at cell x = `wall` - two banks, no crossing. */
-function splitMap(width: number, height: number, wall: number): TerrainMap {
-  const typeIds: number[] = [];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) typeIds.push(x === wall ? WATER : GRASS);
-  }
-  return halfCellMapFromCells({ width, height, typeIds });
 }
 
 describe('attackMoveUnit - a march that fights everything on the way', () => {
