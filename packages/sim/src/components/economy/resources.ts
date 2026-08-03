@@ -146,6 +146,11 @@ export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
  */
 export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 
+/** Names the hunter whose shot left this carcass {@link Resource}; absent on every node that was not
+ *  shot into being. `claimedByAnotherHunter` (conflict/hunting/kill-claim.ts) owns when that claim
+ *  holds and when it lapses. */
+export const KilledBy = defineComponent<{ by: Entity }>('KilledBy');
+
 /**
  * A wild berry bush - a natural food source anyone can graze, distinct from the job-gated {@link Resource}
  * gathering economy: a hungry settler forages a ripe bush directly (the `forage` atomic), no job or tool

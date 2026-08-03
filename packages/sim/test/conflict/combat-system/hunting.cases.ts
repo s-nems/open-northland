@@ -8,6 +8,7 @@ import {
   Health,
   HuntFocus,
   HuntRest,
+  KilledBy,
   Position,
   Resource,
   Stance,
@@ -15,7 +16,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { checkInvariants, halfCellMapFromCells, positionOfNode, Simulation } from '../../../src/index.js';
-import { HUNT_SEARCH_REST_TICKS } from '../../../src/systems/conflict/hunting-ground.js';
+import { HUNT_SEARCH_REST_TICKS } from '../../../src/systems/conflict/hunting/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
@@ -356,6 +357,52 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
     expect(sim.world.has(hunter, HuntFocus)).toBe(false);
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(hunter, Engagement)).toBe(false);
+  });
+
+  it('two hunters sharing a ground draw on DIFFERENT animals', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const first = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const second = combatantAtNode(sim, 40, 42, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, first, 40, 40, 12);
+    bindFlagAtNode(sim, second, 40, 42, 12);
+    // Both deer are in both hunters' bands, and this one is the nearer of the two for BOTH of them.
+    const nearest = fighterAtNode(sim, 45, 41, DEER, null);
+    const other = fighterAtNode(sim, 48, 41, DEER, null);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The colleague's committed animal is no candidate, so the herd is split rather than doubled up on.
+    expect(sim.world.get(first, HuntFocus).target).toBe(nearest);
+    expect(sim.world.get(second, HuntFocus).target).toBe(other);
+    expect(sim.world.get(second, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: other });
+  });
+
+  it("a COLLEAGUE's kill neither gates this hunter's hunting nor is left ownerless when its killer dies", () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const colleague = combatantAtNode(sim, 41, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 12);
+    bindFlagAtNode(sim, colleague, 41, 40, 12); // overlapping grounds - the carcass lies in both
+    const deer = fighterAtNode(sim, 45, 40, DEER, null);
+    const carcass = sim.world.create();
+    sim.world.add(carcass, Position, positionOfNode(38, 40));
+    sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    sim.world.add(carcass, KilledBy, { by: colleague });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The one-kill gate is per hunter, not per ground: the colleague's body is not this hunter's work.
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: deer });
+
+    // The claim dies with its killer, or no kill made by a hunter that falls could ever be banked.
+    sim.world.destroy(colleague);
+    sim.world.remove(hunter, CurrentAtomic);
+    sim.world.remove(hunter, HuntFocus);
+
+    combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // gated again - the body is now its own work
     expect(sim.world.has(hunter, Engagement)).toBe(false);
   });
 

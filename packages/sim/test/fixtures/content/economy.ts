@@ -333,6 +333,23 @@ export const economyContent = {
         { goodType: 9, capacity: 10, initial: 0 },
       ],
     },
+    {
+      // A MEAT-STOCKING WORKPLACE employing two hunters - the flagless (workplace-employed) hunter the
+      // carcass tests need: its ground is the HUNTER_WORK_FLAG_RADIUS circle around it, and its store
+      // decides which goods it forages at all. Named for what it models, not after an original
+      // building: the owned copy has no hunting hut (hunters work out of the HQ and the stocks).
+      // typeId 24, unplaced by any golden (23 is the tower job-system.test.ts appends).
+      typeId: 24,
+      id: 'meat_workplace',
+      kind: 'workplace',
+      workers: [{ jobType: 15, count: 2 }],
+      // BOTH carcass goods: a meat-only store would filter a body out at its leather stage, the wedge
+      // the flag path dodges by ignoring its flag's good filter for a hunter.
+      stock: [
+        { goodType: 21, capacity: 50, initial: 0 },
+        { goodType: 22, capacity: 50, initial: 0 },
+      ],
+    },
   ],
   landscape: [
     // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag - `land` alone

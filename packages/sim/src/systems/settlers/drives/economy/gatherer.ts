@@ -5,9 +5,14 @@ import {
   Resource,
   WorkFlag,
 } from '../../../../components/index.js';
+import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
-import { HUNT_CARCASS_SLACK_NODES } from '../../../conflict/hunting-ground.js';
+import {
+  claimedByAnotherHunter,
+  HUNT_CARCASS_SLACK_NODES,
+  huntingGround,
+} from '../../../conflict/hunting/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { isHunterJob } from '../../../readviews/index.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../../stores/index.js';
@@ -40,7 +45,7 @@ import type { HarvestClaims } from './harvest-claims.js';
  * its own resources+trunks before ferrying others'. `jobType` is non-null here.
  */
 export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims): boolean {
-  const { world, entity: e } = plan;
+  const { world, ctx, terrain, entity: e } = plan;
   const flag = world.tryGet(e, WorkFlag);
   // A live flag binding switches on the bounded collector behaviour; a stale binding (the flag was removed)
   // falls back to roaming so the gatherer is never stranded pointing at a gone flag.
@@ -67,11 +72,26 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
   const goodFilter =
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
 
+  // A hunter's work is its own HUNTING GROUND (conflict/hunting/), the very band the one-kill gate
+  // probes: unbounded, this scan is map-wide, so a hut hunter walks across the map to a kill while its
+  // own ground goes unhunted - and the gate and the harvest that must answer it disagree on what its
+  // work even is. The trade-off the bound buys: a body that drifts past EVERY ground now has no
+  // sweeper left, and nothing rots a carcass, so it stays as a decal. A hunter with neither flag nor
+  // workplace has no ground and still roams unbounded.
+  const hunter = isHunterJob(ctx.content, plan.jobType);
+  const ground = hunter ? huntingGround(world, terrain, e) : null;
+  const huntArea =
+    ground === null ? undefined : { center: ground.anchorCell, radius: carcassReach(plan, ground.radius) };
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
     ...(goodFilter !== undefined ? { goodFilter } : {}),
+    ...(huntArea !== undefined ? { within: huntArea } : {}),
+    ...(hunter ? { reserved: foreignKill(plan) } : {}),
   });
-  const trunk = nearestCollectablePileFor(plan, goodFilter !== undefined ? { goodFilter } : undefined);
+  const trunk = nearestCollectablePileFor(plan, {
+    ...(goodFilter !== undefined ? { goodFilter } : {}),
+    ...(huntArea !== undefined ? { within: huntArea } : {}),
+  });
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand - grab it before a fresh tree).
   if (trunk !== null && trunk.dist <= nodeDist) {
@@ -122,12 +142,12 @@ function planFlagGatherer(
   //    meat-only pick would strand the body at its leather stage while the filter-blind one-kill gate
   //    (`huntingGroundHoldsCarcass`) held forever - the whole body is the hunter's work.
   const hunter = isHunterJob(ctx.content, plan.jobType);
-  const slack = hunter ? HUNT_CARCASS_SLACK_NODES : 0;
   const node = nearestHarvestableFor(plan, {
     exclude: harvestClaims,
+    ...(hunter ? { reserved: foreignKill(plan) } : {}),
     area: {
       center: flagCell,
-      radius: flag.radius + slack,
+      radius: hunter ? carcassReach(plan, flag.radius) : flag.radius,
       ...(flag.goodType !== undefined && !hunter ? { goodType: flag.goodType } : {}),
     },
   });
@@ -139,6 +159,24 @@ function planFlagGatherer(
   // 3. Nothing to dig and nothing of its own to carry - stand idle beside the flag.
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
+}
+
+/**
+ * How far from a hunting ground's anchor this scan must still look for a carcass. The one-kill gate
+ * measures a body at its ANCHOR ({@link claimedByAnotherHunter}'s neighbour, `huntingGroundHoldsCarcass`)
+ * while this scan measures the WORK CELL a settler stands on, which `resourceStanceCells` can resolve up
+ * to `maxResourceWorkOffset` outward. The scan must therefore be a provable superset of the gate: any
+ * narrower and a body in the outer band reads as standing work the hunter may never select, wedging it
+ * off hunting for good.
+ */
+function carcassReach(plan: PlannerContext, radius: number): number {
+  return radius + HUNT_CARCASS_SLACK_NODES + contentIndex(plan.ctx.content).maxResourceWorkOffset;
+}
+
+/** The harvest-scan rejection behind {@link claimedByAnotherHunter}, which owns the rule. */
+function foreignKill(plan: PlannerContext): (node: Entity) => boolean {
+  const { world, ctx, terrain, entity: e } = plan;
+  return (node) => claimedByAnotherHunter(world, ctx, terrain, node, e);
 }
 
 /** Walk to a harvestable node's work cell and start its content-defined harvest atomic - the shared body of

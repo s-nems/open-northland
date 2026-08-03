@@ -1,4 +1,5 @@
 import {
+  KilledBy,
   Position,
   Resource,
   type ResourceLayer,
@@ -24,9 +25,10 @@ import { huntYieldsOf, isHunterJob } from '../../../../../readviews/index.js';
  * stages as the hunter works down the body.
  *
  * Placement: where the prey fell, or its first free walkable neighbour, falling back to the kill node
- * when hemmed in. Carcasses are unowned - a kill on shared ground is shared game. No-ops unless the
- * attacker is a hunter and the target huntable prey; mapless worlds (fixture combat tests) spawn
- * nothing. Pure over content + entity state - no RNG, no wall-clock.
+ * when hemmed in. The body is player-neutral ground (no owner stamp) but names its killer
+ * ({@link KilledBy}), the claim that keeps a fellow hunter off it. No-ops unless the attacker is a
+ * hunter and the target huntable prey; mapless worlds (fixture combat tests) spawn nothing. Pure over
+ * content + entity state - no RNG, no wall-clock.
  */
 export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const hunter = world.tryGet(attacker, Settler);
@@ -67,6 +69,7 @@ export function spawnCarcasses(world: World, ctx: SystemContext, attacker: Entit
     harvestAtomic: head.harvestAtomic,
     ...(head.gfxIndex !== undefined ? { gfxIndex: head.gfxIndex } : {}),
   });
+  world.add(e, KilledBy, { by: attacker });
   if (layers.length > 0) world.add(e, ResourceLayers, { layers });
   stampResourceFootprintOrFallback(world, ctx.content, e, head.goodType);
 }
