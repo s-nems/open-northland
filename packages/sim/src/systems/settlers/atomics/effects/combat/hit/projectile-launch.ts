@@ -4,6 +4,7 @@ import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import { frightenWildlifeNear } from '../../../../../conflict/fright.js';
 import type { SystemContext } from '../../../../../context.js';
+import { mannedShelter } from '../../../../../defence/index.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
 
 /**
@@ -13,13 +14,16 @@ import { entityNode } from '../../../../../spatial/nodes.js';
  * the ammo class + travel `speed`) and announces it (`projectileLaunched`) for render/audio. The
  * `projectileSystem` then flies it and lands the same `resolveCombatHit` on contact.
  *
+ * A GARRISON shot leaves the building, not the shooter's cell: a civilian manning a shelter still stands
+ * on the door node it entered by, but it shoots from up in the tower ({@link mannedShelter}).
+ *
  * A `missed` launch (the shooter's aim roll, decided by the caller at this same frame) freezes its aim at
  * the target's CURRENT position instead: the arrow flies there ballistically and lands in the dirt - the
  * flight is real, the blow never is.
  *
- * No shot if the shooter has no {@link Position} (it vanished mid-draw) or the target has already been
- * destroyed by the time the string is loosed (no live `Health` - the archer looses at nothing; mirrors the
- * melee path's tolerate-a-vanished-target). A target that dies *during* the arrow's flight is the
+ * No shot if the launch point has no {@link Position} (the shooter vanished mid-draw) or the target has
+ * already been destroyed by the time the string is loosed (no live `Health` - the archer looses at nothing;
+ * mirrors the melee path's tolerate-a-vanished-target). A target that dies *during* the arrow's flight is the
  * `projectileSystem`'s expire case, not this one. Pure over entity state; no RNG/wall-clock.
  */
 export function launchProjectile(
@@ -30,8 +34,9 @@ export function launchProjectile(
   missed: boolean,
 ): void {
   if (effect.projectile === undefined) return; // not a ranged swing (defensive - the caller gates this)
-  const from = world.tryGet(attacker, Position);
-  if (from === undefined) return; // shooter vanished mid-draw - no shot
+  const cover = mannedShelter(world, attacker);
+  const from = world.tryGet(cover ?? attacker, Position);
+  if (from === undefined) return; // shooter (or its shelter) vanished mid-draw - no shot
   // No shot at a target already gone OR drained to 0 by an earlier hit this tick (dead but not yet reaped):
   // don't spend a projectile/launch cue on a corpse. Mirrors the projectileSystem's expiry test on arrival.
   const targetHealth = world.tryGet(effect.target, Health);
@@ -50,6 +55,7 @@ export function launchProjectile(
     // The chord's start, frozen at release - the render's ballistic-arc parameter (never read in flight).
     originX: from.x,
     originY: from.y,
+    cover,
     missAim: missed ? { x: targetPos.x, y: targetPos.y } : null,
     launchTick: ctx.tick,
   });

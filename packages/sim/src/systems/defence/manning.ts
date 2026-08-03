@@ -3,14 +3,19 @@ import type { Entity, World } from '../../ecs/world.js';
 import { isInside } from '../settlers/indoors.js';
 
 /**
- * Whether `e` is MANNING its shelter - inside the defence-mode building it claimed, rather than still
- * running to it. Manning is what the CombatSystem reads: a manned settler never flees, never steps out
- * to chase, and is not a target itself (it is behind the walls). A claimant still crossing the ground is
- * an ordinary civilian - visible, killable, and fleeing.
+ * The shelter `e` is MANNING - the defence-mode building it claimed AND has reached, rather than one it is
+ * still running to - or null when it mans none. Manning is what the CombatSystem reads: a manned settler
+ * never flees, never steps out to chase, and is not a target itself (it is behind the walls). A claimant
+ * still crossing the ground is an ordinary civilian - visible, killable, and fleeing.
  */
-export function isManningShelter(world: World, e: Entity): boolean {
+export function mannedShelter(world: World, e: Entity): Entity | null {
   const claim = world.tryGet(e, Sheltering);
-  return claim !== undefined && isInside(world, e, claim.shelter);
+  if (claim === undefined || !isInside(world, e, claim.shelter)) return null;
+  return claim.shelter;
+}
+
+export function isManningShelter(world: World, e: Entity): boolean {
+  return mannedShelter(world, e) !== null;
 }
 
 /**

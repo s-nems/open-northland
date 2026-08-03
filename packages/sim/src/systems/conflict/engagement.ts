@@ -58,10 +58,11 @@ export interface CombatantStance {
   /** The tower the unit is manning ({@link import('./tower-post.js').towerPostFor}), or null. A garrison
    *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
-  /** Whether the unit is instead a civilian inside a defence-mode building it claimed
-   *  ({@link import('../defence/index.js').isManningShelter}): it shoots the house bow from cover within
-   *  the weapon's own band, and neither flees nor steps out to chase, whatever its stance says. */
-  readonly manningShelter: boolean;
+  /** The defence-mode building a CIVILIAN mans instead ({@link
+   *  import('../defence/index.js').mannedShelter}), else null. It shoots the house bow from cover within
+   *  the weapon's own band - measured from the BUILDING, which is also where the arrow leaves from - and
+   *  neither flees nor steps out to chase, whatever its stance says. */
+  readonly shelter: Entity | null;
 }
 
 /**
@@ -119,7 +120,7 @@ export function engageSpec(
   // ./tower-post.ts) rather than the advance sight radius. A sheltering civilian reads the same way, on
   // the house bow's own band: capped at reach because it never advances, and anchor-less because a DEFEND
   // post's walk-back would march it out of the building it is holding.
-  if (stance.post !== null || stance.manningShelter) {
+  if (stance.post !== null || stance.shelter !== null) {
     return {
       accept: generalAccept,
       minDist,

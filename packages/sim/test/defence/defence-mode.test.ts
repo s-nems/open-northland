@@ -7,6 +7,7 @@ import {
   Health,
   Owner,
   Position,
+  Projectile,
   Resting,
   Settler,
   Sheltering,
@@ -69,6 +70,8 @@ function defenceContent(): ContentSet {
         typeId: 20,
         id: 'house_bow',
         tribeType: VIKING,
+        munitionType: 1, // an arrow, like the extracted row - so a garrison shot really is a projectile
+        speed: 7,
         minRange: 1,
         maxRange: HOUSE_BOW_RANGE,
         damage: { '0': HOUSE_BOW_DAMAGE },
@@ -265,6 +268,53 @@ describe('defence mode', () => {
     expect(sim.world.get(raider, Health).hitpoints).toBeLessThan(RAIDER_HP); // arrows landed
     expect(sim.world.get(farmer, Health).hitpoints).toBe(RAIDER_HP); // never targeted behind the walls
     expect(insideOf(sim, farmer)).toBe(tower); // and never stepped out to chase
+  });
+
+  it('looses the garrison arrow from the tower, not from the door node the shooter stands on', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    // A settler keeps the cell it entered by, and a real building's door sits off its anchor - this
+    // fixture has no footprint, so the two coincide until the shooter is stood one cell off by hand.
+    const doorstep = { x: fx.fromInt(4), y: fx.fromInt(1) };
+    sim.world.add(farmer, Position, doorstep);
+    settlerAt(sim, 7, 1, P2, SOLDIER); // the mark, in bow reach of the tower
+
+    let shot: Entity | undefined;
+    stepUntil(sim, 600, () => {
+      shot = [...sim.world.query(Projectile)][0];
+      return shot !== undefined;
+    });
+    if (shot === undefined) throw new Error('expected the garrison to loose an arrow');
+
+    // The arrow leaves the TOWER, not the shooter's cell - the render then draws it falling from the
+    // tower's gallery instead of climbing off the ground beside it.
+    const at = sim.world.get(tower, Position);
+    expect(at).not.toEqual(doorstep);
+    expect(sim.world.get(shot, Projectile).cover).toBe(tower);
+    expect(sim.world.get(shot, Position)).toEqual({ x: at.x, y: at.y });
+  });
+
+  it('measures a garrison’s reach from the tower too, not from the cell the shooter stands on', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(16, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const farmer = settlerAt(sim, 4, 1, P1, FARMER);
+
+    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
+    // Stand the shooter far off the tower (the door-vs-anchor gap a footprinted building really has,
+    // exaggerated): the mark below is HOUSE_BOW_RANGE nodes from the tower and far outside that band from
+    // the shooter's own cell, so an arrow proves the tower is what aims.
+    sim.world.add(farmer, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
+    settlerAt(sim, 5 + HOUSE_BOW_RANGE / 2, 1, P2, SOLDIER);
+
+    stepUntil(sim, 600, () => [...sim.world.query(Projectile)].length > 0);
+
+    expect(insideOf(sim, farmer)).toBe(tower); // still under cover, so it shot from in there
+    expect([...sim.world.query(Projectile)]).not.toHaveLength(0);
   });
 
   it('leaves a civilian outside its work area at work - the alarm does not suspend the signpost rule', () => {
