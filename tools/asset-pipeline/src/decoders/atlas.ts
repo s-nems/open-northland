@@ -1,19 +1,9 @@
 /**
- * Bob atlas packer - turns a decoded `.bmd` (CBobManager) bob set into one RGBA atlas image plus a
- * JSON-serializable manifest of per-bob frame rects + metadata.
+ * Bob atlas packer: packs a decoded `.bmd` bob set into one RGBA sheet plus a per-bob frame manifest.
  *
- * A `.bmd` has no atlas/anim layout of its own - it is a flat array of bobs ({type, area, misc});
- * animation grouping lives outside it (the `.ini`/`tribetypes` `setatomic` bindings reference bob ids,
- * joined in a later stage). So the manifest is a per-bob frame table, one entry per bob id; empty /
- * zero-size bobs get a 0×0 rect so a consumer can still index every bob id without a gap.
- *
- * Packing is a deterministic top-left shelf/row packer (frames placed left→right into rows of a fixed
- * max width, wrapping when the row is full), with a 1px transparent gutter so bilinear sampling can't
- * bleed neighbours. Simple, not optimal - a stable layout keeps manifests reproducible. Index 0 is a
- * real palette colour for bobs (not a reserved colour-key), so alpha
- * comes from each frame's `mask`, never from the index.
- *
- * Pure functions only (no I/O). The CLI wires file reads + `encodePng` + JSON writes around them.
+ * A `.bmd` carries no animation grouping (that lives in the `setatomic` `.ini` bindings), so the
+ * manifest is one entry per bob id, with a 0×0 rect for an empty bob so every id stays addressable.
+ * Index 0 is a real palette colour for bobs, so alpha always comes from a frame's `mask`.
  */
 
 import type { Bmd, BobFrame } from './bmd/index.js';
@@ -28,16 +18,13 @@ const DEFAULT_ATLAS_MAX_WIDTH = 1024;
 
 /** One frame's placement + metadata in the atlas. JSON-serializable (plain numbers/booleans only). */
 export interface AtlasFrame {
-  /** The bob's stable id: `bmd.firstBobId + index`. The join key for anim bindings in a later stage. */
+  /** The bob's stable id: `bmd.firstBobId + index`. */
   readonly bobId: number;
   /** Raw bob `type` (0 empty / 1 8-bit / 2 1-bit mask / 3 TimeMask / 4 double-byte). Carried, not interpreted. */
   readonly type: number;
   /** Pixel rect of this frame inside the atlas. `width`/`height` are 0 for an empty/zero-size bob. */
   readonly rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-  /**
-   * The bob's source draw rectangle (offset + size) from the `.bmd`. A renderer adds `offsetX/Y` to the
-   * sprite's screen anchor to place the frame; the original keeps this as `SBobData.Area`.
-   */
+  /** The bob's draw offset from the `.bmd` (`SBobData.Area`), added to the sprite's screen anchor. */
   readonly offsetX: number;
   readonly offsetY: number;
   /** True if the frame wrote at least one visible pixel (an all-transparent or empty frame is `false`). */
@@ -49,8 +36,7 @@ export interface AtlasManifest {
   readonly width: number;
   readonly height: number;
   readonly frames: readonly AtlasFrame[];
-  /** Present (`true`) when a `'build-time'` bake emitted the sibling `<stem>.build.png` time sheet -
-   *  the renderer's cue to fetch it for the per-pixel construction reveal. */
+  /** Present when the `'build-time'` bake also emitted the sibling `<stem>.build.png` time sheet. */
   readonly build?: true;
 }
 
@@ -58,16 +44,14 @@ export interface AtlasManifest {
 export interface BobAtlas {
   readonly image: RgbaImage;
   readonly manifest: AtlasManifest;
-  /** The `'build-time'` bake's second sheet - same placement as {@link image}, grayscale build-progress
-   *  thresholds (see {@link expandBobFrameTime}). Absent for a `'per-pixel'` bake. */
+  /** The `'build-time'` bake's second sheet: grayscale build-progress thresholds, placed like {@link image}. */
   readonly timeImage?: RgbaImage;
 }
 
 /**
- * Colours one decoded {@link BobFrame} into straight RGBA using a 256-entry palette (768 RGB bytes,
- * `[R,G,B] × 256`, the shared currency from `pcx`/`palette`). Alpha is the frame's `mask` value: an
- * unwritten pixel is fully transparent (RGB 0 too), a written one carries its 0–255 coverage. Throws
- * (`atlas:` prefix) if the palette isn't exactly 768 bytes.
+ * Colours one decoded frame into straight RGBA using a 256-entry palette (768 bytes, `[R,G,B] × 256`).
+ * Alpha is the frame's `mask`: an unwritten pixel is fully transparent, a written one carries its
+ * 0-255 coverage.
  */
 export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage {
   assertPaletteBytes(palette, 'atlas');
@@ -76,11 +60,9 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
 }
 
 /**
- * Expands one decoded {@link BobFrame} into an indexed RGBA image: the palette index in the red
- * channel, `mask` in alpha, green/blue left 0. No palette is applied - the colour is deferred to the
- * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). The
- * alternative to {@link expandBobFrame} for the character bodies, whose clothing band is recoloured per
- * player at draw time.
+ * Expands one decoded frame into an indexed RGBA image: palette index in red, `mask` in alpha,
+ * green/blue left 0. Colour is deferred to the renderer, which reads each index through a per-player
+ * palette LUT, so a character's clothing band can be recoloured at draw time.
  */
 export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
   const { width, height, pixels, mask } = frame;
@@ -89,7 +71,7 @@ export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
     const coverage = mask[i] ?? 0;
     if (coverage === 0) continue; // transparent: leave RGBA all-zero
     const o = i * 4;
-    rgba[o] = pixels[i] ?? 0; // palette index → red channel (G/B stay 0)
+    rgba[o] = pixels[i] ?? 0;
     rgba[o + 3] = coverage;
   }
   return { width, height, rgba };
@@ -115,24 +97,21 @@ interface PreparedFrame {
   readonly width: number;
   readonly height: number;
   readonly image: RgbaImage | undefined;
-  /** The frame's build-progress plane - only on a `'build-time'` bake (same size as {@link image}). */
+  /** The frame's build-progress plane, only on a `'build-time'` bake (same size as {@link image}). */
   readonly timeImage: RgbaImage | undefined;
   readonly opaque: boolean;
 }
 
 /**
- * How an atlas interprets a Double8Bit pair's second byte ({@link import('./bmd/index.js').SecondByteMode}):
+ * How an atlas reads a Double8Bit pair's second byte:
  *
- *  - `'per-pixel'` - the byte is coverage and rides into the sheet's alpha as-is: Double8Bit decals
- *    (ferns, smoke, wave foam) keep their authored feathered translucency. The engine's alpha blit
- *    is the model, based on measured alpha distributions in decoded frames.
- *  - `'build-time'` - the byte is a 0–255 construction-progress threshold, not coverage. Pinned by
- *    measurement on the `[GfxHouse]` bobs: it spans ~0–255 and is strongly row-correlated bottom-up
- *    (foundation low, roof high; ≈100 mean across solid walls - read as alpha, the original's solid
- *    buildings would draw as 40% ghosts). Every written pixel bakes fully opaque into the colour
- *    sheet (the engine's plain finished-building `PrintBob` blit), and the thresholds bake into a
- *    second, same-placement grayscale sheet ({@link BobAtlas.timeImage}) for the renderer's per-pixel
- *    construction reveal (`PrintBob_UsingTimeMask`: a pixel draws once progress reaches its byte).
+ *  - `'per-pixel'`: the byte is coverage and bakes into the sheet's alpha as-is, keeping the decals'
+ *    authored feathered translucency.
+ *  - `'build-time'`: the byte is a 0-255 construction-progress threshold, not coverage. Measured on
+ *    the `[GfxHouse]` bobs: it spans ~0-255 and is strongly row-correlated bottom-up (foundation low,
+ *    roof high; ≈100 mean across solid walls). Every written pixel bakes fully opaque into the colour
+ *    sheet, and the thresholds bake into a second, same-placement grayscale sheet
+ *    ({@link BobAtlas.timeImage}) a renderer reveals pixel by pixel as construction progresses.
  */
 export type AtlasAlphaMode = 'per-pixel' | 'build-time';
 
@@ -147,10 +126,7 @@ export interface PackBobAtlasOptions {
 /**
  * Packs every bob of a decoded `.bmd` into one atlas, colouring frames with `palette`. The result's
  * `manifest.frames` has exactly `bmd.bobCount` entries, in bob-id order, so a consumer can address any
- * bob id. Frames wider than `maxWidth` are still packed (their row is just wider); the atlas is sized to
- * the tightest bounding box of the placed frames (plus the gutter), or a 1×1 transparent pixel when
- * nothing has pixels (a valid PNG can't be 0×0). Throws (`atlas:` prefix) only on a malformed palette;
- * a structurally odd bob is tolerated by {@link decodeBobFrame} upstream.
+ * bob id. A frame wider than `maxWidth` is still packed; its row is just wider.
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
   const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
@@ -158,9 +134,8 @@ export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtla
 }
 
 /**
- * The build-progress plane of a `'time'`-decoded {@link BobFrame}: R=G=B = the pixel's 0–255 threshold
- * ({@link BobFrame.time}), alpha 255 where written and 0 elsewhere - grayscale, so the emitted
- * `<stem>.build.png` is inspectable by eye (dark foundation → bright roof).
+ * The build-progress plane of a `'time'`-decoded frame: R=G=B is the pixel's 0-255 threshold, alpha 255
+ * where written and 0 elsewhere. Grayscale, so the emitted `<stem>.build.png` is inspectable by eye.
  */
 function expandBobFrameTime(frame: BobFrame): RgbaImage {
   const { width, height, mask, time } = frame;
@@ -178,19 +153,15 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
 }
 
 /**
- * The baked alpha of a shadow-atlas pixel. The exact high-colour blend of the original's shadow blit
- * is not pinned (research notes simplifies it); cultures2-wasm - the reimplementation whose output was
- * matched against the running original - bakes a shadow frame's pixels as `rgba(0,0,0,0x50)`
- * (`src/bmd.rs`, `frame_type == 2`), so this adopts that observed parity value. Note its older
- * cultures2-gl TypeScript path disagrees, baking `0x80` (`src/cultures/bmd.ts`). A named
- * approximation; one knob to retune.
+ * The baked alpha of a shadow-atlas pixel. The original's shadow blit is not pinned byte-level, so this
+ * adopts the value another reimplementation matched against the running original. A named
+ * approximation, one knob to retune.
  */
 export const SHADOW_ALPHA = 0x50;
 
 /**
- * Expands one decoded {@link BobFrame} into a shadow plane: every written pixel is black at
- * {@link SHADOW_ALPHA} (a shadow bob is a solid 1-bit silhouette - see `BOB_TYPE_1BIT`'s pure-RLE
- * coverage), unwritten pixels fully transparent. No palette: the darkening is the blit's, not the art's.
+ * Expands one decoded frame into a shadow plane: every written pixel is black at {@link SHADOW_ALPHA},
+ * every unwritten one fully transparent. No palette: the darkening belongs to the blit, not the art.
  */
 function expandBobFrameShadow(frame: BobFrame): RgbaImage {
   const { width, height, mask } = frame;
@@ -203,35 +174,25 @@ function expandBobFrameShadow(frame: BobFrame): RgbaImage {
 }
 
 /**
- * Packs every bob of a shadow `.bmd` (the `GfxBobLibs`/`shadowlib` second value - 1-bit silhouette
- * masks paralleling the body bob ids) into one atlas of pre-baked black-at-{@link SHADOW_ALPHA}
- * silhouettes, so the renderer draws a cast shadow as a plain batched sprite instead of a
- * blend-mode blit.
+ * Packs every bob of a shadow `.bmd` (the `GfxBobLibs` `shadowlib` value: 1-bit silhouette masks
+ * paralleling the body bob ids) into one atlas of pre-baked black-at-{@link SHADOW_ALPHA} silhouettes,
+ * so a cast shadow draws as a plain batched sprite instead of a blend-mode blit.
  */
 export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
   return packBobAtlasWith(bmd, expandBobFrameShadow, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
 }
 
 /**
- * Packs every bob into an indexed atlas (palette index in red, mask in alpha) - the
- * {@link expandBobFrameIndexed} twin of {@link packBobAtlas}. Placement + manifest are byte-identical to
- * the RGB atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share
- * frame geometry; only the pixel channels differ.
- *
- * Coverage bakes graded, like the RGB path: the `PalettedSprite` LUT shader modulates its output by the
- * texel's alpha (nearest sampling keeps the index channel exact), so the type-4 bobs' authored feathered
- * translucency (12.6% of ls_goods' visible pixels carry sub-128 alpha) survives into the drawn sprite.
+ * Packs every bob into an indexed atlas (palette index in red, mask in alpha). Placement and manifest
+ * are identical to the RGB atlas of the same `.bmd`, so the two share frame geometry and differ only in
+ * the pixel channels. Coverage bakes graded, like the RGB path, so the type-4 bobs' authored feathered
+ * translucency survives into the drawn sprite.
  */
 export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
   return packBobAtlasWith(bmd, expandBobFrameIndexed, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
 }
 
-/**
- * `expand` colours or index-encodes a frame and is called only for frames with pixels, so it always
- * receives a real one. A `'build-time'` pack decodes each pair's second byte as a progress threshold,
- * not coverage: every written pixel stays opaque in the colour plane (including the byte-0 pixels an
- * alpha decode would hole) and its threshold bakes into a second same-placement plane.
- */
+/** `expand` is called only for frames that have pixels, so it always receives a non-empty frame. */
 function packBobAtlasWith(
   bmd: Bmd,
   expand: (frame: BobFrame) => RgbaImage,
@@ -289,8 +250,8 @@ interface PackedLayout {
 }
 
 /**
- * Shelf-packs the non-empty frames left→right into rows wrapping at `maxWidth`. Frame order is bob-id
- * order (already), which keeps the layout deterministic and the manifest easy to diff.
+ * Shelf-packs the non-empty frames left to right into rows wrapping at `maxWidth`, in bob-id order so
+ * the layout stays deterministic.
  */
 function shelfPack(prepared: readonly PreparedFrame[], maxWidth: number): PackedLayout {
   const placements = new Map<number, { x: number; y: number }>();
@@ -301,7 +262,7 @@ function shelfPack(prepared: readonly PreparedFrame[], maxWidth: number): Packed
   for (let i = 0; i < prepared.length; i++) {
     const p = prepared[i];
     if (p === undefined || p.image === undefined) continue;
-    // Wrap to a new shelf when this frame would overflow the row (but always place at least one per row).
+    // Wrap to a new shelf on overflow, but always place at least one frame per row.
     if (cursorX > ATLAS_GUTTER && cursorX + p.width + ATLAS_GUTTER > maxWidth) {
       cursorX = ATLAS_GUTTER;
       cursorY += rowHeight + ATLAS_GUTTER;

@@ -1,11 +1,10 @@
 /**
- * Armor recolor recipes - how the original tells a wool/leather/chain/plate wearer apart: the same
- * body bob read through a patched palette, not a separate sprite. `randompalette.ini` defines one
- * `[RandomPalette]` recipe per `TArmorType` (`human_armor_000`..`004`, the format string both game
- * exes carry); each `Patch <band> <source> <weight>` line overwrites one 16-index palette band
- * ({@link cutRamp}; the clothing patches 5/9/11/12) with either a named `[GfxPalette16]` ramp or a
- * copy of another band. Composed on top of the per-player palette
- * ({@link import('./player-palette.js').composePlayerPalette}), one LUT row per (armor tier, player).
+ * Armor recolor recipes: the original tells a wool/leather/chain/plate wearer apart by reading the
+ * same body bob through a patched palette, not a separate sprite. `randompalette.ini` defines one
+ * `[RandomPalette]` recipe per `TArmorType` (`human_armor_000`..`004`); each `Patch <band> <source>
+ * <weight>` line overwrites one 16-index band (the clothing patches 5/9/11/12) with a named
+ * `[GfxPalette16]` ramp or a copy of another band. Recipes compose on top of the per-player palette,
+ * one LUT row per (armor tier, player).
  */
 
 import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
@@ -18,9 +17,8 @@ const ARMOR_RECIPE_NAME = /^human_armor_(\d{3})$/;
 /** One palette band (a `[GfxPalette16]` ramp / one `Patch` target) is 16 palette indices. */
 const BAND_LENGTH = 16;
 
-/** One `Patch` line: overwrite `band` with a named ramp or with a copy of another band's current
- *  colours. The trailing weight is dropped - every armor recipe carries a single option per band, so
- *  the random-pick axis the weight feeds is degenerate here. */
+/** One `Patch` line. The trailing weight is dropped: every armor recipe carries a single option per
+ *  band, so the random-pick axis the weight feeds is degenerate here. */
 export interface ArmorPatch {
   readonly band: number;
   readonly source:
@@ -35,9 +33,9 @@ export interface ArmorRecipe {
 }
 
 /**
- * Extracts the `human_armor_NNN` recipes from `randompalette.ini` sections - only the armor family;
- * the file's other `[RandomPalette]` recipes (civilian clothing variety, hero looks) are unrelated.
- * A malformed `Patch` line (no band, no source) is skipped; first wins on a duplicate tier.
+ * Extracts the `human_armor_NNN` recipes from `randompalette.ini` sections; the file's other
+ * `[RandomPalette]` recipes (civilian clothing variety, hero looks) are unrelated. A malformed `Patch`
+ * line is skipped, and the first of a duplicate tier wins.
  */
 export function extractArmorRecipes(sections: readonly RuleSection[]): ArmorRecipe[] {
   const byTier = new Map<number, ArmorRecipe>();
@@ -64,12 +62,10 @@ export function extractArmorRecipes(sections: readonly RuleSection[]): ArmorReci
 }
 
 /**
- * Apply one armor recipe to a composed per-player palette: a detached copy of `palette` with each
- * `Patch` band overwritten in file order - a `ramp` source from `resolveRamp` (48 RGB bytes), a
- * `copy` source from the palette's CURRENT state, so a later patch can copy a band an earlier one
- * just wrote (`human_armor_001`'s `Patch 12 11 10` mirrors the freshly-patched band 11). Throws on
- * an unresolvable ramp or a wrong-sized input - a recipe that half-applies would silently ship a
- * wrong armor look.
+ * Applies one armor recipe to a composed per-player palette: a detached copy with each `Patch` band
+ * overwritten in file order. A `copy` source reads the palette's current state, so a later patch can
+ * copy a band an earlier one just wrote (`human_armor_001`'s `Patch 12 11 10` mirrors the freshly
+ * patched band 11). Throws on an unresolvable ramp or a wrong-sized input.
  */
 export function applyArmorRecipe(
   palette: Uint8Array,

@@ -23,51 +23,36 @@ import {
 import { indexSourceAssets } from './stages/source-files.js';
 
 /**
- * Runs the full conversion of an owned game copy into the IR under `args.out` - the one pipeline
- * entry both hosts share (the CLI in `cli.ts`, the desktop shell's first-run installer). `progress`
- * feeds a live UI (see `progress.ts`); the stage summary `console.log`s stay for the CLI transcript.
+ * Runs the full conversion of an owned game copy into the IR under `args.out`, shared by the CLI and
+ * the desktop shell's first-run installer. `progress` is optional live-UI telemetry.
  */
 export async function runPipeline(args: Args, progress?: PipelineProgress): Promise<void> {
-  // The culturesnation mod is required - fail fast with the download pointer before any stage
-  // writes, rather than deep in IR validation (see resolveModRoot).
   const roots: SourceRoots = { game: args.game, mod: await resolveModRoot(args.game, args.modRoot) };
   console.log(`[pipeline] game=${args.game} mod=${roots.mod} out=${args.out}`);
 
-  // A rerun over existing output must not keep the previous completion stamp: interrupted, the
-  // mixed old/new tree would otherwise still read as a completed conversion.
   await clearPipelineManifest(args.out);
-  // The archive layer resolves against this directory from the unpack onwards, so it must exist even
-  // when the unpack writes nothing (a copy that ships no `.lib`).
+  // The archive layer resolves against this directory, so it must exist even when the unpack writes
+  // nothing (a copy that ships no `.lib`).
   await mkdir(args.out, { recursive: true });
 
-  // Stages run in dependency order - unpack first, then the passes that read its output. Prefer the
-  // mod's readable .ini sources over base .cif; docs/SOURCES.md carries the full source → decoder map.
-  // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
+  // Stages run in dependency order. Sources resolve mod .ini over base .cif; docs/SOURCES.md carries
+  // the full source-to-decoder map. The unpack writes loose .pcx/.bmd/.cif copies into gitignored <out>.
   progress?.stage?.('unpack');
   const extracted = await unpackLibTree(roots, args.out, progress?.item);
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
-  // Every stage that joins the loose trees with the unpacked archive reads through this stack, so one
-  // path resolves the same way everywhere: mod, then base install, then the extracted members. The
-  // unpack above is its precondition; <game>==<out> is not a supported invocation.
+  // The unpack above is this layer's precondition; <game> == <out> is not a supported invocation.
   const sources = withArchiveLayer(roots, args.out);
 
-  // Convert .pcx -> .png once per relative path, from whichever layer wins it.
   progress?.stage?.('pictures');
   const pictures = await convertPcxTree(sources, args.out, progress?.item);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
 
-  // Convert every (bmd, palette) graphics binding (resolved by resolveGraphicsBindings) to an atlas PNG +
-  // manifest JSON. A binding names its palette by editname, which palettes.ini resolves to the .pcx whose
-  // trailer colours the bobs.
   progress?.stage?.('atlases');
   const graphics = await resolveGraphicsBindings(roots);
-  // One reference index for every atlas stage below; they only ever look up source .bmd/.pcx.
   const assets = await indexSourceAssets(sources);
   const atlases = await convertBmdTree(graphics, args.out, assets, progress?.item);
   const { bindings, palettes } = graphics;
-  // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
-  // distinct body .bmd geometries behind them - the gap is the per-creature recolour fan-out.
   const distinct = new Set(atlases.map((a) => a.png)).size;
   const distinctBmd = new Set(atlases.map((a) => a.bmd)).size;
   console.log(
@@ -76,24 +61,17 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `(${palettes.length} palette aliases)`,
   );
 
-  // Shadow bob sets (the `GfxBobLibs`/`shadowlib` second value): each converts once into a palette-less
-  // black translucent-silhouette atlas the renderer draws under its caster (bob ids parallel the body's).
   const shadowAtlases = await convertShadowBmdTree(graphics, args.out, assets);
   console.log(
     `[pipeline] shadow bmd -> atlas: ${shadowAtlases.length} shadow atlas file(s) into ${args.out}`,
   );
 
-  // Player (team) colours: an indexed atlas (palette index in red, mask in alpha) per `cr_hum_*` body/head
-  // plus one 256×16 player-colour LUT, so one atlas serves all 16 players (the renderer reads each index
-  // through the player's LUT row). See stages/player-colors.ts + packages/render's palette-LUT shader.
   progress?.stage?.('player-colors');
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out, assets);
   const lut = await convertPlayerColorLut(roots, args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${errorMessage(err)}`);
     return undefined;
   });
-  // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
-  // graded edge alpha survives - see stages/player-colors.ts convertGuidepostPlayerAtlases).
   const guideAtlases = await convertGuidepostPlayerAtlases(args.out, assets).catch((err: unknown) => {
     console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
@@ -104,9 +82,6 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `, ${guideAtlases} guidepost player atlas(es)`,
   );
 
-  // GUI/HUD: the HUD bob sheets -> indexed + preview atlas + palette LUT, the ingamegui string tables
-  // per language -> id->text JSON, and the mouse cursors -> PNG + verbatim .cur. All from loose files.
-  // See stages/gui/ + docs/SOURCES.md "GUI".
   progress?.stage?.('gui');
   const gui = await convertGuiStage(roots, args.out);
   console.log(
@@ -115,8 +90,6 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `${gui.cursors} cursor(s) into ${join(args.out, 'gui')}`,
   );
 
-  // Fonts: the UI bitmap fonts (font08/10/12/fontdebug × default/latin/rus) -> an indexed glyph atlas +
-  // preview + a 256×4 font-colour LUT + a per-font metrics JSON. See stages/fonts.ts + docs/SOURCES.md ".fnt".
   progress?.stage?.('fonts');
   const fonts = await convertFontStage(roots, args.out);
   console.log(
@@ -124,8 +97,6 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `${fonts.colors}-colour LUT into ${join(args.out, 'gui', 'fonts')}`,
   );
 
-  // Goods icons: the shared good-pile bob sheet -> an indexed atlas + preview + a goods palette LUT, plus
-  // the good -> (pile frame, palette) bindings. Feeds the HUD's per-good resource icons. See stages/goods/.
   progress?.stage?.('goods');
   const goods = await convertGoodsStage(roots, args.out);
   console.log(
@@ -144,10 +115,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `-> ${join(args.out, 'ir.json')}`,
   );
 
-  // Compose each ground-transition overlay's RGB texture + alpha-mask .pcx pair into one RGBA
-  // `<stem>.masked.png` - the plain per-file pcx pass above can't carry the separate mask, and the
-  // renderer alpha-blends these pages over the base ground triangles. Needs the extracted
-  // `[transition]` table, hence after writeIr.
+  // Needs the extracted `[transition]` table, hence after writeIr.
   progress?.stage?.('transitions');
   const maskedPairs = ir.gfxPatternTransitions.flatMap((t) =>
     t.texture !== undefined && t.textureAlpha !== undefined
@@ -160,11 +128,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `${masked.length} masked overlay page(s) into ${args.out}`,
   );
 
-  // Decode each map's binary terrain grid (map.dat hoix container -> lmlt landscape-type layer -> one
-  // per-cell typeId) into maps/<id>.json - the TerrainMap the sim's buildTerrainGraph consumes. Joins
-  // onto the same-folder map.cif's MapInfo id. Maps without a shipped minimap.pcx get a thumbnail
-  // synthesized from those cells - reading back the `text_NNN` pages the pictures stage emitted above
-  // (the same pages the `/textures/` route serves).
+  // Synthesizing a missing minimap reads back the `text_NNN` pages the pictures stage emitted above.
   progress?.stage?.('maps');
   const texturesDir = join(args.out, TEXTURES_DIR);
   const synthesizeMinimap = createMinimapSynthesizer({
@@ -190,8 +154,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `of which ${synthesized} synthesized, ${scripts} script sidecar(s)) into ${join(args.out, 'maps')}`,
   );
 
-  // Stamped last on purpose: its presence marks a conversion that ran to completion, and its
-  // versions let an installed shell detect stale content (see manifest.ts).
+  // Stamped last: its presence is what marks a conversion that ran to completion.
   await writePipelineManifest(args.out);
   console.log(`[pipeline] stamped ${join(args.out, PIPELINE_MANIFEST_NAME)}`);
 }

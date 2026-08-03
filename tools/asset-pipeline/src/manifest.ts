@@ -3,16 +3,14 @@ import { join } from 'node:path';
 import { IR_VERSION } from '@open-northland/data';
 
 /**
- * The stamp `runPipeline` writes as its final step - both the completion marker (an interrupted
- * conversion never carries one) and the staleness signal an installed desktop shell compares against
- * its own bundled expectation to offer regeneration.
+ * The stamp `runPipeline` writes as its final step: the completion marker an interrupted conversion
+ * never carries, and the staleness signal an installed shell compares against its own expectation.
  */
 
 /**
- * Bump when a decoder/extraction change alters `content/` bytes without touching the IR schema
- * (IR_VERSION covers that leg) - e.g. a fixed palette decode or a new atlas emission. An installed
- * shell treats a mismatch as "regeneration recommended", so forgetting a bump costs staleness
- * detection, never correctness.
+ * Bump when a decoder or extraction change alters `content/` bytes without touching the IR schema
+ * (IR_VERSION covers that leg). A mismatch reads as "regeneration recommended", so a forgotten bump
+ * costs staleness detection, never correctness.
  */
 export const CONTENT_REVISION = 3;
 
@@ -23,7 +21,7 @@ export interface PipelineManifest {
   readonly contentRevision: number;
 }
 
-/** What a conversion run by THIS build of the pipeline stamps - the comparison baseline. */
+/** What a conversion run by this build stamps; the baseline a stored manifest is compared against. */
 export const CURRENT_MANIFEST: PipelineManifest = {
   irVersion: IR_VERSION,
   contentRevision: CONTENT_REVISION,
@@ -34,9 +32,8 @@ export async function writePipelineManifest(outDir: string): Promise<void> {
 }
 
 /**
- * Drop a previous conversion's stamp. `runPipeline` calls this before its first stage so an
- * interrupted rerun over existing content degrades to "regenerate" instead of keeping the old
- * stamp and passing the mixed tree off as complete.
+ * Drops a previous conversion's stamp before the first stage, so an interrupted rerun over existing
+ * content degrades to "regenerate" instead of passing the mixed tree off as complete.
  */
 export async function clearPipelineManifest(outDir: string): Promise<void> {
   await rm(join(outDir, PIPELINE_MANIFEST_NAME), { force: true });

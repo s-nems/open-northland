@@ -12,11 +12,9 @@
  *   fileCount  × { u32 nameLen; nameLen ASCII bytes; u32 position; u32 size }
  *   ... file payloads: each is `size` bytes at absolute `position` from the start of the archive.
  *
- * Names are backslash paths (e.g. `data\logic\goodtypes.cif`). The on-disk record does not store
- * a checksum - the original recomputes it from the (lowercased) name and uses it as the lookup key
- * (`GetEntryId`: filter by checksum, then case-insensitive name compare).
- *
- * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
+ * Names are backslash paths (e.g. `data\logic\goodtypes.cif`). The on-disk record stores no checksum:
+ * the original recomputes it from the lowercased name and uses it as the lookup key (`GetEntryId`
+ * filters by checksum, then compares names ignoring case).
  */
 
 import { asciiBytes, ByteCursor, ByteWriter } from './byte-cursor.js';
@@ -30,7 +28,7 @@ export interface LibGroup {
 /** One archived file: its directory entry plus a zero-copy view of its payload. */
 export interface LibFile {
   readonly name: string;
-  /** Lookup key the original computes from the name: sum of lowercased ASCII bytes, mod 256. */
+  /** Lookup key derived from the name by {@link filenameChecksum}, not stored on disk. */
   readonly checksum: number;
   /** Absolute byte offset of the payload from the start of the archive. */
   readonly position: number;
@@ -41,17 +39,16 @@ export interface LibFile {
 
 /** A decoded `.lib` archive: its directory and per-file payload views. */
 export interface LibArchive {
-  /** Leading u32; the original reads and ignores it (observed value 1). Preserved for round-trips. */
+  /** Leading u32, preserved for round-trips. */
   readonly version: number;
   readonly groups: readonly LibGroup[];
   readonly files: readonly LibFile[];
 }
 
 /**
- * Filename → lookup checksum (CSimpleFileLibrary `CalculateFilenameChecksum`): the sum of the
- * lowercased ASCII byte values, taken mod 256, folding only A-Z. Real archive names are ASCII
- * backslash paths, for which this is exact; for hypothetical non-ASCII names it can diverge from
- * the original (which folds the char before truncating to a byte), but those don't occur.
+ * Filename to lookup checksum (CSimpleFileLibrary `CalculateFilenameChecksum`): the sum of the
+ * lowercased ASCII byte values, mod 256, folding only A-Z. Exact for the ASCII backslash paths real
+ * archives use; a non-ASCII name could diverge, since the original folds the char before truncating it.
  */
 export function filenameChecksum(name: string): number {
   let sum = 0;
@@ -64,9 +61,8 @@ export function filenameChecksum(name: string): number {
 }
 
 /**
- * Decodes a `.lib` archive directory and returns per-file payload views. Throws on a structurally
- * invalid container (truncated directory, or a payload range outside the buffer) - a batch pipeline
- * over many owned files should wrap each call per-file so one corrupt `.lib` can't abort the run.
+ * Decodes a `.lib` archive directory and returns per-file payload views. Throws on a truncated
+ * directory or a payload range outside the buffer.
  *
  * Each payload's `[position, position + size)` is checked to fit the buffer, but positions are
  * otherwise trusted as the original engine trusts them: they are not cross-validated for overlap or
@@ -107,10 +103,7 @@ export function decodeLib(bytes: Uint8Array): LibArchive {
   return { version, groups, files };
 }
 
-/**
- * Case-insensitive lookup by name, mirroring the original (`GetEntryId`: filter by filename
- * checksum, then compare names ignoring ASCII case). `name` must use the archive's backslash paths.
- */
+/** Case-insensitive lookup by name; `name` must use the archive's backslash paths. */
 export function findLibFile(archive: LibArchive, name: string): LibFile | undefined {
   const checksum = filenameChecksum(name);
   const lower = name.toLowerCase();
@@ -132,10 +125,9 @@ export interface LibArchiveInput {
 }
 
 /**
- * Inverse of {@link decodeLib}: serializes a `.lib` with payloads laid out sequentially right after
- * the directory. Kept faithful so decode can be round-trip tested without committing copyrighted
- * fixtures (the same rationale as the `.cif` cipher pair). Positions are absolute, matching the
- * format - a real archive may order payloads differently, but decode reads them by position either way.
+ * Inverse of {@link decodeLib}: serializes a `.lib` with payloads laid out sequentially right after the
+ * directory. Kept faithful so decode can be round-trip tested without committing copyrighted fixtures.
+ * A real archive may order payloads differently; decode reads them by absolute position either way.
  */
 export function encodeLib(input: LibArchiveInput): Uint8Array {
   const version = input.version ?? 1;

@@ -18,17 +18,8 @@
  *     (3) line-control     = lineControlCount × u32, indexed by absolute Y; each packs
  *                            [xMin (top 10 bits)][offset into packed-line data (low 22 bits)]
  *
- * This module solves the container layer only: it splits a `.bmd` into the header fields, the typed bob
- * records, and the two raw blocks (packed-line bytes + line-control words). Turning the packed-line
- * stream into actual frame pixels (the RLE codec) lives beside it in {@link ./frame} - the same way `.pcx`
- * keeps `decodePcx` (container) separate from `expandToRgba` (pixels).
- *
- * The layout is documented in `docs/formats/GRAPHICS.md` and pinned by synthetic round-trip tests.
- * It was established through byte-level inspection of sprite containers from an owned game copy.
- *
- * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
- * `encodeBmd` is the faithful inverse, used to round-trip test without committing copyrighted fixtures
- * (same rationale as the `.lib`/`.cif`/`.pcx`/`.palette` encoder pairs).
+ * The layout was established through byte-level inspection of sprite containers from an owned game
+ * copy. It is documented in `docs/formats/GRAPHICS.md` and pinned by synthetic round-trip tests.
  */
 
 import { ByteCursor, ByteWriter, viewOf } from '../byte-cursor.js';
@@ -54,12 +45,9 @@ export const BOB_TYPE_1BIT = 2;
  */
 export const BOB_TYPE_TIMEMASK = 3;
 /**
- * Double-byte bob: each raw-run pixel is `[index, second]`. The second byte is interpreted per
- * consumer from measured byte distributions and the rendered result: alpha for soft decals (ferns median 172, smoke
- * 77, waves ~35), or a 0–255 construction-progress threshold for the `[GfxHouse]` bobs (measured:
- * spans ~0–255, row-correlated bottom-up, mean ≈100 over solid walls - not coverage), drawn via
- * progressively during construction and fully when finished.
- * `decodeBobFrame`'s `secondByte` option picks the interpretation (`AtlasAlphaMode` routes it).
+ * Double-byte bob: each raw-run pixel is `[index, second]`. The second byte reads as per-pixel alpha
+ * for the soft decals (measured medians: ferns 172, smoke 77, waves ~35) or as a construction-progress
+ * threshold for the `[GfxHouse]` bobs; `decodeBobFrame`'s `secondByte` option picks the reading.
  */
 export const BOB_TYPE_DOUBLE8BIT = 4;
 
@@ -82,16 +70,14 @@ export interface BobRecord {
   /** Bob kind (0 = empty/absent slot; nonzero = 1-bit / 8-bit / double-byte variants). Carried raw. */
   readonly type: number;
   /**
-   * The bob's draw rectangle: `width`×`height` is the frame size; `x`/`y` are the draw offset (where to
-   * blit the frame relative to the entity's anchor/feet - often negative). These are render-time offsets
-   * only, not indices into the packed-line / line-control data (that base is {@link misc}).
+   * The bob's draw rectangle: `width`×`height` is the frame size, `x`/`y` the draw offset relative to
+   * the entity's anchor (often negative). Not an index into the packed-line data; that is {@link misc}.
    */
   readonly area: BobArea;
   /**
    * The bob's first-line index into the global line-control array (record+0x14): its `height` scanlines
-   * are `lineControl[misc .. misc+height)`. The line-control array is the per-bob scanlines stacked
-   * contiguously (its length equals the sum of every bob's height), so this is each bob's base offset
-   * into that stack - the field {@link import('./frame.js').decodeBobFrame} walks, not `area.y`.
+   * are `lineControl[misc .. misc+height)`. That array stacks every bob's scanlines contiguously, so
+   * this, not `area.y`, is the base a frame decode walks from.
    */
   readonly misc: number;
 }
@@ -118,8 +104,7 @@ export interface Bmd {
 
 /**
  * Decodes a `.bmd` (CBobManager) container into its header, typed bob records, and the two raw blocks.
- * Throws a `bmd:`-prefixed error on a wrong root id or a structurally short/inconsistent buffer (a
- * batch pipeline should wrap the call per-file so one bad bob set can't abort the run).
+ * Throws a `bmd:`-prefixed error on a wrong root id or a structurally short buffer.
  */
 export function decodeBmd(bytes: Uint8Array): Bmd {
   const r = new ByteCursor(bytes, 'bmd');
@@ -216,10 +201,10 @@ function writeCMemory(w: ByteWriter, body: Uint8Array): void {
 }
 
 /**
- * Inverse of {@link decodeBmd}: serializes a `.bmd` (CBobManager) container. Faithful to the original's
- * `Storable_SaveData`, so a decode can be round-tripped without committing copyrighted assets. When
- * `bobCount === 0` no CMemory blocks are written, matching the original. The packed-line CMemory's
- * `used-bytes` header equals the packed-line array's length (a freshly-saved file has no slack).
+ * Inverse of {@link decodeBmd}, faithful to the original's `Storable_SaveData` so a decode can be
+ * round-tripped without committing copyrighted assets. When `bobCount === 0` no CMemory blocks are
+ * written, matching the original, and the packed-line `used-bytes` header equals the array's length
+ * (a freshly-saved file has no slack).
  */
 export function encodeBmd(bmd: Bmd): Uint8Array {
   const w = new ByteWriter();

@@ -27,10 +27,8 @@ export function parseArgs(argv: readonly string[]): Args {
 
 /**
  * Resolves the filesystem args against `baseDir`, leaving absolute paths untouched. The entry point
- * passes `process.env.INIT_CWD` - the directory `npm run` was invoked from. npm runs a workspace
- * script with cwd set to the workspace package dir (`tools/asset-pipeline/`), so a relative
- * `--game ../Cultures 8th Wonder` would otherwise resolve there instead of where the user typed it.
- * Resolving against `INIT_CWD` makes the documented repo-root command work.
+ * passes `process.env.INIT_CWD`: npm runs a workspace script with cwd set to `tools/asset-pipeline/`,
+ * so a relative `--game ../Cultures 8th Wonder` would otherwise resolve there instead of the repo root.
  */
 export function resolveArgs(args: Args, baseDir: string): Args {
   return {
@@ -41,14 +39,10 @@ export function resolveArgs(args: Args, baseDir: string): Args {
 }
 
 /**
- * Refuses an `out` that a symlink would carry outside the invoking checkout (`baseDir`). The pipeline
- * writes files through the path without clearing it, so a worktree whose gitignored `content/` is a
- * symlink to the primary checkout would silently overwrite the primary's content in place - parallel
- * worktrees must own an APFS clone instead (`cp -Rc ../open-northland/content content`; see
- * `.claude/commands/worktree.md` step 1). Only symlink escape is refused: an out that does not exist
- * yet is fine (it will be created where stated), and an explicit out elsewhere (`--out /abs/dir`)
- * is the caller's own responsibility - checked lexically, so ancestor symlinks above the checkout
- * (e.g. macOS's /var -> /private/var) don't trip it.
+ * Refuses an `out` under `baseDir` that a symlink carries outside it: the pipeline writes files
+ * through the path, so a worktree whose gitignored `content/` is a symlink to another checkout would
+ * silently overwrite that checkout's content in place. Only symlink escape is refused, and the check
+ * is lexical so ancestor symlinks above the checkout (macOS's /var -> /private/var) don't trip it.
  */
 export function assertOutStaysInCheckout(out: string, baseDir: string): void {
   const lexBase = resolve(baseDir);

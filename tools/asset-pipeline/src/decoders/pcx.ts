@@ -15,11 +15,8 @@
  * < 0xC0 is a literal; a byte >= 0xC0 is a run of `(byte & 0x3F)` copies of the following byte. Runs
  * never cross a scanline boundary (a run overflowing the row is truncated there, as the original does).
  *
- * Palette detection requires the standard 0x0C marker at `length - 769`. Every inspected game `.pcx`
- * carries it, while malformed or palette-less buffers are rejected instead of yielding a bogus palette.
- *
- * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads + PNG output around
- * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.
+ * Palette detection requires the standard 0x0C marker at `length - 769`; every inspected game `.pcx`
+ * carries it.
  */
 
 import { viewOf } from './byte-cursor.js';
@@ -41,9 +38,7 @@ export interface PcxImage {
 
 /**
  * Decodes a `.pcx` into indexed pixels and its embedded palette. Throws a `pcx:`-prefixed error on a
- * structurally invalid header (too short, or non-positive dimensions) - a batch pipeline should wrap
- * each call per-file so one bad picture can't abort the run. Truncated pixel data is tolerated (the
- * remaining pixels keep whatever the reused scanline buffer last held), matching the original decoder.
+ * structurally invalid header. Truncated pixel data is tolerated, matching the original decoder.
  */
 export function decodePcx(bytes: Uint8Array): PcxImage {
   if (bytes.length < HEADER_BYTES) {
@@ -66,8 +61,8 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
 
   const alignedRowBytes = (width + 1) & ~1;
   const pixels = new Uint8Array(width * height);
-  // Reused across rows and intentionally not cleared: well-formed data refills it fully each row;
-  // truncated data leaks the previous row's tail, exactly as the original's shared rowBuffer does.
+  // Reused across rows and intentionally not cleared: truncated data leaks the previous row's tail,
+  // exactly as the original's shared row buffer does.
   const row = new Uint8Array(alignedRowBytes);
   let src = HEADER_BYTES;
 
@@ -94,7 +89,7 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
     bytes.length >= PALETTE_TRAILER_BYTES &&
     view.getUint8(bytes.length - PALETTE_TRAILER_BYTES) === PALETTE_MARKER
   ) {
-    palette = bytes.slice(bytes.length - PALETTE_RGB_BYTES); // owned copy of the 256 RGB triples
+    palette = bytes.slice(bytes.length - PALETTE_RGB_BYTES); // a copy, not a view into the input
   }
 
   return { width, height, pixels, palette };
@@ -102,9 +97,7 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
 
 /**
  * Expands indexed pixels to straight RGBA using the image's palette. Indices are bytes and a valid
- * palette has 256 entries, so an index is never out of range. Throws (with a `pcx:` prefix, like
- * {@link encodePcx}) if the image has no palette or one that isn't exactly 256 RGB triples - a
- * decoded image always satisfies this, so a throw means a hand-built `PcxImage`.
+ * palette has 256 entries, so an index is never out of range.
  */
 export function expandToRgba(image: PcxImage): RgbaImage {
   const { width, height, pixels, palette } = image;
@@ -112,11 +105,10 @@ export function expandToRgba(image: PcxImage): RgbaImage {
     throw new Error('pcx: cannot expand to RGBA - image has no palette');
   }
   assertPaletteBytes(palette, 'pcx');
-  // A `.pcx` picture is fully opaque - every pixel written, alpha 0xff.
+  // A `.pcx` picture is fully opaque.
   return { width, height, rgba: paletteToRgba(pixels, palette, () => 0xff) };
 }
 
-/** What {@link encodePcx} serializes: the dimensions, indexed pixels, and an optional palette. */
 export interface PcxImageInput {
   readonly width: number;
   readonly height: number;
@@ -127,10 +119,9 @@ export interface PcxImageInput {
 }
 
 /**
- * Inverse of {@link decodePcx}: serializes a single-plane 8bpp `.pcx` with per-row RLE and (if given)
- * a 0x0C-marked 256-color trailer. Kept faithful so decode can be round-tripped without committing
- * copyrighted fixtures (same rationale as the `.lib`/`.cif` encoder pairs). Throws on inputs that
- * can't describe a valid picture (these are programmer errors, not recoverable boundary failures).
+ * Inverse of `decodePcx`: a single-plane 8bpp `.pcx` with per-row RLE and, if given, a 0x0C-marked
+ * 256-color trailer. Kept faithful so a decode can be round-tripped without committing copyrighted
+ * fixtures.
  */
 export function encodePcx(input: PcxImageInput): Uint8Array {
   const { width, height, pixels, palette } = input;

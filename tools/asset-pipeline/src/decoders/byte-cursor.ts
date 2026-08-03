@@ -1,26 +1,20 @@
 /**
- * Shared low-level byte primitives - the little-endian `ByteCursor`/`ByteWriter` for the container
- * decoders (`.cif`/`.bmd`/`.lib`/`.map`), plus the endian-neutral `viewOf` the image decoders share.
- *
- * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
- * raw byte runs, ASCII names). This shared reader is deliberately domain-free - no storable ids, no
- * format knowledge - so `storable.ts` layers the shared object vocabulary on top of it and the
- * per-format decoders layer on that.
+ * Byte primitives shared by the decoders: every Cultures container is little-endian with the same
+ * handful of reads. Deliberately domain-free, holding no storable ids or format knowledge.
  */
 
 /**
  * A `DataView` spanning exactly `bytes` (its `byteOffset`/`byteLength`), not the whole backing buffer.
- * The container and image decoders pass `.subarray()` slices, where the bare `new DataView(x.buffer)`
- * would silently read from the start of the shared buffer - this is the one correct construction.
+ * Callers pass `.subarray()` slices, for which a bare `new DataView(x.buffer)` would silently read from
+ * the start of the shared buffer.
  */
 export function viewOf(bytes: Uint8Array): DataView {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
 /**
- * Little-endian sequential reader over a byte buffer. Throws on overrun - a corrupt container is a
- * boundary failure, not a recoverable state. The `prefix` tags every error with the owning format's
- * namespace (`cif:`/`bmd:`/`lib:` …), which the decoder tests assert on, so pass the format's short id.
+ * Little-endian sequential reader over a byte buffer. Throws on overrun: a corrupt container is a
+ * boundary failure, not a recoverable state.
  */
 export class ByteCursor {
   private readonly bytes: Uint8Array;
@@ -69,18 +63,16 @@ export class ByteCursor {
     return slice;
   }
 
-  /** Next `n` bytes as a latin1 string - the faithful 1:1 mapping for the containers' ASCII names. */
+  /** Next `n` bytes as a latin1 string, the faithful 1:1 mapping for the containers' ASCII names. */
   ascii(n: number): string {
     return decodeLatin1(this.take(n));
   }
 }
 
 /**
- * Little-endian sequential writer that grows its backing buffer as needed - the write-side twin of
- * {@link ByteCursor}, shared by the container encoders that append fields in order without knowing the
- * total size upfront (`.bmd`/`.lib`). The fixed-layout serializers (`.png` big-endian, `.cur`/palette/
- * `map.dat` with reserved gaps and u16/random-access writes) pre-size an exact buffer and write at
- * computed offsets instead - a sequential writer would obscure their fixed on-disk layout.
+ * Little-endian sequential writer that grows its backing buffer as needed, for the container encoders
+ * that append fields in order without knowing the total size upfront. A serializer with a fixed on-disk
+ * layout pre-sizes an exact buffer and writes at computed offsets instead.
  */
 export class ByteWriter {
   private buf = new Uint8Array(256);
@@ -114,13 +106,11 @@ export class ByteWriter {
 }
 
 /**
- * Decodes bytes as ISO-8859-1: code point = byte value, a true 1:1 map for all 256 values. This
- * losslessly round-trips the containers' ASCII names, the `.cif` structural keywords, and the
- * byte-preserving display-string payloads that `latin1ToCp1250` (`ini/string-tables.ts`) later
- * re-decodes to their real codepage (Polish text is CP1250).
+ * Decodes bytes as ISO-8859-1: code point = byte value, a true 1:1 map for all 256 values, so display
+ * strings survive byte-exact for `latin1ToCp1250` to re-decode to their real codepage.
  *
  * Deliberately not `new TextDecoder('latin1')`: that WHATWG label is an alias for windows-1252, which
- * remaps 0x80–0x9F (e.g. byte 0x9C → U+0153 'œ' instead of U+009C), silently corrupting the CP1250
+ * remaps 0x80-0x9F (byte 0x9C becomes U+0153 'œ' instead of U+009C), silently corrupting the CP1250
  * letters ś/ź/Ś/Ź that live in that range. Node's `Buffer.toString('latin1')` is genuine byte-identity.
  */
 export function decodeLatin1(bytes: Uint8Array): string {

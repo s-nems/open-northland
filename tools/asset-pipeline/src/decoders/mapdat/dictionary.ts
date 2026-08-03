@@ -1,6 +1,6 @@
 /**
- * `map.dat` name-dictionary chunks (`eapd` patterns, `eald` landscape objects, `eatd` texture
- * groups) - the by-name join tables a map uses to reference the shared `.cif` lists version-robustly.
+ * `map.dat` name-dictionary chunks (`eapd` patterns, `eald` landscape objects, `eatd` texture groups):
+ * the by-name join tables a map uses to reference the shared `.cif` lists version-robustly.
  */
 
 import { decodeLatin1, viewOf } from '../byte-cursor.js';
@@ -9,12 +9,11 @@ import type { MapDatChunk } from './container.js';
 /**
  * Decodes a name-dictionary chunk (`eapd`/`eald`/`eatd`) into its string list. The payload is a
  * `[u32 count]` header then `count` entries of `[u8 length][length bytes][0x00]` (Latin-1, the same
- * length-prefixed grammar as the `.cif` string pool). These dictionaries are how a map references
- * shared tables version-robustly by name: `eapd` mirrors the `pattern.cif` `[GfxPattern]` list
- * (927 names, positional), `eald` the `landscapes.cif` `[GfxLandscape]` list (866 names) - the
- * `empa`/`empb`/`emla` lanes index these lists, and the names join back onto the extracted IR.
+ * length-prefixed grammar as the `.cif` string pool). `eapd` mirrors the `pattern.cif` `[GfxPattern]`
+ * list positionally and `eald` the `landscapes.cif` `[GfxLandscape]` list, so the indices in the
+ * `empa`/`empb`/`emla` lanes join back onto the extracted IR by name.
  *
- * Throws on a count that overruns the payload (corrupt/truncated chunk).
+ * Throws on a count that overruns the payload.
  */
 export function decodeStringListChunk(chunk: MapDatChunk): string[] {
   const p = chunk.payload;
@@ -39,7 +38,7 @@ export function decodeStringListChunk(chunk: MapDatChunk): string[] {
       throw new Error(`mapdat: chunk "${chunk.tag}" string entry ${i} is not 0x00-terminated`);
     }
     out.push(decodeLatin1(p.subarray(off, off + len)));
-    off += len + 1; // skip the (verified) trailing 0x00
+    off += len + 1; // skip the trailing 0x00
   }
   return out;
 }

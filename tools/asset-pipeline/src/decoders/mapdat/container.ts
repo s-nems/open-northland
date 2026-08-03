@@ -1,24 +1,10 @@
 /**
- * `map.dat` chunk container - the `hoix`-chunk table walk + the raw `lsiz` grid dims, plus the
- * faithful encoders used to round-trip test without committing copyrighted fixtures.
+ * `map.dat` chunk container: the `hoix`-chunk table walk, the raw `lsiz` grid dims, and the faithful
+ * encoders used to round-trip test without committing copyrighted fixtures. The 0x20-byte chunk
+ * header layout and the payload checksum are documented in `docs/formats/MAPDAT.md`.
  *
- * On-disk layout: a flat sequence of chunks, each a 0x20-byte little-endian header then
- * `length` payload bytes, read sequentially to EOF:
- *
- *   +0x00 u32 marker   = 0x78696F68 ("hoix")
- *   +0x04 u32 id       = a 4-char subtag, stored low->high (disk bytes "zisl" => tag "lsiz")
- *   +0x08 u32 version  = constant per tag (0 group/terminator, 1 default, 2 lafm, 4 lasw)
- *   +0x0C u32 length   = payload size in bytes (0 for bracket/group chunks)
- *   +0x10 u32 depth    = 0 on every chunk of the owned corpus
- *   +0x14 u32 checksum = of the payload (algorithm in docs/formats/MAPDAT.md; not validated here)
- *   +0x18 u32 / +0x1C u32 reserved
- *
- * Group/bracket chunks (`logi`,`lgmm`,`emmm`) and the `xend`/`tend` terminators carry length 0;
- * their sub-chunks follow immediately, so a single `offset += 0x20 + length` walk visits every
- * chunk.
- *
- * The container layout was established through byte-level inspection of owned map files and is
- * documented in `docs/formats/MAPDAT.md`.
+ * Group chunks (`logi`, `lgmm`, `emmm`) and the `xend`/`tend` terminators carry length 0 and their
+ * sub-chunks follow immediately, so one `offset += 0x20 + length` walk visits every chunk.
  */
 
 import { decodeLatin1, viewOf } from '../byte-cursor.js';
@@ -36,10 +22,7 @@ export const TEND_ID = 0x74656e64;
 export interface MapDatChunk {
   /** Raw u32 id as stored on disk (low->high bytes). */
   readonly id: number;
-  /**
-   * Human-readable 4-char tag: the id bytes reversed (disk "zisl" => "lsiz"). This is the form the
-   * format docs and the layer-selection logic use.
-   */
+  /** Human-readable 4-char tag: the id bytes reversed (disk "zisl" => "lsiz"). */
   readonly tag: string;
   readonly version: number;
   /** Payload size in bytes (0 for group/terminator chunks). */
@@ -85,12 +68,9 @@ export function tagToId(tag: string): number {
 }
 
 /**
- * Decodes a `map.dat` container into its flat chunk table. Walks every chunk to EOF (including the
- * `xend`/`tend` terminators) by `offset += CHUNK_HEADER_SIZE + length`.
- *
- * Throws on a structurally invalid container - a header whose marker is not `hoix`, or a payload
- * that overruns the buffer. A batch pipeline over many owned files should wrap this per-file so one
- * corrupt `map.dat` can't abort the run (mirrors `decodeLib`).
+ * Decodes a `map.dat` container into its flat chunk table, walking every chunk to EOF including the
+ * `xend`/`tend` terminators. Throws on a header whose marker is not `hoix` or a payload that overruns
+ * the buffer.
  */
 export function decodeMapDat(bytes: Uint8Array): MapDat {
   const view = viewOf(bytes);
@@ -141,9 +121,9 @@ export function findChunk(map: MapDat, tag: string): MapDatChunk | undefined {
 }
 
 /**
- * Decodes the `lsiz` chunk's raw `[u32 width][u32 height]` grid dimensions. These cross-check the
- * `map.cif` logic-header `mapsize` exactly (confirmed on real maps). Throws if `lsiz` is missing or
- * its payload isn't the expected 8 bytes - a `map.dat` with no grid is malformed.
+ * Decodes the `lsiz` chunk's raw `[u32 width][u32 height]` grid dimensions, which match the `map.cif`
+ * logic-header `mapsize` exactly on the owned maps. Throws when `lsiz` is missing or its payload is
+ * not 8 bytes.
  */
 export function decodeMapSize(map: MapDat): MapDatSize {
   const chunk = findChunk(map, 'lsiz');
@@ -167,11 +147,9 @@ export interface MapDatChunkInput {
 }
 
 /**
- * Inverse of {@link decodeMapDat}: serializes a `map.dat` from a chunk list, laying each header +
- * payload sequentially. Kept faithful so decode can be round-trip tested without committing
- * copyrighted fixtures (the same rationale as the `.cif`/`.lib` encoders). The `checksum` field is
- * written as given (default 0) - this encoder does not recompute the engine's payload checksum, and
- * the decoder does not validate it, so round-trips are exact.
+ * Inverse of {@link decodeMapDat}, laying each header and payload out sequentially. Kept faithful so
+ * decode can be round-trip tested without committing copyrighted fixtures. `checksum` is written as
+ * given (default 0), never recomputed, and the decoder does not validate it, so round-trips are exact.
  */
 export function encodeMapDat(chunks: readonly MapDatChunkInput[]): Uint8Array {
   let total = 0;
@@ -195,7 +173,7 @@ export function encodeMapDat(chunks: readonly MapDatChunkInput[]): Uint8Array {
   return out;
 }
 
-/** Serializes an `lsiz` payload: `[u32 width][u32 height]`. Helper for building test fixtures. */
+/** Serializes an `lsiz` payload: `[u32 width][u32 height]`. */
 export function encodeMapSize(size: MapDatSize): Uint8Array {
   const out = new Uint8Array(8);
   const view = new DataView(out.buffer);
