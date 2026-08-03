@@ -45,6 +45,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     constructionLayers,
     buildingOverlays,
     buildingFlagPoints,
+    buildingSoldierFlagPoints,
     buildingGraphicsOverlays,
   } = await extractIniTables(await resolveIniSources(roots));
   const maps = await decodeMapTree(roots);
@@ -122,6 +123,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     constructionLayers,
     buildingOverlays,
     buildingFlagPoints,
+    buildingSoldierFlagPoints,
     tribes,
     atomicAnimations,
     maps,

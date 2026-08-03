@@ -1,7 +1,8 @@
 import type { BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
 import { CANONICAL_EDIT_NAME, rowsByType, VIKING_TRIBE } from './families.js';
 
-/** A building's sign-post anchor in screen px from its bob draw anchor (+y down) - `GfxFlagPoint`. */
+/** A building's marker anchor in screen px from its bob draw anchor (+y down) - `GfxFlagPoint` for the
+ *  sign post, `gfxsoldierflagpoint` for the garrison mast. */
 export interface FlagPoint {
   readonly x: number;
   readonly y: number;
@@ -16,10 +17,24 @@ export interface FlagPoint {
  * keeps the caller's derived fallback anchor.
  */
 export function flagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagPoint> {
+  return pointsByType(ir?.buildingFlagPoints);
+}
+
+/**
+ * The per-typeId garrison mast from the IR's `buildingSoldierFlagPoints` lane (`gfxsoldierflagpoint`),
+ * resolved exactly like {@link flagPointByType}. The tribe filter earns its keep here: the frank tower
+ * authors a different height from the viking one on the same typeId, and we draw the viking skin. Only
+ * the tower records carry the key, so every other typeId is absent - the source's own statement of
+ * which buildings hold a garrison.
+ */
+export function soldierFlagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagPoint> {
+  return pointsByType(ir?.buildingSoldierFlagPoints);
+}
+
+function pointsByType(rows: readonly BuildingFlagPointRow[] | undefined): ReadonlyMap<number, FlagPoint> {
   const out = new Map<number, FlagPoint>();
-  const byType = rowsByType(ir?.buildingFlagPoints ?? [], VIKING_TRIBE);
-  for (const [typeId, rows] of byType) {
-    const row = pickFlagPointRow(typeId, rows);
+  for (const [typeId, group] of rowsByType(rows ?? [], VIKING_TRIBE)) {
+    const row = pickFlagPointRow(typeId, group);
     if (row !== undefined) out.set(typeId, { x: row.x, y: row.y });
   }
   return out;

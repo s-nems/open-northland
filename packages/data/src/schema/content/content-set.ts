@@ -76,6 +76,9 @@ export const ContentSet = z.strictObject({
   buildingOverlays: z.array(BuildingOverlay).default([]),
   /** `[GfxHouse]` `GfxFlagPoint` sign-post anchors - where a building's sign chain plants (render-binding data). */
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),
+  /** `[GfxHouse]` `gfxsoldierflagpoint` anchors - where a manned post flies its garrison flag. Same row
+   *  shape as {@link buildingFlagPoints}, a different marker on a different part of the building. */
+  buildingSoldierFlagPoints: z.array(BuildingFlagPoint).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

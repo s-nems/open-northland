@@ -178,6 +178,9 @@ export interface ContentIr {
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
   readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
+  /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from. Same row shape as
+   *  {@link buildingFlagPoints}; only the tower records carry one. */
+  readonly buildingSoldierFlagPoints?: readonly BuildingFlagPointRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
   /** The `[landscapetype]` logic table - the {@link LandscapeGfxRow.logicType} join key. */
