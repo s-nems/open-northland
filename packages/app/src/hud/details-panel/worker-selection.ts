@@ -2,7 +2,8 @@ import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { actorsOf, isSettler, num, shelterOf } from '../../game/snapshot.js';
 
-/** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
+/** At most this many WORKER sprites in the field (a store dispatches up to ~12; keep the row readable).
+ *  A garrison is drawn whole instead - the field squeezes its cells to fit the crowd. */
 export const MAX_WORKERS = 8;
 /** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell -
  *  members of one family stand close, the next family starts after this breather. */

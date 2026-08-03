@@ -1,5 +1,6 @@
 import {
   Building,
+  DefenceMode,
   Health,
   JobAssignment,
   Position,
@@ -205,6 +206,10 @@ export function upgradeBuilding(
   });
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
+  // A site shelters nobody, so the alarm comes DOWN with the roof rather than waiting out the ramp: the
+  // panel drops the defence window for a site, so an alarm left standing could be neither seen nor lowered
+  // and would silently call the garrison back the moment the upgrade finished.
+  world.remove(command.building, DefenceMode);
   // The plot is a building site again - settlers standing on it step out (bindings kept, see above).
   evictSettlersFromFootprint(world, ctx, command.building);
 }

@@ -931,5 +931,22 @@ describe('the animal farm panel - fed-animal tokens stay internal', () => {
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.defenseEnabled).toBe(true);
     expect(model.defenseLabel).toContain(`2/${capacity}`);
+    // The same claimants take the workers window, so its headline and count line read for the garrison
+    // rather than leaving "Tragarz 0/3" standing over a field of sheltering civilians.
+    expect(model.garrison).toEqual({ sheltered: 2, capacity });
+  });
+
+  it('leaves the workers window to the workers once nobody is sheltering', () => {
+    const sim = createSceneSim(sandboxScene);
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_WATCHTOWER, { components: { DefenceMode: {} } }),
+      { id: 2, components: { Settler: { jobType: JOB_COLLECTOR } } }, // at work, no claim
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
+
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.defenseEnabled).toBe(true); // the alarm alone does not take the window
+    expect(model.garrison).toBeNull();
   });
 });

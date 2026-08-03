@@ -14,6 +14,7 @@ import {
   Position,
   Settler,
   type SettlerIdentity,
+  Sheltering,
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -94,7 +95,7 @@ export function engageCombatant(
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
     post: manning ? posted : null,
-    // A manned settler always has a seat - `garrisonSeats` numbers every live claim - so the fallback is
+    // A manned settler always has a seat - `garrisonSeats` numbers every manned claim - so the fallback is
     // only for a claim made after that pass, which reads as the first seat until the next tick.
     shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
@@ -237,9 +238,10 @@ function resolveFleeState(
   attacker: SettlerIdentity,
   stance: CombatantStance,
 ): boolean {
-  // A settler manning a shelter never flees: it is already behind the walls, and running would take it
-  // straight back out into the open (the shelter drive would then walk it in again).
-  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || stance.shelter !== null) {
+  // A settler that has claimed a shelter never flees: the run for cover IS its flight. Inside, running
+  // would take it straight back out into the open; still crossing the ground, it would abandon the walk it
+  // holds a seat for and the building would report itself full while standing empty.
+  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || world.has(e, Sheltering)) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
       clearNavState(world, e); // drop the run route with the marker

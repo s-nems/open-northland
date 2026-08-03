@@ -16,9 +16,9 @@ import { buildingSpotAccept } from './placement.js';
 // planning heuristic only - what a tower actually does under an alarm is `systems/defence/`.
 
 /** The planning radius of a tower's and the base's assumed defence circle, in world-metric nodes. Under
- *  the house bow's own range 0–29 (`weapons.ini` type 20, what a sheltering civilian shoots): towers
- *  ringed at full bow range stood too far out to read as part of the settlement, so the planning circle
- *  is tightened (user decision 2026-07-26). */
+ *  the house bow's own reach (0–29, `readviews/defence.ts`): towers ringed at full bow range stood too
+ *  far out to read as part of the settlement, so the planning circle is tightened (user decision
+ *  2026-07-26). */
 export const TOWER_DEFENCE_RADIUS_NODES = 22;
 
 /** The content ids that count as covering towers - an id allowlist, deliberately NOT

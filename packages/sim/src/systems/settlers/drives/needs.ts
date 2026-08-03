@@ -1,4 +1,4 @@
-import { ownerOf, type SettlerIdentity } from '../../../components/index.js';
+import { Carrying, ownerOf, type SettlerIdentity } from '../../../components/index.js';
 import { type Fixed, fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -94,12 +94,12 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
 }
 
 /**
- * The in-place half of the needs ladder: sip a carried draught for a pressing need, hunger before
- * fatigue (the ladder's own order below). Nothing here walks, so it is the one need rung a settler that
- * must not move can still run (`./shelter.ts`). Each pressing need falls through to the next when no
- * bottle covers it, exactly as the full ladder falls from its hunger branch into its sleep branch.
+ * The in-place half of the needs ladder: what a settler that must not move can still answer for a
+ * pressing need ({@link import('./shelter.js').planShelter} - a garrison holds its post). Hunger before
+ * fatigue, and within hunger a carried edible before a bottle, exactly as the full ladder below orders
+ * them; each need falls through to the next when nothing on the settler covers it.
  */
-export function drinkForPressingNeed(
+export function answerNeedInPlace(
   world: World,
   ctx: SystemContext,
   e: Entity,
@@ -109,12 +109,34 @@ export function drinkForPressingNeed(
   if (settler.hunger >= HUNGER_EAT_THRESHOLD) pressing.push('hunger');
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) pressing.push('fatigue');
   for (const need of pressing) {
+    if (need === 'hunger' && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     const draught = draughtSlotFor(world, ctx, e, need);
     if (draught === null) continue;
     startDrink(world, ctx, e, settler, draught);
     return true;
   }
   return false;
+}
+
+/** Eat one unit of the food this settler is carrying, where it stands - the ladder's first answer to
+ *  hunger, and the only one a settler that may not walk can take. False when it carries no food. */
+function eatCarried(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  settler: SettlerIdentity & { hunger: Fixed },
+  load: { goodType: number; amount: number } | undefined,
+): boolean {
+  if (load === undefined || load.amount <= 0 || !isFood(ctx, load.goodType)) return false;
+  startAtomic(
+    world,
+    e,
+    EAT_ATOMIC_ID,
+    { kind: 'eat', goodType: load.goodType, from: null },
+    eatDuration(ctx, settler),
+    e,
+  );
+  return true;
 }
 
 /**
@@ -152,18 +174,7 @@ export function planNeeds(
 ): boolean {
   const gate = limit ?? undefined;
   if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
-    if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
-      // Carrying food: eat a unit on the spot (consumed from the carried load).
-      startAtomic(
-        world,
-        e,
-        EAT_ATOMIC_ID,
-        { kind: 'eat', goodType: load.goodType, from: null },
-        eatDuration(ctx, settler),
-        e,
-      );
-      return true;
-    }
+    if (eatCarried(world, ctx, e, settler, load)) return true;
     // A carried draught (food potion, else mead) is drunk IN PLACE - it replaces the walk to food,
     // which is exactly what the manual sells it as ("cover longer distances without needing food").
     // Below the carried-food branch: food in hand is already free, a bottle sip is finite.

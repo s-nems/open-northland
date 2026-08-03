@@ -53,6 +53,11 @@ describe('defaultBindings', () => {
     expect(born?.kind === 'jingle' && born.localPlayerOnly).toBeFalsy();
   });
 
+  it('rings the civil-defence bells for the player who raised the alarm, and only for them', () => {
+    const alarm = defaultBindings().byEvent.defenceAlarmRaised;
+    expect(alarm).toEqual({ kind: 'jingle', musicType: 24, localPlayerOnly: true });
+  });
+
   it('binds combat impacts: melee hit + bow shot/hit, with weapon-specific melee groups', () => {
     const b = defaultBindings();
     expect(b.byEvent.combatHit).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });

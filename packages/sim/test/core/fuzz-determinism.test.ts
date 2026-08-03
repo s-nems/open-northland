@@ -1,5 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { Building, Sheltering } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
@@ -36,6 +37,11 @@ const HOME_TYPE = 9;
  *  ACCEPT path: the home re-opens as an upgrade site (stash + separate hold + difference bill) and can
  *  organically finish when the fuzzed stream happens to deliver its wood and hammer it. Id 10 is free. */
 const HOME_TIER2_TYPE = 10;
+/** The garrison-capable type the harness alarms (see {@link fuzzContent}). Free in the fixture, which
+ *  ids 5 and 9 are NOT any more - `contentIndex.buildings` is first-wins, so `footprinted_hut` and
+ *  `fuzz_home` currently resolve to the fixture's `farm` and `forge`
+ *  (`docs/tickets/sim/fuzz-fixture-type-shadowing.md`). */
+const SHELTER_TYPE = 30;
 /** The fixture's `food_simple` good - what the fuzz home's larder stocks and the preamble drops. */
 const FOOD_GOOD = 3;
 /** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / home / unknown. */
@@ -78,6 +84,15 @@ function fuzzContent() {
         stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
         // The upgrade difference bill: 1 wood - deliverable by the fuzzed carriers/drops.
         construction: [{ goodType: RESOURCE_GOOD, amount: 1 }],
+      },
+      {
+        typeId: SHELTER_TYPE,
+        id: 'fuzz_shelter',
+        kind: 'workplace',
+        // The one fuzzed type that takes a garrison, placed in the preamble and alarmed mid-run, so the
+        // claim and release protocol interleaves with the fuzzed demolish, upgrade, job-change and kill
+        // streams instead of every `setDefenceMode` roll dying on the no-garrison gate.
+        shelterCapacity: 2,
       },
       {
         typeId: FOOTPRINTED_TYPE,
@@ -588,6 +603,10 @@ interface FuzzRun {
   readonly checkpoints: readonly string[];
   readonly violations: readonly string[];
   readonly log: readonly LoggedCommand[];
+  /** Whether any tick of the run had a civilian holding a shelter claim - the coverage the scripted alarm
+   *  buys, pinned so a content or gate change cannot quietly turn the defence half of the stream into a
+   *  skip path. */
+  readonly sheltered: boolean;
 }
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
@@ -604,11 +623,14 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   // Loose food outside the home - the source the housed women's hoard rung and a child order's haul
   // stage draw from.
   sim.enqueue({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
+  // The garrison building the scripted alarm below raises, placed last so the fixed ids above hold.
+  sim.enqueue({ kind: 'placeBuilding', buildingType: SHELTER_TYPE, x: 16, y: 16, tribe: VIKING, owner: 0 });
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
   const checkpoints: string[] = [];
   const violations: string[] = [];
+  let sheltered = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic from 1: the home, then the
     // six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -623,16 +645,30 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
     // seed where the wedding hasn't completed just exercises the unmarried skip instead).
     if (t === 150) sim.enqueue({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
+    // Raise the alarm on that shelter once it stands, so every seed runs the shelter drive and the release
+    // pass for real; the stream's own alarm flips (case 43) then interleave with it. Found by type rather
+    // than by a hard-coded id - the preamble's entity order is already load-bearing enough.
+    if (t === 200) {
+      for (const e of sim.world.query(Building)) {
+        if (sim.world.get(e, Building).buildingType === SHELTER_TYPE) {
+          sim.enqueue({ kind: 'setDefenceMode', building: e, enabled: true });
+        }
+      }
+    }
+    // Raise the alarm on the nucleus home once it stands, so every seed runs the shelter drive and the
+    // release pass for real; the stream's own alarm flips (case 43) then interleave with it.
+    if (t === 200) sim.enqueue({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
     if (gen.int(COMMAND_EVERY) === 0) sim.enqueue(nextCommand(gen));
     sim.step();
     if (violations.length === 0) {
       const v = checkInvariants(sim.world, CORE_INVARIANTS);
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
+    if (!sheltered) for (const _ of sim.world.query(Sheltering)) sheltered = true;
     if (sim.tick % CHECKPOINT_EVERY === 0) checkpoints.push(sim.hashState());
   }
   // The log is plain data owned by this sim instance - copy the array so it outlives store reuse.
-  return { finalHash: sim.hashState(), checkpoints, violations, log: [...sim.commands.log] };
+  return { finalHash: sim.hashState(), checkpoints, violations, sheltered, log: [...sim.commands.log] };
 }
 
 describe('fuzz: randomized command streams stay deterministic, replayable, and invariant-clean', () => {
@@ -640,6 +676,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
     it(`seed ${seed}: two live runs are byte-identical and invariant-clean`, () => {
       const a = runFuzz(seed, TICKS);
       const b = runFuzz(seed, TICKS);
+      expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.

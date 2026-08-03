@@ -211,13 +211,14 @@ export function shelterOf(e: SnapshotEntity): number | undefined {
   return num(claim?.shelter);
 }
 
-/** How many settlers have claimed `building` as their shelter - the "Schronieni n/30" count the defence
- *  window shows. Counts claimants, en route or already inside, which is what the sim's own capacity
- *  ledger counts (`sim`'s `Sheltering`), so the panel can never advertise room a runner already holds. */
+/** How many settlers have claimed `building` as their shelter - the fill the defence and garrison windows
+ *  both show. Counts claimants, en route or already inside, which is what the sim's own capacity ledger
+ *  counts (`sim`'s `Sheltering`), so the panel can never advertise room a runner already holds; and only
+ *  settlers, so the count and the sprites the garrison field draws cannot disagree. */
 export function shelterClaimCount(snapshot: WorldSnapshot, building: number): number {
   let count = 0;
   for (const e of actorsOf(snapshot)) {
-    if (shelterOf(e) === building) count++;
+    if (isSettler(e) && shelterOf(e) === building) count++;
   }
   return count;
 }

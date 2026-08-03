@@ -83,7 +83,9 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(GLYPH_LIGHT);
   };
 
-  // A heater shield: square shoulders, straight flanks, then the two curves meeting at the point.
+  // A heater shield: square shoulders, straight flanks, then the two curves meeting at the point. Filled
+  // while the alarm is up, hollow while it is down - both in the LIT tone, because the toggle is always
+  // pressable and {@link GLYPH_DIM} is this panel's "you cannot press this".
   const glyphShield = (r: Rect, raised: boolean): void => {
     const pad = r.w * 0.24;
     const x0 = r.x + pad;
@@ -100,7 +102,7 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
       .quadraticCurveTo(x0, y1, x0, shoulder)
       .closePath();
     if (raised) g.fill(GLYPH_LIGHT);
-    else g.stroke({ color: GLYPH_DIM, width: line });
+    else g.stroke({ color: GLYPH_LIGHT, width: line });
   };
 
   const glyphSwap = (r: Rect): void => {

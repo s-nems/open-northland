@@ -10,6 +10,7 @@ export const plGame = {
     stock: 'Magazyn',
     workers: 'Pracownicy',
     residents: 'Mieszkańcy',
+    sheltered: 'Schronieni',
     families: 'Liczba Rodzin',
     work: 'Praca',
     experience: 'Doświadczenie',

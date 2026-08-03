@@ -20,6 +20,7 @@ import { shelterStillHolds } from './shelters.js';
  * `shelterCapacity` - so a peaceful map with no alarm pays one empty query.
  */
 export const defenceSystem: System = (world, ctx) => {
+  // Releasing deletes the key just yielded, which a live-Map walk tolerates - no snapshot needed.
   for (const e of world.query(Sheltering)) {
     if (holdsItsShelter(world, ctx, e)) continue;
     releaseShelter(world, e);

@@ -15,8 +15,8 @@ export function houseBow(content: ContentSet, tribe: number): WeaponType | undef
 }
 
 /** How many civilians a building TYPE shelters in defence mode, `0` for a type that has no defence mode
- *  ({@link import('@open-northland/data').BuildingType.shelterCapacity} - authored balance overlaid onto
- *  the extracted `logicCanEnableDefenceMode` set). An unknown type shelters nobody. */
+ *  ({@link import('@open-northland/data').BuildingType.shelterCapacity}). An unknown type shelters
+ *  nobody. */
 export function shelterCapacityOf(content: ContentSet, buildingType: number): number {
   return contentIndex(content).buildings.get(buildingType)?.shelterCapacity ?? 0;
 }
