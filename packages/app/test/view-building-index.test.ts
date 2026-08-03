@@ -34,6 +34,21 @@ describe('view building index', () => {
     expect(index.get(FARM)).toEqual({ id: 'farm', footprint: FOOTPRINT, flagPoint: undefined });
   });
 
+  it('carries the extracted garrison mast, and none for a type that declares no such point', () => {
+    const TOWER = 40;
+    const FARM = 31;
+    const index = buildingIndex(
+      [building(TOWER, 'tower_00'), building(FARM, 'farm')],
+      new Map([[TOWER, { x: -6, y: 29 }]]),
+      new Map([[TOWER, { x: -6, y: -239 }]]),
+    );
+    // Two anchors on one building: the sign post at its foot, the mast high on its roof. Only the
+    // tower records carry `gfxsoldierflagpoint`, so a farm's stays undefined.
+    expect(index.get(TOWER)?.flagPoint).toEqual({ x: -6, y: 29 });
+    expect(index.get(TOWER)?.mastPoint).toEqual({ x: -6, y: -239 });
+    expect(index.get(FARM)?.mastPoint).toBeUndefined();
+  });
+
   it('keeps the last building when two share a typeId', () => {
     // No schema enforces typeId uniqueness, and the two index rules resolve a duplicate differently
     // (packages/data/test/lookup.test.ts). This index reads last-wins.

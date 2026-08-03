@@ -4,7 +4,7 @@ import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { isPlainHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
-import { pickDoorBadgeRow, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
+import { pickDoorBadgeRow, pickGarrisonFlag, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { entityAnchor, memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
@@ -263,8 +263,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         // reads as "PPM on the settler idling below" (ring pops up) or falls through into a move order.
         const w = toWorld(e.clientX, e.clientY);
         const badgeSettler = pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation);
+        // A garrison flag is the post's own marker, so it hands the click to its building: right-clicking
+        // it with soldiers selected posts them there, exactly as right-clicking the tower body does.
         if (badgeSettler !== null) setSelection([badgeSettler], false);
-        else orders.issueRightClick(e);
+        else orders.issueRightClick(e, pickGarrisonFlag(ownDoorBadges(), w.x, w.y, opts.elevation));
       }
       return;
     }
@@ -292,6 +294,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // its gatherer, then an own signpost (direct click only - the marquee never grabs a post).
       const hit =
         pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation) ??
+        pickGarrisonFlag(ownDoorBadges(), w.x, w.y, opts.elevation) ??
         pickTopAt(unitTargets.owned(), w.x, w.y) ??
         pickTopAt(unitTargets.flags(), w.x, w.y) ??
         pickTopAt(unitTargets.signposts(), w.x, w.y);

@@ -19,6 +19,13 @@ export type HouseholdKind = 'single' | 'couple' | 'family';
  *  pennant) or a resident family's banner. */
 export type DoorBadgeRole = 'craftsman' | 'carrier' | 'gatherer' | HouseholdKind;
 
+/** One drawn sign row of a badge: its role (which sign it draws) and, when the marker stands for one
+ *  settler, that settler's entity id - the click-pick target the app resolves. */
+export interface DoorBadgeRow {
+  readonly role: DoorBadgeRole;
+  readonly settler?: number;
+}
+
 /** Which `ls_temp` sign a marker draws: a {@link HouseholdKind} residence banner, the worker disc
  *  (crossed hammer+axe), the carrier pennant, or the construction-site stand. */
 export type BuildingSignKind = HouseholdKind | 'worker' | 'carrier' | 'construction';
@@ -33,6 +40,9 @@ export function signKindOf(role: DoorBadgeRole): BuildingSignKind {
 export interface BuildingSignSheet {
   readonly source: TextureSource;
   readonly frameByKind: Readonly<Record<BuildingSignKind, AtlasFrame>>;
+  /** The garrison flag's wave loop per star count, index 0 = one star. Absent when the slot's
+   *  `soldier 01`..`05` records did not resolve, which leaves a manned post on the placeholder flag. */
+  readonly garrison?: readonly (readonly AtlasFrame[])[];
 }
 
 /** The decoded sign art the app resolves and hands the renderer, indexed by player slot (0-based

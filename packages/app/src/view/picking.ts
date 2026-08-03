@@ -4,6 +4,7 @@ import {
   type DrawItem,
   type ElevationField,
   type EntityBounds,
+  hitsGarrisonFlag,
   ONE,
   signRowAt,
   TILE_HALF_H,
@@ -234,6 +235,36 @@ export function pickDoorBadgeRow(
       best = settler;
       bestY = p.y;
     }
+  }
+  return best;
+}
+
+/**
+ * The building whose garrison flag sits under a world-px point, or `null` if none. The flag stands for
+ * the whole post rather than for one man, so it picks its BUILDING - a click on it reads as a click on
+ * the tower, which is where a player asks about or posts a garrison. Without this the banner is a hole
+ * in the map: it hangs some 230 px above the tower's own pick box, so a click through it lands on empty
+ * ground. Same projection as the layer draws with, and the same front-most tiebreak as
+ * {@link pickDoorBadgeRow}.
+ */
+export function pickGarrisonFlag(
+  badges: readonly DoorBadge[],
+  wx: number,
+  wy: number,
+  elevation?: ElevationField,
+): number | null {
+  let best: number | null = null;
+  let bestY = Number.NEGATIVE_INFINITY;
+  for (const badge of badges) {
+    if (badge.garrison === undefined) continue;
+    const tileX = badge.x / ONE;
+    const tileY = badge.y / ONE;
+    const p = tileToScreen(tileX, tileY);
+    const ax = p.x + badge.garrison.dx;
+    const ay = p.y + badge.garrison.dy - terrainLiftAt(elevation, tileX, tileY);
+    if (!hitsGarrisonFlag(wx - ax, wy - ay) || p.y <= bestY) continue;
+    best = badge.id;
+    bestY = p.y;
   }
   return best;
 }

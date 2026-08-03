@@ -37,15 +37,20 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
  * The stack stands at the building's `GfxFlagPoint` (the original's sign-post pixel offset from the
  * sprite anchor) when the content carries one; a type without it falls back to the derived worker-icon
  * node beside the door ({@link workerIconNode}). See {@link anchorOf} for how both reach the layer.
+ *
+ * A garrison is the one worker role that draws no row: the whole post flies one flag from its mast
+ * ({@link mastOf}), a star per man, so a tower reads as manned without a chain of identical discs.
  */
 
 /** The slice of a building type this projection needs: its door offset (half-cell, from the placed
  *  anchor; absent → the stack anchors beside the building's anchor node), its stable `id` (the
- *  per-building worker-icon override key), and the extracted `GfxFlagPoint` when the content has one. */
+ *  per-building worker-icon override key), the extracted `GfxFlagPoint` when the content has one, and
+ *  the authored mast point a garrison flag flies from. */
 export interface BuildingDoorInfo {
   readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;
   readonly flagPoint?: { readonly x: number; readonly y: number } | undefined;
+  readonly mastPoint?: { readonly x: number; readonly y: number } | undefined;
 }
 
 export function computeDoorBadges(
@@ -56,7 +61,10 @@ export function computeDoorBadges(
   // Pass 1 - collect the settlers bound to each building, split by worker role. Entity order is
   // ascending id (the snapshot's actor order), so each bucket is deterministic; this is a view read,
   // not a sim decision.
-  const tally = new Map<number, { craftsmen: number[]; carriers: number[]; gatherers: number[] }>();
+  const tally = new Map<
+    number,
+    { craftsmen: number[]; carriers: number[]; gatherers: number[]; garrison: number }
+  >();
   // Resident families per home - one banner row per family (see familiesByHome).
   const households = familiesByHome(snapshot);
   const actors = actorsOf(snapshot);
@@ -66,7 +74,7 @@ export function computeDoorBadges(
     if (workplace === undefined) continue; // an unemployed / unbound settler shows no building badge
     const jobType = settlerJobType(e);
     if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) - nothing to draw
-    const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [] };
+    const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [], garrison: 0 };
     switch (roleOf(jobType)) {
       case 'carrier':
         bucket.carriers.push(e.id);
@@ -74,9 +82,11 @@ export function computeDoorBadges(
       case 'gatherer':
         bucket.gatherers.push(e.id);
         break;
-      // A tower garrison shares the worker marker: it is invisible up there, so the badge is the only
-      // sign the post is manned.
+      // A garrison gets no sign row of its own: the whole post flies one flag, a star per man. So it
+      // counts here rather than landing in a bucket, and its soldiers stay unpickable while inside.
       case 'garrison':
+        bucket.garrison++;
+        break;
       case 'craftsman':
         bucket.craftsmen.push(e.id);
         break;
@@ -92,6 +102,7 @@ export function computeDoorBadges(
     const families = households.get(e.id);
     const hearts = isMakingLove(e);
     if (counts === undefined && families === undefined && !hearts) continue; // nothing to draw here
+    const garrison = counts?.garrison ?? 0;
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const typeId = buildingTypeOf(e);
@@ -109,12 +120,14 @@ export function computeDoorBadges(
     for (const id of counts?.gatherers ?? []) rows.push({ role: 'gatherer', settler: id });
     for (const id of counts?.carriers ?? []) rows.push({ role: 'carrier', settler: id });
 
+    const anchor = anchorOf(pos, info);
     out.push({
       id: e.id,
-      ...anchorOf(pos, info),
+      ...anchor,
       ...(player !== undefined ? { player } : {}),
       rows,
       ...(hearts ? { hearts } : {}),
+      ...(garrison > 0 ? { garrison: { stars: garrison, ...mastOf(info, anchor) } } : {}),
     });
   }
   return out;
@@ -135,6 +148,16 @@ function anchorOf(
   const from = tileToScreen(pos.x / ONE, pos.y / ONE);
   const to = tileToScreen(npos.x / ONE, npos.y / ONE);
   return { x: pos.x, y: pos.y, dx: to.x - from.x, dy: to.y - from.y };
+}
+
+/** Where this type's garrison flag is planted: its authored mast point (a roof), else the sign post the
+ *  badges already stand on - a garrison building nobody measured a roof for still shows it is manned. */
+function mastOf(
+  info: BuildingDoorInfo | undefined,
+  post: Pick<DoorBadge, 'dx' | 'dy'>,
+): { readonly dx: number; readonly dy: number } {
+  const mast = info?.mastPoint;
+  return mast !== undefined ? { dx: mast.x, dy: mast.y } : { dx: post.dx ?? 0, dy: post.dy ?? 0 };
 }
 
 /** Classify one resident family into its door banner: parents raising a child read 'family', a
